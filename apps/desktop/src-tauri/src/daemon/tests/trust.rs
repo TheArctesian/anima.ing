@@ -1,13 +1,7 @@
-//! The folder rule, held to the same answers as T6a's for the user unit
-//! (`crates/daemon/src/units/trust.rs`) by one table, `crates/daemon/tests/trust-cases.txt`, that
-//! both test suites read. The shell may be stricter, never looser, and differs in two ways, both
-//! pinned there (rows marked `DIFF`): it refuses a sticky folder others can write (`/tmp`, 1777),
-//! and a sticky folder whose group may write when the group is not the user's private one
-//! (1775 in a shared group), where the daemon's user rule allows both.
+//! The folder rule, held to the daemon's answers by the table `crates/daemon/tests/trust-cases.txt`.
 
 use crate::daemon::trust::{Stat, User, folder_trusted, private_group};
 
-// The table and its parser, shared with the daemon: `Case`, `cases()`.
 include!("../../../../../../crates/daemon/tests/trust-cases/parse.rs");
 
 const PASSWD: &str = "root:x:0:0::/root:/bin/bash\nada:x:1000:1000::/home/ada:/bin/bash\nbob:x:1001:1001::/home/bob:/bin/bash\nweb:x:33:100::/:/bin/false\neve:x:1002:100::/home/eve:/bin/bash\n";
@@ -54,7 +48,6 @@ fn met_019_no_private_group_when_a_line_or_a_file_does_not_read() {
     assert_eq!(private(1000, &broken, Some(GROUP)), None, "odd passwd");
 }
 
-/// One row of the table of trust cases, with its account files resolved.
 #[test]
 fn met_019_every_row_of_the_trust_table_gets_the_shell_s_answer() {
     let cases = cases();

@@ -1,8 +1,6 @@
-//! Runs the installed daemon once (MET-019, D-10 d): an absolute program and fixed arguments, no
-//! shell, an environment that holds only the variables the daemon needs, the code on standard
-//! input only, output thrown away, and a deadline after which the child and every process it
-//! started are killed, and the child reaped, as they are when the app stops it on exit. It logs
-//! nothing (LOG-007).
+//! Runs the installed daemon once (MET-019, D-10 d): no shell, only the variables it needs, the
+//! code on standard input only, and its whole process group killed at the deadline or the app's
+//! exit. It logs nothing (LOG-007).
 
 use std::{
     ffi::OsString,
@@ -14,8 +12,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// The variables the daemon gets from the app, when they are set: its home (where `enrol` stores
-/// the token and `install` writes the unit), and the user session bus `systemctl --user` needs.
+/// The user session bus that `systemctl --user` needs.
 #[cfg(unix)]
 const PASSED_ON: [&str; 2] = ["XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"];
 
@@ -37,19 +34,16 @@ const TEXT_BUSY: i32 = 26;
 const BUSY_TRIES: u32 = 5;
 const BUSY_PAUSE: Duration = Duration::from_millis(50);
 
-/// One run of the daemon.
 pub struct Run<'a> {
     pub program: &'a Path,
     pub args: &'a [&'a str],
-    /// Written to standard input, which is then closed; `None` gives it no input at all.
     pub input: Option<&'a [u8]>,
     pub env: &'a [(&'static str, OsString)],
     pub deadline: Duration,
-    /// Set when the app exits: the child is then killed and reaped at once.
     pub stop: &'a AtomicBool,
 }
 
-/// Why a run did not succeed. Fixed text: no OS text, no argument and no input.
+/// Fixed text only: no OS text, no argument and no input.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum RunError {
     #[error("the daemon could not start")]
@@ -74,13 +68,8 @@ pub fn enrol_args(origin: &str) -> [&str; 4] {
 /// `install`: the user unit or `LaunchAgent`; never `--system`, which needs root.
 pub const INSTALL_ARGS: [&str; 1] = ["install"];
 
-/// The daemon's environment: `HOME` as given, then each of [`PASSED_ON`] that `lookup` finds and
-/// is not empty. Nothing else of the app's environment reaches the daemon.
-///
-/// `XDG_CONFIG_HOME` is cleared on purpose (it is not in [`PASSED_ON`]): the daemon's home is then
-/// `$HOME/.config/anima-daemon`, T6a's single place for it, which the unit's
-/// `ReadWritePaths=%E/anima-daemon` names too; the daemon's `install` refuses a token stored
-/// anywhere else.
+/// `XDG_CONFIG_HOME` stays unset so the daemon's home is `$HOME/.config/anima-daemon` (T6a), the
+/// only place its `install` accepts a token.
 pub fn daemon_env(
     home: &Path,
     lookup: impl Fn(&str) -> Option<OsString>,
@@ -94,18 +83,14 @@ pub fn daemon_env(
     env
 }
 
-/// Runs `daemon_run` and waits for it until its deadline or its stop.
-///
 /// # Errors
-/// [`RunError`]: the program could not start, take its input, or exit successfully in time, or
-/// it was stopped. A child still running then is killed and reaped first.
+/// [`RunError`] when the program cannot start, take its input or exit in time, or is stopped.
 pub fn run(daemon_run: &Run<'_>) -> Result<(), RunError> {
     finish(daemon_run, false).map(drop)
 }
 
-/// Runs `daemon_run` as [`run`] does and returns the first `limit` bytes of its standard output.
-/// Only what the program wrote before it exited is read: the pipe is read without waiting, so a
-/// process that it started and that keeps the pipe open cannot hold the app.
+/// The pipe is read without waiting, so a process it started that keeps the pipe open cannot
+/// hold the app.
 ///
 /// # Errors
 /// [`RunError`] as [`run`]; [`RunError::Unreadable`] when the output cannot be read.
@@ -122,14 +107,11 @@ pub fn output(daemon_run: &Run<'_>, limit: u64) -> Result<Vec<u8>, RunError> {
     let mut out = Vec::new();
     match stdout.take(limit).read_to_end(&mut out) {
         Ok(_) => Ok(out),
-        // The bytes read before the pipe had no more stay in `out`.
         Err(error) if error.kind() == ErrorKind::WouldBlock => Ok(out),
         Err(_) => Err(RunError::Unreadable),
     }
 }
 
-/// Starts `daemon_run`, with a pipe for its standard output when `capture`, and waits for it
-/// until its deadline or its stop. Returns the child once it exited with success.
 fn finish(daemon_run: &Run<'_>, capture: bool) -> Result<Child, RunError> {
     if daemon_run.stop.load(Ordering::Acquire) {
         return Err(RunError::Stopped);
@@ -166,9 +148,8 @@ fn finish(daemon_run: &Run<'_>, capture: bool) -> Result<Child, RunError> {
     }
 }
 
-/// Starts the child, with a pipe for its standard output when `capture`. A binary that was just
-/// written can be "busy" for a moment while another thread of this process forks with the file
-/// still open; that start is tried again.
+/// A just-written binary is busy while another thread forks with the file open; that start is
+/// tried again.
 fn start(daemon_run: &Run<'_>, capture: bool) -> Result<Child, RunError> {
     let mut tries = 0;
     loop {
@@ -210,8 +191,7 @@ fn start(daemon_run: &Run<'_>, capture: bool) -> Result<Child, RunError> {
     }
 }
 
-/// Writes `input` and closes standard input. A child that exits before reading leaves a broken
-/// pipe; that is not an error here, as its exit status tells what happened.
+/// A broken pipe is not an error: the child's exit status tells what happened.
 fn hand_over(child: &mut Child, input: Option<&[u8]>) -> Result<(), RunError> {
     let Some(input) = input else {
         return Ok(());
@@ -224,9 +204,7 @@ fn hand_over(child: &mut Child, input: Option<&[u8]>) -> Result<(), RunError> {
     }
 }
 
-/// Kills the child's process group, which holds the child and every process it started, then
-/// reaps the child. The child is not reaped before the kill, so its pid still names its own group
-/// and no other process can hold that number; nothing outside the group is touched.
+/// The child is reaped only after the kill, so its pid still names its own group and no other.
 fn reap(mut child: Child) {
     #[cfg(unix)]
     if let Ok(group) = i32::try_from(child.id()) {

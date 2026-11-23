@@ -1,7 +1,5 @@
-//! Who other than the person and root can change a path: a different owner, each user, or a
-//! member of a group that can write it (MCP-033, MCP-034). A group counts only when the system
-//! lists a member of it other than the person and root; when the system cannot say who is in it,
-//! it counts (R-442).
+//! Who other than the person and root can change a path (MCP-033, MCP-034). A writable group
+//! counts when it lists another member or its members cannot be read (R-442).
 
 mod groups;
 #[cfg(unix)]
@@ -18,21 +16,13 @@ use std::path::{Component, Path};
 
 pub use groups::{Groups, Listing, Member};
 
-/// Who other than the person and root can change one part of a path.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Writer {
-    /// A different user owns it: the name of that user, or its number.
     Owner(String),
-    /// Each user can write it.
     Everyone,
-    /// A group that can write it has this member, who is not the person or root.
     Member { group: String, member: String },
-    /// A group can write it, and the system did not say who is in that group.
     Unread { group: String },
-    /// It cannot be read, does not resolve or starts a program in a way that is not read, so who
-    /// can change it is not known.
     Unknown,
-    /// Windows: its access list lets a different user change it.
     AccessList,
 }
 
@@ -59,7 +49,6 @@ impl fmt::Display for Writer {
     }
 }
 
-/// A part of a path and who other than the person and root can change it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Others {
     pub path: PathBuf,
@@ -72,8 +61,8 @@ impl fmt::Display for Others {
     }
 }
 
-/// The group `admin` of macOS. Its members can become root, so a folder of root that this group
-/// can write (as `/Applications`) is as fixed as a folder of root alone.
+/// The macOS group `admin`: its members can become root, so a root folder it can write counts as
+/// root's.
 #[cfg(unix)]
 const MACOS_ADMIN: u32 = 80;
 
@@ -81,7 +70,6 @@ const MACOS_ADMIN: u32 = 80;
 #[cfg(unix)]
 const MOST_LINKS: usize = 40;
 
-/// One part of a path as [`program_writer`] reads it.
 #[cfg(unix)]
 #[derive(Clone, Copy, Debug)]
 pub struct Part {
@@ -105,15 +93,12 @@ impl Part {
     }
 }
 
-/// The name of the user with the number `user`, or the number when it has no name.
 #[cfg(unix)]
 #[must_use]
 pub fn account(user: u32) -> String {
     system::account(user)
 }
 
-/// Who other than `user` and root can change a part through its mode: each user when all may
-/// write it, or a member of its group when the group may write it.
 #[cfg(unix)]
 #[must_use]
 pub fn mode_writer(mode: u32, group: u32, user: u32, groups: &Groups) -> Option<Writer> {
@@ -127,20 +112,17 @@ pub fn mode_writer(mode: u32, group: u32, user: u32, groups: &Groups) -> Option<
 }
 
 /// Who other than `user` and root can replace `part` of the path of a program (MCP-033).
-/// `macos`: a folder of root that the group `admin` can write counts as root's.
 #[cfg(unix)]
 #[must_use]
 pub fn program_writer(part: Part, user: u32, macos: bool, groups: &Groups) -> Option<Writer> {
     if part.owner != user && part.owner != 0 {
         return Some(Writer::Owner(account(part.owner)));
     }
-    // A link has no mode of its own; the folder that holds it decides who replaces it. A folder
-    // with the sticky bit (as /tmp) lets only the owner of an entry replace it.
+    // The folder of a link decides who replaces it; a sticky folder lets only an entry's owner.
     if part.link || (part.folder && part.mode & 0o1000 != 0) {
         return None;
     }
-    // A part of root that root's own group, or on macOS the group admin, can write stays as
-    // fixed as before the exact check: those members can become root.
+    // Members of root's group, or of `admin` on macOS, can become root.
     let root_group = part.owner == 0 && (part.group == 0 || (macos && part.group == MACOS_ADMIN));
     if root_group {
         return (part.mode & 0o002 != 0).then_some(Writer::Everyone);
@@ -148,8 +130,7 @@ pub fn program_writer(part: Part, user: u32, macos: bool, groups: &Groups) -> Op
     mode_writer(part.mode, part.group, user, groups)
 }
 
-/// The first part of `path`, from the thing itself up to the root, that a different user than
-/// `user` can replace. A part that cannot be read counts as replaceable.
+/// A part that cannot be read counts as replaceable.
 #[cfg(unix)]
 fn above(path: &Path, user: u32, groups: &Groups) -> Option<Others> {
     path.ancestors().find_map(|part| {
@@ -163,9 +144,8 @@ fn above(path: &Path, user: u32, groups: &Groups) -> Option<Others> {
     })
 }
 
-/// Who other than `user` and root can make a new entry in `folder`, as a program of the same name
-/// as one further on `PATH`. The sticky bit does not stop that: it only keeps an entry that is
-/// there. A folder that cannot be read counts as open.
+/// A new entry can shadow a program further on `PATH`; the sticky bit does not stop that, and a
+/// folder that cannot be read counts as open.
 #[cfg(unix)]
 #[must_use]
 pub fn creatable(folder: &Path, user: u32, groups: &Groups) -> Option<Others> {
@@ -183,9 +163,8 @@ pub fn creatable(folder: &Path, user: u32, groups: &Groups) -> Option<Others> {
     })
 }
 
-/// Each path that decides what runs at the absolute `path`, in order: each symbolic link met while
-/// the path resolves, also a link inside a link, and the file it resolves to at the end. `None`
-/// when it does not resolve or passes more than [`MOST_LINKS`] links.
+/// Each link met while the absolute `path` resolves, nested ones too, then its file; `None` when
+/// it does not resolve or passes more than [`MOST_LINKS`] links.
 #[cfg(unix)]
 #[must_use]
 pub fn chain(path: &Path) -> Option<Vec<PathBuf>> {
@@ -227,8 +206,7 @@ pub fn chain(path: &Path) -> Option<Vec<PathBuf>> {
     Some(links)
 }
 
-/// Who other than `user` and root can change what runs at the absolute `path`: each link of its
-/// [`chain`], the file it resolves to, or a folder above any of them.
+/// Counts each link of the [`chain`], the file it resolves to, and each folder above them.
 #[cfg(unix)]
 #[must_use]
 pub fn replaceable(path: &Path, user: u32, groups: &Groups) -> Option<Others> {

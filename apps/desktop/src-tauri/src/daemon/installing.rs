@@ -1,6 +1,4 @@
-//! The one install that may run at a time, and its stop when the app exits (MET-019): as the
-//! builder's steps, no daemon run outlives the app. No lock: two flags, and the claim is owned by
-//! the blocking work, so it is freed when the work ends even if no `await` resumes.
+//! One install at a time, stopped when the app exits, so no daemon run outlives the app (MET-019).
 
 use std::{
     sync::{
@@ -13,7 +11,6 @@ use std::{
 
 use super::error::DaemonError;
 
-/// How long the app waits on exit for a stopped daemon to be killed and reaped.
 const STOP_PATIENCE: Duration = Duration::from_secs(2);
 const POLL: Duration = Duration::from_millis(10);
 
@@ -23,17 +20,13 @@ pub struct Installing {
     stop: Arc<AtomicBool>,
 }
 
-/// Holds [`Installing`] for one install; dropping it frees it.
 #[derive(Debug)]
 pub struct Claim {
     busy: Arc<AtomicBool>,
-    /// The flag the daemon runs watch.
     pub stop: Arc<AtomicBool>,
 }
 
 impl Installing {
-    /// Claims the one install.
-    ///
     /// # Errors
     /// [`DaemonError::Busy`] while another install holds it.
     pub fn claim(&self) -> Result<Claim, DaemonError> {
@@ -46,8 +39,6 @@ impl Installing {
             .map_err(|_| DaemonError::Busy)
     }
 
-    /// Stops a running install and waits a little for its daemon to be killed and reaped. Called
-    /// once, on exit; no install starts after it.
     pub fn stop(&self) {
         self.stop.store(true, Ordering::Release);
         let end = Instant::now() + STOP_PATIENCE;

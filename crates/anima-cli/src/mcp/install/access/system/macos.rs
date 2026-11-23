@@ -1,8 +1,5 @@
-//! The members of a group on macOS, from `dscl`: the names of the group's record, the accounts
-//! that its members by identifier name, and each account whose own group it is. Only when the
-//! search policy reads the local directory alone: a directory service (Active Directory, LDAP)
-//! need not list each account. Nested groups, an identifier of no local account and the groups
-//! whose members the system calculates (as `everyone`) count as unread.
+//! Group members on macOS from `dscl`, only when the search policy reads the local directory
+//! alone. Nested groups, unknown identifiers and calculated groups count as unread.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -12,14 +9,12 @@ use nix::unistd::Group;
 use super::super::Member;
 use super::{ask, by_name, number};
 
-/// The directory program of macOS.
 const DSCL: &str = "/usr/bin/dscl";
 
-/// The groups whose members the system calculates and does not list: `everyone`, `authedusers`,
-/// `interactusers`, `netusers`, `consoleusers`, `localaccounts`, `netaccounts`.
+/// `everyone`, `authedusers`, `interactusers`, `netusers`, `consoleusers`, `localaccounts`,
+/// `netaccounts`: the system calculates their members.
 const CALCULATED: [u32; 7] = [12, 50, 51, 52, 53, 61, 62];
 
-/// The directories of this computer alone, as the search policy names them.
 const LOCAL_NODES: [&str; 2] = ["/Local/Default", "/BSD/Local"];
 
 pub(super) fn members(group: &Group) -> Option<Vec<Member>> {
@@ -49,13 +44,10 @@ pub(super) fn members(group: &Group) -> Option<Vec<Member>> {
     by_name(names)
 }
 
-/// A group name that can be a part of a `dscl` path.
 fn plain(name: &str) -> Option<&str> {
     (!name.is_empty() && !name.starts_with('-') && !name.contains('/')).then_some(name)
 }
 
-/// Whether `dscl /Search -read / SearchPath`, the search path in use, names only directories of
-/// [`LOCAL_NODES`].
 pub(in super::super) fn local_search(text: &str) -> bool {
     let mut words = text.split_whitespace();
     let key = words.next();
@@ -65,8 +57,6 @@ pub(in super::super) fn local_search(text: &str) -> bool {
         && nodes.iter().all(|node| LOCAL_NODES.contains(node))
 }
 
-/// The lines of `dscl -list /Users <key>`: each name and its value. A record with no value is
-/// left out. `None` when a line has more than a name and one value.
 fn pairs(text: &str) -> Option<Vec<(&str, &str)>> {
     let mut pairs = Vec::new();
     for line in text.lines() {
@@ -90,8 +80,7 @@ pub(in super::super) fn primary(text: &str, group: u32) -> Option<Vec<String>> {
     Some(names)
 }
 
-/// From `dscl -list /Users GeneratedUID`: the name of the account of each of `identifiers`. `None`
-/// when one is the identifier of no account listed there.
+/// From `dscl -list /Users GeneratedUID`; `None` when an identifier names no account there.
 pub(in super::super) fn resolve(identifiers: &[String], text: &str) -> Option<Vec<String>> {
     let accounts: HashMap<&str, &str> = pairs(text)?
         .into_iter()
@@ -107,10 +96,7 @@ pub(in super::super) fn resolve(identifiers: &[String], text: &str) -> Option<Ve
         .collect()
 }
 
-/// From `dscl -read` of the group with the number `group`: the names of its list of members and
-/// the identifiers of its members by identifier. `None` when the record is of a different group,
-/// has no list of members (as a group whose members the system calculates), has nested groups, or
-/// has a line that is not a value.
+/// From `dscl -read` of the group.
 pub(in super::super) fn record(text: &str, group: u32) -> Option<(Vec<String>, Vec<String>)> {
     let mut values: HashMap<&str, Vec<&str>> = HashMap::new();
     let mut key = None;
