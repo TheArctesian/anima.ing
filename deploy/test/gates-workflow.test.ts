@@ -36,7 +36,8 @@ interface Workflow {
 const workflow = Bun.YAML.parse(RAW) as Workflow;
 const jobs = Object.entries(workflow.jobs).map(([name, job]) => [name, { ...job, steps: job.steps ?? [] }] as const);
 const steps = jobs.flatMap(([, job]) => job.steps);
-const gateJobs = jobs.filter(([name]) => name !== "passed" && name !== "base" && name !== "windows");
+// windows and macos run tests outside the list: the Windows gates and deploy/bin/macos-tests.
+const gateJobs = jobs.filter(([name]) => !["passed", "base", "windows", "macos"].includes(name));
 
 /** The gates that the `run` scripts of the workflow select, in the way `quality/bin/gates.ts` selects them. */
 function gatesThatRun(): string[] {
@@ -82,7 +83,7 @@ describe("the gates workflow (gates.yml)", () => {
     expect(workflow.on["push"]).toEqual({ "branches-ignore": ["main", "train/**", "image/**"] });
     for (const [name, job] of jobs) {
       if (name === "windows") expect(job.uses).toBe("./.github/workflows/windows-trial.yml");
-      else expect(job["runs-on"], name).toBe("ubuntu-24.04");
+      else expect(job["runs-on"], name).toBe(name === "macos" ? "macos-15" : "ubuntu-24.04");
     }
   });
 
@@ -113,7 +114,7 @@ describe("the gates workflow (gates.yml)", () => {
 
   test("the job `passed` waits for each job and fails when one did not pass", () => {
     const passed = workflow.jobs["passed"];
-    expect(passed?.needs?.sort()).toEqual(["base", "windows", ...gateJobs.map(([name]) => name)].sort());
+    expect(passed?.needs?.sort()).toEqual(["base", "macos", "windows", ...gateJobs.map(([name]) => name)].sort());
     expect(passed?.if).toBe("always()");
   });
 
@@ -132,6 +133,23 @@ describe("the gates workflow: each crate alone", () => {
     const alone = lint.findIndex((run) => run.includes("quality/bin/gates.ts --alone"));
     expect(merged).toBeGreaterThan(-1);
     expect(alone).toBeGreaterThan(merged);
+  });
+});
+
+describe("the gates workflow: the tests that only a Mac runs", () => {
+  const job = workflow.jobs["macos"];
+
+  test("it runs deploy/bin/macos-tests for the same runs as the job windows, never in a call, after the merge step", () => {
+    expect(job?.if).toBe(workflow.jobs["windows"]?.if);
+    // A called run (release.yml, android-release.yml) passes `ref` and has the event of its caller.
+    expect(job?.if?.startsWith("${{ !inputs.ref && ")).toBe(true);
+    expect(job?.needs).toEqual("base" as unknown as string[]);
+    const runs = job?.steps.map((step) => step.run ?? "") ?? [];
+    const merged = runs.findIndex((run) => run.includes("gates-merge.sh"));
+    expect(job?.steps.find((step) => step.run?.includes("gates-merge.sh"))?.env?.["DEV_SHA"]).toBe("${{ needs.base.outputs.dev_sha }}");
+    expect(job?.steps.find((step) => step.uses?.startsWith("actions/checkout@"))?.with?.["ref"]).toBe("${{ inputs.ref }}");
+    expect(merged).toBeGreaterThan(-1);
+    expect(runs.findIndex((run) => run.includes("sh deploy/bin/macos-tests"))).toBeGreaterThan(merged);
   });
 });
 
