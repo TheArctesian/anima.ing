@@ -29,7 +29,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.24 | Agent threads: the behaviour of T3 Code as a native part of Anima | Operator: OD-THR1 to OD-THR44 and the approval of THR-001 to THR-141 in agent-threads.md; the check HT-079. Agent: task TH4 in agent-threads.md (the comparison of the screen with its mockup) |
 | 4.4 | The engine (E0) | Agent: E0-6 T3 (the `anima secret` commands) and E0-5 T7 (plain `http` to a private address) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"); T1 to T4 of E0-7 are built. Operator: HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Agent: the tasks of Section 12.4 of compute-plan.md, in their order; read the claims first. Operator: the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md |
-| 4.7 | Jobs, builds and AI agent runs | Operator: the steps of HT-065 on his Linux computer `pop-os` for the measurements of task W2 (R-188, R-264), an administrator step on a Mac, the acceptance of the design (W2), the check HT-037 of task W0, and the steps of task B1 on his GitHub account. Agent: task W3 in projects-and-builds-plan.md, the queue of the hub (the contract K10 is accepted, R-209); task W4 comes after the acceptance of W2 |
+| 4.7 | Jobs, builds and AI agent runs | Operator: the result of HT-065 (a session made the measurements of task W2 on `pop-os` on 2026-11-23; R-188, R-264), an administrator step on a Mac, the acceptance of the design (W2), the check HT-037 of task W0, and the steps of task B1 on his GitHub account. Agent: task W3 in projects-and-builds-plan.md, the queue of the hub (the contract K10 is accepted, R-209); task W4 comes after the acceptance of W2 |
 | 4.9 | Hosted applications | Operator: the checks HT-032, HT-038, HT-039 and HT-042 on a machine that runs Docker; OD-HOST-13. The choices of the two reads and the design for a Mac are decided (R-226 to R-238, R-246); the third read of the text of the container work types found changes of the text only (SF-049 to SF-069), and the text is in its fourth form for the owner of the contract of the work route. Agent: hosted-applications-plan.md, tasks H28, H29 and H30; version 0.4 of the contract of the work route (task H14) with the owner of that contract |
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md. The standbys: the hosted launch. Nothing for an agent |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (242)
+## 2. Open decisions (244)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -57,6 +57,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C26 | What may Anima copy from LM Studio and Unsloth Studio (R-380)? Open, not decided. | Copy only what the screens and documents of LM Studio show, with our own code and none of its assets; copy the design of Unsloth Studio only, and nobody reads S… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C27 | How does a coding agent of Anima Code reach a local model (R-380)? Open, put to the operator, not decided. | (C) in steps, `/v1/messages` first. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-ROL-17 | A machine that is connected and busy (it runs a job, a build or a job of a runner) does not start its update (ROL-028). Does its step wait for it? ROL-039 lets… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -322,10 +324,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (116)
+## 4. Checks that only the operator can do (117)
 
 | Check | What |
 | --- | --- |
+| HT-148 | phone Devices, offline notice and Integrations (M2-5) |
 | HT-146 | a process that an agent detached cannot answer an approval (R-315, THR-031) |
 | HT-069 | Anima OS preview hardware and enrollment |
 | HT-066 | a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) |

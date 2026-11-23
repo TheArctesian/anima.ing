@@ -174,6 +174,7 @@
     <!-- D-9: while the device loads, the open tab's panel is busy and shows its skeleton under the tabs; one panel for
          each tab, so the skeleton cross-fades into the content (MOT-007). -->
     {#if device !== null}<LiveNotice message={detail.liveError?.message ?? null} gap="end" />{/if}
+    {#if phone && device !== null}<PhoneConnect {device} showSetup={place.tab === 'overview'} onConnect={connect} onSettings={settings} />{/if}
     {#if place.tab === 'overview'}
       <TabPanel name="overview" loading={loading || checksLoading} skeleton={overviewSkeleton}>
         {#if detail.checksError !== null}
@@ -249,7 +250,6 @@
         />{/if}
       </TabPanel>
     {/if}
-    {#if phone && device !== null}<PhoneConnect {device} onConnect={connect} onSettings={settings} />{/if}
   {/if}
 </section>
 

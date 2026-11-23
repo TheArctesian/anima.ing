@@ -55,6 +55,7 @@ zeroize.workspace = true
 keyring.workspace = true
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
 daemon-core = { path = "../daemon-core", features = ["test-support"] }
 axum.workspace = true
 plist.workspace = true

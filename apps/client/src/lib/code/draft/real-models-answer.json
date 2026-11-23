@@ -1,0 +1,305 @@
+{
+  "outcome": "models",
+  "models": [
+    {
+      "program": "claude_code",
+      "models": [
+        {
+          "value": "default",
+          "name": "Default (recommended)",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "opus",
+          "name": "Opus 5.5",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "claude-fable-5-2",
+          "name": "Fable 5.2",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "sonnet",
+          "name": "Sonnet 5.5",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "haiku",
+          "name": "Haiku 5.5",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "fable",
+          "name": "Fable 5.1",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "claude-haiku-4-5-20251001",
+          "name": "Haiku 4.5",
+          "efforts": [],
+          "default_effort": null
+        },
+        {
+          "value": "claude-sonnet-5",
+          "name": "Sonnet 5",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "claude-opus-5",
+          "name": "Opus 5",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "claude-fable-5",
+          "name": "Fable 5",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "claude-opus-4-8",
+          "name": "Opus 4.8",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "claude-opus-4-7",
+          "name": "Opus 4.7",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "claude-opus-4-6",
+          "name": "Opus 4.6",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "max"
+          ],
+          "default_effort": null
+        },
+        {
+          "value": "claude-sonnet-4-6",
+          "name": "Sonnet 4.6",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "max"
+          ],
+          "default_effort": null
+        }
+      ],
+      "at": "2026-11-23T01:19:59.945027Z"
+    },
+    {
+      "program": "codex",
+      "models": [
+        {
+          "value": "gpt-6.2-sol",
+          "name": "GPT-6.2-Sol",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "default_effort": "low"
+        },
+        {
+          "value": "gpt-6.2-astra",
+          "name": "GPT-6.2-Astra",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "default_effort": "low"
+        },
+        {
+          "value": "gpt-6.1-terra",
+          "name": "GPT-6.1 Terra",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "default_effort": "low"
+        },
+        {
+          "value": "gpt-6.1-sol",
+          "name": "GPT-6.1-Sol",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "default_effort": "low"
+        },
+        {
+          "value": "gpt-6-astra",
+          "name": "GPT-6-Astra",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "default_effort": "medium"
+        },
+        {
+          "value": "gpt-6-sol",
+          "name": "GPT-6-Sol",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "default_effort": "medium"
+        },
+        {
+          "value": "gpt-6-luna",
+          "name": "GPT-6-Luna",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": "medium"
+        },
+        {
+          "value": "gpt-5.6-sol",
+          "name": "GPT-5.6-Sol",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "default_effort": "low"
+        },
+        {
+          "value": "gpt-5.6-terra",
+          "name": "GPT-5.6-Terra",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "default_effort": "medium"
+        },
+        {
+          "value": "gpt-5.6-luna",
+          "name": "GPT-5.6-Luna",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default_effort": "medium"
+        }
+      ],
+      "at": "2026-11-23T01:20:02.918541Z"
+    }
+  ]
+}

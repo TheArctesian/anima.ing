@@ -58,8 +58,8 @@ export interface ComposerEngine {
   /** The model, the effort and the permissions of the chat, and whether they can be changed now. */
   readonly pick: Can;
   readonly catalogue: Catalogue;
-  /** Asks the programs for their models again, after they could not load. */
-  readonly retryModels?: () => void;
+  /** Asks the programs for their models again: each time the picker opens, and from the notice's Retry. */
+  readonly askModels?: () => void;
   readonly choice: Choice;
   /** Takes the new choice; the words of a failure when the program refuses it. */
   readonly choose: (next: Choice) => Promise<Outcome>;
