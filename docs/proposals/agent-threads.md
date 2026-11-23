@@ -1142,8 +1142,8 @@ Stages 1 to 4 hold each function marked must or should in Section 3.3. Stage 5 h
 
 | Task | Work | Needs | Check | State |
 | --- | --- | --- | --- | --- |
-| TH50 | Connect the Code destination in MOB-010 to the hub version of the page. | R-288, R-350, OD-M11 | The phone layout and mockup 6 | Not started |
-| TH51 | Open a thread from a connected machine, see its live state and pending requests, and resume the same thread after reconnect. | TH21, TH50 | The handoff part of the mobile launch check | Not started |
+| TH50 | Connect the Code destination in MOB-010 to the hub version of the page. | R-288, R-350, OD-M11 | The phone layout and mockup 6 | Built on `code/mobile-handoff` |
+| TH51 | Open a thread from a connected machine, see its live state and pending requests, and resume the same thread after reconnect. | TH21, TH50 | The handoff part of the mobile launch check | Inbox, recent messages, pending requests and replay built on `code/mobile-handoff`. Phone check: HT-NEW-mobile-code-handoff. |
 | TH52 | Start a thread on an eligible machine in a permitted project, send a follow-up, and allow or decline the agent's pending request. Show the launch result and reopen the created thread. | TH31 to TH33, TH51 | Separate security review under R-353 and the mobile launch check | Not started |
 
 The launch check is in [the mobile plan, Section 5](../plans/mobile-plan.md#5-stages-and-tasks).
