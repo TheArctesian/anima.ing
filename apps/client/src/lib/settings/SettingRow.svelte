@@ -164,6 +164,23 @@
     border-inline-start-color: var(--status-down);
   }
 
+  @media (max-width: 767.98px) {
+    .line,
+    .wide .line {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .control {
+      justify-content: start;
+      flex-wrap: wrap;
+      min-inline-size: 0;
+    }
+
+    .control :global(select) {
+      max-inline-size: 100%;
+    }
+  }
+
   /* A narrow card stacks the control under its name. */
   @container (max-inline-size: 28rem) {
     .line,

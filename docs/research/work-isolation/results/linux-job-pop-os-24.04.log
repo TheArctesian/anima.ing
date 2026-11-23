@@ -1,0 +1,41 @@
+== linux-job.sh  2026-11-23T01:39:40Z
+system: Pop!_OS 24.04 LTS  kernel 7.2.15-76070215-generic x86_64  28 cpu  94 GiB
+load: 1.88 0.73 0.65   user is root: no
+podman: version 4.9.3 rootless=true cgroup=v2 manager=systemd runtime=runc driver=overlay
+controllers given to this user: cpu memory pids
+== E1 start of a new container to the end of its first command, 10 runs
+median 446 ms  min 417  max 473  (n=10)
+== E2 what the job sees
+  id: uid=1000(<user>) gid=1000(<user>) groups=1000(<user>)
+  caps: CapPrm: 0000000000000000 CapEff: 0000000000000000 CapBnd: 0000000000000000   NoNewPrivs: 1
+  write /: touch: /x: Read-only file system
+  write /work: ok   write /job: ok
+  a container socket inside: 0
+  memory limit: 2147483648  pids limit: 512
+  the file of the job belongs to this user: yes
+== E3 the limits hold
+  a job that fills the memory (limit 256 MiB): exit 137 (137 = stopped by the kernel)
+  a job that fills its work folder (limit 64 MiB): No space left on device 67108864 bytes written 
+  a job that starts 300 processes (limit 64): 1 1  (refused starts, then processes that ran)
+  a job past its time (limit 5 s by timeout): exit 124 after 60426 ms; container left: 0
+== E4 what a job reaches on the network, with no rule added
+  network mode: netavark pasta slirp4netns
+  the public internet (example.com): REACHED
+  a server on the loopback of the computer, by 10.0.2.2: not reached
+  the same server by the name host.containers.internal: REACHED
+  the same server by the address of the computer on its network: REACHED
+  the same server by the address of the link or VPN (100.64.0.0/10): REACHED
+  the router of the network, port 80: not reached
+  with --network none, the public internet: not reached
+== E5 idle memory, and what stays after kill -9 of the program that holds the job
+  idle: mem 53.25kB / 2.147GB pids 1
+  after kill -9 of conmon: the process of the job still runs: YES; podman says: running
+  podman rm -f: 10176 ms; the process is gone: yes
+== E6 a job that needs Docker: a rootless Docker service in a rootless container (Section 4.2)
+  flags: (none): the service answers: no
+  flags: --security-opt seccomp=unconfined --device /dev/net/tun: the service answers: no
+  flags: --security-opt seccomp=unconfined --security-opt unmask=ALL --device /dev/net/tun: the service answers: no
+  flags: --privileged: the service answers: no
+== clean-up: containers of this script left: 0; podman ps -a same as before: yes
+load at end: 0.60 0.78 0.71
+== done

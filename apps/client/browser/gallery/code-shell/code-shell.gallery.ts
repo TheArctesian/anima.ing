@@ -53,6 +53,8 @@ const MODELS: Scenario = {
     },
   ],
 };
+/** A long reason, as the installed app showed one: the line under the list must hold it whole. */
+const MODELS_SAID = 'claude exited before it answered: the session could not start because the account has no access to the requested model list';
 const EMPTY: Scenario = { ...EVERY_STATE, rows: [], running: [], listings: [], updates: [] };
 const TALKED = 'Why does the gates run stop at limits?';
 /** The idle thread works in a linked worktree on a branch, with the context window its program last said (TH112). */
@@ -221,6 +223,7 @@ const SHOTS: readonly Shot[] = [
   // The picker of the draft with the models each program listed, on each program's tab.
   { name: 'new-thread-models-claude', window: true, scenario: MODELS, act: (page, inbox) => openModels(page, inbox, null) },
   { name: 'new-thread-models-codex', window: true, scenario: MODELS, act: (page, inbox) => openModels(page, inbox, 'Codex') },
+  { name: 'new-thread-models-failed', window: true, scenario: { ...EVERY_STATE, modelsSaid: MODELS_SAID }, act: (page, inbox) => openModels(page, inbox, null, false) },
   {
     name: 'new-thread-no-project',
     scenario: EMPTY,
@@ -250,11 +253,11 @@ async function newThread(page: Page, inbox: Locator, picking: boolean): Promise<
 }
 
 /** Opens the draft's model picker; `program` opens that program's tab of the rail. */
-async function openModels(page: Page, inbox: Locator, program: string | null): Promise<readonly Locator[]> {
+async function openModels(page: Page, inbox: Locator, program: string | null, listed = true): Promise<readonly Locator[]> {
   await newThread(page, inbox, false);
   await page.getByRole('button', { name: /^Claude Code default/ }).click();
   const picker = page.getByRole('dialog', { name: 'Model' });
-  await expect(picker.getByText('Opus 4.7')).toBeVisible();
+  await expect(listed ? picker.getByText('Opus 4.7') : picker.getByRole('button', { name: 'Retry' })).toBeVisible();
   if (program !== null) await picker.getByRole('button', { name: program, exact: true }).click();
   await page.mouse.move(1000, HEIGHT - 20);
   return [picker];
