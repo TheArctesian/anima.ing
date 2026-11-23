@@ -1,7 +1,5 @@
-//! K-E1 Sections 13.6 and 13.7, decisions items 2 and 7: every answer to a sent merge reaches
-//! the client as its K7 code and fixed words, never GitHub's text, and leaves an audit entry
-//! with its outcome; a merge whose answer was lost is unknown, recorded, and sent once; a merge
-//! GitHub made that cannot be recorded says so (PRJ-028).
+//! K-E1 Sections 13.6 and 13.7 (PRJ-028): a merge answer reaches the client as its K7 code and
+//! fixed words, never GitHub's text, and leaves an audit entry with its outcome.
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -125,8 +123,6 @@ async fn od_e14_a_dropped_answer_to_a_merge_is_unknown_recorded_and_sent_once(po
     );
 }
 
-/// K-E1 Section 13.6: the bulk merge stops at the hub's own failure, as one merge would, and
-/// says that GitHub made the merge it could not record.
 #[sqlx::test(migrations = "./migrations")]
 async fn prj_028_a_bulk_merge_github_made_that_cannot_be_recorded_says_so_and_stops(pool: PgPool) {
     let forge = forge(&pool).await;

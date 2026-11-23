@@ -1,6 +1,4 @@
-//! The runtime role may append a live session and end it once, never delete, reopen or
-//! rewrite one (RA-008, R-016, K2 "Roles"). It may upsert a host key, because accepting one
-//! upserts, but not delete one or move it to another device.
+//! What the runtime role may do to sessions and host keys (RA-008, R-016, K2 "Roles").
 
 use chrono::TimeDelta;
 use sqlx::{PgConnection, PgPool};
@@ -10,8 +8,7 @@ use super::{
     put_host_key, session_id,
 };
 
-/// A connection that runs as `anima_runtime`. It is detached from the pool, so the changed role
-/// can never reach a later `pool.acquire()` (R-019).
+/// Detached, so the changed role never reaches a later `pool.acquire()` (R-019).
 pub(super) async fn as_runtime(pool: &PgPool) -> PgConnection {
     let mut conn = pool.acquire().await.unwrap().detach();
     sqlx::query("set role anima_runtime")
@@ -66,7 +63,6 @@ async fn ra_008_runtime_role_can_end_a_session_but_not_delete_or_rewrite_it(pool
     assert_eq!(ended.rows_affected(), 1);
 }
 
-/// Runs `sql` on session row `n` and returns the database's refusal.
 async fn refused_update(conn: &mut PgConnection, sql: &str, n: u128) -> sqlx::Error {
     sqlx::query(sql)
         .bind(session_id(n))
@@ -108,7 +104,6 @@ async fn ra_008_an_ended_session_cannot_be_reopened_or_rewritten(pool: PgPool) {
     .await;
     assert_eq!(constraint_of(&error), Some("sessions_end_once"), "{error}");
 
-    // The hub's end paths filter on `ended_at is null`: ending again is a no-op, not an error.
     let again = sqlx::query(
         "update sessions.sessions set ended_at = $2, end_reason = 'timeout' \
          where id = $1 and ended_at is null",
@@ -141,7 +136,6 @@ async fn ra_008_a_live_session_ends_whole_and_not_before_it_started(pool: PgPool
         Some("sessions_end_after_start"),
         "{before}"
     );
-    // A half end is the 0600 pair check's to refuse; an end at no real instant, C3's.
     for (sql, constraint) in [
         (
             "update sessions.sessions set ended_at = started_at where id = $1",
@@ -175,7 +169,6 @@ async fn ra_008_a_live_session_ends_whole_and_not_before_it_started(pool: PgPool
     );
 }
 
-/// Inserts session row 1 on PVE-01 with the given times and end, through `conn`.
 async fn insert_times(
     conn: &mut PgConnection,
     started_at: &str,
@@ -212,7 +205,6 @@ async fn ra_008_a_session_is_inserted_live_with_real_times(pool: PgPool) {
     );
     drop(runtime);
 
-    // The checks hold for the owner too, on insert as on update.
     let mut owner = pool.acquire().await.unwrap();
     for (started_at, end, constraint) in [
         (

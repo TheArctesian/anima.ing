@@ -1,7 +1,4 @@
-//! K8 Section 4, R-098 b and f, R-099, MET-002, MET-006: a batch's `gpus` replaces the stored
-//! set, `[]` empties it and its absence leaves it; a removed GPU's series keep their history. A
-//! GPU series is keyed by its index alone; a GPU temperature or power past its ceiling makes the
-//! batch `MALFORMED` (CR-17); and no finite value overflows an aggregate.
+//! K8 Section 4, R-098 b and f, R-099, MET-002, MET-006, CR-17: a batch's `gpus` and its ceilings.
 
 use axum::http::StatusCode;
 use chrono::TimeDelta;
@@ -17,7 +14,6 @@ fn gpu(index: u8, vendor: &str, has_vram: bool) -> Value {
     json!({ "index": index, "name": format!("GPU {index}"), "vendor": vendor, "hasVram": has_vram })
 }
 
-/// A batch of one `gpu_percent` point per GPU in `indexes` at `at`, with `gpus` when given.
 fn gpu_batch(at: chrono::DateTime<chrono::Utc>, indexes: &[u8], gpus: Option<Value>) -> Value {
     let series: Vec<Value> = indexes
         .iter()
@@ -60,7 +56,6 @@ async fn r_098_b_gpus_present_replace_the_set_absent_keep_it_and_empty_clears_it
         );
         assert_eq!(gpus_of(&pool, PVE_01).await, expected, "{pushed}");
     }
-    // GPU 1 is gone from the set; its series and its two samples stay.
     assert_eq!(
         series_of(&pool, PVE_01).await,
         [

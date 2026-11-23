@@ -146,7 +146,6 @@ fixture_test! {
         let few = data(&schema, query).await;
         let few_statements = statements.swap(0, Ordering::SeqCst);
         add_bulk(&pool, SITES, 150).await;
-        // Each bulk site's relay is its first device by name.
         sqlx::query(
             "UPDATE devices.sites s SET wake_relay_device_id = (SELECT d.id FROM devices.devices d \
              WHERE d.site_id = s.id ORDER BY d.name LIMIT 1) WHERE s.name LIKE 'bulk-site-%'",
@@ -162,8 +161,7 @@ fixture_test! {
                 .filter(|site| !site["wakeRelay"].is_null()).count()
         };
         assert_eq!((relays(&few), relays(&many)), (1, 1 + usize::try_from(SITES).unwrap()));
-        // The sites, then one batch of devices for every relay. One lookup per site costs
-        // at least 33 statements on this data.
+        // One lookup per site costs at least 33 statements on this data.
         assert!(
             few_statements <= 12 && many_statements <= 12,
             "{few_statements} statements for 3 sites, {many_statements} for 33"

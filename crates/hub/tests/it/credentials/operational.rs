@@ -1,5 +1,4 @@
-//! The operational keys through K1 (R-147, K-E5 Section 2.2): a value goes in and never comes
-//! out, an API key reads the metadata and changes nothing, and a change says "recorded".
+//! Operational keys through K1: a value goes in and never comes out (R-147, K-E5 Section 2.2).
 
 use chrono::TimeDelta;
 use serde_json::{Value, json};
@@ -27,7 +26,6 @@ fn input(name: &str) -> Value {
             "providerLink": "https://dash.cloudflare.com", "rotationDays": 90 })
 }
 
-/// An API key of `scope` made by the operator signed in with `login`.
 async fn api_key(hub: &Hub, login: &str, scope: &str) -> String {
     let query = "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
     let input = json!({ "name": format!("script-{scope}"), "scope": scope, "madeFor": "USER",

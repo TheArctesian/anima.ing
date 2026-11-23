@@ -1,5 +1,4 @@
-//! `createDevice(addDefaultCheck)`: the default ICMP check is written in the device's own
-//! transaction (spec 6.2, DEV-010, LOG-005).
+//! The default ICMP check is written in the device's own transaction (spec 6.2, DEV-010, LOG-005).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

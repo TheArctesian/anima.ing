@@ -1,5 +1,4 @@
-//! `agentUsage` sums what the daemons sent by the dimensions asked for, over a range of UTC
-//! days, with the estimate of the cost and each daemon's state (AIS-020, AIS-021, AIS-024).
+//! `agentUsage` sums and its cost estimate (AIS-020, AIS-021, AIS-024).
 
 use chrono::{Days, NaiveDate};
 use serde_json::{Value, json};
@@ -13,9 +12,6 @@ use crate::daemon::harness::{DOCKER_HOST, Daemons, PVE_01, pushing_now};
 const ANIMA: &str = "github.com/example/anima";
 const SITE: &str = "github.com/example/site";
 
-/// pve-01: a Claude Code session on yesterday and today in `ANIMA`, with Opus 4.5 and a model
-/// with no price, and a Codex session today; docker-host: a Claude Code session 29 days ago in
-/// `SITE` and one 30 days ago, and then the state `system_unit`.
 async fn seeded(pool: &PgPool) -> (Daemons, NaiveDate) {
     let now = pushing_now(pool).await;
     let daemons = Daemons::at(pool, now).await;

@@ -1,5 +1,3 @@
-//! The maintenance schema with a test clock, and requests from a signed-in operator.
-
 use std::sync::{
     Arc,
     atomic::{AtomicI64, Ordering},

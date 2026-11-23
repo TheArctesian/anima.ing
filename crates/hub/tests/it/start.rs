@@ -1,5 +1,4 @@
-//! The hub refuses to start without a usable credential key, naming only the path (SEC-004),
-//! and as a database role that could change the audit log (R-016, LOG-006).
+//! Start-up refuses a bad key, naming only its path (SEC-004), and a role that could change the audit log (R-016, LOG-006).
 
 use std::{
     io::{Read as _, Write as _},
@@ -12,12 +11,9 @@ use std::{
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sqlx::PgPool;
 
-/// How long a refused start may take; a hub that is still running after it is serving.
+/// A hub still running after this is serving.
 const DEADLINE: Duration = Duration::from_secs(20);
 
-/// Runs `anima-hub` with `key_file` as `ANIMA_KEY_FILE` and the extra variables, listening on
-/// a free loopback port; returns (success, stderr). Kills the hub and fails the test when it
-/// does not stop within `DEADLINE`, so a hub that wrongly serves cannot hang the suite.
 fn start_with(key_file: &Path, extra: &[(&str, &Path)]) -> (bool, String) {
     let mut child = crate::transport::process::hub()
         .env("ANIMA_KEY_FILE", key_file)
@@ -54,7 +50,6 @@ fn start_with_key(key_file: &Path) -> (bool, String) {
     start_with(key_file, &[])
 }
 
-/// `DATABASE_URL` (the throwaway test server) with its database replaced by `database`.
 pub fn url_for(database: &str) -> String {
     let url = std::env::var("DATABASE_URL").expect("tests run with DATABASE_URL (R-009)");
     let (base, query) = url

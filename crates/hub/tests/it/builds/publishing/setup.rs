@@ -1,7 +1,5 @@
-//! A hub with a release bucket on the fake R2 and a throwaway updater key, a builder that
-//! uploads through the hub's presigned URLs, and the files, sums and unsigned feed of one job
-//! (R-117). No token or key here is real; the token and key files are in a temporary folder
-//! (SEC-004).
+//! A hub with a release bucket on the fake R2 and an uploading builder (R-117). No token or key
+//! here is real; the token and key files sit in a temporary folder (SEC-004).
 
 use std::{io::Cursor, sync::Arc};
 
@@ -31,19 +29,16 @@ pub const LINUX_FEED: &str = "linux-x86_64/latest.json";
 /// The stable names sit at the top of the bucket (Section 3.10.4).
 pub const LINUX_STABLE: &str = "Anima-x86_64.AppImage";
 
-/// When a job uploaded at `start()` may be published: its upload URLs expired 15 minutes after
-/// it and the hub waits 2 more for clock skew (D-28).
+/// Upload URLs expire 15 minutes after `start()` and the hub waits 2 more for clock skew (D-28).
 pub fn ready() -> DateTime<Utc> {
     start() + TimeDelta::minutes(20)
 }
 
-/// A job a builder holds, and the builder's token.
 pub struct Held {
     pub job: String,
     pub token: String,
 }
 
-/// One file of a job, with its bytes.
 #[derive(Clone)]
 pub struct File {
     pub name: String,
@@ -58,7 +53,6 @@ impl File {
         }
     }
 
-    /// As `BuildFileInput`.
     pub fn input(&self) -> Value {
         json!({
             "name": self.name,
@@ -68,10 +62,8 @@ impl File {
     }
 }
 
-/// The password of the throwaway updater key.
 pub const KEY_PASSWORD: &str = "a throwaway key password";
 
-/// The hub, the fake bucket and the updater key pair of one test.
 pub struct Publishing {
     pub pool: PgPool,
     pub fake: FakeR2,
@@ -85,8 +77,7 @@ pub struct Publishing {
     _tokens: tempfile::TempDir,
 }
 
-/// Where the hub reads the throwaway R2 token and the throwaway updater key, sealed with
-/// [`KEY_PASSWORD`] as `tauri signer generate` writes it; and the key pair.
+/// The throwaway R2 token and updater key, sealed as `tauri signer generate` writes it.
 pub fn secret_files() -> (tempfile::TempDir, KeyPair) {
     let folder = tempfile::tempdir().unwrap();
     std::fs::write(folder.path().join("id"), format!("{KEY_ID}\n")).unwrap();
@@ -98,8 +89,6 @@ pub fn secret_files() -> (tempfile::TempDir, KeyPair) {
     (folder, pair)
 }
 
-/// The release settings of the fake at `fake`, the secrets in `folder` and `public` as
-/// `ANIMA_UPDATER_PUBLIC_KEY`.
 pub fn releases(fake: &FakeR2, folder: &std::path::Path, public: Option<String>) -> Releases {
     Releases {
         endpoint: fake.endpoint(),
@@ -119,7 +108,6 @@ pub fn public_key(pair: &KeyPair) -> String {
 }
 
 impl Publishing {
-    /// A hub whose bucket opened the throwaway updater key from its files.
     pub async fn start(pool: &PgPool) -> Self {
         let fake = FakeR2::start().await;
         fake.with(|store| store.now = Some(start()));
@@ -143,13 +131,11 @@ impl Publishing {
         }
     }
 
-    /// Sets the hub's clock and the fake's to `now`.
     pub fn at(&self, now: DateTime<Utc>) {
         self.clock.set(now);
         self.fake.with(|store| store.now = Some(now));
     }
 
-    /// The build queue of this hub's database, with throwaway announcers.
     pub fn queue<'a>(&'a self, bus: &'a Bus, updates: &'a Updates) -> BuildQueue<'a> {
         BuildQueue {
             db: &self.pool,
@@ -158,9 +144,8 @@ impl Publishing {
         }
     }
 
-    /// Checks, with the reference minisign, that the hub signed `app` for `version`: the `.sig`
-    /// beside it and the signature of each entry of the Linux feed are the same text, over
-    /// exactly `app`'s bytes, with `version` in the trusted comment (BLD-046, R-117).
+    /// Checks with the reference minisign that the `.sig` and the Linux feed hold one signature
+    /// over `app`'s bytes, with `version` in the trusted comment (BLD-046, R-117).
     pub fn assert_signed(&self, version: &str, app: &File) {
         let object = format!("linux-x86_64/{version}/{}.sig", app.name);
         let sig = self.fake.object(&object).expect("the .sig is written");
@@ -178,8 +163,6 @@ impl Publishing {
         format!("{}/{path}", self.fake.public_base())
     }
 
-    /// Enrols a builder for `platform`, which claims the oldest job it can build and takes it to
-    /// `UPLOADING`.
     pub async fn uploading(&self, name: &str, platform: &str) -> Held {
         let enrol = format!(
             "mutation($name: String!) {{ enrolBuilder(name: $name, platform: {platform}) \
@@ -206,7 +189,6 @@ impl Publishing {
         Held { job, token }
     }
 
-    /// Creates a release of `version` for `targets`.
     pub async fn release(&self, version: &str, targets: &str) {
         let create = format!(
             "mutation($version: String!, $commit: String!) {{ \
@@ -220,7 +202,6 @@ impl Publishing {
         );
     }
 
-    /// `buildUploadUrls` for `files` of the job `held` holds; the whole response.
     pub async fn grant(&self, held: &Held, files: &[File]) -> Value {
         let query = "mutation($id: ID!, $files: [BuildFileInput!]!) { \
                      buildUploadUrls(id: $id, files: $files) { name url expiresAt \
@@ -230,7 +211,6 @@ impl Publishing {
         self.hub.post(Some(&held.token), query, variables).await
     }
 
-    /// A `PUT` of `bytes` to the presigned `upload`, with its headers; the status.
     pub async fn put(&self, upload: &Value, bytes: &[u8]) -> u16 {
         let mut request = self
             .http
@@ -245,7 +225,6 @@ impl Publishing {
         request.send().await.unwrap().status().as_u16()
     }
 
-    /// Grants, uploads every file and reports them with `feed`; the report's response.
     pub async fn upload(&self, held: &Held, files: &[File], feed: &Value) -> Value {
         let granted = data(self.grant(held, files).await);
         let urls = granted["buildUploadUrls"].as_array().unwrap();
@@ -278,7 +257,6 @@ impl Publishing {
             .unwrap()
     }
 
-    /// The job's state and failure reason.
     pub async fn job(&self, held: &Held) -> (String, Option<String>) {
         sqlx::query_as("SELECT state, failure_reason FROM builds.jobs WHERE id = $1::uuid")
             .bind(&held.job)
@@ -288,7 +266,6 @@ impl Publishing {
     }
 }
 
-/// Waits until a request waits at the fake's gate.
 pub async fn until_waiting(publishing: &Publishing) {
     let waiting = async {
         while publishing.fake.with(|store| store.waiting) == 0 {
@@ -300,8 +277,6 @@ pub async fn until_waiting(publishing: &Publishing) {
         .unwrap();
 }
 
-/// The version in the trusted comment of the `.sig` text `sig`, once the reference minisign
-/// accepts it over `bytes` with `pair`'s public key; why not, otherwise.
 pub fn verified_version(pair: &KeyPair, sig: &str, bytes: &[u8]) -> Result<String, String> {
     let text = STANDARD.decode(sig.trim()).map_err(|e| e.to_string())?;
     let text = String::from_utf8(text).map_err(|e| e.to_string())?;
@@ -316,7 +291,6 @@ pub fn verified_version(pair: &KeyPair, sig: &str, bytes: &[u8]) -> Result<Strin
         .ok_or_else(|| "no version".to_owned())
 }
 
-/// The files of a Linux job of `version`: the `AppImage` and `SHA256SUMS`.
 pub fn linux_files(version: &str) -> Vec<File> {
     let app = File::new(
         &format!("Anima_{version}_amd64.AppImage"),
@@ -337,7 +311,6 @@ pub fn linux_feed(publishing: &Publishing, version: &str, app: &File) -> Value {
     })
 }
 
-/// A Linux job of `version` uploaded with a good feed, ready to publish.
 pub async fn uploaded_linux(publishing: &Publishing, version: &str) -> (Held, Vec<File>) {
     publishing.release(version, "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;

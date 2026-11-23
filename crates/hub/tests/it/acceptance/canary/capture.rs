@@ -1,11 +1,7 @@
-//! The process log of every thread while the canary test runs: this thread's own default, and a
-//! global default for the threads that have none, such as the blocking pool that hashes a
-//! password (LOG-007).
+//! The process log of every thread while the canary test runs (LOG-007).
 //!
-//! The global log is installed once for the test binary, at TRACE, and is enabled only while a
-//! [`Watch`] lives, so the other tests' threads pay one flag check per event, not a formatted
-//! TRACE line; no other `it` test sets a global subscriber. Another test's lines that reach the
-//! capture meanwhile cannot hold a canary made for this run.
+//! The global log is installed once at TRACE and enabled only while a [`Watch`] lives, so other
+//! tests pay one flag check per event; no other `it` test sets a global subscriber.
 
 use std::{
     io,
@@ -24,13 +20,10 @@ use tracing::{
 
 use crate::logs::Capture;
 
-/// Where the global log writes: the capture of the live [`Watch`], or nowhere.
 static SINK: Mutex<Option<Capture>> = Mutex::new(None);
 
-/// Whether a [`Watch`] lives; the global log is disabled otherwise.
 static WATCHING: AtomicBool = AtomicBool::new(false);
 
-/// The global log: the hub's process log, enabled only while [`WATCHING`].
 struct Gated<S>(S);
 
 impl<S: Subscriber> Subscriber for Gated<S> {
@@ -75,7 +68,6 @@ impl<S: Subscriber> Subscriber for Gated<S> {
     }
 }
 
-/// The global log's writer, which hands each line to [`SINK`].
 struct Sink;
 
 impl io::Write for Sink {
@@ -91,7 +83,6 @@ impl io::Write for Sink {
     }
 }
 
-/// The capture of every thread's log while it lives.
 pub struct Watch {
     pub capture: Capture,
     _thread: DefaultGuard,
@@ -105,7 +96,6 @@ impl Drop for Watch {
     }
 }
 
-/// Starts capturing the log of every thread at TRACE.
 pub fn everywhere() -> Watch {
     static GLOBAL: Once = Once::new();
     GLOBAL.call_once(|| {
@@ -117,8 +107,7 @@ pub fn everywhere() -> Watch {
     WATCHING.store(true, Ordering::SeqCst);
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in daemon::secrecy: a second dispatcher keeps another test thread from caching this
-    // test's callsites as disabled.
+    // A second dispatcher keeps other test threads from caching these callsites as disabled.
     let second = Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let thread = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();

@@ -1,6 +1,4 @@
-//! LOG-007, PRJ-028: the title, body and branch of a pull request, what the caller typed and
-//! what GitHub answered reach no process log line, no error message, no result message, no
-//! audit entry and no event.
+//! Pull request text, caller input and GitHub's answers reach no log, error, audit entry or event (LOG-007, PRJ-028).
 
 use anima_hub::fleet::events::process_log;
 use serde_json::{Value, json};
@@ -19,7 +17,6 @@ const WRITTEN: &str = "PULL-REQUEST-TEXT-6194";
 const ANSWERED: &str = "GITHUB-ANSWERED-2087";
 const TYPED: &str = "CALLER-TYPED-5512";
 
-/// Pull request `number` with GitHub's text marked.
 fn marked(mut one: Value) -> Value {
     one["title"] = json!(format!("{WRITTEN} title"));
     one["body"] = json!(format!("{WRITTEN} body"));

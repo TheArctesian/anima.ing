@@ -1,5 +1,4 @@
-//! The delivery log (`Query.deliveries`) and the test notification (`sendTestNotification`)
-//! through the API (NOT-004, API-003, API-006, LOG-005, LOG-007, P3-003).
+//! The delivery log and the test notification (NOT-004, API-003, API-006, LOG-005, LOG-007, P3-003).
 
 use std::sync::Arc;
 

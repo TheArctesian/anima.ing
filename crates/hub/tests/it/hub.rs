@@ -1,5 +1,3 @@
-//! A hub router on a test database at a fixed time, and requests to its `/graphql` endpoint.
-
 use std::{
     collections::BTreeMap,
     io::Write as _,
@@ -41,7 +39,7 @@ pub const USERNAME: &str = "operator";
 pub const PASSWORD: &str = "correct horse battery staple";
 pub const CLIENT: &str = "100.64.0.7";
 
-/// The device's host text now: what a credential stored for it is bound to (SEC-011).
+/// A credential stored for the device is bound to this host (SEC-011).
 pub async fn host_of(pool: &PgPool, device: DeviceId) -> String {
     sqlx::query_scalar("select host from devices.devices where id = $1")
         .bind(device)
@@ -54,7 +52,6 @@ pub fn start() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap()
 }
 
-/// The hub's router as `main.rs` builds it, with the clock stopped at `now`.
 pub struct Hub {
     router: Router,
     pub bus: Bus,
@@ -66,7 +63,6 @@ impl Hub {
         Self::from_client(pool, now, CLIENT)
     }
 
-    /// A hub whose requests come from `client` instead of `CLIENT`.
     pub fn from_client(pool: &PgPool, now: DateTime<Utc>, client: &'static str) -> Self {
         let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
         let bus = Bus::new(16);
@@ -78,7 +74,7 @@ impl Hub {
         }
     }
 
-    /// A hub at `now` that cannot publish: it opened no release bucket (BLD-045, PRO-037).
+    /// A hub that opened no release bucket (BLD-045, PRO-037).
     pub fn not_publishing(pool: &PgPool, now: DateTime<Utc>) -> Self {
         let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
         let mut parts = dependencies(pool, clock, Bus::new(16));
@@ -86,8 +82,6 @@ impl Hub {
         Self::serving(pool, parts)
     }
 
-    /// A hub over `dependencies`, at their clock, for a test that needs other parts than
-    /// `dependencies` gives.
     pub fn serving(pool: &PgPool, dependencies: Dependencies) -> Self {
         let (clock, bus) = (dependencies.clock.clone(), dependencies.bus.clone());
         Self {
@@ -97,7 +91,6 @@ impl Hub {
         }
     }
 
-    /// The same hub, with requests from `client`, for example a link address.
     pub fn from(&self, client: &'static str) -> Self {
         Self {
             router: self.router.clone(),
@@ -106,7 +99,6 @@ impl Hub {
         }
     }
 
-    /// Sends a raw request from this hub's client; returns the status and the body text.
     pub async fn send(&self, request: Request<Body>) -> (StatusCode, String) {
         let mut request = request;
         let peer: SocketAddr = format!("{}:50000", self.client).parse().unwrap();
@@ -117,7 +109,6 @@ impl Hub {
         (status, String::from_utf8_lossy(&bytes).into_owned())
     }
 
-    /// Posts a GraphQL request; returns the response body as JSON text.
     pub async fn post_text(&self, token: Option<&str>, query: &str, variables: Value) -> String {
         let body = json!({ "query": query, "variables": variables }).to_string();
         let mut request =
@@ -130,7 +121,6 @@ impl Hub {
         text
     }
 
-    /// Posts a GraphQL request with `token`; returns the response headers and body.
     pub async fn post_with_headers(
         &self,
         token: &str,
@@ -155,7 +145,6 @@ impl Hub {
         serde_json::from_str(&self.post_text(token, query, variables).await).unwrap()
     }
 
-    /// Runs the `login` mutation with `username` and `password`.
     pub async fn login(&self, username: &str, password: &str) -> Value {
         let query = "mutation($input: LoginInput!) { \
             login(input: $input) { token expiresAt operator { id username totpEnabled } } }";
@@ -163,7 +152,6 @@ impl Hub {
         self.post(None, query, input).await
     }
 
-    /// Signs in as the operator and returns the token.
     pub async fn token(&self) -> String {
         let response = self.login(USERNAME, PASSWORD).await;
         response["data"]["login"]["token"]
@@ -173,16 +161,14 @@ impl Hub {
     }
 }
 
-/// A vault over a throwaway key in a temporary file (SEC-004); never a real key file.
+/// A vault over a throwaway key in a temporary file (SEC-004).
 pub fn test_vault() -> Vault {
     let mut key_file = tempfile::NamedTempFile::new().unwrap();
     writeln!(key_file, "{}", STANDARD.encode([7_u8; 32])).unwrap();
     Vault::from_key_file(key_file.path()).unwrap()
 }
 
-/// A release bucket on an address that answers nothing, with a throwaway token and updater key,
-/// so a test hub can queue a release (PRO-037). Made once: the key's password hashing is slow. A
-/// test of publishing itself uses the fake R2 of `builds::publishing`.
+/// A throwaway bucket that answers nothing (PRO-037); made once, as key password hashing is slow.
 pub fn test_bucket() -> Arc<Bucket> {
     static BUCKET: OnceLock<Arc<Bucket>> = OnceLock::new();
     BUCKET
@@ -212,8 +198,6 @@ pub fn test_bucket() -> Arc<Bucket> {
         .clone()
 }
 
-/// The schema dependencies `main.rs` builds, with default config, a throwaway vault and the
-/// test release bucket.
 pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependencies {
     Dependencies {
         config: Arc::new(config::from_env(&BTreeMap::new()).unwrap()),
@@ -234,22 +218,19 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
     }
 }
 
-/// The SDL of the schema `build_schema` makes, which K1 describes (CON-002). The SDL needs no
-/// database, so the pool never connects.
+/// K1 describes this SDL (CON-002); it needs no database, so the pool never connects.
 pub fn hub_sdl() -> String {
     let pool = PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
     build_schema(dependencies(&pool, clock, Bus::new(1))).sdl()
 }
 
-/// Creates the fixture operator (K6 `phase1.json`).
 pub async fn set_operator(pool: &PgPool) {
     access::set_operator(pool, USERNAME, Password::new(PASSWORD.to_owned()), start())
         .await
         .unwrap();
 }
 
-/// The one error of a response, as `(message, code)`.
 pub fn error(response: &Value) -> (String, String) {
     let errors = response["errors"]
         .as_array()

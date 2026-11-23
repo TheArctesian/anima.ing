@@ -1,5 +1,4 @@
-//! A push under maintenance is recorded, published and shown as Maintenance, the same as a
-//! scheduled attempt (CHK-006).
+//! A push under maintenance is Maintenance everywhere, as a scheduled attempt is (CHK-006).
 
 use anima_hub::{fleet::events::Signal, status::Status};
 use async_graphql::futures_util::StreamExt as _;
@@ -33,7 +32,7 @@ push_test! {
         let mut receiver = rig.bus.subscribe();
         let query = format!("subscription {{ heartbeatAdded(checkId: \"{id}\") {{ heartbeat {{ status }} }} }}");
         let mut stream = Box::pin(rig.schema.execute_stream(signed_in(&query)));
-        // The stream subscribes when first polled; nothing is published yet, so it waits.
+        // The stream subscribes when first polled.
         let pending = tokio::time::timeout(std::time::Duration::from_millis(50), stream.next()).await;
         assert!(pending.is_err(), "the subscription answered before the push");
 

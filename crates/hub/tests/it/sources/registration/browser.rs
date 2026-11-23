@@ -1,6 +1,4 @@
-//! The hub served on a loopback port with every route, GitHub's replies on the stub, and a
-//! stand-in for the operator's browser: a `reqwest` client with redirects off and a cookie jar
-//! of its own, which reads the form from the start page and plays GitHub's redirects itself.
+//! A stand-in for the operator's browser that plays GitHub's redirects itself.
 
 use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -35,8 +33,7 @@ pub const ONE: &str = include_str!(concat!(
     "/../providers/github/tests/fixtures/installation.json"
 ));
 
-/// GitHub's conversion reply for the test App, with the test key and two secrets the hub must
-/// never read.
+/// Holds two secrets that the hub never reads.
 pub fn converted() -> String {
     json!({
         "id": 1_234_567, "slug": "anima-k3f9x2mq7b",
@@ -48,11 +45,9 @@ pub fn converted() -> String {
     .to_string()
 }
 
-/// A kit whose hub serves every route on a loopback port; its poll asks every `poll_every`.
 pub struct Served {
     pub kit: Kit,
     pub base: String,
-    /// The public origin of the hub, `ANIMA_PUBLIC_ORIGIN`: its links name it.
     pub origin: String,
     task: JoinHandle<()>,
 }
@@ -63,21 +58,17 @@ impl Drop for Served {
     }
 }
 
-/// How long the bound browser's page on `/installed` waits for the attempt to end, in tests.
 const PAGE_WAIT: Duration = Duration::from_millis(500);
 
-/// The served hub, with GitHub's conversion and installation replies on the stub.
 pub async fn served(pool: &PgPool, poll_every: Duration) -> Served {
     served_waiting(pool, poll_every, PAGE_WAIT).await
 }
 
-/// As [`served`], with the page on `/installed` waiting up to `page_wait`.
 pub async fn served_waiting(pool: &PgPool, poll_every: Duration, page_wait: Duration) -> Served {
     let config = anima_hub::config::from_env(&BTreeMap::new()).unwrap();
     serve(pool, poll_every, page_wait, config).await
 }
 
-/// As [`served`], for a hub of `config`.
 pub async fn served_as(pool: &PgPool, poll_every: Duration, config: Config) -> Served {
     serve(pool, poll_every, PAGE_WAIT, config).await
 }
@@ -110,8 +101,7 @@ async fn serve(pool: &PgPool, poll_every: Duration, page_wait: Duration, config:
         sources: reach.clone(),
         ..dependencies(pool, clock.clone(), Bus::new(16))
     };
-    // A hosted hub refuses the password sign-in (HMD-037): the token comes from the same
-    // database, signed in through a hub of the default configuration.
+    // A hosted hub refuses the password sign-in (HMD-037), so a default hub signs in.
     let token = Hub::serving(pool, dependencies(pool, clock.clone(), Bus::new(4)))
         .token()
         .await;
@@ -151,7 +141,6 @@ pub fn reply(status: u16, body: &str) -> crate::sources::stub::Reply {
     }
 }
 
-/// What the hub answered.
 pub struct Answer {
     pub status: StatusCode,
     pub headers: HeaderMap,
@@ -167,7 +156,6 @@ impl Answer {
     }
 }
 
-/// The operator's browser: its own cookies, no redirect followed unless asked.
 pub struct Browser {
     client: reqwest::Client,
     base: String,
@@ -180,8 +168,7 @@ impl Browser {
         Self::with(served, HeaderMap::new())
     }
 
-    /// A browser whose requests reach the hub through a gateway that passes the name `host`,
-    /// as the gateway of the pool passes the name that the browser used (HMD-061).
+    /// Passes the name `host`, as the pool's gateway passes the name the browser used (HMD-061).
     pub fn named(served: &Served, host: &str) -> Self {
         let mut headers = HeaderMap::new();
         headers.insert("host", host.parse().unwrap());
@@ -236,13 +223,11 @@ impl Browser {
         }
     }
 
-    /// `GET` a path of the hub (with its query).
     pub async fn get(&mut self, path: &str) -> Answer {
         let request = self.client.get(format!("{}{path}", self.base));
         self.send(request).await
     }
 
-    /// `POST` a path of the hub with the extra `headers`, as a form with no fields.
     pub async fn post(&mut self, path: &str, headers: &[(&str, &str)]) -> Answer {
         let mut request = self
             .client
@@ -254,7 +239,6 @@ impl Browser {
         self.send(request).await
     }
 
-    /// Signs this browser in to Anima.ing from the public origin: it gets the `__Host-anima` cookie.
     pub async fn sign_in(&mut self) {
         let body = json!({
             "query": "mutation($input: LoginInput!) { signInBrowser(input: $input) { expiresAt } }",
@@ -270,8 +254,6 @@ impl Browser {
         assert!(self.cookies.contains_key("__Host-anima"), "{}", answer.body);
     }
 
-    /// Opens the one-time `link` and follows the hub to the start page: returns the state S1
-    /// in the form's action, as GitHub would get it.
     pub async fn open(&mut self, link: &str) -> String {
         let path = link.strip_prefix(&self.origin).expect("a link to the hub");
         let bound = self.get(path).await;
@@ -280,7 +262,6 @@ impl Browser {
         self.form_state().await
     }
 
-    /// The start page's state S1.
     pub async fn form_state(&mut self) -> String {
         let page = self.get("/connect/github/start").await;
         assert_eq!(page.status, StatusCode::OK, "{}", page.body);
@@ -298,7 +279,6 @@ impl Browser {
         state.to_owned()
     }
 
-    /// GitHub's redirect after "Create GitHub App" with `state`; returns the hub's answer.
     pub async fn created(&mut self, state: &str) -> Answer {
         self.get(&format!(
             "/connect/github/created?code={CODE}&state={state}"
@@ -306,7 +286,6 @@ impl Browser {
         .await
     }
 
-    /// GitHub's redirect after "Install" of `installation` with `state`.
     pub async fn installed(&mut self, installation: &str, state: &str) -> Answer {
         let path = format!(
             "/connect/github/installed?installation_id={installation}&setup_action=install&state={state}"
@@ -315,7 +294,6 @@ impl Browser {
     }
 }
 
-/// The state S2 in the install URL the hub sent the browser to.
 pub fn install_state(answer: &Answer) -> String {
     assert_eq!(answer.status, StatusCode::SEE_OTHER, "{}", answer.body);
     let location = answer.location();
@@ -325,7 +303,6 @@ pub fn install_state(answer: &Answer) -> String {
     state.to_owned()
 }
 
-/// The attempt as `githubConnect` shows it.
 pub async fn shown(kit: &Kit) -> Value {
     let response = kit
         .hub
@@ -334,7 +311,6 @@ pub async fn shown(kit: &Kit) -> Value {
     response["data"]["githubConnect"].clone()
 }
 
-/// How many conversions the stub saw.
 pub fn conversions(kit: &Kit) -> usize {
     kit.stub
         .paths()

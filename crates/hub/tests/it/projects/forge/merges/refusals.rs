@@ -1,6 +1,5 @@
-//! K-E1 Sections 13.3 and 13.6: a merge the rule refuses (its state, its head, its method, its
-//! mergeability), or whose input is not one, sends nothing to GitHub and records nothing. The
-//! words are fixed; a `VALIDATION` error names the field, never its value (LOG-007).
+//! K-E1 Sections 13.3 and 13.6: a refused merge sends nothing to GitHub and records nothing.
+//! A `VALIDATION` error names the field, never its value (LOG-007).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

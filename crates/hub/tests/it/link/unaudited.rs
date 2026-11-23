@@ -1,6 +1,4 @@
-//! A change the link made keeps its account: when the request goes away the audit entry is
-//! still written, and when the entry cannot be written the operator hears that the link acted;
-//! an invite is then cancelled, never shown (LOG-005, LOG-007, FRN-009).
+//! A link change is audited or the operator hears of it; an unaudited invite is never shown (LOG-005, LOG-007, FRN-009).
 
 use std::time::Duration;
 
@@ -16,7 +14,6 @@ use super::{
 const EXPIRES: &str = "2030-05-06T12:00:00.5Z";
 const INVITE_ID: &str = "9f8e7d6c";
 
-/// A link that makes invites, lists the one it made and cancels it.
 fn inviting(request: &Value) -> String {
     match request["verb"].as_str() {
         Some("invites.make") => ok(&json!({ "invite": INVITE, "expires": EXPIRES })),
@@ -80,7 +77,7 @@ async fn log_005_a_revocation_without_its_audit_entry_says_the_link_revoked_it(p
 
 #[sqlx::test(migrations = "./migrations")]
 async fn log_005_a_dropped_request_still_audits_the_revocation_the_link_made(pool: PgPool) {
-    // The link takes 1 s for each answer; the client leaves once the revocation is sent.
+    // The client leaves once the revocation is sent.
     let link = FakeLink::slow(Duration::from_secs(1), |request| {
         match request["verb"].as_str() {
             Some("devices.revoke") => ok(&json!({ "streamsClosed": 1 })),

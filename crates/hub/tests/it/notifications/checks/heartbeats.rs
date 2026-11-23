@@ -1,7 +1,4 @@
-//! A heartbeat queues its notifications in its own transaction, through the push route as the
-//! hub mounts it: one row per selected channel, none under maintenance (an Up after an
-//! announced Down included), and a pushed message and name cut to their caps (NOT-001,
-//! NOT-007, D-16, Section 6.5, LOG-007).
+//! A heartbeat queues its notifications in its own transaction (NOT-001, NOT-007, D-16, Section 6.5, LOG-007).
 
 use std::sync::{
     Arc,

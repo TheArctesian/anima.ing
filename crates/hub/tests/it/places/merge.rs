@@ -81,8 +81,6 @@ async fn plc_004_a_merged_place_is_not_listed_cannot_change_and_its_reference_re
     .await;
     assert_eq!(crate::hub::error(&refused).1, "CONFLICT");
 
-    // The link kept its target text: the old key still names the place through `place`, and the
-    // title of the old key is the title of the remaining place.
     link(&pool, "book:2", &format!("place:{from}"), "stored_at").await;
     let titled = run(
         &hub,
@@ -100,11 +98,11 @@ async fn plc_004_a_merge_removes_a_link_to_itself_and_a_repeated_link(pool: PgPo
     let from = id(&add(&hub, &token, top("Old")).await);
     let into = id(&add(&hub, &token, top("New")).await);
     let (a, b) = (format!("place:{from}"), format!("place:{into}"));
-    link(&pool, &a, &b, "near").await; // would become a link to itself
-    link(&pool, &b, &a, "near").await; // the same
-    link(&pool, "book:1", &a, "stored_at").await; // repeated below
+    link(&pool, &a, &b, "near").await;
+    link(&pool, &b, &a, "near").await;
+    link(&pool, "book:1", &a, "stored_at").await;
     link(&pool, "book:1", &b, "stored_at").await;
-    link(&pool, "book:2", &a, "stored_at").await; // moves
+    link(&pool, "book:2", &a, "stored_at").await;
     run(&hub, &token, MERGE, json!({ "f": from, "i": into })).await;
     let after = links_of(&pool, &into).await;
     assert_eq!(

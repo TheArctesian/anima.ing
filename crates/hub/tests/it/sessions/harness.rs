@@ -1,5 +1,4 @@
-//! A schema with the sessions part and trust's accept mutations, which the connection test
-//! leads to, and requests from a signed-in operator.
+//! A schema with the sessions part and trust's accept mutations, and signed-in requests.
 
 use std::{io::Write as _, sync::Arc};
 

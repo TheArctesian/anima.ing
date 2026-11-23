@@ -1,5 +1,4 @@
-//! `logout` over `POST /graphql` closes every socket signed in with the same token at its next
-//! re-check, for a browser cookie and for a desktop login token (A-8, SEC-002, K7).
+//! `logout` closes every socket signed in with the same token (A-8, SEC-002, K7).
 
 use std::sync::Arc;
 

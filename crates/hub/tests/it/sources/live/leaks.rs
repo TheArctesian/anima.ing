@@ -1,5 +1,4 @@
-//! LOG-007, PRJ-018: neither the installation token, a reply body nor a change's body reaches a
-//! process log line, a failure's words or its `Debug`, or a reply's `Debug`.
+//! LOG-007, PRJ-018: no installation token or body reaches a log line, a failure or a `Debug`.
 
 use anima_hub::{
     engine::sources::{Keep, Reserve, ask, change},

@@ -1,5 +1,4 @@
-//! Creating, listing and deleting channels through the API: each kind reads back with its
-//! settings and never a secret (NOT-002, NOT-003, SEC-003, SEC-005, D-17, CR-14).
+//! Each channel kind reads back without a secret (NOT-002, NOT-003, SEC-003, SEC-005, D-17, CR-14).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -120,7 +119,6 @@ async fn a_mobile_channel_seals_its_relay_credentials_and_requires_the_token_for
     assert!(validation_fields(&changed).contains(&"settings.mobile.token".to_owned()));
 }
 
-/// An explicit null takes the K1 default, as an absent field does.
 #[sqlx::test(migrations = "./migrations")]
 async fn not_002_an_explicit_null_takes_the_k1_default(pool: PgPool) {
     let schema = schema_for(&pool);

@@ -1,5 +1,4 @@
-//! The serving hub runs its daily upkeep at start: a week of partitions ahead and old login
-//! attempts pruned (D-4, DB-004, K2 retention).
+//! The serving hub runs its daily upkeep at start (D-4, DB-004, K2 retention).
 
 use std::{
     io::Write as _,
@@ -13,10 +12,8 @@ use uuid::Uuid;
 
 use crate::start::url_for;
 
-/// How long the hub may take to start and run its first upkeep.
 const DEADLINE: Duration = Duration::from_secs(30);
 
-/// `url_for(database)` with `login` as the user.
 fn url_as(login: &str, database: &str) -> String {
     let url = url_for(database);
     let (scheme, rest) = url.split_once("://").unwrap();
@@ -24,7 +21,6 @@ fn url_as(login: &str, database: &str) -> String {
     format!("{scheme}://{login}:{login}@{host}")
 }
 
-/// Kills the hub when the test ends, also when it fails.
 struct Running(Child);
 
 impl Drop for Running {

@@ -49,8 +49,6 @@ async fn rem_008_reminder_firings_gives_a_firing_when_it_is_sent_and_counts_the_
 ) {
     set_operator(&pool).await;
     let live = Live::default();
-    // The mutations go through the HTTP edge with a token; the subscription is read from a
-    // schema that has the same `Live`.
     let hub = Hub::serving(&pool, parts(&pool, &live));
     let token = hub.token().await;
     let schema = build_schema(parts(&pool, &live));

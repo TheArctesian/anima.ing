@@ -1,7 +1,5 @@
-//! What the link mode adds before sign-in (FRN-007, SEC-002): only a loopback host and no
-//! origin or the app's origin reach a route, so a DNS-rebinding page cannot drive failed
-//! sign-ins into this computer's throttle; and an operator without TOTP cannot sign in. The
-//! VPS mode keeps neither rule.
+//! Link mode before sign-in (FRN-007, SEC-002): only a loopback host with no origin or the app's
+//! origin reaches a route, and an operator without TOTP cannot sign in.
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -114,7 +112,6 @@ async fn frn_007_sec_002_the_link_mode_refuses_an_operator_without_totp(pool: Pg
     let refused = graphql(&hub, From::Device(LAPTOP), None, with_a_code).await;
     assert!(refused_like_a_wrong_password(&refused), "{refused}");
 
-    // Outside the link mode the same account signs in with its password alone.
     let vps = Hub::new(&pool, start());
     assert!(vps.login(USERNAME, PASSWORD).await["data"]["login"]["token"].is_string());
 }

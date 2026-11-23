@@ -1,5 +1,4 @@
-//! Every operator change to builds leaves one audit entry and never the token, and so does each
-//! builder that goes with its token (BLD-080, BLD-025, LOG-004, LOG-007).
+//! Each change to builds leaves one audit entry, never the token (BLD-080, BLD-025, LOG-004, LOG-007).
 
 use anima_hub::fleet::{access, builds};
 use serde_json::{Value, json};
@@ -84,10 +83,8 @@ async fn bld_008_only_a_queued_job_can_be_cancelled(pool: PgPool) {
     assert_eq!(cancels, 0);
 }
 
-/// The operator name, actor kind, token kind and key name of an audit entry.
 type Who = (String, Option<String>, Option<String>, Option<String>);
 
-/// The `(action, reason)` of each builder audit entry the hub itself wrote.
 async fn removals(pool: &PgPool) -> Vec<(String, String)> {
     sqlx::query_as(
         "SELECT action, change ->> 'reason' FROM events.audit_log \

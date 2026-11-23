@@ -1,5 +1,4 @@
-//! PRJ-031, PRJ-034, PRJ-035: a repository's workflows by name, its runs in K1's shape and
-//! paged to the end, one run, and the count of a run's jobs.
+//! A repository's workflows, runs and jobs (PRJ-031, PRJ-034, PRJ-035).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

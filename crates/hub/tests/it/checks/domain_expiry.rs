@@ -1,6 +1,4 @@
-//! The domain expiry check through the API and the schema (spec 6.4, CHK-009, D-29, K1
-//! `DomainExpiryConfig`, `Check.domainDaysLeft`): create, read, the hourly interval floor, the
-//! expiry date's column and its days left.
+//! The domain expiry check through the API and the schema (spec 6.4, CHK-009, D-29, K1).
 
 use anima_hub::status::Status;
 use chrono::TimeDelta;
@@ -30,7 +28,6 @@ macro_rules! fixture_test {
 const READ: &str = "query($id: ID!) { check(id: $id) { type intervalSeconds domainDaysLeft \
     certificateDaysLeft config { __typename ... on DomainExpiryConfig { domain warnDays timeoutMs } } } }";
 
-/// A `createCheck` input for a domain expiry check every 12 hours, as the client proposes.
 fn domain_input(name: &str, config: &Value) -> Value {
     let mut input = input(PVE_01, name, json!({ "domainExpiry": config }));
     input["intervalSeconds"] = json!(43_200);

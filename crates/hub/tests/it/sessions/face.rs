@@ -1,5 +1,4 @@
-//! The trust face sessions call: host keys (moved from sessions, Q2-05). The stale-row close
-//! and the shutdown are tested with the other ends (`end/shutdown.rs`).
+//! The trust face sessions call: host keys (Q2-05).
 
 use std::collections::BTreeMap;
 

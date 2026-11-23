@@ -1,6 +1,3 @@
-//! An in-process SSH server on the loopback interface for the connection test: it presents
-//! the host keys it is given and records every authentication attempt it receives.
-
 use std::{
     sync::{Arc, Mutex},
     time::Duration,
@@ -18,7 +15,6 @@ use tokio::{
     task::JoinHandle,
 };
 
-/// The user name and secrets the server accepts.
 pub const USER: &str = "operator";
 pub const PASSWORD: &str = "a-correct-horse-password";
 
@@ -27,7 +23,6 @@ pub fn ed25519(seed: u8) -> PrivateKey {
     PrivateKey::from(Ed25519Keypair::from_seed(&[seed; 32]))
 }
 
-/// A fresh ECDSA P-256 key.
 pub fn ecdsa_p256() -> PrivateKey {
     PrivateKey::random(
         &mut rand::rng(),
@@ -38,7 +33,6 @@ pub fn ecdsa_p256() -> PrivateKey {
     .unwrap()
 }
 
-/// The private key as the operator would paste it, encrypted with `passphrase` when given.
 pub fn openssh_text(key: &PrivateKey, passphrase: Option<&str>) -> String {
     let key = match passphrase {
         Some(passphrase) => key.encrypt(&mut rand::rng(), passphrase).unwrap(),
@@ -55,7 +49,6 @@ pub enum Attempt {
     PublicKey { user: String },
 }
 
-/// A running server; dropping it stops it.
 pub struct SshServer {
     pub port: u16,
     attempts: Arc<Mutex<Vec<Attempt>>>,
@@ -63,7 +56,6 @@ pub struct SshServer {
 }
 
 impl SshServer {
-    /// Serves on a free loopback port with `host_keys`, accepting `PASSWORD` and `client_key`.
     pub async fn start(host_keys: Vec<PrivateKey>, client_key: Option<PublicKey>) -> Self {
         let config = Arc::new(server::Config {
             keys: host_keys,
@@ -91,13 +83,11 @@ impl SshServer {
         }
     }
 
-    /// Every authentication attempt so far, in order.
     pub fn attempts(&self) -> Vec<Attempt> {
         self.attempts.lock().unwrap().clone()
     }
 }
 
-/// Runs one client's session to its end.
 async fn serve(config: Arc<server::Config>, stream: TcpStream, recorder: Recorder) {
     if let Ok(session) = server::run_stream(config, stream, recorder).await {
         let _ended = session.await;
@@ -132,7 +122,6 @@ fn verdict(accept: bool) -> Auth {
     if accept { Auth::Accept } else { Auth::reject() }
 }
 
-/// Every hook answers at once, so each returns a ready future.
 impl server::Handler for Recorder {
     type Error = russh::Error;
 

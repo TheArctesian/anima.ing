@@ -6,7 +6,6 @@ use sqlx::PgPool;
 
 use crate::hub::{set_operator, start};
 
-/// One token row of the fixture operator.
 struct Row {
     fill: u8,
     kind: &'static str,

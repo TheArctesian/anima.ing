@@ -1,7 +1,4 @@
-//! MET-026 to MET-031 through the hub's routes: a pushed batch's `drives` replaces the device's
-//! drives and its absence (an older daemon) leaves them; `Device.storage` shows them drive by
-//! drive with their latest use and activity; the card's readings name the fullest mount and
-//! count the other drives.
+//! MET-026 to MET-031 through the hub's routes; a batch without `drives` (an older daemon) leaves them.
 
 use axum::http::StatusCode;
 use chrono::{DateTime, TimeDelta, Utc};
@@ -18,7 +15,6 @@ const STORAGE: &str = "query($id: ID!) { device(id: $id) {
     storage { drives { name kind sizeBytes mounted readBps writeBps busyPercent
         mounts { path usedBytes sizeBytes percent } } } } }";
 
-/// The pop-os drives as a daemon sends them: `/` on nvme1n1, three drives not mounted.
 fn pop_os_drives() -> Value {
     json!([
         { "name": "nvme0n1", "kind": "nvme", "sizeBytes": 1_000_204_886_016_u64, "mounts": [] },
@@ -28,7 +24,6 @@ fn pop_os_drives() -> Value {
     ])
 }
 
-/// A batch at `at` with the root and EFI use and nvme1n1's activity, and `drives` when given.
 fn storage_batch(at: DateTime<Utc>, drives: Option<Value>) -> Value {
     let series = json!([
         { "kind": "disk_percent", "label": "/" },

@@ -1,6 +1,4 @@
-//! OD-E14, PRJ-028, PRJ-033: a merge leaves exactly as K-E1 Section 13.3 says, bound to the head
-//! the operator saw, returns the pull request read back from GitHub, leaves one audit entry and
-//! one event, and drops the held pull request answers; one already merged comes back unchanged.
+//! OD-E14, PRJ-028, PRJ-033: a merge is bound to the head the operator saw (K-E1 Section 13.3).
 
 use serde_json::json;
 use sqlx::PgPool;

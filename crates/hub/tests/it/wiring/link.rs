@@ -1,7 +1,4 @@
-//! The hub in the link mode, as `main.rs` wires it (one-click plan, item S5): `anima-link`
-//! reaches it through a Unix socket and names each device by its link address. The rules that
-//! name a client then name a device: the permitted clients (NET-001, NET-002), the builder's
-//! binding (BLD-024), the daemon routes' refusal log (K8) and the audit log (LOG-005).
+//! The hub in the link mode, as `main.rs` wires it (S5; NET-001, NET-002, BLD-024, K8, LOG-005).
 
 use crate::local_socket::Stream as UnixStream;
 use std::{
@@ -39,8 +36,6 @@ use crate::{
 
 mod rebinding;
 
-/// The header `anima-link` writes, from the link's own test data; its source address is
-/// replaced to name another device.
 const HEADER: &[u8; 52] = include_bytes!("../../../../../link/hublink/testdata/device-header.bin");
 
 const LAPTOP: &str = "fd41:4e49:4d41:aaaa::1";
@@ -53,8 +48,7 @@ fn header_of(device: &str) -> Vec<u8> {
     header
 }
 
-/// A hub in the link mode on a free loopback port and a socket in a private folder, and the
-/// TOTP secret of its operator: the link mode signs in no operator without one (FRN-007).
+/// The link mode signs in no operator without a TOTP secret (FRN-007).
 struct Linked {
     addr: SocketAddr,
     socket: PathBuf,
@@ -115,18 +109,13 @@ async fn serve_linked(pool: &PgPool) -> Linked {
     }
 }
 
-/// Where a request comes from.
 #[derive(Clone, Copy)]
 enum From<'a> {
-    /// A device of the link, by its link address.
     Device(&'a str),
-    /// A program on the hub's computer, through the loopback port.
     ThisComputer,
-    /// The link's socket with no header.
     Unnamed,
 }
 
-/// A `POST` to `path` with a JSON `body`, signed with `token` if any.
 #[derive(Clone, Copy)]
 struct Post<'a> {
     path: &'a str,
@@ -134,13 +123,10 @@ struct Post<'a> {
     body: &'a str,
 }
 
-/// Sends `request` from `from`; returns the whole response as text, empty when the hub closed
-/// the connection with no answer.
 async fn post(hub: &Linked, from: From<'_>, request: Post<'_>) -> String {
     post_with(hub, from, request, "host: 127.0.0.1:8080\r\n").await
 }
 
-/// [`post`] with the header lines `headers` (each ending in CRLF) in place of the `Host` line.
 async fn post_with(hub: &Linked, from: From<'_>, request: Post<'_>, headers: &str) -> String {
     let Post { path, token, body } = request;
     let mut request = format!(
@@ -177,7 +163,6 @@ async fn answered(mut stream: impl AsyncRead + AsyncWrite + Unpin, sent: &[u8]) 
     String::from_utf8_lossy(&response).into_owned()
 }
 
-/// A GraphQL request; returns the response body as JSON.
 async fn graphql(hub: &Linked, from: From<'_>, token: Option<&str>, request: Value) -> Value {
     let body = request.to_string();
     let request = Post {
@@ -193,15 +178,13 @@ async fn graphql(hub: &Linked, from: From<'_>, token: Option<&str>, request: Val
     serde_json::from_str(body).unwrap()
 }
 
-/// The `login` request with the operator's password and `totp_code`.
 fn login_request(totp_code: Option<&str>) -> Value {
     let query = "mutation($input: LoginInput!) { login(input: $input) { token } }";
     let input = json!({ "username": USERNAME, "password": PASSWORD, "totpCode": totp_code });
     json!({ "query": query, "variables": { "input": input } })
 }
 
-/// Signs in from `from` with the password and the current code. The clock is fixed, so the
-/// step is first marked unused: each sign-in here stands for one in a later step.
+/// The clock is fixed, so the TOTP step is reset to let each sign-in count as a later step.
 async fn login(hub: &Linked, from: From<'_>, pool: &PgPool) -> String {
     sqlx::query("update access.operators set totp_last_step = null")
         .execute(pool)
@@ -215,8 +198,7 @@ async fn login(hub: &Linked, from: From<'_>, pool: &PgPool) -> String {
         .to_owned()
 }
 
-/// The messages of the event log, oldest first, once `expected` of them are written: a
-/// refusal is written after its connection is closed.
+/// Polls because a refusal is written after its connection closes.
 async fn events(pool: &PgPool, expected: usize) -> Vec<String> {
     for _ in 0..100 {
         let messages: Vec<String> =
@@ -265,8 +247,7 @@ async fn net_002_a_socket_connection_that_names_no_device_gets_no_answer_and_is_
 
     let unnamed = post(&hub, From::Unnamed, request).await;
     assert_eq!(unnamed, "");
-    // An address that is not a link address cannot be named through the socket: here the
-    // hub's own loopback address, which the permitted networks hold.
+    // A non-link address cannot be named through the socket, even one the permitted networks hold.
     let as_loopback = post(&hub, From::Device("::ffff:127.0.0.1"), request).await;
     assert_eq!(as_loopback, "");
 
@@ -322,7 +303,6 @@ async fn bld_024_a_builder_token_works_only_from_the_device_that_enrolled_it(poo
 #[sqlx::test(migrations = "./migrations")]
 async fn k8_a_daemon_refusal_is_logged_for_each_device_of_the_link(pool: PgPool) {
     let hub = serve_linked(&pool).await;
-    // The spelling of a daemon token that no daemon holds.
     let unknown = format!("anima_daemon_{}", "A".repeat(43));
 
     for device in [LAPTOP, LAPTOP, DESK] {
@@ -335,7 +315,7 @@ async fn k8_a_daemon_refusal_is_logged_for_each_device_of_the_link(pool: PgPool)
         assert!(refused.starts_with("HTTP/1.1 4"), "{device}: {refused}");
     }
 
-    // Once a minute for each client: one event for the laptop's two refusals, one for the desk.
+    // A refusal is logged once a minute for each client.
     let written = events(&pool, 2).await;
     assert_eq!(written.len(), 2, "{written:?}");
     assert!(

@@ -1,17 +1,13 @@
-//! A daemon enrolment code made, used and used again, the daemon token it gives, a renewal,
-//! a push whose body quotes the token, and a push with the renewed token (MET-012, MET-013, K8,
-//! LOG-007).
+//! A daemon enrolment code, its tokens, a renewal and pushes that quote them (MET-012, MET-013,
+//! K8, LOG-007).
 
 use axum::http::StatusCode;
 use serde_json::{Value, json};
 
 use super::{Secrets, edge::WholeHub};
 
-/// `pve-01` in the `devices` fixture.
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 
-/// Enrols a daemon for `pve-01` with the operator's `token`, renews its token once, and sends
-/// what the hub refuses.
 pub async fn enrol(hub: &WholeHub, token: &str, secrets: &mut Secrets) {
     let query = "mutation($id: ID!) { enrolDaemon(deviceId: $id) { code expiresAt } }";
     let made = hub.data(token, query, json!({ "id": PVE_01 })).await;
@@ -43,7 +39,6 @@ pub async fn enrol(hub: &WholeHub, token: &str, secrets: &mut Secrets) {
     assert_eq!(renewed.status, StatusCode::OK);
     let next = token_of(&renewed.json());
     secrets.keep("daemon-next-token", &next);
-    // The renewed token, sent once on a push with an empty body.
     let bearer = format!("Bearer {next}");
     let pushed = hub
         .post(

@@ -1,5 +1,4 @@
-//! Location samples and the context of a transfer event through the hub (K-E4 Sections 11 to
-//! 13; R-145, R-146, LOG-007).
+//! Location samples and transfer events through the hub (K-E4 Sections 11 to 13; R-145, R-146, LOG-007).
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -33,7 +32,6 @@ const SAMPLE: &str = "id provider account key observedAt receivedAt latitude lon
 /// The time of the test hub, in Unix seconds: 2030-05-05T12:00:00Z.
 const NOW: i64 = 1_904_212_800;
 
-/// A hub with sealing keys in a folder of its own and the OwnTracks route beside `/graphql`.
 struct LocationHub {
     app: Router,
     token: String,
@@ -86,7 +84,6 @@ impl LocationHub {
         self.send(request).await.1
     }
 
-    /// Posts `body` as the OwnTracks app does, with `password`.
     async fn owntracks(&self, password: &str, body: &str) -> (StatusCode, Value) {
         let basic = STANDARD.encode(format!("phone:{password}"));
         let request = Request::post("/locations/v1/owntracks")
@@ -97,7 +94,6 @@ impl LocationHub {
         self.send(request).await
     }
 
-    /// Makes an ingest token and returns `(id, value)`.
     async fn ingest_token(&self, name: &str) -> (String, String) {
         let made = self
             .post(
@@ -114,7 +110,6 @@ impl LocationHub {
         )
     }
 
-    /// The samples of the day around the time of the hub.
     async fn samples(&self) -> Value {
         let query = format!(
             "query($f: DateTime!, $t: DateTime!) {{ locationSamples(from: $f, to: $t) \
@@ -137,7 +132,6 @@ async fn count(pool: &PgPool, table: &str) -> i64 {
         .unwrap()
 }
 
-/// Every stored text of the event log and the audit log, in one string.
 async fn logs(pool: &PgPool) -> String {
     sqlx::query_scalar(
         "select coalesce(string_agg(t, ' '), '') from ( \

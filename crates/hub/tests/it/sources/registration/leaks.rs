@@ -1,7 +1,5 @@
-//! LOG-007, PRJ-018, PRJ-041: after the whole flow, the App's key, GitHub's code, the ticket,
-//! both states and the cookie value are in no process log line (at trace), no table (audit and
-//! events included), no GraphQL answer and no `githubConnectChanged` payload. GitHub's client
-//! and webhook secrets are nowhere either.
+//! LOG-007, PRJ-018, PRJ-041: no key, code, ticket, state, cookie or GitHub secret of the connect
+//! flow reaches a log line, a table, a GraphQL answer or a `githubConnectChanged` payload.
 
 use std::{sync::Arc, time::Duration};
 

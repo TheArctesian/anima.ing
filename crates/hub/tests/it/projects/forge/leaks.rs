@@ -1,6 +1,4 @@
-//! LOG-007, PRJ-018: text other people wrote on GitHub comes back unchanged as a JSON string,
-//! HTML and control characters included, and reaches no process log line; nor does GitHub's
-//! text in a failed answer.
+//! LOG-007, PRJ-018: GitHub text comes back unchanged as a JSON string and reaches no log line.
 
 use anima_hub::fleet::events::process_log;
 use serde_json::{Value, json};

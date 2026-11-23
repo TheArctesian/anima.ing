@@ -57,7 +57,6 @@ async fn ra_008_end_session_on_a_pending_ticket_ends_the_row_operator_once(pool:
         "the ticket is withdrawn"
     );
 
-    // Ending it again returns the row unchanged and writes nothing.
     let again = end(&schema_at(&pool, now() + TimeDelta::minutes(1), &live), id).await;
     assert_eq!(again, ended);
     let audits = end_audits(&pool, id).await;
@@ -79,7 +78,7 @@ async fn ra_008_end_session_tells_the_open_tunnel_and_returns_the_row_it_ended(p
     let id = ticket["sessionId"].as_str().unwrap().to_owned();
     let mut tunnel = redeem(&live, &ticket, now()).unwrap().tunnel;
 
-    // A stand-in for the tunnel task: on the signal it ends its row, then drops its handle.
+    // A stand-in for the tunnel task.
     let tunnel_pool = pool.clone();
     let tunnel_id = id.clone();
     let task = tokio::spawn(async move {
@@ -161,7 +160,6 @@ async fn api_009_the_sweep_ends_expired_unredeemed_tickets_timeout_once(pool: Pg
     let expired_id = expired["sessionId"].as_str().unwrap();
     let opened_id = opened["sessionId"].as_str().unwrap();
 
-    // One second before expiry nothing is swept; at the expiry instant it is.
     started(
         &schema_at(&pool, now() + TimeDelta::seconds(29), &live),
         DOCKER_HOST,
@@ -179,7 +177,6 @@ async fn api_009_the_sweep_ends_expired_unredeemed_tickets_timeout_once(pool: Pg
     let spent_row = stored(&pool, spent["sessionId"].as_str().unwrap()).await;
     assert_eq!(spent_row.end_reason.as_deref(), Some("timeout"));
 
-    // Later sweeps leave it alone, and never touch the redeemed one.
     started(
         &schema_at(&pool, now() + TimeDelta::hours(1), &live),
         DOCKER_HOST,
@@ -234,7 +231,6 @@ async fn ra_008_end_session_on_a_ticket_spent_by_a_refusal_ends_it_once(pool: Pg
 
     let ended = end(&schema, id).await;
     assert_eq!(ended["endReason"], "OPERATOR");
-    // The sweep no longer holds it, so a later start ends nothing more.
     started(
         &schema_at(&pool, now() + TimeDelta::hours(1), &live),
         PVE_01,
@@ -265,8 +261,7 @@ async fn api_009_a_late_sweep_ends_the_row_at_the_tickets_expiry_not_at_now(pool
     assert_eq!(row.ended_at, Some(now() + TimeDelta::seconds(30)));
 }
 
-/// Ends that never open a tunnel write the `session.end` audit entry and, by decision, no
-/// event (K4 §5 describes tunnel ends).
+/// By decision, an end without a tunnel writes no event (K4 §5 describes tunnel ends).
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))

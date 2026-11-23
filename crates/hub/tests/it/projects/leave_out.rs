@@ -1,6 +1,4 @@
-//! Leave out and restore (PRO-002): a left-out repository is never imported or read again,
-//! even renamed; a restore brings its proposals back and its files are read on the next sync.
-//! Each change leaves one audit entry with the actor kind.
+//! Leave out and restore a repository (PRO-002).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -9,8 +7,6 @@ use super::github::{Repo, files, list, reads_of, tree_reads};
 use super::{Kit, by_slug, kit, slugs};
 use crate::{hub::error, sources::last_run};
 
-/// Imports `me/site` (with a Dockerfile) and `me/blog`; returns the account and site's
-/// repository id.
 async fn imported(kit: &Kit) -> (anima_hub::ids::SourceAccountId, String) {
     let id = kit.connect().await;
     files(&kit.stub, "me/site", &["Dockerfile"], &[]);
@@ -53,7 +49,7 @@ async fn pro_002_a_left_out_repository_stays_out_and_its_files_are_never_read(po
     assert_eq!(slugs(&kit.projects(false).await), ["blog"]);
     assert_eq!(slugs(&kit.projects(true).await), ["site"]);
 
-    // A push upstream would queue its files to be read; the hub must not read them.
+    // A push upstream would queue the files to be read.
     let reads = reads_of(&kit.stub, "me/site");
     let mut pushed = Repo::new(1, "me/site");
     pushed.pushed_at = "2030-05-03T10:00:00Z".to_owned();
@@ -97,7 +93,6 @@ async fn pro_002_restore_brings_the_proposals_back_and_reads_the_files_again(poo
     let (id, repository) = imported(&kit).await;
     kit.leave_out(&repository, true).await;
     kit.run(id).await;
-    // While it is left out the repository gains a desktop app.
     files(
         &kit.stub,
         "me/site",
@@ -139,7 +134,6 @@ async fn pro_002_restore_brings_the_proposals_back_and_reads_the_files_again(poo
     assert_eq!(slugs(&kit.projects(false).await), ["blog", "site"]);
 }
 
-/// Waits until a session of this test's database waits for a row lock.
 async fn lock_waiter(pool: &PgPool) {
     for _ in 0..500 {
         let waiting: i64 = sqlx::query_scalar(
@@ -157,8 +151,7 @@ async fn lock_waiter(pool: &PgPool) {
     panic!("the restore never waited for the account row");
 }
 
-/// A sync page locks the account row and then the repository row; a restore takes them in
-/// the same order, so the two never deadlock: the restore waits and then completes.
+/// A sync page locks the account row, then the repository row; a restore takes the same order.
 #[sqlx::test(migrations = "./migrations")]
 async fn pro_002_a_restore_during_a_sync_page_waits_and_never_deadlocks(pool: PgPool) {
     let kit = kit(&pool).await;

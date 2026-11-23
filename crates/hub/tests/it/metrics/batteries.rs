@@ -1,6 +1,4 @@
-//! MET-032 through the hub's routes: a pushed batch's `batteries` replaces the device's
-//! batteries and its absence leaves them; `Device.batteries` gives them by name and the charge
-//! is the series `BATTERY_PERCENT` labelled with the battery name.
+//! MET-032 through the hub's routes.
 
 use axum::http::StatusCode;
 use chrono::{DateTime, TimeDelta, Utc};
@@ -16,7 +14,6 @@ const BATTERIES: &str = "query($id: ID!) { device(id: $id) {
     batteries { name state secondsLeft healthPercent }
     metrics(range: HOUR) { kind label } } }";
 
-/// A batch at `at` with the charge of BAT0, and `batteries` when given.
 fn battery_batch(at: DateTime<Utc>, batteries: Option<Value>) -> Value {
     let series = json!([{ "kind": "battery_percent", "label": "BAT0" }]);
     let mut pushed = batch(PVE_01, series, vec![point(at, json!([85.0]))]);

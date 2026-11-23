@@ -7,7 +7,6 @@ use super::permit;
 
 const CONFIGURED: &str = "ANIMA_PERMITTED_NETWORKS";
 
-/// `(cidr, label)` of every permitted network, in address order.
 async fn stored(pool: &PgPool) -> Vec<(String, String)> {
     sqlx::query_as("select cidr::text, label from access.permitted_networks order by cidr")
         .fetch_all(pool)

@@ -1,5 +1,4 @@
-//! A link to a record that does not exist keeps its label (RLK-002), and one table holds
-//! every link (RLK-001).
+//! A link to a missing record keeps its label (RLK-002); one table holds every link (RLK-001).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -28,7 +27,6 @@ async fn rlk_002_a_link_to_a_target_that_does_not_exist_keeps_its_label(pool: Pg
         "no People extension exists"
     );
 
-    // Both ends see the same link, and the label is still there on a later read.
     for record in [BOOK, PERSON] {
         let listed = links_of(&hub, &token, record).await;
         let listed = listed["data"]["recordLinks"].as_array().unwrap();
@@ -66,7 +64,6 @@ async fn rlk_001_the_same_link_again_is_one_row_and_a_new_label_replaces_the_old
     assert_eq!(renamed["data"]["linkRecords"]["label"], "Ada Lovelace");
     assert_eq!(stored(&pool).await, 1);
 
-    // Another kind between the same two records is another link.
     link(&hub, &token, (BOOK, "gift_from", PERSON), Value::Null).await;
     assert_eq!(stored(&pool).await, 2);
 }

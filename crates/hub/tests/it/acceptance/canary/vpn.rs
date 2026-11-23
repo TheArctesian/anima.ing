@@ -1,7 +1,4 @@
-//! The VPN keys through a fake broker on a Unix socket: an invite and a router key the broker
-//! makes, an auth ID registered, a key renewed, and a broker reply the hub cannot read that
-//! holds a key; with a fake `LocalAPI` proxy so the hub reads the broker's node list first
-//! (VPN-001, VPN-003, VP-7, VP-10, BD-9, LOG-007).
+//! VPN keys through a fake broker and `LocalAPI` proxy (VPN-001, VPN-003, VP-7, VP-10, BD-9, LOG-007).
 
 use crate::local_socket::Listener as UnixListener;
 use std::{
@@ -33,19 +30,16 @@ use super::{
     edge::{WholeHub, code},
 };
 
-/// The hub's status as a `LocalAPI` proxy answers it.
 const STATUS: &str = include_str!("../../../../src/fleet/vpn/tests/fixtures/status-active.json");
-/// `home` in the `devices` fixture, whose subnet the broker's policy names.
+/// `home` in the `devices` fixture.
 const HOME: &str = "0190a000-0000-7000-8001-000000000001";
 
-/// A broker that answers each verb, its keys canaries; it lives as long as its folder.
 pub struct FakeBroker {
     folder: tempfile::TempDir,
     keys: [String; 3],
     auth_id: String,
 }
 
-/// The `nodes` value: the operator's untagged `mac`, and `home` in the policy.
 fn nodes() -> Value {
     json!({
         "nodes": [{ "id": 2, "name": "mac", "user": "operator", "tags": [], "ips": ["100.64.0.2"],
@@ -54,8 +48,6 @@ fn nodes() -> Value {
     })
 }
 
-/// The broker's reply to `request`: a key the first time an invite is asked, a value the hub
-/// cannot read, holding a key, the second time.
 fn answer(request: &Value, keys: &[String; 3], invites: &AtomicUsize) -> Value {
     let expiry = "2030-05-05T13:00:00.000Z";
     let node = |name| json!({ "name": name, "address": "100.64.0.2", "keyExpiry": expiry });
@@ -71,7 +63,6 @@ fn answer(request: &Value, keys: &[String; 3], invites: &AtomicUsize) -> Value {
 }
 
 impl FakeBroker {
-    /// Starts the broker, planting its keys and the auth ID it is sent.
     pub fn start(secrets: &mut Secrets) -> Self {
         let keys = ["vpn-invite-key", "vpn-router-key", "vpn-unreadable-reply"]
             .map(|kind| secrets.plant(kind));
@@ -109,7 +100,6 @@ impl FakeBroker {
     }
 }
 
-/// A `LocalAPI` proxy on 127.0.0.1 that answers each request with [`STATUS`].
 async fn proxy() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap().to_string();
@@ -131,8 +121,6 @@ async fn proxy() -> String {
     address
 }
 
-/// Reads the VPN once into `feed` through `fake`, then makes each VPN change with the
-/// operator's `token`.
 pub async fn change(
     hub: &WholeHub,
     token: &str,

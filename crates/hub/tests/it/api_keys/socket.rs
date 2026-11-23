@@ -1,6 +1,4 @@
-//! The D-23 kind rule and the read rule over a WebSocket signed in with an API key through
-//! `connection_init`: the same refusals as over HTTP, each a `next` frame with the error and
-//! then `complete`, and nothing written (D-23, R-100, API-003).
+//! An API key on a WebSocket gets the same refusals as over HTTP, and nothing is written (D-23, R-100, API-003).
 
 use std::sync::Arc;
 

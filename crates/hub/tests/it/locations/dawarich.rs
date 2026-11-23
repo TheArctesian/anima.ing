@@ -107,7 +107,6 @@ impl Kit {
             .unwrap()
     }
 
-    /// True when a run is recorded and each recorded run has ended: the account is free to claim.
     async fn runs_ended(&self) -> bool {
         sqlx::query_scalar(
             "select count(*) > 0 and count(*) filter (where outcome is null) = 0 \
@@ -118,7 +117,6 @@ impl Kit {
         .unwrap()
     }
 
-    /// Waits for the first run, which the connection starts, to store `count` samples and end.
     async fn wait_for(&self, count: i64) {
         for _ in 0..100 {
             if self.stored().await == count && self.runs_ended().await {
@@ -182,7 +180,6 @@ async fn dawarich_key_a_connected_dawarich_account_pulls_its_points_one_time(poo
             (id.to_string(), "42".to_owned(), true)
         ]
     );
-    // The next run reads the last point again and stores nothing new.
     kit.run(id).await;
     assert_eq!(kit.stored().await, 2);
     let run: (String, i32, i32) = sqlx::query_as(

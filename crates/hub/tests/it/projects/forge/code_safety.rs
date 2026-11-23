@@ -1,7 +1,5 @@
-//! K-E1 Section 13.8, D-23, LOG-007: what keeps the code browser safe. A hostile path or ref
-//! is refused before anything is sent; names reach GitHub encoded; a directory is kept and a
-//! file never, even when a directory read finds one; a file is closed to every API key; and neither a file's content nor its path
-//! reaches a log line or an error message.
+//! K-E1 Section 13.8, D-23, LOG-007: a file is closed to API keys and never kept, and neither its
+//! content nor its path reaches a log line or an error message.
 
 use anima_hub::fleet::events::process_log;
 use serde_json::{Value, json};
@@ -46,7 +44,6 @@ fn hostile_refs() -> Vec<String> {
     refs
 }
 
-/// The one field a `VALIDATION` error names.
 fn field(response: &Value) -> String {
     assert_eq!(error(response).1, "VALIDATION", "{response}");
     response["errors"][0]["extensions"]["fields"][0]["field"]
@@ -127,8 +124,7 @@ async fn prj_033_a_directory_is_kept_and_a_file_never(pool: PgPool) {
     );
 }
 
-/// K-E1 Section 13.1, "File content is never kept": GitHub answers a directory read of a file
-/// with the file, content included, and a read key may ask it.
+/// K-E1 Section 13.1: GitHub answers a directory read of a file with the file, content included.
 #[sqlx::test(migrations = "./migrations")]
 async fn prj_033_a_directory_read_of_a_file_never_keeps_its_content(pool: PgPool) {
     let forge = forge(&pool).await;

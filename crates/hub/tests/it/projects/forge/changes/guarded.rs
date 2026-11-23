@@ -1,8 +1,5 @@
-//! D-23, R-100, K-E1 Section 13.5: the run controls, a start and a commit status are login or
-//! browser token only. A read key and a write key are refused and send nothing; a login token,
-//! also for a request that declares an agent, is recorded with who it was (LOG-014 to LOG-018).
-//! LOG-007: a workflow input value and GitHub's reply reach no log line, error message, audit
-//! entry or event.
+//! Run controls take only a login or browser token (D-23, R-100, K-E1 13.5, LOG-014 to LOG-018).
+//! A workflow input value and GitHub's reply reach no log, error, audit entry or event (LOG-007).
 
 use anima_hub::fleet::events::process_log;
 use axum::{
@@ -26,7 +23,6 @@ use crate::{
 
 const KIND_REFUSED: &str = "This token cannot do that. Sign in to the hub to do it.";
 
-/// The secret of a key of `scope` made by the signed-in operator for a user.
 async fn key(forge: &Forge, scope: &str) -> String {
     let query = "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
     let input = json!({ "input": { "name": format!("{scope}-key"), "scope": scope,
@@ -38,7 +34,6 @@ async fn key(forge: &Forge, scope: &str) -> String {
         .to_owned()
 }
 
-/// GitHub accepts each of the five changes.
 fn script(forge: &Forge) {
     forge.ok(
         "/actions/runs/5",
@@ -63,7 +58,6 @@ fn script(forge: &Forge) {
     );
 }
 
-/// The five roots, each with its document and variables that work.
 fn calls(forge: &Forge) -> Vec<(&'static str, String, Value)> {
     let with = |mut variables: Value| {
         variables["repository"] = json!(forge.repository);
@@ -98,7 +92,6 @@ fn calls(forge: &Forge) -> Vec<(&'static str, String, Value)> {
     ]
 }
 
-/// Changes sent below the repository so far.
 fn changes_sent(forge: &Forge) -> usize {
     forge.kit.stub.with(|s| {
         s.heard
@@ -108,7 +101,7 @@ fn changes_sent(forge: &Forge) -> usize {
     })
 }
 
-/// Posts `query` with `token` and the agent declaration (LOG-016).
+/// The agent declaration (LOG-016).
 async fn as_agent(forge: &Forge, token: &str, query: &str, variables: Value) -> Value {
     let body = json!({ "query": query, "variables": variables }).to_string();
     let request = Request::post("/graphql")

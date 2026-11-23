@@ -1,5 +1,4 @@
-//! Credentials bound to the device host they were entered for (SEC-011), through the public
-//! functions and migration 0220.
+//! Credentials bound to the device host they were entered for (SEC-011).
 
 use anima_hub::fleet::credentials::{
     Error, PasswordKind, Secret, SshSecret, load_password, load_ssh, store_password,
@@ -11,7 +10,6 @@ use super::{
     HOST, PASSWORD, PVE_01, RDP_PASSWORD, device, password, secret, store, store_pw, vault,
 };
 
-/// PVE-01's host in the fixture.
 const PVE_01_HOST: &str = "pve-01.home.lan";
 
 #[sqlx::test(
@@ -34,7 +32,6 @@ async fn sec_011_a_secret_opens_only_for_its_host_and_stays_stored(pool: PgPool)
             Err(Error::EnteredForOtherHost)
         ));
     }
-    // Kept, not removed: the host it was entered for, in any letter case, still opens it.
     let loaded = load_ssh(&pool, &vault, (id, &HOST.to_uppercase()))
         .await
         .unwrap();
@@ -69,7 +66,6 @@ async fn sec_011_storing_again_binds_the_secret_to_the_new_host(pool: PgPool) {
     ));
 }
 
-/// The statement of migration 0220 that binds existing rows.
 fn binding_statement() -> String {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -81,8 +77,7 @@ fn binding_statement() -> String {
     sql[start..end].to_owned()
 }
 
-/// Inserts a VNC password sealed as the hub sealed it before SEC-011: the secret alone, under
-/// the context without a host.
+/// Seals a VNC password as before SEC-011: the secret alone, under a context without a host.
 async fn insert_from_before(pool: &PgPool, text: &str) {
     let id = device(PVE_01);
     let context = format!("credentials.secrets:{id}:vnc_password");
@@ -110,7 +105,6 @@ async fn insert_from_before(pool: &PgPool, text: &str) {
 async fn sec_011_the_migration_binds_older_rows_to_the_host_of_their_device(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     insert_from_before(&pool, "from before").await;
-    // With no host sealed in and none recorded, the row opens for no host.
     assert!(matches!(
         load_password(&pool, &vault, (id, PVE_01_HOST), PasswordKind::Vnc).await,
         Err(Error::Decrypt)
@@ -135,7 +129,6 @@ async fn sec_011_the_migration_binds_older_rows_to_the_host_of_their_device(pool
         .await,
         Err(Error::EnteredForOtherHost)
     ));
-    // Storing it again holds the host in the value and clears the recorded one.
     store_pw(&pool, id, PasswordKind::Vnc, "entered again")
         .await
         .unwrap();
@@ -148,7 +141,6 @@ async fn sec_011_the_migration_binds_older_rows_to_the_host_of_their_device(pool
     assert_eq!(recorded, None);
 }
 
-/// A database writer who records another host on a row that holds its own does not rebind it.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))

@@ -1,5 +1,4 @@
-//! PRJ-039: the App's installations are read signed in as the App, an installation id reaches a
-//! path only as 1 to 20 digits, and each reply maps to one outcome.
+//! PRJ-039: reads are signed in as the App; an installation id reaches a path only as 1 to 20 digits.
 
 use anima_hub::engine::sources::acquisition::{
     app_key::AppSigner,
@@ -47,7 +46,6 @@ async fn one(transport: &anima_hub::engine::sources::Transport, id: &str) -> Loo
     .await
 }
 
-/// The `iss` claim of a `Bearer <JWT>` header value.
 fn issuer(header: &[u8]) -> Value {
     let jwt = std::str::from_utf8(header)
         .unwrap()

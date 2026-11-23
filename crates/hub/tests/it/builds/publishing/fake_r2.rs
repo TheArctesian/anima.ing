@@ -1,8 +1,5 @@
-//! An in-process stand-in for R2 (D-24): the S3 API on one listener and the public address on
-//! another. The API checks every request's Signature Version 4 itself (`signing.rs`), so a URL
-//! replayed for another object, a wrong length or header, an expired URL or a skewed date fails
-//! as it would at R2. It serves `PUT`, `GET` with an `ETag`, `CopyObject` with
-//! `x-amz-copy-source-if-match`, and `DELETE`. Faults are set per test.
+//! An in-process stand-in for R2 (D-24): the S3 API and the public address on two listeners. The
+//! API checks each request's Signature Version 4 itself (`signing.rs`), as R2 does.
 //!
 //! The state sits behind a `std` mutex that no handler holds across an `.await`.
 
@@ -28,7 +25,6 @@ pub const BUCKET: &str = "anima-releases";
 pub const KEY_ID: &str = "AKIDFAKER2TEST";
 pub const SECRET: &str = "fake-r2-secret-for-tests-only";
 
-/// One stored object.
 #[derive(Clone, Debug, Default)]
 pub struct Object {
     pub bytes: Vec<u8>,
@@ -50,18 +46,13 @@ impl Object {
     }
 }
 
-/// What the fake holds and what the test sets.
 #[derive(Default)]
 pub struct Store {
     /// By key, without the bucket.
     pub objects: BTreeMap<String, Object>,
-    /// The keys written, in order.
     pub writes: Vec<String>,
-    /// The keys deleted, in order.
     pub deletes: Vec<String>,
-    /// The keys whose `ETag` was asked for with `HEAD`, in order.
     pub heads: Vec<String>,
-    /// Why each refused request was refused.
     pub refused: Vec<String>,
     /// The fake's clock for expiry and skew; `None` takes the request's own date.
     pub now: Option<DateTime<Utc>>,
@@ -82,17 +73,13 @@ pub struct Store {
     pub lose: Option<String>,
     /// A key the public address answers with these older bytes, as a warm cache would.
     pub stale: Option<(String, Vec<u8>)>,
-    /// A key the public address answers 404 for.
     pub public_missing: Option<String>,
-    /// A key whose API read comes back without an `ETag`.
     pub no_etag: Option<String>,
-    /// Every API call answers 503.
     pub unavailable: bool,
 }
 
 pub type Shared = Arc<Mutex<Store>>;
 
-/// The two listeners and the shared store.
 pub struct FakeR2 {
     pub api: SocketAddr,
     pub public: SocketAddr,
@@ -131,7 +118,6 @@ async fn serve(router: Router) -> SocketAddr {
     addr
 }
 
-/// The object at `key` as a read gives it, with the tamper and length faults.
 fn served(store: &Store, key: &str) -> Option<Object> {
     let mut object = store.objects.get(key).cloned()?;
     if store.tamper.as_deref() == Some(key)
@@ -145,7 +131,6 @@ fn served(store: &Store, key: &str) -> Option<Object> {
     Some(object)
 }
 
-/// Waits at the gate when `pick` names `key`.
 async fn hold(store: &Shared, key: &str, pick: fn(&Store) -> Option<&String>) {
     let gate = {
         let store = store.lock().unwrap();
@@ -236,8 +221,6 @@ async fn read(store: &Shared, key: &str) -> Response {
     ([(header::ETAG, stored.unwrap_or_default())], object.bytes).into_response()
 }
 
-/// A `PUT`, or a `CopyObject` when it names a source; 412 when the source's `ETag` is not the
-/// one the request names.
 async fn write(store: &Shared, key: &str, headers: &HeaderMap, body: Vec<u8>) -> Response {
     hold(store, key, |store| store.hang.as_ref()).await;
     let object = {

@@ -1,5 +1,4 @@
-//! Reports from the lease holder only, redacted and trimmed log lines, the upload report and
-//! version refusal (BLD-002, BLD-010, BLD-048, BLD-049, BLD-063, LOG-007).
+//! Build reports and their redacted, trimmed logs (BLD-002, BLD-010, BLD-048, BLD-049, BLD-063, LOG-007).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -89,7 +88,6 @@ async fn bld_048_a_job_keeps_the_last_2_mib_of_its_log(pool: PgPool) {
     assert_eq!(last, 750);
 }
 
-/// The stored log's size, counting 64 bytes a line, and its last sequence.
 async fn log_size(pool: &PgPool) -> (i64, i64) {
     sqlx::query_as(
         "SELECT sum(octet_length(text) + 64)::bigint, max(sequence) FROM builds.log_lines",
@@ -176,7 +174,6 @@ async fn api_004_a_log_page_costs_by_its_size(pool: PgPool) {
     );
 }
 
-/// The job's stored log lines, oldest first.
 async fn stored_lines(pool: &PgPool) -> Vec<String> {
     sqlx::query_scalar("SELECT text FROM builds.log_lines ORDER BY sequence")
         .fetch_all(pool)
@@ -212,17 +209,13 @@ async fn bld_049_a_key_block_split_across_reports_keeps_none_of_its_body(pool: P
             "start", marker, "done", marker, errors[0], errors[1], marker
         ]
     );
-    // The lease ends with a block open; the next attempt's log is kept from its first line,
-    // even one that looks like key material.
+    // A new lease keeps its log from the first line, even one that looks like key material.
     let later = hub_at(&pool, 90);
     data(claim(&later, &builder.token).await);
     data(report(&later, &builder.token, &job, &["AttemptTwo"]).await);
     assert_eq!(stored_lines(&pool).await.last().unwrap(), "AttemptTwo");
 }
 
-/// D-26: an `uploaded` report names the files of the job's upload URLs; with none given, as on a
-/// hub whose publishing went off after the release was queued, every report is refused and the
-/// job keeps its lease.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_26_an_uploaded_report_needs_the_files_of_its_upload_urls(pool: PgPool) {
     let operator = operator(&pool).await;

@@ -1,8 +1,5 @@
-//! K-E1 Section 13.5, D-23: the issue changes take a login token and a write key made for a
-//! user or an agent, and a request that declares an agent; a read key and a signed-out request
-//! are refused and send nothing. The record names the actor kind and the token kind (LOG-014
-//! to LOG-018). A key's changes stop at the sync's reserve and go at most 20 a minute; a login
-//! token's do neither (K-E1 Section 13.1).
+//! Who may make the issue changes and what the record names (K-E1 Section 13.5, D-23, LOG-014
+//! to LOG-018); a key's budget and pace (K-E1 Section 13.1).
 
 use axum::{
     body::Body,
@@ -18,7 +15,6 @@ use crate::{
     projects::forge::{BASE, Forge, forge, issue, reply},
 };
 
-/// The secret of a key of `scope` made by the signed-in operator for `made_for`.
 async fn key(forge: &Forge, scope: &str, made_for: &str) -> String {
     let query = "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
     let input = json!({ "input": { "name": format!("{scope}-{made_for}"), "scope": scope,
@@ -45,7 +41,6 @@ fn script(forge: &Forge) {
     answer(forge, ("PATCH", "/issues/3"), 200, &issue(3));
 }
 
-/// The three changes, each with variables that work.
 fn calls(forge: &Forge) -> [(&'static str, &'static str, Value); 3] {
     let with = |mut variables: Value| {
         variables["repository"] = json!(forge.repository);
@@ -70,7 +65,7 @@ fn calls(forge: &Forge) -> [(&'static str, &'static str, Value); 3] {
     ]
 }
 
-/// Posts `query` with `token` and the agent declaration (LOG-016).
+/// Declares an agent with the `anima-actor` header (LOG-016).
 async fn as_agent(forge: &Forge, token: &str, query: &str, variables: Value) -> Value {
     let body = json!({ "query": query, "variables": variables }).to_string();
     let request = Request::post("/graphql")
@@ -142,8 +137,6 @@ async fn d_23_a_read_key_and_a_signed_out_request_change_nothing(pool: PgPool) {
     assert!(audits(&pool).await.is_empty(), "nothing");
 }
 
-/// K-E1 Section 13.1, "Budget": a change made with an API key stops at the sync's reserve, as
-/// a read does; a login token's change may spend it.
 #[sqlx::test(migrations = "./migrations")]
 async fn od_e14_a_key_change_stops_at_the_reserve_and_a_login_change_does_not(pool: PgPool) {
     let forge = forge(&pool).await;
@@ -194,8 +187,6 @@ async fn od_e14_a_key_change_stops_at_the_reserve_and_a_login_change_does_not(po
     );
 }
 
-/// A key makes at most 20 changes a minute; the next is refused and sent nowhere, and the
-/// minute after it goes again. A login token is not held back by a key's pace.
 #[sqlx::test(migrations = "./migrations")]
 async fn od_e14_a_key_makes_at_most_20_changes_a_minute(pool: PgPool) {
     let forge = forge(&pool).await;

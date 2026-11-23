@@ -48,7 +48,6 @@ async fn k10_4_a_machine_claims_the_oldest_job_and_holds_it_by_its_lease(pool: P
     let (held, _) = work.job(first.id).await;
     assert_eq!(held.state, State::Claimed);
 
-    // One slot: while it holds the job and names it, it gets no second one.
     let holds = json!([{ "id": job["id"], "attempt": 1 }]);
     let (status, _) = work.claim(&token, &claim_of(PVE_01, &holds)).await;
     assert_eq!(status, StatusCode::NO_CONTENT);
@@ -73,7 +72,6 @@ async fn k10_7_the_reports_of_the_holder_take_a_job_to_its_end_with_its_log(pool
     let sent = running["log"]["text"].as_str().unwrap().len();
     assert_eq!(answer["logEnd"].as_u64(), Some(sent as u64));
 
-    // A part that does not start at the end of the log is dropped, and the answer says the end.
     let mut again = report_of(&job, "running");
     again["log"] = json!({ "from": 0, "text": "step 1 again\n" });
     let (status, answer) = work.report(&token, &again).await;
@@ -100,7 +98,6 @@ async fn k10_7_the_reports_of_the_holder_take_a_job_to_its_end_with_its_log(pool
     );
     assert!(!log.contains("again"));
 
-    // The job ended: one more report is not from a holder.
     let (status, refusal) = work.report(&token, &report_of(&job, "done")).await;
     assert_eq!(
         (status, refusal),
@@ -172,7 +169,6 @@ async fn sf_011_a_claim_that_does_not_name_a_held_job_ends_that_attempt_with_no_
     let queued = work.enqueue(build()).await;
     work.claim(&token, &claim_of(PVE_01, &json!([]))).await;
 
-    // The answer was lost: the machine claims again and names no job.
     let (status, job) = work.claim(&token, &claim_of(PVE_01, &json!([]))).await;
 
     assert_eq!(status, StatusCode::OK, "{job}");

@@ -1,5 +1,4 @@
-//! WP-06 H-2: the devices part of the hub schema, with its three loaders and the sessions
-//! host-key loader, answers through `build_schema` (API-005).
+//! WP-06 H-2: the devices part of the hub schema answers through `build_schema` (API-005).
 
 use std::sync::atomic::Ordering;
 
@@ -10,7 +9,6 @@ use sqlx::PgPool;
 use super::{FINGERPRINT, PVE_01, accept_key, add_operator, data, hub_schema, wired};
 use crate::devices::{batching::counting_pool, graphql_read::add_bulk};
 
-/// Each device's name and its site's name.
 fn device_sites(result: &Value) -> Vec<(String, String)> {
     let mut pairs: Vec<_> = result["devices"]["edges"]
         .as_array()
@@ -114,24 +112,17 @@ async fn h_2_a_credential_set_through_the_hub_shows_as_stored(pool: PgPool) {
     assert_eq!(flagged, vec![PVE_01]);
 }
 
-/// Every loader the hub registers, in one selection, both ways round.
 const NESTED: &str = "{ \
     devices(first: 200) { edges { node { name site { name } \
         ssh { credentialStored hostKey { fingerprintSha256 } } } } } \
     sites { devices(first: 200) { edges { node { site { name } } } } } }";
 
-/// Batched, 13 devices cost 8 statements: the page, its count, one batch each of sites,
-/// secrets and host keys, the site list, one batch of their devices and one of those
-/// devices' sites. Loading per key costs at least 3 per device, over 40.
+/// Batched, 13 devices cost 8 statements; loading per key costs over 40.
 const FEW_AT_MOST: usize = 12;
 
-/// The hub's loaders wait 1 ms (the async-graphql default) for keys. In a debug build, 163
-/// devices take longer than that to resolve, so a batch can split: 16 to 37 statements were
-/// seen. Loading per key costs at least 3 per device, over 480; this bound is under half a
-/// statement per device. `devices::batching` pins the constant cost with a 20 ms window.
+/// Loaders wait 1 ms for keys, so a debug-build batch of 163 devices can split; per key costs over 480.
 const MANY_AT_MOST: usize = 80;
 
-/// The fingerprints shown, and how many devices there are.
 fn host_keys(result: &Value) -> (Vec<&str>, usize) {
     let edges = result["devices"]["edges"].as_array().unwrap();
     let keys = edges
