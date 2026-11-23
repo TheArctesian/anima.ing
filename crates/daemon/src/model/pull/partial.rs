@@ -38,7 +38,8 @@ fn own_plain_file(stat: &Stat) -> io::Result<()> {
 /// # Errors
 /// An I/O error, or `PermissionDenied` for a file that is not a plain file of this user.
 pub fn open_partial(folder: &OwnedFd, name: &str) -> io::Result<File> {
-    let base = OFlags::RDWR | OFlags::NOFOLLOW | OFlags::CLOEXEC;
+    // `NONBLOCK` so a FIFO in place of the file cannot hold the open; it is refused below.
+    let base = OFlags::RDWR | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC;
     let mode = Mode::from_raw_mode(FILE_MODE);
     let fd = match rustix::fs::openat(folder, name, base | OFlags::CREATE | OFlags::EXCL, mode) {
         Ok(fd) => fd,
@@ -54,7 +55,7 @@ pub fn open_partial(folder: &OwnedFd, name: &str) -> io::Result<File> {
 /// # Errors
 /// An I/O error, or `PermissionDenied` for a file that is not a plain file of this user.
 pub fn size_and_sha256(folder: &OwnedFd, name: &str) -> io::Result<(u64, String)> {
-    let flags = OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC;
+    let flags = OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC;
     let fd = rustix::fs::openat(folder, name, flags, Mode::empty())?;
     own_plain_file(&rustix::fs::fstat(&fd)?)?;
     let mut file = File::from(fd);
@@ -86,6 +87,46 @@ pub fn delete_file(folder: &OwnedFd, name: &str) -> io::Result<()> {
 /// An I/O error; `AlreadyExists` when `to` has `name`.
 pub fn move_folder(from: &OwnedFd, to: &OwnedFd, name: &str) -> io::Result<()> {
     rustix::fs::renameat_with(from, name, to, name, RenameFlags::NOREPLACE).map_err(Into::into)
+}
+
+/// Removes each entry of `folder` whose name is not in `kept`, so only the files of the order
+/// move to `copies/` (PULL-005).
+///
+/// # Errors
+/// An I/O error of the folder or of a removal.
+pub fn keep_only(folder: &OwnedFd, kept: &[&str]) -> io::Result<()> {
+    for entry in names(folder)? {
+        if !kept.iter().any(|name| name.as_bytes() == entry.as_bytes()) {
+            remove_below(folder, &entry, 1)?;
+        }
+    }
+    Ok(())
+}
+
+/// Whether `parent` has a folder `name` of this user; a link or any other entry is an error.
+///
+/// # Errors
+/// An I/O error, or `PermissionDenied` for an entry that is not a folder of this user.
+pub fn own_folder(parent: &OwnedFd, name: &CStr) -> io::Result<bool> {
+    let stat = match rustix::fs::statat(parent, name, AtFlags::SYMLINK_NOFOLLOW) {
+        Ok(stat) => stat,
+        Err(rustix::io::Errno::NOENT) => return Ok(false),
+        Err(error) => return Err(error.into()),
+    };
+    let folder = FileType::from_raw_mode(stat.st_mode) == FileType::Directory;
+    if folder && stat.st_uid == rustix::process::geteuid().as_raw() {
+        Ok(true)
+    } else {
+        Err(refused(
+            "an entry of the model cache is not a folder of this user",
+        ))
+    }
+}
+
+/// The bytes of the files in the folder `name` of `parent`; 0 when it cannot be read.
+#[must_use]
+pub fn bytes_in(parent: &OwnedFd, name: &CStr) -> u64 {
+    sizes(parent, name).map_or(0, |(bytes, _)| bytes)
 }
 
 fn open_folder(parent: impl AsFd, name: &CStr) -> rustix::io::Result<OwnedFd> {

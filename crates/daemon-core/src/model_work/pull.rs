@@ -154,6 +154,13 @@ pub fn pull_deadline(size_bytes: u64) -> Duration {
     Duration::from_secs((600 + size_bytes / (256 << 10)).min(24 * 3_600))
 }
 
+/// The deadline of the pull process at the daemon: the download, a read again of each byte at
+/// 32 MiB per second, and 5 minutes, so the process gives its own cause first.
+#[must_use]
+pub fn child_deadline(size_bytes: u64) -> Duration {
+    pull_deadline(size_bytes) + Duration::from_secs(300 + size_bytes / (32 << 20))
+}
+
 /// Whether a partial copy whose newest change was `age` ago is deleted.
 #[must_use]
 pub fn stale(age: Duration) -> bool {

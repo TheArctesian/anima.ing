@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 
 use anima_daemon::model::folders::private_below;
 use anima_daemon::model::pull::child::{PULL_MODE, address};
-use anima_daemon::model::pull::partial::{open_partial, remove_below, size_and_sha256};
+use anima_daemon::model::pull::partial::{keep_only, open_partial, remove_below, size_and_sha256};
 use anima_daemon::model::pull::{Cache, delete, pull};
 use daemon_core::model_work::cause::Cause;
 use daemon_core::model_work::machine::MachineSettings;
@@ -261,4 +261,43 @@ async fn pull_008_a_pull_that_does_not_fit_above_the_reserve_is_refused() {
     let pulled = pull(&parameters(Uuid::now_v7(), false), &place).await;
 
     assert_eq!(pulled, Err(Cause::DiskShare));
+}
+
+#[tokio::test]
+async fn pull_005_a_link_in_place_of_a_copy_is_never_a_downloaded_copy() {
+    let root = tempfile::tempdir().expect("root");
+    let settings = MachineSettings::default();
+    let copy = Uuid::now_v7();
+    let elsewhere = root.path().join("elsewhere");
+    std::fs::create_dir(&elsewhere).expect("elsewhere");
+    folder(root.path(), "copies");
+    symlink(
+        &elsewhere,
+        root.path().join("copies").join(copy.to_string()),
+    )
+    .expect("link");
+
+    let pulled = pull(&parameters(copy, false), &cache(root.path(), &settings)).await;
+
+    assert_eq!(pulled, Err(Cause::LimitDisk));
+}
+
+#[test]
+fn pull_005_only_the_files_of_the_order_stay_to_be_moved() {
+    let root = tempfile::tempdir().expect("root");
+    let copy = folder(root.path(), "partial/c");
+    let outside = root.path().join("outside");
+    std::fs::write(&outside, b"keep").expect("outside");
+    std::fs::write(root.path().join("partial/c/a.gguf"), b"a").expect("file");
+    std::fs::write(root.path().join("partial/c/x.py"), b"run").expect("planted");
+    symlink(&outside, root.path().join("partial/c/b.gguf")).expect("link");
+
+    keep_only(&copy, &["a.gguf"]).expect("kept");
+
+    let left: Vec<_> = std::fs::read_dir(root.path().join("partial/c"))
+        .expect("read")
+        .map(|entry| entry.expect("entry").file_name())
+        .collect();
+    assert_eq!(left, ["a.gguf"]);
+    assert_eq!(std::fs::read(&outside).expect("outside"), b"keep");
 }

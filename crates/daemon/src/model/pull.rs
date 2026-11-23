@@ -15,7 +15,7 @@ use daemon_core::model_work::machine::MachineSettings;
 use daemon_core::model_work::names::Word as _;
 use daemon_core::model_work::order::Parameters;
 use daemon_core::model_work::pull::{
-    PULL_CAUSES, PullOrder, fits, partial_room, pull_deadline, stale, total_bytes,
+    PULL_CAUSES, PullOrder, child_deadline, fits, partial_room, stale, total_bytes,
 };
 use daemon_core::model_work::releases::fetch::verdict_in;
 use serde_json::{Value, json};
@@ -77,12 +77,13 @@ pub async fn pull(parameters: &Parameters, cache: &Cache<'_>) -> Result<Option<V
         source: source.clone(),
         format: format.as_str().to_owned(),
         files: files.clone(),
-        models: cache.models.to_string_lossy().into_owned(),
+        // A path that is not UTF-8 would name a different folder in the process.
+        models: cache.models.to_str().ok_or(Cause::LimitDisk)?.to_owned(),
         reserve: cache.reserve,
         parent: std::process::id(),
     };
     let text = serde_json::to_vec(&order).map_err(|_| Cause::FetchFailed)?;
-    let ended = run_child(cache.program, child::PULL_MODE, text, pull_deadline(total)).await;
+    let ended = run_child(cache.program, child::PULL_MODE, text, child_deadline(total)).await;
     verdict_in(ended.ending(), &PULL_CAUSES)?;
     Ok(Some(downloaded(*copy, total, files.len())))
 }
@@ -104,15 +105,9 @@ fn refuse_unbuilt(gated: bool, settings: &MachineSettings) -> Result<(), Cause> 
 }
 
 /// Whether `copies/` holds the folder of the copy: the pull process moves it there only when
-/// each file was verified.
+/// each file was verified. Any other entry of that name is `limit_disk`, never a copy.
 fn present(copies: &OwnedFd, name: &CString) -> Result<bool, Cause> {
-    match rustix::fs::statat(copies, name, rustix::fs::AtFlags::SYMLINK_NOFOLLOW) {
-        Ok(stat) => Ok(
-            rustix::fs::FileType::from_raw_mode(stat.st_mode) == rustix::fs::FileType::Directory
-        ),
-        Err(rustix::io::Errno::NOENT) => Ok(false),
-        Err(_) => Err(Cause::LimitDisk),
-    }
+    partial::own_folder(copies, name).map_err(|_| Cause::LimitDisk)
 }
 
 /// Deletes each other partial copy that no pull touched for 7 days, then refuses a fifth one
@@ -150,13 +145,14 @@ pub fn delete(models: &Path, copy: Uuid) -> Result<Option<Value>, Cause> {
     Ok(None)
 }
 
-/// The bytes that the copy holds now, in `partial/` and `copies/`; 0 for each folder that
-/// cannot be read.
+/// The bytes that the copy holds now, in `partial/` and `copies/`, read relative to each
+/// folder with no link followed (Section 10); 0 for each folder that cannot be read.
 #[must_use]
 pub fn bytes_of(models: &Path, copy: Uuid) -> u64 {
-    let name = copy.to_string();
+    let name = name_of(copy);
     ["partial", "copies"]
         .into_iter()
-        .map(|folder| folders::bytes_below(&models.join(folder).join(&name)))
+        .filter_map(|folder| below(models, folder).ok())
+        .map(|folder| partial::bytes_in(&folder, &name))
         .sum()
 }

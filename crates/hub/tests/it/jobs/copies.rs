@@ -63,7 +63,7 @@ async fn pull(work: &Work, model: &str) -> Value {
     work.daemons.operate(PULL, variables).await
 }
 
-fn report(item: &Value, state: &str, extra: Value) -> Value {
+fn report(item: &Value, state: &str, extra: &Value) -> Value {
     let mut body = json!({ "id": item["id"], "attempt": item["attempt"], "state": state });
     if let (Some(body), Some(extra)) = (body.as_object_mut(), extra.as_object()) {
         body.extend(extra.clone());
@@ -79,16 +79,16 @@ fn done(copy: &Value, copy_state: &str) -> Value {
 
 /// Claims the next item and reports it through `states`; the last report has `last`.
 async fn run(work: &Work, token: &str, states: &[&str], last: Value) -> Value {
-    let (status, item) = work.claim(token, &model_claim(&json!([]))).await;
-    assert_eq!(status, StatusCode::OK, "{item}");
+    let (claimed, item) = work.claim(token, &model_claim(&json!([]))).await;
+    assert_eq!(claimed, StatusCode::OK, "{item}");
     for (step, state) in states.iter().enumerate() {
         let extra = if step + 1 == states.len() {
             last.clone()
         } else {
             json!({})
         };
-        let (status, body) = work.report(token, &report(&item, state, extra)).await;
-        assert_eq!(status, StatusCode::OK, "{state}: {body}");
+        let (answered, body) = work.report(token, &report(&item, state, &extra)).await;
+        assert_eq!(answered, StatusCode::OK, "{state}: {body}");
     }
     item
 }
@@ -131,12 +131,12 @@ async fn pull_001_a_pull_goes_to_the_named_machine_and_shows_its_progress(pool: 
     assert_eq!(item["secrets"], json!([]));
 
     for state in ["preparing", "running"] {
-        let (status, body) = work.report(&token, &report(&item, state, json!({}))).await;
+        let (status, body) = work.report(&token, &report(&item, state, &json!({}))).await;
         assert_eq!(status, StatusCode::OK, "{body}");
     }
     let progress = json!({ "progress": { "bytes": 40, "totalBytes": 100, "bytesPerSecond": 10 } });
     let (status, body) = work
-        .report(&token, &report(&item, "running", progress))
+        .report(&token, &report(&item, "running", &progress))
         .await;
     assert_eq!(status, StatusCode::OK, "{body}");
     let listed = copies(&work).await;
@@ -146,7 +146,7 @@ async fn pull_001_a_pull_goes_to_the_named_machine_and_shows_its_progress(pool: 
 
     let finish = done(&copy["id"], "downloaded");
     for (state, extra) in [("finishing", json!({})), ("done", finish)] {
-        let (status, body) = work.report(&token, &report(&item, state, extra)).await;
+        let (status, body) = work.report(&token, &report(&item, state, &extra)).await;
         assert_eq!(status, StatusCode::OK, "{body}");
     }
     let listed = copies(&work).await;
@@ -191,10 +191,10 @@ async fn pull_009_a_removal_deletes_the_copy_on_its_machine(pool: sqlx::PgPool) 
     assert_eq!(item["type"], "copy_delete");
     assert_eq!(item["parameters"], json!({ "copy": copy }));
     for state in ["preparing", "running", "finishing"] {
-        work.report(&token, &report(&item, state, json!({}))).await;
+        work.report(&token, &report(&item, state, &json!({}))).await;
     }
     let (status, body) = work
-        .report(&token, &report(&item, "done", done(&copy, "failed")))
+        .report(&token, &report(&item, "done", &done(&copy, "failed")))
         .await;
     assert_eq!(status, StatusCode::OK, "{body}");
     assert!(
@@ -207,7 +207,7 @@ async fn pull_009_a_removal_deletes_the_copy_on_its_machine(pool: sqlx::PgPool) 
     assert_ne!(waiting, copy, "a removed copy is not pulled again");
     let removed = work.daemons.operate(REMOVE, json!({ "id": waiting })).await;
     assert_eq!(removed["data"]["removeModelCopy"], Value::Null, "{removed}");
-    assert!(copies(&work).await.is_empty());
+    assert_eq!(copies(&work).await.len(), 0);
     let (status, _) = work.claim(&token, &model_claim(&json!([]))).await;
     assert_eq!(
         status,

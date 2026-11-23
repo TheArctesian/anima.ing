@@ -57,15 +57,25 @@ fn work() -> Result<(), Cause> {
     let downloads = download_all(&order, &folder);
     within(&runtime, pull_deadline(order.total_bytes()), downloads)
         .ok_or(Cause::SourceFailed)??;
+    let kept: Vec<&str> = order
+        .files
+        .iter()
+        .map(|file| flat_name(&file.name))
+        .collect();
+    partial::keep_only(&folder, &kept).map_err(|_| Cause::LimitDisk)?;
     for file in &order.files {
         verify(&folder, file)?;
     }
     let copies = below(Path::new("copies")).map_err(|_| Cause::LimitDisk)?;
-    match partial::move_folder(&partial_root, &copies, &name) {
+    let moved = partial::move_folder(&partial_root, &copies, &name);
+    let name = std::ffi::CString::new(name).map_err(|_| Cause::LimitDisk)?;
+    match moved {
         Ok(()) => Ok(()),
-        // An earlier pull of this copy moved it already; its files were verified then.
+        // An earlier pull of this copy moved its folder already; its files were verified then.
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-            let name = std::ffi::CString::new(name).map_err(|_| Cause::LimitDisk)?;
+            if !matches!(partial::own_folder(&copies, &name), Ok(true)) {
+                return Err(Cause::LimitDisk);
+            }
             partial::remove_below(&partial_root, &name, 0).map_err(|_| Cause::LimitDisk)
         }
         Err(_) => Err(Cause::LimitDisk),

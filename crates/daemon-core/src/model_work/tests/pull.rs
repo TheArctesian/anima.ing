@@ -5,8 +5,8 @@ use uuid::Uuid;
 use crate::model_work::cause::Cause;
 use crate::model_work::order::{PullFile, PullSource};
 use crate::model_work::pull::{
-    MAX_PARTIAL, PART_BYTES, PARTIAL_AGE, PULL_CAUSES, PullOrder, address_segments, fits,
-    partial_room, progress, pull_deadline, range_start, resume_from, stale,
+    MAX_PARTIAL, PART_BYTES, PARTIAL_AGE, PULL_CAUSES, PullOrder, address_segments, child_deadline,
+    fits, partial_room, progress, pull_deadline, range_start, resume_from, stale,
 };
 use crate::model_work::releases::fetch::{Ending, reply_in, verdict_in};
 
@@ -149,6 +149,7 @@ fn a_pull_may_take_longer_for_more_bytes_up_to_a_day() {
     assert_eq!(pull_deadline(0), Duration::from_mins(10));
     assert!(pull_deadline(10 << 30) > pull_deadline(1 << 30));
     assert_eq!(pull_deadline(u64::MAX), Duration::from_hours(24));
+    assert!(child_deadline(100 << 30) > pull_deadline(100 << 30) + Duration::from_mins(5));
 }
 
 #[test]

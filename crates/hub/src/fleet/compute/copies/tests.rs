@@ -276,5 +276,5 @@ fn the_pull_item_has_the_members_of_k11_and_the_machine() {
     assert_eq!(parameters["source"]["organisation"], "unsloth");
     assert_eq!(parameters["source"]["repository"], "Qwen3-8B-GGUF");
     assert_eq!(parameters["gated"], false);
-    assert!(wanted.secrets.is_empty());
+    assert_eq!(wanted.secrets.len(), 0);
 }

@@ -256,7 +256,7 @@ mod reports {
         let failed = reported(&claimed, &full).unwrap();
         assert_eq!(failed.state, State::Failed);
         assert_eq!(failed.reason.as_deref(), Some("disk_share"));
-        assert!(failed.refused_by.is_empty());
+        assert_eq!(failed.refused_by.len(), 0);
         for cause in ["policy", "switch_off"] {
             let later = report(WorkState::Refused, Some(result(Some(cause), None)), 0);
             let again = reported(&claimed, &later).unwrap();
