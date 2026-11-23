@@ -8,7 +8,7 @@ use agent_threads::git::Status;
 
 use super::changes::{self, Look};
 use super::checkpoint;
-use super::place::{self, Worktree, own};
+use super::place::{self, Worktree, own, shared};
 use super::project::refs;
 use super::run::settings::{self, Setting};
 use super::run::{Git, GitError, Run, said};
@@ -131,11 +131,11 @@ fn default_branch(
 async fn ahead(git: &Git, worktree: &Worktree, from: &str, to: &str) -> u32 {
     let range = format!("{from}..{to}");
     let count = ["rev-list", "--count", "--end-of-options", &range, "--"];
-    // The history is only in the repository of the person; a count decides nothing alone.
-    let count = own::borrowing(
-        Run::new(worktree.folder(), count),
-        &worktree.record().common_dir,
-    );
-    let count = git.text(count).await;
+    // A commit of a remote that the checked copy does not have yet is copied first; when
+    // that fails the count is 0, and a count decides nothing alone.
+    if shared::learn(git, worktree, &[from, to]).await.is_err() {
+        return 0;
+    }
+    let count = git.text(Run::new(worktree.folder(), count)).await;
     count.ok().and_then(|count| count.parse().ok()).unwrap_or(0)
 }

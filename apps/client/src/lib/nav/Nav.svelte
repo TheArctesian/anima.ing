@@ -75,15 +75,25 @@
 
 <nav id="main-nav" aria-label="Main" data-shifts-with-banner>
   <!-- The top row holds the window buttons on a Mac, and moves the window there (data-tauri-drag-region). -->
+  <!-- Collapsed, the bar is one rail on every page, the rail of the page Code: the top row holds the window buttons
+       alone, and the mark below it opens the bar (operator, 2026-11-22). -->
   <div class="bar" data-tauri-drag-region>
-    {#if canCollapse && ontogglecollapse}
+    {#if canCollapse && ontogglecollapse && !collapsed}
       <CollapseToggle {collapsed} ontoggle={ontogglecollapse} />
     {/if}
   </div>
-  <div class="brand">
-    <img src={asset('/logo.png')} alt="" width="24" height="24" />
-    <span class="words">Anima.ing</span>
-  </div>
+  {#if canCollapse && ontogglecollapse && collapsed}
+    <div class="brand">
+      <CollapseToggle {collapsed} ontoggle={ontogglecollapse}>
+        <img src={asset('/logo.png')} alt="" width="24" height="24" />
+      </CollapseToggle>
+    </div>
+  {:else}
+    <div class="brand">
+      <img src={asset('/logo.png')} alt="" width="24" height="24" />
+      <span class="words">Anima.ing</span>
+    </div>
+  {/if}
   {@render destination(DEVICES)}
   <!-- The phone bar has four destinations (MOB-010), so the page is not in it. -->
   <!-- Only the desktop application reads the session files of its computer (THR-017). -->

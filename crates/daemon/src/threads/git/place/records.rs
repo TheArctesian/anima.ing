@@ -123,6 +123,35 @@ pub fn checked(place: &Path) -> Result<(), BadRecords> {
     Ok(())
 }
 
+/// Marks each file and folder of the records as used now. A system that removes what was not
+/// used for a long time (`/var/tmp` on Linux, after about 30 days) then keeps them. The runner
+/// calls it once a day while it runs.
+///
+/// # Errors
+/// The error of the file system for the folder of the records itself; a file below it that
+/// cannot be marked is left.
+pub fn touch(place: &Path) -> std::io::Result<()> {
+    let now = std::fs::FileTimes::new()
+        .set_accessed(std::time::SystemTime::now())
+        .set_modified(std::time::SystemTime::now());
+    let mut folders = vec![place.to_owned()];
+    while let Some(folder) = folders.pop() {
+        for entry in std::fs::read_dir(&folder)?.flatten() {
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
+            if kind.is_dir() {
+                folders.push(entry.path());
+            } else if kind.is_file() {
+                // A file that is read-only or gone in between is left: the next day comes.
+                let _ = std::fs::File::open(entry.path()).and_then(|file| file.set_times(now));
+            }
+        }
+        let _ = std::fs::File::open(&folder).and_then(|folder| folder.set_times(now));
+    }
+    Ok(())
+}
+
 /// A system with no owners and modes of this kind has no checked place yet.
 #[cfg(not(unix))]
 pub fn opened(_place: &Path) -> Result<PathBuf, BadRecords> {
@@ -221,6 +250,29 @@ mod tests {
             opened(&through.join("anima-502")),
             Err(BadRecords::OpenAbove)
         );
+    }
+
+    #[test]
+    fn a_touch_marks_each_file_of_the_records_as_used_now() {
+        let (_keep, above) = above();
+        let place = opened(&above.join("anima-501")).expect("the records");
+        std::fs::create_dir_all(place.join("a/b")).expect("folders");
+        let file = place.join("a/b/pack");
+        std::fs::write(&file, "x").expect("a file");
+        let long_ago = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_hours(24);
+        let old = std::fs::FileTimes::new()
+            .set_accessed(long_ago)
+            .set_modified(long_ago);
+        std::fs::File::options()
+            .write(true)
+            .open(&file)
+            .and_then(|file| file.set_times(old))
+            .expect("old times");
+        touch(&place).expect("a touch");
+        let now = std::fs::metadata(&file)
+            .and_then(|about| about.modified())
+            .expect("a time");
+        assert!(now > long_ago + std::time::Duration::from_hours(24));
     }
 
     #[test]
