@@ -272,6 +272,16 @@ async fn th61_a_thread_the_runner_started_is_listed_as_started_by_anima_after_a_
         tokio::time::sleep(std::time::Duration::from_millis(250)).await;
     }
     assert!(marked, "the session the program said is marked");
+    // A change of the person keeps the mark.
+    change(&mut client, thread, ListingChange::Pin { on: true }).await;
+    // The thread leaves the runner, so only its listing can hold the mark across the restart.
+    stopped(&mut client, thread).await;
+    change(&mut client, thread, ListingChange::Remove).await;
+    assert_eq!(
+        state_of(&mut client, thread).await,
+        None,
+        "the runner forgot it"
+    );
     drop(client);
 
     kit.end_runner();

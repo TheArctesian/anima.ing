@@ -5,6 +5,7 @@
 use agent_threads::control::{
     Listing, ListingChange, Outcome, ProjectChange, Refusal, RunState, project_changed,
 };
+use agent_threads::drive::Program;
 use uuid::Uuid;
 
 use super::Runner;
@@ -57,14 +58,22 @@ impl Runner {
     /// said its session and the listing does not say so yet. The mark comes only from the
     /// threads of the runner. Whether the listing changed.
     pub(super) fn mark_started(&mut self, thread: Uuid) -> bool {
-        let Some(session) = self
-            .threads
-            .get(&thread)
-            .and_then(|started| started.row.session.as_deref())
+        let Some(started) = self.threads.get(&thread) else {
+            return false;
+        };
+        let Some(session) = started
+            .row
+            .session
+            .as_deref()
             .and_then(|id| Uuid::parse_str(id).ok())
         else {
             return false;
         };
+        // Claude Code is given its session: a different one it says is not a session that the
+        // runner started. Codex names its own.
+        if started.row.program == Program::ClaudeCode && session != thread {
+            return false;
+        }
         if self
             .listings
             .get(&session)
@@ -73,6 +82,7 @@ impl Runner {
             return false;
         }
         if !self.listings.contains_key(&session) && self.listings.len() >= MAX_LISTINGS {
+            tracing::warn!(%thread, "the listings are full: a thread that the runner started is not marked");
             return false;
         }
         let listing = self.listings.entry(session).or_insert_with(|| Listing {
