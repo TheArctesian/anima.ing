@@ -1,5 +1,3 @@
-//! What a check is to the rest of the hub, and what callers pass in to change one.
-
 use std::{fmt, net::IpAddr};
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -21,12 +19,11 @@ use crate::{
 
 pub use crate::api_errors::FieldError;
 
-/// A check as stored. HTTP and SNMP secrets are never part of it (LOG-007).
+/// HTTP and SNMP secrets are never part of a stored check (LOG-007).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Check {
     pub id: CheckId,
     pub device: DeviceId,
-    /// The group this check belongs to.
     pub parent: Option<CheckId>,
     pub name: String,
     pub config: CheckConfig,
@@ -39,9 +36,7 @@ pub struct Check {
     pub cert_not_after: Option<DateTime<Utc>>,
     /// Registration expiry from the last RDAP reply that gave one (D-29).
     pub domain_not_after: Option<DateTime<Utc>>,
-    /// The address the last probe that resolved one used.
     pub resolved_ip: Option<IpAddr>,
-    /// Only PUSH checks have one.
     pub push_token: Option<PushToken>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -53,9 +48,8 @@ impl Check {
         self.config.kind()
     }
 
-    /// Whole days from `now` to the certificate's expiry, rounded down, so negative once it
-    /// has expired. `None` unless the check is TLS or HTTPS and has seen a certificate
-    /// (CHK-007).
+    /// Whole days to the certificate's expiry, negative once it expired; `None` unless a TLS or
+    /// HTTPS check has seen a certificate (CHK-007).
     #[must_use]
     pub fn certificate_days_left(&self, now: DateTime<Utc>) -> Option<i32> {
         let secure = match &self.config {
@@ -69,12 +63,8 @@ impl Check {
         secure.then(|| whole_days(not_after, now))
     }
 
-    /// Whole days from `now` to the domain's registration expiry, rounded down, so negative
-    /// once it has expired. `None` unless the check is a domain expiry check and RDAP gave a
-    /// date (D-29).
-    ///
-    /// The days count from the last expiry date the registry gave: a later reply without a
-    /// date keeps it. The status follows the latest probe alone, so that reply is Unknown.
+    /// Whole days to the registration expiry, negative once it expired; `None` unless a domain
+    /// expiry check got a date (D-29). A later reply without a date keeps the last date.
     #[must_use]
     pub fn domain_days_left(&self, now: DateTime<Utc>) -> Option<i32> {
         let not_after = self.domain_not_after?;
@@ -82,15 +72,13 @@ impl Check {
     }
 }
 
-/// Whole days from `now` to `end`, rounded down (negative once `end` has passed), held to
-/// the range of `i32`.
 #[must_use]
 pub(in crate::fleet::checks) fn whole_days(end: DateTime<Utc>, now: DateTime<Utc>) -> i32 {
     let days = (end - now).num_seconds().div_euclid(86_400);
     i32::try_from(days).unwrap_or(if days < 0 { i32::MIN } else { i32::MAX })
 }
 
-/// One stored result of a check (CHK-003), as the heartbeat list shows it.
+/// One stored result of a check (CHK-003).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Heartbeat {
     pub at: DateTime<Utc>,
@@ -99,19 +87,16 @@ pub struct Heartbeat {
     pub message: Option<String>,
 }
 
-/// The token in a PUSH check's URL: 32 random bytes in unpadded base64url. It is the
-/// only authentication of the push route, so `Debug` never prints it (LOG-007).
+/// The only authentication of the push route, so `Debug` never prints it (LOG-007).
 #[derive(Clone, PartialEq, Eq)]
 pub struct PushToken(String);
 
 impl PushToken {
-    /// The token for these random bytes; the caller supplies the randomness.
     #[must_use]
     pub fn from_random(bytes: &[u8; 32]) -> Self {
         Self(URL_SAFE_NO_PAD.encode(bytes))
     }
 
-    /// The token as stored, for the push path.
     #[must_use]
     pub fn expose(&self) -> &str {
         &self.0
@@ -128,7 +113,6 @@ impl fmt::Debug for PushToken {
     }
 }
 
-/// What a check does, with the parts that are not stored in `config`.
 pub enum Definition {
     /// Every type except HTTP, SNMP and PUSH.
     Config(CheckConfig),
@@ -136,7 +120,6 @@ pub enum Definition {
     Http(HttpInput),
     /// The SNMP check with its secrets in hand; they are sealed apart from `config`.
     Snmp(SnmpInput),
-    /// A PUSH check with a new token.
     Push(PushToken),
 }
 
@@ -152,8 +135,7 @@ impl Definition {
     }
 }
 
-/// What a new check starts with (D-26): the settings the hub's default check takes and the
-/// client pre-fills in the check form. Bounds as `checks.checks`.
+/// What a new check starts with (D-26); bounds as `checks.checks`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CheckDefaults {
     pub interval_seconds: u32,
@@ -163,7 +145,6 @@ pub struct CheckDefaults {
 }
 
 impl CheckDefaults {
-    /// The settings of a new check: these defaults, not inverted.
     #[must_use]
     pub const fn settings(self) -> CheckSettings {
         CheckSettings {
@@ -176,15 +157,13 @@ impl CheckDefaults {
     }
 }
 
-/// How a check write seals its HTTP and SNMP secrets: with this vault, and SNMP secrets for
-/// this device host, the host of the check's device as the operator sees it (SEC-010).
+/// SNMP secrets are sealed for the host of the check's device as the operator sees it (SEC-010).
 #[derive(Clone, Copy)]
 pub struct Sealer<'a> {
     pub vault: &'a Vault,
     pub host: &'a str,
 }
 
-/// A check to add (the API's `CreateCheckInput`).
 pub struct NewCheck {
     pub device: DeviceId,
     /// A group check on the same device.
@@ -194,16 +173,10 @@ pub struct NewCheck {
     pub settings: CheckSettings,
 }
 
-/// The fields to change on a check (the API's `UpdateCheckInput`); `None` keeps a field.
+/// `None` keeps a field. Only the hub's method repair changes a check's type (CHK-013).
 ///
-/// An operator update never changes the type of a check; only the hub's method repair does
-/// (CHK-013). An HTTP definition replaces the whole HTTP setup, but an empty secret keeps the
-/// stored one: an empty value of a secret header keeps the stored value of the header with
-/// that name in the same position, an empty basic password keeps the stored password and an
-/// empty bearer token keeps the stored token. An SNMP definition keeps an absent or empty
-/// community or password only when the version, the user name and the device host are the
-/// ones they were entered for; otherwise it is a field error that asks for it (SEC-005,
-/// SEC-010).
+/// An empty HTTP secret keeps the stored one. An SNMP secret is kept only while the version,
+/// the user name and the device host are the ones it was entered for (SEC-005, SEC-010).
 #[derive(Default)]
 pub struct CheckChange {
     /// `Some(None)` removes the check from its group.
@@ -215,12 +188,10 @@ pub struct CheckChange {
     pub retry_interval_seconds: Option<u32>,
     pub degraded_threshold_ms: Option<u32>,
     pub invert: Option<bool>,
-    /// True when a group's change moves this check in or out of the group. Every other change
-    /// is an operator edit and marks the check (CHK-013).
+    /// True for a group's change; every other change is an operator edit and marks the check (CHK-013).
     pub regrouping: bool,
 }
 
-/// What a lookup could not find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Missing {
     Device(DeviceId),
@@ -240,7 +211,6 @@ impl fmt::Display for Missing {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Beat {
     pub at: DateTime<Utc>,
-    /// The heartbeat status, as `evaluate` returned it.
     pub status: Status,
     pub response_time_ms: Option<u32>,
     /// Cleaned again when written: at most 512 characters, no control characters.
@@ -254,9 +224,8 @@ pub struct Beat {
 }
 
 impl Beat {
-    /// The beat for a probe result and its evaluation. The response time is kept only for an
-    /// Up or Degraded beat of a probe that succeeded, so the average describes answered
-    /// probes: an inverted Up (a failed probe) has none, as `evaluate` ignores it too.
+    /// The response time is kept only for an Up or Degraded beat of a probe that succeeded, so
+    /// the average describes answered probes.
     #[must_use]
     pub fn of(
         probe: ProbeResult,
@@ -279,14 +248,12 @@ impl Beat {
     }
 }
 
-/// One attempt to record with `record_attempt`: the evaluation runs on the check's stored
-/// state and settings inside the write, so a beat, pause or change that landed during the
-/// probe is not lost.
+/// The evaluation runs on the stored state and settings inside the write, so a beat, pause or
+/// change that landed during the probe is not lost.
 #[derive(Clone, Copy, Debug)]
 pub(in crate::fleet::checks) struct Attempt<'a> {
     pub(in crate::fleet::checks) result: &'a ProbeResult,
-    /// Maintenance covers the check. It only turns a Down beat into a Maintenance beat
-    /// (CHK-006); every other status is recorded as evaluated.
+    /// It only turns a Down beat into a Maintenance beat (CHK-006).
     pub(in crate::fleet::checks) in_maintenance: bool,
     pub(in crate::fleet::checks) at: DateTime<Utc>,
     /// The domain a domain expiry probe asked about. Its expiry date is kept only while the
@@ -296,35 +263,27 @@ pub(in crate::fleet::checks) struct Attempt<'a> {
     pub(in crate::fleet::checks) device: &'a Device,
 }
 
-/// What `record_beat` did with a beat.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[must_use]
 pub enum Recorded {
-    /// The heartbeat, its aggregates and the check's state were written.
     Written,
     /// Nothing was written: the check is paused, or the beat is not newer than its last beat.
     Skipped,
 }
 
-/// The stored HTTP configuration of a check and the secrets that open for it: what one HTTP
-/// probe sends, read together so the secrets go only where this configuration points
-/// (SEC-005). Like [`HttpSecrets`] it has no `Debug` or `Clone`.
+/// Read together with its secrets, so they go only where this configuration points (SEC-005).
 pub struct HttpSetup {
     pub config: HttpConfig,
-    /// `None` when the check holds no secrets.
     pub secrets: Option<HttpSecrets>,
 }
 
-/// The stored SNMP configuration of a check and the secrets that open for it, read together
-/// so the secrets go only to the version and user they were given for (SEC-005). Like
-/// [`SnmpSecrets`] it has no `Debug` or `Clone`.
+/// Read together with its secrets, so they go only to the version and user they were given
+/// for (SEC-005).
 pub struct SnmpSetup {
     pub config: SnmpConfig,
-    /// `None` when the check holds no secrets.
     pub secrets: Option<SnmpSecrets>,
 }
 
-/// A check whose next probe is due, as the scheduler needs it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Due {
     pub id: CheckId,
@@ -336,7 +295,6 @@ pub struct Due {
     pub config: Option<CheckConfig>,
     pub settings: CheckSettings,
     pub state: CheckState,
-    /// When the last beat was recorded: for a domain expiry check, its last RDAP query
-    /// (R-102).
+    /// For a domain expiry check, its last RDAP query (R-102).
     pub last_beat_at: Option<DateTime<Utc>>,
 }

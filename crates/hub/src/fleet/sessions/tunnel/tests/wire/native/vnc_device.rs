@@ -1,6 +1,3 @@
-//! A VNC device on loopback for the native-gateway tests: it asks for a VNC password,
-//! accepts or refuses it, shows a 64 x 48 red screen and reports the keys it gets.
-
 use std::net::SocketAddr;
 
 use tokio::{
@@ -14,11 +11,9 @@ pub(super) const HEIGHT: u16 = 48;
 
 pub(super) struct VncDevice {
     pub(super) address: SocketAddr,
-    /// Each key the client sent: its keysym and whether it was pressed.
     pub(super) keys: mpsc::UnboundedReceiver<(u32, bool)>,
 }
 
-/// Starts a device for one connection that accepts the password or not.
 pub(super) async fn vnc_device(accepts: bool) -> VncDevice {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
@@ -45,7 +40,6 @@ async fn serve(
     }
 }
 
-/// The opening up to `ServerInit`; `false` when the device refused the password.
 async fn signed_in(client: &mut TcpStream, accepts: bool) -> std::io::Result<bool> {
     client.write_all(b"RFB 003.008\n").await?;
     client.read_exact(&mut [0; 12]).await?;
@@ -67,8 +61,7 @@ async fn signed_in(client: &mut TcpStream, accepts: bool) -> std::io::Result<boo
     Ok(true)
 }
 
-/// Reads one client message of type `kind`. The first request, for the whole screen, is
-/// answered with one Raw rectangle, red.
+/// The first update request, for the whole screen, is answered with one red Raw rectangle.
 async fn hear(
     client: &mut TcpStream,
     kind: u8,

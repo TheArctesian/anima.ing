@@ -1,6 +1,3 @@
-//! What the database tests share: two fixture devices, times on the database's own calendar,
-//! and writes and reads of stored rows.
-
 use chrono::{DateTime, Days, NaiveTime, Utc};
 use sqlx::PgPool;
 
@@ -23,14 +20,12 @@ pub(super) async fn database_now(pool: &PgPool) -> DateTime<Utc> {
         .unwrap()
 }
 
-/// `time` on the UTC day `days_ago` days before the database's: in the past, and inside the
-/// window `metrics.ensure_day_partition` accepts, whatever the hour.
+/// The database's own day, so the time is past and inside the window `metrics.ensure_day_partition` accepts.
 pub(super) async fn day_at(pool: &PgPool, days_ago: u64, time: &str) -> DateTime<Utc> {
     let day = database_now(pool).await.date_naive() - Days::new(days_ago);
     day.and_time(time.parse::<NaiveTime>().unwrap()).and_utc()
 }
 
-/// Records `values` (kind, label, value) for `device` taken at `at`.
 pub(super) async fn write(
     pool: &PgPool,
     device: DeviceId,
@@ -44,7 +39,6 @@ pub(super) async fn write(
     record_collection(pool, device, at, &samples).await.unwrap();
 }
 
-/// How many rows `table` of schema `metrics` has.
 pub(super) async fn rows(pool: &PgPool, table: &str) -> i64 {
     sqlx::query_scalar(&format!("SELECT count(*) FROM metrics.{table}"))
         .fetch_one(pool)

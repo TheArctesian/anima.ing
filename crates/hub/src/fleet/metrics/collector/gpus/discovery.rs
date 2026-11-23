@@ -1,33 +1,18 @@
 //! When the hub looks for a device's GPUs, and how it numbers what it finds (MET-006, MET-007,
 //! MET-009). Pure: the time comes in as a parameter.
 //!
-//! A look is per vendor. A vendor that answered replaces its own GPUs; a vendor whose read did
-//! not finish keeps the GPUs known before and is looked at again the next round, so one hung
-//! tool never hides the others' GPUs.
+//! A look is per vendor, so one hung tool never hides the others' GPUs. A failed read counts
+//! as no GPU for a vendor with none known (D-30), so a device without that card is not read
+//! each round, and as an unfinished read for a vendor with GPUs known, so a broken driver does
+//! not hide them until the next 24-hour look.
 //!
-//! A failed read (the tool ran and exited non-zero, not 127) counts by what was known before
-//! the look. For a vendor with no GPUs known it is no GPU, so a device without that vendor's
-//! card is not read again each round (D-30). For a vendor with GPUs known it is a read that did
-//! not finish, so a driver that broke after an upgrade, or a GPU that fell off the bus, does
-//! not hide the vendor's GPUs until the next 24-hour look. But a full look at a vendor that was
-//! already pending counts its failed read as no GPU, so a tool that keeps failing is cleared
-//! at the next full look (24 hours, a restart or a failed collection) and is not read every
-//! round forever. A missing tool (exit 127) is always no GPU. AMD never fails: `grep` exits 2
-//! when a glob matched no file, so known AMD cards are dropped when it prints nothing.
+//! The vendor's own number only matches a reading to its GPU and never becomes the device
+//! number, so a hostile one still gives a number from 0 to [`MAX_GPU_INDEX`], the K8 range.
 //!
-//! A GPU keeps its device number while its vendor reports it under the same number of its own
-//! (`nvidia-smi` index, DRM card number, `ioreg` order, 0 for Intel); a new GPU takes the
-//! lowest free number. The vendor's own number only matches a reading to its GPU and never
-//! becomes the device number, so an odd or hostile one (a DRM card number of 4 billion) still
-//! gives a number from 0 to [`MAX_GPU_INDEX`], the K8 range. A failed collection keeps the
-//! numbers and only makes the next collection look at every vendor.
-//!
-//! Limitations: the numbers are kept in the collector's memory while the hub runs, not stored,
-//! so after a hub restart, or once a device is collected again after a pause, the first look
-//! numbers its GPUs afresh in vendor order (NVIDIA, AMD, Intel; Apple on macOS). And
-//! `nvidia-smi` renumbers the GPUs after one drops off the bus, and the spec 6.6 query gives no
-//! PCI address to match on, so a later NVIDIA GPU can then take over the series of the one that
-//! dropped.
+//! The numbers are kept in the collector's memory, not stored: after a hub restart or a pause
+//! the first look numbers the GPUs afresh in vendor order. `nvidia-smi` renumbers the GPUs
+//! after one drops off the bus and gives no PCI address, so a later NVIDIA GPU can take over
+//! the series of the one that dropped.
 
 use std::time::Duration;
 
@@ -41,11 +26,8 @@ use crate::fleet::metrics::{Gpu, GpuVendor, MAX_LABELS, Reading};
 pub(in crate::fleet::metrics::collector) const EVERY: TimeDelta = TimeDelta::hours(24);
 
 /// How much later a device's boot time must read than at the last discovery to count as a
-/// restart. The boot time is the collection's hub time minus the uptime the device gives, and
-/// the uptime is read up to 20 seconds (the collection deadline) after that time, so one boot
-/// reads up to 20 seconds apart, more when the hub clock is stepped. 60 seconds is three times
-/// that. A false restart costs one extra look; a restart within 60 seconds of the last
-/// discovery's boot waits for the 24-hour look.
+/// restart: one boot reads up to 20 seconds apart (the collection deadline), and a false
+/// restart costs only one extra look.
 pub(in crate::fleet::metrics::collector) const RESTART_TOLERANCE: TimeDelta =
     TimeDelta::seconds(60);
 
@@ -85,8 +67,6 @@ pub(in crate::fleet::metrics::collector) struct Look {
     pub(in crate::fleet::metrics::collector) boot_at: Option<DateTime<Utc>>,
 }
 
-/// The boot time of the device whose `reading` was taken at `at`: `at` less its uptime.
-/// `None` without an uptime or when it does not fit the calendar.
 pub(in crate::fleet::metrics::collector) fn boot_at(
     reading: &Reading,
     at: DateTime<Utc>,
@@ -96,11 +76,6 @@ pub(in crate::fleet::metrics::collector) fn boot_at(
 }
 
 /// The look of the collection at `now`, of a device whose boot time reads `boot_at`, if any.
-/// Every vendor at the device's first collection since the hub started (nothing `known`), after
-/// a failed collection (`stale`), 24 hours after the last look or when the hub clock went back
-/// before it, after a restart (a boot time later than the one seen then by more than
-/// [`RESTART_TOLERANCE`]), and while the last look was within [`SETTLE`] of boot. Otherwise
-/// only the pending vendors, if any.
 pub(in crate::fleet::metrics::collector) fn due(
     known: Option<&Discovered>,
     boot_at: Option<DateTime<Utc>>,
@@ -129,7 +104,6 @@ pub(in crate::fleet::metrics::collector) fn due(
 }
 
 impl Look {
-    /// Whether this look reads `vendor`.
     pub(in crate::fleet::metrics::collector) fn includes(&self, vendor: GpuVendor) -> bool {
         self.only.as_ref().is_none_or(|only| only.contains(&vendor))
     }

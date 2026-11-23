@@ -1,10 +1,5 @@
-//! The upgraded terminal up to a running shell (K4 Sections 8.4 and 8.5): the client's first
-//! message must be its size, within the first-size wait; the hub then asks the device for a
-//! PTY (`xterm-256color`, that size, no pixel size) and the login shell, and hands over to
-//! the relay (`relay`). Then it closes both sides.
-//!
-//! The client sets no other PTY value: the terminal type, the command and the environment
-//! are the hub's (GW-013).
+//! The terminal up to a running shell (K4 Sections 8.4 and 8.5). The client sets only the PTY
+//! size: the terminal type, the command and the environment are the hub's (GW-013).
 
 use std::sync::Arc;
 
@@ -29,8 +24,6 @@ use crate::fleet::sessions::{
 /// The terminal type the hub asks the device for (K4 Section 8.4).
 const TERM: &str = "xterm-256color";
 
-/// Runs the terminal from the upgrade to its first cause, then closes the client and the
-/// device side by side.
 pub(super) async fn run(
     client: WebSocket,
     signed_in: SignedIn,
@@ -64,7 +57,6 @@ pub(super) async fn run(
         writing,
         ..
     } = link;
-    // A write still waiting on the device is given up.
     drop(writing);
     tokio::join!(
         close_client(client, end.cause),
@@ -74,8 +66,6 @@ pub(super) async fn run(
 }
 
 impl Link<'_> {
-    /// Waits for the client's size, then opens the PTY and the shell at it. Each request
-    /// and its answer have the request wait, and race the end signal.
     async fn start(&mut self) -> Result<(), End> {
         let size = self.first_size().await?;
         let (cols, rows) = (u32::from(size.cols), u32::from(size.rows));
@@ -91,8 +81,7 @@ impl Link<'_> {
         self.replied(SHELL_REFUSED, due).await
     }
 
-    /// The client's first message, which must be `resize` (K4 Section 8.4), within the
-    /// first-size wait. WebSocket pings and pongs are not messages and do not count.
+    /// The client's first message must be `resize` (K4 Section 8.4).
     async fn first_size(&mut self) -> Result<Size, End> {
         let due = Instant::now() + self.timing.first_size;
         loop {
@@ -111,10 +100,6 @@ impl Link<'_> {
         }
     }
 
-    /// The device's answer to the PTY or shell request just sent, by `due`: `Failure` ends
-    /// the session `GATEWAY_ERROR` with `refused`, no answer `GATEWAY_ERROR` as well. Output
-    /// that comes first goes to the client; the device closing the channel is the remote
-    /// closing, the connection ending under it a failed connection. The hub keeps pinging.
     async fn replied(&mut self, refused: &'static str, due: Instant) -> Result<(), End> {
         loop {
             let message = tokio::select! {
@@ -139,12 +124,8 @@ impl Link<'_> {
     }
 }
 
-/// Hands one request to the connection by `due`, unless the session ends first; a request
-/// still waiting at `due` ends the session `GATEWAY_ERROR`. The hand-off is to russh's queue
-/// of a few commands, of which the hub uses one at a time, so it waits only when the
-/// connection's task has stopped: there is no ping here, unlike the wait for the answer.
-/// No ping during the hand-off is by design, as K4 Section 8.4 says: it waits only if the
-/// connection's task stopped, and the request wait ends it.
+/// No ping during the hand-off (K4 Section 8.4): russh's queue waits only when the connection's
+/// task stopped, and the request wait ends that.
 pub(super) async fn handed(
     tunnel: &mut Tunnel,
     request: impl Future<Output = Result<(), russh::Error>>,
@@ -160,7 +141,6 @@ pub(super) async fn handed(
     }
 }
 
-/// The first message's meaning: its size, or a protocol error for anything else.
 fn first(text: &str) -> Result<Size, End> {
     match control::parse(text) {
         Ok(Control::Resize(size)) => Ok(size),

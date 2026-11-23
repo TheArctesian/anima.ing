@@ -1,5 +1,4 @@
-//! The watchdog through the tick: one Error event per lateness episode, never for the hub's
-//! own downtime, retried when it cannot be written (CHK-010).
+//! The watchdog through the tick: one Error event per lateness episode (CHK-010).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -18,7 +17,6 @@ use crate::{
 
 const LATE: &str = "Check Service port on docker-host is late by more than 2 intervals";
 
-/// A scheduler that started a minute before `now`.
 async fn started_before(pool: &PgPool, now: DateTime<Utc>) -> Scheduler {
     let mut scheduler = scheduler(pool, &Bus::new(64));
     scheduler

@@ -1,5 +1,4 @@
-//! What a round plans: the devices it collects (D-2, MET-005), the devices whose operating
-//! system it detects first (DEV-025) and the GPU reads each collection runs (MET-006).
+//! What a collection round plans (D-2, MET-005, DEV-025, MET-006).
 
 use std::collections::BTreeSet;
 
@@ -131,7 +130,6 @@ fn met_006_a_collection_that_does_not_look_runs_only_the_known_vendors_reads() {
     assert_eq!(known.gpus.len(), 4);
 }
 
-/// The GPU part of a collection at `now` with the GPUs `known`, its reads answering `answers`.
 fn round(
     known: Option<Discovered>,
     answers: &[(GpuVendor, Answer)],

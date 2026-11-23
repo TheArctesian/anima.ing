@@ -1,5 +1,4 @@
-//! The device's policy on client instructions (K4 Section 4, RA-021, RA-033, GW-015): what
-//! each switch lets reach guacd, for RDP and VNC.
+//! What each policy switch lets reach guacd (K4 Section 4, RA-021, RA-033, GW-015).
 
 use guac_protocol::Instruction;
 use proptest::prelude::*;
@@ -194,14 +193,12 @@ fn instruction() -> impl Strategy<Value = Instruction> {
         .prop_map(|(opcode, args)| Instruction::new(opcode, args))
 }
 
-/// The stream index a forwarded instruction names in `args[0]`.
 fn index(sent: &Instruction) -> u32 {
     sent.args[0]
         .parse()
         .expect("forwarded stream indices are numbers")
 }
 
-/// Every client stream a forwarded instruction opened and has not ended.
 fn opens(sent: &Instruction, open: &mut Vec<u32>) {
     match sent.opcode.as_str() {
         "argv" => open.push(index(sent)),

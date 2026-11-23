@@ -1,5 +1,4 @@
-//! Docker and systemd configuration: ids, stored JSON, defaults and name rules (CHK-009,
-//! CHK-012, D-3).
+//! Docker and systemd check configuration (CHK-009, CHK-012, D-3).
 
 use crate::fleet::checks::config::{CheckConfig, CheckType, ConfigError, Reason};
 

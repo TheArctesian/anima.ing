@@ -1,6 +1,4 @@
-/// Wraps each async test in a throwaway database holding the K6 rows from
-/// `tests/fixtures/devices.sql`. These tests live in the crate because they call the
-/// store's `pub(super)` functions; public behaviour is tested in `tests/it`.
+/// In the crate because the tests call the store's `pub(super)` functions; public behaviour is in `tests/it`.
 macro_rules! store_test {
     ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
         #[sqlx::test(
@@ -64,11 +62,10 @@ fn fields(errors: &[FieldError]) -> Vec<&'static str> {
     errors.iter().map(|error| error.field).collect()
 }
 
-/// The last field error for a device whose only possibly bad field is `host`.
 fn host_error(host: &str) -> Option<FieldError> {
     validate_new_device(&new_device("pve-01", host))
         .err()
-        // Safe: name, kind, tags and ssh are valid here, so `host` is the only error to pop.
+        // name, kind, tags and ssh are valid, so `host` is the only error.
         .and_then(|mut e| e.pop())
 }
 
@@ -123,7 +120,6 @@ fn site_id(text: &str) -> SiteId {
     text.parse().unwrap()
 }
 
-/// A valid device record for the home site.
 fn record(name: &str) -> NewDevice {
     NewDevice {
         site: home(),

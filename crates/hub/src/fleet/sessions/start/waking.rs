@@ -1,10 +1,7 @@
-//! Waking a Down device before its session starts (K4 Section 1, RA-031, VPN-006): when the
-//! device is Down, has a MAC address and its site has a wake relay, `start` sends the packet
-//! through [`wake`] and the ticket's opening then waits longer.
+//! Waking a Down device before its session starts (K4 Section 1, RA-031, VPN-006).
 //!
-//! A wake that fails does not stop the start: [`wake`] wrote its Error event with the reason,
-//! the session may still connect, and the opening keeps its usual limit. No log or error here
-//! holds a host, an address or the MAC address (LOG-007).
+//! A wake that fails does not stop the start: [`wake`] wrote its Error event with the reason.
+//! No log or error here holds a host, an address or the MAC address (LOG-007).
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -17,10 +14,8 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// What `start` needs to wake the device first, which its own parameters do not give it:
-/// whether the device is asleep, and the vault, the hub's one address policy and the bus that
-/// [`wake`] uses. Without it `start` sends no packet. Sessions never read a device's status
-/// itself; the caller says.
+/// What `start` needs to wake the device first; without it `start` sends no packet. Sessions
+/// never read a device's status themselves; the caller says.
 #[derive(Clone, Debug)]
 pub struct Waking {
     /// The device is Down as checks judge it (`Device.status`).
@@ -31,8 +26,7 @@ pub struct Waking {
 }
 
 /// Whether a packet for `device` was sent at `now`, for the start a request of kind `by` asked
-/// for; the wake's event records `by` (LOG-013). None is tried unless the device is asleep, has
-/// a MAC address and its site has a wake relay.
+/// for; the wake's event records `by` (LOG-013).
 ///
 /// # Errors
 /// `Devices` when the site's wake relay cannot be read. A failed wake is not an error.

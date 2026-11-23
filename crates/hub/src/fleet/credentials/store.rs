@@ -1,8 +1,5 @@
-//! The only SQL for `credentials.secrets` and `credentials.source_secrets`, the tables this
-//! domain owns (CQ-032). Rows hold sealed values only (SEC-003).
-//!
-//! The table holds SSH parts and RDP and VNC passwords side by side. Every read, check and
-//! delete here takes the kinds it may match, so a caller sees and removes only its own kinds.
+//! The only SQL for this domain's tables (CQ-032); rows hold sealed values only (SEC-003).
+//! Every query takes the kinds it may match, so a caller sees and removes only its own kinds.
 //! The advisory lock is per device, not per kind, so writers of every kind share one lock order.
 
 use std::collections::HashSet;
@@ -16,20 +13,16 @@ use super::{Error, Sealed};
 
 const DEVICE_FKEY: &str = "secrets_device_id_fkey";
 
-/// A stored row as read back: the kind text and the sealed columns, not yet checked.
 #[derive(sqlx::FromRow)]
 pub(super) struct StoredSecret {
     pub(super) kind: String,
     pub(super) nonce: Vec<u8>,
     pub(super) ciphertext: Vec<u8>,
     pub(super) key_id: String,
-    /// The host migration 0220 recorded for a row sealed before its host was sealed with it
-    /// (SEC-011); `None` for every row sealed since.
+    /// The host of a row sealed before its host was sealed with it (SEC-011).
     pub(super) legacy_host: Option<String>,
 }
 
-/// Waits for, then holds until the transaction ends, this domain's advisory lock on the
-/// device's secrets of every kind, so concurrent writers for one device run one after the other.
 pub(super) async fn lock_device(conn: &mut PgConnection, device: DeviceId) -> Result<(), Error> {
     sqlx::query(
         "SELECT pg_advisory_xact_lock(hashtextextended('credentials.secrets:' || $1::text, 0))",
@@ -40,7 +33,6 @@ pub(super) async fn lock_device(conn: &mut PgConnection, device: DeviceId) -> Re
     Ok(())
 }
 
-/// Deletes the device's rows of the given kinds; returns how many rows were removed.
 pub(super) async fn delete_kinds(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -55,12 +47,7 @@ pub(super) async fn delete_kinds(
     Ok(done.rows_affected())
 }
 
-/// Inserts one sealed row of `kind` with a fresh UUID v7 id and no `legacy_host`: the value
-/// holds its host (SEC-011).
-///
-/// # Errors
-///
-/// [`Error::UnknownDevice`] when no device has this id.
+/// No `legacy_host`: the sealed value holds its host (SEC-011).
 pub(super) async fn insert(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -90,7 +77,6 @@ pub(super) async fn insert(
     Ok(())
 }
 
-/// Reads the device's rows of the given kinds.
 pub(super) async fn fetch_kinds(
     db: &PgPool,
     device: DeviceId,
@@ -106,7 +92,6 @@ pub(super) async fn fetch_kinds(
     .await?)
 }
 
-/// Whether the device has a row of any of the given kinds.
 pub(super) async fn exists_of_kinds(
     db: &PgPool,
     device: DeviceId,
@@ -122,8 +107,6 @@ pub(super) async fn exists_of_kinds(
     .await?)
 }
 
-/// Which of the devices have a row of any of the given kinds, in one query. An empty slice
-/// matches nothing.
 pub(super) async fn devices_with_kinds(
     db: &PgPool,
     devices: &[DeviceId],
@@ -140,7 +123,6 @@ pub(super) async fn devices_with_kinds(
     Ok(found.into_iter().collect())
 }
 
-/// A stored source secret as read back: the sealed columns, not yet checked.
 #[derive(sqlx::FromRow)]
 pub(super) struct StoredSourceSecret {
     pub(super) nonce: Vec<u8>,
@@ -148,9 +130,7 @@ pub(super) struct StoredSourceSecret {
     pub(super) key_id: String,
 }
 
-/// Inserts the account's sealed source secret, or replaces the sealed columns of the one it
-/// has, keeping that row's id; returns the row's id. One statement, so concurrent stores for
-/// one account leave exactly one row.
+/// One statement, so concurrent stores for one account leave exactly one row.
 pub(super) async fn upsert_source(
     conn: &mut PgConnection,
     account: SourceAccountId,
@@ -172,7 +152,6 @@ pub(super) async fn upsert_source(
     .await?)
 }
 
-/// Reads the sealed columns of the source secret with this id.
 pub(super) async fn fetch_source(
     db: &PgPool,
     id: SourceSecretId,
@@ -185,8 +164,7 @@ pub(super) async fn fetch_source(
     .await?)
 }
 
-/// Deletes the source secret with this id that belongs to `account`; returns whether a row was
-/// removed. A reference pointed at another account's row deletes nothing.
+/// A reference pointed at another account's row deletes nothing.
 pub(super) async fn delete_source(
     conn: &mut PgConnection,
     (id, account): (SourceSecretId, SourceAccountId),

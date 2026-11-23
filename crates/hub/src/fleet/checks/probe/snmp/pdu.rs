@@ -1,5 +1,4 @@
-//! SNMP PDUs (RFC 3416): the `GetRequest` the hub sends, the Response or Report it reads, and
-//! the value of a variable binding with its text form. Pure.
+//! SNMP PDUs (RFC 3416). Pure.
 
 use std::fmt::Write as _;
 
@@ -13,8 +12,7 @@ pub(in crate::fleet::checks) const REPORT: u8 = 0xa8;
 /// The most variable bindings read from one PDU; the hub asks for one.
 const BINDINGS_MAX: usize = 8;
 
-/// A `GetRequest` for one OID, or with no binding for engine discovery (RFC 3414 Section 4).
-/// `None` when the OID cannot be encoded.
+/// With no OID the request has no binding, for engine discovery (RFC 3414 Section 4).
 #[must_use]
 pub(in crate::fleet::checks) fn get_request(request_id: i32, oid: Option<&[u32]>) -> Option<Bytes> {
     let bindings = match oid {
@@ -30,7 +28,6 @@ pub(in crate::fleet::checks) fn get_request(request_id: i32, oid: Option<&[u32]>
     Some(ber::tlv(GET_REQUEST, &[&id, &zero, &zero, &bindings]))
 }
 
-/// The value of a variable binding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::checks) enum Value {
     Integer(i64),
@@ -63,9 +60,6 @@ impl Value {
         })
     }
 
-    /// The text an expected value is compared with: integers in decimal, an OCTET STRING as
-    /// UTF-8 or else as hex pairs (`00 1A FF`), an OID dotted, an `IpAddress` as a dotted quad.
-    /// `None` when the binding holds no value.
     #[must_use]
     pub(in crate::fleet::checks) fn text(&self) -> Option<String> {
         Some(match self {
@@ -84,7 +78,6 @@ impl Value {
         })
     }
 
-    /// The fixed word for a binding that holds no value.
     const fn absence(&self) -> Option<&'static str> {
         match self {
             Self::Null => Some("null"),
@@ -105,14 +98,12 @@ fn hex(bytes: &[u8]) -> String {
     text
 }
 
-/// An OID as dotted numbers.
 #[must_use]
 pub(in crate::fleet::checks) fn dotted(arcs: &[u32]) -> String {
     let parts: Vec<String> = arcs.iter().map(u32::to_string).collect();
     parts.join(".")
 }
 
-/// A PDU as read: its tag, its numbers and its bindings.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::checks) struct Pdu {
     pub(in crate::fleet::checks) tag: u8,
@@ -122,10 +113,6 @@ pub(in crate::fleet::checks) struct Pdu {
 }
 
 impl Pdu {
-    /// Reads a Response or Report PDU.
-    ///
-    /// # Errors
-    /// Another PDU type, a field out of place, or more than eight bindings.
     pub(in crate::fleet::checks) fn read(tlv: &Tlv<'_>) -> Result<Self, Malformed> {
         if !matches!(tlv.tag, RESPONSE | REPORT) {
             return Err(Malformed);
@@ -155,10 +142,6 @@ impl Pdu {
         })
     }
 
-    /// Reads the PDU that is the only value of `reader`'s rest.
-    ///
-    /// # Errors
-    /// See [`Pdu::read`]; bytes after the PDU.
     pub(in crate::fleet::checks) fn last(reader: &mut Reader<'_>) -> Result<Self, Malformed> {
         let pdu = Self::read(&reader.next()?)?;
         reader.finish()?;
@@ -191,11 +174,7 @@ const fn error_name(status: i64) -> &'static str {
     }
 }
 
-/// Judges a Response to the `GetRequest` for `oid`: no error, one binding for that OID, and a
-/// value; with `expected`, a value whose text form equals it. Messages are fixed (LOG-007).
-///
-/// # Errors
-/// The fixed failure the response gives.
+/// Failures are fixed words (LOG-007).
 pub(in crate::fleet::checks) fn judge(
     pdu: &Pdu,
     oid: &[u32],

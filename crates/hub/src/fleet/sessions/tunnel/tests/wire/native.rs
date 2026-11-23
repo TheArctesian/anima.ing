@@ -1,7 +1,4 @@
-//! The tunnel against the native gateway (`anima-gateway`) in place of guacd, and a VNC
-//! device behind it (plan item S2, K4 Sections 3 to 5): the hub's handshake, relay and end
-//! reasons are the same code that talks to guacd, so the pair is proved together here.
-//! `rdp` does the same with an RDP device.
+//! The tunnel through the native gateway to a VNC device (plan item S2, K4 Sections 3 to 5).
 
 mod rdp;
 mod vnc_device;
@@ -20,8 +17,6 @@ use super::{
 use crate::fleet::sessions::Protocol;
 use vnc_device::{HEIGHT, VncDevice, WIDTH, vnc_device};
 
-/// Starts the gateway on a loopback port, one session for each connection, as the program
-/// does with one worker process for each.
 async fn native_gateway() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap().to_string();
@@ -35,8 +30,6 @@ async fn native_gateway() -> String {
     address
 }
 
-/// A VNC session of `docker-host` through the native gateway to `device`, with the stored
-/// VNC password and no account name, past the open instruction.
 async fn vnc_session(pool: &PgPool, device: &VncDevice) -> (Bench, Socket) {
     let gateway = native_gateway().await;
     let bench = bench(pool, &gateway, Setup::protocol(Protocol::Vnc)).await;
@@ -51,7 +44,6 @@ async fn vnc_session(pool: &PgPool, device: &VncDevice) -> (Bench, Socket) {
     (bench, client)
 }
 
-/// The opcodes the client gets up to and with the first `sync`, and that `sync`.
 async fn first_frame(client: &mut Socket) -> (Vec<String>, String) {
     let mut opcodes = Vec::new();
     loop {
@@ -78,7 +70,6 @@ async fn s2_a_vnc_session_through_the_native_gateway_draws_and_takes_keys(pool: 
     let mut device = vnc_device(true).await;
     let (_bench, mut client) = vnc_session(&pool, &device).await;
 
-    // The device's red screen: its size, one fill, the end of the frame.
     let (opcodes, sync) = first_frame(&mut client).await;
     assert_eq!(opcodes, ["size", "rect", "cfill", "sync"]);
     client.send(&sync).await;
@@ -100,7 +91,7 @@ async fn s2_a_sign_in_the_device_refuses_ends_the_session_auth_failed(pool: PgPo
     let device = vnc_device(false).await;
     let (bench, mut client) = vnc_session(&pool, &device).await;
 
-    // The gateway's `error` with status 0x0301, with the hub's fixed text (K4 Section 4).
+    // Status 0x0301 (769) with the hub's fixed text (K4 Section 4).
     let error = decoded(&client.text().await);
     assert_eq!(error.opcode, "error");
     assert_eq!(error.args, ["Aborted. See logs.", "769"]);

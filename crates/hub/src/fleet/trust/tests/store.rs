@@ -1,6 +1,4 @@
-//! The store's writes: the runtime role can upsert a host key through migration 0001's default
-//! privileges (R-016, K2 "Roles"); an accepted RDP server certificate replaces the previous one
-//! (SEC-007); a batch of devices is one query (API-005).
+//! The store's writes (R-016, K2 "Roles", SEC-007, API-005).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
@@ -76,7 +74,6 @@ async fn log_006_r_016_runtime_role_reads_and_writes_host_keys(pool: PgPool) {
     assert_eq!(keys.len(), 1);
 }
 
-/// Index and sequential scans of `trust.host_keys` so far in this transaction.
 async fn host_key_scans(conn: &mut PgConnection) -> i64 {
     sqlx::query_scalar(
         "select coalesce(seq_scan, 0) + coalesce(idx_scan, 0) from pg_stat_xact_user_tables \
@@ -112,8 +109,7 @@ async fn api_005_host_keys_reads_many_devices_in_one_query(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn api_005_host_keys_of_no_devices_runs_no_query(pool: PgPool) {
     let mut tx = pool.begin().await.unwrap();
-    // After an error PostgreSQL refuses every statement until the transaction ends, so any
-    // query on this connection would fail.
+    // After an error PostgreSQL refuses every statement until the transaction ends.
     sqlx::query("select 1 / 0")
         .execute(&mut *tx)
         .await
@@ -123,7 +119,6 @@ async fn api_005_host_keys_of_no_devices_runs_no_query(pool: PgPool) {
     assert!(store::host_keys(&mut *tx, &[device(PVE_01)]).await.is_err());
 }
 
-/// A certificate as the hub would read it from a device, `n` choosing the fingerprint.
 fn certificate(n: u8, subject: Option<&str>) -> ServerCertificate {
     ServerCertificate {
         fingerprint_sha256: vec![format!("{n:02x}"); 32].join(":"),
@@ -181,7 +176,6 @@ async fn sec_007_accepting_a_certificate_replaces_the_device_s_previous_one(pool
     );
 }
 
-/// Index and sequential scans of `trust.server_certificates` so far in this transaction.
 async fn certificate_scans(conn: &mut PgConnection) -> i64 {
     sqlx::query_scalar(
         "select coalesce(seq_scan, 0) + coalesce(idx_scan, 0) from pg_stat_xact_user_tables \

@@ -1,8 +1,4 @@
-//! The RDP server certificate check before the guacd handshake (SEC-007, K4 Sections 3 and
-//! 5): a changed certificate is `error` "Certificate changed" 0x0303, close 4003 and
-//! `SERVER_CERTIFICATE_MISMATCH` with guacd never reached; the accepted one opens; standard
-//! RDP security, ignored certificates and VNC read nothing; `ANY` reaches guacd as the TLS
-//! security the server chose; a read that fails is 503 `GATEWAY_ERROR`.
+//! The RDP server certificate check before the guacd handshake (SEC-007, K4 Sections 3 and 5).
 
 use std::{collections::HashMap, time::Duration};
 
@@ -80,9 +76,7 @@ async fn sec_002_the_password_is_not_loaded_before_the_certificate_check(pool: P
     ended_once(&ended, "server_certificate_mismatch", "error", LOOPBACK);
 }
 
-/// Opens the session of `setup` after `changes` to `docker-host` with a guacd serving
-/// `args`, closes it, and gives whether the device's RDP server saw a connection and the
-/// `connect` values guacd got.
+/// Whether the device's RDP server saw a connection, and the `connect` values guacd got.
 async fn read_certificate(
     pool: &PgPool,
     setup: Setup,
@@ -198,8 +192,6 @@ async fn sec_007_a_vnc_session_reads_no_certificate(pool: PgPool) {
     assert!(!read_certificate(&pool, setup, VNC_ARGS, &[]).await.0);
 }
 
-/// After `changes`, opening the tunnel of `setup` is 503 `GATEWAY_ERROR` with `message`,
-/// and guacd is never reached.
 async fn unread(pool: &PgPool, setup: Setup, changes: &[&str], message: &str) {
     let mut guacd = fake_guacd(Script::Serve {
         args: RDP_ARGS,

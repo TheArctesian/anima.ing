@@ -219,7 +219,6 @@ fn gw_011_a_stream_index_past_guacds_limit_closes() {
     forwards(&mut relay(), "3.ack,5.00004,2.OK,5.00000;");
 }
 
-/// Random instructions over the allow-listed opcodes and some others.
 fn random_instruction(inputs: &mut Inputs) -> Instruction {
     const OPCODES: [&str; 16] = [
         "",

@@ -1,6 +1,4 @@
-//! Builds: the release queue, the builders that claim its jobs under a lease, their logs, and
-//! the publishing of what they built (spec Section 3.10, BLD-001 to BLD-082; WP-36 D-1 to D-5,
-//! D-24 to D-27).
+//! Builds (spec Section 3.10, BLD-001 to BLD-082; WP-36 D-1 to D-5, D-24 to D-27).
 //!
 //! Operator writes take the caller's connection, so the GraphQL layer adds the audit entry in
 //! the same transaction (LOG-005). Builder operations run their own transactions. Messages in
@@ -58,18 +56,15 @@ use crate::{
 /// How often the upkeep job ends the leases that ran out (D-2).
 pub const LEASE_SWEEP: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// Why a build operation failed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("{0} not found")]
     NotFound(Missing),
     #[error("input is not valid: {}", field_names(.0))]
     Validation(Vec<FieldError>),
-    /// The job is not in a state that permits the change (BLD-008, BLD-010).
     #[error("{0}")]
     Conflict(String),
-    /// The builder may not do this: it holds no lease, has no record or calls from another
-    /// address (BLD-010, BLD-024).
+    /// No lease, no record or another address (BLD-010, BLD-024).
     #[error("{0}")]
     Forbidden(&'static str),
     #[error("database error")]
@@ -84,8 +79,7 @@ pub enum Error {
 }
 
 impl Error {
-    /// For the process log: what failed, as a fixed word; `None` for refusals the caller
-    /// caused (LOG-007, API-010).
+    /// A fixed word for the process log; `None` for refusals the caller caused (LOG-007, API-010).
     #[must_use]
     pub const fn fault(&self) -> Option<&'static str> {
         match self {
@@ -100,9 +94,8 @@ impl Error {
     }
 }
 
-/// Queues a release: one `queued` job for each selected target (BLD-001). Refuses a version
-/// that is not above each target's published versions, or that a target already builds
-/// (BLD-002). The caller commits it with its audit entry.
+/// One `queued` job per selected target (BLD-001); a version a target already has or builds is
+/// refused (BLD-002).
 ///
 /// # Errors
 ///
@@ -173,8 +166,6 @@ fn new_job(
     }
 }
 
-/// Cancels a queued job (BLD-008). The caller commits it with its audit entry.
-///
 /// # Errors
 ///
 /// `NotFound` for no such job; `Conflict` when it left the queue.
@@ -192,7 +183,7 @@ pub async fn cancel_job(
     Ok(cancelled)
 }
 
-/// One page of releases, newest first, each with its jobs (API-005, API-006, BLD-080).
+/// Newest first, each with its jobs (API-005, API-006, BLD-080).
 ///
 /// # Errors
 ///
@@ -215,8 +206,7 @@ pub async fn releases(db: &PgPool, first: i32, after: Option<&str>) -> Result<Re
     Ok(page)
 }
 
-/// The version the release form proposes: the highest version published or under way with the
-/// patch plus 1; `None` before the first release.
+/// The highest version published or under way, patch plus 1; `None` before the first release.
 ///
 /// # Errors
 ///
@@ -225,11 +215,9 @@ pub async fn next_version(db: &PgPool) -> Result<Option<Version>, Error> {
     Ok(release::next_version(&store::built(db).await?))
 }
 
-/// The most log lines one `buildJobLog` page returns.
 pub const MAX_LOG_PAGE: i32 = 1000;
 
-/// Up to `first` stored lines of a job after sequence `after` (from its start when `None`),
-/// oldest first (BLD-048, BLD-081).
+/// Oldest first (BLD-048, BLD-081).
 ///
 /// # Errors
 ///

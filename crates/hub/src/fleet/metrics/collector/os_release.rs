@@ -6,8 +6,6 @@
 
 use crate::fleet::devices::Distribution;
 
-/// The distribution of the last `ID=` line of `os_release`; `None` when there is no such line
-/// or its value is not a valid distribution id.
 pub(in crate::fleet::metrics) fn distribution(os_release: &[u8]) -> Option<Distribution> {
     let value = os_release
         .split(|byte| *byte == b'\n')
@@ -17,7 +15,6 @@ pub(in crate::fleet::metrics) fn distribution(os_release: &[u8]) -> Option<Distr
     Distribution::new(unquoted(value))
 }
 
-/// `value` without one pair of matching outer quotes.
 fn unquoted(value: &str) -> &str {
     ['"', '\'']
         .into_iter()

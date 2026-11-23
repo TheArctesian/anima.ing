@@ -1,5 +1,4 @@
-//! What one probe result means for a check: retries, invert and the Degraded limit
-//! (CHK-002, CHK-008). Pure: time comes in as a parameter.
+//! What one probe result means for a check: retries, invert and the Degraded limit (CHK-002, CHK-008).
 
 use std::time::Duration;
 
@@ -8,14 +7,13 @@ use chrono::{DateTime, TimeDelta, Utc};
 use super::probe::{Judgement, ProbeResult};
 use crate::status::Status;
 
-/// The common settings of a check (spec 6.4), with the contract defaults.
+/// A check's common settings (spec 6.4); `Default` gives the contract defaults.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CheckSettings {
     pub interval_seconds: u32,
     /// Failed retries after the first failed attempt before the check is Down (CHK-002).
     pub retries: u8,
     pub retry_interval_seconds: u32,
-    /// A success slower than this many milliseconds is Degraded.
     pub degraded_threshold_ms: u32,
     /// A failed probe counts as a success and a success as a failure (CHK-008).
     pub invert: bool,
@@ -33,12 +31,9 @@ impl Default for CheckSettings {
     }
 }
 
-/// What the scheduler keeps for a check between probes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CheckState {
-    /// The status the check shows: Unknown before its first result.
     pub status: Status,
-    /// Failed attempts in a row.
     pub failures: u32,
     /// When the next probe is due; `None` means as soon as possible.
     pub next_due_at: Option<DateTime<Utc>>,
@@ -58,21 +53,10 @@ fn after(now: DateTime<Utc>, seconds: u32) -> DateTime<Utc> {
     now + TimeDelta::seconds(i64::from(seconds))
 }
 
-/// The check's new state, and the status to record in the heartbeat.
+/// The check's new state and the heartbeat status (CHK-002, CHK-008, D-2, D-29).
 ///
-/// Invert is applied first (CHK-008); an inverted success has no response time, so it is
-/// never Degraded. A success is Degraded when slower than the threshold, else Up, and resets
-/// the failures; the next probe is due after the interval.
-///
-/// A result the probe could not judge ([`Judgement::Unjudged`]) is recorded as Unknown with
-/// its message: failures reset, the next probe due after the interval, invert not applied.
-/// A [`Judgement::Starting`] or [`Judgement::Expiring`] success is Degraded; inverted, it is
-/// a failure (D-2, D-29).
-///
-/// A failure is Down only when `failures > retries`: the first attempt plus `retries` failed
-/// retries (CHK-002). Until then the check keeps its previous status, the next probe is due
-/// after the retry interval, and the heartbeat records Unknown (pending), because the
-/// outcome is not settled yet.
+/// An inverted success has no response time, so it is never Degraded; an unjudged result is
+/// Unknown and skips invert. Before Down, a failure keeps the status and records Unknown (pending).
 #[must_use]
 pub fn evaluate(
     prev: &CheckState,

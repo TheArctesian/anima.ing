@@ -1,5 +1,4 @@
-//! Heartbeat writes: the raw beat, its three aggregate rows and the check's state, together
-//! (CHK-003, DB-008).
+//! CHK-003, DB-008.
 
 use sqlx::{Connection as _, PgConnection};
 
@@ -15,8 +14,6 @@ use crate::{
     status::Status,
 };
 
-/// The upsert of one aggregate table: counts add up, and the average response time is kept
-/// as a running mean over `response_count` beats.
 macro_rules! upsert {
     ($table:literal) => {
         concat!(
@@ -48,7 +45,6 @@ const fn upsert_sql(resolution: Resolution) -> &'static str {
     }
 }
 
-/// One count per status, 1 for the beat's status and 0 for the others.
 fn counts(status: Status) -> [i32; 5] {
     [
         Status::Up,
@@ -65,9 +61,8 @@ fn response_ms(beat: &Beat) -> Option<i32> {
         .map(|ms| i32::try_from(ms).unwrap_or(i32::MAX))
 }
 
-/// Records the beat in the caller's transaction, in a savepoint: all or nothing. The check's
-/// state row is written first, so concurrent beats of one check wait for each other. A paused
-/// check, or a beat that is not newer than the last one, writes nothing (CHK-005, DB-008).
+/// The state row is written first, so concurrent beats of one check wait for each other
+/// (CHK-005, DB-008).
 pub(in crate::fleet::checks) async fn record_beat(
     conn: &mut PgConnection,
     check: CheckId,
@@ -109,8 +104,6 @@ async fn exists(conn: &mut PgConnection, check: CheckId) -> Result<bool, Error> 
     )
 }
 
-/// Writes the new state unless the check is paused or already has a later beat; returns
-/// whether it did.
 async fn write_state(conn: &mut PgConnection, check: CheckId, beat: &Beat) -> Result<bool, Error> {
     let updated = sqlx::query(
         "UPDATE checks.checks SET status = $2, failures = $3, next_due_at = $4, \
@@ -133,7 +126,6 @@ async fn write_state(conn: &mut PgConnection, check: CheckId, beat: &Beat) -> Re
     Ok(updated.rows_affected() > 0)
 }
 
-/// Adds the beat to its minute, hour and day rows (DB-008).
 async fn add_to_aggregates(
     conn: &mut PgConnection,
     check: CheckId,

@@ -1,5 +1,4 @@
-//! The hardware values of each device: replaced whole when a daemon batch brings them
-//! (CAP-001 to CAP-005, CAP-032).
+//! Device hardware values, replaced whole per daemon batch (CAP-001 to CAP-005, CAP-032).
 
 use std::collections::HashMap;
 
@@ -10,8 +9,6 @@ use sqlx::{PgConnection, PgPool};
 use super::{record::device_missing, rows::HardwareRow};
 use crate::{fleet::metrics::Error, ids::DeviceId};
 
-/// The stored hardware values of each device and when the hub stored them; a device with none
-/// has no entry. A backend of a name this version does not know is left out.
 pub(in crate::fleet::metrics) async fn hardware(
     db: &PgPool,
 ) -> Result<HashMap<DeviceId, (Hardware, DateTime<Utc>)>, Error> {
@@ -27,8 +24,7 @@ pub(in crate::fleet::metrics) async fn hardware(
     rows.into_iter().map(HardwareRow::into_entry).collect()
 }
 
-/// Replaces the stored hardware values of `device` with `hardware`, found at `found_at`, in the
-/// caller's transaction.
+/// Replaces the stored hardware values of `device` in the caller's transaction.
 pub(in crate::fleet::metrics) async fn write_hardware(
     conn: &mut PgConnection,
     device: DeviceId,

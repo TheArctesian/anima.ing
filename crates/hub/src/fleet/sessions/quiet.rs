@@ -1,12 +1,10 @@
-//! One side's silence on a tunnel (K4 Sections 4, 8.4 and 9): a deadline that starts again
-//! after each turn that side takes. Pure: the caller passes the time in (CQ-021), as a
-//! `tokio::time::Instant` so tests with paused time drive it.
+//! One side's silence on a tunnel (K4 Sections 4, 8.4 and 9). The caller passes the time
+//! (CQ-021) as a `tokio::time::Instant`, so tests with paused time drive it.
 
 use std::time::Duration;
 
 use tokio::time::Instant;
 
-/// When one side's silence comes due: `wait` after it last started.
 #[derive(Clone, Copy)]
 pub(in crate::fleet::sessions) struct Quiet {
     wait: Duration,
@@ -14,7 +12,6 @@ pub(in crate::fleet::sessions) struct Quiet {
 }
 
 impl Quiet {
-    /// A silence of `wait` that starts at `now`.
     pub(in crate::fleet::sessions) fn new(wait: Duration, now: Instant) -> Self {
         Self {
             wait,
@@ -22,12 +19,10 @@ impl Quiet {
         }
     }
 
-    /// Starts the silence again at `now`: it comes due `wait` later.
     pub(in crate::fleet::sessions) fn restart(&mut self, now: Instant) {
         self.due = now + self.wait;
     }
 
-    /// When the silence comes due.
     pub(in crate::fleet::sessions) const fn due(&self) -> Instant {
         self.due
     }

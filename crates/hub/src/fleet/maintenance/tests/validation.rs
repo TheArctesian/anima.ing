@@ -16,7 +16,6 @@ pub(super) fn target(kind: TargetType, text: &str) -> TargetForm {
     }
 }
 
-/// A valid manual window; each test changes what it checks.
 pub(super) fn form(kind: WindowKind) -> WindowForm {
     WindowForm {
         name: "Patch night".into(),

@@ -9,7 +9,6 @@ use crate::{
     status::{Status, worst},
 };
 
-/// What the status rules need to know about one check.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Standing {
     pub(super) id: CheckId,
@@ -17,14 +16,11 @@ pub(super) struct Standing {
     pub(super) parent: Option<CheckId>,
     pub(super) group: bool,
     pub(super) paused: bool,
-    /// The stored status of the check's last result.
     pub(super) status: Status,
 }
 
-/// The maintenance that applies to one device at one instant.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Cover<'a> {
-    /// The device's manual maintenance flag (CHK-006).
     pub(super) manual: bool,
     pub(super) active: &'a ActiveTargets,
     pub(super) device: DeviceId,
@@ -32,13 +28,11 @@ pub(super) struct Cover<'a> {
 }
 
 impl Cover<'_> {
-    /// Whether the manual flag or an active window covers the check (CHK-006).
     pub(super) fn covers(&self, check: CheckId) -> bool {
         self.manual || self.active.covers(self.device, Some(check), self.tags)
     }
 }
 
-/// Down becomes Maintenance under maintenance; every other status stays (CHK-006).
 #[must_use]
 pub(super) const fn maintained(status: Status, covered: bool) -> Status {
     match status {
@@ -47,9 +41,6 @@ pub(super) const fn maintained(status: Status, covered: bool) -> Status {
     }
 }
 
-/// The status one check shows. A paused check is Unknown. A group is the worst of its
-/// children that are not paused, or Unknown with none. Maintenance covers a check when
-/// `covered` holds for the check itself or for its group.
 pub(super) fn shown(
     check: &Standing,
     all: &[Standing],
@@ -70,8 +61,7 @@ pub(super) fn shown(
     maintained(check.status, under)
 }
 
-/// The worst status of the device's checks that are not paused and are not groups (a group
-/// adds nothing beyond its children), or Unknown with none (CHK-004).
+/// Groups are left out: a group adds nothing beyond its children (CHK-004).
 pub(super) fn device_status(checks: &[Standing], covered: &dyn Fn(CheckId) -> bool) -> Status {
     checks
         .iter()
@@ -81,8 +71,6 @@ pub(super) fn device_status(checks: &[Standing], covered: &dyn Fn(CheckId) -> bo
         .unwrap_or(Status::Unknown)
 }
 
-/// The status one check shows, with its device's maintenance flag, tags and the active
-/// windows applied: the same rules that [`device_status`] combines (CHK-004, CHK-006).
 pub(super) fn of_check(
     id: CheckId,
     device: &Device,
@@ -103,8 +91,6 @@ pub(super) fn of_check(
         })
 }
 
-/// The status of each requested device. A device that `known` does not hold has no manual
-/// flag and no tags.
 pub(super) fn by_device(
     requested: &[DeviceId],
     checks: &[Standing],

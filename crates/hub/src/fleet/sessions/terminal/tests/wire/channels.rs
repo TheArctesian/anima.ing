@@ -1,6 +1,4 @@
-//! The one session channel (K4 Section 8.4, GW-013): the hub opens one session channel and
-//! sends only `pty-req`, `shell` and `window-change` on it, refuses every channel the device
-//! opens, and sends the client no secret and no token in any frame (OD-9, SEC-005).
+//! One session channel; no frame to the client holds a secret or token (K4 Section 8.4, GW-013, OD-9, SEC-005).
 
 use sqlx::PgPool;
 

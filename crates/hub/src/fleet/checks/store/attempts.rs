@@ -1,5 +1,5 @@
-//! An attempt evaluated on the check's current state and settings and recorded in one
-//! transaction, with the notifications its beat calls for (CHK-002, CHK-003, CHK-005, D-16).
+//! An attempt is evaluated and recorded in one transaction with the notifications its beat
+//! calls for (CHK-002, CHK-003, CHK-005, D-16).
 
 use chrono::{DateTime, Utc};
 use sqlx::{Connection as _, PgConnection};
@@ -24,7 +24,6 @@ use crate::{
     status::Status,
 };
 
-/// The locked state and settings of one check.
 #[derive(sqlx::FromRow)]
 struct Locked {
     name: String,
@@ -38,7 +37,6 @@ struct Locked {
     retry_interval_seconds: i32,
     degraded_threshold_ms: i32,
     invert: bool,
-    /// The domain the stored configuration names, if any.
     domain: Option<String>,
 }
 
@@ -62,10 +60,7 @@ impl Locked {
     }
 }
 
-/// Locks the check's row, evaluates the attempt on its state and settings, records the beat
-/// and queues the notifications a written beat calls for. Returns the beat when it was
-/// written; `None` when `record_beat` skipped it because the check is paused or has a beat at
-/// least as new.
+/// `None` when the check is paused or already has a beat at least as new.
 pub(in crate::fleet::checks) async fn record_attempt(
     conn: &mut PgConnection,
     check: CheckId,
@@ -101,10 +96,7 @@ pub(in crate::fleet::checks) async fn record_attempt(
     Ok((recorded == Recorded::Written).then_some(beat))
 }
 
-/// What notifications needs to know about the written beat (D-16). Maintenance is passed as
-/// the attempt saw it, so no Down is sent under a window (Section 6.5). `previous` is the
-/// check's stored status before this beat as evaluated, without the maintenance a beat
-/// shows. The site is the device's site id, as checks reads no site names.
+/// Maintenance is passed as the attempt saw it, so no Down is sent under a window (Section 6.5).
 fn observation(
     (check, kind): (CheckId, CheckType),
     locked: &Locked,
@@ -127,13 +119,8 @@ fn observation(
     }
 }
 
-/// Queues the notifications in a savepoint of the beat's transaction. A notification fault
-/// (an unreadable row, a failed statement) rolls back only the savepoint and is logged with
-/// the check's id and a fixed word, so the beat still commits (R-104, LOG-007).
-///
-/// # Errors
-/// `Database` when the savepoint cannot be opened, released or rolled back: the connection is
-/// then broken, and the beat could not commit either.
+/// A notification fault rolls back only its savepoint and is logged with the check's id and a
+/// fixed word, so the beat still commits (R-104, LOG-007).
 async fn notify(conn: &mut PgConnection, seen: &Observation) -> Result<(), Error> {
     let mut savepoint = conn.begin().await?;
     match notifications::observe(&mut savepoint, seen).await {
@@ -151,8 +138,7 @@ async fn notify(conn: &mut PgConnection, seen: &Observation) -> Result<(), Error
     Ok(())
 }
 
-/// The attempt's result, without its expiry date when the check names another domain than
-/// the one probed: a probe of the old domain that ends after a change keeps no date (D-29).
+/// A probe of the old domain that ends after a domain change keeps no expiry date (D-29).
 fn dated_for(attempt: &Attempt<'_>, stored: Option<&str>) -> ProbeResult {
     let mut result = attempt.result.clone();
     if attempt.domain != stored {

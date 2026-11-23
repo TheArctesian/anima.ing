@@ -1,11 +1,6 @@
 //! The push route: a device reports its own result to `/push/{token}` (CHK-003).
-//!
-//! The token in the path is the only authentication, so a request never needs a sign-in and
-//! the route answers 404 with an empty body for every token that is not a live PUSH check's.
+//! The token is the only authentication; any token that is not a live PUSH check's gets an empty 404.
 //! Neither the path nor the token reaches a log or an error message (LOG-007).
-//!
-//! The hub reports its own checks through the same path, with no request ([`own`], HMD-045,
-//! HMD-047).
 
 pub mod own;
 
@@ -42,11 +37,8 @@ use crate::{
 const BODY_LIMIT: usize = 1024;
 /// 32 bytes in unpadded base64url.
 const TOKEN_LENGTH: usize = 43;
-/// The longest response time a device may report, in milliseconds.
 const PING_MAX_MS: u32 = 600_000;
-/// The longest a push may take to answer. A push is one small write, so a slower one is a
-/// stuck database, and the device is told to try again rather than held for the edge's
-/// one-minute limit (NET-002).
+/// A slower push is a stuck database; the device retries rather than wait for the edge's one-minute limit (NET-002).
 const ANSWER_TIME: Duration = Duration::from_secs(10);
 
 #[derive(Clone)]
@@ -59,14 +51,11 @@ struct PushState {
 
 pub use own::{OwnCheck, OwnReport};
 
-/// `GET|POST /push/{token}`, answering within ten seconds. The caller mounts it behind the
-/// permitted-networks layer (NET-002) and inside `crate::logged`, which logs the path as
-/// `/push/[redacted]` (LOG-007).
+/// The caller mounts it behind the permitted-networks layer (NET-002) and inside `crate::logged`, which redacts the path (LOG-007).
 pub fn push_router(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) -> Router {
     push_router_within(db, bus, clock, ANSWER_TIME)
 }
 
-/// [`push_router`] with its answer time as a parameter, so a test need not wait ten seconds.
 pub(in crate::fleet::checks) fn push_router_within(
     db: PgPool,
     bus: Bus,
@@ -83,8 +72,7 @@ pub(in crate::fleet::checks) fn push_router_within(
         })
 }
 
-/// The push's answer, or 503 once `answer_time` has passed. Dropping the late answer rolls
-/// back its transaction, so a timed-out push records nothing.
+/// Dropping the late answer rolls back its transaction, so a timed-out push records nothing.
 async fn accept(
     State(state): State<PushState>,
     Path(token): Path<String>,
@@ -105,7 +93,6 @@ struct PushQuery {
     ping: Option<String>,
 }
 
-/// What the device reported.
 #[derive(Debug, PartialEq, Eq)]
 struct Report {
     up: bool,
@@ -114,7 +101,6 @@ struct Report {
 }
 
 impl PushQuery {
-    /// `None` when `status` is not `up` or `down`, or `ping` is not 0 to 600000.
     /// The message is cleaned here and again when the store writes it (defence in depth).
     fn report(self) -> Option<Report> {
         let up = match self.status.as_deref() {
@@ -159,12 +145,7 @@ fn is_token_shaped(text: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
 }
 
-/// Whether the check is a live PUSH check holding exactly this token; the bytes are compared
-/// in constant time.
-///
-/// Defence in depth: the lookup already matched the token exactly in SQL, so the comparison
-/// here cannot change an answer today. It keeps the route safe if the lookup ever becomes a
-/// prefix or case-folded match, and it takes the same time for every near miss.
+/// Compares in constant time after the exact SQL match, as defence in depth.
 fn accepts(check: &Check, token: &str) -> bool {
     let holds = check
         .push_token
@@ -179,11 +160,7 @@ enum Outcome {
     Refused,
 }
 
-/// Records the report as an attempt: the store evaluates it against the check's state and
-/// settings under the row lock, so a push and a scheduled attempt never count from a stale
-/// state. `None` when nothing was written (the check is paused or has a beat at least as
-/// new). Maintenance covers a push as it covers a scheduled attempt, so a pushed `down`
-/// under maintenance is recorded as Maintenance (CHK-006).
+/// The store judges the attempt under the row lock; maintenance covers a push as it covers a scheduled attempt (CHK-006).
 async fn store_beat(
     db: &PgPool,
     check: &Check,
@@ -228,9 +205,6 @@ async fn record(
     Ok(Outcome::Recorded)
 }
 
-/// Records what the check's device reported at `now` and tells the live views. A report at
-/// the instant of the last beat has nothing new to record: the device did report in, so it is
-/// not an error, and nothing is published.
 async fn report_in(
     (db, bus): (&PgPool, &Bus),
     check: &Check,
@@ -260,8 +234,7 @@ async fn answer(
     request: Request,
 ) -> Response {
     let (parts, body) = request.into_parts();
-    // GET and POST only: axum routes HEAD to a GET handler, and a probe of the URL must not
-    // count as the device reporting in. Uptime Kuma pushes with GET.
+    // axum routes HEAD to a GET handler, and a probe of the URL is not the device reporting in.
     if parts.method == Method::HEAD {
         let allow = [(header::ALLOW, "GET, POST")];
         return (StatusCode::METHOD_NOT_ALLOWED, allow).into_response();
@@ -269,7 +242,6 @@ async fn answer(
     if !is_token_shaped(&token) {
         return StatusCode::NOT_FOUND.into_response();
     }
-    // A declared length over the cap is refused at once, before any wait for the body.
     let declared = parts
         .headers
         .get(header::CONTENT_LENGTH)
@@ -278,14 +250,13 @@ async fn answer(
     if declared.is_some_and(|length| length > BODY_LIMIT) {
         return StatusCode::PAYLOAD_TOO_LARGE.into_response();
     }
-    // The body is never used; reading it under the cap is what refuses a larger one.
+    // Reading the unused body under the cap is what refuses a larger one.
     if to_bytes(body, BODY_LIMIT).await.is_err() {
         return StatusCode::PAYLOAD_TOO_LARGE.into_response();
     }
     match record(&state, &token, query).await {
         Ok(Outcome::Recorded) => (StatusCode::OK, "ok").into_response(),
         Ok(Outcome::Refused) => StatusCode::BAD_REQUEST.into_response(),
-        // Not there: unknown, paused, or deleted while the push was in flight.
         Ok(Outcome::NotFound) | Err(Error::NotFound(_)) => StatusCode::NOT_FOUND.into_response(),
         Err(error) => {
             // The error's message holds no path, token or SQL (LOG-007).

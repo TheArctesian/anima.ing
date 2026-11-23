@@ -1,27 +1,17 @@
-//! The sealed form of one version of an operational key (SEC-003, R-147). Pure.
-//!
-//! The value is sealed with the credential vault under the context
-//! `credentials.operational_key_versions:<version id>`, the id as hyphenated lowercase UUID
-//! text, so a value copied to another version row does not open (K-E5 Section 2). The stored
-//! column is the one-column layout of [`Sealed::to_bytes`].
+//! The sealed form of one version of an operational key (SEC-003, R-147).
+//! Sealed under its version's context, so a value copied to another version row does not open (K-E5 Section 2).
 
 use crate::{
     fleet::credentials::{Error as CredentialError, Sealed, Secret, Vault},
     ids::OperationalKeyVersionId,
 };
 
-/// The context prefix of a sealed version (K-E5 Section 2).
 const CONTEXT: &str = "credentials.operational_key_versions";
 
-/// The associated data that binds a sealed value to its version.
 fn context(version: OperationalKeyVersionId) -> Vec<u8> {
     format!("{CONTEXT}:{version}").into_bytes()
 }
 
-/// `value` sealed for `version`, as stored.
-///
-/// # Errors
-/// `Random` when the OS random source fails.
 pub(super) fn seal(
     vault: &Vault,
     version: OperationalKeyVersionId,
@@ -30,12 +20,7 @@ pub(super) fn seal(
     Ok(vault.seal(value, &context(version))?.to_bytes())
 }
 
-/// The value the stored bytes of `version` hold.
-///
-/// # Errors
-/// `Malformed` for bytes not in the sealed layout (a value deleted after its version ended
-/// is empty), `WrongKey` when another key sealed it, `Decrypt` when it was sealed for another
-/// version or changed.
+/// A value deleted after its version ended is empty, so it opens as `Malformed`.
 pub(super) fn open(
     vault: &Vault,
     version: OperationalKeyVersionId,

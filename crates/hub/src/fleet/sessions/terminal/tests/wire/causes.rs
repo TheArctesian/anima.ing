@@ -1,5 +1,4 @@
-//! Each end cause of K4 Section 8.6 on an open terminal: the client's `end` message, the
-//! close code, and one row end, audit entry and event.
+//! K4 Section 8.6.
 
 use std::{
     sync::{
@@ -105,8 +104,6 @@ async fn k4_8_6_a_device_connection_that_drops_is_gateway_error_1011(pool: PgPoo
     );
 }
 
-/// A session whose server refuses the PTY or the shell, as `script` says: the client hears
-/// `GATEWAY_ERROR` and 1011, and the event says which was refused.
 async fn refused(pool: &PgPool, script: Script, message: &str) {
     let mut bench = bench(pool, Setup::script(script)).await;
     let mut client = socket::open(&bench.url).await;
@@ -200,16 +197,8 @@ async fn k4_8_5_client_silence_is_timeout_4002(pool: PgPool) {
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn k4_8_5_a_client_ping_sent_while_the_hub_s_send_waits_keeps_the_session(pool: PgPool) {
-    // Each round: the client pings and waits until the hub has read it (`read`); a second
-    // later the shell floods until the hub's send to the unread client waits; only then does
-    // the client ping again, unread. It reads just after `read` plus the idle wait, so the
-    // idle wait has run out, and a second before the waiting send, which began after the
-    // flood, reaches its own limit of the same length. The second ping is waiting to be
-    // read: it, not the idle wait, must win. When both are ready the hub picks one at
-    // random, so without the peek such a round ends the session half the time. A round in
-    // which the connection lets the hub's send through before the idle wait runs out has the
-    // hub read the second ping at once; it passes without testing the peek, so there are
-    // twelve rounds.
+    // The unread second ping and the expired idle wait are ready together and the hub picks
+    // at random; a round whose send is not held tests nothing, so there are twelve rounds.
     let idle = Duration::from_secs(2);
     let setup = Setup::terminal(move |terminal| terminal.timing.client_idle = idle);
     let (bench, mut client) = session(&pool, setup).await;
@@ -245,8 +234,6 @@ async fn k4_8_5_a_client_ping_sent_while_the_hub_s_send_waits_keeps_the_session(
     );
 }
 
-/// The shell writing to a client that does not read: chunks until told to stop, then a
-/// marker.
 struct Flood {
     task: JoinHandle<()>,
     written: Arc<AtomicUsize>,
@@ -276,11 +263,7 @@ impl Flood {
         }
     }
 
-    /// Returns once the shell has written something and then nothing for 800 ms, as when the
-    /// hub's send to the client waits, and tells the shell to write only the marker after
-    /// the chunk it is on, so what is left to read is what the hub holds. A loopback
-    /// connection that has just filled often lets one more send through within about 600 ms;
-    /// the wait outlasts that.
+    /// A just-filled loopback connection often lets one more send through within about 600 ms.
     async fn held(&self) {
         let (mut seen, mut since) = (0, Instant::now());
         loop {

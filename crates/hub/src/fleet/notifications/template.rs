@@ -1,19 +1,7 @@
 //! Message templates (NOT-007, D-21): placeholder substitution and nothing else.
 //!
-//! The placeholders are `{device}`, `{check}`, `{status}`, `{previous}`, `{message}`, `{at}`
-//! and `{days}`. There is no condition, loop, filter or default. A template is parsed when it
-//! is saved, so a mistake is a `VALIDATION` error then and never a failed send later.
-//!
-//! - A literal brace is written twice: `{{` is `{` and `}}` is `}`. `{{device}}` therefore
-//!   shows the text `{device}` and expands nothing.
-//! - An unknown name (also `{}` and `{ device }`), a `{` with no closing `}` and a `}` with
-//!   no opening `{` are refused.
-//! - A value that is missing renders as an empty string: `{days}` on a Down notice and
-//!   `{message}` on a check with no message leave nothing behind.
-//! - Rendering is one pass over the parsed template. A value is never parsed again, so a value
-//!   that holds `{message}` shows those characters.
-//!
-//! Pure: no I/O, no clock.
+//! A template is parsed when it is saved, so a mistake is a `VALIDATION` error, not a failed send.
+//! `{{` and `}}` are literal braces, a missing value renders empty, and a value is never parsed again.
 
 #[cfg(test)]
 mod tests;
@@ -23,16 +11,13 @@ pub(super) use values::Values;
 
 use crate::{api_errors::FieldError, text::clean};
 
-/// The longest template title and body, in characters (K2 `title_template` and
-/// `body_template` checks).
+/// The longest template title and body, in characters (K2).
 pub(super) const TITLE_MAX: usize = 500;
 pub(super) const BODY_MAX: usize = 4000;
 
-/// The longest unknown name an error message repeats, cleaned of control and invisible
-/// characters (LOG-007).
+/// The longest unknown name an error message repeats, cleaned of control characters (LOG-007).
 const NAME_SHOWN: usize = 30;
 
-/// A value a template can show (D-21).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Placeholder {
     Device,
@@ -72,7 +57,6 @@ impl Placeholder {
     }
 }
 
-/// The placeholders as an operator types them, braces included.
 pub(super) fn placeholder_texts() -> Vec<String> {
     Placeholder::ALL
         .into_iter()
@@ -80,7 +64,7 @@ pub(super) fn placeholder_texts() -> Vec<String> {
         .collect()
 }
 
-/// Why a template is refused. The messages quote at most a short name, never the template.
+/// The messages quote at most a short name, never the template.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub(super) enum Invalid {
     #[error("{{{0}}} is not a placeholder")]
@@ -96,12 +80,9 @@ enum Piece {
     Field(Placeholder),
 }
 
-/// A template that passed the grammar above.
 pub(super) struct Template(Vec<Piece>);
 
 impl Template {
-    /// # Errors
-    /// `Unknown`, `Unclosed` or `Stray`, for the first mistake in reading order.
     pub(super) fn parse(text: &str) -> Result<Self, Invalid> {
         let mut pieces = Vec::new();
         let mut literal = String::new();
@@ -136,7 +117,6 @@ impl Template {
         Ok(Self(pieces))
     }
 
-    /// The template with each placeholder replaced by its value.
     pub(super) fn render(&self, values: &Values) -> String {
         self.0
             .iter()
@@ -148,21 +128,13 @@ impl Template {
     }
 }
 
-/// A rendered title and body, at most `TITLE_MAX` and `BODY_MAX` characters. They may still
-/// hold what the template's own text holds (a line break in the body, say): each channel
-/// encodes them for itself (`encode`).
+/// Not encoded: each channel encodes the title and body for itself (`encode`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Rendered {
     pub(super) title: String,
     pub(super) body: String,
 }
 
-/// Renders a title and body template with the values of one notification. A longer result is
-/// cut at the limits above.
-///
-/// # Errors
-/// `Invalid` when a stored template does not parse (it was validated when saved, so only a row
-/// written outside the API can fail).
 pub(super) fn render(title: &str, body: &str, values: &Values) -> Result<Rendered, Invalid> {
     let cut = |text: String, max: usize| text.chars().take(max).collect::<String>();
     Ok(Rendered {
@@ -171,9 +143,7 @@ pub(super) fn render(title: &str, body: &str, values: &Values) -> Result<Rendere
     })
 }
 
-/// The title and the body of a reminder as its row gives them: the engine words a reminder, so
-/// no template of a channel is read, and no text of a rule is parsed as a template (REM-009,
-/// REM-010).
+/// A reminder's own title and body: no rule text is parsed as a template (REM-009, REM-010).
 pub(super) fn given(values: &Values) -> Rendered {
     Rendered {
         title: values.title.clone().unwrap_or_default(),
@@ -181,8 +151,7 @@ pub(super) fn given(values: &Values) -> Rendered {
     }
 }
 
-/// The field errors of a template, named `template.title` and `template.body` as in K1's
-/// `NotificationTemplateInput`: length first, then placeholders.
+/// Field names match K1's `NotificationTemplateInput`.
 pub(super) fn field_errors(title: &str, body: &str) -> Vec<FieldError> {
     let mut errors = Vec::new();
     for (field, text, max) in [

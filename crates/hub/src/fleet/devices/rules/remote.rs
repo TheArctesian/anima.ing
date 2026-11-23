@@ -1,7 +1,4 @@
 //! Validation of the remote access settings of a device (RA-030..033, D-2, D-6).
-//!
-//! Field paths are `rdp.port`, `rdp.username`, `rdp.domain`, `vnc.port`, `vnc.username`,
-//! `macAddress`, `sessionLimit` and `metricsSource`; the wake relay check names `deviceId`.
 
 use std::num::NonZeroU8;
 
@@ -183,7 +180,6 @@ fn port(
     })
 }
 
-/// The Windows domain: trimmed, `None` when empty, at most 255 characters, plain, no spaces.
 fn domain(text: Option<&str>) -> Result<Option<String>, FieldError> {
     let domain = text.map_or("", str::trim);
     let reject = |message: &str| Err(FieldError::new("rdp.domain", message));
@@ -199,8 +195,7 @@ fn domain(text: Option<&str>) -> Result<Option<String>, FieldError> {
     Ok((!domain.is_empty()).then(|| domain.to_owned()))
 }
 
-/// The source the operator chose. `Daemon` is refused: only enrolling a daemon sets it, so a
-/// device never waits for a daemon that has no token (MET-011, R-092 D-7).
+/// `Daemon` is refused: only enrolling a daemon sets it (MET-011, R-092 D-7).
 fn metrics_source(source: MetricsSource) -> Result<MetricsSource, FieldError> {
     if source == MetricsSource::Daemon {
         return Err(FieldError::new(
@@ -223,7 +218,6 @@ fn new_session_limit(limit: i32) -> Result<Option<NonZeroU8>, FieldError> {
         .ok_or_else(|| FieldError::new("sessionLimit", SESSION_LIMIT_MESSAGE))
 }
 
-/// An update's limit: 0 clears it, 1 to 100 sets it (RA-036).
 fn changed_session_limit(limit: i32) -> Result<Option<NonZeroU8>, FieldError> {
     if limit == 0 {
         Ok(None)
@@ -232,7 +226,6 @@ fn changed_session_limit(limit: i32) -> Result<Option<NonZeroU8>, FieldError> {
     }
 }
 
-/// `None` for empty text (no address); otherwise the parsed unicast address (D-6).
 fn mac_address(text: &str) -> Result<Option<MacAddress>, FieldError> {
     let text = text.trim();
     if text.is_empty() {
@@ -243,8 +236,7 @@ fn mac_address(text: &str) -> Result<Option<MacAddress>, FieldError> {
         .map_err(|error: MacAddressError| FieldError::new("macAddress", error.to_string()))
 }
 
-/// The device, when it can be the wake relay of `site`: it is at that site and has SSH on,
-/// because the relay sends the Wake-on-LAN packet over its SSH link (D-7).
+/// The relay sends the Wake-on-LAN packet over its SSH link (D-7).
 ///
 /// # Errors
 /// A `deviceId` field error when there is no such device, it is at another site or its SSH is

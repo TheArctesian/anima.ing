@@ -1,5 +1,4 @@
-//! The e-mail rules: a host and port, mailboxes without line breaks, at least one recipient,
-//! and the CR-14 update rules for the password.
+//! The e-mail rules and the CR-14 update rules for the password.
 
 use std::str::FromStr as _;
 
@@ -15,7 +14,6 @@ use crate::{
     },
 };
 
-/// A valid draft; `edit` changes it before it is judged.
 fn email(edit: impl FnOnce(&mut EmailDraft)) -> SettingsDraft {
     let mut draft = EmailDraft {
         host: "smtp.example.test".to_owned(),
@@ -38,7 +36,6 @@ fn parts(prepared: &Prepared) -> (&EmailSettings, Option<&EmailSecrets>) {
     }
 }
 
-/// A stored e-mail channel on `smtp.example.test:587` with a password.
 fn changed(next: SettingsDraft) -> Result<Prepared, Vec<FieldError>> {
     let before = Settings::Email(EmailSettings {
         host: "smtp.example.test".to_owned(),
@@ -101,8 +98,7 @@ fn log_007_an_address_with_a_line_break_is_refused_without_quoting_it() {
         d.to = vec![injected.to_owned()];
     }))));
     assert_eq!(fields(&errors), ["settings.email.to"]);
-    // lettre reads a mailbox with a trailing line break as valid, so only the hub's own
-    // control-character check keeps it out of the message headers.
+    // lettre accepts a trailing line break, so only the hub's control-character check stops it.
     let trailing = "ops@example.test\r\n";
     assert!(lettre::message::Mailbox::from_str(trailing).is_ok());
     assert_eq!(

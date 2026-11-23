@@ -1,5 +1,4 @@
-//! The warnings a picture calls for: keys that expire soon, tagged keys that expire, and nodes
-//! that are not in Anima (VPN-010, VPN-011). Pure: the store decides which ones are new.
+//! The VPN warnings a picture calls for (VPN-010, VPN-011); the store decides which are new.
 
 use chrono::{DateTime, Utc};
 
@@ -16,7 +15,7 @@ const THRESHOLDS: [(i64, Kind); 4] = [
 /// The longest node key the warning marks accept (`vpn.warnings.node_key`).
 const KEY_MAX: usize = 80;
 
-/// The reason for a warning; one mark for each node, kind and expiry (BD-4).
+/// One mark for each node, kind and expiry (BD-4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Kind {
     Expiry30,
@@ -28,7 +27,6 @@ pub(super) enum Kind {
 }
 
 impl Kind {
-    /// The text stored in `vpn.warnings.kind`.
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Expiry30 => "expiry_30",
@@ -41,7 +39,6 @@ impl Kind {
     }
 }
 
-/// One warning event, with what its mark is keyed on.
 #[derive(Clone, PartialEq, Eq)]
 pub(super) struct Warning {
     pub key: String,
@@ -65,8 +62,7 @@ impl std::fmt::Debug for Warning {
     }
 }
 
-/// The warnings this picture calls for; the store decides which ones are new. A node whose
-/// key the marks cannot hold gets none, so one odd node cannot stop the others' warnings.
+/// A node whose key the marks cannot hold gets none, so one odd node cannot stop the others.
 pub(super) fn due(picture: &Picture, now: DateTime<Utc>) -> Vec<Warning> {
     std::iter::once(&picture.hub)
         .chain(&picture.nodes)
@@ -76,8 +72,7 @@ pub(super) fn due(picture: &Picture, now: DateTime<Utc>) -> Vec<Warning> {
         .collect()
 }
 
-/// An untagged key that expires within 30 days, or has expired: the most urgent threshold
-/// only, so a hub that was stopped for a while writes one event, not four.
+/// The most urgent threshold only, so a hub that was stopped for a while writes one event.
 fn expiry(node: &VpnNode, now: DateTime<Utc>) -> Option<Warning> {
     if !matches!(node.key_state, KeyState::Expiring | KeyState::Expired) {
         return None;
@@ -103,7 +98,6 @@ fn expiry(node: &VpnNode, now: DateTime<Utc>) -> Option<Warning> {
     })
 }
 
-/// A tagged node whose key expires; marked once for the node (BD-4).
 fn tagged(node: &VpnNode) -> Option<Warning> {
     (node.key_state == KeyState::TaggedWithExpiry).then(|| {
         let message = format!(
@@ -114,7 +108,6 @@ fn tagged(node: &VpnNode) -> Option<Warning> {
     })
 }
 
-/// A node that Anima does not know (VPN-011).
 fn outside(node: &VpnNode) -> Option<Warning> {
     (!node.in_anima).then(|| {
         let message = if node.role == super::Role::Router {
@@ -129,7 +122,6 @@ fn outside(node: &VpnNode) -> Option<Warning> {
     })
 }
 
-/// A warning about `node` with no expiry in its mark.
 fn warning(node: &VpnNode, kind: Kind, severity: Severity, message: String) -> Warning {
     Warning {
         key: node.key.clone(),

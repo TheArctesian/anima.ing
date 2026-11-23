@@ -1,6 +1,4 @@
-//! Tailscale ping: configuration, and the probe against a fake `LocalAPI` proxy on loopback
-//! (D-4, CHK-009, LOG-007). The proxy is not judged by the policy, so the strict policy
-//! that refuses loopback still reaches it.
+//! Tailscale ping (D-4, CHK-009, LOG-007); the address policy does not judge the `LocalAPI` proxy.
 
 mod proxy;
 
@@ -224,7 +222,6 @@ async fn d_4_a_proxy_that_never_answers_times_out_within_the_check_limit() {
 
     let started = std::time::Instant::now();
     let result = run(&config, "x", &env(Some(&proxy))).await;
-    // `probe` applies the limit; this is the same call the scheduler makes.
     assert_eq!(down(&result), "the check timed out");
     assert!(started.elapsed() < Duration::from_secs(3));
 }

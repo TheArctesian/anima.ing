@@ -1,7 +1,5 @@
-//! What each transfer leaves behind (K4 Section 9, LOG-005, LOG-007): one audit entry
-//! `file.upload` or `file.download` by the ticket's operator and client address, with the path,
-//! the size, the bytes moved and the outcome, never content; and one event with a fixed
-//! sentence. The path stays in the audit entry: the event log is read more widely.
+//! Each transfer writes one audit entry, never content, and one event (K4 Section 9, LOG-005,
+//! LOG-007). The path stays in the audit entry: the event log is read more widely.
 
 use std::sync::Arc;
 
@@ -27,18 +25,17 @@ use crate::{
     ids::SiteId,
 };
 
-/// Where a files tunnel writes: the stores, the clock, who opened it and the device's name.
 pub(super) struct Trail {
     pub(super) db: PgPool,
     pub(super) bus: Bus,
     pub(super) clock: Arc<dyn Clock>,
     pub(super) ticket: FilesTicket,
     pub(super) device_name: String,
-    /// The site of the device when the tunnel opened, for the context of each transfer.
+    /// The device's site when the tunnel opened.
     pub(super) site: SiteId,
 }
 
-/// The event's sentence and severity: fixed text with no path, value or device text.
+/// Fixed text with no path, value or device text.
 pub(super) const fn sentence(direction: Direction, outcome: Outcome) -> (Severity, &'static str) {
     use Direction::{Download, Upload};
     match (direction, outcome) {
@@ -70,12 +67,7 @@ pub(super) const fn sentence(direction: Direction, outcome: Outcome) -> (Severit
 }
 
 impl Trail {
-    /// Writes the audit entry and the event of `transfer`, ended with `outcome` (and
-    /// `reason` when refused), and the context of that one event (K-E4 Section 12), in one
-    /// transaction.
-    ///
-    /// # Errors
-    /// `Database`, `Events` or `Context` when one cannot be written; then none is.
+    /// The audit entry, the event and its context (K-E4 Section 12) are written in one transaction.
     pub(super) async fn record(
         &self,
         transfer: &Transfer,
@@ -129,19 +121,13 @@ impl Trail {
     }
 }
 
-/// The sentence of a files tunnel refused because the device's host key changed (SEC-007),
-/// in the words of the terminal's `HOST_KEY_MISMATCH` end.
+/// In the words of the terminal's `HOST_KEY_MISMATCH` end (SEC-007).
 pub(super) const HOST_KEY_CHANGED: &str = "The device presented an SSH host key that is not the \
                                            accepted one, so the hub opened no files tunnel \
                                            and sent no credential. Test the connection and \
                                            check the new key before accepting it.";
 
-/// Writes the Error event of a files tunnel to `device` refused at `now` because the device
-/// presented another host key than the accepted one. The request that opened the tunnel
-/// caused the attempt, so the event records `actor`, its kind (LOG-013).
-///
-/// # Errors
-/// `Database` or `Events` when the event cannot be written.
+/// The request that opened the tunnel caused the attempt, so the event records `actor` (LOG-013).
 pub(super) async fn host_key_changed(
     (db, bus): (&PgPool, &Bus),
     now: DateTime<Utc>,
@@ -158,13 +144,8 @@ pub(super) async fn host_key_changed(
     record(db, bus, now, event).await
 }
 
-/// Writes the Warning event of a files tunnel to `device` refused at `now` because its stored
-/// SSH credential was entered for another host than the device's host now (SEC-011). The
-/// request that opened the tunnel caused the refusal, so the event records `actor`, its kind
-/// (LOG-013).
-///
-/// # Errors
-/// `Database` or `Events` when the event cannot be written.
+/// The stored SSH credential was entered for another host (SEC-011). The request that opened
+/// the tunnel caused the refusal, so the event records `actor` (LOG-013).
 pub(super) async fn credential_moved(
     (db, bus): (&PgPool, &Bus),
     now: DateTime<Utc>,

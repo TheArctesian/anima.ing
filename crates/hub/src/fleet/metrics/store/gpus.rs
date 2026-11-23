@@ -1,6 +1,5 @@
 //! The GPUs found on devices and when the hub last looked (MET-006).
-//! The collector writes these tables; the 0700 migration's comment that nothing writes them
-//! is outdated and stays, because an applied migration is never edited.
+//! The collector writes these tables; the 0700 migration's comment that nothing writes them is outdated.
 
 use std::collections::HashMap;
 
@@ -13,8 +12,6 @@ use crate::{
     ids::DeviceId,
 };
 
-/// One finished look for a device's GPUs: when, the boot time the device gave then, and what
-/// it found.
 pub(in crate::fleet::metrics) struct Discovery<'a> {
     pub(in crate::fleet::metrics) found_at: DateTime<Utc>,
     pub(in crate::fleet::metrics) boot_at: Option<DateTime<Utc>>,
@@ -32,7 +29,6 @@ const DISCOVERY_SQL: &str = "\
     ON CONFLICT (device_id) DO UPDATE \
         SET found_at = excluded.found_at, boot_at = excluded.boot_at";
 
-/// The stored GPUs of each of `devices`, by index, in one query.
 pub(in crate::fleet::metrics) async fn gpus(
     db: &PgPool,
     devices: &[DeviceId],
@@ -55,8 +51,6 @@ pub(in crate::fleet::metrics) async fn gpus(
     Ok(by_device)
 }
 
-/// Replaces the stored GPUs of `device` with those of `discovery` and records when it was
-/// made, in one transaction, so a reader sees the old set or the new one, never a mix.
 pub(in crate::fleet::metrics) async fn replace_gpus(
     db: &PgPool,
     device: DeviceId,

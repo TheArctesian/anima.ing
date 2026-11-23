@@ -1,7 +1,5 @@
-//! The only SQL for the operational key tables of `credentials` (CQ-032; K-E5 Section 2): the
-//! keys and their versions here, the consumers in [`consumers`], the reads that build a key in
-//! [`reads`]. The sealed column is written once and read only by [`fetchable`]; no other
-//! statement selects it (LOG-007).
+//! The only SQL for the operational key tables (CQ-032; K-E5 Section 2). The sealed column is
+//! written once and read only by [`fetchable`]; no other statement selects it (LOG-007).
 
 pub(super) mod consumers;
 pub(super) mod reads;
@@ -15,10 +13,9 @@ use crate::ids::{DeviceId, OperationalKeyId, OperationalKeyVersionId};
 
 const NAME_KEY: &str = "operational_keys_name_key";
 
-/// Who made a row, and when.
 pub(super) type Made<'a> = (DateTime<Utc>, &'a str);
 
-/// Inserts a key; `false` when a key, removed or not, already has the name.
+/// `false` when a key, removed or not, already has the name.
 pub(super) async fn insert_key(
     conn: &mut PgConnection,
     (id, name): (OperationalKeyId, &str),
@@ -56,8 +53,7 @@ fn is_constraint(error: &sqlx::Error, name: &str) -> bool {
         == Some(name)
 }
 
-/// The id of the key named `name` that is not removed, locked until the transaction ends, so
-/// two changes of one key run one after the other.
+/// Locked until the transaction ends, so two changes of one key run one after the other.
 pub(super) async fn lock_key(
     conn: &mut PgConnection,
     name: &str,
@@ -71,7 +67,6 @@ pub(super) async fn lock_key(
     .await
 }
 
-/// Whether the key passed its expiry at `now`.
 pub(super) async fn is_expired(
     conn: &mut PgConnection,
     id: OperationalKeyId,
@@ -86,7 +81,6 @@ pub(super) async fn is_expired(
     .await
 }
 
-/// Replaces the metadata of the key.
 pub(super) async fn update_metadata(
     conn: &mut PgConnection,
     id: OperationalKeyId,
@@ -109,7 +103,7 @@ pub(super) async fn update_metadata(
     Ok(())
 }
 
-/// Marks the key removed at `at`. Its name stays taken.
+/// Its name stays taken.
 pub(super) async fn mark_removed(
     conn: &mut PgConnection,
     id: OperationalKeyId,
@@ -123,9 +117,7 @@ pub(super) async fn mark_removed(
     Ok(())
 }
 
-/// Ends, as `expired` at the expiry of their key, the active versions of the keys that passed
-/// their expiry at `now`: of the key `only`, or of every key. A version that ended is never
-/// active again, even when the operator moves the expiry later.
+/// A version that ended is never active again, even when the operator moves the expiry later.
 pub(super) async fn settle_expired(
     conn: &mut PgConnection,
     only: Option<OperationalKeyId>,
@@ -144,8 +136,6 @@ pub(super) async fn settle_expired(
     Ok(done.rows_affected())
 }
 
-/// Ends the active version of the key as `state` at `at`; its number, or `None` when no version
-/// was active.
 pub(super) async fn end_active(
     conn: &mut PgConnection,
     id: OperationalKeyId,
@@ -162,8 +152,6 @@ pub(super) async fn end_active(
     .await
 }
 
-/// A new active version: its id, its key, the bytes of its sealed value, and whether the
-/// operator said it was changed at the provider too.
 pub(super) struct NewVersion<'a> {
     pub(super) id: OperationalKeyVersionId,
     pub(super) key: OperationalKeyId,
@@ -171,7 +159,6 @@ pub(super) struct NewVersion<'a> {
     pub(super) rotated_at_provider: bool,
 }
 
-/// Inserts `version` as the active version numbered one past the key's highest; its number.
 /// The caller ended the active version first, in the same transaction.
 pub(super) async fn insert_version(
     conn: &mut PgConnection,
@@ -194,14 +181,9 @@ pub(super) async fn insert_version(
     .await
 }
 
-/// The version a device may fetch now: the active version of the key named `name`, while the
-/// key is not removed and not past its expiry, and only when `device` is a consumer of it. One
-/// statement for the three refusals, so each takes the same path (K-E5 Section 2.1). The key
-/// row is held shared until the transaction ends: a rotation or a revoke, which hold it for
-/// update, wait, so a fetch never gives or records a version that has ended (R-147). The
-/// consumer rows of the device are held shared too: a removal of the device waits for the fetch
-/// to commit, and then its list of the keys that the server had names this key (K-E5 Section
-/// 2.1, "After removal").
+/// One statement for the three refusals, so each takes the same path (K-E5 Section 2.1). The
+/// key and consumer rows are held shared, so a rotation, a revoke or a device removal waits and
+/// a fetch never gives or records a version that has ended (R-147).
 pub(super) struct Fetchable {
     pub(super) key: OperationalKeyId,
     pub(super) version: OperationalKeyVersionId,
@@ -235,8 +217,7 @@ pub(super) async fn fetchable(
     }))
 }
 
-/// Replaces the sealed value of each version that ended before `before` with empty bytes;
-/// how many it emptied (K-E5 Section 2: deleted 30 days after the version ended).
+/// A sealed value is deleted 30 days after its version ended (K-E5 Section 2).
 pub(super) async fn forget_ended(
     conn: &mut PgConnection,
     before: DateTime<Utc>,
@@ -251,7 +232,6 @@ pub(super) async fn forget_ended(
     Ok(done.rows_affected())
 }
 
-/// A fresh id for a key or a version.
 pub(super) fn new_id<T: From<Uuid>>() -> T {
     Uuid::now_v7().into()
 }

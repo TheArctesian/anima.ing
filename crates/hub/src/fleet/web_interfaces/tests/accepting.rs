@@ -1,5 +1,4 @@
-//! Suggestions against PostgreSQL: accept and dismiss, idempotence, cascades and concurrent
-//! accepts (WEB-002).
+//! WEB-002.
 
 use super::*;
 
@@ -19,7 +18,6 @@ db_test! {
         assert!(!second.created);
         assert_eq!(second.interface, first.interface);
         assert_eq!(count(&pool, "interfaces").await, 1);
-        // The accepted check is no longer offered.
         let offered = web_interfaces::suggestions(&pool, &[device(PVE_01)]).await.unwrap();
         assert!(offered.is_empty());
     }

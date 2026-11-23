@@ -1,5 +1,3 @@
-//! Local servers and environments that the probe tests share.
-
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::{
@@ -27,12 +25,10 @@ pub fn now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 11, 4, 12, 0, 0).unwrap()
 }
 
-/// An environment that may reach loopback, where the test servers listen.
 pub fn env() -> ProbeEnv {
     ProbeEnv::new(AddressPolicy::default().allowing_loopback(), now())
 }
 
-/// The production default policy.
 pub fn strict_env() -> ProbeEnv {
     ProbeEnv::new(AddressPolicy::default(), now())
 }
@@ -43,7 +39,6 @@ pub fn target(host: &str) -> ProbeTarget {
     }
 }
 
-/// A request as the test server saw it.
 #[derive(Clone, Debug)]
 pub struct Request {
     pub path: String,
@@ -68,7 +63,6 @@ pub enum Body {
         len: usize,
         written: Arc<AtomicUsize>,
     },
-    /// Accepts the request and never answers.
     Hang,
 }
 
@@ -172,7 +166,6 @@ async fn answer<S: AsyncRead + AsyncWrite + Unpin>(mut stream: S, reply: Reply) 
     let _ = stream.shutdown().await;
 }
 
-/// Serves HTTP on an ephemeral loopback port; `tls` makes it HTTPS.
 pub async fn serve(
     tls: Option<TlsAcceptor>,
     handler: impl Fn(&Request) -> Reply + Send + Sync + 'static,
@@ -232,12 +225,10 @@ pub fn acceptor(from_year: i32, to_year: i32) -> TlsAcceptor {
     TlsAcceptor::from(Arc::new(config))
 }
 
-/// A UDP DNS server that answers every query with one record. Returns its port.
 pub async fn dns_server(record_type: u16, rdata: Vec<u8>) -> u16 {
     dns_records(vec![(record_type, rdata)]).await
 }
 
-/// A UDP DNS server that answers every query with all the given `(type, rdata)` records.
 pub async fn dns_records(records: Vec<(u16, Vec<u8>)>) -> u16 {
     let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let port = socket.local_addr().unwrap().port();
@@ -262,7 +253,6 @@ pub async fn dns_records(records: Vec<(u16, Vec<u8>)>) -> u16 {
     port
 }
 
-/// A UDP socket that reads queries and never answers. Returns its port and keeps it alive.
 pub async fn silent_dns_server() -> u16 {
     let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let port = socket.local_addr().unwrap().port();
@@ -273,7 +263,6 @@ pub async fn silent_dns_server() -> u16 {
     port
 }
 
-/// Wire form of a domain name.
 pub fn wire_name(name: &str) -> Vec<u8> {
     let mut out = Vec::new();
     for label in name.trim_end_matches('.').split('.') {

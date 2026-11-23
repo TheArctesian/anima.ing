@@ -1,16 +1,11 @@
-//! Checks: what each device is checked for, the results, the status they give and the
-//! uptime they add up to (spec 6.4). [`spawn_scheduler`] runs the checks (HUB-003).
+//! Checks of devices, their status and uptime (spec 6.4, HUB-003, INT-001).
 //!
 //! Other domains use only the contract functions: [`statuses`], [`uptimes`], [`for_device`],
 //! [`add_default_check`], [`device_status`], [`resolved_ips`], [`http_urls`] and [`evaluate`].
-//! The writes, [`record_beat`], [`due_checks`] and the retention functions serve this domain's
-//! GraphQL, push route and scheduler; they are public so the integration tests can drive them.
-//! [`exposition_router`] serves `GET /metrics` (INT-001).
 //!
-//! HTTP and SNMP secrets are sealed with the vault, bound to their check, and never returned
-//! by a read; only [`load_http_secrets`] and [`load_snmp_secrets`] open them, for the probe
-//! (SEC-003, LOG-007). SNMP secrets are also bound to the device host they were entered for
-//! and open only for a probe of that host (SEC-010).
+//! HTTP and SNMP secrets are sealed, bound to their check, and never returned by a read; only
+//! [`load_http_secrets`] and [`load_snmp_secrets`] open them, for the probe (SEC-003, LOG-007).
+//! SNMP secrets open only for a probe of the device host they were entered for (SEC-010).
 
 pub mod config;
 mod evaluation;
@@ -58,7 +53,7 @@ pub use push::{OwnCheck, OwnReport, own, push_router};
 pub use scheduler::{Probing, spawn_scheduler};
 pub use uptime::UptimeWindow;
 
-/// Days after today whose heartbeat partitions [`drop_expired`] creates (DB-004).
+/// DB-004.
 const PARTITION_DAYS_AHEAD: u32 = 7;
 
 /// Why a checks operation failed. Messages hold no SQL, no input value and no secret.
@@ -70,37 +65,30 @@ pub enum Error {
     Validation(Vec<FieldError>),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// The sealed secrets cannot be opened; the source names no key or plaintext.
+    /// The source names no key or plaintext.
     #[error("the check secrets cannot be used")]
     Credentials(#[from] credentials::Error),
-    /// The stored configuration is not in the form this version reads.
     #[error("the stored configuration of check {0} cannot be read")]
     Unreadable(CheckId),
-    /// The sealed secrets were given for another origin or other secret headers (HTTP), or
-    /// another version or user name (SNMP), than the stored configuration names, so they are
-    /// not used (SEC-005).
+    /// SEC-005.
     #[error("the stored secrets do not match the check's address")]
     SecretsUnbound,
-    /// The SNMP secrets were entered for another device host than the device has now, so they
-    /// are not used (SEC-010).
+    /// SEC-010.
     #[error("the stored SNMP secrets were entered for another device host")]
     SecretsForOtherHost,
-    /// Another check already has this push token. The database detail, which holds the
-    /// token, is dropped (LOG-007).
+    /// The database detail, which holds the token, is dropped (LOG-007).
     #[error("the push token is already in use")]
     PushTokenTaken,
     #[error("the devices of the check cannot be read")]
     Devices(#[source] devices::Error),
     #[error("the maintenance windows cannot be read")]
     Maintenance(#[source] maintenance::Error),
-    /// The OS random source failed, so no push token was made.
     #[error("the OS random source failed")]
     Random(#[source] getrandom::Error),
 }
 
 impl Error {
-    /// For the process log: what failed, as a fixed word, never the source text (LOG-007,
-    /// API-010).
+    /// A fixed word for the process log, never the source text (LOG-007, API-010).
     #[must_use]
     pub const fn fault(&self) -> &'static str {
         match self {
@@ -119,8 +107,8 @@ fn from_devices(error: devices::Error) -> Error {
     }
 }
 
-/// The status of each device: the worst of its checks, with pause, groups and maintenance
-/// applied (CHK-004, CHK-006). Three queries however many devices (API-005).
+/// The worst of each device's checks, with pause, groups and maintenance applied (CHK-004,
+/// CHK-006); three queries however many devices (API-005).
 ///
 /// # Errors
 /// `Database`, `Devices` or `Maintenance` when a read fails.
@@ -137,7 +125,7 @@ pub async fn statuses(
     Ok(status::by_device(devices, &checks, &known, &active))
 }
 
-/// The status of one device (CHK-004).
+/// CHK-004.
 ///
 /// # Errors
 /// `NotFound` when there is no such device.
@@ -155,8 +143,7 @@ pub async fn device_status(
     Ok(shown.remove(&device).unwrap_or(Status::Unknown))
 }
 
-/// The uptime of each device over the window ending at `now`, from the aggregate tables
-/// (CHK-011). A device with no counted beats is absent.
+/// A device with no counted beats is absent (CHK-011).
 ///
 /// # Errors
 /// `Database` when the query fails.
@@ -174,7 +161,7 @@ pub async fn uptimes(
         .collect())
 }
 
-/// The device's checks in byte order of the name.
+/// In byte order of the name.
 ///
 /// # Errors
 /// `Unreadable` when a stored configuration cannot be read.
@@ -182,8 +169,7 @@ pub async fn for_device(db: &PgPool, device: DeviceId) -> Result<Vec<Check>, Err
     store::by_devices(db, &[device]).await
 }
 
-/// The checks of each device, each device's in byte order of the name, in one query
-/// (API-005). A device with no checks is absent.
+/// In one query (API-005); a device with no checks is absent.
 ///
 /// # Errors
 /// `Unreadable` when a stored configuration cannot be read.
@@ -194,9 +180,8 @@ pub async fn for_devices(
     store::grouped_by_devices(db, devices).await
 }
 
-/// The id and URL of each device's HTTP checks, each device's in byte order of the name then
-/// id, in one query (API-005, WEB-002). A device with no HTTP check is absent. Other check
-/// types' configurations are not read.
+/// The id and URL of each device's HTTP checks, in one query (API-005, WEB-002); a device with
+/// none is absent.
 ///
 /// # Errors
 /// `Database` when the query fails.
@@ -207,15 +192,13 @@ pub async fn http_urls(
     Ok(store::http_urls(db, devices).await?)
 }
 
-/// The check with this id.
-///
 /// # Errors
 /// `NotFound` when there is no such check.
 pub async fn get(db: &PgPool, id: CheckId) -> Result<Check, Error> {
     store::fetch(db, id).await
 }
 
-/// The checks with these ids, in one query (API-005). An id with no check is absent.
+/// In one query (API-005); an id with no check is absent.
 ///
 /// # Errors
 /// `Unreadable` when a stored configuration cannot be read.
@@ -223,8 +206,6 @@ pub async fn get_many(db: &PgPool, ids: &[CheckId]) -> Result<Vec<Check>, Error>
     store::fetch_many(db, ids).await
 }
 
-/// For each device, the address that its check with the latest beat resolved.
-///
 /// # Errors
 /// `Database` when the query fails.
 pub async fn resolved_ips(
@@ -234,7 +215,7 @@ pub async fn resolved_ips(
     store::resolved_ips(db, devices).await
 }
 
-/// The settings a new check starts with (D-26, DB-011).
+/// D-26, DB-011.
 ///
 /// # Errors
 /// `Database` when the read fails.
@@ -242,11 +223,6 @@ pub async fn defaults(db: &PgPool) -> Result<CheckDefaults, Error> {
     store::read_defaults(db).await
 }
 
-/// Replaces the stored defaults in the caller's transaction.
-///
-/// # Errors
-/// `Validation` naming the first field outside the bounds of `checks.checks` (the database
-/// backstop); the GraphQL input lists every such field before it gets here (API-010).
 pub(in crate::fleet::checks) async fn set_defaults(
     conn: &mut PgConnection,
     new: CheckDefaults,
@@ -254,8 +230,7 @@ pub(in crate::fleet::checks) async fn set_defaults(
     store::write_defaults(conn, new).await
 }
 
-/// Adds the default check, an ICMP check named "Ping" with the stored defaults, in the
-/// caller's transaction (spec 6.2, D-26).
+/// Spec 6.2, D-26.
 ///
 /// # Errors
 /// `Validation` (`deviceId`) when there is no such device.
@@ -281,23 +256,17 @@ pub async fn add_default_check(
     Ok(store::insert(conn, id, row).await?.id)
 }
 
-/// A new push token from 32 bytes of the operating system's random source: the I/O edge of
-/// token making.
-///
-/// # Errors
-/// `Random` when the OS random source fails.
 pub(in crate::fleet::checks) fn fresh_push_token() -> Result<PushToken, Error> {
     let mut bytes = [0_u8; 32];
     getrandom::fill(&mut bytes).map_err(Error::Random)?;
     Ok(PushToken::from_random(&bytes))
 }
 
-/// Adds a check in the caller's transaction. A parent must be a group on the same device.
-/// `sealer.host` is the host of `new.device`; SNMP secrets are bound to it (SEC-010).
+/// A parent must be a group on the same device. `sealer.host` is the host of `new.device`; SNMP
+/// secrets are bound to it (SEC-010).
 ///
 /// # Errors
-/// `Validation` with every field in error, including the constraint the database refused;
-/// `Credentials` (`Random`) when the OS random source fails while sealing secrets.
+/// `Validation` with every field in error; `Credentials` when sealing fails.
 pub async fn create_check(
     conn: &mut PgConnection,
     sealer: Sealer<'_>,
@@ -324,13 +293,11 @@ pub async fn create_check(
     store::insert(conn, id, row).await
 }
 
-/// Changes the fields present in the caller's transaction (see [`CheckChange`] for the
-/// secret rule). The type of a check never changes. `sealer.host` is the host of the check's
-/// device; SNMP secrets are kept and sealed only for it (SEC-010).
+/// The type of a check never changes. `sealer.host` is the host of the check's device; SNMP
+/// secrets are kept and sealed only for it (SEC-010).
 ///
 /// # Errors
-/// `NotFound` when there is no such check; `Validation` with the fields in error;
-/// `Credentials` (`Random`) when the OS random source fails while sealing secrets.
+/// `NotFound`; `Validation` with the fields in error; `Credentials` when sealing fails.
 pub async fn update_check(
     conn: &mut PgConnection,
     sealer: Sealer<'_>,
@@ -367,7 +334,7 @@ pub async fn update_check(
     Ok(check)
 }
 
-/// Deletes the check in the caller's transaction; its children leave the group.
+/// Its children leave the group.
 ///
 /// # Errors
 /// `NotFound` when there is no such check.
@@ -375,7 +342,7 @@ pub async fn delete_check(conn: &mut PgConnection, id: CheckId) -> Result<Check,
     store::delete(conn, id).await
 }
 
-/// Pauses or resumes the check (CHK-005); either way its state starts over.
+/// Either way the check's state starts over (CHK-005).
 ///
 /// # Errors
 /// `NotFound` when there is no such check.
@@ -387,14 +354,10 @@ pub async fn set_paused(
     store::set_paused(conn, id, paused).await
 }
 
-/// The stored HTTP configuration of the check with its opened secrets, for its probe only:
-/// the probe sends this configuration, so the secrets go only where they were given for
-/// (SEC-005). `None` when the check is not an HTTP check and holds no secrets.
+/// For the check's probe only: the secrets go only where they were given for (SEC-005).
 ///
 /// # Errors
-/// `Credentials` when the sealed value does not open for this check; `SecretsUnbound` when
-/// the configuration no longer names the destination they were given for; `Unreadable` when
-/// the check holds secrets but no readable HTTP configuration.
+/// `Credentials`, `SecretsUnbound` or `Unreadable` when the secrets cannot be used.
 pub async fn load_http_secrets(
     db: &PgPool,
     vault: &Vault,
@@ -403,16 +366,10 @@ pub async fn load_http_secrets(
     store::load_http_secrets(db, vault, check).await
 }
 
-/// The stored SNMP configuration of the check with its opened secrets, for a probe of `host`
-/// only: the secrets go only to the version and user name they were given for (SEC-005), and
-/// only to the device host they were entered for (SEC-010). Pass the host the probe sends to.
-/// `None` when the check is not an SNMP check and holds no secrets.
+/// For a probe of `host` only: pass the host the probe sends to (SEC-005, SEC-010).
 ///
 /// # Errors
-/// `Credentials` when the sealed value does not open for this check; `SecretsUnbound` when
-/// the configuration names another version or user name; `SecretsForOtherHost` when they
-/// were entered for another host; `Unreadable` when the check holds secrets but no readable
-/// SNMP configuration.
+/// `Credentials`, `SecretsUnbound`, `SecretsForOtherHost` or `Unreadable`.
 pub async fn load_snmp_secrets(
     db: &PgPool,
     vault: &Vault,
@@ -422,9 +379,8 @@ pub async fn load_snmp_secrets(
     store::load_snmp_secrets(db, vault, check, host).await
 }
 
-/// Records one result in the caller's transaction: the heartbeat, its minute, hour and day
-/// aggregates, and the check's new state (CHK-003, DB-008). A paused check, or a beat not
-/// newer than the check's last beat, writes nothing and gives [`Recorded::Skipped`] (CHK-005).
+/// A paused check, or a beat not newer than the check's last beat, writes nothing and gives
+/// [`Recorded::Skipped`] (CHK-003, CHK-005, DB-008).
 ///
 /// # Errors
 /// `NotFound` when the check no longer exists; nothing is written then.
@@ -436,13 +392,8 @@ pub async fn record_beat(
     store::record_beat(conn, check, beat).await
 }
 
-/// Records one attempt in the caller's transaction: locks the check, evaluates the result on
-/// its current state and settings, so a beat, pause or change that landed meanwhile applies,
-/// and writes the beat with [`record_beat`] (CHK-002, CHK-005). Returns the beat written, or
-/// `None` when the check is paused or already has a beat at least as new.
-///
-/// # Errors
-/// `NotFound` when the check no longer exists.
+/// Evaluates under the check's lock, so a beat, pause or change that landed meanwhile applies
+/// (CHK-002, CHK-005).
 pub(in crate::fleet::checks) async fn record_attempt(
     conn: &mut PgConnection,
     check: CheckId,
@@ -451,9 +402,7 @@ pub(in crate::fleet::checks) async fn record_attempt(
     store::record_attempt(conn, check, attempt).await
 }
 
-/// Up to `limit` checks that are not paused and are due at `now` (CHK-001). PUSH checks are
-/// included: when one is due, the push did not come in its interval and the scheduler records
-/// that. Groups are never due.
+/// PUSH checks are included: when one is due, its push did not come in its interval (CHK-001).
 ///
 /// # Errors
 /// `Database` when the query fails.
@@ -461,11 +410,8 @@ pub async fn due_checks(db: &PgPool, now: DateTime<Utc>, limit: u32) -> Result<V
     store::due(db, now, limit).await
 }
 
-/// The daily retention run of checks, passed the operator's period (D-25, HUB-005): creates the
-/// heartbeat partitions of today and the week after it (DB-004), drops those older than
-/// `heartbeats_keep` (DB-005), deletes the aggregate rows past their fixed periods (DB-009) and
-/// the heartbeats of deleted checks (DEV-015). The database refuses to drop a heartbeat
-/// partition less than 1 day old. A step that fails stops the run; `upkeep.rs` retries it.
+/// The daily retention run of checks (D-25, HUB-005, DB-004, DB-005, DB-009, DEV-015). The
+/// database refuses to drop a heartbeat partition less than 1 day old.
 ///
 /// # Errors
 /// `Database` when a step fails, or when the database refuses the cutoff.

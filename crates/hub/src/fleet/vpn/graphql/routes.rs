@@ -1,5 +1,4 @@
-//! Approving the route a site's router waits with, through the broker (R-055, VP-7, D-23).
-//! The client then waits on `vpnChanged` for the router to serve the subnet (BD-16).
+//! Approving a site router's waiting route through the broker (R-055, VP-7, D-23, BD-16).
 
 use async_graphql::{Context, ID, Object, Result};
 use serde_json::json;

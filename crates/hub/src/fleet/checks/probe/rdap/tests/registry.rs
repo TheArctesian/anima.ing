@@ -1,12 +1,8 @@
-//! A local registry for `.test`: the bootstrap file at `/dns.json` and an RDAP service under
-//! `/rdap/`, on loopback with a test root certificate. The scheduler tests use it too.
-
 use chrono::{DateTime, SecondsFormat, Utc};
 
 use super::server::{Server, reply, serve};
 use crate::fleet::{checks::probe::rdap::Rdap, targets::AddressPolicy};
 
-/// A registry whose RDAP service answers `/rdap/domain/<name>` with `answer(name)`.
 pub(in crate::fleet::checks) async fn registry(
     answer: impl Fn(&str) -> Vec<u8> + Send + Sync + 'static,
 ) -> Server {
@@ -22,7 +18,6 @@ pub(in crate::fleet::checks) async fn registry(
     .await
 }
 
-/// An RDAP answer that gives every domain this expiration date.
 pub(in crate::fleet::checks) fn expiring_at(
     not_after: DateTime<Utc>,
 ) -> impl Fn(&str) -> Vec<u8> + Send + Sync + 'static {
@@ -34,7 +29,6 @@ pub(in crate::fleet::checks) fn expiring_at(
     }
 }
 
-/// The RDAP probe state that reads the registry's bootstrap file and trusts its certificate.
 pub(in crate::fleet::checks) fn rdap(server: &Server) -> Rdap {
     Rdap::for_tests(
         AddressPolicy::default().allowing_loopback(),

@@ -1,5 +1,3 @@
-//! The HTTP probe ignores proxy variables in the environment.
-
 use super::support::{Reply, env, serve, target};
 use crate::fleet::checks::{
     config::{CheckConfig, HttpConfig},

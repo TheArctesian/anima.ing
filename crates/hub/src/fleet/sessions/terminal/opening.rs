@@ -1,11 +1,6 @@
-//! Everything the terminal does before the WebSocket upgrade, after the ticket is redeemed
-//! (K4 Section 8.2): load the device, resolve and check its host (R-032), connect to a
-//! checked address, pin the host key in the key exchange (SEC-007, K4 Section 8.3), sign in
-//! with the stored credential (OD-9, SEC-005) and open the session channel.
-//!
-//! The credential is sent only after the presented key equals the accepted one, and it is
-//! dropped, its bytes zeroed, as soon as the sign-in returns. Nothing here logs; no error or
-//! message holds a host name, an address, the device's text or a secret (LOG-007).
+//! The terminal's work before the WebSocket upgrade (K4 Sections 8.2 and 8.3, R-032, SEC-005, SEC-007, OD-9).
+//! The credential is sent only after the presented key equals the accepted one, and is zeroed once the sign-in returns.
+//! Nothing here logs; no error or message holds a host name, an address, the device's text or a secret (LOG-007).
 
 use std::{sync::Arc, time::Duration};
 
@@ -27,34 +22,24 @@ use crate::fleet::{
     trust,
 };
 
-/// SSH keep-alive interval (K4 Section 8.2, spec Section 6.3.1); three unanswered end the
-/// connection, which the relay sees as a failed connection.
+/// K4 Section 8.2, spec Section 6.3.1; three unanswered end the connection.
 const KEEPALIVE: Duration = Duration::from_secs(30);
-/// Messages from the device held for the relay before russh stops reading the connection, so
-/// a client that reads slowly stalls the device instead of growing a buffer (K4 Section 8.5).
-/// Each is at most one SSH packet (32 KiB by default).
+/// Small, so a client that reads slowly stalls the device instead of growing a buffer (K4 Section 8.5).
 const CHANNEL_BUFFER: usize = 4;
 
-/// A signed-in SSH connection and its session channel, before the PTY and shell.
 pub(super) struct SignedIn {
     pub(super) handle: Handle<Observer>,
     pub(super) channel: Channel<Msg>,
 }
 
-/// What the terminal does after the upgrade.
 pub(super) enum Opening {
-    /// Signed in with a session channel open: wait for the client's first `resize`.
     SignedIn(SignedIn),
-    /// The device presented another host key than the accepted one, or a certificate, or a
-    /// key the hub cannot read: no credential was sent (SEC-007). Tell the client, close 4001.
+    /// Another host key, a certificate or an unreadable key: no credential was sent (SEC-007).
     HostKeyChanged,
-    /// No credential is stored, it cannot be read, or the device refused it: tell the client,
-    /// close 1011. The message says which.
     SignInRefused(&'static str),
 }
 
-/// Why the terminal did not open. The messages are for the process log; none holds a value,
-/// an address, the device's text or the token (LOG-007).
+/// Process-log messages hold no value, address, device text or token (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub(super) enum NotOpened {
     #[error("the device no longer exists")]
@@ -84,7 +69,6 @@ pub(super) enum NotOpened {
 }
 
 impl NotOpened {
-    /// The event message: what the operator can do about it, with no detail from the device.
     pub(super) const fn message(&self) -> &'static str {
         match self {
             Self::DeviceGone => "The device was deleted before the SSH session opened.",
@@ -122,13 +106,7 @@ impl From<SshError> for NotOpened {
     }
 }
 
-/// Opens the device side of the ticket's session within its opening limit
-/// ([`Timing::opening_of`](super::route::Timing::opening_of)). Safe to
-/// drop at any await: dropping the connection's handle ends it, and the credential leaves the
-/// hub only in the sign-in, after the key matched (SEC-002).
-///
-/// # Errors
-/// [`NotOpened`] for each step that fails; the caller ends the session `GATEWAY_ERROR`.
+/// Safe to drop at any await: dropping the connection's handle ends it (SEC-002).
 pub(super) async fn open(
     terminal: &Terminal,
     ticket: &PendingTicket,
@@ -180,10 +158,7 @@ async fn opened(terminal: &Terminal, ticket: &PendingTicket) -> Result<Opening, 
     Ok(Opening::SignedIn(SignedIn { handle, channel }))
 }
 
-/// Signs in as the device's user with its stored credential, opened only for the host the
-/// connection went to (SEC-011); `Some` with the event message when there is none, it was
-/// entered for another host, it cannot be read or the device refuses it (D-3). The decrypted
-/// secret is dropped, zeroed, before this returns.
+/// The credential opens only for the host the connection went to (SEC-011).
 async fn sign_in(
     terminal: &Terminal,
     device: &Device,
@@ -208,9 +183,7 @@ async fn sign_in(
     }
 }
 
-/// The terminal's SSH client configuration: the hub's host key order, keep-alive every 30
-/// seconds, a small channel buffer for backpressure, and no Nagle delay for keystrokes. No
-/// inactivity limit: an idle shell stays open while the keep-alive is answered.
+/// No inactivity limit: an idle shell stays open while the keep-alive is answered.
 pub(super) fn config() -> Arc<client::Config> {
     Arc::new(client::Config {
         preferred: ssh::preferred(),

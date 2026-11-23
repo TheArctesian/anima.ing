@@ -1,9 +1,5 @@
-//! The connection test for RDP and VNC (DEV-013, SEC-007): whether the device answers on the
-//! protocol's port, and for RDP the server certificate, kept for `acceptServerCertificate`.
-//!
-//! The hub never signs in during an RDP or VNC test: no credential, given or stored, leaves
-//! the hub. RDP stops after the TLS handshake, before `CredSSP`; VNC after the version banner,
-//! before the security handshake.
+//! The connection test for RDP and VNC (DEV-013, SEC-007). No credential leaves the hub:
+//! RDP stops before `CredSSP`, VNC before the security handshake.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -25,15 +21,13 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The port and, for RDP, the security to test with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::fleet::sessions) enum DesktopSettings {
     Rdp { port: u16, security: RdpSecurity },
     Vnc { port: u16 },
 }
 
-/// What to test: a saved device with its saved settings, or the form's values. No
-/// certificate can be accepted for unsaved values yet, so any certificate read is new.
+/// No certificate can be accepted for unsaved values, so any certificate read is new.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::sessions) enum DesktopSubject {
     Device {
@@ -69,20 +63,18 @@ pub(in crate::fleet::sessions) const TIMED_OUT: &str =
 pub(in crate::fleet::sessions) const NOT_RDP: &str = "The device did not answer as an RDP server.";
 pub(in crate::fleet::sessions) const NOT_VNC: &str = "The device did not answer as a VNC server.";
 
-/// What an RDP read found, once a certificate is recorded.
 enum Seen {
     Certificate(Observation<PresentedCertificate>),
     Standard,
     Refused,
 }
 
-/// Tests `subject` at `at`. A certificate the server presents is kept 15 minutes for
-/// `acceptServerCertificate`, whether or not the device ignores certificates.
+/// A presented certificate is kept 15 minutes for `acceptServerCertificate`, whether or not
+/// the device ignores certificates.
 ///
 /// # Errors
-/// `NotFound` for an unknown device; `Validation` on `host` when it resolves to a refused
-/// address (R-032); `Database` or `Devices` when a dependency fails. A device that cannot be
-/// reached is a result, not an error.
+/// `NotFound` for an unknown device; `Validation` on `host` for a refused address (R-032);
+/// `Database` or `Devices` when a dependency fails. An unreachable device is a result.
 pub(in crate::fleet::sessions) async fn test_desktop(
     db: &PgPool,
     live: &Live,
@@ -127,7 +119,6 @@ fn target<'a>(live: &'a Live, host: &'a str, port: u16) -> Target<'a> {
     }
 }
 
-/// The host, the settings and, for a saved device tested with RDP, its accepted certificate.
 async fn plan(
     db: &PgPool,
     subject: DesktopSubject,
@@ -156,7 +147,6 @@ async fn plan(
     })
 }
 
-/// A device that answered, signed in to by nobody.
 fn reached(message: &'static str) -> ConnectionTest {
     ConnectionTest {
         reachable: true,
@@ -170,8 +160,7 @@ fn reached(message: &'static str) -> ConnectionTest {
     }
 }
 
-/// The result for a read that failed, with `unexpected` for a reply of another protocol; a
-/// refused target is the operator's `Validation` error on `host` (R-032).
+/// A refused target is the operator's `Validation` error on `host` (R-032).
 fn unreached(
     read: Result<ConnectionTest, ReadError>,
     unexpected: &'static str,
@@ -191,9 +180,6 @@ fn unreached(
     })
 }
 
-/// `serverCertificate` is set when none is accepted (`certificateChanged` false) or the server
-/// presented another (`certificateChanged` true), and null when it presented the accepted one,
-/// the only case `certificateMatched` is true.
 fn rdp_outcome(
     accepted: Option<&ServerCertificate>,
     seen: Result<Seen, ReadError>,
@@ -225,7 +211,6 @@ fn rdp_outcome(
     unreached(read, NOT_RDP)
 }
 
-/// The VNC result: a banner is an answer, nothing more; VNC has no certificate.
 fn vnc_outcome(read: Result<(), ReadError>) -> Result<ConnectionTest, Error> {
     unreached(read.map(|()| reached(VNC_ANSWERED)), NOT_VNC)
 }
@@ -251,8 +236,7 @@ mod tests {
         }
     }
 
-    /// `certificateMatched` is true only for a certificate equal to the pin: a null
-    /// `serverCertificate` alone (standard security, a refusal, no TLS) proves nothing.
+    /// A null `serverCertificate` alone (standard security, a refusal, no TLS) proves nothing.
     #[test]
     fn sec_007_only_the_accepted_certificate_is_matched() {
         let accepted = ServerCertificate::from(observed(b"accepted"));

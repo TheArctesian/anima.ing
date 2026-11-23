@@ -1,5 +1,4 @@
-//! The pure decisions: each egress failure's reason and code, whether it is permanent, and when
-//! a failed notification is tried again (CR-14 item 5, D-16).
+//! Egress failure reasons, permanence and retry timing (CR-14 item 5, D-16).
 
 use chrono::{DateTime, TimeDelta, Utc};
 

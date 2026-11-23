@@ -1,5 +1,4 @@
-//! The expiry date of an RDAP reply (D-29, RFC 9083): the expiration event, and replies that
-//! give none or cannot be read.
+//! The expiry date of an RDAP reply (D-29, RFC 9083).
 
 use chrono::{DateTime, Utc};
 use proptest::prelude::*;
@@ -91,15 +90,13 @@ fn d_29_a_reply_that_is_not_an_object_with_an_events_list_is_unreadable() {
 }
 
 proptest! {
-    /// P3-003: the reply comes from a server the operator does not control, so no bytes make
-    /// the parser panic.
+    /// P3-003: the reply comes from a server the operator does not control.
     #[test]
     fn p3_003_any_bytes_parse_without_a_panic(body in proptest::collection::vec(any::<u8>(), 0..512)) {
         let _ = expiration(&body);
     }
 
-    /// P3-003: an event list of any actions and dates gives a date only from an expiration
-    /// event with an RFC 3339 date.
+    /// P3-003.
     #[test]
     fn p3_003_any_events_give_only_an_expiration_date(
         events in proptest::collection::vec(("\\PC{0,12}", "\\PC{0,30}"), 0..8),

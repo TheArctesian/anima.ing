@@ -1,9 +1,5 @@
-//! One collection round: the operating system of each device at Other detected first, then the
-//! devices due, at most [`AT_ONCE`] at a time, then each device's reading kept for its next
-//! rates and a failure change reported (MET-001, DEV-025, D-4, D-10, D-11).
-//!
-//! One task owns this state, so no lock guards it. Collections run as tasks (`fan_out`); dropping
-//! the round, as aborting the collector does, aborts them and drops their links.
+//! One collection round (MET-001, DEV-025, D-4, D-10, D-11).
+//! One task owns this state, so no lock guards it; dropping the round aborts its collections.
 
 use std::{
     collections::{HashMap, HashSet},
@@ -25,12 +21,10 @@ use crate::{
     ids::DeviceId,
 };
 
-/// What the collector remembers between rounds.
 pub(super) struct Collector {
     ctx: Arc<Context>,
     /// Each due device's last reading, for its rates (D-4), and its known GPUs (MET-006).
     kept: HashMap<DeviceId, Kept>,
-    /// The due devices whose last collection failed (D-10).
     failing: HashSet<DeviceId>,
 }
 
@@ -43,9 +37,7 @@ impl Collector {
         }
     }
 
-    /// Detects the operating system of every device awaiting it, then collects every due device
-    /// once; a device detected now is collected from the next round (DEV-025). A device list
-    /// that cannot be read skips the round.
+    /// A device detected now is collected from the next round (DEV-025).
     pub(super) async fn round(&mut self) {
         let listed = devices::list(&self.ctx.db).await;
         let Ok(listed) = listed.inspect_err(unlisted) else {
@@ -67,8 +59,7 @@ impl Collector {
         }
     }
 
-    /// Detects the operating system of each of `awaiting`, at most [`AT_ONCE`] at a time. A
-    /// detection's outcome never reaches the failures or the events (DEV-025).
+    /// A detection's outcome never reaches the failures or the events (DEV-025).
     async fn detect(&self, awaiting: Vec<devices::Device>) {
         let jobs = awaiting
             .into_iter()
@@ -82,18 +73,14 @@ impl Collector {
         }
     }
 
-    /// Forgets the readings, GPUs and failures of every device not in `due`: deleted, or no
-    /// longer collected. Collected again, it starts with a new discovery that numbers its GPUs
-    /// afresh.
+    /// A device collected again starts with a new discovery that numbers its GPUs afresh.
     fn keep_only(&mut self, due: &[devices::Device]) {
         let kept: HashSet<DeviceId> = due.iter().map(|device| device.id).collect();
         self.kept.retain(|device, _| kept.contains(device));
         self.failing.retain(|device| kept.contains(device));
     }
 
-    /// Makes the next collection of `device` look for its GPUs again, keeping their numbers: a
-    /// failed collection may have stored a discovery without its samples, or missed a restart
-    /// (MET-006, MET-009).
+    /// A failed collection may have stored a discovery without its samples, or missed a restart (MET-006, MET-009).
     fn look_again(&mut self, device: DeviceId) {
         if let Some(gpus) = self
             .kept
@@ -104,7 +91,6 @@ impl Collector {
         }
     }
 
-    /// Keeps a collection's reading, or reports its failure, and writes the event of a change.
     /// A change whose event cannot be written is left as it was, so the next round tries again.
     async fn finish(&mut self, joined: Result<Finished, JoinError>) {
         let Finished {
@@ -147,8 +133,6 @@ impl Collector {
         }
     }
 
-    /// Writes the event of `change` in its own short transaction; returns whether it was
-    /// written.
     async fn report(&self, change: Change, device: DeviceId, name: String) -> bool {
         let now = self.ctx.clock.now();
         let event = failures::event(change, device, name);
@@ -173,8 +157,7 @@ impl Collector {
     }
 }
 
-/// Logs a collection or detection that stopped early. The panic message could hold device
-/// text, so only its kind is logged (LOG-007).
+/// The panic message could hold device text, so only its kind is logged (LOG-007).
 fn stopped(error: &JoinError) {
     let panicked = error.is_panic();
     tracing::warn!(domain = "metrics", panicked, "a collection stopped early");
@@ -184,8 +167,7 @@ fn unlisted(error: &devices::Error) {
     tracing::warn!(domain = "metrics", %error, "the devices cannot be listed");
 }
 
-/// Logs a failed collection with the device id and the failure's fixed text only (LOG-007):
-/// a warning when the device starts failing, a debug line on each repeat.
+/// Logs the device id and the failure's fixed text only (LOG-007).
 fn failed(device: DeviceId, was_failing: bool, error: &Failure) {
     if was_failing {
         failed_again(device, error);

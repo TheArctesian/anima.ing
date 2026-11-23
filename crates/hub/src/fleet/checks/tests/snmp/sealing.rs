@@ -21,7 +21,6 @@ use crate::{
 const COMMUNITY: &str = "c0mmunity-SECRET-sealed";
 const AUTH: &str = "auth-SECRET-sealed";
 const PRIVACY: &str = "privacy-SECRET-sealed";
-/// The device host the secrets are entered for.
 const HOST: &str = "nas-01.home.lan";
 
 fn vault() -> Vault {
@@ -158,7 +157,6 @@ fn sec_003_garbage_and_http_layouts_do_not_open() {
         open_snmp(&vault, id, (&v2c, HOST), (b"not sealed", None)),
         Err(Error::Credentials(_))
     ));
-    // A value sealed under the HTTP context of the same check does not open as SNMP.
     let http = vault
         .seal(
             &Secret::from(COMMUNITY.to_owned()),
@@ -171,7 +169,6 @@ fn sec_003_garbage_and_http_layouts_do_not_open() {
     ));
 }
 
-/// Each malformed plaintext under the right context is refused, never read past its end.
 #[test]
 fn sec_003_a_malformed_plaintext_is_refused() {
     let (vault, id) = (vault(), check());
@@ -232,11 +229,9 @@ fn sec_010_secrets_open_only_for_the_host_they_were_sealed_for() {
     for other in ["10.0.0.5", "nas-01.home.lan.example", "nas-02.home.lan", ""] {
         let opened = open_snmp(&vault, id, (&v2c, other), (&sealed, None));
         assert!(matches!(opened, Err(Error::SecretsForOtherHost)), "{other}");
-        // A recorded legacy host never overrides the host in the binding.
         let opened = open_snmp(&vault, id, (&v2c, other), (&sealed, Some(other)));
         assert!(matches!(opened, Err(Error::SecretsForOtherHost)), "{other}");
     }
-    // Another user name is unbound whatever the host.
     let v3 = config(SnmpVersion::V3, Some("monitor"));
     let sealed = seal_snmp(&vault, id, (&v3, HOST), &user()).unwrap();
     let other_user = config(SnmpVersion::V3, Some("other"));
@@ -244,8 +239,7 @@ fn sec_010_secrets_open_only_for_the_host_they_were_sealed_for() {
     assert!(matches!(opened, Err(Error::SecretsUnbound)));
 }
 
-/// Secrets sealed before SEC-010 have no host in their binding: they open only for the host
-/// migration 0324 recorded, and for none when it recorded nothing.
+/// Secrets sealed before SEC-010 open only for the host migration 0324 recorded, if any.
 #[test]
 fn sec_010_a_binding_without_a_host_opens_only_for_the_recorded_host() {
     let (vault, id) = (vault(), check());

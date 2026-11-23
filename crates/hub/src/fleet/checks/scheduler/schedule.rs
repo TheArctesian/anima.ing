@@ -1,6 +1,4 @@
-//! The scheduler's decisions: when a check runs first, how soon it may run again, when it is
-//! late and how a status change is reported (CHK-001, CHK-002, CHK-010, DB-005, R-102). Pure: time and randomness come in as
-//! parameters.
+//! The scheduler's decisions (CHK-001, CHK-002, CHK-010, DB-005, R-102); time and randomness are parameters.
 
 use std::collections::HashSet;
 
@@ -24,21 +22,15 @@ fn interval(seconds: u32) -> TimeDelta {
     TimeDelta::seconds(i64::from(seconds.max(1)))
 }
 
-/// The longest wait between two ticks in which the hub still ran. The ticks are a second
-/// apart, and a tick that is slow does not count: the wait starts when it ends.
+/// Ticks are a second apart, and the wait starts when a slow tick ends.
 const AWAKE_WAIT: TimeDelta = TimeDelta::seconds(30);
 
-/// Whether the hub did not run for a time before `now`: the scheduler waited for this tick
-/// since `idle_since`, longer than a hub that runs waits. A hub that was suspended goes on
-/// with its old state, so only the clock shows it.
+/// A hub that was suspended goes on with its old state, so only the clock shows it.
 pub(super) fn slept(idle_since: Option<DateTime<Utc>>, now: DateTime<Utc>) -> bool {
     idle_since.is_some_and(|since| now - since > AWAKE_WAIT)
 }
 
-/// The earliest a check may be probed again, when its type has such a floor (R-102,
-/// CHK-009): a domain expiry check asks its RDAP server at most once an interval, so it waits
-/// its whole interval after `queried_at`, its last query. A check never queried, or of
-/// another type, has none.
+/// A domain expiry check asks its RDAP server at most once an interval (R-102, CHK-009).
 pub(super) fn floor(due: &Due, queried_at: Option<DateTime<Utc>>) -> Option<DateTime<Utc>> {
     let domain = matches!(due.config, Some(CheckConfig::DomainExpiry { .. }));
     queried_at
@@ -46,7 +38,6 @@ pub(super) fn floor(due: &Due, queried_at: Option<DateTime<Utc>>) -> Option<Date
         .map(|at| at + interval(due.settings.interval_seconds))
 }
 
-/// `at`, or the check's [`floor`] after `queried_at` when that is later.
 pub(super) fn not_before_floor(
     due: &Due,
     queried_at: Option<DateTime<Utc>>,
@@ -55,9 +46,7 @@ pub(super) fn not_before_floor(
     floor(due, queried_at).map_or(at, |floor| at.max(floor))
 }
 
-/// Whether the check gets a new due time instead of running: it has none; it was due before
-/// the scheduler started, so a hub restart does not probe everything at once; or it is due
-/// before its [`floor`] after its last beat, however that due time was set (R-102).
+/// A check due before the scheduler started is moved, so a restart does not probe everything at once (R-102).
 pub(super) fn needs_new_due(due: &Due, started_at: DateTime<Utc>) -> bool {
     let floor = floor(due, due.last_beat_at);
     due.state
@@ -65,9 +54,7 @@ pub(super) fn needs_new_due(due: &Due, started_at: DateTime<Utc>) -> bool {
         .is_none_or(|at| at < started_at || floor.is_some_and(|floor| at < floor))
 }
 
-/// The new due time: spread, and never before the check's [`floor`] after its last beat. A
-/// probed check gets a uniform instant in `[now, now + interval)` (CHK-001). A PUSH check
-/// waits its whole interval: its device has had no chance to call.
+/// Spread over one interval (CHK-001); a PUSH check waits all of it, as its device has had no chance to call.
 pub(super) fn new_due(due: &Due, now: DateTime<Utc>, rng: &mut impl Rng) -> DateTime<Utc> {
     let interval = interval(due.settings.interval_seconds);
     if matches!(due.config, Some(CheckConfig::Push)) {
@@ -78,7 +65,6 @@ pub(super) fn new_due(due: &Due, now: DateTime<Utc>, rng: &mut impl Rng) -> Date
     not_before_floor(due, due.last_beat_at, spread)
 }
 
-/// When a check is due and how often it runs, for the lateness rule.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Timing {
     pub(super) next_due_at: Option<DateTime<Utc>>,
@@ -94,46 +80,38 @@ impl From<&Due> for Timing {
     }
 }
 
-/// Whether a check that is not paused is late by more than 2 intervals at `now` (CHK-010).
-/// Lateness counts from the due time, or from `started_at` when the check was due before the
-/// scheduler started, so the downtime of the hub itself is not reported.
+/// Lateness counts from `started_at` at the earliest, so the hub's own downtime is not reported (CHK-010).
 pub(super) fn is_late(timing: Timing, started_at: DateTime<Utc>, now: DateTime<Utc>) -> bool {
     timing
         .next_due_at
         .is_some_and(|at| at.max(started_at) < now - interval(timing.interval_seconds) * 2)
 }
 
-/// The late checks already reported, so each lateness episode gives one event (CHK-010).
+/// Each lateness episode gives one event (CHK-010).
 #[derive(Debug, Default)]
 pub(super) struct Watchdog {
     reported: HashSet<CheckId>,
 }
 
 impl Watchdog {
-    /// Whether to report the check as late now: true once for each lateness episode.
     pub(super) fn should_report(&mut self, check: CheckId, late: bool) -> bool {
         late && self.reported.insert(check)
     }
 
-    /// The check ran on time again, or its report was not written: its next lateness is
-    /// reported again.
     pub(super) fn clear(&mut self, check: CheckId) {
         self.reported.remove(&check);
     }
 
-    /// Forgets the checks that are not in `kept`.
     pub(super) fn retain(&mut self, kept: &HashSet<CheckId>) {
         self.reported.retain(|check| kept.contains(check));
     }
 }
 
-/// A due PUSH check got no push within its interval: a failed attempt, so retries apply
-/// through `evaluate` (CHK-002).
+/// A missed push is a failed attempt, so retries apply (CHK-002).
 pub(super) fn missed_push() -> ProbeResult {
     ProbeResult::failed(&Failure::NoPush)
 }
 
-/// The severity of the event for a device that changed to `status`.
 pub(super) const fn severity_of(status: Status) -> Severity {
     match status {
         Status::Down => Severity::Error,
@@ -152,13 +130,12 @@ const fn word(status: Status) -> &'static str {
     }
 }
 
-/// The event message for a status change: the device name and the status only (LOG-007).
+/// The device name and the status only (LOG-007).
 pub(super) fn status_message(device: &str, status: Status) -> String {
     format!("{device} is {}", word(status))
 }
 
-/// The event message for SNMP secrets removed because the device host changed: the check and
-/// device names only, never a host or a secret (SEC-010, LOG-007).
+/// The check and device names only, never a host or a secret (SEC-010, LOG-007).
 pub(super) fn moved_secrets_message(check: &str, device: &str) -> String {
     format!(
         "Check {check} on {device} stopped: the device host changed after its SNMP secrets \
@@ -167,7 +144,7 @@ pub(super) fn moved_secrets_message(check: &str, device: &str) -> String {
     )
 }
 
-/// The event message for a late check: the check and device names only (LOG-007).
+/// The check and device names only (LOG-007).
 pub(super) fn late_message(check: &str, device: &str) -> String {
     format!("Check {check} on {device} is late by more than 2 intervals")
 }

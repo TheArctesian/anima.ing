@@ -1,5 +1,4 @@
-//! Opening a link (P2-003, P2-004, SEC-007): each refusal before the connection, the pinned
-//! key, and the credential sent only to the accepted key.
+//! Opening a link sends the credential only to the accepted key (P2-003, P2-004, SEC-007).
 
 use sqlx::PgPool;
 use tokio::net::TcpListener;
@@ -17,7 +16,6 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// The error the link gives under `policy`; it must not open.
 async fn refused(bench: &Bench, policy: &AddressPolicy) -> Error {
     match bench.link_with(policy).await {
         Ok(_) => panic!("the link opened"),
@@ -190,8 +188,6 @@ async fn od_9_no_stored_credential_is_refused_after_the_pin(pool: PgPool) {
     assert_eq!(bench.server.heard(), []);
 }
 
-/// A credential entered for loopback is not sent once the device's host is `localhost`: the
-/// same address, another host text (SEC-011). The key is the accepted one; no sign-in follows.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))

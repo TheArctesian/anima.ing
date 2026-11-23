@@ -1,16 +1,9 @@
-//! Publishing (BLD-060 to BLD-070, D-24 to D-28, R-117): the presigned upload URLs a builder
-//! gets for its job, and the publisher that takes each job whose files are in, checks them, signs
-//! the updater file with the hub's updater key and writes the `.sig`, the stable name and
-//! `latest.json`.
+//! Publishing (BLD-060 to BLD-070, D-24 to D-28, R-117).
 //!
-//! The publisher runs in the upkeep sweep (D-25), never inside a request. It takes a job in a
-//! short transaction and holds it, so no row lock lives across the network calls; it checks the
-//! hold again before each write, and records the end in a second transaction only if its try is
-//! still the job's latest. A hub that stops mid-publish leaves the job `uploading` with a hold
-//! that runs out; the next sweep after it takes the job again and runs every step again. After
-//! three tries the job fails, so every job ends `published` or `failed`. A job is taken only
-//! once every upload URL of it expired, so its files cannot change after they are checked
-//! (D-28).
+//! The publisher runs in the upkeep sweep (D-25), never inside a request. It holds a job instead
+//! of a row lock across the network calls, checks the hold before each write, and records the
+//! end only if its try is still the job's latest. A job is taken only once every upload URL of
+//! it expired, so its files cannot change after they are checked (D-28).
 
 mod bucket;
 mod built;
@@ -48,22 +41,19 @@ use crate::{clock::Clock, config::Releases, ids::BuildJobId};
 /// How often the upkeep runs the publisher (D-25).
 pub const PUBLISH_SWEEP: Duration = Duration::from_secs(10);
 
-/// The longest one try may run, well inside its hold.
 const RUN_LIMIT: Duration = Duration::from_mins(7);
 
 // A try ends at least 3 minutes before its hold, so a write it sent near the end lands before a
 // later try can take the job (D-25).
 const _: () = assert!(RUN_LIMIT.as_secs() + 180 <= tries::HOLD.num_seconds().unsigned_abs());
 
-/// The most jobs one sweep publishes.
 const MAX_PER_SWEEP: usize = 4;
 
 /// The reason of a job handed to a hub whose publishing is off (D-25).
 const PUBLISHING_OFF: &str = "Publishing is off on this hub: no release bucket, or no usable updater key (the hub log says which).";
 
-/// The release bucket of `releases` with the updater key opened from its files (R-117); `None`,
-/// publishing off, when the updater key cannot be used. The warning names the check that failed,
-/// never a value (LOG-007), and the hub still starts, as with no release bucket.
+/// `None`, publishing off, when the updater key cannot be used (R-117). The warning names the
+/// check that failed, never a value (LOG-007).
 ///
 /// # Errors
 ///
@@ -85,15 +75,12 @@ pub struct Grant<'a> {
     pub files: &'a [UploadedFile],
 }
 
-/// Presigned `PUT` URLs, one for each file of `grant`, for an `uploading` job its builder holds;
-/// extends the lease and the time the job's URLs end (BLD-060, BLD-061, D-28). Only the files a
-/// job of its target uploads are granted, each with its content type. The files become the
-/// job's grant (D-26): the `uploaded` report must name exactly them.
+/// Presigned `PUT` URLs for an `uploading` job its builder holds; extends the lease (BLD-060,
+/// BLD-061, D-28). The files become the job's grant: the `uploaded` report names exactly them (D-26).
 ///
 /// # Errors
 ///
-/// `Conflict` when the job is not `uploading` or the hub publishes it already; `Validation`
-/// (`files`) for a bad file list or a name the job does not upload; as `report` otherwise.
+/// `Conflict` when the job is not `uploading`; `Validation` for a bad file list; as `report` otherwise.
 pub async fn upload_urls(
     db: &PgPool,
     bucket: &Bucket,
@@ -112,8 +99,6 @@ pub async fn upload_urls(
         .collect())
 }
 
-/// [`upload_urls`] in the caller's transaction, with `files` already read: the job with its
-/// lease extended, and the content type of each file.
 async fn granted(
     conn: &mut PgConnection,
     grant: &Grant<'_>,
@@ -135,9 +120,7 @@ async fn granted(
     Ok((next, kinds))
 }
 
-/// Publishes the jobs whose files are in, whose upload URLs expired and whose hold ended, at
-/// most four, one after the other, reading `clock` at each step (D-25, D-28). Returns how many
-/// ended a try.
+/// Publishes the ready jobs one after the other and returns how many ended a try (D-25, D-28).
 ///
 /// # Errors
 ///
@@ -174,8 +157,7 @@ pub async fn publish_ready(
     Ok(ended)
 }
 
-/// Fails every job handed to the publisher of a hub whose publishing is off, so none waits for
-/// ever (D-25). Returns how many failed.
+/// Fails every job handed to the publisher while publishing is off, so none waits for ever (D-25).
 ///
 /// # Errors
 ///

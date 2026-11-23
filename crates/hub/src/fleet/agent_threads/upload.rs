@@ -4,8 +4,7 @@ use sqlx::PgConnection;
 use super::store;
 use crate::ids::DeviceId;
 
-/// Appends an upload while its authenticated device is locked. A gap leaves the caller's
-/// transaction uncommitted. A retry acknowledges the sequence the hub already holds.
+/// The caller holds the device's lock; a gap returns `None` and a retry acknowledges the held sequence.
 pub(in crate::fleet) async fn append(
     tx: &mut PgConnection,
     device: DeviceId,

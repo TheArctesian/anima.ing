@@ -1,5 +1,4 @@
-//! The canonical form, the hash of a link and the walk of the check (LOG-022, LOG-023,
-//! LOG-027), without a database.
+//! The audit chain without a database (LOG-022, LOG-023, LOG-027).
 
 use std::net::IpAddr;
 
@@ -30,7 +29,6 @@ fn entry(at_day: u32, name: &str) -> StoredEntry {
     }
 }
 
-/// Links each entry after the one before it, from link 1.
 fn chain(entries: &[StoredEntry]) -> Vec<Link> {
     let mut previous: Hash = FIRST_PREVIOUS;
     (1..)
@@ -47,7 +45,6 @@ fn first_kept() -> NaiveDate {
     NaiveDate::from_ymd_opt(2031, 6, 10).unwrap()
 }
 
-/// The walk over `links`, each with its entry when `entries` has it.
 fn walk(links: &[Link], entries: &[Option<StoredEntry>]) -> super::ChainCheck {
     let mut walk = Walk::new(first_kept());
     for (link, entry) in links.iter().zip(entries) {
@@ -94,8 +91,7 @@ fn log_022_members_are_ordered_by_utf_16_code_units() {
 
 #[test]
 fn log_022_the_hash_of_a_link_is_the_sha_256_of_its_14_members_in_canonical_form() {
-    // The expected hash was made by a second implementation (Python `json.dumps` with sorted
-    // keys and no spaces, then `hashlib.sha256`), which is RFC 8785 for this object.
+    // The expected hash comes from Python `json.dumps` (sorted keys, no spaces) and `sha256`.
     let entry = StoredEntry {
         id: "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d".parse().unwrap(),
         at: Utc.with_ymd_and_hms(2031, 6, 30, 12, 30, 0).unwrap()

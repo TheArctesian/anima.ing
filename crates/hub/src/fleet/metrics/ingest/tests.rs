@@ -1,7 +1,3 @@
-//! Tests of the daemon ingest parts below the HTTP client: the throttle, the bearer header, the
-//! refusal answers, how the routes answer when they cannot finish, the token and code rows at
-//! their edges, the stale mark at its edges, and the turns that keep daemons off the pool.
-
 mod answering;
 mod automatic_access;
 mod credential;
@@ -47,7 +43,6 @@ async fn database_now(pool: &PgPool) -> DateTime<Utc> {
     now.duration_trunc(TimeDelta::seconds(1)).unwrap()
 }
 
-/// Pushes `batch` with `token` at `now` from a permitted address; the status.
 async fn push(pool: &PgPool, now: DateTime<Utc>, token: &DaemonToken, batch: &Value) -> StatusCode {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
     let router = daemon_router_within(pool.clone(), Bus::new(16), clock, Deadlines::HUB);
@@ -61,13 +56,10 @@ async fn push(pool: &PgPool, now: DateTime<Utc>, token: &DaemonToken, batch: &Va
     router.oneshot(request).await.unwrap().status()
 }
 
-/// pve-01 enrolled at `now` with the token spelled by `seed`; the token as a daemon presents it.
 async fn enrolled_pve(pool: &PgPool, now: DateTime<Utc>, seed: u8) -> DaemonToken {
     enrolled(pool, pve(), now, seed).await
 }
 
-/// `device` enrolled at `now` with the token spelled by `seed`; the token as a daemon presents
-/// it.
 async fn enrolled(pool: &PgPool, device: DeviceId, now: DateTime<Utc>, seed: u8) -> DaemonToken {
     let code = EnrolmentCode::from_random([seed; 16]);
     let presented = EnrolmentCode::parse(code.expose()).unwrap();
@@ -84,7 +76,6 @@ async fn enrolled(pool: &PgPool, device: DeviceId, now: DateTime<Utc>, seed: u8)
     kept
 }
 
-/// The stored hashes of pve-01's current and renewed tokens.
 async fn token_hashes(pool: &PgPool) -> (Vec<u8>, Option<Vec<u8>>) {
     sqlx::query_as(
         "SELECT token_sha256, next_token_sha256 FROM metrics.daemons WHERE device_id = $1",

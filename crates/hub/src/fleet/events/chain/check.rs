@@ -1,25 +1,19 @@
-//! The check of the chain (LOG-027): a walk over the links in the order of the sequence
-//! number, which stops at the first fault. Pure: the store feeds it one link at a time.
+//! LOG-027. Pure: the store feeds the walk one link at a time, in sequence order.
 
 use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
 use super::link::{FIRST_PREVIOUS, Hash, Link, StoredEntry, hash};
 
-/// What the check found (LOG-027).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::events) struct ChainCheck {
-    /// The links that the check read.
     pub links: u64,
-    /// The links whose entry the retention dropped.
+    /// Links whose entry the retention dropped.
     pub dropped: u64,
-    /// The sequence number and hash of the newest link that the check read.
     pub head: Option<(i64, Hash)>,
-    /// The first fault, or `None` when the chain is whole.
     pub fault: Option<Fault>,
 }
 
-/// The first place where the chain and the entries do not agree.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::events) struct Fault {
     pub kind: FaultKind,
@@ -31,17 +25,14 @@ pub(in crate::fleet::events) struct Fault {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::fleet::events) enum FaultKind {
-    /// The entry does not give the hash of its link: a field changed, or entries changed places.
+    /// A field changed, or entries changed places.
     Changed,
-    /// The link has no entry, and the day of the entry is inside the retention.
     Missing,
-    /// A sequence number is missing, or a previous hash is not the hash of the link before.
     Broken,
-    /// An entry has no link: the hub did not write it.
+    /// The hub did not write the entry.
     NotLinked,
 }
 
-/// The state of the walk between two links.
 pub(in crate::fleet::events) struct Walk {
     first_kept_day: NaiveDate,
     links: u64,
@@ -51,8 +42,6 @@ pub(in crate::fleet::events) struct Walk {
 }
 
 impl Walk {
-    /// A walk that accepts a link without its entry only for an entry of a UTC day before
-    /// `first_kept_day`, which the retention may have dropped.
     pub(in crate::fleet::events) fn new(first_kept_day: NaiveDate) -> Self {
         Self {
             first_kept_day,
@@ -63,8 +52,7 @@ impl Walk {
         }
     }
 
-    /// Checks the next link and its entry, if the entry exists. Returns `false` at the first
-    /// fault: the walk then reads no more links.
+    /// `false` at the first fault: the walk then reads no more links.
     pub(in crate::fleet::events) fn step(
         &mut self,
         link: &Link,
@@ -104,7 +92,6 @@ impl Walk {
         }
     }
 
-    /// The result, with the oldest entry that has no link when the links had no fault.
     pub(in crate::fleet::events) fn finish(
         self,
         unlinked: Option<(Uuid, DateTime<Utc>)>,

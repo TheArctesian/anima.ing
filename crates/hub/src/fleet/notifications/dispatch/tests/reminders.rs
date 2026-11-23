@@ -1,5 +1,4 @@
-//! A reminder goes through the same outbox, dispatcher and channels as a status notification
-//! (REM-008, REM-010; K-E6 Section 5).
+//! Reminders share the notification outbox and channels (REM-008, REM-010; K-E6 Section 5).
 
 use sqlx::PgPool;
 use uuid::Uuid;

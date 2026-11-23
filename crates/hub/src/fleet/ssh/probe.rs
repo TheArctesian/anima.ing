@@ -1,8 +1,7 @@
 //! The SSH probe (DEV-013, K4 §6, R-034): reads a host's key with a key exchange and no
-//! authentication, and signs in only when the key is the accepted one (D-5). I/O edge.
+//! authentication, and signs in only when the key is the accepted one (D-5).
 //!
-//! The connection, the pinning and the sign-in are the hub's SSH client (`ssh`). Nothing here
-//! logs, and no error holds a remote text, a host name or a secret (LOG-007).
+//! Nothing here logs, and no error holds a remote text, a host name or a secret (LOG-007).
 
 use std::{sync::Arc, time::Duration};
 
@@ -16,14 +15,12 @@ use crate::fleet::{credentials::SshSecret, trust::PublicKey};
 /// not answer is reported as unreachable instead of the hub looking unreachable (NET-004).
 pub(crate) const PROBE_TIMEOUT: Duration = Duration::from_secs(8);
 
-/// What a sign-in sends, and to which key only.
 pub(crate) struct Login<'a> {
     pub(crate) accepted: &'a PublicKey,
     pub(crate) username: &'a str,
     pub(crate) secret: &'a SshSecret,
 }
 
-/// What a sign-in found.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum SignIn {
     /// The host presented the accepted key and took the credential.

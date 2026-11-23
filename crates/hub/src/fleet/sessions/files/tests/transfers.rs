@@ -1,6 +1,5 @@
-//! Listing, downloading and uploading over the files tunnel (K4 Section 9), each with what it
-//! leaves behind: one audit entry with the path and size and no content, and one event; and
-//! nothing of either in the process log (LOG-007).
+//! Transfers over the files tunnel (K4 Section 9): the audit entry holds the path and size,
+//! never the content, and the process log holds neither (LOG-007).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -19,7 +18,6 @@ fn content(len: usize) -> Vec<u8> {
     (0..len).map(|i| b"QZXJ"[i % 4]).collect()
 }
 
-/// The one audit entry so far: action, operator, client and change.
 async fn only_audit(bench: &Bench) -> (String, Value) {
     let audits = bench.audits().await;
     assert_eq!(audits.len(), 1, "{audits:?}");
@@ -108,8 +106,7 @@ async fn ra_032_a_download_sends_its_size_its_bytes_and_done(pool: PgPool) {
     assert_eq!((severity.as_str(), source.as_str()), ("info", "session"));
     assert_eq!(device.as_deref(), Some("docker-host"));
     assert_eq!(message, "An operator downloaded a file from the device.");
-    // One context for the one event: the device is the source with its site and the place of
-    // that site; the computer of the client is no device of the hub, so that side is unknown.
+    // The client's computer is no device of the hub, so that side is unknown.
     let contexts = bench.contexts().await;
     assert_eq!(contexts.len(), 1, "{contexts:?}");
     let context = &contexts[0];
@@ -136,7 +133,6 @@ async fn ra_032_a_download_sends_its_size_its_bytes_and_done(pool: PgPool) {
         (json!("human"), json!("operator"))
     );
     no_content_stored(&bench).await;
-    // The tunnel takes the next request.
     bench.server.put("empty", b"");
     assert_eq!(client.download("/empty").await, b"");
 }
@@ -159,8 +155,7 @@ async fn ra_032_an_upload_of_exactly_its_size_lands_on_the_device(pool: PgPool) 
     let (action, change) = only_audit(&bench).await;
     assert_eq!(action, "upload");
     assert_eq!(change["path"], "/new.bin");
-    // The device is the destination of an upload; its site has no place, so the place is
-    // unknown, and the source is unknown.
+    // The device's site has no place, so the place is unknown.
     let contexts = bench.contexts().await;
     assert_eq!(contexts[0]["direction"], "upload");
     assert!(
@@ -275,7 +270,6 @@ async fn ra_032_a_cancelled_upload_is_removed(pool: PgPool) {
         (change["bytes"].clone(), change["outcome"].clone()),
         (json!(50), json!("cancelled"))
     );
-    // A cancel with nothing in flight is ignored.
     client.send(r#"{"type":"cancel"}"#).await;
     client.send(r#"{"type":"list","path":"/"}"#).await;
     assert_eq!(client.text().await["type"], "entries");
@@ -289,8 +283,8 @@ async fn log_007_sec_009_no_path_content_or_token_reaches_the_process_log(pool: 
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in the Guacamole tunnel's test: a second registered dispatcher makes every callsite
-    // registration ask all of them, so another test thread cannot disable these callsites.
+    // A second dispatcher makes every callsite registration ask all of them, so another test
+    // thread cannot disable these callsites.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();

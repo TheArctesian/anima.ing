@@ -1,5 +1,4 @@
-//! `GET /files` (K4 Sections 8.1 and 9): the refusals before the upgrade, and the SSH
-//! requests the device sees: one session channel and the `sftp` subsystem, nothing else.
+//! `GET /files` refusals and the SSH requests the device sees (K4 Sections 8.1 and 9).
 
 use axum::http::StatusCode;
 use sqlx::PgPool;
@@ -177,7 +176,6 @@ async fn sec_007_another_host_key_is_503_with_an_error_event(pool: PgPool) {
     );
 }
 
-/// Makes the accepted host key another server's, so the device's own key is refused.
 async fn accept_another_key(pool: &PgPool) {
     let other = serve(12).await.key;
     sqlx::query(

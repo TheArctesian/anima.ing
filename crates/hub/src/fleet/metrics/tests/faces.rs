@@ -13,13 +13,10 @@ use crate::fleet::metrics::{
 
 const CPU: MetricKind = MetricKind::CpuPercent;
 
-/// 34 minutes and 30 seconds past 12:00 on the UTC day before the database's.
 async fn now(pool: &PgPool) -> DateTime<Utc> {
     day_at(pool, 1, "12:34:30").await
 }
 
-/// CPU samples around `now`: a lone one an hour back, a pair in the minute of 12:34 and a
-/// third in the next minute (12:31 is before them).
 async fn write_history(pool: &PgPool, now: DateTime<Utc>) {
     let pve = device(PVE_01);
     for (before, value) in [
@@ -86,8 +83,7 @@ async fn met_003_day_bins_minutes_to_ten_minutes_weighting_the_mean_by_count(poo
     let now = now(&pool).await;
     write_history(&pool, now).await;
     let pve = device(PVE_01);
-    // The oldest bin of the day range starts 23 h 50 min before 12:30. One sample sits inside
-    // it, one a minute before it.
+    // The oldest bin of the day range starts 23 h 50 min before 12:30.
     let oldest = day_at(&pool, 2, "12:40:00").await;
     write(
         &pool,
@@ -106,8 +102,7 @@ async fn met_003_day_bins_minutes_to_ten_minutes_weighting_the_mean_by_count(poo
 
     let found = series(&pool, pve, MetricRange::Day, now).await.unwrap();
 
-    // The minute rows of 12:31 (60) and 12:34 (10 and 20, mean 15, count 2) share the 12:30
-    // bin: (60 + 15 * 2) / 3 = 30, not the mean of the means.
+    // 12:31 (60) and 12:34 (mean 15, count 2) share the 12:30 bin: (60 + 15 * 2) / 3 = 30.
     let at = async |days_ago, time| day_at(&pool, days_ago, time).await;
     assert_points(
         &found[0],
@@ -238,7 +233,6 @@ async fn met_004_readings_hold_the_latest_values_and_the_fullest_disk(pool: PgPo
         &[(MetricKind::DiskPercent, "/", 31.0)],
     )
     .await;
-    // Three minutes old: not a reading.
     write(
         &pool,
         pve,
@@ -278,7 +272,6 @@ async fn met_004_a_device_with_only_old_samples_has_no_readings(pool: PgPool) {
         &[(MetricKind::CpuPercent, "", 2.0)],
     )
     .await;
-    // After `now` is not yet a reading either.
     write(
         &pool,
         pve,

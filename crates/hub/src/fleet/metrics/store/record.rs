@@ -9,8 +9,6 @@ use crate::{
     ids::{DeviceId, MetricSeriesId},
 };
 
-/// A GPU series is labelled with its GPU index, so the index of an existing series never
-/// changes and the conflict leaves it as it is (MET-009).
 const UPSERT_SERIES_SQL: &str = "\
     INSERT INTO metrics.series (id, device_id, kind, label, gpu_index, created_at) \
     SELECT w.id, $1, w.kind, w.label, w.gpu_index, $6 \
@@ -18,10 +16,7 @@ const UPSERT_SERIES_SQL: &str = "\
         AS w(id, kind, label, gpu_index) \
     ON CONFLICT (device_id, kind, label) DO NOTHING";
 
-/// The upsert of one aggregate table from the samples just inserted: the mean is kept as a
-/// running mean over `count` samples, moved by a share of the new value's difference so it
-/// never overflows for values of at least zero (MET-002), and the bucket starts on the UTC
-/// minute, hour or day, as the table is named.
+/// The running mean cannot overflow for values of at least zero (MET-002).
 macro_rules! aggregate {
     ($table:literal) => {
         concat!(
@@ -42,8 +37,7 @@ macro_rules! aggregate {
     };
 }
 
-/// A sample whose (series, time) exists is skipped, and so is its aggregate update, so a
-/// repeated write adds nothing twice.
+/// A sample whose (series, time) exists skips its aggregate update, so a repeat adds nothing.
 const ADD_SAMPLES_SQL: &str = concat!(
     "WITH added AS ( \
         INSERT INTO metrics.samples (series_id, at, value) \
@@ -61,8 +55,7 @@ const ADD_SAMPLES_SQL: &str = concat!(
     " SELECT count(*) FROM added"
 );
 
-/// Writes `samples` taken at `at` for `device` in one transaction: the series rows they need,
-/// the samples, and the minute, hour and day rows. Three statements however many samples.
+/// Three statements however many samples; series, samples and aggregates share a transaction.
 pub(in crate::fleet::metrics) async fn record(
     db: &PgPool,
     device: DeviceId,
@@ -91,8 +84,7 @@ pub(in crate::fleet::metrics) async fn record(
     Ok(())
 }
 
-/// Creates the series of `samples` that `device` does not have yet, created at `now`, in the
-/// caller's transaction; an existing series is left as it is (R-098 e).
+/// An existing series keeps its row and its GPU index (R-098 e, MET-009).
 pub(in crate::fleet::metrics) async fn add_series(
     conn: &mut PgConnection,
     device: DeviceId,

@@ -1,5 +1,3 @@
-//! Database records of the `devices` schema and how its constraints map to field errors.
-
 use std::{net::IpAddr, num::NonZeroU8};
 
 use chrono::{DateTime, Utc};
@@ -35,8 +33,6 @@ pub(super) struct DeviceRow {
     remote: RemoteRow,
 }
 
-/// The remote access columns of a device, joined from `rdp_settings`, `vnc_settings` and
-/// `devices`. The address is read as text.
 #[derive(sqlx::FromRow)]
 #[expect(clippy::struct_excessive_bools, reason = "one column per switch")]
 pub(super) struct RemoteRow {
@@ -66,7 +62,7 @@ fn decode<E: std::error::Error + Send + Sync + 'static>(error: E) -> sqlx::Error
     sqlx::Error::Decode(Box::new(error))
 }
 
-/// The stored `session_limit` column: null is no limit (RA-036).
+/// Null is no limit (RA-036).
 pub(super) fn session_limit(stored: Option<i32>) -> Result<Option<NonZeroU8>, sqlx::Error> {
     stored
         .map(|limit| {
@@ -151,7 +147,7 @@ impl TryFrom<DeviceRow> for Device {
     }
 }
 
-/// The stored distribution; the column's check keeps it valid, so anything else is a decode error.
+/// The column's check keeps the distribution valid, so anything else is a decode error.
 fn distribution(text: &str) -> Result<Distribution, sqlx::Error> {
     Distribution::new(text).ok_or_else(|| decode(UnknownValue::new("distribution", text)))
 }
@@ -174,7 +170,6 @@ pub(super) fn to_site(
     }
 }
 
-/// Turns a violated constraint into the field the operator must fix.
 pub(super) fn write_error(error: sqlx::Error) -> Error {
     let field = match error.as_database_error().and_then(|e| e.constraint()) {
         Some("sites_name_key" | "devices_name_key") => {

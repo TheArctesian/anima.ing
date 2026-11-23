@@ -1,6 +1,4 @@
-//! Failed sends: the retry schedule, giving up with one Warning event, permanent failures, an
-//! unresolved host that is retried, channels turned off and channels that cannot be read (D-16,
-//! R-103, NOT-001, NOT-002, NOT-004).
+//! Failed sends (D-16, R-103, NOT-001, NOT-002, NOT-004).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -84,7 +82,6 @@ async fn d_16_a_retried_send_that_succeeds_is_sent_with_no_warning(pool: PgPool)
     let t0 = start(&pool).await;
     let queued = queue(&pool, hooks, None, t0).await;
     dispatcher(&pool, egress).tick(t0).await;
-    // The target recovers: the channel now points at a server that answers.
     let (working, egress) = answering(NO_CONTENT).await;
     move_channel(&pool, hooks, webhook(&working)).await;
 
@@ -100,7 +97,6 @@ async fn d_16_a_retried_send_that_succeeds_is_sent_with_no_warning(pool: PgPool)
     assert_eq!(warnings(&pool).await.len(), 0);
 }
 
-/// Points `id` at new settings, its secrets sealed for them, as an update would.
 async fn move_channel(
     pool: &PgPool,
     id: ChannelId,
@@ -234,7 +230,6 @@ async fn not_002_a_channel_deleted_after_the_claim_ends_the_row_unsent(pool: PgP
     assert_eq!(deliveries(&pool).await.len(), 0);
 }
 
-/// Stores a channel whose stored settings this version cannot read.
 async fn unreadable_channel(pool: &PgPool) -> ChannelId {
     let id = ChannelId::from(Uuid::now_v7());
     let fields = ChannelFields {

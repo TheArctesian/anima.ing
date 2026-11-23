@@ -1,5 +1,4 @@
-//! The status a check and a device show: worst, groups, pause and maintenance
-//! (CHK-004, CHK-006).
+//! The status a check and a device show (CHK-004, CHK-006).
 
 use uuid::Uuid;
 
@@ -106,7 +105,6 @@ fn chk_004_a_paused_group_is_unknown() {
 
 #[test]
 fn chk_004_a_group_adds_nothing_beyond_its_children() {
-    // An Unknown group with Up children must not make the device Unknown.
     let checks = [group(1), child(2, 1, Up), plain(3, Up)];
     assert_eq!(device_status(&checks, &nothing), Up);
     let checks = [group(1), child(2, 1, Down), plain(3, Up)];

@@ -1,6 +1,3 @@
-//! SQL on `builds.log_lines`, `builds.job_files`, `builds.feeds` and the log state of
-//! `builds.jobs`: what a builder sends with its reports.
-
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 
@@ -12,7 +9,6 @@ use crate::{
     ids::BuildJobId,
 };
 
-/// Stores `lines` with the sequence numbers that follow `last`.
 pub(in crate::fleet::builds) async fn append_lines(
     conn: &mut PgConnection,
     job: BuildJobId,
@@ -34,7 +30,6 @@ pub(in crate::fleet::builds) async fn append_lines(
     Ok(())
 }
 
-/// The private key block the job's last report left open: how many more lines it may take.
 pub(in crate::fleet::builds) async fn open_key_block(
     conn: &mut PgConnection,
     job: BuildJobId,
@@ -47,7 +42,6 @@ pub(in crate::fleet::builds) async fn open_key_block(
     Ok(left.flatten().and_then(|left| u16::try_from(left).ok()))
 }
 
-/// Records the private key block the job's last report left open, if any.
 pub(in crate::fleet::builds) async fn set_open_key_block(
     conn: &mut PgConnection,
     job: BuildJobId,
@@ -61,8 +55,7 @@ pub(in crate::fleet::builds) async fn set_open_key_block(
     Ok(())
 }
 
-/// Deletes the job's oldest lines until its log holds at most `max_bytes`, each line counting
-/// its text and `overhead` (BLD-048, D-4).
+/// Each line counts its text and `overhead` against `max_bytes` (BLD-048, D-4).
 pub(in crate::fleet::builds) async fn trim_log(
     conn: &mut PgConnection,
     job: BuildJobId,
@@ -85,7 +78,6 @@ pub(in crate::fleet::builds) async fn trim_log(
     Ok(())
 }
 
-/// At most `first` of the job's stored lines after sequence `after`, oldest first.
 pub(in crate::fleet::builds) async fn lines(
     db: impl PgExecutor<'_>,
     job: BuildJobId,
@@ -107,7 +99,6 @@ pub(in crate::fleet::builds) async fn lines(
         .collect())
 }
 
-/// Makes `files` the job's uploaded files, replacing an earlier report.
 pub(in crate::fleet::builds) async fn replace_files(
     conn: &mut PgConnection,
     job: BuildJobId,

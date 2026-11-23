@@ -1,9 +1,7 @@
-//! The distribution read from a device: only a short lower-case token is kept, it is stored
-//! without touching what the operator set, and an equal value writes nothing (DEV-016).
+//! The distribution read from a device (DEV-016).
 
 use super::*;
 
-/// The row's `updated_at` and the transaction id that last wrote it.
 async fn written(pool: &sqlx::PgPool, id: &str) -> (chrono::DateTime<chrono::Utc>, String) {
     sqlx::query_as("SELECT updated_at, xmin::text FROM devices.devices WHERE id = $1::text::uuid")
         .bind(id)

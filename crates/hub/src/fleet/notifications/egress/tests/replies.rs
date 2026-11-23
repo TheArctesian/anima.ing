@@ -18,8 +18,7 @@ use crate::fleet::notifications::egress::{
 /// How late past the time limit a send may end on a loaded machine.
 const SLACK: Duration = Duration::from_secs(3);
 
-/// Asserts that a send that waited for the time limit took it, and no second limit after it
-/// (C-1, C-2).
+/// The send took the time limit, and no second limit after it (C-1, C-2).
 fn ended_at_the_limit(started: Instant) {
     let took = started.elapsed();
     assert!(
@@ -57,8 +56,7 @@ async fn d_17_a_2xx_whose_body_stalls_is_sent_and_ends_at_the_one_time_limit() {
     )
     .await;
 
-    // The status decided (S-B): a stalled body is not a time-out, and its read ends at the
-    // send's own deadline, with no fresh limit of its own (C-2).
+    // The status decided (S-B); the body read ends at the send's own deadline (C-2).
     assert_eq!(sent, Ok(()));
     ended_at_the_limit(started);
     server.settle().await;
@@ -78,8 +76,7 @@ async fn d_17_a_late_2xx_head_leaves_the_body_read_only_what_is_left_of_the_limi
     )
     .await;
 
-    // The head came halfway through the limit; a fresh limit for the body read would end the
-    // send at one and a half limits (C-2).
+    // A fresh limit for the body read would end the send at one and a half limits (C-2).
     assert_eq!(sent, Ok(()));
     ended_at_the_limit(started);
 }
@@ -122,8 +119,6 @@ async fn d_17_an_endless_reply_is_read_only_to_the_cap() {
 
     let read = discard_reply(&mut response).await;
 
-    // The body never ends, so the read stopped at the cap, within the one chunk that
-    // crossed it.
     assert!(read >= REPLY_CAP, "read {read}");
     assert!(read < 1024 * 1024, "read {read}");
 }
@@ -141,7 +136,6 @@ async fn d_17_an_endless_reply_ends_the_send_and_closes_the_connection() {
 
     assert_eq!(sent, Ok(()));
     server.settle().await;
-    // Read to the time limit, loopback would carry gigabytes; the socket buffers hold a few
-    // megabytes once the client stops reading and closes.
+    // Loopback would carry gigabytes in the time limit; socket buffers hold a few megabytes.
     assert!(server.written() < 64 * 1024 * 1024, "{}", server.written());
 }

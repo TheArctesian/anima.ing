@@ -1,4 +1,4 @@
-//! R-099: the chart label of a GPU series; MET-008: which GPU the card readings show.
+//! R-099, MET-008.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -18,7 +18,6 @@ fn gpu(index: i32, has_vram: bool) -> Gpu {
     }
 }
 
-/// The VRAM reading of a device whose latest VRAM samples are `(GPU, percent)`, in that order.
 fn vram_of(samples: &[(Gpu, f64)]) -> (Option<f64>, Option<i32>) {
     let at: DateTime<Utc> = DateTime::UNIX_EPOCH;
     let latest = samples
@@ -107,7 +106,7 @@ async fn r_099_a_chart_series_of_a_gpu_is_labelled_from_the_stored_gpu(pool: PgP
         .iter()
         .map(|each| (each.label.as_str(), each.gpu_index))
         .collect();
-    // `1` has no stored GPU any more, so it is "GPU 1".
+    // `1` has no stored GPU, so it is "GPU 1".
     assert_eq!(
         shown,
         [("/", None), ("GPU 0 RTX 4090", Some(0)), ("GPU 1", Some(1))]

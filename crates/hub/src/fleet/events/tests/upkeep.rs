@@ -1,6 +1,4 @@
-//! The daily partition upkeep: a week of partitions ahead, expired ones dropped, and a lock
-//! that is not granted in time fails the run instead of queueing every reader behind it (D-4,
-//! DB-004, DB-005).
+//! The daily partition upkeep (D-4, DB-004, DB-005).
 
 use std::time::Duration;
 
@@ -58,7 +56,6 @@ async fn db_004_db_005_keep_partitions_creates_a_week_ahead_and_drops_expired_da
     }
 }
 
-/// Opens a transaction that reads `events.event_log`, holding its lock until dropped.
 async fn reader_holding_the_event_log(pool: &PgPool) -> sqlx::Transaction<'static, sqlx::Postgres> {
     let mut reader = pool.begin().await.unwrap();
     sqlx::query("select count(*) from events.event_log")
@@ -68,7 +65,6 @@ async fn reader_holding_the_event_log(pool: &PgPool) -> sqlx::Transaction<'stati
     reader
 }
 
-/// Runs `change` with a deadline well past the lock timeout; its fault word.
 async fn fault_within_deadline<F>(change: F) -> &'static str
 where
     F: Future<Output = Result<(), Error>>,
@@ -87,7 +83,6 @@ async fn db_004_creating_ahead_gives_up_on_a_lock_held_by_a_long_reader(pool: Pg
     let blocked = create_partitions_ahead(&pool, now + Days::new(30), 0);
     assert_eq!(fault_within_deadline(blocked).await, "lock_timeout");
 
-    // The reader went on unharmed; once it ends, the retry succeeds.
     reader.commit().await.unwrap();
     create_partitions_ahead(&pool, now + Days::new(30), 0)
         .await

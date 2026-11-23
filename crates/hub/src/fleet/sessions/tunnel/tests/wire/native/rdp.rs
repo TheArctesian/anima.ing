@@ -1,7 +1,4 @@
-//! An RDP device behind the native gateway (plan item S2, task R6): the hub reads the
-//! device's certificate, sends the `connect` values of K4 Section 3, and relays the
-//! session; a device with another certificate than the accepted one never gets the
-//! account (SEC-007).
+//! An RDP device behind the native gateway (plan item S2, task R6; K4 Section 3; SEC-007).
 
 use rdp_test_device::{Device, Offered, Seen, Setup as DeviceSetup};
 use sqlx::PgPool;
@@ -25,7 +22,6 @@ fn rdp_device() -> Device {
     })
 }
 
-/// The fingerprint as the hub stores an accepted certificate: pairs of hex digits.
 fn stored(fingerprint: [u8; 32]) -> String {
     let pairs: Vec<_> = fingerprint
         .iter()
@@ -34,10 +30,7 @@ fn stored(fingerprint: [u8; 32]) -> String {
     pairs.join(":")
 }
 
-/// An RDP session of `docker-host` through the native gateway, started. The test then
-/// points the device record at `device` in the database: its RDP port, TLS as its
-/// security, and `accepted` as its accepted certificate. The hub reads all three when the
-/// tunnel opens.
+/// The device record changes after the session starts; the hub reads it when the tunnel opens.
 async fn rdp_bench(pool: &PgPool, device: &Device, accepted: &str) -> Bench {
     let gateway = native_gateway().await;
     let bench = bench(pool, &gateway, Setup::default()).await;
@@ -62,7 +55,6 @@ async fn rdp_bench(pool: &PgPool, device: &Device, accepted: &str) -> Bench {
     bench
 }
 
-/// The client's instructions up to and with the first `sync`.
 async fn first_frame(client: &mut Socket) -> (Vec<guac_protocol::Instruction>, String) {
     let mut frame = Vec::new();
     loop {
@@ -87,8 +79,7 @@ async fn s2_an_rdp_session_through_the_native_gateway_signs_in_draws_and_takes_k
     let mut client = open(&bench.url).await;
     opened(&mut client).await;
 
-    // The stored account reaches the device, after the hub and then the gateway saw the
-    // accepted certificate. The hub's own read of the certificate ends at some point too.
+    // The stored account reaches the device; the hub's own certificate read may end first.
     let sign_in = match device.next().await {
         Seen::Ended => device.next().await,
         seen => seen,
@@ -164,6 +155,5 @@ async fn sec_007_an_rdp_device_with_another_certificate_never_gets_the_account(p
         "error",
         LOOPBACK,
     );
-    // The hub's read of the certificate, and no sign-in before it.
     assert_eq!(device.next().await, Seen::Ended);
 }

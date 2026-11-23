@@ -1,9 +1,5 @@
-//! The control socket's wire form (`link/control/control.go`): one JSON request on a line out,
-//! one JSON reply on a line in. Pure: no socket here.
-//!
-//! A reply line is `{"ok":true,"result":…}` or `{"ok":false,"error":{"code":…,"message":…}}`.
-//! A parse error never carries the line's text: serde quotes the value it could not read, and
-//! that can be an invite (LOG-007).
+//! The control socket's wire form (`link/control/control.go`): one JSON line out, one in.
+//! A parse error never carries the line's text: serde quotes values, and one can be an invite (LOG-007).
 
 use serde::{Deserialize, de::DeserializeOwned};
 use serde_json::{Value, json};
@@ -13,7 +9,6 @@ use super::{Error, Refusal};
 /// The longest request or reply line, without its newline (`maxLine` of the link).
 pub(super) const MAX_LINE: usize = 1 << 20;
 
-/// One request of the hub to the link.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Request<'a> {
     DevicesList,
@@ -24,8 +19,7 @@ pub(super) enum Request<'a> {
 }
 
 impl Request<'_> {
-    /// The request as one line, with its newline. A verb with no arguments sends none: the
-    /// link refuses an argument field it does not know.
+    /// A verb with no arguments sends none: the link refuses an argument field it does not know.
     pub fn line(self) -> Vec<u8> {
         let request: Value = match self {
             Self::DevicesList => json!({ "verb": "devices.list" }),
@@ -61,16 +55,12 @@ const fn none<T>() -> Option<T> {
     None
 }
 
-/// The error of a reply. Its message is not read: the hub says the refusal in its own words.
+/// The message is not read: the hub says the refusal in its own words.
 #[derive(Deserialize)]
 struct Refused {
     code: String,
 }
 
-/// The value of one reply line, or the link's refusal.
-///
-/// # Errors
-/// `Unreadable` for a line that is not exactly one of the two shapes; `Refused` with the code.
 pub(super) fn parse_reply<T: DeserializeOwned>(line: &[u8]) -> Result<T, Error> {
     let reply: Reply<T> = serde_json::from_slice(line).map_err(|_| Error::Unreadable)?;
     match (reply.ok, reply.result, reply.error) {

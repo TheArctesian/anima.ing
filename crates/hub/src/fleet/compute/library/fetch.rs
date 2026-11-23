@@ -1,18 +1,14 @@
-//! The I/O edge to Hugging Face: the answer for one repository and the small files of the
-//! repository. Tests give recorded answers through [`Fetch`]; [`HuggingFace`] is the HTTP
-//! client. No token is sent: the library reads public repositories only.
+//! The I/O edge to Hugging Face; no token is sent, as the library reads public repositories only.
 
 use std::{future::Future, time::Duration};
 
 use reqwest::{Client, StatusCode, Url};
 
-/// The largest answer for one repository.
 const LONGEST_ANSWER: usize = 8 * 1024 * 1024;
-/// The largest file that the hub reads to compute its SHA-256 value. A larger file is in LFS,
-/// which gives the value.
+/// The largest file the hub hashes itself; a larger file is in LFS, which gives the value.
 pub const LONGEST_FILE: u64 = 16 * 1024 * 1024;
 
-/// Why a read from the source failed. The messages hold no repository name (LOG-007).
+/// The messages hold no repository name (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub enum FetchError {
     #[error("the repository or the file does not exist")]
@@ -23,7 +19,6 @@ pub enum FetchError {
     TooLarge,
 }
 
-/// Reads from the source of the models.
 pub trait Fetch: Sync {
     /// The answer for `organisation/name`, with the size and LFS value of each file.
     fn repository(
@@ -31,7 +26,6 @@ pub trait Fetch: Sync {
         repository: &str,
     ) -> impl Future<Output = Result<Vec<u8>, FetchError>> + Send;
 
-    /// One file of the repository at the commit `revision`.
     fn file(
         &self,
         repository: &str,
@@ -40,15 +34,12 @@ pub trait Fetch: Sync {
     ) -> impl Future<Output = Result<Vec<u8>, FetchError>> + Send;
 }
 
-/// The public Hugging Face Hub.
 pub struct HuggingFace {
     client: Client,
     base: String,
 }
 
 impl HuggingFace {
-    /// The client for `https://huggingface.co`.
-    ///
     /// # Errors
     /// `Unavailable` when the HTTP client cannot be built.
     pub fn public() -> Result<Self, FetchError> {
@@ -63,8 +54,7 @@ impl HuggingFace {
         })
     }
 
-    /// The URL of the base with each part as one path segment, so no part can add a path,
-    /// a query or a fragment.
+    /// Each part is one path segment, so no part can add a path, a query or a fragment.
     fn url(&self, parts: &[&str]) -> Result<Url, FetchError> {
         let mut url = Url::parse(&self.base).map_err(|_| FetchError::Unavailable)?;
         url.path_segments_mut()

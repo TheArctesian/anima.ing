@@ -1,5 +1,4 @@
-//! `openFiles` (K1, K4 Section 9): a files ticket for a live SSH session of the same operator
-//! and client address, whose terminal tunnel is open.
+//! `openFiles` (K1, K4 Section 9).
 
 use sqlx::PgPool;
 
@@ -12,14 +11,8 @@ use crate::{
     ids::SessionId,
 };
 
-/// Issues a files ticket for `session`, redeemable once on `/files` from `by.client` within
-/// 30 s of `by.at`. The session must be an SSH session `by.operator` started from that
-/// client, not ended, with its terminal tunnel open; otherwise it is `NotFound`, so the
-/// answer does not tell another operator's session from a missing one.
-///
-/// # Errors
-/// `NotFound` as above; `Unavailable` when the hub is shutting down or too many files
-/// tickets are pending; `Database` or `Random` when a dependency fails.
+/// A session that does not qualify is `NotFound`, so the answer does not tell another
+/// operator's session from a missing one.
 pub(super) async fn open_files(
     db: &PgPool,
     live: &Live,
@@ -65,7 +58,6 @@ pub(super) async fn open_files(
     Ok(Ticket::files(session, token, now + LIFETIME))
 }
 
-/// Random bytes from the operating system.
 fn random_token() -> Result<TicketToken, Error> {
     let mut bytes = [0; TOKEN_BYTES];
     getrandom::fill(&mut bytes).map_err(Error::Random)?;

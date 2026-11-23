@@ -227,7 +227,6 @@ async fn chk_001_http_body_is_not_read_beyond_one_mebibyte() {
         "wrote {}",
         written.load(Ordering::SeqCst)
     );
-    // A keyword inside the first mebibyte is found in the same kind of body.
     config.keyword = Some("aaaa".into());
     assert!(run(config).await.ok);
 }

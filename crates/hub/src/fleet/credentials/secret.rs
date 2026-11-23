@@ -1,5 +1,3 @@
-//! Secret bytes that are wiped on drop and cannot be printed, copied or serialised.
-
 use zeroize::Zeroizing;
 
 /// Plaintext credential bytes: zeroized on drop.
@@ -10,7 +8,6 @@ use zeroize::Zeroizing;
 pub struct Secret(Zeroizing<Vec<u8>>);
 
 impl Secret {
-    /// Takes ownership of the bytes; they are zeroized when the secret drops.
     #[must_use]
     pub fn new(bytes: Vec<u8>) -> Self {
         Self(Zeroizing::new(bytes))

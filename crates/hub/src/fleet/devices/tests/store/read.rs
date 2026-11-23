@@ -5,7 +5,6 @@ fn names(devices: &[Device]) -> Vec<&str> {
     devices.iter().map(|device| device.name.as_str()).collect()
 }
 
-/// One page as (devices, has next page, total).
 async fn list(
     pool: &sqlx::PgPool,
     filter: &DeviceFilter,
@@ -20,7 +19,6 @@ fn filter() -> DeviceFilter {
     DeviceFilter::default()
 }
 
-/// Walks every page of `size` and returns the names in visiting order.
 async fn walk(pool: &sqlx::PgPool, filter: &DeviceFilter, size: usize) -> (Vec<String>, i64) {
     let mut seen = Vec::new();
     let mut after: Option<String> = None;

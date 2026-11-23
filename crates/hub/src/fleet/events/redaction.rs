@@ -1,9 +1,5 @@
-//! Removes secret values from an audit change, and from event text, before it is stored
-//! (LOG-007, D-3).
-//!
-//! Defence in depth: callers never put secret values in `change` or event text. It prefers
-//! over-matching (`tokenExpiresAt` and `passwordChangedAt` are redacted) to letting a secret
-//! through. Booleans are never redacted: they cannot hold a secret.
+//! Removes secret values from audit changes and event text before they are stored (LOG-007, D-3).
+//! It over-matches (`tokenExpiresAt` is redacted) rather than let a secret through.
 
 #[cfg(test)]
 mod tests;
@@ -14,14 +10,10 @@ use serde_json::{Map, Value};
 pub(super) use ::redaction::redact_text;
 use ::redaction::{REDACTED, Secrecy, normalise, secrecy};
 
-/// Keys whose string value names the field an object describes (`{ "field": "password", … }`,
-/// JSON Patch `{ "op": …, "path": "/ssh/password", … }`). `name` is a label only beside a
-/// `value` (a header `{ "name": "Authorization", "value": … }`), never on its own: a device may
-/// be called `secret-lab`.
+/// Keys whose value names the field an object describes; `name` counts only beside `value`,
+/// since a device may be called `secret-lab`.
 const LABELS: [&str; 5] = ["field", "path", "key", "setting", "property"];
 
-/// Names of credential metadata kept inside a credential holder, compared normalised. Any other
-/// scalar there is hidden unless it is an RFC 3339 timestamp.
 const HOLDER_METADATA: [&str; 11] = [
     "kind",
     "type",
@@ -36,8 +28,6 @@ const HOLDER_METADATA: [&str; 11] = [
     "lastusedat",
 ];
 
-/// Values of a key named exactly `auth` that name an authentication method, compared
-/// normalised (`private_key` gives `privatekey`). Any other scalar under `auth` is a secret.
 const AUTH_METHODS: [&str; 11] = [
     "password",
     "key",
@@ -52,12 +42,7 @@ const AUTH_METHODS: [&str; 11] = [
     "kerberos",
 ];
 
-/// Replaces every secret in `value` with `"[redacted]"`, at any depth and inside arrays:
-/// - the value of a key that names a secret;
-/// - under a key that holds credentials, every scalar except credential metadata;
-/// - in an object whose label names a secret, every sibling except the label and `op`;
-/// - under a key named `auth`, everything but a method name (`{"auth": "password"}` stays);
-/// - in every string, the secrets `redact_text` finds.
+/// Replaces every secret in `value` with `"[redacted]"`, at any depth.
 pub(super) fn redact(value: Value) -> Value {
     match value {
         Value::Object(fields) => Value::Object(redact_fields(fields)),
@@ -95,9 +80,6 @@ fn redact_fields(fields: Map<String, Value>) -> Map<String, Value> {
         .collect()
 }
 
-/// Inside a credential holder (`{"credential": {…}}`, `{"credentials": […]}`), at any depth:
-/// hides every scalar except a boolean, an RFC 3339 timestamp and the scalar of a metadata
-/// name, which are redacted like any other value. A secret name is hidden whatever it holds.
 fn redact_holder(value: Value) -> Value {
     match value {
         Value::Object(fields) => Value::Object(
@@ -118,7 +100,6 @@ fn redact_holder(value: Value) -> Value {
     }
 }
 
-/// A scalar under a metadata name, or a string that is an RFC 3339 timestamp.
 fn is_metadata(key: &str, value: &Value) -> bool {
     match value {
         Value::Object(_) | Value::Array(_) => false,
@@ -127,8 +108,6 @@ fn is_metadata(key: &str, value: &Value) -> bool {
     }
 }
 
-/// The value of a key named `auth`: a method name stays, an object or array is a credential
-/// holder, any other scalar is hidden.
 fn redact_auth(value: Value) -> Value {
     match value {
         Value::String(method) if is_auth_method(&method) => Value::String(method),
@@ -156,8 +135,6 @@ fn is_label(key: &str, header: bool) -> bool {
     LABELS.contains(&key.as_str()) || (header && key == "name")
 }
 
-/// A label value may be a path (`/ssh/password`, `ssh.password`, `/credentials/0/value`): it
-/// names a secret if any `/` or `.` segment does (an array index or `-` never does).
 fn label_names_secret(label: &str) -> bool {
     label
         .split(['/', '.'])

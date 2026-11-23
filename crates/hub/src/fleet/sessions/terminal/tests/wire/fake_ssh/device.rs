@@ -1,6 +1,4 @@
-//! The fake server's side of one connection: what it answers each hub request with, and
-//! what it records. A request the hub must never send (`exec`, `env`, X11, agent, port
-//! forwarding, ...) is recorded and refused, so a test that reads what was heard fails.
+//! A request the hub must never send (`exec`, `env`, X11, agent, port forwarding) is refused.
 
 use std::{
     future::ready,
@@ -20,9 +18,7 @@ pub(super) struct Device {
     pub(super) heard: mpsc::UnboundedSender<Heard>,
     pub(super) shell: Arc<Mutex<Option<(server::Handle, ChannelId)>>>,
     pub(super) ledger: Arc<Mutex<Ledger>>,
-    /// Opens when the test releases what the script holds.
     pub(super) gate: watch::Receiver<bool>,
-    /// The keyboard-interactive rounds answered so far.
     pub(super) answered: usize,
 }
 
@@ -32,12 +28,10 @@ impl Device {
         let _ = self.heard.send(heard);
     }
 
-    /// Records a request on `channel`.
     fn requested_on(&self, channel: ChannelId) {
         self.ledger.lock().unwrap().requested_on.push(channel);
     }
 
-    /// Waits, when the script holds `what`, until the test releases it.
     fn held(&self, what: Hold) -> impl Future<Output = ()> + Send + 'static {
         let mut gate = (self.script.hold == what).then(|| self.gate.clone());
         async move {
@@ -52,7 +46,6 @@ pub(super) fn verdict(right: bool) -> Auth {
     if right { Auth::Accept } else { Auth::reject() }
 }
 
-/// Grants or refuses a channel request.
 fn answer(session: &mut Session, channel: ChannelId, granted: bool) -> Result<(), russh::Error> {
     if granted {
         session.channel_success(channel)

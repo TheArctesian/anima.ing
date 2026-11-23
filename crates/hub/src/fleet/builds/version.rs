@@ -1,14 +1,11 @@
-//! A release version, `MAJOR.MINOR.PATCH` (BLD-002): its parser, its order and the next one.
-//!
-//! Pure. Only the exact text the parser accepts reaches the store, so two spellings never name
-//! one version.
+//! Only the exact text the parser accepts reaches the store, so two spellings never name one version (BLD-002).
 
 use std::{fmt, str::FromStr};
 
-/// The largest number one part may have: nine digits, as the stored check allows.
+/// Nine digits, as the stored check allows.
 const PART_MAX: u32 = 999_999_999;
 
-/// A version of the desktop app. Ordered part by part, so `0.1.10 > 0.1.9`.
+/// Ordered part by part, so `0.1.10 > 0.1.9`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Version {
     major: u32,
@@ -16,8 +13,6 @@ pub struct Version {
     patch: u32,
 }
 
-/// The text is not `MAJOR.MINOR.PATCH` with each part a number of 1 to 9 digits and no
-/// leading zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("a version is three numbers with dots between, such as 0.1.12")]
 pub struct VersionError;
@@ -32,8 +27,7 @@ impl Version {
         }
     }
 
-    /// The version with the patch number plus 1, which the release form proposes (Section
-    /// 3.10). `None` when the patch is at its largest.
+    /// `None` when the patch is at its largest.
     #[must_use]
     pub fn next_patch(self) -> Option<Self> {
         let patch = self.patch.checked_add(1).filter(|p| *p <= PART_MAX)?;
@@ -41,7 +35,6 @@ impl Version {
     }
 }
 
-/// One part: 1 to 9 ASCII digits, no leading zero unless the part is `0`.
 fn part(text: &str) -> Result<u32, VersionError> {
     let canonical = !text.is_empty()
         && text.len() <= 9

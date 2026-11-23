@@ -1,9 +1,6 @@
-//! Which addresses the hub may connect to: probes, sessions, metrics and every new outbound
-//! connection (R-030, R-032, P3-003). It refuses the addresses the hub must never touch
-//! (loopback, link-local and cloud metadata among them) and allows private and VPN ranges, so
-//! it does not decide which host on those networks is reached. The one target rule, the
-//! one resolver that applies it before a connection, and the one connect function
-//! ([`connect`]), which reaches a computer of the link through the link (HMD-048).
+//! Which addresses the hub may connect to (R-030, R-032, P3-003): every outbound connection
+//! goes through this one rule, and [`connect`] reaches a computer of the link (HMD-048).
+//! Private and VPN ranges stay allowed, so the rule does not decide which host there is reached.
 
 mod link_port;
 mod reached;
@@ -20,23 +17,12 @@ use ipnet::IpNet;
 pub use link_port::LinkPort;
 pub use reached::{Reached, connect, on_link};
 
-/// The addresses the hub may connect to.
-///
-/// The default refuses every address the hub must never touch: loopback, unspecified,
-/// `0.0.0.0/8`, link-local (`169.254.0.0/16`, home of cloud metadata, and `fe80::/10`),
-/// multicast, broadcast and reserved `240.0.0.0/4`, the AWS IPv6 metadata address, Teredo
-/// (`2001::/32`), site-local (`fec0::/10`), Tailscale's `100.100.100.0/24`, the IETF protocol
-/// assignments `192.0.0.0/24`, Azure's `168.63.129.16`, all of the local-use NAT64
-/// `64:ff9b:1::/48`, and the IPv4-mapped, IPv4-compatible, NAT64 and 6to4 forms of the IPv4
-/// ones. Private ranges (`10/8`, `172.16/12`, `192.168/16`, `100.64/10`, `fc00::/7`) stay
-/// allowed, because devices live there; `extra_deny` removes more, such as the hub's own
-/// network.
+/// The default refuses loopback, link-local, cloud metadata and the other addresses the hub
+/// never touches, in each IPv6 form.
 #[derive(Clone, Debug, Default)]
 pub struct AddressPolicy {
     extra_deny: Vec<IpNet>,
     allow_loopback: bool,
-    /// The dial socket of the hub's link, when the hub has one: how [`connect`] reaches a
-    /// link address.
     link_dial: Option<Arc<Path>>,
 }
 
@@ -50,23 +36,18 @@ impl AddressPolicy {
         }
     }
 
-    /// The same policy for a hub whose link has the dial socket `dial`: [`connect`] then
-    /// reaches a link address through it (HMD-048). `None` changes nothing.
+    /// [`connect`] then reaches a link address through `dial` (HMD-048); `None` changes nothing.
     #[must_use]
     pub fn reaching_link(mut self, dial: Option<PathBuf>) -> Self {
         self.link_dial = dial.map(Arc::from);
         self
     }
 
-    /// The dial socket of [`AddressPolicy::reaching_link`].
     fn link_dial(&self) -> Option<&Path> {
         self.link_dial.as_deref()
     }
 
-    /// Also allows plain loopback (`127.0.0.0/8` and `::1` as written, not an IPv6 form that
-    /// carries a loopback address), for the tests that reach local listeners only. The deny
-    /// list still wins. Public for the command line's end-to-end tests, whose SSH device
-    /// listens on loopback and is reached through `/files` (`test-support` only).
+    /// Also allows loopback as written, not in an IPv6 form, for tests; the deny list still wins.
     #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub fn allowing_loopback(mut self) -> Self {
@@ -74,15 +55,12 @@ impl AddressPolicy {
         self
     }
 
-    /// Whether [`AddressPolicy::allowing_loopback`] made this policy, so a policy that
-    /// replaces it can keep the test switch.
     #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub(crate) const fn allows_loopback(&self) -> bool {
         self.allow_loopback
     }
 
-    /// Whether the hub may connect to `ip`.
     #[must_use]
     pub fn permits(&self, ip: IpAddr) -> bool {
         let canonical = canonical(ip);
@@ -100,7 +78,7 @@ impl AddressPolicy {
     }
 }
 
-/// Why a host gives no address to connect to. Holds no host name or address (LOG-007).
+/// Holds no host name or address (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum TargetError {
     #[error("the host name does not resolve")]
@@ -109,19 +87,12 @@ pub enum TargetError {
     Refused,
 }
 
-/// Resolves `host` once (see [`lookup`] for the forms it takes) and returns every address
-/// it resolves to, each in its canonical form (an IPv4-mapped address is the IPv4 address it
-/// is) with `port`, when `policy` permits every one. A name that also points at a refused
-/// address is refused whichever address would answer first (D-1, R-032). The caller connects
-/// only to a returned address and never resolves the name again, so a second lookup cannot
-/// point the connection somewhere else.
-///
-/// Check probes share [`lookup`] but keep their own rule, which drops the refused addresses
-/// and keeps the rest (`checks::probe::resolve`, CHK-001).
+/// Every canonical address `host` resolves to, with `port`, when `policy` permits every one
+/// (D-1, R-032). The caller connects only to a returned address and never resolves the name
+/// again, so a second lookup cannot point the connection elsewhere.
 ///
 /// # Errors
-/// [`TargetError::Unresolved`] when the name has no address, [`TargetError::Refused`] when
-/// `policy` refuses any of them.
+/// [`TargetError::Unresolved`] for no address; [`TargetError::Refused`] when one is refused.
 pub async fn resolve_checked(
     host: &str,
     port: u16,
@@ -135,11 +106,9 @@ pub async fn resolve_checked(
     every_permitted(policy, addresses)
 }
 
-/// The addresses `host` names, from one lookup, as resolved: unchecked, so every caller
-/// checks each one against the policy before it connects. `host` is a name, an IP literal,
-/// or an IPv6 literal in exactly one pair of brackets (as `Url::host_str` writes it); any
-/// other bracketed text is unresolved and never reaches DNS. A name in `overrides` (lower-case
-/// keys) takes its addresses from there instead of DNS, for the checks tests.
+/// The addresses `host` names, unchecked: every caller checks each against the policy before
+/// it connects. Bracketed text other than one IPv6 literal never reaches DNS; `overrides`
+/// (lower-case keys) replaces DNS for the checks tests.
 ///
 /// # Errors
 /// [`TargetError::Unresolved`] when `host` names no address.
@@ -172,7 +141,6 @@ pub(crate) async fn lookup(
     }
 }
 
-/// `addresses` when there is at least one and `policy` permits every one.
 fn every_permitted(
     policy: &AddressPolicy,
     addresses: Vec<SocketAddr>,
@@ -189,7 +157,6 @@ fn every_permitted(
     Ok(addresses)
 }
 
-/// The IPv4 address that an IPv6 form carries, if it carries one.
 fn embedded_v4(ip: Ipv6Addr) -> Option<Ipv4Addr> {
     let o = ip.octets();
     let v4 = |at: usize| Ipv4Addr::new(o[at], o[at + 1], o[at + 2], o[at + 3]);
@@ -211,7 +178,6 @@ fn embedded_v4(ip: Ipv6Addr) -> Option<Ipv4Addr> {
     }
 }
 
-/// The address with embedded IPv4 forms replaced by the IPv4 address.
 fn canonical(ip: IpAddr) -> IpAddr {
     match ip {
         IpAddr::V6(v6) => embedded_v4(v6).map_or(IpAddr::V6(v6), IpAddr::V4),

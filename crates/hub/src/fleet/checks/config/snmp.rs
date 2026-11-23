@@ -1,6 +1,4 @@
-//! The SNMP check (D-5): the stored part, free of secrets, and the secrets an operator
-//! supplies, which are sealed apart from it (SEC-003, LOG-007).
-//!
+//! The SNMP check (D-5); its secrets are sealed apart from the stored part (SEC-003, LOG-007).
 //! Secret types here implement neither `Debug` nor `Display`.
 
 use serde::{Deserialize, Serialize};
@@ -8,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::rules::{self, ConfigError, Reason, err};
 use crate::fleet::credentials::Secret;
 
-/// The SNMP versions the hub speaks: v2c with a community, v3 with authPriv only.
+/// v2c with a community, v3 with authPriv only.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum SnmpVersion {
@@ -24,18 +22,15 @@ const fn timeout_ms() -> u32 {
     5000
 }
 
-/// The longest expected value, in bytes.
 pub const EXPECTED_MAX: usize = 1024;
 /// The longest v3 user name, in bytes (RFC 3414 `usmUserName`).
 pub const USERNAME_MAX: usize = 32;
-/// The longest community or password, in bytes.
 pub const SECRET_MAX: usize = 256;
 /// The fewest characters of a v3 password (RFC 3414 Section 11.2).
 pub const PASSWORD_MIN: usize = 8;
 /// The most arcs an OID has (RFC 2578 Section 3.5).
 pub const OID_ARCS_MAX: usize = 128;
 
-/// The stored, secret-free part of an SNMP check. `username` is the v3 user; v2c has none.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SnmpConfig {
@@ -52,9 +47,7 @@ pub struct SnmpConfig {
     pub timeout_ms: u32,
 }
 
-/// The arcs of a dotted OID such as `1.3.6.1.2.1.1.3.0`: at least two, each a `u32`, the
-/// first at most 2 and the second below 40 unless the first is 2, so the BER encoding
-/// holds every one. `None` for anything else.
+/// The arcs of a dotted OID; the first two are bounded so the BER encoding holds every one.
 #[must_use]
 pub fn oid_arcs(text: &str) -> Option<Vec<u32>> {
     let mut arcs = Vec::new();
@@ -73,10 +66,8 @@ pub fn oid_arcs(text: &str) -> Option<Vec<u32>> {
 }
 
 impl SnmpConfig {
-    /// Checks every field; the error names the field and never repeats its value.
-    ///
     /// # Errors
-    /// The first refused field.
+    /// The first refused field; the error never repeats its value (LOG-007).
     pub fn validate(&self) -> Result<(), ConfigError> {
         rules::port("port", self.port)?;
         if self.oid.is_empty() {
@@ -98,7 +89,6 @@ impl SnmpConfig {
     }
 }
 
-/// A v3 user name: 1 to 32 bytes, no control characters.
 fn username(name: &str) -> Result<(), ConfigError> {
     if name.is_empty() {
         return Err(err("username", Reason::Empty));
@@ -110,18 +100,12 @@ fn username(name: &str) -> Result<(), ConfigError> {
     Ok(())
 }
 
-/// The secrets of an SNMP check, for the version they were given for.
-///
-/// Like [`Secret`] it has no `Debug`, `Display`, `Clone` or `Serialize`.
 pub enum SnmpSecrets {
-    /// v2c.
     Community(Secret),
-    /// v3 authPriv: the authentication and the privacy password.
     User { auth: Secret, privacy: Secret },
 }
 
 impl SnmpSecrets {
-    /// The version these secrets are for.
     #[must_use]
     pub const fn version(&self) -> SnmpVersion {
         match self {
@@ -131,8 +115,7 @@ impl SnmpSecrets {
     }
 }
 
-/// The secrets as the operator entered them; `None` (or an empty value) asks to keep the
-/// stored one.
+/// `None` or an empty value keeps the stored secret.
 #[derive(Default)]
 pub struct SnmpCredentials {
     pub community: Option<Secret>,
@@ -140,19 +123,15 @@ pub struct SnmpCredentials {
     pub privacy_password: Option<Secret>,
 }
 
-/// An SNMP check as an operator supplies it, secrets in hand. It prints nothing (it has no
-/// `Debug`); [`SnmpInput::split`] separates the stored part from the secrets.
 pub struct SnmpInput {
     pub config: SnmpConfig,
     pub credentials: SnmpCredentials,
 }
 
-/// `None` for a secret that is absent or empty: both keep the stored one.
 fn given(secret: Option<Secret>) -> Option<Secret> {
     secret.filter(|secret| !secret.expose().is_empty())
 }
 
-/// A community: at most 256 bytes.
 fn community(secret: &Secret) -> Result<(), ConfigError> {
     if secret.expose().len() > SECRET_MAX {
         return Err(err("community", Reason::TooLong { max: SECRET_MAX }));
@@ -160,7 +139,6 @@ fn community(secret: &Secret) -> Result<(), ConfigError> {
     Ok(())
 }
 
-/// A v3 password: UTF-8, at least 8 characters and at most 256 bytes.
 fn password(field: &'static str, secret: &Secret) -> Result<(), ConfigError> {
     let text = std::str::from_utf8(secret.expose()).map_err(|_| err(field, Reason::Invalid))?;
     if text.len() > SECRET_MAX {
@@ -173,11 +151,10 @@ fn password(field: &'static str, secret: &Secret) -> Result<(), ConfigError> {
 }
 
 impl SnmpInput {
-    /// Validates the configuration and the secrets given, and separates them. A secret of
-    /// the other version is refused; it would be dropped otherwise.
+    /// A secret of the other version is refused rather than dropped.
     ///
     /// # Errors
-    /// The first refused field; the error never repeats the value.
+    /// The first refused field; the error never repeats the value (LOG-007).
     pub fn split(self) -> Result<(SnmpConfig, SnmpCredentials), ConfigError> {
         self.config.validate()?;
         let credentials = SnmpCredentials {

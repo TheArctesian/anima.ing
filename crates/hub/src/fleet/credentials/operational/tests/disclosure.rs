@@ -1,5 +1,4 @@
-//! After a whole life of a key, no table, audit entry, event, error text or `Debug` output
-//! holds a value: only the sealed column holds it, and not as plain bytes (LOG-007, SEC-003).
+//! Only the sealed column holds a key's value, and not as plain bytes (LOG-007, SEC-003).
 
 use sqlx::PgPool;
 
@@ -7,7 +6,6 @@ use super::{Desk, NEXT_VALUE, VALUE, database_now, metadata, pve};
 use crate::fleet::credentials::Secret;
 use crate::fleet::credentials::operational::{Error, NewKey, Problem, create, key, remove};
 
-/// Every text of the operational key tables and of both logs, as one text.
 async fn stored_text(pool: &PgPool) -> String {
     let parts: Vec<String> = sqlx::query_scalar(
         "SELECT row_to_json(k)::text FROM credentials.operational_keys k \

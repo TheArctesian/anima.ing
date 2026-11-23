@@ -1,5 +1,3 @@
-//! The pure repair rule: candidates, ports, names and texts.
-
 use chrono::{TimeZone as _, Utc};
 use serde_json::json;
 
@@ -29,7 +27,6 @@ fn ping() -> CheckConfig {
     }
 }
 
-/// A check that meets every condition: ICMP, Down after its 2 retries, never answered.
 fn candidate() -> Facts {
     Facts {
         config: Some(ping()),
@@ -86,7 +83,6 @@ fn chk_013_a_check_that_meets_every_condition_is_a_candidate() {
     assert!(is_candidate(&candidate(), false));
 }
 
-/// Makes one condition of a candidate false.
 type Spoil = fn(&mut Facts);
 
 #[test]

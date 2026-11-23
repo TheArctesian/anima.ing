@@ -1,6 +1,4 @@
-//! The client messages (K4 Section 9): each accepted message, every refused shape, and a
-//! property test that no input panics and only the Section 9 set is accepted; the hub's
-//! messages; and which directory entries a listing shows.
+//! The files protocol messages and listings (K4 Section 9).
 
 use proptest::prelude::*;
 use russh_sftp::protocol::{File, FileAttributes};
@@ -178,7 +176,6 @@ fn ra_032_a_listing_shows_files_directories_and_links_only() {
     assert!(entry(file(&"n".repeat(1024), Some(0o100_644))).is_some());
 }
 
-/// The client messages, written as a client may write them.
 fn message() -> impl Strategy<Value = (String, Request)> {
     let text_path = "/[a-z0-9 ._-]{0,40}";
     prop_oneof![

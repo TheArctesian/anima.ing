@@ -1,6 +1,5 @@
-//! A device's storage drive by drive: each drive the hub knows with the latest use of the mounts
-//! on it and its latest activity, then each mount that belongs to no known drive (MET-026,
-//! MET-029, MET-031). Pure: the drives and the latest samples come in as parameters.
+//! A device's storage drive by drive (MET-026, MET-029, MET-031). Pure: the drives and the
+//! latest samples come in as parameters.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

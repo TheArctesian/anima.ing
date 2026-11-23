@@ -1,9 +1,6 @@
-//! The SNMP v3 message with the user-based security model (RFC 3412 Section 6, RFC 3414
-//! Section 2.4): engine discovery, the authPriv `GetRequest`, and reading the answers. Pure:
-//! ids and the salt come in as parameters.
-//!
-//! Nothing in an answer is trusted before its digest is verified, except a Report that is
-//! not authenticated, which only ever ends the attempt as Down with a fixed message.
+//! SNMP v3 messages with USM (RFC 3412 Section 6, RFC 3414 Section 2.4).
+//! Nothing in an answer is trusted before its digest is verified, except an unauthenticated
+//! Report, which only ends the attempt as Down with a fixed message.
 
 use zeroize::Zeroizing;
 
@@ -31,7 +28,6 @@ pub(in crate::fleet::checks) struct Ids {
     pub(in crate::fleet::checks) request: i32,
 }
 
-/// The agent's engine, as discovery reported it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::checks) struct Engine {
     pub(in crate::fleet::checks) id: Vec<u8>,
@@ -39,7 +35,6 @@ pub(in crate::fleet::checks) struct Engine {
     pub(in crate::fleet::checks) time: u32,
 }
 
-/// A message as read, before anything in it is trusted.
 struct Parsed<'a> {
     message_id: i64,
     flags: u8,
@@ -123,7 +118,6 @@ fn scoped(context_engine: &[u8], pdu: &[u8]) -> Bytes {
     )
 }
 
-/// The discovery request: no user, no authentication, no binding, reportable.
 #[must_use]
 pub(in crate::fleet::checks) fn discovery(ids: Ids) -> Bytes {
     let unknown = Engine {
@@ -156,7 +150,7 @@ fn engine_of(parsed: &Parsed<'_>) -> Result<Engine, Malformed> {
     })
 }
 
-/// The engine the discovery Report names. `None` for a reply to another message.
+/// `None` for a reply to another message.
 #[must_use]
 pub(in crate::fleet::checks) fn engine(
     datagram: &[u8],
@@ -190,8 +184,7 @@ impl Parsed<'_> {
     }
 }
 
-/// The authPriv `GetRequest` for `oid`: the scoped PDU encrypted with the salt, and the digest
-/// over the whole message. `None` when the OID cannot be encoded.
+/// `None` when the OID cannot be encoded.
 #[must_use]
 pub(in crate::fleet::checks) fn get(
     (keys, engine): (&Keys, &Engine),
@@ -243,7 +236,6 @@ fn authentic(datagram: &[u8], parsed: &Parsed<'_>, keys: &Keys) -> bool {
         && usm::verify(&keys.auth, &copy, parsed.digest.content)
 }
 
-/// The scoped PDU of an authenticated message, decrypted when it is private.
 fn scoped_pdu(parsed: &Parsed<'_>, keys: &Keys) -> Result<Pdu, Malformed> {
     if parsed.flags & PRIV == 0 {
         return read_scoped(&mut parsed.scoped_plain()?);
@@ -266,8 +258,7 @@ fn read_scoped(reader: &mut Reader<'_>) -> Result<Pdu, Malformed> {
     Pdu::last(reader)
 }
 
-/// The Response to the authPriv `GetRequest`. `None` for a reply to another message. A
-/// message that fails its digest, or a Response that is not authenticated, is never read.
+/// `None` for a reply to another message.
 #[must_use]
 pub(in crate::fleet::checks) fn response(
     datagram: &[u8],

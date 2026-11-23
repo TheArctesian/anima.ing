@@ -1,5 +1,4 @@
-//! Tests of the domain expiry check (spec 6.4, CHK-009, D-29, P3-003). Servers listen on
-//! loopback only; no test queries a real RDAP or IANA server.
+//! Domain expiry check tests (CHK-009, D-29, P3-003); no test queries a real RDAP or IANA server.
 
 mod bootstrap;
 mod config;

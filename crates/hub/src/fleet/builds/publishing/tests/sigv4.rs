@@ -1,7 +1,4 @@
-//! The signer against the worked examples of the AWS documentation (D-24): "Examples of how to
-//! derive a signing key for Signature Version 4", and the Amazon S3 examples "Signature
-//! Calculations for the Authorization Header: Transferring Payload in a Single Chunk" (GET
-//! Object, PUT Object) and "Authenticating Requests: Using Query Parameters" (GET Object).
+//! The signer against the worked examples of the AWS `SigV4` and Amazon S3 documentation (D-24).
 
 use chrono::{DateTime, Utc};
 

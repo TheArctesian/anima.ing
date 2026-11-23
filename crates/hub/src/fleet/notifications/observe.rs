@@ -1,5 +1,4 @@
-//! Deciding and queueing in the heartbeat's transaction, and the reads and writes around a
-//! check's channels (D-16, NOT-003). Sends nothing.
+//! Deciding and queueing notifications in the heartbeat's transaction; sends nothing (D-16, NOT-003).
 
 use std::collections::HashMap;
 
@@ -18,9 +17,7 @@ use crate::{ids::CheckId, text::clean};
 const NAME_CHARS: usize = 200;
 const MESSAGE_CHARS: usize = 500;
 
-/// Decides what `o` calls for, stores the check's new state and queues each notification for
-/// each channel the check notifies, in the caller's transaction. The state row stays locked
-/// until that transaction ends.
+/// Works in the caller's transaction; the check's state row stays locked until it ends.
 ///
 /// # Errors
 /// `Database` when a query fails; `Unreadable` when a stored row is not known to this version.
@@ -64,7 +61,7 @@ pub async fn observe(conn: &mut PgConnection, o: &Observation) -> Result<(), Err
     Ok(())
 }
 
-/// The placeholder values of D-21, cleaned (Q2-11). Never a secret.
+/// The placeholder values of D-21, cleaned (Q2-11); never a secret.
 fn payload(o: &Observation, notice: Notice) -> Value {
     json!({
         "device": clean(&o.device.1, NAME_CHARS),
@@ -77,8 +74,7 @@ fn payload(o: &Observation, notice: Notice) -> Value {
     })
 }
 
-/// Turns on the channels marked "on by default" for a new check, in `createCheck`'s
-/// transaction (NOT-003).
+/// Turns on the default channels for a new check, in `createCheck`'s transaction (NOT-003).
 ///
 /// # Errors
 /// `Database` when a query fails; `UnknownCheck` when `check` does not exist.
@@ -87,8 +83,7 @@ pub async fn adopt_defaults(conn: &mut PgConnection, check: CheckId) -> Result<(
     store::set_check_channels(conn, check, &defaults).await
 }
 
-/// The channels and resend setting of each of `checks`, in three queries whatever their number
-/// (API-005). A check with no settings row resends never. The channels carry no secrets.
+/// Three queries whatever the number of checks (API-005); the channels carry no secrets.
 ///
 /// # Errors
 /// `Database` when a query fails; `Unreadable` when a stored row is not known to this version.

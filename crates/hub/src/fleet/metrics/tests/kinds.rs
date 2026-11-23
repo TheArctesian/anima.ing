@@ -1,5 +1,3 @@
-//! Storage and daemon mappings for metric kinds.
-
 use async_graphql::EnumType;
 use daemon_core::points::Kind;
 

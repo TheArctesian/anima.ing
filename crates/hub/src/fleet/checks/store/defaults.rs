@@ -32,8 +32,7 @@ pub(in crate::fleet::checks) async fn read<'e>(
     defaults_of(row)
 }
 
-/// Replaces the stored defaults in the caller's transaction, in a savepoint. A value outside
-/// the bounds of `checks.checks` is refused by name of the field.
+/// A value outside the bounds of `checks.checks` is refused by the name of its field.
 pub(in crate::fleet::checks) async fn write(
     conn: &mut PgConnection,
     new: CheckDefaults,

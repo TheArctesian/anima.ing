@@ -1,5 +1,4 @@
-//! The warning marks: each warning is marked once for a node, a kind and an expiry
-//! (VPN-010, VPN-011, BD-4).
+//! VPN-010, VPN-011, BD-4.
 
 use chrono::Duration;
 use sqlx::PgPool;

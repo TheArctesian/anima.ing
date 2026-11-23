@@ -1,5 +1,4 @@
-//! The HTTP configuration input as domain values: headers, authentication and status ranges,
-//! with the secrets sealed apart from the stored configuration (LOG-007, SEC-005).
+//! The secrets are sealed apart from the stored configuration (LOG-007, SEC-005).
 
 use super::super::input::{AuthShape, HttpShape};
 use super::{ConfigForm, number, or_default};

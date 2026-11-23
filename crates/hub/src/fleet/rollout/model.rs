@@ -1,5 +1,4 @@
-//! What the rules of a rollout read: one machine as the hub knows it, what its daemon said last
-//! about its own update (K8 Section 8.1), and one release that the hub holds for one target.
+//! What the rules of a rollout read (K8 Section 8.1).
 
 use crate::{fleet::builds::Version, ids::DeviceId};
 
@@ -10,8 +9,7 @@ pub enum Target {
     DarwinUniversal,
 }
 
-/// Why a machine refused a release or rolled back: the fixed codes of K8 Section 8.1. `Failed`
-/// is each code that this hub does not know.
+/// The fixed codes of K8 Section 8.1; `Failed` is each code that this hub does not know.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cause {
     RecordSignature,
@@ -27,7 +25,6 @@ pub enum Cause {
     Failed,
 }
 
-/// How the newest try of a machine ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome {
     Installed,
@@ -35,8 +32,7 @@ pub enum Outcome {
     Refused(Cause),
 }
 
-/// The newest try of a machine (`last`): the version, its end, and the number of tries of that
-/// version since the operator last asked (ROL-032).
+/// `tries` counts the tries of the version since the operator last asked (ROL-032).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Try {
     pub version: Version,
@@ -58,7 +54,6 @@ pub struct Said {
     pub last: Option<Try>,
 }
 
-/// Whether the hub hears from the daemon of a machine.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Reach {
     Connected,
@@ -68,14 +63,12 @@ pub enum Reach {
     TokenEnded,
 }
 
-/// One machine, as the hub knows it when a rule runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Machine {
     pub device: DeviceId,
     /// The version that its daemon reported last (ROL-051).
     pub installed: Option<Version>,
     pub reach: Reach,
-    /// True for the machine that the hub runs on.
     pub with_hub: bool,
     /// True while the operator holds the machine (ROL-028).
     pub held: bool,

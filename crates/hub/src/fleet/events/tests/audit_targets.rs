@@ -1,5 +1,4 @@
-//! The audit targets of the sources engine and Projects: stored with their kind and read back
-//! (SRC-003, PRO-001, PRJ-028).
+//! The audit targets of the sources engine and Projects (SRC-003, PRO-001, PRJ-028).
 
 use sqlx::{PgPool, Row as _};
 use uuid::Uuid;

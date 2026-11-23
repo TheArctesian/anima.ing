@@ -26,7 +26,6 @@ fn input(url: String, credentials: HttpCredentials) -> HttpInput {
     }
 }
 
-/// An HTTPS server that redirects every request to a plain HTTP server, and the plain one.
 async fn servers() -> (Server, Server, ProbeEnv) {
     let plain = serve(None, |_| Reply::ok("plain")).await;
     let to = format!("http://localhost:{}/", plain.addr.port());

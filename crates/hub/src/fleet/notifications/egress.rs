@@ -26,7 +26,7 @@ use crate::fleet::targets::{AddressPolicy, TargetError};
 pub(crate) const TIME_LIMIT: Duration = Duration::from_secs(8);
 
 /// The rules a notification connection obeys: the address policy every resolved address must
-/// pass. A test may also trust its own root certificate ([`Egress::trusting`]).
+/// pass.
 #[derive(Clone, Debug)]
 pub(crate) struct Egress {
     policy: AddressPolicy,
@@ -42,7 +42,6 @@ impl Egress {
         }
     }
 
-    /// Also trusts the DER root certificate `der`, for tests that reach a local TLS server.
     #[cfg(test)]
     #[must_use]
     pub(crate) fn trusting(mut self, der: Vec<u8>) -> Self {
@@ -55,10 +54,8 @@ impl Egress {
 /// server sent beyond a status or reply code (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub(crate) enum SendError {
-    /// The host does not resolve, or names an address the hub may not reach. The dispatcher
-    /// reports it as "The target address is not permitted." (N-5, K7). Unresolved and refused
-    /// are folded into one message on purpose: telling them apart would let an operator probe
-    /// which internal names exist (no DNS oracle).
+    /// The host does not resolve, or names an address the hub may not reach. One message for
+    /// both, so an operator cannot probe which internal names exist (N-5, K7).
     #[error("the target address is not permitted")]
     Target(#[from] TargetError),
     #[error("the address is not an https URL with a host")]
@@ -84,7 +81,6 @@ pub(crate) enum SendError {
     Exchange,
 }
 
-/// Whether `error`, or anything it wraps, is a TLS failure.
 fn tls_broke(error: &(dyn Error + 'static)) -> bool {
     causes(error).any(<dyn Error>::is::<rustls::Error>)
 }

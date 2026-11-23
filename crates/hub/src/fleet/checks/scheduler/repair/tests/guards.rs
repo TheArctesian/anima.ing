@@ -1,5 +1,4 @@
-//! What a repair never touches, driven by real ticks: a check that ever answered, that the
-//! operator edited, that is paused, or that is not ICMP (CHK-013, D-1, D-3).
+//! What a repair never touches (CHK-013, D-1, D-3).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -25,7 +24,6 @@ const MORE_HOSTS: [&str; 3] = [
     "0190a000-0000-7000-8002-000000000005",
 ];
 
-/// One uptime row in `table` with 1 in `column`.
 async fn bucket(pool: &PgPool, id: CheckId, (table, column): (&str, &str), at: DateTime<Utc>) {
     let sql = format!("INSERT INTO checks.{table} (check_id, bucket, {column}) VALUES ($1, $2, 1)");
     sqlx::query(&sql)
@@ -46,7 +44,6 @@ repair_test! {
             let device = on_loopback(&pool, host, listener.port).await;
             ids.push(add_ping(&pool, device, 0, now).await);
         }
-        // An Up heartbeat whose buckets are gone, then one bucket of each table alone.
         beat(&pool, ids[0], Status::Up, earlier).await;
         for table in ["uptime_minute", "uptime_hour", "uptime_day"] {
             let sql = format!("DELETE FROM checks.{table} WHERE check_id = $1");

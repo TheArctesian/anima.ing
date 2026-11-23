@@ -1,10 +1,8 @@
-//! The model library: models, their variants and files, aliases and the approved sources
-//! (compute plan, LIBM-001 to LIBM-009, SEL-003).
+//! The model library (compute plan, LIBM-001 to LIBM-009, SEL-003).
 //!
-//! Reads take the pool. Writes take the caller's connection so the GraphQL layer adds its
-//! audit entry in the same transaction (LOG-005). A repository is read through [`Fetch`], the
-//! I/O edge, before the transaction starts. Messages in [`Error`] hold no input value
-//! (LOG-007).
+//! Writes take the caller's connection so the audit entry shares the transaction (LOG-005).
+//! A repository is read through [`Fetch`] before the transaction starts.
+//! Messages in [`Error`] hold no input value (LOG-007).
 
 pub mod capability;
 mod fetch;
@@ -30,7 +28,6 @@ pub use model::{Alias, Facts, Format, LayerShape, Missing, Model, Refusal, Varia
 pub use publisher::{PublisherApproval, Widening};
 pub use reading::Read;
 
-/// Why a library operation failed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("the model is not in the library")]
@@ -43,7 +40,6 @@ pub enum Error {
     Source(#[from] FetchError),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// A stored row is not in a form this version reads.
     #[error("a stored model cannot be read")]
     Unreadable,
 }
@@ -97,12 +93,11 @@ pub async fn add_source(
     store::add_source(conn, &organisation, now).await
 }
 
-/// Reads a repository for a model (LIBM-004). `name` is the model name; with none, the hub
-/// makes one from the repository name. Nothing is stored: [`save`] stores the result.
+/// Reads a repository for a model without storing it (LIBM-004); with no `name`, the hub
+/// makes one from the repository name.
 ///
 /// # Errors
-/// `Validation` (`repository`, `name`); `Refused` when the source is not approved or the
-/// repository gives no variant; `Source` when the source fails.
+/// `Validation`; `Refused` (source not approved or no variant); `Source` when it fails.
 pub async fn read(
     db: &PgPool,
     fetch: &impl Fetch,
@@ -128,8 +123,7 @@ pub async fn read(
     reading::read(fetch, &source, name, &approved).await
 }
 
-/// Stores what [`read`] gave: the model, and each variant in place of a variant of the same
-/// tag. Returns the stored model.
+/// Stores what [`read`] gave; each variant replaces the stored variant of the same tag.
 ///
 /// # Errors
 /// `Database` when a write fails.
@@ -148,12 +142,10 @@ pub async fn save(
         .ok_or(Error::NotFound(Missing::Model))
 }
 
-/// Points an alias at a model, in place of the model it pointed at (LIBM-007, SEL-003).
-/// Returns the alias and the name of the model it pointed at before.
+/// Points an alias at a model; returns the name of the model it pointed at before (LIBM-007, SEL-003).
 ///
 /// # Errors
-/// `Validation` (`alias`) when the alias breaks the name rule or is the name of a model;
-/// `NotFound` when there is no such model.
+/// `Validation` when the alias is not a valid name or names a model; `NotFound` for no model.
 pub async fn set_alias(
     conn: &mut PgConnection,
     alias: &str,
@@ -183,8 +175,6 @@ pub async fn publisher_approval(db: &PgPool) -> Result<PublisherApproval, Error>
     store::publisher_approval(db).await
 }
 
-/// Changes the hub setting of the publisher approval.
-///
 /// # Errors
 /// `Database` when the write fails.
 pub async fn set_publisher_approval(
@@ -194,9 +184,8 @@ pub async fn set_publisher_approval(
     store::set_publisher_approval(conn, mode).await
 }
 
-/// Adds the publisher of the model that [`read`] gave to the approved list, when the setting
-/// and the actor permit it (R-343). `person` is false for an API key or an agent.
-/// Returns what it did, for the audit entry.
+/// Approves the publisher of a read model when the setting and the actor permit it (R-343).
+/// `person` is false for an API key or an agent.
 ///
 /// # Errors
 /// `Database` when a query or the write fails.

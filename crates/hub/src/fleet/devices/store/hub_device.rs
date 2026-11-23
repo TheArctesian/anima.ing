@@ -1,5 +1,4 @@
-//! SQL for the hub's own device (HMD-045): the lock of its start, the device at a host, the
-//! names in use and the site of the link.
+//! SQL for the hub's own device (HMD-045).
 
 use ipnet::IpNet;
 use sqlx::PgConnection;
@@ -10,8 +9,8 @@ use crate::fleet::devices::{
     records::{DeviceRow, to_site},
 };
 
-/// Waits for, then holds until the caller's transaction ends, the lock of the hub's own
-/// device, so two hubs that start on one database add one device.
+/// Held until the caller's transaction ends, so two hubs that start on one database add one
+/// device.
 pub(in crate::fleet::devices) async fn lock_hub_device(
     conn: &mut PgConnection,
 ) -> Result<(), Error> {
@@ -21,7 +20,6 @@ pub(in crate::fleet::devices) async fn lock_hub_device(
     Ok(())
 }
 
-/// The oldest device whose host is `host` in any letter case.
 pub(in crate::fleet::devices) async fn device_at_host(
     conn: &mut PgConnection,
     host: &str,
@@ -35,7 +33,6 @@ pub(in crate::fleet::devices) async fn device_at_host(
     Ok(row.map(Device::try_from).transpose()?)
 }
 
-/// Those of `names` that a device has.
 pub(in crate::fleet::devices) async fn names_in_use(
     conn: &mut PgConnection,
     names: &[String],
@@ -48,8 +45,7 @@ pub(in crate::fleet::devices) async fn names_in_use(
     )
 }
 
-/// The site with this name, else a site whose subnet overlaps `subnet`: a new site with that
-/// subnet could not be stored beside it.
+/// An overlapping site counts: a new site with that subnet could not be stored beside it.
 pub(in crate::fleet::devices) async fn site_for(
     conn: &mut PgConnection,
     name: &str,

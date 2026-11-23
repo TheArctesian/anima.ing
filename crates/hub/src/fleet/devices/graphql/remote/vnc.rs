@@ -1,5 +1,4 @@
-//! A device's VNC settings as the GraphQL type K1 calls `VncSettings`, with whether the hub
-//! holds a password for it (RA-030, DEV-011, SEC-005, API-005).
+//! `VncSettings` and whether the hub holds its password (RA-030, DEV-011, SEC-005, API-005).
 
 use std::{collections::HashMap, sync::Arc};
 

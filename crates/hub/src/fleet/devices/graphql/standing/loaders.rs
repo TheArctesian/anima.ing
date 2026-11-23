@@ -1,8 +1,5 @@
-//! Batched reads that join the checks domain into `Device` (API-005).
-//!
-//! Each loader makes one call to the checks face per batch (per window for uptime). The
-//! status and uptime loaders read the schema clock once per batch, so every device in the
-//! batch is judged at the same instant (CHK-004).
+//! Loaders that join the checks domain into `Device`, one call per batch (API-005).
+//! Status and uptime read the clock once per batch, so a batch is judged at one instant (CHK-004).
 
 use std::{collections::HashMap, net::IpAddr, sync::Arc};
 

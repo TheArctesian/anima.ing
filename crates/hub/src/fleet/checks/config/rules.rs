@@ -1,6 +1,5 @@
 //! Pure validation rules for check configuration. Errors name the field, never its value.
 
-/// Which field of a check configuration was refused, and why.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 #[error("{field}: {reason}")]
 pub struct ConfigError {
@@ -8,7 +7,6 @@ pub struct ConfigError {
     pub reason: Reason,
 }
 
-/// Why a field was refused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum Reason {
     #[error("must be between {min} and {max}")]
@@ -105,10 +103,8 @@ pub(super) fn header_value(field: &'static str, value: &str) -> Result<(), Confi
     }
 }
 
-/// Header names that pick where a request goes, at the client or at a proxy in front of the
-/// server (compared case-insensitively). Only the URL names the destination, so stored
-/// secrets, which are bound to the URL origin, never follow one of these (SEC-005).
-/// Pseudo-headers such as `:authority` are not tokens, so the grammar refuses them already.
+/// Only the URL names the destination, so secrets bound to its origin never follow one of
+/// these headers (SEC-005); pseudo-headers such as `:authority` already fail the token grammar.
 const DESTINATION_HEADERS: [&str; 5] = [
     "host",
     "forwarded",
@@ -117,8 +113,7 @@ const DESTINATION_HEADERS: [&str; 5] = [
     "x-host",
 ];
 
-/// RFC 9110 token: the grammar of a header name. A name that picks the destination is
-/// refused (SEC-005).
+/// The RFC 9110 token grammar of a header name.
 pub(super) fn header_name(field: &'static str, name: &str) -> Result<(), ConfigError> {
     let token = |b: u8| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b);
     if name.is_empty() {
@@ -137,7 +132,6 @@ pub(super) fn header_name(field: &'static str, name: &str) -> Result<(), ConfigE
     }
 }
 
-/// Header names whose values are secrets (compared case-insensitively).
 #[must_use]
 pub fn is_secret_header(name: &str) -> bool {
     ["authorization", "proxy-authorization", "cookie"]
@@ -145,8 +139,7 @@ pub fn is_secret_header(name: &str) -> bool {
         .any(|secret| name.eq_ignore_ascii_case(secret))
 }
 
-/// A DNS name: dot-separated labels of 1..=63 letters, digits and hyphens (and underscores
-/// when `underscore` is set, as service records use them); a trailing dot is allowed.
+/// `underscore` allows `_` in labels, as service records use them.
 pub(super) fn dns_name(
     field: &'static str,
     name: &str,
@@ -174,9 +167,7 @@ pub(super) fn dns_name(
     }
 }
 
-/// A domain to look up over RDAP (D-29): ASCII only, so an internationalised name comes in
-/// its `xn--` form; a DNS name of at least two labels with no trailing dot, whose last label
-/// is letters or an `xn--` label, so an IP address, a scheme, a path or a port never pass.
+/// A domain to look up over RDAP (D-29); an IP address, scheme, path or port never passes.
 pub(super) fn registered_domain(field: &'static str, name: &str) -> Result<(), ConfigError> {
     if name.is_empty() {
         return Err(err(field, Reason::Empty));
@@ -200,7 +191,6 @@ pub(super) fn registered_domain(field: &'static str, name: &str) -> Result<(), C
     }
 }
 
-/// A host name or an IP address (IPv6 may be in brackets), as the device editor accepts it.
 pub(super) fn host(field: &'static str, text: &str) -> Result<(), ConfigError> {
     let bare = text.trim_start_matches('[').trim_end_matches(']');
     if bare.parse::<std::net::IpAddr>().is_ok() {
@@ -210,7 +200,7 @@ pub(super) fn host(field: &'static str, text: &str) -> Result<(), ConfigError> {
     }
 }
 
-/// RFC 6901 JSON Pointer: empty, or `/` segments where `~` is followed by `0` or `1`.
+/// An RFC 6901 JSON Pointer.
 pub(super) fn json_pointer(field: &'static str, pointer: &str) -> Result<(), ConfigError> {
     max_len(field, pointer, JSON_QUERY_MAX)?;
     if !pointer.is_empty() && !pointer.starts_with('/') {
@@ -228,7 +218,7 @@ pub(super) fn json_pointer(field: &'static str, pointer: &str) -> Result<(), Con
 /// The most bytes a container or unit name takes (the client editor's limit).
 pub const LISTING_NAME_MAX: usize = 255;
 
-/// A Docker container name: `[a-zA-Z0-9][a-zA-Z0-9_.-]*`, at most 255 bytes (CHK-012).
+/// A Docker container name (CHK-012).
 pub(super) fn container_name(field: &'static str, name: &str) -> Result<(), ConfigError> {
     let mut bytes = name.bytes();
     let Some(first) = bytes.next() else {
@@ -244,8 +234,7 @@ pub(super) fn container_name(field: &'static str, name: &str) -> Result<(), Conf
     }
 }
 
-/// A systemd unit name: `[A-Za-z0-9:_.@\\][A-Za-z0-9:_.@\\-]*`, at most 255 bytes, so it
-/// never starts with `-` and cannot be read as an option (CHK-012).
+/// A systemd unit name never starts with `-`, so it cannot be read as an option (CHK-012).
 pub(super) fn unit_name(field: &'static str, name: &str) -> Result<(), ConfigError> {
     let plain = |b: u8| b.is_ascii_alphanumeric() || matches!(b, b':' | b'_' | b'.' | b'@' | b'\\');
     let mut bytes = name.bytes();
