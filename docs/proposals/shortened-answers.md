@@ -553,6 +553,15 @@ security review before merge or real forwarding, and the first real forward only
 operator's word. The real-program check is HT-NEW-relayhook in
 [need-human-testing.md](../need-human-testing.md). No real forward was made by this session.
 
+Independent final security review (2026-11-23): a separate reviewer read all 51 changed
+files at `8f051e38917e60bb0e4284d027ad5153dea6483a` against `8d8a3370d`.
+The result was no actionable finding (Critical, High, Medium and Low: zero). The reviewer
+closed the holder-crash/port-takeover and Codex bearer-persistence blockers within the
+threat boundary above, and independently repeated the confined header and final Codex
+probes. This is code-review evidence, not approval to enable the relay or forward real
+credentials. Additive CA trust, literal-line redaction and the compatibility limits above
+remain. GitHub gates must pass before merge; HT-NEW-relayhook and OD-SHA8 stay Open.
+
 ### 7.11 Threats
 
 | Number | Threat | Answer |
