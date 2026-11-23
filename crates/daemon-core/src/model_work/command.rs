@@ -65,3 +65,26 @@ pub fn environment(temporary: &Path, bin: &Path, key: &str) -> Vec<(String, Stri
         (LLAMA_KEY_VARIABLE.to_owned(), key.to_owned()),
     ]
 }
+
+/// The arguments of a vLLM server for the copy in `copy` on `127.0.0.1:<port>`: only
+/// safetensors weights, the tokenizer of the copy, no request logs, and never
+/// `--trust-remote-code` (Section 2.1, SEC-C-008). The API key is in the environment.
+#[must_use]
+pub fn vllm_arguments(copy: &Path, port: u16) -> Vec<String> {
+    let copy = copy.display().to_string();
+    [
+        "serve",
+        &copy,
+        "--host",
+        "127.0.0.1",
+        "--port",
+        &port.to_string(),
+        "--load-format",
+        "safetensors",
+        "--tokenizer",
+        &copy,
+        "--disable-log-requests",
+    ]
+    .map(str::to_owned)
+    .to_vec()
+}

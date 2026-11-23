@@ -1,14 +1,14 @@
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import type { ListedRow } from '$lib/agent-threads/listing/listing';
-import { folderName } from '$lib/agent-threads/thread';
+import { folderName, shownTitle } from '$lib/agent-threads/thread';
 import type { PaletteChat, PaletteHost } from '../palette/adapter';
 
 /** The threads of the inbox as the command palette lists them. */
 export function paletteChats(rows: readonly ListedRow[]): PaletteChat[] {
   return rows.map((row) => ({
     id: row.id,
-    title: row.title ?? 'Untitled thread',
+    title: shownTitle(row),
     ...(row.folder === null ? {} : { project: folderName(row.folder) }),
     ...(row.branch === null ? {} : { branch: row.branch }),
     at: (row.last ?? row.started)?.getTime() ?? 0,

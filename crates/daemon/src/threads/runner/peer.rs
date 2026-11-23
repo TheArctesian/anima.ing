@@ -271,8 +271,20 @@ mod tests {
             "a process that ended before it was read"
         );
         if std::env::var_os(crate::threads::marker::MARK).is_none() {
-            let me = i32::try_from(std::process::id()).ok();
-            assert!(!of_an_agent(me, dir).await, "this test is not an agent");
+            let pid = std::process::id();
+            // A system that keeps a read of this process from the runner (the Mac runner of
+            // GitHub refused one on 2026-11-23) takes the test for an agent: the rule fails
+            // closed. Where each read works, the test is the person.
+            let marked = crate::threads::marker::mark_of(pid).await;
+            let listed = commands().await.is_some_and(|rows| rows.contains_key(&pid));
+            let grouped = !GROUPS_KNOWN || origin(pid).await.is_some();
+            let readable = marked == Some(false) && listed && grouped;
+            let me = i32::try_from(pid).ok();
+            assert_eq!(
+                of_an_agent(me, dir).await,
+                !readable,
+                "mark {marked:?}, in the table {listed}, group read {grouped}"
+            );
         }
     }
 
