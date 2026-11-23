@@ -20,6 +20,11 @@
 //! On Linux it can also move itself to a different control group of the user, as systemd gives
 //! the user the groups below `user@.service`.
 
+// The feature `test-person` makes the process that started the runner the person, for the
+// integration tests only: a release build must never have it.
+#[cfg(all(feature = "test-person", not(debug_assertions)))]
+compile_error!("the feature test-person is for the tests of the daemon, never for a release build");
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::time::Duration;
@@ -39,6 +44,10 @@ pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
     else {
         return true;
     };
+    #[cfg(all(feature = "test-person", unix))]
+    if pid == std::os::unix::process::parent_id() {
+        return false;
+    }
     if crate::threads::marker::mark_of(pid).await != Some(false) {
         return true;
     }
