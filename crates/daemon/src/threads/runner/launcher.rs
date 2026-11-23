@@ -35,6 +35,10 @@ const ADDED: [&str; 1] = ["GIT_INDEX_FILE"];
 /// The most bytes of the standard error of a run that are kept.
 const MOST_SAID: usize = 64 * 1024;
 
+/// How long the standard error is read after the program ended: a process that the program left
+/// in the background can keep it open.
+const SAID_AFTER_END: std::time::Duration = std::time::Duration::from_secs(1);
+
 /// What the launcher knows of the threads that run: the runner writes it, the launcher reads it.
 #[derive(Debug, Default)]
 pub struct Rights {
@@ -133,33 +137,40 @@ pub(super) async fn start(rights: &SharedRights, run: ThreadRun) -> io::Result<E
         .process_group(0)
         .kill_on_drop(true)
         .spawn()?;
-    let _group = child.id().map(Group);
-    let stderr = child.stderr.take();
-    let ended = async {
-        let (status, said) = tokio::join!(child.wait(), said_of(stderr));
-        Ok(Ended {
-            code: status?.code(),
-            said,
-        })
+    let mut group = Group(child.id());
+    let mut reading = tokio::spawn(said_of(child.stderr.take()));
+    let Ok(status) = tokio::time::timeout(run.within, child.wait()).await else {
+        reading.abort();
+        return Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "the run took too long",
+        ));
     };
-    tokio::time::timeout(run.within, ended)
-        .await
-        .unwrap_or_else(|_| {
-            Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "the run took too long",
-            ))
-        })
+    let status = status?;
+    // As git: the run ends with its program. A process that it left in the background is not
+    // waited for, and keeps running.
+    group.0 = None;
+    let said = if let Ok(Ok(said)) = tokio::time::timeout(SAID_AFTER_END, &mut reading).await {
+        said
+    } else {
+        reading.abort();
+        String::new()
+    };
+    Ok(Ended {
+        code: status.code(),
+        said,
+    })
 }
 
-/// The process group of a run: each of its processes ends when the run ends, is dropped or
-/// takes longer than its time.
-struct Group(u32);
+/// The process group of a run while its program runs: each of its processes ends when the run
+/// is dropped or takes longer than its time.
+struct Group(Option<u32>);
 
 impl Drop for Group {
     fn drop(&mut self) {
-        let group = i32::try_from(self.0)
-            .ok()
+        let group = self
+            .0
+            .and_then(|id| i32::try_from(id).ok())
             .and_then(rustix::process::Pid::from_raw);
         if let Some(group) = group {
             let _ = rustix::process::kill_process_group(group, rustix::process::Signal::KILL);

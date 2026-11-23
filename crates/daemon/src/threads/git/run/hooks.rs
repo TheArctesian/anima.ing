@@ -181,6 +181,31 @@ impl Hooks<'_> {
         Ok(folder.join(name))
     }
 
+    /// A copy of the checked `bytes` of the hook `name`, in the Git folder of the runner, that
+    /// only this user can run. What the hook starts or reads (its interpreter, a file of the
+    /// worktree) is not in the copy: an agent with full access can change those, as it can
+    /// change the hook itself.
+    fn copy(&self, name: &str, bytes: &[u8]) -> Result<PathBuf, GitRefusal> {
+        use std::io::Write as _;
+        #[cfg(unix)]
+        use std::os::unix::fs::OpenOptionsExt as _;
+        let copy = self.file(&format!("run-{name}"))?;
+        match std::fs::remove_file(&copy) {
+            Err(failed) if failed.kind() != std::io::ErrorKind::NotFound => {
+                return Err(unwritten(&failed));
+            }
+            _ => {}
+        }
+        let mut open = std::fs::OpenOptions::new();
+        open.create_new(true).write(true);
+        #[cfg(unix)]
+        open.mode(0o700);
+        open.open(&copy)
+            .and_then(|mut file| file.write_all(bytes))
+            .map_err(|failed| unwritten(&failed))?;
+        Ok(copy)
+    }
+
     /// Runs the hook `name` when the repository has it and its file is still the one that the
     /// person accepted. A hook that ends with a code that is not 0 refuses the action; its
     /// words are the reason.
@@ -191,14 +216,17 @@ impl Hooks<'_> {
         let refused = |why: &str| GitRefusal::Failed {
             said: format!("the hook {name} of the repository refused: {why}"),
         };
-        let now = runnable(file).map(|bytes| crate::model::fetch::hex(&Sha256::digest(bytes)));
-        if now.as_ref() != Some(accepted) {
+        let bytes = runnable(file).unwrap_or_default();
+        if crate::model::fetch::hex(&Sha256::digest(&bytes)) != *accepted {
             return Err(refused("its file changed while the action ran"));
         }
+        // The bytes that were checked run, from a copy that no agent can change; the file of
+        // the repository can change after the check.
+        let program = self.copy(name, &bytes)?;
         let run = ThreadRun {
             thread: self.worktree.thread(),
             dir: self.worktree.folder().to_owned(),
-            program: file.clone(),
+            program,
             args: args.iter().map(|arg| arg.as_os_str().to_owned()).collect(),
             env: with
                 .index

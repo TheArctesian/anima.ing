@@ -140,3 +140,19 @@ fn thr_050_a_thread_in_a_folder_above_the_records_holds_them() {
     let (in_home, _) = rights(Mode::Ask, home.path());
     assert!(in_home.lock().expect("rights").hold(&records));
 }
+
+#[tokio::test]
+async fn thr_050_a_run_ends_with_its_program_though_a_background_child_holds_its_error_stream() {
+    let folder = tempfile::tempdir().expect("a folder");
+    let (rights, thread) = rights(Mode::FullAccess, folder.path());
+    let mut run = shell(thread, folder.path(), "echo begun >&2; sleep 30 & exit 0");
+    run.within = Duration::from_secs(10);
+    let started = std::time::Instant::now();
+    let Ended { code, said } = start(&rights, run).await.expect("it ended");
+    assert_eq!(code, Some(0));
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "git does not wait for it either"
+    );
+    let _ = said;
+}
