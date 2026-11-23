@@ -5086,3 +5086,34 @@ real program started from the application.
 
 Result: Open.
 
+
+### HT-NEW-hostinglist: Hosting > Applications lists the containers of each machine (task H42 stage 1; HSE-002, HSE-009)
+
+Built on the branch `hosted/h42-mount`: the page Hosting, section Applications, reads the devices with SSH on and the
+containers of each through the hub. The tests use a fake hub; nobody has seen the list with real machines.
+
+1. In the desktop application of this build, signed in to a hub with at least two devices that have SSH on with an
+   accepted host key and Docker, open Hosting.
+   Expected: the section Applications shows one group for each of those devices, by name. The header of each group has the
+   name, the number of items, the status of the device as the Devices page shows it (for example Up) and "X of Y running".
+2. On one machine, run a Compose project of two services (`docker compose up -d`) and one container with `docker run -d`.
+   Press Refresh.
+   Expected: the project is one row with "Compose project · 2 containers"; the plain container is a row of its own with its
+   image. Each row has the mark "Not managed" and "Read only".
+3. Press the arrow of the project row.
+   Expected: its two containers show below it, each with its state.
+4. Stop one container of the project (`docker stop`), then press Refresh, then choose "Needs you".
+   Expected: the project shows "Partly running" with a coloured wash; under Needs you only the rows that are not all
+   running are shown.
+5. Choose All, type a part of the name of a container of a different machine in the field.
+   Expected: only the group of that machine is shown, with the row that holds the container.
+6. Choose one machine in Machine.
+   Expected: only the group of that machine is shown.
+7. Add a device with SSH on and Docker but no container, and press Refresh.
+   Expected: its group says "Nothing installed" with the link "Install from the catalogue", which opens the Catalogue.
+8. Turn off the SSH credential of a machine in Anima, or stop its Docker, and press Refresh.
+   Expected: its group stays, with the words of the hub that say why; the other groups still show their rows.
+9. Press "Look for newer images".
+   Expected: the column Updates says "Up to date" or "Newer image" for each row of a machine that answered.
+
+Result: Open.
