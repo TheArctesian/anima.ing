@@ -304,6 +304,7 @@ that owns the area.
 | SF-240 | Behind the gateway each browser has the loopback address of the container. Low | The browser session of a hosted hub (task HM-T32) | Open |
 | SF-341 | An account with a known password at the first start, on a port that each local user reaches | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open, narrowed (R-371) |
 | SF-353 | Each local user of the machine reaches the port of the program on `127.0.0.1` | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open, narrowed (R-371) |
+| SF-NEW-probedeny | A hosted hub reaches the hubs of other accounts and the host of the pool. High | The hubs of the hosted pool (R-030, R-129) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -4493,6 +4494,31 @@ Mitigation now: The words of the system are in each text.
 Three more from the reviews of step W1 (branch `threads/git-wired`): the copy of the packs of a thread looks at only the first 16 names, so an agent can push its own pack out; a pack run that fails early can leave its folder in the worktree; a repository whose path has `:` cannot make a pack (the refusal says so).
 
 State: Open. Found by separate reviewers on 2026-11-23 in the branch `threads/git-copy-limit` (commits `d44e975e4` to `13bd13b09`) and `threads/git-wired` (`188a196e0`).
+
+## The hubs of the hosted pool (2026-11-23)
+
+### SF-NEW-probedeny: A hosted hub reaches the hubs of other accounts and the host of the pool. High
+
+Requirements: R-030; R-129; P3-003.
+
+What it is: The hubs of the pool start with no `ANIMA_PROBE_DENY`; their log says "ANIMA_PROBE_DENY is empty". The address policy of the hub (`AddressPolicy`) then permits each private range. On `pool-hil-1`, the hub containers are on the Incus bridge `incusbr0`: 10.130.6.0/24 and fd42:4b84:1ad:7923::/64, with the host at 10.130.6.1. A variable set in the unit of the hub does not help: `anima-local-hub` starts the hub with an empty environment of its own (`members::hosted`) and did not pass `ANIMA_PROBE_DENY`.
+
+Where: `crates/anima-local-hub/src/members.rs` (`hosted`), `crates/anima-local-hub/src/arguments.rs`; `crates/hub/src/fleet/targets.rs` (`AddressPolicy`); the unit `deploy/hub-image/anima-hub.service` of the repository of the cloud service.
+
+Effect, and who can cause it: Each signed-in account of a hosted hub, a person or an agent with its login token. Effect: a session tunnel gives raw TCP from the hub to the hubs of other accounts and to the host (its SSH, DNS and HTTPS on the bridge); a check, a webhook, a source or the target of a route sends requests there. Through the DNS of the bridge, a check learns the names and the addresses of the hubs of other accounts. The HTTP of each hub listens on its loopback only, so a hub does not reach the API of another hub, and the other hubs still ask for their own sign-in. Not tried on the live server.
+
+Severity: High. There is no wall between the accounts on the bridge, and R-030 names this case.
+
+The fix to make: Two parts, both needed.
+- Public repository, branch `hosted/local-hub-probe-deny`: `anima-local-hub run --probe-deny <networks>` passes the list to the hub as `ANIMA_PROBE_DENY`, and it refuses a blank list. A separate reviewer read it and found no finding of High or above.
+- Repository of the cloud service, pull request `probe-deny` (TheArctesian/anima-cloud#5): the script `probe-deny.sh` reads the networks of the bridge at each start and adds the addresses of the host from the profile key `environment.ANIMA_HOST_ADDRESSES`. The unit passes them with `--probe-deny`.
+- Existing hubs keep the unit and the programs of their image, so each one gets the new programs, the script and the unit, and a restart of the instance.
+
+Not covered by the fix: a program in the hub container that is not the hub (a Docker application of the account, `guacd`, the link) does not use the address policy. Only the host can stop it: port isolation on the network device of each hub and a firewall on the host that permits only DNS and DHCP from the bridge. This is a change of the server, for the operator.
+
+Mitigation now: None. The ruling of the operator on 2026-11-23, relayed: "B: full fix only". There is no interim block on the server, by his choice; nothing on the server changes until the full fix is ready and he approves the deploy.
+
+State: Open. Found by the orchestrating session on 2026-11-23 from the start warning of the hubs; confirmed from the code on 2026-11-23.
 
 ## Closed
 
