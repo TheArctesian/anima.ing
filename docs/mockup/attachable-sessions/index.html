@@ -98,7 +98,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width
           <div class="row"><span>log tail · api</span><span class="chip"><span class="dot"></span> live</span></div>
           <div class="row"><span>Code · auth crate</span><span class="chip"><span class="dot"></span> live</span></div>
         </div>
-        <div class="muted" style="margin-block-start:var(--space-4)">A Code thread is in the same list, but Code is not this layer.</div>
+        <div class="muted" style="margin-block-start:var(--space-4)">These run until you stop them. A Code thread is in the same list, but Code is not this layer.</div>
       </aside>
       <div class="main">
         <div class="tabs">
@@ -107,8 +107,8 @@ figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width
           <span class="tab">+</span>
         </div>
         <div class="banner">
-          <span><span class="chip"><span class="dot"></span> live on workshop</span> <span class="muted">started 18 min ago · same session if you close this tab</span></span>
-          <span><span class="btn">Detach</span> <span class="btn">Stop</span></span>
+          <span><span class="chip"><span class="dot"></span> live on workshop</span> <span class="muted">started 18 min ago · runs until you stop it</span></span>
+          <span><span class="btn">Detach</span> <span class="btn pri">Stop</span></span>
         </div>
         <pre class="term"><span class="dim">$ cargo build --release</span>
    Compiling anima-daemon v0.1.0
@@ -121,7 +121,7 @@ release-build    live    workshop
       </div>
     </div>
   </div>
-  <figcaption>Frame 1. The list of live sessions on an enrolled machine, and a terminal tab. The program is already running in the holder. Dark appearance.</figcaption>
+  <figcaption>Frame 1. The list of live sessions on an enrolled machine, and a terminal tab. The program is already running in the holder. Sessions of this layer have no idle end; Stop is explicit. Dark appearance.</figcaption>
 </figure>
 
 <figure>
@@ -144,8 +144,8 @@ release-build    live    workshop
           <span class="tab">+</span>
         </div>
         <div class="banner">
-          <span><span class="chip"><span class="dot"></span> reattached</span> <span class="muted">tab was closed 4 min ago · the program did not end</span></span>
-          <span><span class="btn">Detach</span> <span class="btn">Stop</span></span>
+          <span><span class="chip"><span class="dot"></span> reattached</span> <span class="muted">tab was closed 4 min ago · no idle end · runs until you stop it</span></span>
+          <span><span class="btn">Detach</span> <span class="btn pri">Stop</span></span>
         </div>
         <pre class="term"><span class="dim">$ cargo build --release</span>
    Compiling anima-daemon v0.1.0
@@ -162,7 +162,7 @@ ok. 41 passed<span class="cursor"></span></pre>
       </div>
     </div>
   </div>
-  <figcaption>Frame 2. The same session after the tab was closed and opened again on this computer. The program kept running; the screen is current, not a replay. Light appearance.</figcaption>
+  <figcaption>Frame 2. The same session after the tab was closed and opened again on this computer. The program kept running; the screen is current, not a replay. It is not ended after 60 idle minutes (R-432, OD-THR73). Light appearance.</figcaption>
 </figure>
 
 <figure>
@@ -180,7 +180,7 @@ $ cargo test -p anima-daemon --test it
     Finished <span class="dim">test</span> in 8.0s
      Running threads
 <span class="cursor"></span></pre>
-      <div class="bar"><span>reattached from this phone</span><span>OSC 52 off</span></div>
+      <div class="bar"><span>reattached from this phone · runs until you stop it</span><span>OSC 52 off</span></div>
       <div class="phone-nav"><span>Devices</span><span class="on">Sessions</span><span>Code</span></div>
     </div>
   </div>
@@ -196,7 +196,8 @@ started  release-build  on workshop
 $ anima attach list
 release-build    live    workshop    18m
 log-tail-api     live    workshop    1h
-<span class="cmt"># closing the tab or this command does not end the program</span>
+<span class="cmt"># closing the tab or this command does not end the program
+# no idle end: it runs until anima attach stop, or Stop in the app</span>
 
 $ anima attach screen release-build
     Finished release in 11.4s

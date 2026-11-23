@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (234)
+## 2. Open decisions (228)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -169,12 +169,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AGL19 | What does an alert give a channel of a different party? (SF-125) | A for ntfy and a webhook; B and C for a channel that the person runs | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL20 | Which gate is before the first code? (SF-130) | A. The rows and the alert go to a hub of a different party too | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-THR68 | Anima Code adds the other agent programs that T3 Code supports (R-416, TH119). How are they added? | Open. Recommendation of the orchestrating side: (a), ACP first, then native drivers for the programs that you use most. Each new program has its own separate se… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR69 | Which row of Section 4 does this attachable session layer serve? | Open. Recommendation: A, row 4.24. Section 4.15 is the general layer on the holder. | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR70 | In the first version, should a closed tab keep the remote program running so the same person can reattach from this computer, the phone, or another desktop? | Open. Recommendation: A, yes, on enrolled machines that run the holder. | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR71 | Should the general API (start, read the screen, send input, wait, events) apply to any program, not only to Code threads? | Open. Recommendation: A, yes, commands first, no MCP in the first version. | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR72 | Does the first version change the shipped in-app SSH terminal on an enrolled machine, so a closed SSH tab keeps the remote shell? | Open. Recommendation: A, yes, on enrolled machines only. | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR73 | If a session outlives the tab, does the idle limit of RA-037 still end it after 60 minutes with no keystroke or paste (the operator can change the limit or set… | Open. Recommendation: A, keep RA-037. | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR74 | May more than one signed-in client of the same operator attach to one live session at the same time? | Open. Recommendation: A, more than one client of the same operator may attach and may type. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow`… | Open. Recommendation: yes, an exception for the folder only. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT26 | Do folder tokens follow JOB-010 and MCP-004: minted on the hub, given over the relay as a secret for one job, deleted at the end, and never in a prompt, a URL o… | Open. Recommendation: yes. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT27 | How do short-lived file links work (wave 2)? (one choice: only through the gateway or the relay, to a signed-in caller or a valid folder token; no file links; p… | Open. Recommendation: only through the gateway or the relay, to a signed-in caller or a token. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
