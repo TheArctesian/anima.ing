@@ -19,8 +19,6 @@ pub struct Rig {
 }
 
 impl Rig {
-    /// A computer of `os` whose programs all succeed: the hold programs wait, `sudo` and
-    /// `osascript` write their arguments to `calls`, and `pmset -g` reports `SleepDisabled 0`.
     pub fn new(os: Os) -> Self {
         let dir = tempfile::tempdir().expect("a folder");
         let at = |name: &str| dir.path().join(name).display().to_string();
@@ -50,7 +48,6 @@ impl Rig {
         rig
     }
 
-    /// Replaces the stand-in `name` with one that runs `body`.
     pub fn stand_in(&self, name: &str, body: &str) -> String {
         program(self.dir.path(), name, body)
     }
@@ -64,7 +61,6 @@ impl Rig {
         crate::stay_awake::saved::marker(&self.folder())
     }
 
-    /// What `sudo` and `osascript` were run with, one line for each run.
     pub fn calls(&self) -> Vec<String> {
         fs::read_to_string(self.dir.path().join("calls"))
             .unwrap_or_default()
@@ -73,7 +69,6 @@ impl Rig {
             .collect()
     }
 
-    /// The `sudo` runs only, with the stand-in `pmset` path cut to its name.
     pub fn sudo_calls(&self) -> Vec<String> {
         self.calls()
             .into_iter()
@@ -90,12 +85,10 @@ fn program(dir: &Path, name: &str, body: &str) -> String {
     path.display().to_string()
 }
 
-/// A process that ends by itself after about a second, for a hold to follow.
 pub fn short_lived() -> Child {
     Command::new("sleep").arg("1").spawn().expect("a process")
 }
 
-/// Waits up to five seconds for `done`.
 pub fn eventually(mut done: impl FnMut() -> bool) -> bool {
     let started = Instant::now();
     while started.elapsed() < Duration::from_secs(5) {
@@ -107,7 +100,6 @@ pub fn eventually(mut done: impl FnMut() -> bool) -> bool {
     done()
 }
 
-/// Whether a process runs whose command line holds `text`.
 pub fn running(text: &str) -> bool {
     Command::new("pgrep")
         .args(["-f", text])

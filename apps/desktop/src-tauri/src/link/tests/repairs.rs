@@ -1,6 +1,3 @@
-//! The repair of a kept link while the app runs (HMD-058): when the count asks for it, and what
-//! the shell asks the link program then.
-
 use std::fs;
 
 use super::super::{
@@ -10,7 +7,6 @@ use super::super::{
 use super::kept::kept_in;
 use super::runs::stand_in;
 
-/// How many of `looks` looks that found no link asked for a repair.
 fn repairs(repair: &mut Repair, looks: u32) -> u32 {
     (0..looks).map(|_| u32::from(repair.due(false))).sum()
 }

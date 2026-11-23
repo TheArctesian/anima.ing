@@ -1,11 +1,8 @@
-//! The decision on what the checks read of one Mach-O file (UPD-011, S12 D-3): recorded output of
-//! real files, each bad case alone. The names of the third-party files are changed, and hash lines
-//! the checks do not read are left out.
+//! Recorded output of real Mach-O files (UPD-011, S12 D-3); third-party names are changed and unread hash lines left out.
 
 use crate::builder::carried::mach_o::{self, Readings};
 
-/// `codesign -d --verbose=4 --arch x86_64` of a bare universal program signed with a Developer ID,
-/// the hardened runtime and a secure timestamp (recorded 2026-11-16, names changed).
+/// `codesign -d --verbose=4 --arch x86_64` of a Developer ID universal program, hardened and timestamped (recorded 2026-11-16).
 const BARE_X86_64: &str = "Executable=/Applications/Other.app/Contents/MacOS/other_handler
 Identifier=other_handler
 Format=Mach-O thin (x86_64)
@@ -21,7 +18,6 @@ TeamIdentifier=24VZTF6M5V
 Runtime Version=12.3.0
 Sealed Resources=none";
 
-/// The `arm64` slice of the same program.
 const BARE_ARM64: &str = "Executable=/Applications/Other.app/Contents/MacOS/other_handler
 Identifier=other_handler
 Format=Mach-O thin (arm64)
@@ -37,8 +33,7 @@ TeamIdentifier=24VZTF6M5V
 Runtime Version=12.3.0
 Sealed Resources=none";
 
-/// A program signed with two hash types (`Hash choices=sha1,sha256`) and no hardened runtime: it
-/// still prints one `CodeDirectory` line (recorded 2026-11-16, names changed).
+/// A program signed with two hash types and no hardened runtime (recorded 2026-11-16).
 const TWO_HASHES: &str = "Executable=/Applications/Older.app/Contents/MacOS/older
 Identifier=org.example.older
 Format=app bundle with Mach-O thin (x86_64)
@@ -62,8 +57,6 @@ fn lines(text: &str) -> Vec<String> {
     text.lines().map(str::to_owned).collect()
 }
 
-/// The readings of the recorded program: both architectures, verified, each display good and no
-/// entitlement.
 fn released() -> Readings {
     Readings {
         archs: lines("x86_64 arm64"),

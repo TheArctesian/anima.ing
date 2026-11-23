@@ -1,13 +1,8 @@
-//! The open ports of this computer (HMD-049) as the shell asks `anima-link ports`, with a
-//! stand-in link program.
-
 use std::fs;
 
 use super::super::open_ports::{OpenPorts, ask, may_open, open_ports};
 use super::runs::stand_in;
 
-/// `anima-link ports` as the shell asks it: the list is the file `open` beside the program.
-/// Each call is noted.
 const PORTS_LINK: &str = r#"
 here=$(dirname "$0")
 echo "$*" >> "$here/calls"

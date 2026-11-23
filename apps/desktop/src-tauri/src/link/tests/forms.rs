@@ -166,7 +166,6 @@ fn the_link_serves_its_port_only_while_up_on_the_reported_port() {
         (Phase::Down, Some(Reason::Ended))
     );
     assert!(!ended.serves(43123));
-    // A ready line after the end is not believed.
     assert!(!ended.after(Event::Ready { port: 43123 }).serves(43123));
 
     let stopped = up.after(Event::Stopped);

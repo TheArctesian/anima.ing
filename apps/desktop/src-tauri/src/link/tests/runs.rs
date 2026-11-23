@@ -1,5 +1,3 @@
-//! The device link child, run as a stand-in script.
-
 use std::{
     fs,
     net::{Ipv4Addr, TcpListener},
@@ -54,9 +52,6 @@ pub fn until(device: &DeviceLink, wanted: impl Fn(&DeviceState) -> bool) -> Devi
     }
 }
 
-/// `anima-link device` as the shell starts it: `device -state DIR -listen ADDR
-/// -stop-with-stdin`. It logs the ready line, waits for the end of its standard input, then
-/// writes `closed` in its state folder and ends, as `-stop-with-stdin` does.
 pub fn ready_then_wait() -> String {
     format!(
         r#"
@@ -94,7 +89,6 @@ fn the_device_link_comes_up_on_its_port_and_ends_gracefully_when_stopped() {
         "the child was killed, not stopped"
     );
     assert_eq!(device.state().phase, Phase::Stopped);
-    // The child saw the end of its standard input, ended by itself and is gone.
     assert!(folder.path().join("closed").exists());
     let gone = nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid), None).is_err();
     assert!(gone);
@@ -166,8 +160,7 @@ fn repeated_early_exits_stop_automatic_restarts_until_explicitly_started_again()
     device.stop();
 }
 
-/// R-317: the link that the app runs itself makes the socket for the daemon, as the
-/// unit does, so a daemon with an old link origin can move to it.
+/// R-317: the link the app runs makes the daemon socket, as the unit does.
 #[test]
 fn the_link_that_the_app_runs_gets_the_socket_for_the_daemon() {
     let folder = tempfile::tempdir().unwrap();

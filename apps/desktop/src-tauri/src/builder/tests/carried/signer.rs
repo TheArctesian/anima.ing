@@ -1,6 +1,3 @@
-//! Who signs a macOS release (BLD-083, review S-2): the builder's own identity when the clone's
-//! committed `tauri.conf.json` names the same, and the reading of that file.
-
 use std::{fs, os::unix::fs::symlink};
 
 use crate::builder::{
@@ -62,7 +59,6 @@ fn s12_d_5_the_signing_identity_is_read_from_the_clones_own_config() {
         fs::write(&config, bad).unwrap();
         assert_eq!(signer::in_clone(&clone), Err(BuilderError::Bundle));
     }
-    // A config the build swapped for a link to another file is not read.
     let elsewhere = root.path().join("tauri.conf.json");
     fs::write(&elsewhere, with(IDENTITY)).unwrap();
     fs::remove_file(&config).unwrap();

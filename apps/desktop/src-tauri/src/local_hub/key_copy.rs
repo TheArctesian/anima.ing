@@ -1,6 +1,5 @@
-//! A copy of the hub's key (`vault.key`) at a place the operator chose in a native save
-//! dialog (2.8, OR-S6-1). The key's bytes go from one file to the other; they never reach the
-//! web view or a log (LOG-007).
+//! A copy of the hub's key at a place the operator chose (2.8, OR-S6-1).
+//! The key's bytes never reach the web view or a log (LOG-007).
 
 use std::{
     ffi::OsString,
@@ -15,12 +14,11 @@ use zeroize::Zeroizing;
 
 use super::LocalHubError;
 
-/// More than a key file holds; a larger file is not the hub's key.
+/// A larger file is not the hub's key.
 const MOST_KEY: u64 = 4096;
 
-/// Copies `key` to `destination` with mode 0600. The copy is written to a new file beside the
-/// destination, then renamed onto it, so a reader never sees half a key. A destination that is
-/// a symbolic link or not a plain file is refused, not followed.
+/// Written beside the destination, then renamed onto it, so a reader never sees half a key.
+/// A destination that is a symbolic link or not a plain file is refused, not followed.
 pub fn copy(key: &Path, destination: &Path) -> Result<(), LocalHubError> {
     let bytes = read_key(key)?;
     match fs::symlink_metadata(destination) {
@@ -64,7 +62,6 @@ fn read_key(key: &Path) -> Result<Zeroizing<Vec<u8>>, LocalHubError> {
     Ok(bytes)
 }
 
-/// A name in the destination's folder that no file has: `.<name>.<random>.part`.
 fn temporary_beside(destination: &Path) -> Result<PathBuf, LocalHubError> {
     let name = destination.file_name().ok_or(LocalHubError::Destination)?;
     let mut random = [0_u8; 8];

@@ -1,5 +1,3 @@
-//! The two administrator steps of the lid-closed level, with a stand-in for the dialog.
-
 use std::{
     fs,
     time::{Duration, Instant},
@@ -17,7 +15,6 @@ fn control(rig: &Rig) -> Control {
     Control::open(rig.platform.clone(), rig.folder())
 }
 
-/// One administrator step from start to end, as the command runs it.
 fn step(control: &mut Control, step: Step, now: Instant) -> Result<Status, ControlError> {
     let Some(ask) = control.begin(step, now)? else {
         return Ok(control.refresh());
@@ -44,7 +41,6 @@ fn removing_the_set_up_sets_sleep_back_before_the_rule_is_deleted() {
 #[test]
 fn removing_the_set_up_has_root_set_sleep_back_when_anima_could_not() {
     let mut rig = Rig::mac_set_up();
-    // An earlier run changed the setting; now the rule refuses, so the set-back at the start fails.
     fs::write(rig.marker(), "").unwrap();
     rig.platform.sudo = rig.stand_in("sudo", "exit 1");
     let mut control = control(&rig);
@@ -107,7 +103,6 @@ fn while_a_dialog_is_open_no_second_one_opens_and_no_lid_hold_is_taken() {
         rig.sudo_calls().last().unwrap(),
         "sudo -n pmset -a disablesleep 0"
     );
-    // The dialog was cancelled: the rule is still there, and the lid hold comes back.
     let after = control.finish(&ask, Err(SetUpError::Refused), now);
     assert_eq!(after, Err(refused));
     assert_eq!(control.refresh().held, Level::LidClosed);

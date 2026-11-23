@@ -1,6 +1,4 @@
-//! The checks of the signed app run on real files (UPD-011, S12 D-3, D-4): a universal program
-//! this computer compiles and signs ad hoc in a temporary folder, never with an identity. Each
-//! copy fails a different check; a file that is not Mach-O is not checked.
+//! UPD-011, S12 D-3, D-4.
 
 use std::{
     fs,
@@ -22,7 +20,6 @@ const ENTITLEMENT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0"><dict><key>com.apple.security.get-task-allow</key><true/></dict></plist>
 "#;
 
-/// A canonical temporary folder holding `clone/` and the compiled programs in `made/`.
 struct Bench {
     _root: tempfile::TempDir,
     clone: PathBuf,
@@ -38,8 +35,6 @@ fn tool(program: &str, args: &[&str], cwd: &Path) {
     assert!(status.success(), "{program} {args:?}");
 }
 
-/// Compiles a universal program and signs copies of it ad hoc: `universal` with the hardened
-/// runtime, `entitled` with an entitlement too, `thin` with the `arm64` slice only.
 fn bench() -> Bench {
     let root = tempfile::tempdir().unwrap();
     let top = fs::canonicalize(root.path()).unwrap();
@@ -85,8 +80,6 @@ fn bench() -> Bench {
     }
 }
 
-/// An app in the clone whose `Contents/MacOS` holds `files`, each a copy of a made program or,
-/// when not made, a shell script.
 fn app(bench: &Bench, name: &str, files: &[(&str, &str)]) -> PathBuf {
     let app = bench.clone.join(name);
     let folder = app.join("Contents/MacOS");
@@ -200,7 +193,6 @@ async fn upd_011_a_valid_ad_hoc_app_passes_the_deep_check_and_fails_the_file_che
         &[&sign[..], &[app.to_str().unwrap()]].concat(),
         &bench.made,
     );
-    // The deep check and the architecture check pass, so only the check of each file refuses it.
     tool(
         "/usr/bin/codesign",
         &["--verify", "--deep", "--strict", app.to_str().unwrap()],

@@ -1,7 +1,3 @@
-//! The tests use fixed addresses, a loopback listener and harmless programs (`echo`, `false`,
-//! `sleep`); none reads this computer's real interfaces or VPN client, or opens an app.
-//! `tests/vpn_client.rs` holds how the VPN address is asked of the Anima VPN client.
-
 mod vpn_client;
 
 use std::{
@@ -30,7 +26,6 @@ fn the_vpn_range_is_100_64_0_0_slash_10() {
 
 #[test]
 fn the_vpn_range_matches_the_prefix_for_every_sampled_address() {
-    // A spread of addresses across the whole IPv4 space, plus every edge of the range.
     let prefix = u32::from(Ipv4Addr::new(100, 64, 0, 0));
     let mask = u32::MAX << (32 - 10);
     let edges = [
@@ -62,9 +57,7 @@ fn ssh_answers_on_the_given_port_of_the_vpn_address_and_never_without_one() {
 
 #[test]
 fn an_address_that_does_not_answer_is_given_up_on_after_its_patience() {
-    // TEST-NET-1 (RFC 5737) is never routed: the connection fails at once or times out. A
-    // closed loopback port is not used because a program another test spawns can inherit
-    // the listener before it is marked close-on-exec, and keep the port open.
+    // TEST-NET-1 (RFC 5737) is not routed; a closed loopback port can be held open by an inheriting child.
     let started = Instant::now();
     assert!(!accepts_connection(
         (Ipv4Addr::new(192, 0, 2, 1), 22).into(),

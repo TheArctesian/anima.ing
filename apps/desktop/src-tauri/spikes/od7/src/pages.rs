@@ -1,7 +1,6 @@
-//! The pages the test servers serve to device web views. Pages report by `fetch` to the
-//! server they came from, never by IPC.
+//! Test pages report by `fetch` to the server they came from, never by IPC.
 
-/// Schemes a hostile page may try to navigate to (check 4). Each must be refused.
+/// Schemes a hostile page may try to navigate to (check 4).
 pub const NAVIGATION_TARGETS: &[&str] = &[
     "file:///etc/hosts",
     "data:text/html,od7",
@@ -10,7 +9,6 @@ pub const NAVIGATION_TARGETS: &[&str] = &[
     "anima-od7:probe",
 ];
 
-/// A page and, for `/store/set`, the cookie the response sets.
 pub struct Page {
     pub html: String,
     pub set_cookie: Option<String>,
@@ -42,7 +40,7 @@ pub fn page(path: &str, query: &str) -> Option<Page> {
     Some(Page { html, set_cookie })
 }
 
-/// The `n` query value, only if it is 1 to 32 hex digits (it goes into a header).
+/// Hex only, because the value goes into a header.
 fn nonce(query: &str) -> Option<&str> {
     query_value(query, "n")
         .filter(|n| (1..=32).contains(&n.len()) && n.bytes().all(|b| b.is_ascii_hexdigit()))
@@ -63,8 +61,6 @@ const STORE_SET: &str = "const n = query.get('n');\
 const STORE_READ: &str =
     "report('store-read', { who, cookie: document.cookie, ls: localStorage.getItem('spike') });";
 
-/// Tries IPC three ways: Tauri's own invoke, a raw message to the IPC handler, and a fetch
-/// to the IPC scheme. Results come back by `fetch`; Rust separately records any command run.
 const IPC: &str = "(async () => {\
     const within = (p) => Promise.race([p, new Promise((r) => setTimeout(() => r('timeout'), 3000))]);\
     const out = { internals: typeof window.__TAURI_INTERNALS__ };\
@@ -83,7 +79,7 @@ const IPC: &str = "(async () => {\
     report('ipc', out);\
   })();";
 
-/// Tries each target in turn; a refused navigation leaves the page alive to report.
+/// A refused navigation leaves the page alive to report.
 fn navigation() -> String {
     let targets = serde_json::to_string(NAVIGATION_TARGETS).unwrap_or_else(|_| "[]".into());
     format!(

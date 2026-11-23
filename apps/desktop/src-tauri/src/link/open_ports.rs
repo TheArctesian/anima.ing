@@ -1,8 +1,6 @@
-//! The open ports of this computer (HMD-049): the local ports that its hub may reach through
-//! the link (HMD-048). The list is a file of the link program in the device folder;
-//! `anima-link ports` shows it and turns one port on or off. Only the person changes it, here or
-//! in a terminal; the hub cannot. The link reads the file at each request of the hub, so a
-//! change needs no restart of the link or of its unit.
+//! Only the person changes the open ports, here or in a terminal; the hub cannot (HMD-048,
+//! HMD-049).
+//! The link reads the file at each request of the hub, so a change needs no restart.
 
 use std::{ffi::OsString, path::Path, time::Duration};
 
@@ -11,23 +9,18 @@ use tauri::{Runtime, Webview};
 
 use super::{LinkError, PROGRAM, environment, folders, from_main};
 
-/// How long `anima-link ports` may take: it reads or writes one small file.
 const PORTS_LIMIT: Duration = Duration::from_secs(5);
 
-/// The ports that the link program lets a person turn on: SSH and screen sharing, and remote
-/// desktop on Windows and Linux. The link program checks the same list again.
+/// The link program checks the same list again.
 pub fn may_open(port: u16, rdp: bool) -> bool {
     matches!(port, 22 | 5900) || (port == 3389 && rdp)
 }
 
-/// What `anima-link ports` answers and the shell gives the client.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpenPorts {
     pub open: Vec<u16>,
 }
 
-/// The answer of `anima-link ports`, `{ "open": [22, 5900] }`; none for anything else, and for
-/// a port that the link may not open.
 pub fn open_ports(printed: &[u8], rdp: bool) -> Option<OpenPorts> {
     let ports: OpenPorts = serde_json::from_slice(printed).ok()?;
     ports
@@ -37,7 +30,6 @@ pub fn open_ports(printed: &[u8], rdp: bool) -> Option<OpenPorts> {
         .then_some(ports)
 }
 
-/// The arguments of `anima-link ports` on `folder`, with the change when there is one.
 pub fn arguments(folder: &Path, change: Option<(u16, bool)>) -> Vec<OsString> {
     let mut args = vec![
         OsString::from("ports"),
@@ -51,7 +43,6 @@ pub fn arguments(folder: &Path, change: Option<(u16, bool)>) -> Vec<OsString> {
     args
 }
 
-/// Runs `anima-link ports` of `program` on `folder`.
 pub fn ask(
     program: &Path,
     folder: &Path,
@@ -73,8 +64,7 @@ pub fn ask(
     open_ports(&printed, rdp).ok_or(LinkError::Failed)
 }
 
-/// The open ports of this computer, after the change `port` to `on` when both are given. A
-/// device that has not joined a hub has no list.
+/// A device that has not joined a hub has no list.
 #[tauri::command]
 pub async fn link_ports<R: Runtime>(
     webview: Webview<R>,

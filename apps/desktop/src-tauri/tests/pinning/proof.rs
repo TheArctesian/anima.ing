@@ -1,7 +1,3 @@
-//! The proof's steps. Each tab is opened through `open_tab` and pinned through `pin_tab`, as
-//! the client's commands do; what the hook decided is read from the `web-view` events and
-//! from what the site served.
-
 use std::{
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
     process,
@@ -21,9 +17,7 @@ use crate::{
     },
 };
 
-/// The whole proof's limit; past it, it fails with status 2.
 const LIMIT: Duration = Duration::from_secs(120);
-/// How long one step waits for its event.
 const WAIT: Duration = Duration::from_secs(10);
 /// How long a stopped load is watched for a request that should not come.
 pub const SETTLE: Duration = Duration::from_secs(1);
@@ -31,7 +25,6 @@ const EVENT: &str = "web-view";
 /// One fixed device, so every run reuses one web store.
 const DEVICE: &str = "5e0f7a52-31d4-4b69-9c1e-000000000431";
 
-/// Runs the proof in a hidden Tauri app and exits with its result.
 pub fn run() {
     std::thread::spawn(|| {
         std::thread::sleep(LIMIT);
@@ -60,7 +53,6 @@ pub fn run() {
     app.run(|_, _| {});
 }
 
-/// The `web-view` events, as they arrive.
 struct Journal(mpsc::Receiver<Value>);
 
 impl Journal {
@@ -79,7 +71,6 @@ impl Journal {
         while self.0.try_recv().is_ok() {}
     }
 
-    /// The next `kind` event of tab `tab`, within [`WAIT`].
     async fn next(&mut self, tab: &str, kind: &str) -> Option<Value> {
         let found = async {
             while let Some(event) = self.0.recv().await {
@@ -97,7 +88,6 @@ fn fingerprint(event: Option<&Value>, field: &str) -> Option<Fingerprint> {
     event?.get(field)?.as_str()?.parse().ok()
 }
 
-/// One device tab, opened as the client opens it.
 pub struct Tab {
     pub app: AppHandle,
     pub id: &'static str,
@@ -141,7 +131,6 @@ impl Tab {
     }
 }
 
-/// Every check's line, and whether all passed.
 #[derive(Default)]
 pub struct Proof {
     failed: bool,
@@ -166,8 +155,6 @@ async fn prove(app: &AppHandle) -> Result<bool, String> {
     Ok(!proof.failed)
 }
 
-/// No pin, then the pin, then a new certificate on the same host and port, then the same after
-/// the view moves to a window of its own.
 async fn loopback_v4(
     app: &AppHandle,
     journal: &mut Journal,
@@ -186,7 +173,7 @@ async fn loopback_v4(
         .visible(false)
         .build()
         .map_err(|error| error.to_string())?;
-    // `pop_out`'s move, in a window that stays hidden: the same WKWebView, a new parent.
+    // Mirrors `pop_out`'s move: the same WKWebView, a new parent.
     tab.view()?
         .reparent(&window)
         .map_err(|error| error.to_string())?;
@@ -207,9 +194,7 @@ async fn loopback_v4(
     Ok(())
 }
 
-/// An IPv6 tab spelled long-hand, on a site whose leaf is signed by an issuer: the hook must
-/// meet `WebKit`'s spelling of the host and show the leaf, not the issuer. Then the pinned
-/// view must keep its scheme filter, and must be freed when its tab closes.
+/// Long-hand IPv6 and an issuer-signed leaf: the hook meets `WebKit`'s spelling of the host and shows the leaf.
 async fn loopback_v6(
     app: &AppHandle,
     journal: &mut Journal,
@@ -255,7 +240,6 @@ async fn forbidden_schemes(tab: &Tab, proof: &mut Proof) -> Result<(), String> {
     Ok(())
 }
 
-/// No pin: the leaf reaches the client and nothing loads.
 async fn first_visit(tab: &Tab, journal: &mut Journal, proof: &mut Proof, site: &Site) {
     let untrusted = journal.next(tab.id, "UNTRUSTED").await;
     sleep(SETTLE).await;
@@ -271,7 +255,6 @@ async fn first_visit(tab: &Tab, journal: &mut Journal, proof: &mut Proof, site: 
     );
 }
 
-/// With the pin: the same certificate loads.
 async fn pinned_visit(
     tab: &Tab,
     journal: &mut Journal,

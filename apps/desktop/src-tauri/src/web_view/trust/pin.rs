@@ -1,5 +1,4 @@
-//! What a device web view does with a server certificate (D-4, WEB-008): the pinned origin
-//! and the verdict on a trust challenge. Pure: no I/O, no clock.
+//! D-4, WEB-008.
 
 use std::net::IpAddr;
 
@@ -17,8 +16,6 @@ pub(in super::super) enum Host {
 }
 
 impl Host {
-    /// Reads a host as a URL or a trust challenge gives it: IPv6 with or without brackets,
-    /// a name in any case, with or without one trailing dot.
     fn read(text: &str) -> Self {
         let bare = text
             .strip_prefix('[')
@@ -30,10 +27,8 @@ impl Host {
         }
     }
 
-    /// Reads a host as a trust challenge gives it, through the URL standard's host parser,
-    /// the one [`PinnedOrigin::parse`] meets through `Url`: IPv6 with or without brackets,
-    /// IDN in Unicode or punycode, and every IPv4 spelling compare equal to the pinned form.
-    /// `None` if the text is no host at all.
+    /// Uses the URL standard's host parser, as [`PinnedOrigin::parse`] does through `Url`, so IDN
+    /// and every IPv4 spelling compare equal to the pinned form.
     pub(in super::super) fn of_challenge(text: &str) -> Option<Self> {
         let bracketed;
         let text = if text.contains(':') && !text.starts_with('[') {
@@ -48,15 +43,14 @@ impl Host {
     }
 }
 
-/// The `https` host and port a pin belongs to (H-4: only `https` takes a pin; a change of
-/// host or port drops it, a path change keeps it).
+/// H-4: only `https` takes a pin; a change of host or port drops it, a path change keeps it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PinnedOrigin {
     pub(in super::super) host: Host,
     pub(in super::super) port: u16,
 }
 
-/// Why a URL has no pinnable origin. Carries no part of the URL (LOG-007).
+/// Carries no part of the URL (LOG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum OriginError {
     #[error("the address is not a URL")]
@@ -82,7 +76,6 @@ impl OriginError {
 }
 
 impl PinnedOrigin {
-    /// The origin of an `https` URL; the port defaults to 443.
     pub fn parse(url: &str) -> Result<Self, OriginError> {
         let url = Url::parse(url).map_err(|_| OriginError::Unreadable)?;
         if url.scheme() != "https" {
@@ -98,34 +91,29 @@ impl PinnedOrigin {
         })
     }
 
-    /// Whether a challenge for this host and port belongs to this origin.
     pub(in super::super) fn holds(&self, host: &str, port: u16) -> bool {
         self.port == port && Host::of_challenge(host).is_some_and(|host| host == self.host)
     }
 }
 
-/// The certificate the operator accepted for one device's web interface.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pin {
     pub origin: PinnedOrigin,
     pub fingerprint: Fingerprint,
 }
 
-/// A server-trust challenge as the web view reports it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Challenge<'a> {
     pub host: &'a str,
     pub port: u16,
     /// SHA-256 of the leaf certificate the server presented.
     pub presented: Fingerprint,
-    /// Whether the system trusts the presented chain for this host.
     pub system_trusted: bool,
 }
 
 /// What the web view does with a challenge (D-4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Verdict {
-    /// Leave the challenge to the system's own handling.
     Default,
     /// The pinned certificate: load the page, whatever the system thinks of it.
     Accept,
@@ -138,8 +126,8 @@ pub enum Verdict {
     },
 }
 
-/// Decides a challenge. A pin wins over system trust on its own origin; any other host or
-/// port gets the system's handling.
+/// A pin wins over system trust on its own origin; any other host or port gets the system's
+/// handling.
 pub fn verdict(pin: Option<&Pin>, challenge: &Challenge<'_>) -> Verdict {
     match pin {
         Some(pin) if pin.origin.holds(challenge.host, challenge.port) => {

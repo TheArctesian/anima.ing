@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 13 | 49 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 14 | 64 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -186,6 +186,19 @@ Added 2026-11-23. From task TH117 of [agent-threads.md](proposals/agent-threads.
 - [ ] A skill chosen from the list of a folder before a thread starts cannot go with the first prompt: the start takes no skill, and a prompt takes only skills of the list of its own thread.
 - [ ] Links in `~/.claude/commands` and `~/.claude/skills` are left out, as in a repository. Many people keep these folders as links to their dotfiles.
 - [ ] The Claude Code files of a folder that does not answer in 5 seconds (a hung mount) give `pending`; one read runs at a time, so a read that never ends makes each later call of a Claude Code folder answer `pending` until the runner starts again. The Codex path still checks its folder on the loop of the runner, as `start` does.
+
+### THR-050: the private `TMPDIR` of each agent
+
+Added 2026-11-23. From the security review of branch `threads/private-tmpdir` of [agent-threads.md](proposals/agent-threads.md). None of them is High.
+
+- [ ] The roots of a sandboxed thread are its folder, its `TMPDIR` and `/tmp`, as written in the launcher. A folder that the person adds to the sandbox (the writable roots of Codex, the folders that Claude Code may write) is not read, so a thread that can write the records there does not hold the engine.
+- [ ] Not checked: whether the sandbox of Codex or of Claude Code on macOS lets an agent write the temporary folder of the user under `/var/folders` when `TMPDIR` names a different folder.
+- [ ] When the daemon ends after an agent started and before the record of its thread was written, the next start of the runner does not know the thread: it removes its `TMPDIR`, and the hold does not count it.
+- [ ] The checks of a program before a start (the check that it is silent, the list of models) and the hooks of a thread in Full access get the `TMPDIR` of the login. They take no prompt.
+- [ ] A Codex thread whose folder holds the folder of the daemon gets that folder as read-only, and its `TMPDIR` is in it: the agent may not be able to write its `TMPDIR`. The start warns about such a folder (THR-041).
+- [ ] A start is refused when a folder that its sandbox could write is in or holds a folder that a different running sandboxed thread can write (two threads in the very same folder are permitted). `/tmp` itself is left out of this check: when the folder of the runner is under `/tmp`, each sandboxed agent can still write each `TMPDIR`. A folder that does not resolve is compared as it is named.
+- [ ] That check refuses also next to a Codex thread whose folder holds the folder of the daemon, though Codex gets that folder as read-only. A thread in Full access is not checked (operator's ruling of 2026-11-23): its agent can write each `TMPDIR`. This is accepted.
+- [ ] No test starts two threads through the runner to show the refusal: the tests check the rule of the seats only.
 
 ## 3. Ideas from other products
 

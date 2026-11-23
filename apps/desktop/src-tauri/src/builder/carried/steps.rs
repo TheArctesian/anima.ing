@@ -1,7 +1,4 @@
-//! The steps that build, put in place and check what a release carries (S12 2.2 and 2.3). Each
-//! runs planned commands under the step's claim. The two recipes run before `cargo build`, whose
-//! build scripts could rewrite them, and each file a recipe runs or reads is compared with the
-//! commit directly before.
+//! The recipes run before `cargo build`, whose build scripts could rewrite them, and each file they use is compared with the commit first (S12 2.2, 2.3).
 
 use std::path::{Path, PathBuf};
 
@@ -21,9 +18,7 @@ use crate::builder::{
 };
 
 impl Workshop<'_> {
-    /// The identity that signs a macOS release and its Team ID: the one this builder was built
-    /// with, when the clone's committed `tauri.conf.json` names the same (BLD-083). None on
-    /// Linux, which signs nothing.
+    /// The identity this builder was built with, only when the committed `tauri.conf.json` of the clone names the same (BLD-083).
     pub async fn signer(
         &self,
         commit: &Commit,
@@ -39,8 +34,6 @@ impl Workshop<'_> {
         }
     }
 
-    /// Fails with `Dirty` unless each of `paths` is a regular file whose bytes are the blob of
-    /// `commit` at that path.
     pub async fn committed(&self, commit: &Commit, paths: &[&str]) -> Result<(), BuilderError> {
         for path in paths {
             let kind = std::fs::symlink_metadata(self.clone.join(path))
@@ -56,8 +49,6 @@ impl Workshop<'_> {
         Ok(())
     }
 
-    /// Builds the PostgreSQL tree with the committed recipe in a work folder made anew, signed by
-    /// `signer` on macOS (S3 T11, D-1).
     pub async fn tree(
         &self,
         commit: &Commit,
@@ -77,7 +68,6 @@ impl Workshop<'_> {
             .await
     }
 
-    /// Builds `anima-link` for every platform with the committed recipe and modules.
     pub async fn link(&self, commit: &Commit, target: Target) -> Result<(), BuilderError> {
         let files = if target == Target::WindowsX86_64 {
             &link::WINDOWS_COMMITTED
@@ -92,7 +82,6 @@ impl Workshop<'_> {
         self.run(&link::build_for(&self.clone, target)).await
     }
 
-    /// Builds the six Rust programs with the release version (INS-002, OD-17).
     pub async fn rust_programs(
         &self,
         target: Target,
@@ -102,8 +91,6 @@ impl Workshop<'_> {
             .await
     }
 
-    /// Puts each built file of `copies` where the bundle takes it, then on macOS joins the two
-    /// halves of each of `programs` into one file.
     pub async fn stage(
         &self,
         target: Target,
@@ -121,8 +108,6 @@ impl Workshop<'_> {
         Ok(())
     }
 
-    /// Fails with `Bundle` unless the file the bundle takes of each of `programs` is universal
-    /// on macOS, or an x86-64 ELF program on Linux.
     pub async fn check_staged(
         &self,
         target: Target,
@@ -148,8 +133,6 @@ impl Workshop<'_> {
         Ok(())
     }
 
-    /// Checks every Mach-O file of the signed `app` (S12 2.3, D-4); the first that fails fails
-    /// the step.
     pub async fn signed_mach_o(&self, app: &Path, team: &TeamId) -> Result<(), BuilderError> {
         for file in on_disk::mach_o_files(&self.clone, app)? {
             if !mach_o::released(&self.mach_o_readings(&file, team).await?) {
@@ -159,8 +142,7 @@ impl Workshop<'_> {
         Ok(())
     }
 
-    /// What the checks of one Mach-O `file` read (UPD-011, D-3). A file that is not exactly
-    /// universal is not asked about either architecture: `codesign --arch` fails on a missing one.
+    /// A file that is not exactly universal is not asked about either architecture: `codesign --arch` fails on a missing one.
     pub async fn mach_o_readings(
         &self,
         file: &Path,

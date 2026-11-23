@@ -1,7 +1,4 @@
-//! The checks of each Mach-O file of the signed app (UPD-011, S12 2.3, D-3 to D-5). The
-//! decisions are tested on output recorded from real `codesign` runs on macOS 27 (2026-11-16): a
-//! third-party Developer ID app, `/usr/bin/true` and copies of it signed ad hoc in a temporary
-//! folder. `signed_files.rs` runs the planned commands against real files.
+//! UPD-011, S12 2.3, D-3 to D-5; outputs recorded from real `codesign` runs on macOS 27.
 
 use std::path::Path;
 
@@ -14,8 +11,6 @@ use crate::builder::{
 
 const IDENTITY: &str = "Developer ID Application: Stephen Okita (7GDLG48PV6)";
 
-/// `codesign -d --verbose=4` of a Developer ID program with the hardened runtime and a secure
-/// timestamp (standard error).
 const DEVELOPER_ID: &str = "Executable=/Applications/Other.app/Contents/MacOS/other
 Identifier=com.example.other
 Format=app bundle with Mach-O universal (x86_64 arm64)
@@ -31,7 +26,6 @@ Info.plist entries=50
 TeamIdentifier=24VZTF6M5V
 Runtime Version=27.0.0";
 
-/// The same for a file signed ad hoc with `--options runtime`: no timestamp.
 const AD_HOC: &str = "Executable=/tmp/adhoc
 Identifier=adhoc-555549446fd45ef36f6030e48996526ff84e70f6
 Format=Mach-O universal (x86_64 arm64e arm64e.x1)
@@ -43,7 +37,6 @@ TeamIdentifier=not set
 Runtime Version=27.0.0
 Sealed Resources=none";
 
-/// `/usr/bin/true`: Apple's own signature, no runtime flag and a signing time, not a timestamp.
 const PLATFORM: &str = "Executable=/usr/bin/true
 Identifier=com.apple.true
 CodeDirectory v=20400 size=231 flags=0x0(none) hashes=2+2 location=embedded
@@ -54,8 +47,6 @@ Authority=Apple Root CA
 Signed Time=8 Aug 2026 at 3:25:59 PM
 TeamIdentifier=not set";
 
-/// `codesign -d --entitlements - --xml` (standard output) of a file with an entitlement, and of
-/// one signed with an empty entitlement list.
 const ENTITLED: &str = r#"<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>com.apple.security.cs.disable-library-validation</key><true/></dict></plist>"#;
 const EMPTY_LIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict></dict></plist>"#;
 
@@ -63,7 +54,6 @@ fn lines(text: &str) -> Vec<String> {
     text.lines().map(str::to_owned).collect()
 }
 
-/// `text` with the line that starts with `prefix` changed to `line`.
 fn with_line(text: &str, prefix: &str, line: &str) -> Vec<String> {
     lines(text)
         .into_iter()

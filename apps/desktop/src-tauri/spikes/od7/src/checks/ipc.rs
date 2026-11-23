@@ -1,6 +1,4 @@
-//! Check 2 (WEB-007): a device page cannot run a Tauri command by any of three routes, while
-//! the main view can (`ipc-main-allowed`). Proof is on the Rust side: the command records the
-//! label of every web view that reached it.
+//! Check 2 (WEB-007): a device page cannot run a Tauri command; the proof is the labels the command records.
 
 use std::time::Duration;
 
@@ -24,7 +22,7 @@ pub async fn check(harness: &Harness, journal: &mut Journal, results: &mut Resul
             is_report(e, "http", "ipc", None)
         })
         .await;
-    // A raw message may be handled after the page has reported; give it time to land.
+    // A raw message may be handled after the page has reported.
     journal.settle(Duration::from_secs(1)).await;
     let reached: Vec<String> = journal
         .since(

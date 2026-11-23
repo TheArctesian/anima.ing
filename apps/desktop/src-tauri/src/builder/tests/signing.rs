@@ -1,5 +1,3 @@
-//! The Developer ID identity a Mac builder needs before it claims a job (BLD-083).
-
 use crate::builder::tools::{self, Tool, readings};
 
 const IDENTITY: &str = "Developer ID Application: Stephen Okita (7GDLG48PV6)";
@@ -25,7 +23,6 @@ fn bld_083_a_mac_without_the_named_identity_in_its_keychain_lacks_the_signing_id
         tools::signing_identity(Some(IDENTITY), &keychain("     0 valid identities found")),
         Some(Tool::SigningIdentity)
     );
-    // An app built with no identity named, or an empty one, cannot sign either.
     assert_eq!(
         tools::signing_identity(None, &with),
         Some(Tool::SigningIdentity)

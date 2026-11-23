@@ -1,5 +1,4 @@
-//! D-3, D-6, WEB-007: device web views go only to `http` and `https`, and `https` opens only
-//! where the platform can pin.
+//! D-3, D-6, WEB-007: device web views open only `http`, and `https` where the platform can pin.
 
 use tauri::Url;
 

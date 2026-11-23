@@ -1,14 +1,6 @@
-//! The hub on this computer (one-click plan S4): the shell installs it, removes it and reads
-//! its state. The work is `anima-local-hub`, a program the application carries beside its own;
-//! the shell finds it, runs it with a small fixed environment and a time limit, and reads its
-//! answer. No rule of the hub is here (REPO-003).
-//!
-//! Only the main web view may ask (WEB-007). No path, no program and no address comes from the
-//! web view. The account commands (`account`) pass secrets to the program on standard input and
-//! never log them (LOG-007).
-//!
-//! Only a release build that the builder gave the programs carries them. A debug build carries
-//! them only when `ANIMA_DEV_PROGRAMS` and `ANIMA_DEV_TREE` name them (`crate::carried`).
+//! The hub on this computer (one-click plan S4); no rule of the hub is here (REPO-003).
+//! Only the main web view may ask (WEB-007), and no path, program or address comes from it.
+//! The account commands pass secrets on standard input and never log them (LOG-007).
 
 pub mod account;
 mod account_form;
@@ -41,18 +33,14 @@ pub use account::Replacements;
 use carried::Carried;
 pub use error::LocalHubError;
 
-/// More than the worst case of `install`: the stop command and the wait for the hub to stop
-/// (120 s each), then up to three start commands on Linux (120 s each), and the copy. A kill
-/// in the middle would leave the hub stopped.
+/// Above the worst case of `install` (stop, wait, three Linux starts, 120 s each, and the copy); a kill would leave the hub stopped.
 const INSTALL_LIMIT: Duration = Duration::from_mins(12);
 /// `remove`: the stop command, the wait and on Linux one more command, 120 s each.
 const REMOVE_LIMIT: Duration = Duration::from_mins(7);
 const STATUS_LIMIT: Duration = Duration::from_secs(10);
-/// `start` and `stop`: one `launchctl` or `systemctl --user` command and the wait for it.
 const START_STOP_LIMIT: Duration = Duration::from_mins(3);
 
-/// The variables the program gets from the app, when they are set: where the user's folders
-/// are, and the session bus that `systemctl --user` needs.
+/// Only these variables reach the program; `systemctl --user` needs the session bus.
 #[cfg(unix)]
 const PASSED_ON: [&str; 4] = [
     "HOME",
@@ -71,12 +59,10 @@ const PASSED_ON: [&str; 6] = [
     "TMP",
 ];
 
-/// The one change of the hub on this computer (install, remove, start, stop, account) that may
-/// run at a time.
+/// Only one change of the hub on this computer (install, remove, start, stop, account) runs at a time.
 #[derive(Debug, Default)]
 pub struct Changing(Arc<AtomicBool>);
 
-/// Holds [`Changing`] for one change; dropping it frees it.
 struct Claim(Arc<AtomicBool>);
 
 impl Changing {
@@ -94,7 +80,6 @@ impl Drop for Claim {
     }
 }
 
-/// What the program may see of the app's environment. `HOME` must be an absolute path.
 fn environment(
     read: impl Fn(&str) -> Option<OsString>,
 ) -> Result<Vec<(&'static str, OsString)>, LocalHubError> {
@@ -109,7 +94,6 @@ fn environment(
         .collect())
 }
 
-/// The programs this app carries, when it carries them.
 fn carried() -> Result<Carried, LocalHubError> {
     if !cfg!(any(
         target_os = "macos",
@@ -127,7 +111,6 @@ fn carried() -> Result<Carried, LocalHubError> {
     )
 }
 
-/// Runs the carried program with `args`, and returns what it printed.
 fn ask(carried: &Carried, args: &[&OsString], limit: Duration) -> Result<Vec<u8>, LocalHubError> {
     let env = environment(|name| std::env::var_os(name))?;
     let invocation = Invocation {
@@ -146,7 +129,6 @@ fn install_args(tree: &Path) -> [OsString; 3] {
     ["install".into(), "--tree".into(), tree.into()]
 }
 
-/// The status as the program printed it: one JSON object with `installed` and `running`.
 fn parse_status(printed: &[u8]) -> Result<serde_json::Value, LocalHubError> {
     let status: serde_json::Value =
         serde_json::from_slice(printed).map_err(|_| LocalHubError::Failed)?;
@@ -162,14 +144,12 @@ fn parse_status(printed: &[u8]) -> Result<serde_json::Value, LocalHubError> {
     Ok(status)
 }
 
-/// Refuses every caller but the main web view; the capability already does, this is the second
-/// wall (WEB-007).
+/// The second wall after the capability (WEB-007).
 fn from_main(label: &str) -> Result<(), LocalHubError> {
     crate::web_view::caller(label).map_err(|_| LocalHubError::Caller)
 }
 
-/// Claims the one change and runs `work` off the async runtime. The claim goes with the work,
-/// so it is freed when the work ends.
+/// The claim goes with the work, so it is freed when the work ends.
 async fn change(
     changing: &Changing,
     work: impl FnOnce(&Carried) -> Result<Vec<u8>, LocalHubError> + Send + 'static,
@@ -184,15 +164,12 @@ async fn change(
         .unwrap_or(Err(LocalHubError::Failed))
 }
 
-/// Whether this build of the app carries the hub's programs, so the client can offer a hub
-/// on this computer.
 #[tauri::command]
 pub async fn local_hub_carried<R: Runtime>(webview: Webview<R>) -> Result<bool, LocalHubError> {
     from_main(webview.label())?;
     Ok(carried().is_ok())
 }
 
-/// Installs or updates the hub on this computer for this user, and starts it.
 #[tauri::command]
 pub async fn local_hub_install<R: Runtime>(
     webview: Webview<R>,
@@ -229,7 +206,6 @@ pub async fn local_hub_remove<R: Runtime>(
     result
 }
 
-/// Runs `start` or `stop` of the installed hub as the one change.
 async fn start_or_stop(changing: &Changing, verb: &'static str) -> Result<(), LocalHubError> {
     let result = change(changing, move |carried| {
         ask(carried, &[&OsString::from(verb)], START_STOP_LIMIT)
@@ -242,7 +218,6 @@ async fn start_or_stop(changing: &Changing, verb: &'static str) -> Result<(), Lo
     result
 }
 
-/// Starts the hub on this computer after a `stop`.
 #[tauri::command]
 pub async fn local_hub_start<R: Runtime>(
     webview: Webview<R>,
@@ -262,7 +237,6 @@ pub async fn local_hub_stop<R: Runtime>(
     start_or_stop(&changing, "stop").await
 }
 
-/// Whether the hub is installed and runs, its state and where it listens.
 #[tauri::command]
 pub async fn local_hub_status<R: Runtime>(
     webview: Webview<R>,

@@ -1,6 +1,5 @@
-//! M-1 (WEB-004): a closed device web view is freed. The proof holds the `WKWebView` through
-//! a weak reference on the main thread, closes the tab and checks the view is gone, so no
-//! retain cycle runs through the trust hook's proxy, its decision or wry's delegate.
+//! M-1 (WEB-004): a closed device web view is freed, so no retain cycle runs through the trust
+//! hook's proxy, its decision or wry's delegate.
 
 use std::cell::RefCell;
 
@@ -15,11 +14,9 @@ use crate::{
 };
 
 thread_local! {
-    /// The `WKWebView` the proof watches, held weakly, on the main thread.
     static WATCHED: RefCell<Option<Weak<WKWebView>>> = const { RefCell::new(None) };
 }
 
-/// Starts watching `view`'s `WKWebView` through a weak reference.
 async fn watch(view: &Webview) -> Result<(), String> {
     let (sent, done) = oneshot::channel();
     view.with_webview(move |platform| {
@@ -35,7 +32,6 @@ async fn watch(view: &Webview) -> Result<(), String> {
         .map_err(str::to_owned)
 }
 
-/// Whether the watched `WKWebView` is still alive.
 async fn watched_alive(app: &AppHandle) -> Result<bool, String> {
     let (sent, done) = oneshot::channel();
     app.run_on_main_thread(move || {
@@ -47,8 +43,6 @@ async fn watched_alive(app: &AppHandle) -> Result<bool, String> {
     done.await.map_err(|_| "no answer".to_owned())
 }
 
-/// M-1: closing the tab frees its `WKWebView`, so its page stops: no retain cycle runs
-/// through the proxy, its decision closure or wry's delegate.
 pub async fn closed_tab_freed(tab: &Tab, proof: &mut Proof) -> Result<(), String> {
     watch(&tab.view()?).await?;
     let before = watched_alive(&tab.app).await?;

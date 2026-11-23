@@ -1,8 +1,6 @@
-//! Where a sign-in inside the app comes back (mobile plan M3-5): a loopback address of the shell, as
-//! RFC 8252 Section 7.3 describes for a native application. `WorkOS` takes `http://127.0.0.1` as a return
-//! address of a native client in production. The shell listens for one sign-in only, reads the
-//! request line of the browser, and answers with one small page. Nothing here logs the request: it
-//! holds the code (LOG-007).
+//! Where a sign-in inside the app comes back (mobile plan M3-5): a loopback address, as RFC 8252 Section 7.3 describes.
+//! `WorkOS` takes `http://127.0.0.1` as a return address of a native client in production.
+//! Nothing here logs the request: it holds the code (LOG-007).
 
 use std::time::Duration;
 
@@ -14,32 +12,25 @@ use zeroize::Zeroizing;
 
 use super::CloudError;
 
-/// The port of the return address. It is fixed, because the return address is registered in `WorkOS`.
+/// Fixed, because the return address is registered in `WorkOS`.
 pub(super) const PORT: u16 = 47113;
 const PATH: &str = "/sign-in";
-/// The longest request line that is read.
 const LINE_LIMIT: u64 = 4096;
-/// How long one connection may take to send its request line.
 const LINE_WAIT: Duration = Duration::from_secs(5);
 
 const PAGE: &str = "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\">\
 <title>Anima.ing</title><p style=\"font:16px system-ui;margin:2rem\">Go back to Anima.ing.</p>";
 
-/// The return address for the port `port`.
 pub(super) fn address(port: u16) -> String {
     format!("http://127.0.0.1:{port}{PATH}")
 }
 
-/// Listens at the return address. `Refused` when a different program holds the port.
 pub(super) async fn listen(port: u16) -> Result<TcpListener, CloudError> {
     TcpListener::bind(("127.0.0.1", port))
         .await
         .map_err(|_| CloudError::Refused)
 }
 
-/// Waits for the browser to come back with the answer to the sign-in with `state`, and gives the
-/// code. A request for a different path, or one that is not complete, gets "not found" and the wait
-/// goes on. An answer with a different state, or with no code, ends the sign-in.
 pub(super) async fn returned(
     listener: &TcpListener,
     state: &str,
@@ -64,15 +55,12 @@ pub(super) async fn returned(
     }
 }
 
-/// The query of a request line for the return path, such as `GET /sign-in?code=1&state=2 HTTP/1.1`.
 fn query_of(line: &str) -> Option<&str> {
     let target = line.strip_prefix("GET ")?.split(' ').next()?;
     let (path, query) = target.split_once('?').unwrap_or((target, ""));
     (path == PATH).then_some(query)
 }
 
-/// The code of the answer in `query`, when its state is `state`. `access_denied` is a sign-in that
-/// the person or the provider stopped.
 fn code_of(query: &str, state: &str) -> Result<Zeroizing<String>, CloudError> {
     let value = |name: &str| {
         query
@@ -90,7 +78,7 @@ fn code_of(query: &str, state: &str) -> Result<Zeroizing<String>, CloudError> {
     }
 }
 
-/// Sends one answer and closes the connection. A browser that went away is not an error.
+/// A browser that went away is not an error.
 async fn answer(mut stream: TcpStream, status: &str, body: &str) {
     let text = format!(
         "HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\

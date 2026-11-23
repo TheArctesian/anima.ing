@@ -1,5 +1,4 @@
-//! The state of the device link child that the app runs (2.6, F-2). Pure: an event in, the
-//! next state out.
+//! 2.6, F-2.
 
 use serde::Serialize;
 
@@ -13,23 +12,17 @@ pub enum Phase {
     Down,
 }
 
-/// Why the device link is down.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Reason {
     /// Another program holds the saved port. The port is not changed in silence (F-2).
     PortTaken,
-    /// The child ended; it is started again after a pause.
     Ended,
-    /// Repeated early exits exhausted the automatic restart budget.
     RepeatedFailure,
-    /// This build carries no `anima-link`.
     NotCarried,
-    /// The saved port cannot be read.
     NoPort,
 }
 
-/// What happened to the child.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Event {
     Starting { port: u16 },
@@ -40,11 +33,9 @@ pub enum Event {
     Stopped,
 }
 
-/// The device link as the shell knows it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DeviceState {
     pub phase: Phase,
-    /// The saved port the child is started with.
     pub port: Option<u16>,
     /// The port the running child said it listens on; only while it is up.
     pub reported: Option<u16>,
@@ -52,7 +43,6 @@ pub struct DeviceState {
 }
 
 impl DeviceState {
-    /// The state after `event`.
     #[must_use]
     pub fn after(self, event: Event) -> Self {
         match event {

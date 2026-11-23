@@ -1,4 +1,3 @@
-//! Native build processes, file boundaries and the Windows release plan (WIN2).
 use super::{
     artifact,
     child::Running,

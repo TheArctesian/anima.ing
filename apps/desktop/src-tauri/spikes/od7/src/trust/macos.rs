@@ -1,7 +1,4 @@
-//! macOS: a navigation-delegate proxy. wry's `WryNavigationDelegate` does not implement
-//! `webView:didReceiveAuthenticationChallenge:completionHandler:`, so WebKit applies system
-//! trust and an untrusted certificate just fails. The proxy implements that one method and
-//! forwards every other selector to wry's delegate.
+//! wry's navigation delegate lacks the authentication-challenge method, so this proxy adds it and forwards every other selector.
 
 use std::cell::RefCell;
 use std::ffi::c_void;
@@ -75,7 +72,6 @@ thread_local! {
     static PROXIES: RefCell<Vec<Retained<PinningDelegate>>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Puts the proxy in front of wry's delegate. Runs on the main thread (`with_webview`).
 pub fn install(platform: &PlatformWebview, hook: TrustHook) -> Result<String, String> {
     let mtm = MainThreadMarker::new().ok_or("not on the main thread")?;
     // SAFETY: `inner()` is the live WKWebView (a wry subclass) owned by this web view.
@@ -101,7 +97,6 @@ pub fn install(platform: &PlatformWebview, hook: TrustHook) -> Result<String, St
     }
 }
 
-/// Server trust only; any other challenge (HTTP auth, client certificates) gets the default.
 fn answer(hook: &TrustHook, challenge: &NSURLAuthenticationChallenge, done: &Completion) {
     let space = challenge.protectionSpace();
     // SAFETY: an immutable Foundation constant.

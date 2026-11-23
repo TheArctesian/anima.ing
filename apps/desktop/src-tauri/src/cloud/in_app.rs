@@ -1,16 +1,13 @@
-//! The sign-in inside the app (mobile plan M3-5, MOB-043): the command of the phone shell. Only the
-//! iPhone app has the page for it; on Android the command says that the build has no such sign-in.
+//! The sign-in inside the app (mobile plan M3-5, MOB-043); only the iPhone app has its page.
 
 use tauri::{State, Webview};
 
 use super::{Cloud, CloudError, from_main};
 
-/// How long a sign-in inside the app may take.
 #[cfg(target_os = "ios")]
 const SESSION_LIMIT: std::time::Duration = std::time::Duration::from_secs(600);
 
-/// Signs in inside the app (mobile plan M3-5): `true` when the person signed in, `Cancelled` when
-/// the person closed the page. Only the iPhone app has it; on Android the build has no such sign-in.
+/// `true` when the person signed in, `Cancelled` when the person closed the page.
 #[tauri::command]
 pub async fn cloud_sign_in_session(
     webview: Webview,
@@ -26,9 +23,7 @@ pub async fn cloud_sign_in_session(
     }
 }
 
-/// Shows the sign-in page of the account in the web authentication session of iOS, waits for the
-/// browser at the loopback return address, and trades the code for tokens. The code, the verifier
-/// and the tokens stay in the shell.
+/// The code, the verifier and the tokens stay in the shell.
 #[cfg(target_os = "ios")]
 async fn session_sign_in(webview: &Webview, cloud: &Cloud) -> Result<bool, CloudError> {
     use tauri::Manager;

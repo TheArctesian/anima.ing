@@ -32,15 +32,13 @@ fn run(
     })
 }
 
-/// `productName` of the application: Tauri names the macOS application folder and the Linux
-/// resource folder after it.
+/// Tauri names the macOS application folder and the Linux resource folder after `productName`.
 fn product_name() -> String {
     let config: serde_json::Value =
         serde_json::from_str(include_str!("../../../tauri.conf.json")).unwrap();
     config["productName"].as_str().unwrap().to_owned()
 }
 
-/// A bundle as Tauri lays it out for this application, with a stand-in for the program.
 pub(super) fn bundle(folder: &Path, macos: bool, script: &str) -> PathBuf {
     let product = product_name();
     let (programs, tree) = if macos {
@@ -101,7 +99,6 @@ fn a_debug_build_and_a_bundle_without_the_tree_carry_no_hub() {
         carried::beside(&executable, true, false, RELEASE),
         Err(LocalHubError::NotCarried)
     );
-    // The Linux place in a macOS bundle: no tree there.
     assert_eq!(
         carried::beside(&executable, false, true, RELEASE),
         Err(LocalHubError::NotCarried)

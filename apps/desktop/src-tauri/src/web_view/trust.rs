@@ -1,6 +1,4 @@
-//! What a device web view trusts (WEB-008, D-4, D-5): the fingerprint form, the verdict on a
-//! server-trust challenge, the answer the trust hook gives it and the leaf-certificate probe
-//! for the system-browser mode (D-9).
+//! What a device web view trusts (WEB-008, D-4, D-5, D-9).
 
 #[cfg_attr(
     not(any(target_os = "macos", test)),

@@ -64,6 +64,11 @@ pub enum Refusal {
     CannotAttach {
         said: String,
     },
+    /// A folder that the sandbox of a new thread could write is shared with a different running
+    /// thread, or holds the records of the Git engine: `said` names it and why (THR-050).
+    FolderShared {
+        said: String,
+    },
     /// The worktree of a new thread was not made: `why` is the answer of the Git engine
     /// (TC7, TH116).
     Worktree {

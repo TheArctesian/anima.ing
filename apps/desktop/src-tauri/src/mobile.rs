@@ -1,6 +1,4 @@
-//! The mobile application: the window, the hub access token, the device link and the sign-in to the
-//! Anima.ing account (MOB-002, MOB-031; mobile plan M3-4).
-//! This file wires; it holds no rules.
+//! The mobile application (MOB-002, MOB-031; mobile plan M3-4). This file wires; it holds no rules.
 
 use tauri::RunEvent;
 
@@ -11,7 +9,6 @@ mod metrics;
 mod runner;
 pub(crate) mod tokens;
 
-/// Starts the mobile application. iOS and Android call it; it returns when the application ends.
 #[tauri::mobile_entry_point]
 pub fn run() {
     tauri::Builder::default()

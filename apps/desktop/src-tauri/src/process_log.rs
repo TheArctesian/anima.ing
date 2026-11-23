@@ -1,5 +1,4 @@
-//! The desktop process log (LOG-008): the log plugin writes to the OS log folder, and one
-//! command shows that folder in the file manager. The web view gives the command no path.
+//! The desktop process log (LOG-008); the web view gives the command no path.
 //! Nothing here logs a token, a password or session content (LOG-007).
 
 mod error;
@@ -18,7 +17,6 @@ use tauri_plugin_log::{RotationStrategy, Target, TargetKind, TimezoneStrategy, l
 const MAX_FILE_BYTES: u128 = 1024 * 1024;
 const KEPT_FILES: usize = 5;
 
-/// The log plugin: `info` and above to the OS log folder, and to stdout in debug builds only.
 pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
     let mut targets = vec![Target::new(TargetKind::LogDir { file_name: None })];
     if cfg!(debug_assertions) {
@@ -39,7 +37,6 @@ pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
         .build()
 }
 
-/// Shows this app's log folder in the OS file manager, creating it first if it is missing.
 #[tauri::command]
 pub async fn process_log_folder_open<R: Runtime>(app: AppHandle<R>) -> Result<(), ProcessLogError> {
     let folder = app

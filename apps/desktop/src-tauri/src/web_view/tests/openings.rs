@@ -1,5 +1,4 @@
-//! WEB-004, D-6: `web_view_open`'s arguments are read whole and checked before any web view
-//! exists; the caller must be the main web view.
+//! WEB-004, D-6: arguments are checked before any web view exists; only the main web view may call.
 
 use serde_json::{Value, json};
 

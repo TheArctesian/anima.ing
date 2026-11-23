@@ -1,6 +1,5 @@
-//! The device authorization flow of `WorkOS` `AuthKit` (RFC 8628) as a public client: the client ID
-//! only, no API key and no secret (HMD-032). The endpoints and fields are those of
-//! <https://workos.com/docs/authkit/cli-auth> and its reference pages, read on 2026-11-17.
+//! `WorkOS` `AuthKit` device authorization (RFC 8628) as a public client: no API key and no secret (HMD-032).
+//! Endpoints and fields: <https://workos.com/docs/authkit/cli-auth>, read on 2026-11-17.
 
 use reqwest::{Client, StatusCode};
 use serde::Deserialize;
@@ -12,7 +11,7 @@ const DEVICE_URL: &str = "https://api.workos.com/user_management/authorize/devic
 const TOKEN_URL: &str = "https://api.workos.com/user_management/authenticate";
 const DEVICE_GRANT: &str = "urn:ietf:params:oauth:grant-type:device_code";
 
-/// One started sign-in. The device code stays in the shell: the guide says it is never shown.
+/// The device code stays in the shell and is never shown.
 pub(super) struct DeviceCode {
     pub secret: Zeroizing<String>,
     pub user_code: String,
@@ -26,7 +25,6 @@ pub(super) struct Tokens {
     pub refresh: Zeroizing<String>,
 }
 
-/// One poll of a sign-in.
 pub(super) enum Poll {
     Waiting,
     /// `slow_down`: wait at least 5 s more before the next poll.
@@ -58,7 +56,6 @@ struct ErrorAnswer {
     error: String,
 }
 
-/// Starts a sign-in.
 pub(super) async fn start(http: &Client, client_id: &str) -> Result<DeviceCode, CloudError> {
     let response = http
         .post(DEVICE_URL)
@@ -69,7 +66,6 @@ pub(super) async fn start(http: &Client, client_id: &str) -> Result<DeviceCode, 
     device_code(status, &body)
 }
 
-/// Asks once whether the person signed in with `device_code`.
 pub(super) async fn poll(
     http: &Client,
     client_id: &str,
@@ -88,9 +84,8 @@ pub(super) async fn poll(
     polled(status, &body)
 }
 
-/// Trades the code of a sign-in inside the app for tokens, with the code verifier in place of a
-/// secret (PKCE; the fields are those of
-/// <https://workos.com/docs/reference/user-management/authentication/code>, read on 2026-11-19).
+/// PKCE: the code verifier takes the place of a secret.
+/// Fields: <https://workos.com/docs/reference/user-management/authentication/code>, read on 2026-11-19.
 #[cfg(target_os = "ios")]
 pub(super) async fn exchange(
     http: &Client,
@@ -110,7 +105,6 @@ pub(super) async fn exchange(
     }
 }
 
-/// The fields of the trade of a code. No client secret: the app is a public client (HMD-032).
 #[cfg(any(target_os = "ios", test))]
 pub(super) fn code_form<'a>(
     client_id: &'a str,
@@ -125,7 +119,6 @@ pub(super) fn code_form<'a>(
     ]
 }
 
-/// New tokens for the refresh token. A refused refresh token is `Unauthenticated`.
 pub(super) async fn refresh(
     http: &Client,
     client_id: &str,
@@ -147,7 +140,6 @@ pub(super) async fn refresh(
     }
 }
 
-/// The answer of the device authorization request.
 pub(super) fn device_code(status: StatusCode, body: &[u8]) -> Result<DeviceCode, CloudError> {
     if !status.is_success() {
         return Err(refusal(status, body));
@@ -161,7 +153,6 @@ pub(super) fn device_code(status: StatusCode, body: &[u8]) -> Result<DeviceCode,
     })
 }
 
-/// The answer of the token request: tokens, a wait, or why the sign-in stopped.
 pub(super) fn polled(status: StatusCode, body: &[u8]) -> Result<Poll, CloudError> {
     if status.is_success() {
         let answer: TokenAnswer = serde_json::from_slice(body).map_err(|_| CloudError::Refused)?;
@@ -177,7 +168,6 @@ pub(super) fn polled(status: StatusCode, body: &[u8]) -> Result<Poll, CloudError
     }
 }
 
-/// The refusal that a failed answer means (the error codes of the device-code reference).
 fn refusal(status: StatusCode, body: &[u8]) -> CloudError {
     if status.is_server_error() {
         return CloudError::Offline;

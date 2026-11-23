@@ -1,37 +1,32 @@
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
-/// Why a call of the sign-in or of the cloud stopped. Carries no token, code or answer text
-/// (LOG-007); the client switches on the code.
+/// Carries no token, code or answer text (LOG-007); the client switches on the code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum CloudError {
-    /// This build has no client ID (`ANIMA_CLOUD_CLIENT_ID` was empty when it was built).
+    /// `ANIMA_CLOUD_CLIENT_ID` was empty when this build was made.
     #[error("this build has no Anima.ing sign-in")]
     Unconfigured,
-    /// A web view other than the main one asked.
     #[error("only the main window can do this")]
     Caller,
-    /// The person cancelled the sign-in in the browser (`access_denied`).
+    /// `access_denied`.
     #[error("the sign-in was cancelled")]
     Cancelled,
-    /// The code ran out before the sign-in (`expired_token`), or no sign-in was started.
+    /// `expired_token`, or no sign-in was started.
     #[error("the code expired")]
     Expired,
-    /// No answer, or a server fault (5xx).
+    /// No answer, or 5xx.
     #[error("the cloud did not answer")]
     Offline,
-    /// Any other refusal of the cloud or of `WorkOS`.
     #[error("the cloud refused")]
     Refused,
-    /// No valid session: the person signs in again.
     #[error("sign in again")]
     Unauthenticated,
-    /// The payment of the account failed (402 `payment_failed`): the cloud makes and wakes nothing.
+    /// 402 `payment_failed`: the cloud makes and wakes nothing.
     #[error("the payment failed")]
     PaymentFailed,
-    /// The hub of the account is not ready yet (409 `not_ready`).
+    /// 409 `not_ready`.
     #[error("the hub is not ready")]
     NotReady,
-    /// The key store refused to keep or give the refresh token.
     #[error("the key store refused")]
     Keystore,
 }
@@ -64,7 +59,7 @@ impl Serialize for CloudError {
 }
 
 impl From<reqwest::Error> for CloudError {
-    /// A transport failure: no answer arrived. Its text, which can quote the URL, is dropped.
+    /// Its text, which can quote the URL, is dropped.
     fn from(_: reqwest::Error) -> Self {
         Self::Offline
     }

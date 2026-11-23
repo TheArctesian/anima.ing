@@ -1,7 +1,5 @@
-//! The `anima-link device` child that runs while the app runs (2.6): started with the saved
-//! port and `-stop-with-stdin`, so it ends with the app even when the app is killed, and started
-//! again a pause after it ends. A port that another program holds is reported, never changed
-//! (F-2). The child's log is read for its state only; no line of it is logged (LOG-007).
+//! The `anima-link device` child (2.6): `-stop-with-stdin` ends it with the app, even a killed app.
+//! A port that another program holds is reported, never changed (F-2); no line of the child's log is logged (LOG-007).
 
 use std::{
     ffi::{OsStr, OsString},
@@ -24,33 +22,25 @@ use super::{
 };
 
 const POLL: Duration = Duration::from_millis(50);
-/// How often a link that a unit keeps is asked for its port.
 pub const WATCH_EVERY: Duration = Duration::from_secs(2);
-/// How long a child that was asked to stop (its standard input closed) has before it is killed.
 pub const STOP_PATIENCE: Duration = Duration::from_secs(3);
-/// The longest log line that is read whole; a longer one is cut.
 const MOST_LINE: u64 = 4096;
 
-/// How to run the device link.
 #[derive(Debug, Clone)]
 pub struct Launch {
     pub program: PathBuf,
     pub folder: PathBuf,
     pub port: u16,
     pub env: Vec<(&'static str, OsString)>,
-    /// The socket for the metrics daemon (`-daemon-socket`), as a unit of the user makes it.
     pub daemon_socket: Option<PathBuf>,
-    /// The pause between an end and the next start.
     pub restart_after: Duration,
 }
 
-/// The device link child of this app and its state.
 #[derive(Debug, Default)]
 pub struct DeviceLink {
     state: Arc<Mutex<DeviceState>>,
     running: Mutex<Option<Running>>,
-    /// Set once the hub of this run is a hosted one: a unit of the user then keeps the link
-    /// running with the app closed (HMD-058).
+    /// Set once the hub is a hosted one: a unit of the user then keeps the link running with the app closed (HMD-058).
     background: AtomicBool,
     pid: Arc<AtomicU32>,
 }
@@ -62,33 +52,27 @@ struct Running {
 }
 
 impl DeviceLink {
-    /// The live child PID, for the Windows loopback listener ownership check.
     #[cfg(windows)]
     pub fn child_pid(&self) -> u32 {
         self.pid.load(Ordering::Acquire)
     }
 
-    /// The state now.
     pub fn state(&self) -> DeviceState {
         *self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// From now, a link that this device joins is handed to a unit of the user.
     pub fn keep_in_background(&self) {
         self.background.store(true, Ordering::Release);
     }
 
-    /// Whether a unit of the user must keep the link of this device.
     pub fn in_background(&self) -> bool {
         self.background.load(Ordering::Acquire)
     }
 
-    /// Records a state that no child gives, such as a link that cannot start at all.
     pub fn record(&self, event: Event) {
         record(&self.state, event);
     }
 
-    /// Runs the device link as `launch` says, after the one before has stopped.
     pub fn start(&self, launch: Launch) {
         let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(before) = running.take() {
@@ -103,9 +87,7 @@ impl DeviceLink {
         *running = Some(Running { stop, thread });
     }
 
-    /// Watches a device link that a unit of the user keeps running (HMD-058): `serving` asks
-    /// the link for the port it listens on. No child is started, and [`Self::stop`] ends only
-    /// the watch: the link runs on with the app closed.
+    /// No child is started, and [`Self::stop`] ends only the watch: the link runs on with the app closed (HMD-058).
     pub fn watch(&self, port: u16, serving: impl Fn() -> Option<u16> + Send + 'static) {
         let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(before) = running.take() {
@@ -118,7 +100,7 @@ impl DeviceLink {
         *running = Some(Running { stop, thread });
     }
 
-    /// Stops the child and waits until it has ended. Blocks: call it off the async runtime.
+    /// Blocks: call it off the async runtime.
     pub fn stop(&self) {
         let before = self
             .running
@@ -144,7 +126,6 @@ fn record(state: &Mutex<DeviceState>, event: Event) {
     *state = state.after(event);
 }
 
-/// Starts the child, waits for its end, pauses and starts it again, until `stop`.
 fn supervise(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>, pid: &AtomicU32) {
     let mut restarts = Restarts::default();
     while !stop.load(Ordering::Acquire) {
@@ -166,7 +147,6 @@ fn supervise(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>
     record(state, Event::Stopped);
 }
 
-/// Asks the kept link for its port until `stop`, and records when it comes up and goes down.
 fn observe(
     port: u16,
     serving: &dyn Fn() -> Option<u16>,
@@ -196,7 +176,6 @@ fn observe(
     record(state, Event::Stopped);
 }
 
-/// One run of the child, from its start to its end.
 fn run_once(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>, pid: &AtomicU32) {
     // A port another program holds is seen before the child would fail on it.
     if TcpListener::bind((Ipv4Addr::LOCALHOST, launch.port)).is_err() {
@@ -251,8 +230,6 @@ fn start(launch: &Launch) -> std::io::Result<Child> {
         .spawn()
 }
 
-/// Waits for the child's end. On `stop` its standard input is closed, which ends it; one that
-/// does not end in time is killed.
 fn wait(child: &mut Child, stop: &AtomicBool) {
     let mut stopping: Option<Instant> = None;
     loop {
@@ -275,7 +252,6 @@ fn wait(child: &mut Child, stop: &AtomicBool) {
     let _ = child.wait();
 }
 
-/// Reads the child's log until it ends, and records what a line tells.
 fn read_log(stderr: ChildStderr, state: &Mutex<DeviceState>) {
     let mut log = BufReader::new(stderr);
     let mut line = Vec::new();

@@ -1,5 +1,4 @@
-//! The forms of the operator account's values as they pass between the web view and
-//! `anima-local-hub account` (F-4, F-5). Pure: bytes in, checked values out.
+//! The forms of the operator account's values (F-4, F-5).
 
 use std::ffi::OsString;
 
@@ -13,9 +12,7 @@ const MOST_PASSWORD: usize = 1024;
 const MOST_SECRET: usize = 64;
 const CODE_DIGITS: usize = 6;
 
-/// The account's name, as `anima-local-hub account` takes it: 1 to 64 ASCII letters, digits,
-/// `.`, `_` or `-`, starting with a letter or a digit. It goes on the command line, so it can
-/// never look like an option.
+/// It goes on the command line, so it starts with a letter or a digit and never looks like an option.
 pub fn name(name: &str) -> Result<OsString, LocalHubError> {
     let fits = name.len() <= MOST_NAME
         && name
@@ -31,7 +28,6 @@ pub fn name(name: &str) -> Result<OsString, LocalHubError> {
     Ok(name.into())
 }
 
-/// The three lines that `account create` reads: the password, the TOTP secret and a code.
 /// A line break in a value would move the lines, so none is permitted.
 pub fn create_input(
     password: &str,
@@ -60,7 +56,6 @@ pub fn create_input(
     Ok(input)
 }
 
-/// The operator account as `account status` prints it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Account {
     pub name: String,
@@ -85,8 +80,7 @@ pub fn parse_account(printed: &[u8]) -> Result<Option<Account>, LocalHubError> {
     }
 }
 
-/// A new TOTP secret and its `otpauth://` URI, as `account totp-new` prints them. Both are
-/// secrets: they go to the web view, which shows them once, and nowhere else.
+/// Both are secrets: they go to the web view, which shows them once, and nowhere else.
 #[derive(Clone, PartialEq, Eq, Serialize)]
 pub struct NewTotp {
     pub secret: String,
@@ -99,7 +93,6 @@ impl std::fmt::Debug for NewTotp {
     }
 }
 
-/// `account totp-new`: `{ "secret", "uri" }`, the URI an `otpauth://totp/` one.
 pub fn parse_new_totp(printed: &[u8]) -> Result<NewTotp, LocalHubError> {
     let value: serde_json::Value =
         serde_json::from_slice(printed).map_err(|_| LocalHubError::Failed)?;

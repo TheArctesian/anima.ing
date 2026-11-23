@@ -1,11 +1,6 @@
-//! The OS work of a builder computer (BLD-026, BLD-027): fixed build steps in the builder's own
-//! clone, the tool check and uploading the job's files. The builder holds no updater key and
-//! signs nothing: the hub signs the updater file it checked (R-117). The builder loop is the
-//! client's (`$lib/builds/`); it names a step and the job's commit, version and target, never a
-//! program.
-//!
-//! Each step's output goes to the main web view as `builder-line` events, which the client
-//! cleans and forwards to the hub (BLD-048, BLD-049). Nothing here logs a line (LOG-007).
+//! The OS work of a builder computer (BLD-026, BLD-027); it holds no updater key and signs nothing (R-117).
+//! The client names a step and the commit, version and target of the job, never a program.
+//! Step output goes to the main web view as `builder-line` events (BLD-048, BLD-049); nothing here logs a line (LOG-007).
 
 mod artifact;
 mod bundled;
@@ -42,12 +37,10 @@ use plan::Repository;
 use steps::Workshop;
 pub use tools::Tool;
 
-/// The event that carries one output line of a step to the main web view.
 const LINE_EVENT: &str = "builder-line";
 /// The builder's clone, under the app data folder (BLD-040).
 const CLONE_FOLDER: &str = "builds/anima";
 
-/// The step a line came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Step {
@@ -62,7 +55,6 @@ struct LineEvent {
     text: String,
 }
 
-/// What the tool check found (BLD-028).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolCheck {
@@ -72,8 +64,7 @@ pub struct ToolCheck {
     pub missing: Vec<Tool>,
 }
 
-/// Refuses every caller but the main web view; the capability already does, this is the second
-/// wall (C-5).
+/// The second wall after the capability (C-5).
 fn from_main<R: Runtime>(webview: &Webview<R>) -> Result<(), BuilderError> {
     (webview.label() == MAIN)
         .then_some(())
@@ -105,12 +96,10 @@ fn clone_folder<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, BuilderError>
     Ok(data.join(CLONE_FOLDER))
 }
 
-/// Takes the step slot for a step with no output of its own (listing and uploading files).
 fn quiet(running: &Running) -> Result<child::Claim<'_>, BuilderError> {
     running.claim(Arc::new(|_| {}))
 }
 
-/// The target this computer builds, or `Platform` when `target` is another.
 fn target_here(target: &str) -> Result<Target, BuilderError> {
     let target = Target::parse(target)?;
     (Target::here()? == target)
@@ -118,7 +107,6 @@ fn target_here(target: &str) -> Result<Target, BuilderError> {
         .ok_or(BuilderError::Platform)
 }
 
-/// The key line of the updater public key in this app's `plugins.updater.pubkey`, if it has one.
 fn app_public_key<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     let encoded = app
         .config()
@@ -130,7 +118,6 @@ fn app_public_key<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     tools::key_line(encoded)
 }
 
-/// This computer's platform and the tools it lacks (BLD-028, BLD-083).
 #[tauri::command]
 pub async fn builder_tools_check<R: Runtime>(
     webview: Webview<R>,
@@ -175,8 +162,7 @@ pub async fn builder_tools_check<R: Runtime>(
     Ok(ToolCheck { os, arch, missing })
 }
 
-/// Fetches and checks out `commit` with a clean tree; refuses a commit not on `main`. The last
-/// bundle is forgotten first, so nothing built before can be uploaded after.
+/// Refuses a commit not on `main`; the last bundle is forgotten first, so nothing built before can be uploaded after.
 #[tauri::command]
 pub async fn builder_checkout<R: Runtime>(
     webview: Webview<R>,
@@ -193,7 +179,6 @@ pub async fn builder_checkout<R: Runtime>(
         .await
 }
 
-/// Runs the gates at `commit` (BLD-042).
 #[tauri::command]
 pub async fn builder_gates_run<R: Runtime>(
     webview: Webview<R>,
@@ -206,7 +191,6 @@ pub async fn builder_gates_run<R: Runtime>(
     workshop(&app, &running, Step::Gates)?.gates(&commit).await
 }
 
-/// The job fields a bundle needs, as the hub sent them; each is checked before use.
 #[derive(Debug, Clone, Deserialize)]
 pub struct BundleJob {
     commit: String,
@@ -214,8 +198,6 @@ pub struct BundleJob {
     version: String,
 }
 
-/// Compiles and bundles the job's target at its version from its commit, records the updater
-/// file and the SHA-256 of its bytes (D-13, D-22), and returns its name.
 #[tauri::command]
 pub async fn builder_bundle<R: Runtime>(
     webview: Webview<R>,
@@ -256,7 +238,6 @@ fn file_name(path: &std::path::Path) -> Result<String, BuilderError> {
         .ok_or(BuilderError::Bundle)
 }
 
-/// The bundle this job's `target` and `version` name, when it is the last one made.
 fn recorded<R: Runtime>(
     app: &AppHandle<R>,
     target: &str,
@@ -269,7 +250,6 @@ fn recorded<R: Runtime>(
         .ok_or(BuilderError::Bundle)
 }
 
-/// Stops the running step and every process it started.
 #[expect(
     clippy::needless_pass_by_value,
     reason = "Tauri hands a command its state by value"
