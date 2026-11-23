@@ -49,9 +49,19 @@ describe('ThreadDraft', () => {
     expect(calls.map((each) => each.call)).toEqual(['folder', 'start']);
   });
 
-  it('asks for a project, and reads the folder again after a refused start', async () => {
+  it('starts a draft with no project in a scratch folder of the runner, and one with a project in its folder', async () => {
     const none = new ThreadDraft(null);
-    expect(await none.engine(runner().call, () => undefined, MODELS_WAITING).send(MESSAGE)).toEqual({ ok: false, words: expect.stringContaining('Choose a project') as string });
+    const scratch = runner(STARTED);
+    expect(none.scratch).toBe(true);
+    expect(await none.engine(scratch.call, () => undefined, MODELS_WAITING).send(MESSAGE)).toEqual({ ok: true });
+    expect(scratch.calls).toEqual([expect.objectContaining({ call: 'start', folder: '' })]);
+    none.inFolder('/work/anima');
+    expect(none.scratch).toBe(false);
+    none.withoutProject();
+    expect([none.folder, none.scratch]).toEqual([null, true]);
+  });
+
+  it('reads the folder again after a refused start', async () => {
     const draft = new ThreadDraft('/work/anima');
     const { calls, call } = runner(NOTHING, { ok: false, words: 'Over the limit.' }, NOTHING, STARTED);
     const engine = draft.engine(call, () => undefined, MODELS_WAITING);
