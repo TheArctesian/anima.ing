@@ -1,10 +1,4 @@
-//! The move of a daemon that was enrolled with the old link origin (`http://127.0.0.1:<port>`,
-//! before R-172) to the socket of the link: its token record and then its configuration get
-//! `unix:<path>`, once the program at that socket passes the check of the peer (R-317).
-//! After the move the path is kept with the token, so no value of the environment decides it
-//! again. The move needs no person: an existing computer heals at a start of the daemon. Until
-//! then the daemon sends through the socket in its own folder, to a peer that passes the same
-//! check, and asks the socket of the move again each minute ([`Watch`]).
+//! Moves an enrolment with the old link origin to the link socket once its peer passes the check (R-172, R-317).
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -17,10 +11,8 @@ use crate::hub::peer::{Expected, PeerError};
 use crate::report;
 use crate::token_store::{Credential, TokenStore, TokenStoreError};
 
-/// How often a daemon whose old enrolment did not move asks the socket of the move again.
 pub const ASK_EVERY: Duration = Duration::from_mins(1);
 
-/// The configuration and the stored credential of an enrolled daemon.
 pub struct Enrolled {
     pub config: Config,
     pub credential: Credential,
@@ -36,15 +28,11 @@ pub enum MoveError {
     Peer(#[from] PeerError),
 }
 
-/// What the move does for an enrolment, from its two origins and the socket of the link.
 #[derive(Debug, PartialEq, Eq)]
 enum Step {
-    /// Not an old enrolment, or one whose two origins differ: nothing to move.
     Stay,
-    /// Both origins are old: move them when the peer at the socket passes the check.
     Ask(Origin),
-    /// The token record already names the socket (a move that stopped after its first write):
-    /// write the configuration.
+    /// The token record already names the socket: a move stopped after its first write.
     Finish(Origin),
 }
 
@@ -69,19 +57,12 @@ fn step(config: &Origin, credential: &Origin, socket: &Path) -> Step {
 }
 
 impl Enrolled {
-    /// Whether this is an old enrolment that a move may change.
     #[must_use]
     pub fn is_old(&self) -> bool {
         self.config.hub.reach() == Reach::OwnLinkSocket
     }
 
-    /// The enrolment after the move to `socket`, when `expected` admits the program there. An
-    /// enrolment that does not move comes back unchanged; nothing was written for it. A program
-    /// that does not pass the check gets no byte (the check writes nothing to the socket).
-    ///
-    /// With a [`MoveError`] when the token record or the configuration cannot be written; the
-    /// enrolment then comes back as it was. The token record is written first, so a stop between
-    /// the two writes is finished at the next start.
+    /// Writes the token record before the configuration, so a stop between the two is finished at the next start.
     pub async fn moved(
         self,
         home: &Home,
@@ -93,8 +74,7 @@ impl Enrolled {
             Step::Stay => return (self, None),
             Step::Finish(origin) => (origin, false),
             Step::Ask(origin) => {
-                // A socket that fails its checks is reported by the client of the run; here it
-                // only means that nothing moves.
+                // The client of the run reports a socket that fails its checks; here nothing moves.
                 if !matches!(link_admits(socket, expected).await, Ok(true)) {
                     return (self, None);
                 }
@@ -128,25 +108,18 @@ impl Enrolled {
     }
 }
 
-/// What the start of the daemon has for its run: the enrolment, after its move when the peer at
-/// the socket of the move passes; the [`Watch`] of an old enrolment that did not move; and the
-/// socket that the client of an old enrolment sends through until the move.
 pub struct Start {
     pub enrolled: Enrolled,
     pub watch: Watch,
     pub socket: PathBuf,
 }
 
-/// The [`Start`] of the daemon. A move that cannot be written leaves the enrolment as it was,
-/// and is tried again at the next start; the daemon goes on sending, to a peer that passes the
-/// check. Until the move, an old enrolment sends through the socket of the move on macOS (no
-/// value of the environment decides where a token from the Keychain goes), and through the
-/// socket of its own folder on Linux, which is the same path unless the environment names
-/// another folder.
+/// Until the move, an old enrolment sends through the socket of the move on macOS, as no value of
+/// the environment decides where a token from the Keychain goes.
 ///
 /// # Errors
-/// [`MoveError::Peer`] when the signature of this daemon cannot be read; [`MoveError::Home`] on
-/// macOS when the home folder of the account cannot be read.
+/// [`MoveError::Peer`] when this daemon's signature cannot be read; [`MoveError::Home`] when the
+/// account's home folder cannot be read (macOS).
 pub async fn at_start(
     home: &Home,
     store: &TokenStore,
@@ -197,9 +170,7 @@ pub async fn at_start(
     })
 }
 
-/// The socket that an old enrolment moves to: on macOS below the home folder of the account,
-/// not the folder that the environment names, because the token is in the Keychain; on Linux
-/// in the daemon's own folder.
+/// On macOS below the account's home folder, not the environment's folder, because the token is in the Keychain.
 #[cfg_attr(
     not(target_os = "macos"),
     expect(
@@ -217,24 +188,20 @@ fn socket_of_move(home: &Home) -> std::io::Result<PathBuf> {
     Ok(home.link_socket())
 }
 
-/// The wait of an old enrolment that did not move, for the program at the socket of the move to
-/// pass the check of the peer. The daemon then starts again, and the move is made at the start.
+/// Waits for the program at the socket of the move to pass the check; the daemon then starts again and moves.
 pub struct Watch(Option<(PathBuf, Expected, Duration)>);
 
 impl Watch {
-    /// A wait that never ends: nothing to move.
     #[must_use]
     pub const fn none() -> Self {
         Self(None)
     }
 
-    /// A wait that asks the socket at `socket` every `every`.
     #[must_use]
     pub const fn of(socket: PathBuf, expected: Expected, every: Duration) -> Self {
         Self(Some((socket, expected, every)))
     }
 
-    /// Ends when the program at the socket passes the check; never for [`Watch::none`].
     pub async fn passed(&self) {
         let Some((socket, expected, every)) = &self.0 else {
             return std::future::pending().await;

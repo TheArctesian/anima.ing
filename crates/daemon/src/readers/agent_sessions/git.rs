@@ -1,9 +1,6 @@
-//! Finds the repository of a session's working folder (AIS-002, R-134): the nearest folder at
-//! or above it, below the home folder, that has a `.git`; for a worktree, the main repository
-//! through the `gitdir` link and its `commondir`. It reads only those two small files and the
-//! git `config` (AIS-022), and never opens a link. A `gitdir` or `commondir` is followed only
-//! to a folder below the home folder, outside the guarded folders, with no link on the way
-//! (AU-5 security review). The name is read by `daemon_core::agent_usage::repository`.
+//! Finds the repository of a session's working folder (AIS-002, R-134). It reads only the git
+//! files it needs (AIS-022), opens no link, and follows a `gitdir` or `commondir` only below the
+//! home folder, outside the guarded folders, with no link on the way (AU-5 security review).
 
 use std::fs;
 use std::io::Read as _;
@@ -13,14 +10,11 @@ use std::path::{Component, Path, PathBuf};
 
 use daemon_core::agent_usage::repository::{gitdir_link, origin_url, remote_name};
 
-/// The most of a `.git` link or a `commondir` file read.
 const LINK_LIMIT: u64 = 4 * 1024;
 
-/// The most of a git `config` read.
 const CONFIG_LIMIT: u64 = 64 * 1024;
 
-/// The folders on macOS whose files the system guards: reading one would ask the operator for
-/// access, so no git file is read there.
+/// Reading a file in these macOS folders would ask the operator for access.
 const GUARDED: [&str; 4] = [
     "Documents",
     "Desktop",
@@ -28,25 +22,18 @@ const GUARDED: [&str; 4] = [
     "Library/Mobile Documents",
 ];
 
-/// What the git files of a working folder say.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct Repository {
-    /// `host/owner/name`; `None` with no remote `origin` that names a host.
     pub name: Option<String>,
-    /// The folder of the main repository, for the exclusions.
     pub main: Option<PathBuf>,
 }
 
-/// Where the git files may be read.
 pub(super) struct Bounds<'a> {
     pub home: &'a Path,
-    /// The home folder with its links resolved, which a resolved target is compared under.
     pub real_home: &'a Path,
     pub macos: bool,
 }
 
-/// The repository of `cwd`. A folder that is gone, has no `.git` up to the home folder, or is
-/// guarded on macOS gives none.
 pub(super) fn repository(cwd: &Path, bounds: &Bounds) -> Repository {
     for folder in cwd.ancestors() {
         if folder == bounds.home {
@@ -83,8 +70,6 @@ pub(super) fn repository(cwd: &Path, bounds: &Bounds) -> Repository {
     Repository::default()
 }
 
-/// The common git folder of a worktree whose `.git` file is `dot_git`, in `folder`; `None`
-/// when a link of it leads where [`allowed`] refuses.
 fn common_folder(folder: &Path, dot_git: &Path, bounds: &Bounds) -> Option<PathBuf> {
     let link = read_small(dot_git, LINK_LIMIT)?;
     let gitdir = allowed(&folder.join(gitdir_link(&link)?), bounds)?;
@@ -94,8 +79,7 @@ fn common_folder(folder: &Path, dot_git: &Path, bounds: &Bounds) -> Option<PathB
     }
 }
 
-/// `target` without `..`, when it is below the home folder, outside the guarded folders, and
-/// the same folder once every link is resolved, so no link lies on the way.
+/// A target that is the same folder once every link is resolved has no link on the way.
 fn allowed(target: &Path, bounds: &Bounds) -> Option<PathBuf> {
     let plain = lexical(target);
     let below = plain.strip_prefix(bounds.home).ok()?;
@@ -106,7 +90,7 @@ fn allowed(target: &Path, bounds: &Bounds) -> Option<PathBuf> {
     (real == bounds.real_home.join(below)).then_some(plain)
 }
 
-/// `path` with each `..` taking out the folder before it, as git reads its relative links.
+/// Each `..` takes out the folder before it, as git reads its relative links.
 fn lexical(path: &Path) -> PathBuf {
     let mut plain = PathBuf::new();
     for part in path.components() {
@@ -128,8 +112,6 @@ fn guarded(folder: &Path, bounds: &Bounds) -> bool {
             .any(|guarded| folder.starts_with(bounds.home.join(guarded)))
 }
 
-/// The text of a regular file (not a link), at most `limit` bytes; `None` when it is not one
-/// or cannot be read.
 fn read_small(path: &Path, limit: u64) -> Option<String> {
     let mut text = String::new();
     open_no_link(path)
@@ -230,8 +212,6 @@ mod tests {
         );
     }
 
-    /// A worktree's `gitdir` or `commondir` that leads outside the home folder, into a guarded
-    /// folder or through a link is not followed (AIS-022, AU-5 security review).
     #[test]
     fn ais_022_a_worktree_link_is_followed_only_below_home_with_no_link_on_the_way() {
         let home = tempfile::tempdir().expect("a home");

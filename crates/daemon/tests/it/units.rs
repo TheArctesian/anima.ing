@@ -1,8 +1,5 @@
-//! The unit files parse and name the binary and `run` (MET-019, MET-020).
-
 use anima_daemon::units::{LAUNCH_AGENT, SYSTEMD_SYSTEM, SYSTEMD_USER};
 
-/// The `key=value` lines of a unit with the section they are in.
 fn unit(text: &str) -> Vec<(String, String, String)> {
     let mut section = String::new();
     let mut found = Vec::new();
@@ -42,8 +39,7 @@ fn met_019_the_systemd_units_parse_and_run_the_binary_with_run() {
     }
 }
 
-/// THR-113, HMD-055: a stop or a restart of the daemon (an update) stops only the daemon; the
-/// holder of the agent threads and the programs that it runs stay.
+/// THR-113, HMD-055: an update stops only the daemon; the agent threads and their programs stay.
 #[test]
 fn thr_113_a_stop_of_either_systemd_unit_kills_only_the_daemon() {
     for text in [SYSTEMD_USER, SYSTEMD_SYSTEM] {
@@ -137,7 +133,6 @@ fn met_019_the_launch_agent_parses_and_runs_the_binary_with_run() {
 mod install;
 #[cfg(target_os = "linux")]
 mod paths;
-/// A temporary HOME and a recording stand-in for the commands, so no systemd or launchd is
-/// touched (D-10).
+/// No systemd or launchd is touched (D-10).
 #[cfg(target_os = "linux")]
 mod rig;

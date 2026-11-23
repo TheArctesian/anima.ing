@@ -1,6 +1,4 @@
-//! The `agentUsage` member of a batch (K8 Section 4; R-135, AIS-018, AIS-019, AIS-024):
-//! optional, so an older daemon's batch is taken as it was; held to fixed alphabets, counts and
-//! limits; an entry of a source the hub does not know is dropped, not refused.
+//! K8 Section 4; R-135, AIS-018, AIS-019, AIS-024.
 
 use chrono::NaiveDate;
 use proptest::prelude::*;
@@ -242,8 +240,6 @@ fn ais_019_a_day_or_time_not_spelled_as_k8_is_not_a_batch() {
 }
 
 proptest! {
-    /// Any text in a session day's fields gives a verdict, never a panic; an accepted one
-    /// keeps the K8 alphabets.
     #[test]
     fn ais_019_any_texts_are_checked(source in "\\PC{0,40}", id in "\\PC{0,70}", repository in "\\PC{0,60}", name in "\\PC{0,70}") {
         let mut usage = example_usage();

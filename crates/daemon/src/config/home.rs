@@ -1,5 +1,4 @@
-//! The daemon's own folder: its configuration file and, on Linux, its token file (MET-002,
-//! MET-013).
+//! The daemon's own folder (MET-002, MET-013).
 
 #[cfg(unix)]
 use std::fs::DirBuilder;
@@ -19,7 +18,6 @@ const TOKEN_FILE: &str = "token";
 const FOLDER: &str = "anima-daemon";
 const LINK_SOCKET: &str = "link.sock";
 
-/// The folder holding the daemon's own files.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Home {
     dir: PathBuf,
@@ -42,10 +40,6 @@ pub enum HomeError {
 }
 
 impl Home {
-    /// The folder for this computer, from `env` (a lookup of environment variables):
-    /// `ANIMA_DAEMON_HOME`, else on macOS `~/Library/Application Support/anima-daemon`, else
-    /// `$XDG_CONFIG_HOME/anima-daemon` or `~/.config/anima-daemon`.
-    ///
     /// # Errors
     /// [`HomeError::NoFolder`] when none of the variables is set.
     pub fn locate(env: impl Fn(&str) -> Option<String>, macos: bool) -> Result<Self, HomeError> {
@@ -70,7 +64,6 @@ impl Home {
         Ok(Self { dir })
     }
 
-    /// The folder at `dir`, for tests and for a caller that already chose.
     #[must_use]
     pub const fn at(dir: PathBuf) -> Self {
         Self { dir }
@@ -81,27 +74,19 @@ impl Home {
         &self.dir
     }
 
-    /// The socket that `anima-link device` makes for a daemon that was enrolled with an old
-    /// link origin (K8 Section 1).
+    /// For a daemon that was enrolled with an old link origin (K8 Section 1).
     #[must_use]
     pub fn link_socket(&self) -> PathBuf {
         self.dir.join(LINK_SOCKET)
     }
 
-    /// The token file of the Linux token store.
     #[must_use]
     pub fn token_path(&self) -> PathBuf {
         self.dir.join(TOKEN_FILE)
     }
 
-    /// Makes the folder (mode 0700) when it is missing, and refuses one that is a link, is not
-    /// owned by the user running the daemon, or gives group or others any access: files in it
-    /// decide where the bearer goes. Each folder above it (as the path stands, not
-    /// with links resolved) is refused when others can write to it without the sticky bit, since
-    /// another user could replace the daemon's folder there. Not checked: the owner of those
-    /// folders, whether the group can write to them (a private group per user is common), and
-    /// links in the path. This is weaker than the OpenSSH `StrictModes` rule, which refuses
-    /// group-writable folders too and would refuse homes made with `umask 002`.
+    /// Files in the folder decide where the bearer goes. Unlike OpenSSH `StrictModes`, a
+    /// group-writable folder above it passes, so homes made with `umask 002` work.
     ///
     /// # Errors
     /// [`HomeError::Exposed`] for such a folder, [`HomeError::Io`] when it cannot be made.
@@ -120,8 +105,7 @@ impl Home {
         }
     }
 
-    /// The configuration file; `None` when the daemon was never enrolled. The folder and the
-    /// file are held to the same rules as the token file.
+    /// `None` when the daemon was never enrolled.
     ///
     /// # Errors
     /// [`HomeError`] when the folder or file is exposed, or the file cannot be read or parsed.
@@ -133,8 +117,6 @@ impl Home {
         }
     }
 
-    /// Writes the configuration file by temporary file and rename.
-    ///
     /// # Errors
     /// [`HomeError`] when the folder or the file cannot be written.
     pub fn write_config(&self, config: &Config) -> Result<(), HomeError> {
@@ -144,10 +126,8 @@ impl Home {
     }
 }
 
-/// The socket of an old link origin on macOS: `link.sock` in the default folder of the daemon
-/// below the home folder of the account as the user database names it (`/usr/bin/id -P`, run with
-/// no environment and a limit of 5 seconds), so that no value of the environment
-/// (`ANIMA_DAEMON_HOME`, `HOME`) decides where a token from the Keychain goes (R-317).
+/// The home folder comes from the user database, so no environment value decides where a token
+/// from the Keychain goes (R-317).
 ///
 /// # Errors
 /// An I/O error when `id` cannot run, takes too long, or names no absolute home folder.
@@ -190,8 +170,6 @@ pub fn account_link_socket() -> io::Result<PathBuf> {
         .join(LINK_SOCKET))
 }
 
-/// The home folder in a line of the user database in the form of `id -P` (at least ten fields;
-/// the home folder is the one before the shell, the last), as bytes, when it is an absolute path.
 #[cfg_attr(
     not(any(target_os = "macos", all(test, unix))),
     expect(dead_code, reason = "read only on macOS and by its tests")

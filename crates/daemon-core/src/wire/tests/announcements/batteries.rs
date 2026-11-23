@@ -1,5 +1,4 @@
-//! The batteries of a batch (K8 Section 4, MET-032): optional, so a batch without them leaves
-//! them unchanged, and each battery held to the label, count and range rules.
+//! K8 Section 4, MET-032.
 
 use super::*;
 use crate::{

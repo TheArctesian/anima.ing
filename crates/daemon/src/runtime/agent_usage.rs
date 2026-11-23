@@ -1,7 +1,5 @@
-//! The task that reads the session files of the AI agent programs at start and every 15
-//! minutes and hands the changed session days to the pusher (AIS-018, AIS-019, AIS-024), with
-//! the accounts that the thread runner of this computer has, unless the operator's setting
-//! `sendAccounts` is false (AIS-022, THR-149: on by default).
+//! Counts the session files of the AI agent programs for the pusher (AIS-018, AIS-019,
+//! AIS-022, AIS-024, THR-149).
 
 #[cfg(unix)]
 mod runner;
@@ -22,17 +20,16 @@ use crate::readers::agent_sessions::{AgentSessions, user_home};
 use crate::report;
 use crate::sampling::agent_usage::{UsageReport, UsageWatch};
 
-/// The time between two reads of the session files (K8 Section 4).
+/// K8 Section 4.
 const COUNT_EVERY: Duration = Duration::from_mins(15);
 
-/// What the daemon does with the session files: read them, or say why it cannot (AIS-024).
+/// AIS-024.
 pub(super) enum Counting {
     Reading(Box<AgentSessions>),
     Silent(UsageState),
 }
 
-/// Reads the session files only when the daemon runs as a user, and the operator's settings
-/// allow it; settings that cannot be read turn the function off (AIS-008, AIS-024).
+/// Settings that cannot be read turn the function off (AIS-008, AIS-024).
 pub(super) fn counting(home: &Home, env: impl Fn(&str) -> Option<String>) -> Counting {
     let Some(user) = user_home(env) else {
         return Counting::Silent(UsageState::SystemUnit);
@@ -50,9 +47,7 @@ pub(super) fn counting(home: &Home, env: impl Fn(&str) -> Option<String>) -> Cou
     }
 }
 
-/// At start and every 15 minutes: reads the session files on a blocking thread and hands the
-/// changed session days over (AIS-019). A daemon that does not read hands its state over once.
-/// A read stops between two lines when `stopping` is set.
+/// AIS-019.
 pub(super) async fn count(
     counting: Counting,
     events: mpsc::Sender<Event>,
@@ -151,8 +146,6 @@ mod tests {
         assert!(matches!(excluded, Counting::Reading(_)));
     }
 
-    /// THR-149: as in T3 Code, a daemon sends the accounts with no switch to turn on; the
-    /// operator can turn it off with `"sendAccounts": false`.
     #[test]
     fn thr_149_a_default_daemon_sends_accounts() {
         let sends = |settings| match decided(settings, None) {

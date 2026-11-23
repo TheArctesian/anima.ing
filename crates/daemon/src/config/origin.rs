@@ -1,5 +1,4 @@
-//! The hub's origin: HTTPS on port 443, or the Unix socket of `anima-link` in the link mode;
-//! nothing after the host (MET-020, K8 Section 1).
+//! The hub's origin: HTTPS on port 443, or the socket of `anima-link` (MET-020, K8 Section 1).
 
 use std::path::{Component, Path, PathBuf};
 
@@ -8,14 +7,11 @@ use reqwest::Url;
 /// The hub's public origin when the operator names none (K8 Section 1).
 pub const DEFAULT_HUB: &str = "https://hub.anima.ing";
 
-/// What starts a link origin: `unix:` and the absolute path of the socket of `anima-link`.
 const SOCKET_PREFIX: &str = "unix:";
 
 /// The longest socket path: the smaller of the macOS and Linux limits, less the end byte.
 const LONGEST_SOCKET_PATH: usize = 103;
 
-/// An `https` origin, scheme and host on port 443, or a link origin, `unix:<path>` (MET-020);
-/// with no user, path, query or fragment after a host.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Origin(Spelled);
 
@@ -23,17 +19,13 @@ pub struct Origin(Spelled);
 enum Spelled {
     Https(Url),
     LinkSocket(PathBuf),
-    /// `http://127.0.0.1:<port>`, the link origin before R-172. A stored file can still hold it
-    /// (ROL-018); the daemon never sends to the port.
+    /// The link origin before R-172, which a stored file can still hold (ROL-018).
     OldLinkPort(Url),
 }
 
-/// How the daemon reaches the hub of an [`Origin`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Reach<'a> {
-    /// HTTPS to this URL.
     Https(&'a Url),
-    /// The socket of `anima-link` at this path.
     LinkSocket(&'a Path),
     /// The socket of `anima-link` in the daemon's own folder: the origin is an old link origin.
     OwnLinkSocket,
@@ -62,7 +54,6 @@ pub enum OriginError {
 }
 
 impl Origin {
-    /// The origin `text` spells: `https`, or `unix:` and the path of the socket of the link.
     /// Refuses `http` to every host, and anything beyond scheme and host.
     ///
     /// # Errors
@@ -74,8 +65,7 @@ impl Origin {
         }
     }
 
-    /// The origin a file of the daemon holds: as [`Origin::parse`], and also the link origin of
-    /// before R-172, `http://127.0.0.1:<port>`, which the daemon reaches by its own socket.
+    /// As [`Origin::parse`], and also the link origin of before R-172 that a file can hold.
     ///
     /// # Errors
     /// [`OriginError`] naming what is wrong.
@@ -108,7 +98,6 @@ impl Origin {
         }
     }
 
-    /// [`DEFAULT_HUB`].
     #[must_use]
     #[expect(
         clippy::missing_panics_doc,
@@ -118,7 +107,7 @@ impl Origin {
         Self::parse(DEFAULT_HUB).expect("the default hub origin is an https origin")
     }
 
-    /// How the daemon reaches this hub. No answer names a TCP port of this computer.
+    /// No answer names a TCP port of this computer.
     #[must_use]
     pub fn reach(&self) -> Reach<'_> {
         match &self.0 {
@@ -128,8 +117,7 @@ impl Origin {
         }
     }
 
-    /// The origin as text, as it was given, without a trailing slash: for the files of the
-    /// daemon, which keep an old link origin as it is (ROL-018).
+    /// Without a trailing slash; an old link origin keeps its text (ROL-018).
     #[must_use]
     pub fn as_text(&self) -> String {
         match &self.0 {
@@ -139,7 +127,6 @@ impl Origin {
     }
 }
 
-/// The path of a socket: absolute, with no `.`, `..` or empty part, and short enough to bind.
 /// The count of the parts refuses what the path type drops without a word (`/./`, `//`).
 #[cfg(unix)]
 fn socket_path(text: &str) -> Result<PathBuf, OriginError> {

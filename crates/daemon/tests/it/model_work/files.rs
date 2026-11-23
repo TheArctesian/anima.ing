@@ -1,5 +1,4 @@
-//! The files of a server's tree (R-331; SF-287 to SF-293): reads
-//! that refuse a link, a FIFO or an oversized file, and records written in place, never through one.
+//! R-331; SF-287 to SF-293.
 
 use std::process::Command;
 use std::time::Duration;

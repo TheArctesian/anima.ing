@@ -1,11 +1,6 @@
-//! The unpack of a runtime archive (Section 6, F10): a `.tar.gz` ([`tar_gz`]) or a `.zip`
-//! ([`zip`]), into a new empty folder of this user, opened with `O_NOFOLLOW`, each file and folder made relative to an open handle of
-//! its folder with `O_NOFOLLOW`. Only regular files, folders and the symbolic links that
-//! [`links`] turns into copies of a file of the archive; no hard link, device or FIFO, no
-//! absolute path, no `..`, no two names that are equal in lower case at any part of their
-//! paths. Folders and program files get 0755, other files 0644, with no setuid, setgid or
-//! sticky bit. At most 8 GiB of unpacked bytes and 50,000 entries, and never below the disk
-//! reserve. Blocking work: the caller runs it on a blocking thread.
+//! The unpack of a runtime archive (Section 6, F10). Each file and folder is made relative to an
+//! open handle of its folder with `O_NOFOLLOW`; only regular files, folders and the links that
+//! [`links`] turns into copies. Blocking: the caller runs it on a blocking thread.
 
 mod links;
 mod tar_gz;
@@ -21,7 +16,6 @@ use daemon_core::model_work::cause::Cause;
 use daemon_core::model_work::releases::ArchiveFormat;
 use rustix::fs::{Mode, OFlags};
 
-/// The limits of one unpack.
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
     pub bytes: u64,
@@ -29,14 +23,12 @@ pub struct Limits {
 }
 
 impl Limits {
-    /// The limits of Section 6: 8 GiB of unpacked bytes and 50,000 entries.
     pub const SECTION_6: Self = Self {
         bytes: 8 << 30,
         entries: 50_000,
     };
 }
 
-/// The cause of an archive that breaks a rule of the unpack (Section 5, R-328).
 const BAD_ARCHIVE: Cause = Cause::ArchiveRejected;
 
 const DIR_FLAGS: OFlags = OFlags::DIRECTORY
@@ -44,7 +36,6 @@ const DIR_FLAGS: OFlags = OFlags::DIRECTORY
     .union(OFlags::RDONLY)
     .union(OFlags::CLOEXEC);
 
-/// What one entry of an archive is, after the format read it.
 #[derive(Clone, Copy)]
 enum Kind {
     Folder,
@@ -67,7 +58,6 @@ fn open_dir(parent: &OwnedFd, name: &str, create: bool) -> io::Result<OwnedFd> {
     Ok(dir)
 }
 
-/// The names of `path`, when each part is a plain name of UTF-8 with no `\`.
 fn names(path: &str) -> Option<Vec<String>> {
     let mut names = Vec::new();
     for part in Path::new(path).components() {
@@ -86,7 +76,6 @@ fn names(path: &str) -> Option<Vec<String>> {
     (!names.is_empty()).then_some(names)
 }
 
-/// Whether the folder of `root` belongs to the effective user and holds no entry.
 fn own_empty_folder(root: &OwnedFd) -> bool {
     let owned = rustix::fs::fstat(root)
         .is_ok_and(|stat| stat.st_uid == rustix::process::geteuid().as_raw());
@@ -98,14 +87,11 @@ fn own_empty_folder(root: &OwnedFd) -> bool {
     owned && empty
 }
 
-/// The writer of one unpack: the folder, the names seen, the bytes and entries left.
 struct Writer<F: Fn() -> bool> {
     root: OwnedFd,
     /// Each path seen, and each of its parents, by its name in lower case.
     seen: HashMap<String, String>,
-    /// Each regular file written, by its path, with the mode bits of the archive.
     files: HashMap<String, u32>,
-    /// Each link, by its names, with its target, in the order of the archive.
     links: Vec<(Vec<String>, String)>,
     left: u64,
     entries: usize,
@@ -134,9 +120,8 @@ impl<F: Fn() -> bool> Writer<F> {
         })
     }
 
-    /// Two names equal in lower case at any part are refused: on a volume that ignores case
-    /// they would be one folder or one file. A parent, or a folder entry, may come again with
-    /// the same spelling.
+    /// On a volume that ignores case, two names equal in lower case would be one folder or file.
+    /// A parent, or a folder entry, may come again with the same spelling.
     fn first_seen(&mut self, names: &[String], folder: bool) -> bool {
         for end in 1..=names.len() {
             let path = names[..end].join("/");
@@ -152,7 +137,6 @@ impl<F: Fn() -> bool> Writer<F> {
         true
     }
 
-    /// Checks the limits before each entry.
     fn next_entry(&mut self) -> Result<(), Cause> {
         self.entries += 1;
         if self.entries > self.max_entries || !(self.disk_holds)() {
@@ -161,13 +145,11 @@ impl<F: Fn() -> bool> Writer<F> {
         Ok(())
     }
 
-    /// Writes one entry at `path`.
     fn write(&mut self, path: &str, kind: Kind, bytes: &mut dyn Read) -> Result<(), Cause> {
         let names = self.claim(path, matches!(kind, Kind::Folder))?;
         self.place(&names, kind, bytes)
     }
 
-    /// The names of `path`, when they are plain and no entry seen before has them.
     fn claim(&mut self, path: &str, folder: bool) -> Result<Vec<String>, Cause> {
         let names = names(path).ok_or(BAD_ARCHIVE)?;
         if !self.first_seen(&names, folder) {
@@ -176,7 +158,6 @@ impl<F: Fn() -> bool> Writer<F> {
         Ok(names)
     }
 
-    /// Writes the folder or the file at `names`, and makes each missing parent folder.
     fn place(&mut self, names: &[String], kind: Kind, bytes: &mut dyn Read) -> Result<(), Cause> {
         let (last, parents) = names.split_last().ok_or(BAD_ARCHIVE)?;
         let mut dir = rustix::fs::openat(&self.root, ".", DIR_FLAGS, Mode::empty())
@@ -208,9 +189,8 @@ impl<F: Fn() -> bool> Writer<F> {
         self.copy(bytes, &mut File::from(fd))
     }
 
-    /// Copies one entry: a read error is a bad archive (a CRC that does not match, a cut
-    /// stream), a write error or a disk below the reserve is `limit_disk`. The disk is asked
-    /// again after each [`DISK_CHECK_BYTES`], so one large entry cannot pass the reserve.
+    /// The disk is asked again after each [`DISK_CHECK_BYTES`], so one large entry cannot pass
+    /// the reserve.
     fn copy(&mut self, bytes: &mut dyn Read, file: &mut File) -> Result<(), Cause> {
         use io::Write as _;
         let mut buffer = vec![0_u8; 1 << 16];
@@ -240,12 +220,9 @@ impl<F: Fn() -> bool> Writer<F> {
     }
 }
 
-/// The bytes of one entry between two checks of the free disk during the write.
 const DISK_CHECK_BYTES: u64 = 64 << 20;
 
-/// Unpacks `archive` of `format` into `into`, a new empty folder, within the limits of
-/// Section 6. `disk_holds` says whether the free disk is still above the reserve; it is asked
-/// before each entry.
+/// `disk_holds` says whether the free disk is still above the reserve.
 ///
 /// # Errors
 /// As [`unpack_within`].
@@ -258,12 +235,9 @@ pub fn unpack(
     unpack_within(archive, (format, Limits::SECTION_6), into, disk_holds)
 }
 
-/// [`unpack`] with the limits `limits` (a test gives small ones).
-///
 /// # Errors
 /// `archive_rejected` for an entry that breaks a rule, also a link that names no file of the
-/// archive; `limit_disk` past a limit, below the
-/// reserve, or for a write that fails.
+/// archive; `limit_disk` past a limit, below the reserve, or for a write that fails.
 pub fn unpack_within(
     archive: File,
     (format, limits): (ArchiveFormat, Limits),

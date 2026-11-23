@@ -1,12 +1,6 @@
-//! The daemon's two secrets: the enrolment code and the daemon token (K8 Section 2, MET-012,
-//! MET-013).
-//!
-//! Each is held as its text, wiped on drop, with the SHA-256 of its **bytes** (the 16 or 32
-//! random bytes, not the text with its prefix). Only the canonical spelling is accepted, so a
-//! value has one text and one hash. Neither type implements `Debug`, `Display`, `Clone`,
-//! `Serialize` or `Deserialize` (LOG-007): the text leaves only through `expose`, for the one
-//! body or header that carries it, and through the fields of the K8 bodies in this module's
-//! parent.
+//! The daemon's two secrets (K8 Section 2, MET-012, MET-013). Only the canonical spelling is
+//! accepted, so a value has one text and one hash. Neither type implements `Debug`, `Display`,
+//! `Clone`, `Serialize` or `Deserialize` (LOG-007).
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde::{Deserialize as _, Deserializer, Serializer, de::Error as _};
@@ -44,8 +38,6 @@ impl EnrolmentCode {
         Self(Secret::from_random(CODE_PREFIX, bytes))
     }
 
-    /// The code `presented` spells, or `None` unless it is `anima_enrol_` followed by the
-    /// canonical unpadded base64url of exactly 16 bytes.
     #[must_use]
     pub fn parse(presented: &str) -> Option<Self> {
         Secret::parse::<CODE_BYTES>(CODE_PREFIX, presented).map(Self)
@@ -72,8 +64,6 @@ impl DaemonToken {
         Self(Secret::from_random(TOKEN_PREFIX, bytes))
     }
 
-    /// The token `presented` spells, or `None` unless it is `anima_daemon_` followed by the
-    /// canonical unpadded base64url of exactly 32 bytes.
     #[must_use]
     pub fn parse(presented: &str) -> Option<Self> {
         Secret::parse::<TOKEN_BYTES>(TOKEN_PREFIX, presented).map(Self)
@@ -106,7 +96,6 @@ impl TokenHash {
     }
 }
 
-/// Prefixed canonical base64url text, wiped on drop, and the SHA-256 of its bytes.
 struct Secret {
     text: Zeroizing<String>,
     hash: [u8; 32],
@@ -154,23 +143,21 @@ impl Secret {
     }
 }
 
-/// Writes a code into a body: the enrol request.
 pub(super) fn write_code<S: Serializer>(code: &EnrolmentCode, out: S) -> Result<S::Ok, S::Error> {
     out.serialize_str(code.expose())
 }
 
-/// Writes a token into a body: `Enrolled` or `Renewed`.
 pub(super) fn write_token<S: Serializer>(token: &DaemonToken, out: S) -> Result<S::Ok, S::Error> {
     out.serialize_str(token.expose())
 }
 
-/// Reads a code from a body. The error never holds the text.
+/// The error never holds the text.
 pub(super) fn read_code<'de, D: Deserializer<'de>>(input: D) -> Result<EnrolmentCode, D::Error> {
     let text = Zeroizing::new(String::deserialize(input)?);
     EnrolmentCode::parse(&text).ok_or_else(|| D::Error::custom("not an enrolment code"))
 }
 
-/// Reads a token from a body. The error never holds the text.
+/// The error never holds the text.
 pub(super) fn read_token<'de, D: Deserializer<'de>>(input: D) -> Result<DaemonToken, D::Error> {
     let text = Zeroizing::new(String::deserialize(input)?);
     DaemonToken::parse(&text).ok_or_else(|| D::Error::custom("not a daemon token"))

@@ -1,14 +1,10 @@
-//! The flag policy (Section 2.1, SEC-C-007, CAG-004): `settings` is an object of typed
-//! members, never a list of flags. The daemon owns the host, the port, the API key, the
-//! parallel slots, remote code, the paths and the environment, and refuses each of them.
+//! The flag policy (Section 2.1, SEC-C-007, CAG-004): `settings` is typed members, never flags.
 
 use serde_json::{Map, Value};
 
 use super::cause::Cause;
 use super::names::Runtime;
 
-/// The names of the values that the daemon owns. A member of `settings` with one of these
-/// names, or whose name starts with `-` (a flag), is refused with `flag_owned`.
 pub const OWNED: [&str; 14] = [
     "host",
     "port",
@@ -26,14 +22,12 @@ pub const OWNED: [&str; 14] = [
     "command",
 ];
 
-/// The layers on the GPU of a `llama_server`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GpuLayers {
     Count(u32),
     All,
 }
 
-/// The type of the key and value cache of a `llama_server`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KvCache {
     F16,
@@ -53,7 +47,6 @@ impl KvCache {
     }
 }
 
-/// The settings that the hub may set, after the check.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ServerSettings {
     pub context_tokens: Option<u32>,
@@ -64,12 +57,10 @@ pub struct ServerSettings {
     pub kv_cache: Option<KvCache>,
 }
 
-/// What the machine permits now for the members that depend on it.
 #[derive(Clone, Copy, Debug)]
 pub struct SettingLimits<'a> {
     /// The memory share of the device policy (RTC-003), from 0 to 1.
     pub memory_share: f64,
-    /// The indexes of the GPUs of the inventory of the machine.
     pub gpus: &'a [u32],
 }
 
@@ -132,12 +123,10 @@ fn set(
     Ok(())
 }
 
-/// Reads `settings` for `runtime`. With no runtime (a `model_load`, whose server the daemon
-/// knows only at the edge), a member is permitted when one runtime permits it.
+/// With no runtime (a `model_load`), a member is permitted when one runtime permits it.
 ///
 /// # Errors
-/// `flag_owned` for a value that the daemon owns; `member_unknown` for another member or a
-/// value out of its range; `memory_share` and `gpu_unknown` for those members.
+/// A [`Cause`] for a member the daemon owns, an unknown member or a value out of range.
 pub fn read(
     object: &Map<String, Value>,
     runtime: Option<Runtime>,

@@ -66,8 +66,7 @@ fn the_command_line_binds_loopback_and_holds_no_key() {
     );
 }
 
-// The installations are of macOS and Linux, and their folders are Unix paths: on Windows
-// `/home/u` is not an absolute path, so `layout` gives `None` for it.
+// The folders are Unix paths; on Windows `/home/u` is not absolute, so `layout` gives `None`.
 #[cfg(unix)]
 #[test]
 fn the_folders_follow_the_table() {

@@ -1,15 +1,8 @@
-//! The Codex reader (AIS-018, AIS-022): the thread and its parent, prompts of one kind, tool
-//! calls, the tokens of each response once, a sub-agent's copied history not counted again;
-//! the account fields of the first line never kept.
-
 use proptest::prelude::*;
 
 use super::{assert_no_marker, days_of, tally};
 use crate::agent_usage::{Source, Tokens, root_thread};
 
-/// A synthetic rollout: the thread's meta with account fields, a turn context, a prompt as an
-/// item, an injected user message, tool calls, one token event written twice, a model change,
-/// rate limits, and a line that is not JSON.
 const ROLLOUT: &str = r#"{"timestamp":"2026-11-08T10:00:00.000Z","type":"session_meta","payload":{"id":"thread-1","cwd":"/work/MARKER-7f3a9c-SECRET","creator_account_id":"MARKER-7f3a9c-SECRET","base_instructions":{"text":"MARKER-7f3a9c-SECRET"},"git":{"repository_url":"https://MARKER-7f3a9c-SECRET@example.com/a/b"}}}
 {"timestamp":"2026-11-08T10:00:01Z","type":"turn_context","payload":{"model":"gpt-5.1-codex","cwd":"/work/other"}}
 {"timestamp":"2026-11-08T10:00:02Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>MARKER-7f3a9c-SECRET"}]}}
@@ -128,14 +121,12 @@ fn ais_018_a_sub_agent_counts_under_the_root_of_its_chain() {
 }
 
 proptest! {
-    /// Any bytes are skipped or counted, never a panic.
     #[test]
     fn ais_018_the_codex_reader_takes_any_line(line in proptest::collection::vec(any::<u8>(), 0..256)) {
         let mut tally = crate::agent_usage::Tally::new(Source::Codex);
         tally.feed(&line);
     }
 
-    /// Token events with any numbers keep every count within the K8 limit.
     #[test]
     fn ais_018_codex_tokens_stay_within_the_limit(input in any::<u64>(), cached in any::<u64>(), output in any::<u64>()) {
         let mut tally = crate::agent_usage::Tally::new(Source::Codex);

@@ -1,5 +1,4 @@
-//! The move of an old enrolment (`http://127.0.0.1:<port>`) to the socket of the link, with the
-//! Linux token file (the macOS store is the Keychain, which no test touches).
+//! Uses the Linux token file: no test touches the macOS Keychain.
 
 use anima_daemon::config::Config;
 use anima_daemon::config::home::Home;
@@ -18,7 +17,6 @@ fn old() -> Origin {
     Origin::parse_kept("http://127.0.0.1:4100").expect("an old link origin")
 }
 
-/// A daemon in a new folder, enrolled with the old link origin.
 fn enrolled_before_the_socket() -> (tempfile::TempDir, Home, TokenStore, Enrolled) {
     let dir = tempfile::tempdir().expect("a folder");
     let home = Home::at(dir.path().join("daemon"));

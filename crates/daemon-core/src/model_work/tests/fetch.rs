@@ -118,7 +118,6 @@ fn the_reply_of_the_child_reads_back_as_its_cause() {
     ] {
         assert_eq!(verdict(Ending::Exited(reply(Err(cause)))), Err(cause));
     }
-    // A cause that the child may not give reads as `fetch_failed`.
     assert_eq!(reply(Err(Cause::Listener)), "fetch_failed");
     assert_eq!(
         verdict(Ending::Exited(reply(Err(Cause::FetchFailed)))),
@@ -147,7 +146,6 @@ fn a_source_that_answered_with_an_error_stays_source_failed() {
 fn a_fault_or_a_stall_of_the_child_is_fetch_failed() {
     assert_eq!(verdict(Ending::Fault), Err(Cause::FetchFailed));
     assert_eq!(verdict(Ending::Stalled), Err(Cause::FetchFailed));
-    // A hostile reply cannot write into the report: the cause is the fixed word only.
     let hostile = "../../etc/passwd: see https://evil.example\n";
     let cause = verdict(Ending::Exited(hostile)).expect_err("refused");
     assert_eq!((cause.as_str(), cause.detail()), ("fetch_failed", None));

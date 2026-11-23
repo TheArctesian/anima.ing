@@ -1,10 +1,4 @@
-//! The bodies of the work route between `anima-daemon` and the hub
-//! (`contracts/work-route.md`, K10): the claim of a job, the job, the report with its log part
-//! and its result, and the request for a secret of one job.
-//!
-//! No body holds a secret but the answer to a secret request, which this file does not type:
-//! a job never holds a command, an argument, a path, an address, an image name or an
-//! environment variable (K10 Section 4). The contract calls a job an "item of work".
+//! The bodies of the work route (K10); no job holds a command, an argument, a path, an address, an image name or an environment variable.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -15,15 +9,13 @@ use super::times;
 /// The most bytes of the log part of one report (K10 Section 7).
 pub const MAX_LOG_PART_BYTES: usize = 64 * 1024;
 
-/// A work type of the fixed list (K10 Section 6). A type that this program does not know reads
-/// as [`WorkType::Unknown`]: the hub gives no such job, and the daemon refuses one.
+/// A type this program does not know reads as [`WorkType::Unknown`], and the daemon refuses it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WorkType {
     Build,
     Runner,
-    /// The model work types (`contracts/compute/model-work.md` Section 2; waits for
-    /// R-344). Each has the kind [`WorkKind::Model`].
+    /// The model work types (`contracts/compute/model-work.md` Section 2) have the kind [`WorkKind::Model`].
     ModelReport,
     RuntimeInstall,
     ModelPull,
@@ -53,7 +45,6 @@ pub const MODEL_TYPES: [WorkType; 10] = [
 ];
 
 impl WorkType {
-    /// The type as the bodies spell it.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -73,7 +64,6 @@ impl WorkType {
         }
     }
 
-    /// The type that `text` spells, when it is of the fixed list.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         [Self::Build, Self::Runner]
@@ -82,7 +72,6 @@ impl WorkType {
             .find(|kind| kind.as_str() == text)
     }
 
-    /// Whether the type is one of the model work.
     #[must_use]
     pub fn is_model(self) -> bool {
         MODEL_TYPES.contains(&self)
@@ -109,7 +98,6 @@ pub enum Switch {
     Off,
 }
 
-/// The operating system of a machine that claims.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WorkOs {
@@ -117,7 +105,6 @@ pub enum WorkOs {
     Macos,
 }
 
-/// The processor architecture of a machine that claims.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WorkArchitecture {
@@ -126,7 +113,6 @@ pub enum WorkArchitecture {
     Aarch64,
 }
 
-/// What a machine has free for a job now.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Free {
@@ -135,7 +121,6 @@ pub struct Free {
     pub disk_bytes: u64,
 }
 
-/// One job that a machine runs now, by its attempt.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Held {
     pub id: Uuid,
@@ -158,14 +143,13 @@ pub struct Claim {
     pub unclean: bool,
 }
 
-/// The end of a lease.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Lease {
     #[serde(with = "times")]
     pub until: DateTime<Utc>,
 }
 
-/// The limits of one job. The machine uses the lower of each and its own limit.
+/// The machine uses the lower of each limit and its own.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Limits {
@@ -176,7 +160,6 @@ pub struct Limits {
     pub orphan_seconds: u64,
 }
 
-/// The repository of a job, by its forge and its two names.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkRepository {
     pub forge: String,
@@ -196,7 +179,7 @@ pub struct WorkJob {
     pub limits: Limits,
     pub project: Option<Uuid>,
     pub repository: WorkRepository,
-    /// The purposes of the secrets that the job needs. Never a value.
+    /// The purposes of the secrets that the job needs, never a value.
     pub secrets: Vec<String>,
     /// The object of the work type (K10 Section 6).
     pub parameters: serde_json::Value,
@@ -217,7 +200,6 @@ pub enum WorkState {
 }
 
 impl WorkState {
-    /// Whether an attempt in this state has ended.
     #[must_use]
     pub const fn is_final(self) -> bool {
         matches!(
@@ -226,7 +208,6 @@ impl WorkState {
         )
     }
 
-    /// The state as the bodies spell it.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -291,7 +272,6 @@ pub enum StopReason {
 }
 
 impl StopReason {
-    /// The reason as the bodies spell it.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -304,14 +284,12 @@ impl StopReason {
     }
 }
 
-/// The `stop` member of [`Reported`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StopOrder {
     pub reason: StopReason,
 }
 
-/// The answer to a report: the new lease, a stop when there is one, and the end of the log that
-/// the hub holds.
+/// The answer to a report; `log_end` is the end of the log that the hub holds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Reported {

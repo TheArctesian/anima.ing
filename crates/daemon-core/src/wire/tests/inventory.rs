@@ -1,6 +1,4 @@
-//! The tool inventory of a batch (K8 Section 4; CAP-020, CAP-024, CAP-029): optional, so an
-//! older daemon's batch is taken as it was; held to fixed alphabets and counts; a tool name the
-//! hub does not know is dropped, not refused.
+//! K8 Section 4; CAP-020, CAP-024, CAP-029.
 
 use proptest::prelude::*;
 use serde_json::json;
@@ -262,8 +260,6 @@ fn any_tool() -> impl Strategy<Value = BatchTool> {
 }
 
 proptest! {
-    /// Whatever a device sends, the check never panics, and what it takes holds only text of the
-    /// fixed alphabets, known tool names and at most the counts of K8 Section 4.
     #[test]
     fn cap_031_any_inventory_is_refused_or_taken_within_the_rules(
         os_version in "\\PC{0,10}",

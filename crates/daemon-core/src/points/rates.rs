@@ -9,13 +9,8 @@ use super::{
 };
 use crate::readings::{Cpu, Interface, Reading};
 
-/// The samples of `current`. `previous` is the reading before it and `elapsed` the time between
-/// the two. With no `previous`, a counter that went back (a reboot, an interface reset) or no
-/// time passed, the Linux CPU share, the network rates and the drive activity are left out (D-4,
-/// MET-028). The macOS CPU share
-/// needs no earlier reading, so it is always given. Disks and interfaces follow
-/// [`MAX_LABELS`](super::MAX_LABELS) and the exclusions of D-5; each battery with a charge gives
-/// one `battery_percent` labelled with its name (MET-032).
+/// With no `previous`, no time passed or a counter that went back, the Linux CPU share, the
+/// network rates and the drive activity are left out (D-4, MET-028).
 #[must_use]
 pub fn samples(previous: Option<&Reading>, current: &Reading, elapsed: Duration) -> Vec<Sample> {
     let mut out = Vec::new();
@@ -121,7 +116,6 @@ fn network(previous: &Reading, current: &Reading, elapsed: Duration) -> Vec<Samp
     out
 }
 
-/// The reading of the same interface before (the first, if a name repeats).
 fn earlier<'a>(before: &'a [Interface], now: &Interface) -> Option<&'a Interface> {
     before.iter().find(|one| one.name == now.name)
 }

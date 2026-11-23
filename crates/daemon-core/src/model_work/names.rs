@@ -8,7 +8,6 @@ pub enum Runtime {
     Vllm,
 }
 
-/// The backend of a runtime release.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Backend {
     Metal,
@@ -106,8 +105,7 @@ impl Word for Actor {
     }
 }
 
-/// Whether `text` is a name that Hugging Face permits for an organisation or a repository:
-/// letters, digits, `-`, `_` and `.`, at most 96 characters, not `.` or `..` (Section 2).
+/// A name that Hugging Face permits for an organisation or a repository (Section 2).
 #[must_use]
 pub fn is_source_name(text: &str) -> bool {
     (1..=96).contains(&text.len())
@@ -118,7 +116,6 @@ pub fn is_source_name(text: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
 }
 
-/// Whether `text` is `length` hexadecimal characters in lower case.
 #[must_use]
 pub fn is_lower_hex(text: &str, length: usize) -> bool {
     text.len() == length && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))

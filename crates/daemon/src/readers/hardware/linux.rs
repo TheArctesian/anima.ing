@@ -1,7 +1,4 @@
-//! The Linux hardware values: `/proc/meminfo`, the PCI vendors of `/sys/class/drm`, the
-//! presence of the NVIDIA, AMD compute and Vulkan drivers, the video memory the GPU readers give and
-//! `/sys/class/power_supply` (CAP-001, CAP-002, CAP-004). Linux gives no thermal state and no
-//! operator activity here.
+//! The Linux hardware values (CAP-001, CAP-002, CAP-004).
 
 use std::path::Path;
 
@@ -48,7 +45,6 @@ async fn exists(path: &str) -> bool {
     tokio::fs::metadata(path).await.is_ok()
 }
 
-/// The vendors of the GPUs in `/sys/class/drm/cardN/device/vendor`, each once.
 async fn pci_vendors() -> Vec<GpuVendor> {
     let mut found = Vec::new();
     let Ok(mut entries) = tokio::fs::read_dir(DRM).await else {
@@ -73,7 +69,6 @@ async fn pci_vendors() -> Vec<GpuVendor> {
     found
 }
 
-/// Whether the daemon's user may read and write `/dev/kfd`, the AMD compute device.
 async fn kfd_access() -> KfdAccess {
     use rustix::fs::{Access, access};
     if !exists("/dev/kfd").await {
@@ -86,7 +81,6 @@ async fn kfd_access() -> KfdAccess {
     }
 }
 
-/// Whether a Vulkan driver manifest (`*.json`) is in one of the fixed folders.
 async fn vulkan_driver() -> bool {
     for folder in VULKAN_FOLDERS {
         let Ok(mut entries) = tokio::fs::read_dir(folder).await else {
@@ -104,7 +98,6 @@ async fn vulkan_driver() -> bool {
     false
 }
 
-/// The sum of the video memory of the NVIDIA and AMD GPUs; `None` when none gives a total.
 async fn dedicated_memory(vendors: &[GpuVendor]) -> Option<u64> {
     let sources = Sources {
         nvidia: vendors.contains(&GpuVendor::Nvidia),
@@ -123,7 +116,6 @@ async fn dedicated_memory(vendors: &[GpuVendor]) -> Option<u64> {
     (!totals.is_empty()).then(|| totals.iter().sum())
 }
 
-/// The entries of `/sys/class/power_supply`, as the desktop's stay-awake control reads them.
 async fn supplies() -> Vec<Supply> {
     let mut found = Vec::new();
     let Ok(mut entries) = tokio::fs::read_dir(POWER_SUPPLIES).await else {

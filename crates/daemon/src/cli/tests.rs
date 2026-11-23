@@ -1,5 +1,3 @@
-//! The command line of the daemon: what each command takes and refuses.
-
 use super::*;
 
 const CODE: &str = "anima_enrol_AAAAAAAAAAAAAAAAAAAAAA";

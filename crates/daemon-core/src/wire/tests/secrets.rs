@@ -1,5 +1,3 @@
-//! The enrolment code and the daemon token (K8 Section 2, MET-012, MET-013, LOG-007).
-
 use std::fmt::{Debug, Display};
 
 use sha2::{Digest as _, Sha256};
@@ -52,7 +50,6 @@ fn met_013_a_token_is_the_prefix_and_43_base64url_characters_of_its_32_bytes() {
     assert!(other.hash() != token.hash());
 }
 
-/// Spellings that are not the canonical text of a token or a code.
 fn not_canonical(canonical: &str, prefix: &str) -> Vec<String> {
     let body = &canonical[prefix.len()..];
     let mut last_changed = canonical.to_owned();
@@ -89,7 +86,6 @@ fn k8_2_only_the_canonical_spelling_of_a_code_is_accepted() {
 
 #[test]
 fn k8_2_only_the_canonical_spelling_of_a_token_is_accepted() {
-    // The standard alphabet's `+` and `/` in place of base64url's `-` and `_`.
     let with_plus = TOKEN.replace("1-f", "1+f");
     let with_slash = format!("{}/{}", &TOKEN[..20], &TOKEN[21..]);
     for text in not_canonical(TOKEN, "anima_daemon_")

@@ -1,5 +1,5 @@
-//! The Unix socket of `anima-link device`, the daemon's way to the hub in the link mode: the
-//! check that only a program of the daemon's own user can listen there (K8 Section 1, R-172).
+//! The check that only a program of the daemon's own user can listen at the socket of
+//! `anima-link device` (K8 Section 1, R-172).
 
 use std::io;
 #[cfg(unix)]
@@ -18,8 +18,6 @@ pub enum LinkSocketError {
     Exposed,
 }
 
-/// Checks that the bearer can go to `socket`: its folder is private to the running user and no
-/// other user can replace it, and a thing at the path is a socket that the running user owns.
 /// A path with no socket passes: the link is stopped, and only this user can make one there.
 ///
 /// # Errors

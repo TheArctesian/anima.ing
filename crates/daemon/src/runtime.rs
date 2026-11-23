@@ -1,9 +1,4 @@
-//! `anima-daemon run`: four tasks and the clock. One samples every 2 seconds and hands points
-//! over; one probes the tool inventory and reads the hardware values at start and every 15 minutes
-//! (CAP-027, CAP-032); one reads the
-//! session files of the AI agent programs at start and every 15 minutes (AIS-018); the other
-//! keeps the buffer and pushes every 10 seconds, so a slow hub, probe or read never delays
-//! sampling (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
+//! `anima-daemon run`: sampling, probing, usage reading and pushing are separate tasks, so a slow one never delays sampling (MET-014, K8 Section 7).
 
 mod agent_usage;
 mod link_wait;
@@ -44,7 +39,7 @@ const SAMPLE_EVERY: Duration = Duration::from_secs(2);
 /// The time between two probe runs of the tool inventory (CAP-027).
 const PROBE_EVERY: Duration = Duration::from_mins(15);
 
-/// Points waiting to cross from sampling to the pusher: far more than a slow push can build up.
+/// Far more than a slow push can build up.
 const CHANNEL_ROOM: usize = 64;
 
 #[derive(Debug, thiserror::Error)]
@@ -68,35 +63,26 @@ pub enum RunError {
     Move(#[from] old_origin::MoveError),
     #[error("the socket of anima-link passes its check now; starting again to move to it")]
     LinkAppeared,
-    /// With `--hosted-hub`: the hub refused the token, which is now deleted, so that
-    /// `anima-local-hub` enrols the daemon again at its next start (HMD-046, HM-T35).
+    /// The token is deleted so that `anima-local-hub` enrols the daemon again at its next start (HMD-046, HM-T35).
     #[error("the hub refused the token; it is deleted, and the next start of the hub enrols again")]
     TokenRefused,
-    /// As [`RunError::TokenRefused`], but the delete of the token waits for the person in the
-    /// Keychain (R-322), so the token is still stored.
+    /// The delete of the token waits for the person in the Keychain (R-322), so the token is still stored.
     #[error(
         "the hub refused the token; it is not deleted yet: this computer's daemon needs you to allow it in the Keychain"
     )]
     TokenRefusedKept,
 }
 
-/// Why the push loop ended.
 #[derive(Debug, PartialEq, Eq)]
 enum PushEnd {
-    /// Sampling closed its side.
     SamplingStopped,
-    /// The hub refused the token, and the run ends on a refusal.
     TokenRefused,
 }
 
-/// Samples and pushes until `stop` completes. With `hosted_hub`, the folder of the data of a
-/// hosted hub, it reads that container and not the machine (HMD-071), and a refused token ends
-/// the run: the token is deleted, so the next start of the hub enrols again (HM-T35).
+/// With `hosted_hub` it reads that container, not the machine (HMD-071), and a refused token ends the run (HM-T35).
 ///
 /// # Errors
-/// [`RunError`] when the daemon is not enrolled or its files or client cannot be set up, when
-/// sampling ends before `stop` (the service manager then restarts the daemon), or, with
-/// `hosted_hub`, when the hub refuses the token.
+/// [`RunError`] when setup fails, sampling ends before `stop`, or with `hosted_hub` the hub refuses the token.
 pub async fn run(
     home: &Home,
     hosted_hub: Option<PathBuf>,
@@ -146,16 +132,12 @@ pub async fn run(
     sampling.abort();
     // Aborting drops a probe that is running, and its child with it (`kill_on_drop`).
     probing.abort();
-    // A read in progress runs on a blocking thread, which an abort does not stop: the flag
-    // ends it between two lines, so the daemon stops at once.
+    // A read on a blocking thread ignores an abort; the flag ends it between two lines.
     stopping.store(true, Ordering::Relaxed);
     usage.abort();
     outcome
 }
 
-/// The pusher for the enrolled device, from the configuration and the `credential` that the
-/// token store held. An old enrolment moves to the socket of the link first, when it can
-/// ([`old_origin`]).
 #[cfg_attr(
     windows,
     expect(
@@ -191,9 +173,7 @@ async fn prepare(
     ))
 }
 
-/// Deletes the token that the hub refused; the key cache went with the refusal (R-147). A
-/// delete that waits for the person in the Keychain is logged and marked for the app, and the
-/// run ends as for any refused token: the token stays until a later delete or enrolment.
+/// The key cache went with the refusal (R-147); a delete that waits in the Keychain leaves the token stored.
 fn forget_refused(home: &Home) -> RunError {
     refusal_end(TokenStore::open(home).forget(), || {
         if let Err(error) = crate::keychain_wait::mark(home, true) {
@@ -202,8 +182,6 @@ fn forget_refused(home: &Home) -> RunError {
     })
 }
 
-/// The end of a run whose token the hub refused, from `forgot`, the delete of that token;
-/// `mark` puts the mark for the app when the delete waits for the person.
 fn refusal_end(forgot: Result<(), TokenStoreError>, mark: impl FnOnce()) -> RunError {
     match forgot {
         Ok(()) => RunError::TokenRefused,
@@ -216,7 +194,6 @@ fn refusal_end(forgot: Result<(), TokenStoreError>, mark: impl FnOnce()) -> RunE
     }
 }
 
-/// Every 2 seconds: read, make a sample, and send the point each 10-second window closes.
 async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
     let mac = matches!(source, Source::Machine(Platform::Macos));
     let gpus = source.has_gpus();
@@ -255,9 +232,6 @@ async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
     }
 }
 
-/// At start and every 15 minutes: probes the tools and reads the hardware values, and hands
-/// each over when it changed or went 24 hours unannounced (CAP-027). A probe run waits for the one before; a slow
-/// one delays the next.
 async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
     let mut watch = InventoryWatch::new();
     let mut hardware = Announced::new();
@@ -280,7 +254,6 @@ async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
     }
 }
 
-/// The GPUs found last, and when to look again.
 struct Watch {
     found: Discovery,
     next: Instant,
@@ -296,15 +269,13 @@ impl Watch {
         now >= self.next
     }
 
-    /// Keeps `again`, and looks again soon only if it lost GPUs (MET-006).
     fn replace(&mut self, again: Discovery, now: Instant) {
         self.next = again.next_at(now, Some(&self.found));
         self.found = again;
     }
 }
 
-/// Finds the GPUs and tells the pusher the whole set, `[]` included (K8 Section 4). With
-/// `look` false (a hosted hub) it finds none.
+/// Tells the pusher the whole set, `[]` included (K8 Section 4).
 async fn discover(mac: bool, look: bool, events: &mpsc::Sender<Event>) -> Discovery {
     let read = if look {
         gpu::read(gpu::Sources::ALL, mac).await
@@ -316,8 +287,6 @@ async fn discover(mac: bool, look: bool, events: &mpsc::Sender<Event>) -> Discov
     found
 }
 
-/// Keeps what sampling sends and pushes it every 10 seconds, or after the wait a failure asks.
-/// With `refusal_ends`, a refused token ends it; otherwise pushing waits and tries again.
 async fn push(
     mut pusher: Pusher,
     mut events: mpsc::Receiver<Event>,

@@ -1,5 +1,4 @@
-//! The Linux key store: `keys` in the daemon's folder, beside `token`, mode 0600, replaced by
-//! rename (K-E5 Section 2.1).
+//! The Linux key store (K-E5 Section 2.1).
 
 use std::io;
 use std::path::PathBuf;

@@ -1,11 +1,9 @@
-//! Fills the binary's path into the unit texts (MET-019): the path is checked first, so a
-//! hostile or odd path never reaches a file that systemd or launchd reads.
+//! The binary's path is checked before it goes into a unit text (MET-019).
 
 use std::path::Path;
 
 use super::{LAUNCH_AGENT, SYSTEMD_SYSTEM, SYSTEMD_USER};
 
-/// Which unit file to make.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Unit {
     SystemdUser,
@@ -23,15 +21,12 @@ pub enum RenderError {
     Template,
 }
 
-/// A path to the binary that is safe to write into a unit: absolute, and made only of
-/// characters that systemd (`%`, `$`, quotes, spaces, backslash) and XML never treat as syntax.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Program<'a>(&'a str);
 
 impl<'a> Program<'a> {
     /// # Errors
-    /// [`RenderError::Path`] for a path that is relative, not UTF-8, empty of a name, has a
-    /// `..` part, or holds a character outside `A-Za-z0-9/._+-` (a newline included).
+    /// [`RenderError::Path`] for a path that is not absolute and plain.
     pub(super) fn parse(path: &'a Path) -> Result<Self, RenderError> {
         let text = path.to_str().ok_or(RenderError::Path)?;
         let plain = text
@@ -54,7 +49,6 @@ impl<'a> Program<'a> {
     }
 }
 
-/// What the template names the binary as, and the text around it that must stay.
 struct Slot {
     template: &'static str,
     before: &'static str,
@@ -85,8 +79,6 @@ const fn slot(unit: Unit) -> Slot {
     }
 }
 
-/// The unit text with `program` in place of the template's path.
-///
 /// # Errors
 /// [`RenderError::Template`] when the template does not hold the placeholder exactly once.
 pub(super) fn render(unit: Unit, program: &Program<'_>) -> Result<String, RenderError> {

@@ -1,21 +1,12 @@
-//! Readers of the batteries that power a device (MET-032, CAP-004): the files of one Linux
-//! `/sys/class/power_supply` entry and the output of macOS `pmset -g batt`.
-//!
-//! The rules follow the reader of the OS stream (`experiments/anima-os/telemetry/readings.py`):
-//! an entry is a battery of the device only when its `type` is `Battery`, its `scope` is not
-//! `Device` (a mouse, a keyboard) and `present` is not `0`; the charge is kept only from 0 to 100.
-//! The text is the device's: nothing here panics on it, and a value that does not read is left
-//! out rather than guessed.
+//! Readers of the batteries that power a device (MET-032, CAP-004). The text is the device's:
+//! nothing here panics on it, and a value that does not read is left out rather than guessed.
 
 use super::{label, lines, number};
 
-/// The most batteries one device lists (K8 Section 4).
 pub const MAX_BATTERIES: usize = 8;
 
-/// Where Linux lists its power supplies, one folder each.
 pub const POWER_SUPPLY: &str = "/sys/class/power_supply";
 
-/// The files of one power supply that [`linux_battery`] reads.
 pub const SUPPLY_FILES: [&str; 11] = [
     "type",
     "scope",
@@ -30,23 +21,19 @@ pub const SUPPLY_FILES: [&str; 11] = [
     "charge_full_design",
 ];
 
-/// The arguments of `pmset`, the macOS command that lists the power sources.
 pub const PMSET_ARGS: [&str; 2] = ["-g", "batt"];
 
-/// The longest time left kept, in seconds: the hub keeps it as a 32-bit integer (K8 Section 4).
+/// The hub keeps it as a 32-bit integer (K8 Section 4).
 const MAX_SECONDS_LEFT: u32 = i32::MAX.unsigned_abs();
 
-/// The start of the name `pmset` gives the battery inside the computer; a UPS it lists is
-/// another device's battery.
+/// A UPS that `pmset` lists is another device's battery.
 const INTERNAL_BATTERY: &str = "InternalBattery";
 
-/// What a battery is doing (MET-032).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum BatteryState {
     Charging,
     Discharging,
     Full,
-    /// On mains, not charged.
     NotCharging,
     Unknown,
 }
@@ -64,7 +51,6 @@ impl BatteryState {
         }
     }
 
-    /// The state stored as `text`; `None` for text no state has.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         [
@@ -78,7 +64,6 @@ impl BatteryState {
         .find(|state| state.as_str() == text)
     }
 
-    /// The state of a Linux `status` file.
     fn of_status(text: &str) -> Self {
         match text {
             "Charging" => Self::Charging,
@@ -89,7 +74,6 @@ impl BatteryState {
         }
     }
 
-    /// The state `pmset` writes after the charge.
     fn of_pmset(text: &str) -> Self {
         match text {
             "charging" | "finishing charge" => Self::Charging,
@@ -101,21 +85,18 @@ impl BatteryState {
     }
 }
 
-/// One battery that powers the device (MET-032).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Battery {
     /// The name the system gives it (`BAT0`, `InternalBattery-0`), a series label.
     pub name: String,
-    /// The charge, 0 to 100; `None` when the system gave none that reads.
     pub percent: Option<f64>,
     pub state: BatteryState,
-    /// The time to empty while it discharges or to full while it charges, at most `i32::MAX`.
+    /// To empty while it discharges, to full while it charges.
     pub seconds_left: Option<u32>,
     /// The capacity when full against the capacity of its design, 0 to 100.
     pub health_percent: Option<u8>,
 }
 
-/// The batteries in `found`, by name (bytewise), each once, at most [`MAX_BATTERIES`].
 #[must_use]
 pub fn batteries(found: impl IntoIterator<Item = Battery>) -> Vec<Battery> {
     let mut kept: Vec<Battery> = found.into_iter().collect();
@@ -125,9 +106,7 @@ pub fn batteries(found: impl IntoIterator<Item = Battery>) -> Vec<Battery> {
     kept
 }
 
-/// The battery that the power supply `name` is, from `files`: each of [`SUPPLY_FILES`] that
-/// could be read, with its text. `None` when it is not a battery of the device or its name
-/// cannot be a label.
+/// `files` holds each of [`SUPPLY_FILES`] that could be read, with its text.
 #[must_use]
 pub fn linux_battery(name: &str, files: &[(&str, &str)]) -> Option<Battery> {
     let file = |wanted: &str| {
@@ -159,8 +138,6 @@ pub fn linux_battery(name: &str, files: &[(&str, &str)]) -> Option<Battery> {
     })
 }
 
-/// The batteries inside the computer that `pmset -g batt` lists; `None` when the output is not
-/// that command's (it always starts with the source it draws from).
 #[must_use]
 pub fn pmset(output: &[u8]) -> Option<Vec<Battery>> {
     let mut rows = lines(output);
@@ -199,7 +176,6 @@ fn pmset_battery(line: &str) -> Option<Battery> {
     })
 }
 
-/// `H:MM remaining` as seconds; `(no estimate)` and other text give `None`.
 fn clock_left(text: &str) -> Option<u32> {
     let (clock, after) = text.split_once(' ')?;
     if !after.starts_with("remaining") {
@@ -216,13 +192,11 @@ fn clock_left(text: &str) -> Option<u32> {
     )
 }
 
-/// A charge of 0 to 100.
 fn percent(text: &str) -> Option<f64> {
     number(text.trim()).filter(|value| *value <= 100.0)
 }
 
-/// A time left of 1 second to [`MAX_SECONDS_LEFT`]; 0 is what a driver writes when it has no
-/// estimate.
+/// 0 is what a driver writes when it has no estimate.
 fn seconds_left(text: &str) -> Option<u32> {
     text.trim()
         .parse::<u32>()
@@ -230,8 +204,6 @@ fn seconds_left(text: &str) -> Option<u32> {
         .filter(|seconds| (1..=MAX_SECONDS_LEFT).contains(seconds))
 }
 
-/// The capacity when full against the design capacity, held to at most 100; `None` without a
-/// design capacity above zero.
 fn health_percent(full: Option<&str>, design: Option<&str>) -> Option<u8> {
     let full: u64 = full?.parse().ok()?;
     let design: u64 = design?.parse().ok().filter(|design| *design > 0)?;

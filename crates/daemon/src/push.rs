@@ -1,7 +1,4 @@
-//! The daemon's buffer and its pushes: points wait here until the hub accepts them (MET-013,
-//! MET-014, K8 Sections 5 to 7). The decisions are in [`pacing`](crate::push::pacing),
-//! [`renewal`](crate::push::renewal) and [`answer`](crate::hub::answer); this module carries them out and
-//! logs the changes of state (never a token or a body, LOG-007).
+//! The daemon's buffer: points wait here until the hub accepts them; no log holds a token or a body (MET-013, MET-014, LOG-007).
 
 pub mod accounts;
 pub mod pacing;
@@ -39,7 +36,6 @@ use usage::UsageBacklog;
 /// The version of this daemon, sent with each batch (R-122); `build.rs` sets it for a release.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// What the sampling side hands the pusher.
 pub enum Event {
     Point(Point),
     /// The GPUs found at start or at a discovery; sent in the next batch (K8 Section 4).
@@ -56,33 +52,23 @@ pub enum Event {
     AgentUsage(UsageReport),
 }
 
-/// Everything the pusher keeps between pushes.
 pub struct Pusher {
     hub: HubClient,
     device: Uuid,
     credential: Credential,
     store: TokenStore,
     backlog: Backlog,
-    /// The GPUs, drives, batteries and inventory waiting to ride along with the next batch.
     announced: Announcements,
-    /// The agent usage waiting for the hub, a part of it in each batch.
     usage: UsageBacklog,
     backoff: Backoff,
-    /// The largest batch to try; smaller after `TOO_LARGE`.
     limit: usize,
-    /// When a refused token is tried again; `Some` while pushing is stopped.
     stopped_until: Option<DateTime<Utc>>,
     renewal_tried: Option<DateTime<Utc>>,
-    /// Where the spread of each retry wait comes from: a number from 0 to 1.
     spread: fn() -> f64,
-    /// The operational key cache; `None` for a pusher that keeps none and sends no `keys`.
     keys: Option<Keeper>,
-    /// A renewed token whose save waits for the person in the Keychain; not used until stored.
+    /// A renewed token whose save waits in the Keychain; not used until stored.
     unstored: Option<Unstored>,
-    /// The daemon's folder, where [`MARK`](crate::keychain_wait::MARK) tells the app that a
-    /// call of the Keychain waits.
     marks: Option<Home>,
-    /// Whether this pusher put the mark.
     marked: bool,
 }
 
@@ -109,9 +95,7 @@ impl Pusher {
         }
     }
 
-    /// The same pusher, which puts [`MARK`](crate::keychain_wait::MARK) in `home` while the
-    /// save of a renewed token or a call of the key store waits for the person in the
-    /// Keychain (R-322).
+    /// Puts [`MARK`](crate::keychain_wait::MARK) in `home` while a Keychain call waits for the person (R-322).
     #[must_use]
     pub fn with_marks(self, home: Home) -> Self {
         Self {
@@ -120,8 +104,7 @@ impl Pusher {
         }
     }
 
-    /// The same pusher with the operational key cache of `keeper`: each batch says what it
-    /// holds, and each answer that names the keys updates it (K-E5 Section 2.1).
+    /// Each batch says what the key cache holds; each answer that names the keys updates it (K-E5 Section 2.1).
     #[must_use]
     pub fn with_keys(self, keeper: Keeper) -> Self {
         Self {
@@ -130,13 +113,11 @@ impl Pusher {
         }
     }
 
-    /// The same pusher with its retry waits spread by `spread` instead of the OS random source.
     #[must_use]
     pub fn with_spread(self, spread: fn() -> f64) -> Self {
         Self { spread, ..self }
     }
 
-    /// Takes what sampling produced.
     pub fn accept(&mut self, event: Event) {
         match event {
             Event::Point(point) => self.backlog.push(point),
@@ -155,8 +136,7 @@ impl Pusher {
         self.stopped_until.is_some()
     }
 
-    /// One round at `now`: renew when due, drop stale points, then send batches oldest first
-    /// until none is left or one fails. Returns how long to wait before the next round.
+    /// One round: renew when due, drop stale points, send batches oldest first; returns the wait before the next.
     pub async fn push_due(&mut self, now: DateTime<Utc>) -> Duration {
         if let Some(keys) = &mut self.keys {
             keys.tend(now).await;
@@ -185,7 +165,6 @@ impl Pusher {
         }
     }
 
-    /// Sends one batch of at most `count` points and acts on the answer.
     async fn send(&mut self, count: usize, now: DateTime<Utc>) -> Round {
         let mut count = count;
         loop {
@@ -219,10 +198,7 @@ impl Pusher {
                 Action::Drop(code) => {
                     report::batch_dropped(code, count);
                     self.backlog.remove_through(receipt);
-                    // A refused list would ride along again and sink every later batch until
-                    // the next discovery; the hub keeps the GPUs it has (K8 Section 4). Any
-                    // MALFORMED clears the lists, so a correct one in a batch refused for its
-                    // points also waits for the next discovery or change.
+                    // A refused list would ride along and sink every later batch; the hub keeps what it has (K8 Section 4).
                     if code == RefusalCode::Malformed {
                         self.announced = Announcements::default();
                         self.usage.done();
@@ -244,7 +220,6 @@ impl Pusher {
         }
     }
 
-    /// Updates the key cache from the hub's `Accepted`, when it named the keys.
     async fn follow_keys(&mut self, accepted: PushAccepted, now: DateTime<Utc>) {
         let (Some(keys), Some(current)) = (&mut self.keys, accepted.keys) else {
             return;
@@ -277,8 +252,7 @@ impl Pusher {
         self.backoff.recovered();
     }
 
-    /// Stops pushing for 10 minutes. Logs only when it was pushing before (K8 Section 6). A
-    /// refused token also deletes the whole key cache (R-147).
+    /// A refused token also deletes the whole key cache (R-147).
     async fn stop(&mut self, code: RefusalCode, now: DateTime<Utc>) -> Duration {
         if self.stopped_until.is_none() {
             report::token_refused(code);
@@ -293,10 +267,7 @@ impl Pusher {
         RHYTHM
     }
 
-    /// When the token store holds another token than the one in use, issued by the same hub,
-    /// takes it and resumes. A token bound to another hub is never taken: it would be sent
-    /// to this one. A renewed token whose save waited goes with it: the store holds either
-    /// that token, stored late, or a newer one.
+    /// Takes a changed token from the store, never one bound to another hub, which it would send to this one.
     async fn adopt_changed_token(&mut self) -> bool {
         let store = self.store.clone();
         let Ok(Some(stored)) = keychain_wait::off_loop(move || store.load()).await else {
@@ -314,8 +285,7 @@ impl Pusher {
     }
 }
 
-/// A number from 0 to 1 from the OS random source; the middle, which keeps the step, when the
-/// source fails, since a retry wait need not be secret.
+/// The middle when the OS source fails, since a retry wait need not be secret.
 fn os_spread() -> f64 {
     let mut bytes = [0_u8; 4];
     match getrandom::fill(&mut bytes) {
@@ -325,7 +295,6 @@ fn os_spread() -> f64 {
 }
 
 enum Round {
-    /// A batch left the buffer; the next goes at once.
     Sent,
     Wait(Duration),
 }

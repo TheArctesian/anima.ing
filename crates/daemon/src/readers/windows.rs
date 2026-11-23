@@ -1,5 +1,4 @@
-//! Native Windows counters. Missing OS concepts (Unix load averages) remain absent.
-//! Keep CPU history across samples; the first sample has no fabricated CPU percentage.
+//! Native Windows counters; Unix load averages stay absent and the first sample has no CPU percentage.
 use daemon_core::readings::{Cpu, Disk, Interface, Memory, Reading};
 use std::sync::{Mutex, OnceLock};
 use sysinfo::{CpuRefreshKind, Disks, Networks, RefreshKind, System};

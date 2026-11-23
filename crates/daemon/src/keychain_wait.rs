@@ -1,16 +1,4 @@
-//! A Keychain call that cannot hold the daemon for ever (R-322). macOS asks the person before
-//! a program that is not on the access list of an item reads, writes or deletes it; an ad hoc
-//! signed build is a new program at each build, so its call can wait for a click that never
-//! comes, and the OS call has no timeout.
-//!
-//! The call runs on a thread of its own and the caller waits [`DEADLINE`] at most. The blocked
-//! OS call cannot be cancelled, so a call that passed its deadline is left to end; the next
-//! call on the same item waits for that one and starts no second thread. So one OS call is in
-//! flight for each item, reads and writes together. The answer that the person gives late to
-//! a read is the answer of the next read; a write always runs after the call in flight ends,
-//! as its bytes may be newer. While the daemon waits, the file [`MARK`] in its folder tells
-//! the app (which cannot ask the hub for it: without the token the daemon cannot reach the
-//! hub).
+//! Keychain calls bounded by [`DEADLINE`]: macOS can wait for a click that never comes (R-322).
 
 use std::io;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
@@ -26,40 +14,29 @@ mod tries;
 
 pub use tries::{Tries, next_try};
 
-/// How long a caller waits for one Keychain call. An allowed call ends in milliseconds, and
-/// the first unlock of the login keychain in a second or two; a prompt that nobody answers
-/// never ends. 5 s is well above the first and keeps `install` far below the 30 s of one
-/// step and the deadline of the app (R-322).
+/// Well above the first unlock of the login keychain, below one 30 s step and the app's deadline (R-322).
 pub const DEADLINE: Duration = Duration::from_secs(5);
 
-/// The file in the daemon's folder that is there while the daemon waits for the person to
-/// allow it in the Keychain. Empty: its presence is the state.
+/// Present in the daemon's folder while the daemon waits for the person in the Keychain; the app reads it.
 pub const MARK: &str = "keychain-waits";
 
-/// The least time that a call gets after the call in flight answered late, so that a call
-/// that waited behind it is not given up at once (at most the caller's deadline).
+/// The least time a call gets after the call in flight answered late, so a waiting call is not given up at once.
 const LEAST: Duration = Duration::from_secs(1);
 
-/// What one read of an item gives: its bytes, `None` when there is no item, or the error as
-/// text, so that it crosses the thread.
+/// The error is text so that it crosses the thread.
 pub type Read = Result<Option<Zeroizing<Vec<u8>>>, String>;
 
-/// What one write or delete of an item gives: the error as text.
 pub type Written = Result<(), String>;
 
-/// The answer of the OS call in flight: a read, or a write or delete.
 enum Answer {
     Read(Read),
     Written(Written),
 }
 
-/// Why a bounded call gave no answer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum Unanswered {
-    /// The call did not end by its deadline: macOS waits for the person.
     #[error("the Keychain waits for the person to allow this program")]
     Waits,
-    /// The thread of the call ended with no answer, or could not start.
     #[error("the Keychain call ended with no answer")]
     Lost,
 }
@@ -77,13 +54,10 @@ impl Calls {
         }
     }
 
-    /// The answer of `call`, run on a thread of its own, or of the read that is still in
-    /// flight (then `call` is not run). After a write in flight, `call` runs once it ended.
-    /// Waits `deadline` at most.
+    /// The answer of `call`, or of a read still in flight, which then serves this one.
     ///
     /// # Errors
-    /// [`Unanswered::Waits`] when no answer came by `deadline`; the OS call stays in flight.
-    /// [`Unanswered::Lost`] when its thread ended with no answer.
+    /// [`Unanswered::Waits`] when no answer came by `deadline`; [`Unanswered::Lost`] when none came.
     pub fn read(
         &self,
         deadline: Duration,
@@ -96,13 +70,10 @@ impl Calls {
         self.run::<_, true>(deadline, move || Answer::Read(call()), read)
     }
 
-    /// The answer of `call`, a write or a delete, run on a thread of its own once the call in
-    /// flight, if any, ended. Waits `deadline` at most, for the two together.
+    /// Runs `call` once the call in flight ended; `deadline` bounds the two together.
     ///
     /// # Errors
-    /// [`Unanswered::Waits`] when no answer came by `deadline`: the call in flight is still
-    /// blocked and `call` is never run, or `call` is blocked and stays in flight.
-    /// [`Unanswered::Lost`] when its thread ended with no answer.
+    /// [`Unanswered::Waits`] when no answer came by `deadline`; [`Unanswered::Lost`] when none came.
     pub fn write(
         &self,
         deadline: Duration,
@@ -115,9 +86,6 @@ impl Calls {
         self.run::<_, false>(deadline, move || Answer::Written(call()), written)
     }
 
-    /// Waits for the call in flight; gives its answer when `LATE` and `kind` takes it, else
-    /// runs `call` in the time that is left of `deadline`, and at least in [`LEAST`] (never
-    /// more than `deadline`).
     fn run<R, const LATE: bool>(
         &self,
         deadline: Duration,
@@ -164,8 +132,7 @@ impl Default for Calls {
     }
 }
 
-/// Runs `call` on a new thread and gives the receiver of its answer. A thread that cannot
-/// start drops the sender, and the receiver then reads [`Unanswered::Lost`].
+/// A thread that cannot start drops the sender, so the receiver reads [`Unanswered::Lost`].
 fn start<T: Send + 'static>(call: impl FnOnce() -> T + Send + 'static) -> Receiver<T> {
     let (sender, answer) = mpsc::sync_channel(1);
     let started = thread::Builder::new()
@@ -178,18 +145,13 @@ fn start<T: Send + 'static>(call: impl FnOnce() -> T + Send + 'static) -> Receiv
     answer
 }
 
-/// Runs `call`, a store call that can take its whole deadline, on a blocking thread of the
-/// async runtime, so that the async loop (the stop signal, the link) goes on meanwhile. A
-/// panic of `call` goes on in the caller.
+/// Runs a store call that can take its whole deadline off the async loop; a panic of `call` goes on in the caller.
 pub async fn off_loop<T: Send + 'static>(call: impl FnOnce() -> T + Send + 'static) -> T {
     tokio::task::spawn_blocking(call)
         .await
         .unwrap_or_else(|ended| std::panic::resume_unwind(ended.into_panic()))
 }
 
-/// Puts [`MARK`] in the daemon's folder when `waits`, and takes it away when not. A mark that
-/// is already in that state is not an error.
-///
 /// # Errors
 /// The I/O error of the folder or the file.
 pub fn mark(home: &Home, waits: bool) -> io::Result<()> {
@@ -229,7 +191,6 @@ mod tests {
         })
     }
 
-    /// A call that counts itself in `calls`, then blocks until `click` is sent or dropped.
     fn blocked<T: Send + 'static>(
         calls: &Arc<AtomicUsize>,
         answer: T,

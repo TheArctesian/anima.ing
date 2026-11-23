@@ -1,6 +1,3 @@
-//! The drive list in a batch: sent once after it changed, kept until a 204 or a `MALFORMED`
-//! (MET-027, K8 Section 4).
-
 use anima_daemon::push::Event;
 use daemon_core::wire::{BatchDrive, DriveKind};
 

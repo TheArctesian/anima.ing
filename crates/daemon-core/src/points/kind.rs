@@ -1,7 +1,4 @@
-//! What a series measures: the one list of stored kind names (MET-002, K8 Section 4).
-
-/// What a series measures. Stored and sent as [`Kind::as_str`] (`series.kind`, K8 Section 4).
-/// The hub's `MetricKind` is the API's view of the same list.
+/// What a series measures (MET-002, K8 Section 4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Kind {
     CpuPercent,
@@ -20,7 +17,7 @@ pub enum Kind {
     VramBytes,
     GpuTemperatureC,
     GpuPowerW,
-    /// Memory in use by a unified-memory GPU (Apple). Never a VRAM value (MET-007, R-092 D-6).
+    /// Memory in use by a unified-memory GPU (Apple), never VRAM (MET-007, R-092 D-6).
     GpuMemoryBytes,
     /// Bytes read from one drive per second (MET-028).
     DiskReadBps,
@@ -33,7 +30,6 @@ pub enum Kind {
 }
 
 impl Kind {
-    /// Every kind, in the order of the list above.
     pub const ALL: [Self; 21] = [
         Self::CpuPercent,
         Self::MemoryPercent,
@@ -86,7 +82,6 @@ impl Kind {
         }
     }
 
-    /// The kind stored as `text`; `None` for text no kind has.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|kind| kind.as_str() == text)
@@ -107,9 +102,7 @@ impl Kind {
         )
     }
 
-    /// Whether a series of this kind has a label: the mount point of a disk kind, the
-    /// interface name of a network kind, the drive name of a drive kind or the battery name of
-    /// `battery_percent` (K8 Section 4).
+    /// Whether a series of this kind has a label: a mount point, interface, drive or battery name.
     #[must_use]
     pub const fn is_labelled(self) -> bool {
         matches!(
@@ -139,8 +132,7 @@ impl Kind {
         )
     }
 
-    /// Whether a point of this kind also holds the highest sample of its window: CPU and GPU
-    /// use only (MET-014, K8 Section 4).
+    /// Whether a point of this kind also holds the highest sample of its window (MET-014).
     #[must_use]
     pub const fn has_max(self) -> bool {
         matches!(self, Self::CpuPercent | Self::GpuPercent)

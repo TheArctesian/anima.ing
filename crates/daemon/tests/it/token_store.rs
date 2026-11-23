@@ -1,6 +1,4 @@
-//! The Linux token file: mode 0600, owned by the user, replaced by rename; and the folder and
-//! config file held to the same rules, since they decide where the bearer goes (MET-013,
-//! MET-020, K8 Section 2).
+//! MET-013, MET-020, K8 Section 2.
 
 use std::fs;
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};

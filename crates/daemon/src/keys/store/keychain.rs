@@ -1,5 +1,4 @@
-//! The macOS key store: one generic password in the login Keychain, beside the token's item
-//! (K-E5 Section 2.1). Each read, write and delete is bounded ([`crate::keychain_wait`]).
+//! The macOS key store: one generic password in the login Keychain (K-E5 Section 2.1).
 
 use keyring::Entry;
 use zeroize::Zeroizing;
@@ -39,7 +38,6 @@ impl Backend {
         reason = "same signature as the file backend on other systems"
     )]
     pub fn write(&self, bytes: &[u8]) -> Result<(), KeyStoreError> {
-        // The record is JSON, so always UTF-8; anything else is never written.
         let text = std::str::from_utf8(bytes)
             .map_err(|_| KeyStoreError::Keychain("the record is not text".to_owned()))?;
         let text = Zeroizing::new(text.to_owned());
@@ -61,7 +59,7 @@ impl Backend {
     }
 }
 
-/// One read of the item, on the thread of [`CALLS`]: it can wait for the person for ever.
+/// It can wait for the person for ever, so it runs on the thread of [`CALLS`].
 fn read_now() -> Read {
     match entry()?.get_password() {
         Ok(text) => Ok(Some(Zeroizing::new(text.into_bytes()))),
@@ -70,13 +68,10 @@ fn read_now() -> Read {
     }
 }
 
-/// One write of the item, on the thread of [`CALLS`].
 fn write_now(record: &str) -> Written {
     entry()?.set_password(record).map_err(|error| text(&error))
 }
 
-/// One delete of the item, on the thread of [`CALLS`]; an item that is not there is not an
-/// error.
 fn delete_now() -> Written {
     match entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
@@ -95,8 +90,7 @@ fn unanswered(error: Unanswered) -> KeyStoreError {
     }
 }
 
-/// The Keychain's error as text. An item that is not UTF-8 is named by a fixed sentence: that
-/// error carries the item's bytes, which may be a value (LOG-007).
+/// `BadEncoding` carries the item's bytes, which may be a value (LOG-007).
 fn text(error: &keyring::Error) -> String {
     match error {
         keyring::Error::BadEncoding(_) => "the item is not text".to_owned(),

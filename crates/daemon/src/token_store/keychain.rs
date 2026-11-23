@@ -1,7 +1,5 @@
 //! The macOS token store: one generic password in the login Keychain (MET-013).
-//!
-//! Compiled only on macOS. Each read, write and delete is bounded ([`crate::keychain_wait`]):
-//! a call that macOS holds for the person is [`TokenStoreError::KeychainWaits`].
+//! A call that macOS holds for the person is [`TokenStoreError::KeychainWaits`].
 
 use std::time::Duration;
 
@@ -37,8 +35,7 @@ impl Backend {
             .map_err(TokenStoreError::Keychain)
     }
 
-    /// Writes the record. A `fresh` write (enrolment) deletes the item first, so the new item
-    /// gets a fresh access list rather than inheriting one a stale program was added to.
+    /// A `fresh` write deletes the item first, so it does not inherit an access list a stale program was added to.
     #[expect(
         clippy::unused_self,
         reason = "same signature as the file backend on other systems"
@@ -57,7 +54,6 @@ impl Backend {
             .map_err(TokenStoreError::Keychain)
     }
 
-    /// Deletes the item; an item that is not there is not an error.
     #[expect(
         clippy::unused_self,
         reason = "same signature as the file backend on other systems"
@@ -79,7 +75,6 @@ fn read_now() -> Read {
     }
 }
 
-/// One write of the item, on the thread of [`CALLS`]; `fresh` deletes it first.
 fn write_now(text: &str, fresh: bool) -> Written {
     if fresh {
         delete_now()?;
@@ -89,7 +84,6 @@ fn write_now(text: &str, fresh: bool) -> Written {
         .map_err(|error| error.to_string())
 }
 
-/// One delete of the item, on the thread of [`CALLS`].
 fn delete_now() -> Written {
     match entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
