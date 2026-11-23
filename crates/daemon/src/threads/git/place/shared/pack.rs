@@ -23,9 +23,10 @@ use super::{LONG, failed};
 const MOST_PACKS: usize = 16;
 
 /// What each run of a thread gets before its own arguments, where it wins over each file of
-/// configuration.
-const CLOSED: [&str; 14] = [
-    "--no-lazy-fetch",
+/// configuration. Only options that the oldest `git` of a supported system knows: `git` 2.43
+/// (Ubuntu 24.04) refuses `--no-lazy-fetch`, so the fetch of a missing object is closed by the
+/// environment ([`QUIET`]) and, for a `git` that does not read it, by `protocol.allow`.
+const CLOSED: [&str; 13] = [
     "--no-optional-locks",
     "--no-pager",
     "-c",
@@ -42,6 +43,8 @@ const CLOSED: [&str; 14] = [
 ];
 
 /// The environment of each run of a thread: no fetch of a missing object, no prompt.
+/// `GIT_NO_LAZY_FETCH` is what `--no-lazy-fetch` sets in `git` 2.44 and later, and it also
+/// reaches each `git` that this one starts.
 const QUIET: [(&str, &str); 3] = [
     ("GIT_NO_LAZY_FETCH", "1"),
     ("GIT_TERMINAL_PROMPT", "0"),
