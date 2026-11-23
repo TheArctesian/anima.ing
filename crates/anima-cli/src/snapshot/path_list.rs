@@ -1,11 +1,7 @@
-//! Paths as a message names them. Pure.
-
 use std::fmt::Write as _;
 
-/// How many paths a message names before it counts the rest.
 const SHOWN: usize = 20;
 
-/// The first 20 paths, then "and N more".
 #[must_use]
 pub fn shown(paths: &[String]) -> String {
     let mut text = paths

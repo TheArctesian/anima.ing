@@ -1,5 +1,4 @@
-//! `anima context`: a round trip through `config.json`, and which hub a command then talks to
-//! (CMD-013, CMD-015).
+//! `anima context` (CMD-013, CMD-015).
 
 use serde_json::json;
 

@@ -1,14 +1,11 @@
-//! What git prints about a remote, read without trusting it: the refs of `ls-remote`, the
-//! result lines of `push --porcelain`, and error text made safe to show.
+//! What git prints about a remote, read without trusting it.
 
 use serde::Serialize;
 
 use super::scratch_ref::{PREFIX, ScratchRef, is_hash};
 
-/// How much of git's error text a failure carries.
 const REASON_CHARACTERS: usize = 400;
 
-/// One scratch ref on the remote and the commit it holds.
 #[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct RemoteScratchRef {
     #[serde(rename = "ref")]
@@ -16,9 +13,8 @@ pub struct RemoteScratchRef {
     pub commit: String,
 }
 
-/// The scratch refs in `git ls-remote` output (`<hash>\t<ref>` lines). A line that is not a
-/// hash and a safe ref under [`PREFIX`] is left out: git matches its pattern against the end
-/// of a ref, so `refs/x/refs/anima/wip/y` would match too.
+/// Only refs under [`PREFIX`]: git matches the pattern against the end of a ref, so
+/// `refs/x/refs/anima/wip/y` matches too.
 #[must_use]
 pub fn scratch_refs(stdout: &str) -> Vec<RemoteScratchRef> {
     stdout
@@ -34,7 +30,6 @@ pub fn scratch_refs(stdout: &str) -> Vec<RemoteScratchRef> {
         .collect()
 }
 
-/// Why `git push --porcelain` refused a ref: the text of its first `!` line.
 #[must_use]
 pub fn rejection(stdout: &str) -> Option<String> {
     stdout.lines().find_map(|line| {
@@ -44,8 +39,7 @@ pub fn rejection(stdout: &str) -> Option<String> {
     })
 }
 
-/// git's error text, safe to show: the last lines, the user and password of every URL taken
-/// out (LOG-007), and at most 400 characters.
+/// git's error text with the credentials of every URL taken out (LOG-007).
 #[must_use]
 pub fn safe(stderr: &str) -> String {
     let lines: Vec<&str> = stderr
@@ -70,7 +64,6 @@ pub fn safe(stderr: &str) -> String {
     }
 }
 
-/// `line` with each `scheme://user:password@host` written as `scheme://***@host`.
 fn without_credentials(line: &str) -> String {
     let mut out = String::with_capacity(line.len());
     let mut rest = line;

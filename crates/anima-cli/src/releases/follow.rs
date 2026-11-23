@@ -1,5 +1,4 @@
-//! `anima release log --follow <job id>`: the log lines of a build job as they arrive, until the
-//! job is published, failed or cancelled (K1 `buildJobUpdated`, BLD-081).
+//! `anima release log --follow` (K1 `buildJobUpdated`, BLD-081).
 
 use super::documents::{BuildJobUpdated, build_job_updated};
 use crate::failure::Failure;
@@ -10,8 +9,7 @@ use crate::output::text::enum_name;
 
 type State = build_job_updated::BuildJobState;
 
-/// Prints each new log line or, with `--json`, each K1 `BuildJobUpdate` as one object per line.
-/// Ends after the update that puts the job in an end state.
+/// With `--json`, prints each K1 `BuildJobUpdate` as one object per line.
 ///
 /// # Errors
 /// [`Failure`] when the hub refuses the token or the connection is lost.
@@ -49,7 +47,6 @@ fn print(
     Ok(Reader::Open)
 }
 
-/// What to tell the operator when the job has reached an end state.
 fn ending(job: &build_job_updated::BuildJobUpdatedBuildJobUpdatedJob) -> Option<String> {
     if !matches!(
         job.state,

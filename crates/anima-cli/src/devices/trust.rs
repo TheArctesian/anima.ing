@@ -1,5 +1,4 @@
-//! `anima device trust`: accepts a host key or a certificate. The operator always gives the
-//! fingerprint; nothing is accepted on trust alone (SEC-006, SEC-007).
+//! `anima device trust`: the operator gives the fingerprint; nothing is accepted on trust alone (SEC-006, SEC-007).
 
 pub mod accept_certificate;
 pub mod accept_host_key;

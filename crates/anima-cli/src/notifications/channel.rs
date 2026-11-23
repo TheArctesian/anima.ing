@@ -1,5 +1,3 @@
-//! `anima notify channel`: the verbs, and how a channel is named on the command line.
-
 use super::channel_list::ListArgs;
 use super::channel_remove::DeleteArgs;
 use super::channel_test::TestArgs;

@@ -1,11 +1,9 @@
-//! Reading the K1 values of the forge reads for a table. The documents select different parts
-//! of one type, so each is rendered from its JSON.
+//! Forge reads render from JSON, as their documents select different parts of one K1 type.
 
 use serde_json::Value;
 
 use crate::output::{Cell, Tone};
 
-/// The text under `key`, or `-` when it is null or missing.
 #[must_use]
 pub fn text<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or("-")
@@ -16,7 +14,6 @@ pub fn flag(value: &Value, key: &str) -> bool {
     value.get(key).and_then(Value::as_bool).unwrap_or(false)
 }
 
-/// The elements under `key`; none when it is null or missing.
 #[must_use]
 pub fn many<'a>(value: &'a Value, key: &str) -> &'a [Value] {
     value
@@ -25,7 +22,6 @@ pub fn many<'a>(value: &'a Value, key: &str) -> &'a [Value] {
         .map_or(&[], Vec::as_slice)
 }
 
-/// The names under `key` joined with commas; `-` when there are none.
 #[must_use]
 pub fn names(value: &Value, key: &str) -> String {
     let names: Vec<&str> = many(value, key).iter().filter_map(Value::as_str).collect();
@@ -36,7 +32,6 @@ pub fn names(value: &Value, key: &str) -> String {
     }
 }
 
-/// The number under `key`, or `-`.
 #[must_use]
 pub fn number(value: &Value, key: &str) -> String {
     value
@@ -45,7 +40,7 @@ pub fn number(value: &Value, key: &str) -> String {
         .map_or_else(|| "-".to_owned(), |number| number.to_string())
 }
 
-/// The K1 `ChecksState` under `checks` in its colour; `-` when the checks were not asked for.
+/// `-` when the checks were not asked for.
 #[must_use]
 pub fn checks(pull: &Value) -> Cell {
     let Some(checks) = pull.get("checks").filter(|checks| !checks.is_null()) else {

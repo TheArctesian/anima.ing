@@ -1,5 +1,4 @@
-//! `anima device trust accept-host-key`: trusts the SSH host key with this fingerprint, and no
-//! other (SEC-006).
+//! `anima device trust accept-host-key`: trusts only the key with this fingerprint (SEC-006).
 
 use super::documents::{HostKeyAccept, host_key_accept};
 use super::fingerprint;

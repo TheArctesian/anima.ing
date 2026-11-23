@@ -1,9 +1,5 @@
-//! `anima ssh <device>`: a terminal on the device through the hub (K4 Section 8). The hub
-//! holds the credential and pins the host key; this program only relays bytes. Login token
-//! only (INT-003). K4 runs the login shell and nothing else, so there is no `-- <command>`.
-//!
-//! At a terminal the keys go raw and the window size follows the window; with standard input
-//! from a pipe, the input is sent as it is and raw mode is never entered.
+//! `anima ssh` (K4 Section 8), login token only (INT-003): the hub holds the credential and pins
+//! the host key; this program only relays bytes.
 
 pub mod codec;
 pub mod console;

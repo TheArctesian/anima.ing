@@ -1,0 +1,30 @@
+[
+  {
+    "case": "new",
+    "interrupted_handoff": false,
+    "state": "updated",
+    "attempts": 1,
+    "seconds": 0.17
+  },
+  {
+    "case": "crash",
+    "interrupted_handoff": false,
+    "state": "rolled_back",
+    "attempts": 3,
+    "seconds": 6.27
+  },
+  {
+    "case": "silent",
+    "interrupted_handoff": false,
+    "state": "rolled_back",
+    "attempts": 1,
+    "seconds": 2.21
+  },
+  {
+    "case": "crash",
+    "interrupted_handoff": true,
+    "state": "rolled_back",
+    "attempts": 3,
+    "seconds": 6.29
+  }
+]

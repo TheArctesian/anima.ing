@@ -1,6 +1,4 @@
-//! A tool's answer as an MCP result (MCP-010): the value as structured content, or a tool
-//! error (`isError`) with one sentence that says what to do next. No sentence holds the token:
-//! no error the crate makes holds it (CMD-014).
+//! MCP-010; no sentence holds the token, because no error of this crate holds it (CMD-014).
 
 use rmcp::model::{CallToolResult, ContentBlock};
 use serde_json::Value;
@@ -9,23 +7,20 @@ use super::untrusted::{TEXT_CAP, capped};
 use crate::failure::Failure;
 use crate::hub::{Code, HubError, TokenKind};
 
-/// The longest hub message passed on; it could echo a name a device chose.
+/// A hub message could echo a name a device chose.
 const MESSAGE_CAP: usize = 300;
 
-/// What every refusal of a tool the agent may not use ends with (MCP-002). It holds no command
-/// line, so it does not teach the agent to widen its own access.
+/// Ends every refusal of a tool the agent may not use (MCP-002). It names no command, so it does
+/// not teach the agent to widen its own access.
 pub const OPERATOR_ONLY: &str = "Only the operator decides which Anima.ing tools an agent may use: \
                                  ask the operator. You must not change Anima.ing's settings, its \
                                  configuration or the way it is started yourself.";
 
-/// Why a tool did not run to the end.
 #[derive(Debug, thiserror::Error)]
 pub enum ToolError {
-    /// The hub refused, or a lookup found nothing.
     #[error(transparent)]
     Failed(#[from] Failure),
-    /// The tool itself refused before it asked the hub: a wrong `confirm`, a secret field,
-    /// arguments that do not fit the schema.
+    /// The tool refused before it asked the hub.
     #[error("{0}")]
     Refused(String),
 }
@@ -36,7 +31,6 @@ impl From<HubError> for ToolError {
     }
 }
 
-/// The MCP result of a tool's outcome.
 #[must_use]
 pub fn result(outcome: Result<Value, ToolError>, token: TokenKind) -> CallToolResult {
     match outcome {
@@ -45,7 +39,6 @@ pub fn result(outcome: Result<Value, ToolError>, token: TokenKind) -> CallToolRe
     }
 }
 
-/// What went wrong and what to do next, in one or two sentences.
 #[must_use]
 pub fn sentence(error: &ToolError, token: TokenKind) -> String {
     let failure = match error {

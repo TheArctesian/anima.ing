@@ -1,5 +1,4 @@
-//! What the agent sees of one tool (MCP-009, MCP-011): its name, a description, the input and
-//! output schemas, and the hints. Each tool set builds its definitions from these parts.
+//! What the agent sees of one tool (MCP-009, MCP-011).
 
 use std::sync::Arc;
 

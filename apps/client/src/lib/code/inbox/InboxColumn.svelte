@@ -170,9 +170,8 @@
     bind:field
     projects={view.allProjects}
     chosen={view.projects}
-    onProjects={(next) => {
-      view.projects = next;
-    }}
+    onProjects={(next) => (view.projects = next)}
+    outside={view.outsideExist ? { shown: view.outsideShown, onShow: (shown) => { view.showOutside(shown); } } : undefined}
     {newOff}
     {onNew}
     {onFieldKey}

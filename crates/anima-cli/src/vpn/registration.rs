@@ -1,5 +1,4 @@
-//! `anima vpn register <auth id>` and `anima vpn renew <name>`: both answer with the node the
-//! broker registered or renewed (vpn.md 6B and Section 7).
+//! vpn.md 6B and Section 7.
 
 use super::documents::{VpnRegister, VpnRenew, vpn_register, vpn_renew};
 use crate::failure::Failure;

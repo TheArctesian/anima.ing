@@ -1,6 +1,5 @@
-//! `anima containers logs <device> <container>`: the last lines of the log of one container on
-//! standard output (HOST-001). A log can hold a secret, so the hub refuses an API key (D-23)
-//! and no MCP tool returns it (MCP-004).
+//! `anima containers logs` (HOST-001): a log can hold a secret, so the hub refuses an API key
+//! (D-23) and no MCP tool returns it (MCP-004).
 
 use super::documents::{ContainerLogRead, container_log_read};
 use super::list::fetch;

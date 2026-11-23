@@ -1,5 +1,3 @@
-//! `anima vpn approve-route --site <site>`: approves the waiting route of the site's router.
-
 use super::documents::{VpnApproveRoute, vpn_approve_route};
 use crate::devices::list::site_id;
 use crate::failure::Failure;

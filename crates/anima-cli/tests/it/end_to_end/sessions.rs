@@ -1,6 +1,4 @@
-//! `anima ssh` and `anima files` through the real hub to an SSH device on loopback (K4
-//! Sections 8 and 9): the stored credential, the trusted host key, a terminal session that
-//! ends, a file round trip, and SEC-011: after a host change the hub sends no credential.
+//! `anima ssh` and `anima files` through the real hub (K4 Sections 8 and 9, SEC-011).
 
 mod device;
 mod sftp;
@@ -13,8 +11,6 @@ use super::words;
 use crate::kit::Anima;
 use crate::kit::real_hub::RealHub;
 
-/// The device `box` on the hub at 127.0.0.1, SSH on `device`'s port with a stored password
-/// and its host key trusted, all through the command line; the device's ID.
 async fn reachable_device(anima: &Anima, device: &Device) -> String {
     let site = anima
         .run(&words("site create lab --subnet 127.0.0.0/8"))
@@ -50,7 +46,6 @@ async fn reachable_device(anima: &Anima, device: &Device) -> String {
     id
 }
 
-/// The device's SSH sessions on the hub, newest first.
 async fn sessions_of(hub: &RealHub, reader: &str, id: &str) -> Vec<Value> {
     let query = "query($id: ID!) { sessions(deviceId: $id) { edges { node { \
         protocol endedAt endReason } } } }";

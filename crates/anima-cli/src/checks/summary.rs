@@ -1,8 +1,7 @@
-//! What a command that changes a check prints: its name, ID, kind and state.
+//! What a command that changes a check prints.
 
 use crate::output::{Cell, Table};
 
-/// `PAUSED` for a paused check, else the K1 status name.
 #[must_use]
 pub fn state(status: &str, paused: bool) -> String {
     if paused {
@@ -12,7 +11,6 @@ pub fn state(status: &str, paused: bool) -> String {
     }
 }
 
-/// The check as label and value lines.
 #[must_use]
 pub fn written(name: &str, id: &str, kind: &str, state: &str) -> Table {
     let mut table = Table::record();

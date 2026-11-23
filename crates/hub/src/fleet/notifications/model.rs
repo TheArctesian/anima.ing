@@ -16,6 +16,7 @@ pub enum ChannelKind {
     Ntfy,
     Email,
     Apprise,
+    Mobile,
 }
 
 impl ChannelKind {
@@ -27,15 +28,22 @@ impl ChannelKind {
             Self::Ntfy => "ntfy",
             Self::Email => "email",
             Self::Apprise => "apprise",
+            Self::Mobile => "mobile",
         }
     }
 
     /// The kind whose stored text is `text`.
     #[must_use]
     pub fn from_stored(text: &str) -> Option<Self> {
-        [Self::Webhook, Self::Ntfy, Self::Email, Self::Apprise]
-            .into_iter()
-            .find(|kind| kind.as_str() == text)
+        [
+            Self::Webhook,
+            Self::Ntfy,
+            Self::Email,
+            Self::Apprise,
+            Self::Mobile,
+        ]
+        .into_iter()
+        .find(|kind| kind.as_str() == text)
     }
 }
 

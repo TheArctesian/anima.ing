@@ -37,6 +37,8 @@ fn start(kit: &Kit, program: Program, mode: Mode) -> Action {
         program_path: None,
         draft: None,
         attachments: Vec::new(),
+        worktree: false,
+        base: None,
     }
 }
 

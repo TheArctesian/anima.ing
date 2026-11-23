@@ -1,5 +1,5 @@
 //! `anima record-link`: the links between records of different extensions (RLK-001, RLK-002,
-//! RLK-004). A record is `kind:id`, such as `person:1234`; neither side has to exist.
+//! RLK-004).
 
 pub mod change;
 pub mod documents;

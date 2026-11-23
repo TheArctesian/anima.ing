@@ -30,6 +30,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
+| HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
 | HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
@@ -129,6 +131,21 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
+
+### HT-171-touch: VNC and RDP with touch on iPadOS and Android
+
+- State: Open.
+- Connect to a test desktop. Move the pointer with one finger, tap to click, tap with two fingers for a secondary click, and hold one finger before moving to drag. Confirm the button releases when touch cancels.
+- Pinch to zoom and move both fingers to pan. Check that the desktop stays under the fingers, that lifting a finger does not click, and that Fit restores the original view.
+- Tap the text field. Type ordinary text, one accented character and one IME composition, then use Enter and Backspace. Confirm each appears once on the remote desktop.
+- Background the app and interrupt its network. Reopen the app, check the session reconnect behavior, and use the pointer again.
+
+### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
+
+- State: Open.
+- On iOS and Android, open Code. Check that a thread shows the computer, project, agent and state. Open it and check that recent prompts and replies display in order.
+- Background the app or interrupt its connection. On the computer, send another prompt and reach an approval request. Return to the same thread on the phone. Check that the new reply appears once and the request shows what it asks. Answer on the computer and check that the request clears on the phone.
+- Start a fresh thread on a computer with transcript sharing off. Open it on the phone. Check that its summary appears and the phone has no shared messages.
 
 ### HT-149: reporting after an iPad update and the phone Code tab
 
@@ -5088,6 +5105,28 @@ Built on the branch `threads/codex-rollout-items`. The tests read rollouts that 
    Expected: one command row `sleep 20 && echo done` with the output `done`; no separate rows for its waits.
 4. On the page of a new thread, choose a Codex model whose efforts list Ultra, and choose Ultra.
    Expected: the thread starts. A model whose list has no Ultra does not offer it.
+### HT-169: a thread in a worktree of its own, and its checkpoints (TH116)
+
+Built on the branch `threads/launcher-read-runs`. The runner makes the Git engine at its start, makes a worktree for a start
+with `--worktree`, starts the program in it, and takes a checkpoint at each end of a turn. The tests use a made Claude Code,
+a made repository in a temporary folder and a daemon with a state folder of its own. They do not cover: a real Claude Code
+or Codex, a large repository (the first worktree of a project copies its history), a confined Codex thread (its reads run
+in `codex sandbox`), and the records folder of the installed daemon (`/Users/Shared/anima-<uid>` on a Mac).
+
+1. In a terminal, in a repository of yours with no uncommitted change, run
+   `anima agents start --program claude-code --folder <the repository> --mode ask --worktree "add a line to the README"`.
+   Expected: one thread ID. Your checkout stays on its branch, with no new file.
+2. Run `anima agents running`.
+   Expected: the folder of the thread is `~/.anima/worktrees/<thread>/<name of the repository>`.
+3. In that folder, run `git branch --show-current` and `git status`.
+   Expected: a branch `anima/` and 8 characters; the change of the agent is there and not in your checkout.
+4. Repeat step 1 with `--program codex`.
+   Expected: as steps 1 to 3. The first start of a large repository takes longer; no window asks for a permission.
+5. Look at `/Users/Shared` with `ls -ld /Users/Shared/anima-*`.
+   Expected: one folder `anima-<your user number>`, with access for you only (`drwx------`).
+
+Result: Open.
+
 ### HT-159: an agent from Anima is as fast as from a terminal (R-403)
 
 Built on the branch `threads/agents-priority`. The runner lifts the holder of the agent programs, and its own questions to a

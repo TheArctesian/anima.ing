@@ -1,5 +1,3 @@
-//! `anima model show`: one model with its variants, files and SHA-256 values.
-
 use super::documents::{ModelShow, model_show};
 use super::gib;
 use crate::failure::{Failure, Hint};

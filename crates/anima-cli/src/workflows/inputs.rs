@@ -1,6 +1,4 @@
-//! The named inputs of a workflow started by hand, from `--input name=value` (PRJ-035). A value
-//! can be anything the operator types, a secret included, so a failure names the input by its
-//! place or its name and never shows a value (LOG-007).
+//! The `--input name=value` pairs of a workflow (PRJ-035); a failure never shows a value (LOG-007).
 
 use crate::failure::Failure;
 
@@ -11,7 +9,6 @@ const MAX_NAME: usize = 100;
 /// The longest value the hub takes, in characters.
 const MAX_VALUE: usize = 1_024;
 
-/// One named input.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Input {
     pub name: String,
@@ -35,7 +32,6 @@ fn usage(message: String) -> Failure {
     }
 }
 
-/// Whether `name` is 1 to 100 letters, digits, `-` and `_`.
 fn is_name(name: &str) -> bool {
     (1..=MAX_NAME).contains(&name.len())
         && name
@@ -46,9 +42,7 @@ fn is_name(name: &str) -> bool {
 /// The inputs in the order given: each `name=value` split at its first `=`.
 ///
 /// # Errors
-/// [`Failure::Usage`] for more than 25, one with no `=` or a name that is not 1 to 100 of
-/// letters, digits, `-` and `_` (named by its place), a value over 1,024 characters or a name
-/// given twice (named by its name).
+/// [`Failure::Usage`] for a bad, long, repeated or extra input, named by its place or its name.
 pub fn parse(given: &[String]) -> Result<Vec<Input>, Failure> {
     if given.len() > MAX_INPUTS {
         return Err(usage(format!(

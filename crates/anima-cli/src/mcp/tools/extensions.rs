@@ -1,5 +1,4 @@
-//! The `extensions` tool set: which extensions of the hub are on, and turning one on or off
-//! (EXT-011, EXT-012). Turning one on can turn others on with it; the result says which.
+//! EXT-011, EXT-012.
 
 use std::collections::BTreeMap;
 

@@ -1,5 +1,4 @@
-//! The `repositories` tool set against the scripted hub (MCP-002, MCP-008, MCP-017): pull
-//! requests, issues, comments, workflows and runs. Text from GitHub comes back cleaned and cut.
+//! MCP-002, MCP-008, MCP-017.
 
 mod changes;
 mod history;

@@ -1,4 +1,4 @@
-//! `anima device update` against the scripted hub (CMD-020).
+//! CMD-020.
 
 use serde_json::json;
 

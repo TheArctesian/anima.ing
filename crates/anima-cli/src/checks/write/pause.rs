@@ -1,5 +1,3 @@
-//! `anima check pause` and `anima check resume`: stop or restart a check's runs.
-
 use super::documents::{CheckSetPaused, check_set_paused};
 use crate::checks::resolve::CheckRef;
 use crate::checks::summary::{state, written};

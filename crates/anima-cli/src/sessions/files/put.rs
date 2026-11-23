@@ -1,6 +1,3 @@
-//! `anima files put <local> <device>:<path>`: uploads one regular file. The hub never
-//! replaces a file on the device (`EXISTS`).
-
 use std::fs::File;
 use std::path::PathBuf;
 

@@ -1,4 +1,4 @@
-//! `anima record-link list`, `add` and `remove` against the scripted hub (RLK-001, RLK-002).
+//! RLK-001, RLK-002.
 
 use serde_json::{Value, json};
 

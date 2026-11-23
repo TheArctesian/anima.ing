@@ -1,5 +1,3 @@
-//! `anima notify channel` against the scripted hub.
-
 use serde_json::json;
 
 use super::{SMTP_PASSWORD, TOKEN, WEBHOOK_URL, channels, saved, signed_in, webhook_document};

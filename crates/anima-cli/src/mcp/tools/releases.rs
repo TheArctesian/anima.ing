@@ -1,5 +1,3 @@
-//! The `releases` tool set: desktop application releases, their build jobs and build logs.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

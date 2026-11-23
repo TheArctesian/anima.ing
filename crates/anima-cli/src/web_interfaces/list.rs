@@ -1,5 +1,3 @@
-//! `anima web list`: a device's web interfaces. Suggestions wait for `web suggestion`.
-
 use super::documents::{WebList, web_list};
 use super::shown::Shown;
 use crate::devices::get::resolve;

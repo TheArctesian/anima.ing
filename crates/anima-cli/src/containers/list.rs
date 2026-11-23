@@ -1,4 +1,4 @@
-//! `anima containers list <device>`: the containers of a device, running or not (HOST-001).
+//! `anima containers list` (HOST-001).
 
 use super::documents::{ContainerList, container_list};
 use crate::devices::get::resolve;

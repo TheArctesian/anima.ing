@@ -8,24 +8,19 @@ use crate::forge::render::{flag, number, text};
 use crate::output::text::clean;
 use crate::prompt::Prompter;
 
-/// Whether `text` is a full commit: 40 hex digits.
 fn is_sha(text: &str) -> bool {
     text.len() == 40 && text.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
-/// The first seven digits of a commit.
 #[must_use]
 pub fn short(sha: &str) -> &str {
     sha.get(..7).unwrap_or(sha)
 }
 
-/// The head commit to send as `expectedHeadSha`: the one given with `--sha`, which must be the
-/// head just read, or the head just read when a person is `asked` about it at the terminal.
-/// `--yes` asks no one, so it never stands for the head (PRJ-029).
+/// The head commit to send as `expectedHeadSha`; `--yes` never stands for the head (PRJ-029).
 ///
 /// # Errors
-/// [`Failure::Usage`] for a `--sha` that is not 40 hex digits, or no `--sha` when no one is
-/// asked; [`Failure::Conflict`] when the head moved since the operator looked.
+/// [`Failure::Usage`] for a bad or missing `--sha`; [`Failure::Conflict`] when the head moved.
 pub fn expected_head(given: Option<&str>, head: &str, asked: bool) -> Result<String, Failure> {
     match given {
         Some(given) if !is_sha(given) => Err(Failure::Usage {
@@ -47,14 +42,11 @@ pub fn expected_head(given: Option<&str>, head: &str, asked: bool) -> Result<Str
     }
 }
 
-/// `forkConfirmed` for the pull request: `None` when it is not from a fork. For one from a
-/// fork the operator names its head repository exactly, with `--fork` or typed at the
-/// terminal. `--yes` never stands for it (PRO-013).
+/// `forkConfirmed`: `None` when not from a fork; otherwise the operator names the head repository
+/// exactly, and `--yes` never stands for it (PRO-013).
 ///
 /// # Errors
-/// [`Failure::Usage`] for `--fork` on a pull request that is not from a fork, or no name when no
-/// one can type it; [`Failure::Forbidden`] when the name is not the fork's, or the fork was
-/// deleted.
+/// [`Failure::Usage`] for a misplaced or missing `--fork`; [`Failure::Forbidden`] for a wrong name.
 pub fn fork(
     given: Option<&str>,
     pull: &Value,
@@ -99,9 +91,7 @@ pub fn fork(
     }
 }
 
-/// What the operator sees before a merge: the title, the head, the fork, whether GitHub says it
-/// can merge, the checks and the method. Each is one line, cleaned whole: text from GitHub with
-/// a line break in it could otherwise add a line of its own, such as fake checks (CMD-020).
+/// What the operator sees before a merge, each line cleaned whole (CMD-020).
 #[must_use]
 pub fn summary(shown: &str, pull: &Value, method: &str) -> String {
     let mut lines = vec![

@@ -1,8 +1,5 @@
-//! A site as `list`, `create` and `set-wake-relay` print it.
-
 use crate::output::Table;
 
-/// The fields every site document selects, as text.
 pub struct Shown<'a> {
     pub id: &'a str,
     pub name: &'a str,

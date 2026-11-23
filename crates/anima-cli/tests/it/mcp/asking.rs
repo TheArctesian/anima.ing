@@ -1,5 +1,4 @@
-//! A tool in state `ask` runs only when the person at the client approves the call through MCP
-//! elicitation (MCP-013).
+//! A tool in state `ask` and MCP elicitation (MCP-013).
 
 use serde_json::{Value, json};
 
@@ -8,13 +7,11 @@ use super::session::{Desk, LOGIN_TOKEN, Session, assert_protocol_only, hub};
 use crate::kit::fake_hub::FakeHub;
 use crate::kit::fake_hub::data;
 
-/// `desk` with saved permissions that ask before every change tool.
 fn asking(hub: &FakeHub, desk: Desk) -> Desk {
     desk.save_permissions(&hub.origin, &json!({ "change": "ask" }));
     desk
 }
 
-/// A session whose client can ask the person.
 async fn with_elicitation(hub: &FakeHub) -> Session {
     let desk = asking(hub, Desk::asking());
     desk.start(hub, LOGIN_TOKEN, &[]).await.0

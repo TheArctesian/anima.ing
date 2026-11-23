@@ -1,4 +1,4 @@
-//! `anima extension list`, `on` and `off` against the scripted hub (EXT-011, EXT-012, CMD-024).
+//! EXT-011, EXT-012, CMD-024.
 
 use serde_json::{Value, json};
 

@@ -3,6 +3,7 @@
 //! keeps its limit of output (THR-113).
 
 mod older;
+mod reconnect;
 mod refused;
 
 pub(super) use older::Standing;

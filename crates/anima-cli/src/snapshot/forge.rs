@@ -1,6 +1,4 @@
-//! Scratch refs on the forge: push one, list them, delete one. Every ref sent is built from
-//! [`PREFIX`](super::scratch_ref::PREFIX); nothing is force-pushed and no branch or tag is
-//! touched (JOB-017).
+//! Every ref sent starts with `PREFIX`; nothing is force-pushed and no branch or tag is touched (JOB-017).
 
 use super::SnapshotError;
 use super::git::Git;
@@ -10,11 +8,10 @@ use super::remote_name;
 use super::scratch_ref::{PREFIX, ScratchRef};
 use agent_threads::files::secret_paths;
 
-/// The remote, once it is a name `git remote` lists. A URL or an option is never passed on.
+/// Only a name that `git remote` lists passes, never a URL or an option.
 ///
 /// # Errors
-/// [`SnapshotError::BadRemote`] for a name git would misread; [`SnapshotError::UnknownRemote`]
-/// when the repository has no remote of that name.
+/// [`SnapshotError::BadRemote`] or [`SnapshotError::UnknownRemote`].
 pub fn remote<'a>(git: &Git, name: &'a str) -> Result<&'a str, SnapshotError> {
     let name = remote_name::checked(name)?;
     let names = git.text(&["remote"])?;
@@ -27,12 +24,11 @@ pub fn remote<'a>(git: &Git, name: &'a str) -> Result<&'a str, SnapshotError> {
     }
 }
 
-/// Pushes `commit` to `scratch` on `remote`, with no `+`, no tags and no submodules, once no
-/// object it could send has a path that looks like a secret.
+/// Pushes with no `+`, no tags and no submodules, and refuses when an object it could send has a
+/// path that looks like a secret.
 ///
 /// # Errors
-/// [`SnapshotError::SecretHistory`] when one has; [`SnapshotError::Rejected`] when the remote
-/// refuses the ref; [`SnapshotError::Unreachable`] when the push fails for another reason.
+/// [`SnapshotError::SecretHistory`], [`SnapshotError::Rejected`] or [`SnapshotError::Unreachable`].
 pub fn push(
     git: &Git,
     remote: &str,
@@ -44,8 +40,7 @@ pub fn push(
     send(git, remote, scratch, &refspec)
 }
 
-/// Checks paths added or changed in commits outside the remote-tracking history, even when a
-/// later commit deletes them. Git lists each changed path, including paths that share a blob.
+/// Checks each path added or changed outside the remote-tracking history, also one a later commit deletes.
 fn refuse_unsent_secrets(git: &Git, remote: &str, commit: &str) -> Result<(), SnapshotError> {
     let remotes = format!("--remotes={remote}");
     let listed = git.bytes(&[
@@ -77,8 +72,6 @@ fn refuse_unsent_secrets(git: &Git, remote: &str, commit: &str) -> Result<(), Sn
     })
 }
 
-/// The scratch refs on `remote`.
-///
 /// # Errors
 /// [`SnapshotError::Unreachable`] when `git ls-remote` fails.
 pub fn list(git: &Git, remote: &str) -> Result<Vec<RemoteScratchRef>, SnapshotError> {
@@ -93,8 +86,6 @@ pub fn list(git: &Git, remote: &str) -> Result<Vec<RemoteScratchRef>, SnapshotEr
     Ok(scratch_refs(&String::from_utf8_lossy(&ran.stdout)))
 }
 
-/// The commit `scratch` holds on `remote`.
-///
 /// # Errors
 /// [`SnapshotError::NoSuchRef`] when the remote has no such ref; as [`list`].
 pub fn find(
@@ -111,8 +102,6 @@ pub fn find(
         })
 }
 
-/// Deletes `scratch` on `remote`.
-///
 /// # Errors
 /// As [`push`].
 pub fn delete(git: &Git, remote: &str, scratch: &ScratchRef) -> Result<(), SnapshotError> {
