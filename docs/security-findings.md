@@ -4516,7 +4516,10 @@ The fix to make: Two parts, both needed.
 - Repository of the cloud service, pull request `probe-deny` (TheArctesian/anima-cloud#5): the script `probe-deny.sh` reads the networks of the bridge at each start and adds the addresses of the host from the profile key `environment.ANIMA_HOST_ADDRESSES`. The unit passes them with `--probe-deny`.
 - Existing hubs keep the unit and the programs of their image, so each one gets the new programs, the script and the unit, and a restart of the instance.
 
-Not covered by the fix: a program in the hub container that is not the hub (a Docker application of the account, `guacd`, the link) does not use the address policy. Only the host can stop it: port isolation on the network device of each hub and a firewall on the host that permits only DNS and DHCP from the bridge. This is a change of the server, for the operator.
+- The server, in the same pull request (`deploy/bridge-wall/`): a program in the hub container that is not the hub (a Docker application of the account, `guacd`, the link) does not use the address policy. Port isolation on the network device of each hub stops traffic between containers. A table of nftables on the host takes only DNS, DHCP, DHCPv6 and ICMPv6 from the bridge. No hub runs Docker on 2026-11-23, so this part is not a live risk yet. The operator approves both parts in one deploy.
+- After the deploy, branch `hosted/hosted-hub-needs-probe-deny`: a hosted hub refuses to start with no networks to refuse (Low of the review of 2026-11-23). It merges only after the new unit is on each hub.
+
+A note from the review, not a change: a network written in the IPv6 form of an IPv4 address (`::ffff:10.130.6.0/120`) in `ANIMA_PROBE_DENY` does not refuse the IPv4 address. `AddressPolicy::permits` makes the target canonical but not the networks of the list. `probe-deny.sh` writes IPv4 networks in their IPv4 form. Write them so by hand too.
 
 Mitigation now: None. The ruling of the operator on 2026-11-23, relayed: "B: full fix only". There is no interim block on the server, by his choice; nothing on the server changes until the full fix is ready and he approves the deploy.
 
