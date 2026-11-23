@@ -1,5 +1,4 @@
-//! One change of the hub at a time: `install`, `update`, `remove`, `start` and `stop` of one
-//! hub root hold this lock. It is not the lock of `run`, which the hub holds while it runs.
+//! One change of a hub root at a time; this is not the lock that `run` holds.
 
 use std::fs::{File, TryLockError};
 
@@ -12,7 +11,7 @@ use crate::Folders;
 #[derive(Debug)]
 pub struct Change(#[expect(dead_code, reason = "the open file is the lock")] File);
 
-/// Takes the lock, and makes the hub's folder first when it is missing. It does not wait.
+/// Takes the lock without waiting, and makes the hub's folder first when it is missing.
 ///
 /// # Errors
 /// [`InstallError::Busy`] when another change holds it.

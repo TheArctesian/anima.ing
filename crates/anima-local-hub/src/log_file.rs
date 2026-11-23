@@ -1,5 +1,3 @@
-//! One member's log file: lines appended, mode 0600, and one older file kept.
-
 use std::fs::{self, File};
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
@@ -18,8 +16,6 @@ pub struct LogFile {
 }
 
 impl LogFile {
-    /// The log at `path`, open for appending.
-    ///
     /// # Errors
     /// When the file cannot be opened, or `path` is a symbolic link.
     pub fn open(path: &Path, limit: u64) -> io::Result<Self> {

@@ -11,8 +11,7 @@ use windows::{
     core::{PCWSTR, PWSTR, w},
 };
 
-// TOKEN_USER and a maximum-size SID fit in this aligned buffer. An unexpected larger
-// token fails at GetTokenInformation rather than exposing uninitialised storage.
+// TOKEN_USER and a maximum-size SID fit; a larger token fails at GetTokenInformation.
 pub(super) struct Identity(Box<[usize; 64]>);
 impl Identity {
     pub(super) fn current() -> windows::core::Result<Self> {

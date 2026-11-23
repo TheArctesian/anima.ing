@@ -1,4 +1,4 @@
-//! The requests of the one interface (SF-231): none names a device or a port.
+//! Route requests name no device and no port (SF-231).
 
 use tokio::io::BufReader;
 

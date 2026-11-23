@@ -1,5 +1,3 @@
-//! The client's button mask becomes one RDP event for each change.
-
 use anima_gateway::rdp::{Button, Pointer, PointerEvent};
 
 fn button(button: Button, pressed: bool) -> PointerEvent {
@@ -15,7 +13,6 @@ fn a_move_with_no_change_of_buttons_is_only_a_move() {
         pointer.moved(1),
         [PointerEvent::Move, button(Button::Left, true)]
     );
-    // A drag: the button stays down and is not sent again.
     assert_eq!(pointer.moved(1), [PointerEvent::Move]);
     assert_eq!(
         pointer.moved(0),
@@ -55,6 +52,5 @@ fn a_wheel_bit_is_one_step_when_it_goes_down_and_nothing_when_it_goes_up() {
         [PointerEvent::Move, PointerEvent::Wheel(-120)]
     );
     assert_eq!(pointer.moved(16), [PointerEvent::Move]);
-    // Bits above the wheel have no meaning.
     assert_eq!(pointer.moved(0xe0), [PointerEvent::Move]);
 }

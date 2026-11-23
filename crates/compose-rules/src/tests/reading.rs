@@ -1,5 +1,3 @@
-//! The reader of YAML refuses each form that a second reader could read differently.
-
 use super::{Rule, SOUND, checked, refusal, top};
 use crate::{LARGEST_FILE, Node, Settings, check};
 

@@ -1,7 +1,6 @@
 import type { Violation } from "../report.ts";
 import type { Document } from "./documents.ts";
 
-/** The one log of the decisions of the operator and of the programme (PLN-021). */
 export const RULINGS = "docs/rulings.md";
 const RULING = /^- \*\*((?:R|CR)-\d+)\b/;
 

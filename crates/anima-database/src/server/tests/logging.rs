@@ -1,5 +1,3 @@
-//! What reaches the server log (LOG-007).
-
 use std::fs;
 
 use super::mode_of;

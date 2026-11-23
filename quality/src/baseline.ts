@@ -3,7 +3,6 @@ import type { Violation } from "./report.ts";
 
 export const SIGNALS = ["file-lines", "folder-files"] as const;
 export type Signal = (typeof SIGNALS)[number];
-/** Path (file or folder) -> signals it exceeds and the value recorded. */
 export type Baseline = Record<string, Partial<Record<Signal, number>>>;
 
 export class BaselineShapeError extends Error {
@@ -50,7 +49,6 @@ export class BaseRefError extends Error {
   }
 }
 
-/** The ref after `--base` in the arguments, or `fallback` when the flag is absent. */
 export function baseRefFrom(args: string[], fallback: string): string {
   const flag = args.indexOf("--base");
   if (flag === -1) return fallback;

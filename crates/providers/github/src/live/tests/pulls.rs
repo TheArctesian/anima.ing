@@ -1,5 +1,3 @@
-//! PRJ-031 and PRJ-033: pull requests, their mergeability and the repository's merge methods.
-
 use super::{fixture, ok, path_and_query};
 use crate::live::StateFilter;
 use crate::live::pulls::{

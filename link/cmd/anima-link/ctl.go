@@ -10,8 +10,6 @@ import (
 	"github.com/TheArctesian/anima/link/statedir"
 )
 
-// runCtl sends one verb to the anima-link that runs on a state directory
-// and prints the JSON answer.
 func runCtl(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("ctl")
 	if err := flags.Parse(args); err != nil || *statePath == "" || flags.NArg() < 1 || flags.NArg() > 2 {

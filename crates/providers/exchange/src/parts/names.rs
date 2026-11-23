@@ -1,5 +1,3 @@
-//! Names: a repository, a workflow, a branch, a status context and a status address.
-
 use std::fmt;
 
 use super::numbers::digits;
@@ -8,10 +6,8 @@ use super::{PartError, is_plain_segment};
 /// The longest owner login and repository name the provider allows.
 const OWNER_LONGEST: usize = 39;
 const NAME_LONGEST: usize = 100;
-/// The longest branch name and workflow file name, in bytes.
 const BRANCH_LONGEST: usize = 255;
 const WORKFLOW_LONGEST: usize = 255;
-/// The longest status address, in bytes.
 const TARGET_URL_LONGEST: usize = 2048;
 /// Every status context Anima writes starts with this (PRO-010).
 const CONTEXT_PREFIX: &str = "anima/";
@@ -25,11 +21,8 @@ pub struct RepositoryName {
 }
 
 impl RepositoryName {
-    /// Reads `owner/name`.
-    ///
     /// # Errors
-    /// [`PartError::Repository`] when either half is empty, `.`, `..`, too long or holds any
-    /// other character, or there is not exactly one `/`.
+    /// [`PartError::Repository`] when `full_name` is not such a name.
     pub fn parse(full_name: &str) -> Result<Self, PartError> {
         let (owner, name) = full_name.split_once('/').ok_or(PartError::Repository)?;
         let fits =
@@ -67,8 +60,7 @@ pub struct WorkflowId(String);
 
 impl WorkflowId {
     /// # Errors
-    /// [`PartError::Workflow`] for anything but a number from 1 to 2^53 or a file name of
-    /// letters, digits, `.`, `-` and `_` ending `.yml` or `.yaml`.
+    /// [`PartError::Workflow`] for anything but a number from 1 to 2^53 or a `.yml`/`.yaml` file.
     pub fn parse(text: &str) -> Result<Self, PartError> {
         let number = digits(text).is_ok();
         let stem = text
@@ -96,8 +88,7 @@ impl fmt::Display for WorkflowId {
     }
 }
 
-/// A branch name git allows (`git check-ref-format --branch`), 1 to 255 bytes. It may hold `/`,
-/// so a provider that puts it in a path encodes it; it never holds a `.` or `..` segment.
+/// A branch name git allows (`git check-ref-format --branch`), 1 to 255 bytes; it may hold `/`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BranchName(String);
 
@@ -149,8 +140,7 @@ pub struct StatusContext(String);
 
 impl StatusContext {
     /// # Errors
-    /// [`PartError::StatusContext`] for anything but `anima/` then 1 to 40 of `a-z`, `0-9`
-    /// and `-`.
+    /// [`PartError::StatusContext`] for anything but `anima/` then 1 to 40 of `a-z`, `0-9`, `-`.
     pub fn parse(text: &str) -> Result<Self, PartError> {
         let rest = text
             .strip_prefix(CONTEXT_PREFIX)

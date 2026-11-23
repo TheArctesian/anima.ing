@@ -7,8 +7,7 @@ import (
 	"testing"
 )
 
-// The hub's own tests read the same file (crates/hub, fleet/access/link):
-// the two programs agree on these bytes.
+// The hub's tests read the same file (crates/hub, fleet/access/link), so both programs agree on these bytes.
 func TestTheDeviceHeaderIsTheBytesThatTheHubReads(t *testing.T) {
 	want, err := os.ReadFile("testdata/device-header.bin")
 	if err != nil {

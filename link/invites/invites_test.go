@@ -22,7 +22,6 @@ func TestMain(m *testing.M) { testbed.Main(m) }
 
 var noon = time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
 
-// hubAddress is a real hub address: an invite holds one.
 func hubAddress(t *testing.T) tunnel.Address {
 	t.Helper()
 	hub, err := tunnel.StartHub(t.Context(), tunnel.HubConfig{
@@ -50,7 +49,6 @@ func openStore(t *testing.T, path string) (*invites.Store, *statedir.Dir) {
 	return store, dir
 }
 
-// counted is a random source that says how many bytes were taken from it.
 type counted struct {
 	fill  byte
 	taken int

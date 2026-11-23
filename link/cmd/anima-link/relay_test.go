@@ -81,7 +81,6 @@ func TestLNK007TheOperatorChangesTheRelayInTwoSteps(t *testing.T) {
 	checkTheWayBackFromABadRelay(t, hub.state)
 }
 
-// relayNow reads the relay name of a running hub link from its status.
 func relayNow(t *testing.T, hub runningHub) string {
 	t.Helper()
 	text, _ := hub.ctl(t, "relay.show")
@@ -99,12 +98,9 @@ func TestLNK007AHubThatHasARelayDoesNotTakeAnotherAtStart(t *testing.T) {
 	}
 }
 
-// checkTheWayBackFromABadRelay checks what the operator can do when the hub
-// cannot start on its saved relay, so that no verb can run.
 func checkTheWayBackFromABadRelay(t *testing.T, state string) {
 	t.Helper()
-	// The way back when the new relay does not work: the hub cannot start
-	// on it, so no verb can run. The operator replaces the relay at start.
+	// The hub cannot start on a bad relay, so no verb can run: the operator replaces the relay at start.
 	var stderr output
 	args := []string{"hub", "-state", state, "-target", "127.0.0.1:9", "-relay", "back.example.org"}
 	if code := run(context.Background(), args, stdio{strings.NewReader(""), io.Discard, &stderr}); code != 1 || !strings.Contains(stderr.String(), "-replace-relay") {

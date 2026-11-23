@@ -44,9 +44,7 @@ func TestTheAddressOfAKeyDoesNotChangeBetweenVersions(t *testing.T) {
 	key := tunnel.PrivateKeyFromSeed([32]byte{1}).Public()
 	permit(t, store, key, "laptop")
 	address, _ := store.AddressOf(key)
-	// A hub binds builders and sessions to this address. A change of the
-	// rule would give each new device of an old hub a different kind of
-	// address; the addresses in a saved list do not change.
+	// A hub binds builders and sessions to this address.
 	if want := netip.MustParseAddr(pinnedAddress); address != want {
 		t.Errorf("the address is %v, want %v", address, want)
 	}

@@ -1,9 +1,5 @@
-//! The checked parts a named change is built from (PRJ-027 to PRJ-035, OD-E14).
-//!
-//! Every part has a private field and a checking constructor, so a [`crate::Change`] can only
-//! hold values that are safe where a provider puts them: a part that becomes a path segment is
-//! letters, digits, `.`, `-` and `_` only, never `.` or `..`; text is bounded and holds no NUL.
-//! The errors are fixed words and never quote the refused value (LOG-007).
+//! The checked parts a named change is built from (PRJ-027 to PRJ-035, OD-E14). Each holds only
+//! values safe where a provider puts them; errors never quote the refused value (LOG-007).
 
 mod names;
 mod numbers;
@@ -13,7 +9,6 @@ pub use names::{BranchName, RepositoryName, StatusContext, TargetUrl, WorkflowId
 pub use numbers::{CommitSha, Number, RunId};
 pub use text::{InputName, InputValue, Inputs, Label, Labels, StatusDescription, Text, Title};
 
-/// A value that cannot be part of a change. Fixed words: the refused value is never quoted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum PartError {
     #[error("a repository is owner/name: letters, digits, dots, dashes and underscores")]
@@ -46,7 +41,6 @@ pub enum PartError {
     Inputs,
 }
 
-/// How a pull request is merged. The caller always names it (no default).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MergeMethod {
     Merge,
@@ -54,7 +48,6 @@ pub enum MergeMethod {
     Rebase,
 }
 
-/// What an issue becomes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IssueState {
     Open,
@@ -69,7 +62,6 @@ pub enum CloseReason {
     NotPlanned,
 }
 
-/// The state a commit status reports.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StatusState {
     Pending,
@@ -78,8 +70,7 @@ pub enum StatusState {
     Error,
 }
 
-/// Whether every byte is a letter, a digit, `.`, `-` or `_`, and the text is not empty, `.`
-/// or `..`: such text is one path segment that a URL parser leaves as it is.
+/// Such text is one path segment that a URL parser leaves as it is.
 pub(crate) const fn is_plain_segment(text: &[u8]) -> bool {
     if text.is_empty() || matches!(text, [b'.'] | [b'.', b'.']) {
         return false;

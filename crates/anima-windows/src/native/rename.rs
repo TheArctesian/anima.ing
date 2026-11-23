@@ -1,4 +1,3 @@
-//! Publish a flushed private file with the Windows write-through rename operation.
 use std::{io, os::windows::ffi::OsStrExt, path::Path};
 use windows::{
     Win32::Storage::FileSystem::{MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW},

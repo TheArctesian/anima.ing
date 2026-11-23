@@ -1,12 +1,9 @@
-//! Paging: `per_page` and `page`, and the next page number from the `Link` header.
-
 pub(super) fn query(page: &str) -> [(&'static str, &str); 2] {
     [("per_page", "100"), ("page", page)]
 }
 
-/// The page number of the `rel="next"` link in a `Link` header, or `None` on the last page.
-/// Only the number is taken: the hub never follows a URL from the header, so a header that
-/// names another host or path changes nothing.
+/// The page number of the `rel="next"` link, or `None` on the last page.
+/// Only the number is taken: the hub never follows a URL from the header.
 #[must_use]
 pub fn next_page(link_header: &str) -> Option<u32> {
     related_page(link_header, "next")

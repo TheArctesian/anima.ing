@@ -1,6 +1,3 @@
-//! SRC-008: a branch name never moves a request off the repository it names. A branch with a
-//! `.` or `..` segment, from GitHub's reply or from a stored slice, is never read.
-
 use super::*;
 
 const HOSTILE: &str = "../../../../../app/installations";

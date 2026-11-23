@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::version::Version;
 
-/// The format of the record that this crate writes and reads.
 pub const FORMAT: u32 = 1;
 
 /// A target of a release (OD-ROL-8).
@@ -40,8 +39,7 @@ pub enum Program {
 pub enum Database {
     /// The hub of the release before can use it: the migrations only add (ROL-034).
     Compatible,
-    /// It cannot; the way back is the restore of a copy. A rollout needs a second confirmation
-    /// and an automatic rollout never takes it (ROL-036).
+    /// The way back is a restore; a rollout needs a second confirmation, never automatic (ROL-036).
     RestoreNeeded,
 }
 
@@ -56,7 +54,6 @@ pub struct File {
     pub sha256: String,
 }
 
-/// The release record of one target.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Record {
@@ -79,7 +76,6 @@ fn is_hex(text: &str, length: usize) -> bool {
             .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
 }
 
-/// A file name of the release host: 1 to 100 of `A-Z a-z 0-9 . _ -`, not `.` first.
 fn is_file_name(name: &str) -> bool {
     (1..=100).contains(&name.len())
         && !name.starts_with('.')
@@ -110,7 +106,6 @@ impl Program {
         }
     }
 
-    /// The program with the name `name`.
     #[must_use]
     pub fn named(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|program| program.name() == name)
@@ -118,7 +113,6 @@ impl Program {
 }
 
 impl File {
-    /// The entry of `program` for the bytes of its file, under the name of the program.
     #[must_use]
     pub fn of(program: Program, bytes: &[u8]) -> Self {
         use sha2::Digest as _;
@@ -132,9 +126,7 @@ impl File {
 }
 
 impl Record {
-    /// Whether the fields obey the rules that the types do not hold: the format, the commit,
-    /// the names, the sizes and hashes, one file for each program, no two files of one name,
-    /// and a lowest replaceable version that is not above the version.
+    /// Whether the fields obey the rules that the types do not hold.
     #[must_use]
     pub fn is_valid(&self) -> bool {
         let files_valid = self.files.iter().all(|file| {
@@ -155,7 +147,6 @@ impl Record {
             && unique
     }
 
-    /// The file of `program`, if the record names one.
     #[must_use]
     pub fn file_of(&self, program: Program) -> Option<&File> {
         self.files.iter().find(|file| file.program == program)

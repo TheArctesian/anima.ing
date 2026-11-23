@@ -1,10 +1,5 @@
-//! The opening of a VNC connection (RFC 6143 Sections 7.1 to 7.3): the version, the
-//! security type, the sign-in and the two init messages. Sign-in methods: none, VNC
-//! authentication (type 2) and Apple's (type 30, what macOS Screen Sharing uses for an
-//! account).
-//!
-//! In two steps, because the gateway may have to ask the operator for a credential once it
-//! knows which method the device wants (GW-015). I/O edge: the caller sets the time limit.
+//! The opening of a VNC connection (RFC 6143 Sections 7.1 to 7.3), in two steps so that the
+//! gateway can ask the operator for a credential once it knows the device's method (GW-015).
 
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 
@@ -16,15 +11,12 @@ use crate::screen::MAX_SIDE;
 const NONE: u8 = 1;
 const VNC_PASSWORD: u8 = 2;
 const APPLE: u8 = 30;
-/// The newest standard version. macOS announces 003.889 and accepts this answer.
+/// The newest standard version; macOS announces 003.889 and accepts this answer.
 const VERSION: &[u8; 12] = b"RFB 003.008\n";
-/// The longest reason text read from a device; it is read and not kept.
 const LONGEST_REASON: u32 = 4096;
-/// The longest desktop name read from a device; it is read and not kept.
 const LONGEST_NAME: u32 = 1 << 16;
 
-/// Why the sign-in did not finish. No variant holds a value from the device or an account
-/// (LOG-007).
+/// Why the sign-in did not finish; no variant holds a value from the device or an account (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub enum SignInError {
     #[error("the connection to the device failed")]
@@ -43,7 +35,6 @@ pub enum SignInError {
     BadNumbers,
 }
 
-/// A sign-in method.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Method {
     None,
@@ -52,7 +43,6 @@ pub enum Method {
 }
 
 impl Method {
-    /// What the method needs to sign in.
     #[must_use]
     pub const fn needs(self) -> &'static [Credential] {
         match self {
@@ -71,21 +61,12 @@ impl Method {
     }
 }
 
-/// The security types a device offers.
 #[derive(Clone, Debug)]
 pub struct Offered(Vec<u8>);
 
 impl Offered {
-    /// The method to use for what the hub has.
-    ///
-    /// - With an account name: Apple's method only. The account's password is not sent by
-    ///   the weaker VNC password method, even when a device (or someone between) offers
-    ///   only that.
-    /// - Without one: a VNC password, else Apple's method (the name is then asked for).
-    /// - With no credential at all: no sign-in when the device offers that, else a method
-    ///   whose credentials are then asked for.
-    /// - No sign-in is used only then. A device that suddenly
-    ///   asks for none, while the hub holds a password for it, is not the device meant.
+    /// The method to use for what the hub has. An account's password never goes by the weaker VNC
+    /// method, and a device that asks for no sign-in while the hub holds a password is not the one meant.
     ///
     /// # Errors
     /// [`SignInError::NoMethod`] when the device offers no method that may be used.
@@ -139,9 +120,7 @@ where
     Ok(Offered(types))
 }
 
-/// Signs in with `method`, completes the init exchange and asks for the gateway's pixel
-/// format and encodings. Returns the device's screen size. `random` fills a buffer with
-/// random bytes.
+/// Signs in with `method` and completes the init exchange; returns the device's screen size.
 ///
 /// # Errors
 /// [`SignInError`]; `Refused` when the device does not accept the account.
@@ -185,7 +164,6 @@ where
     Ok(size)
 }
 
-/// Apple's method: reads the device's numbers and sends the answer.
 async fn apple<S>(
     device: &mut S,
     account: Account<'_>,
@@ -224,8 +202,7 @@ where
     Ok(())
 }
 
-/// Reads a text that begins with its length and drops it. A length over `longest` is not
-/// a text a VNC server sends.
+/// Reads and drops a text that begins with its length; a VNC server sends none over `longest`.
 async fn skip<S: AsyncRead + Unpin>(device: &mut S, longest: u32) -> Result<(), SignInError> {
     let length = device.read_u32().await?;
     if length > longest {

@@ -1,5 +1,3 @@
-//! The declaration offers the changes and says which permission each needs (SRC-010, OD-E14).
-
 use source_exchange::{Body, ChangeReply, Limit, Receipt, Settled};
 
 use super::every_change;

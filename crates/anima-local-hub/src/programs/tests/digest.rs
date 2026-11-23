@@ -45,7 +45,6 @@ fn a_copy_without_a_digest_file_is_not_the_digest_of_the_source() {
     assert!(!of(&carried).is_stored_in(&folders));
 }
 
-/// A change of the source, with what it is.
 type Change = (&'static str, fn(&Carried));
 
 fn changes() -> Vec<Change> {

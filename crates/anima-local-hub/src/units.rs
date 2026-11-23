@@ -1,5 +1,4 @@
-//! The unit that keeps `anima-local-hub run` up for one user: a `LaunchAgent` on macOS, a
-//! systemd user unit on Linux (the pattern of the agent, MET-019).
+//! The unit that keeps `anima-local-hub run` up for one user (the pattern of the agent, MET-019).
 
 mod change_lock;
 pub mod install;

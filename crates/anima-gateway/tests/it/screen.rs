@@ -1,5 +1,3 @@
-//! The screen copy: what counts as a change, and what it refuses.
-
 mod moves;
 pub(crate) mod props;
 
@@ -26,7 +24,6 @@ fn filled(area: Area, colour: u8) -> Vec<u8> {
     vec![colour; area.width * area.height * BYTES_PER_PIXEL]
 }
 
-/// A seen, black screen: the first changes are taken.
 fn seen(width: usize, height: usize) -> Screen {
     let mut screen = Screen::new(width, height).expect("a valid size");
     screen.take_changes();
@@ -82,7 +79,6 @@ fn one_changed_pixel_costs_one_row_of_one_tile() {
         width: 1,
         height: 1,
     };
-    // The device sends a large area in which one pixel differs.
     let sent = Area {
         x: 0,
         y: 0,

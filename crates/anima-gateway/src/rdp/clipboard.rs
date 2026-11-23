@@ -1,6 +1,4 @@
-//! The clipboard channel of an RDP session, text only (RA-005). `IronRDP` calls this
-//! backend when the device says something on the channel; the backend only notes it, and
-//! the session answers under the device's copy and paste switches (RA-033).
+//! The clipboard channel of an RDP session, text only (RA-005), answered under the device's switches (RA-033).
 
 use ironrdp_cliprdr::backend::CliprdrBackend;
 use ironrdp_cliprdr::pdu::{
@@ -11,36 +9,27 @@ use ironrdp_core::impl_as_any;
 
 /// The longest clipboard text taken from the device, in bytes: as for VNC.
 const LONGEST_COPY: usize = 1 << 20;
-/// The most notes kept for the session. A device that says more is not answered for the
-/// rest until the session has read these.
 const MOST_NOTES: usize = 16;
 
-/// The format the gateway offers and asks for.
 pub(super) const TEXT: ClipboardFormatId = ClipboardFormatId::CF_UNICODETEXT;
 
-/// What the device said on the clipboard channel.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Said {
-    /// The channel is ready, or the device wants to know what the client's clipboard
-    /// holds.
+    /// The channel is ready, or the device wants to know what the client's clipboard holds.
     WhatIsThere,
     /// Something was copied on the device, and text is among its formats.
     CopiedText,
     /// It pastes, and wants the client's text.
     WantsText,
-    /// The text that was copied on the device.
     Text(String),
 }
 
-/// The backend: notes of what the device said. The session takes them with
-/// [`ClipboardNotes::take`].
 #[derive(Debug, Default)]
 pub struct ClipboardNotes {
     said: Vec<Said>,
 }
 
 impl ClipboardNotes {
-    /// What the device said since the last call, in order.
     pub fn take(&mut self) -> Vec<Said> {
         std::mem::take(&mut self.said)
     }
@@ -88,8 +77,7 @@ impl CliprdrBackend for ClipboardNotes {
     }
 
     fn on_format_data_response(&mut self, response: FormatDataResponse<'_>) {
-        // UTF-16 is at least as long in bytes as the same text in UTF-8 is in characters:
-        // a response over twice the limit is not decoded at all.
+        // UTF-16 takes at least two bytes a character, so a response over twice the limit is too long.
         if response.is_error() || response.data().len() > 2 * LONGEST_COPY {
             return;
         }
@@ -118,24 +106,18 @@ pub struct Sharing {
     pub paste: bool,
 }
 
-/// What the session does about something the device said.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Reply<'a> {
     /// Tell the device whether the client's clipboard holds text.
     Offer(bool),
-    /// Ask the device for the text that was copied on it.
     AskForText,
     /// Give the device the client's text; `None` when there is none for it.
     GiveText(Option<&'a str>),
-    /// Send the device's text to the client.
     ToClient(String),
     Nothing,
 }
 
-/// The answer to `said` under the device's switches. `text` is the client's clipboard
-/// text. With paste off the device is told there is no text and gets none; with copy off
-/// its text is not asked for, and text it sends unasked is dropped. The hub's relay is
-/// the first guard, this the second.
+/// The answer to `said` for the client's clipboard `text`; the hub's relay is the first guard.
 #[must_use]
 pub fn reply(said: Said, sharing: Sharing, text: Option<&str>) -> Reply<'_> {
     let text = text.filter(|_| sharing.paste);

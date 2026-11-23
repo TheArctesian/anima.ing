@@ -22,7 +22,6 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel/testbed"
 )
 
-// clock is a clock that a test moves.
 type clock struct {
 	mu  sync.Mutex
 	now time.Time
@@ -40,13 +39,11 @@ func (c *clock) advance(d time.Duration) {
 	c.now = c.now.Add(d)
 }
 
-// invitingHub is a hub link that lets devices join with an invite.
 type invitingHub struct {
-	link    *hublink.Link
-	devices *devices.Store
-	invites *invites.Store
-	clock   *clock
-	// identity and target are what the hub link starts from.
+	link     *hublink.Link
+	devices  *devices.Store
+	invites  *invites.Store
+	clock    *clock
 	identity identity.Hub
 	target   string
 }
@@ -58,8 +55,6 @@ func startInvitingHub(t *testing.T) invitingHub {
 	return startInvitingHubInFrontOf(t, server.Listener.Addr().String())
 }
 
-// startInvitingHubInFrontOf starts the hub link in front of a target: a
-// loopback address or the path of a hub's socket.
 func startInvitingHubInFrontOf(t *testing.T, target string) invitingHub {
 	t.Helper()
 	dir, err := statedir.Open(filepath.Join(t.TempDir(), "s"))
@@ -82,7 +77,6 @@ func startInvitingHubInFrontOf(t *testing.T, target string) invitingHub {
 	return hub
 }
 
-// startLink starts the hub link from the hub's identity and lists.
 func (h invitingHub) startLink(t *testing.T) *hublink.Link {
 	t.Helper()
 	link, err := hublink.Start(t.Context(), hublink.Config{
@@ -162,7 +156,6 @@ func TestLNK003AnInviteIsEndedAlsoWhenItsFirstUseFailsLater(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The hub ends the invite, then refuses the device: its key is in the list already.
 	invite := hub.invite(t, "the same key again")
 	if _, err := join(invite, known, 30*time.Second); !errors.Is(err, devicelink.ErrRefused) {
 		t.Fatalf("a use that the hub refuses: err = %v, want ErrRefused", err)
@@ -211,8 +204,7 @@ func TestLNK003TheTemporaryKeyOfAnInviteDoesNotReachTheHub(t *testing.T) {
 	}
 }
 
-// Whoever reads a used invite later can make its temporary key. So that key
-// must never become a device's key.
+// Whoever reads a used invite later can make its temporary key.
 func TestLNK003TheTemporaryKeyOfAnInviteCannotBecomeADeviceKey(t *testing.T) {
 	hub := startInvitingHub(t)
 	invite := hub.invite(t, "laptop")

@@ -1,9 +1,5 @@
-//! The URL files: one file for each login, holding the connection URL that the hub reads
-//! through `ANIMA_DATABASE_URL_FILE` (DB-002). Each URL names the Unix socket, so the hub
-//! connects as it does to any PostgreSQL and needs no setting of its own for this database.
-//!
-//! A URL holds a password. The files have mode 0600 in a folder with mode 0700, and nothing
-//! here prints or logs one (LOG-007).
+//! The URL file of each login, which the hub reads through `ANIMA_DATABASE_URL_FILE` (DB-002).
+//! A URL holds a password: no URL is printed or logged (LOG-007).
 
 use std::fs;
 use std::io::{self, Write};
@@ -31,7 +27,6 @@ pub enum UrlError {
 }
 
 impl Role {
-    /// The login's name in PostgreSQL.
     #[must_use]
     pub const fn login(self) -> &'static str {
         match self {
@@ -40,7 +35,6 @@ impl Role {
         }
     }
 
-    /// The database the login's URL opens.
     #[must_use]
     pub const fn database(self) -> &'static str {
         match self {
@@ -49,8 +43,7 @@ impl Role {
     }
 }
 
-/// Writes `role`'s URL file. The file appears whole or not at all: it is written beside its
-/// place and moved in, so a crash never leaves half a URL for the hub to read.
+/// Writes `role`'s URL file whole or not at all, so the hub never reads half a URL.
 ///
 /// # Errors
 /// When the file cannot be written or moved.
@@ -112,8 +105,7 @@ pub fn password(layout: &Layout, role: Role) -> Result<Option<Password>, UrlErro
     Ok(Some(Password::from_text(password.to_owned())))
 }
 
-/// `postgres://<login>:<password>@localhost:5432/<database>?host=<socket folder>`: the form
-/// `sqlx` and libpq read as "connect through the Unix socket in that folder".
+/// The form that `sqlx` and libpq read as a connection through the Unix socket in `host`.
 #[cfg(unix)]
 fn url(layout: &Layout, role: Role, password: &Password) -> Zeroizing<String> {
     let socket_folder = layout.socket_folder().as_os_str().as_encoded_bytes();
@@ -126,7 +118,6 @@ fn url(layout: &Layout, role: Role, password: &Password) -> Zeroizing<String> {
     ))
 }
 
-/// Every byte that is not an unreserved URL character becomes `%XX`.
 fn percent_encoded(bytes: &[u8]) -> String {
     use std::fmt::Write as _;
     let mut text = String::with_capacity(bytes.len());

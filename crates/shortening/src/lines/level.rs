@@ -4,9 +4,6 @@
 // "error" and "fail" are one level; the levels below a warning are not told apart.
 // Source: crates/headroom-core/src/transforms/log_compressor.rs (`LevelClassifier`)
 
-//! The level of a log line, from whole words.
-
-/// How serious a line is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {
     Error,

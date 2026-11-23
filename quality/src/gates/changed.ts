@@ -1,21 +1,12 @@
 import type { Gate } from "./gates.ts";
 import { workspaceMaps, type Choice, type Layout, type Member } from "./tier.ts";
 
-/**
- * The checks of the changed paths (`--changed`): what a session runs on its own computer while the
- * full list runs on GitHub. The documents gate always runs first. The tests run only for the
- * crates and packages that the change touched; the members that use them get their lint and the
- * check of their types, which is cheap. It never runs the full list: a change that touches each
- * package, or a path that no rule knows, gets the lints and the checks of types, and the run on
- * GitHub runs the tests.
- */
 export interface ChangedRun {
   gates: Gate[];
   /** What the run leaves to GitHub, one line each. */
   notes: string[];
 }
 
-/** The members that use one of `names`, directly or through other members; not the members of `names`. */
 export function dependents(names: string[], members: Member[]): string[] {
   const found = new Set(names);
   let grew = true;
@@ -33,7 +24,6 @@ export function dependents(names: string[], members: Member[]): string[] {
 
 const flags = (option: string, names: string[]) => names.flatMap((name) => [option, name]);
 
-/** The members that hold one of `paths`; for a path, the member with the longest folder. */
 export function owners(paths: string[], members: Member[]): string[] {
   const found = new Set<string>();
   for (const path of paths) {
@@ -47,7 +37,7 @@ function named(full: Gate[], ...names: string[]): Gate[] {
   return full.filter((gate) => names.includes(gate.name));
 }
 
-/** The touched members of one language, and the members whose own files changed (for the tests when each member is touched). */
+/** `own` holds the members whose own files changed; only their tests run when `touched` is "all". */
 interface Touch {
   touched: "all" | string[];
   own: string[];
@@ -91,7 +81,6 @@ function bunGates(full: Gate[], { touched, own }: Touch, packages: Member[], not
   ];
 }
 
-/** The gates of `--changed` for `choice` and the changed `paths`, taken from the full list `full`. Pure. */
 export function changedGates(choice: Choice, full: Gate[], layout: Layout, paths: string[] = []): ChangedRun {
   const documents = named(full, "documents");
   const notes: string[] = [];

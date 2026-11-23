@@ -1,5 +1,3 @@
-//! Reading an installation of the App, or the list of them.
-
 use serde::Deserialize;
 use source_exchange::{Installation, Problem};
 

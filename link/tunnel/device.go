@@ -40,16 +40,13 @@ func (d *Device) Dial(ctx context.Context, port uint16) (net.Conn, error) {
 	return d.client.DialTCPPort(ctx, port)
 }
 
-// Register announces the device to the hub. The library does this only at
-// the first use, and a hub that restarted has forgotten the device, so a
-// device calls it again when the hub does not answer.
+// Register announces the device to the hub; the library does this only at the first use.
 func (d *Device) Register(ctx context.Context) error {
 	_, err := d.client.Ping(ctx)
 	return err
 }
 
-// Path pings the hub and reports how the answer came back. The ping also
-// starts the search for a direct path.
+// Path pings the hub and reports how the answer came back; the ping also starts the search for a direct path.
 func (d *Device) Path(ctx context.Context) (Path, error) {
 	result, err := d.client.DiscoPing(ctx)
 	if err != nil {

@@ -1,7 +1,5 @@
-//! The logins and the database of a bundled cluster, the same as `deploy/postgres/roles.sql`
-//! makes them for a Docker installation (K2 "Roles", R-016, DB-003): `anima_owner` applies
-//! migrations and owns every object, `anima_hub` serves as a member of `anima_runtime` and
-//! owns nothing, and nobody connects to a database through `PUBLIC`.
+//! The logins and the database of a bundled cluster, as `deploy/postgres/roles.sql` makes them
+//! (K2 "Roles", R-016, DB-003).
 
 #[cfg(unix)]
 use sqlx::postgres::PgConnectOptions;
@@ -36,20 +34,13 @@ pub enum RolesError {
     Random(#[source] getrandom::Error),
 }
 
-/// Makes the owner and hub logins, the runtime group and the `anima` database, and writes the
-/// owner's and the hub's URL files. Safe to run again after a crash at any point: a login
-/// that is there gets a new password, and the URL files are written last.
-///
-/// It signs in as the superuser through the socket, as the operating-system user who runs
-/// the database; there is no superuser password. The server is sent each login's SCRAM
-/// verifier and never a password, so no setting of the server or of the caller's environment
-/// can put a password into a log (LOG-007).
-///
-/// It waits on its own small async runtime, so it must not be called from inside one.
+/// Makes the logins, the runtime group and the database, then writes the URL files.
+/// It is safe to run again after a crash: a login that is there gets a new password.
+/// The server gets each login's SCRAM verifier, never a password (LOG-007).
+/// It runs its own async runtime, so it is not called from inside one.
 ///
 /// # Errors
-/// When the superuser cannot sign in, a statement fails or a URL file cannot be written. An
-/// error carries a SQLSTATE and never statement text.
+/// When the superuser cannot sign in, a statement fails or a URL file cannot be written.
 pub fn prepare(layout: &Layout) -> Result<(), RolesError> {
     let owner = Fresh::new()?;
     let hub = Fresh::new()?;
@@ -63,7 +54,6 @@ pub fn prepare(layout: &Layout) -> Result<(), RolesError> {
     Ok(())
 }
 
-/// A new password and the salt of its verifier.
 struct Fresh {
     password: Password,
     salt: [u8; 16],
@@ -84,10 +74,8 @@ impl Fresh {
     }
 }
 
-/// The settings that keep a statement, and the parse tree of one, out of the server log. The
-/// server starts with the first seven; they are sent again with the connection and set again
-/// in the session, after whatever the caller's `PGOPTIONS` asked for, so the last word is
-/// this list's. A statement here holds a login's verifier, never a password.
+/// Keeps each statement and its parse tree out of the server log. The session sets them again
+/// after the caller's `PGOPTIONS`, so this list has the last word.
 const QUIET: [(&str, &str); 11] = [
     ("log_statement", "none"),
     ("log_min_error_statement", "panic"),
@@ -147,9 +135,7 @@ async fn apply(
     Ok(())
 }
 
-/// The statement that makes the login `name`, or gives a login that is there the new
-/// verifier. `group` is the group it joins, or empty. A verifier is Base64 with `$` and `:`,
-/// so it needs no quoting.
+/// A verifier is Base64 with `$` and `:`, so it needs no quoting.
 fn login_statement(name: &str, is_there: bool, group: &str, verifier: &str) -> String {
     if is_there {
         return format!("alter role {name} {PLAIN_LOGIN} password '{verifier}'");
@@ -233,8 +219,7 @@ fn sql_error(step: &'static str, error: &sqlx::Error) -> RolesError {
     }
 }
 
-/// The SQLSTATE of a database error, or the kind of any other fault. Never the message: the
-/// server can quote the statement in it.
+/// Never the message: the server can quote the statement in it.
 fn sqlstate(error: &sqlx::Error) -> String {
     match error {
         sqlx::Error::Database(database) => database

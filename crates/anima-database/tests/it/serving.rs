@@ -1,4 +1,3 @@
-//! Exercise the supervisor's platform shutdown contract and reap it even after a failure.
 use std::io::{self, BufReader};
 use std::process::{Child, ChildStdout, Output};
 

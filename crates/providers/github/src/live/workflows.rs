@@ -5,7 +5,6 @@ use source_exchange::{Problem, Request, Response};
 
 use super::{get, read};
 
-/// GitHub's workflow `state`, an open string: anything not named here is `Other`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WorkflowState {
     Active,
@@ -40,8 +39,6 @@ struct WorkflowList {
     workflows: Vec<RawWorkflow>,
 }
 
-/// `GET /repos/{o}/{r}/actions/workflows`, 100 to a page.
-///
 /// # Errors
 /// A [`Problem`] when the repository name cannot go into a path.
 pub fn list_request(repository: &str, page: u32) -> Result<Request, Problem> {

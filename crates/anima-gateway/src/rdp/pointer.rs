@@ -1,10 +1,5 @@
-//! The pointer for an RDP device. Guacamole's `mouse` carries the position and a mask of
-//! the buttons that are down, with the wheel as two buttons that go down for one step. RDP
-//! wants an event for each change.
-//!
-//! Pure: no I/O.
+//! The pointer for an RDP device: Guacamole's `mouse` carries a button mask, RDP wants an event for each change.
 
-/// A mouse button RDP knows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Button {
     Left,
@@ -32,10 +27,8 @@ const BUTTONS: [(u8, Button); 3] = [
 ];
 const WHEEL_UP: u8 = 0x08;
 const WHEEL_DOWN: u8 = 0x10;
-/// One step of the wheel, in RDP's units.
 const WHEEL_STEP: i16 = 120;
 
-/// The buttons that are down, as the device knows them.
 #[derive(Default)]
 pub struct Pointer {
     mask: u8,
@@ -51,8 +44,7 @@ impl Pointer {
             .collect()
     }
 
-    /// The events for one `mouse` instruction with this button mask: the move, then each
-    /// button that changed and each step of the wheel.
+    /// The events for one `mouse` instruction: the move, then each changed button and wheel step.
     pub fn moved(&mut self, mask: u8) -> Vec<PointerEvent> {
         let changed = self.mask ^ mask;
         self.mask = mask;

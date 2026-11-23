@@ -25,15 +25,12 @@ func TestMain(m *testing.M) { testbed.Main(m) }
 
 const greeting = "the hub answers"
 
-// site is one hub with one permitted device: what the hub keeps between
-// starts, and the device's identity.
 type site struct {
 	hub       identity.Hub
 	target    string
 	device    identity.Device
 	permitted *devices.Store
-	// openPort is the device's list of open ports. Nil means none.
-	openPort func(port uint16) bool
+	openPort  func(port uint16) bool
 }
 
 func newSite(t *testing.T) *site {
@@ -61,8 +58,7 @@ func newSite(t *testing.T) *site {
 	return s
 }
 
-// startHub starts the hub link. It also gives the device the hub address,
-// as an enrolment does.
+// startHub also gives the device the hub address, as an enrolment does.
 func (s *site) startHub(t *testing.T) *hublink.Link {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -86,7 +82,6 @@ func (s *site) startDevice(t *testing.T, keepalive time.Duration) *devicelink.Li
 	return link
 }
 
-// get makes one request through the local port, on a new connection.
 func get(link *devicelink.Link, limit time.Duration) (string, error) {
 	client := &http.Client{Timeout: limit, Transport: &http.Transport{DisableKeepAlives: true}}
 	response, err := client.Get("http://" + link.LocalAddr().String())
@@ -98,7 +93,6 @@ func get(link *devicelink.Link, limit time.Duration) (string, error) {
 	return string(body), err
 }
 
-// getUntil repeats a request until the hub answers, and returns how long it took.
 func getUntil(t *testing.T, link *devicelink.Link, limit time.Duration) time.Duration {
 	t.Helper()
 	start := time.Now()
@@ -179,9 +173,7 @@ func TestTheLocalPortMustBeOnLoopbackAndTheDeviceEnrolled(t *testing.T) {
 	}
 }
 
-// TestLNK009AnIdleLinkDoesNotStall takes more than 5 minutes of real time,
-// because the stall that it guards against comes from the timers of the
-// tunnel. It runs only when ANIMA_LINK_SLOW_TESTS is set.
+// The stall comes from the tunnel's timers, so this test needs more than 5 minutes of real time.
 func TestLNK009AnIdleLinkDoesNotStall(t *testing.T) {
 	if os.Getenv("ANIMA_LINK_SLOW_TESTS") == "" {
 		t.Skip("set ANIMA_LINK_SLOW_TESTS=1 to run this 5-minute test")

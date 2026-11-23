@@ -1,5 +1,3 @@
-//! The three texts of a generated recipe, from its plan.
-
 use std::fmt::Write as _;
 
 use super::{
@@ -14,11 +12,8 @@ use crate::{
     fields::{COMPOSE, ENVIRONMENT},
 };
 
-/// The registry address of the images of the publisher.
 const REGISTRY: &str = "lscr.io/linuxserver/";
-/// The longest description, in characters.
 const LONGEST_DESCRIPTION: usize = 300;
-/// The time limit of the test of a machine of a generated entry, in seconds.
 const TEST_SECONDS: u32 = 300;
 /// The capabilities that a service with the exception of the init drops (Section 13.3).
 const INIT_DROP: [&str; 9] = [
@@ -40,12 +35,11 @@ const fn protocol(protocol: Protocol) -> &'static str {
     }
 }
 
-/// A text as a scalar of YAML in double quotes: the form of JSON is a form of YAML.
+/// A JSON string is also a double-quoted YAML scalar.
 fn quoted(text: &str) -> String {
     serde_json::Value::from(text).to_string()
 }
 
-/// The port that the test of a machine reaches: the first TCP port.
 fn test_port(plan: &Plan) -> u16 {
     plan.ports
         .iter()
@@ -116,7 +110,6 @@ fn environment(plan: &Plan, name: &str) -> String {
     text
 }
 
-/// The first sentence of the description of the publisher, on one line.
 fn description(image: &Image) -> String {
     let flat = image
         .description
@@ -147,7 +140,6 @@ fn tags(image: &Image) -> Vec<String> {
     tags
 }
 
-/// The streams: each published port but the TCP port of the test, with its protocols.
 fn streams(plan: &Plan) -> Vec<Stream> {
     let tested = test_port(plan);
     let mut streams: Vec<Stream> = Vec::new();
@@ -167,7 +159,6 @@ fn streams(plan: &Plan) -> Vec<Stream> {
     streams
 }
 
-/// The fields of Anima of a generated entry.
 fn anima<'a>(plan: &'a Plan, pin: &'a Pin, reference: String, existing: Existing<'a>) -> Anima<'a> {
     let service = plan.service.as_str();
     Anima {
@@ -229,13 +220,11 @@ fn anima<'a>(plan: &'a Plan, pin: &'a Pin, reference: String, existing: Existing
     }
 }
 
-/// The address of the image of `image` by the digest of `pin`.
 fn reference(image: &Image, pin: &Pin) -> String {
     format!("{REGISTRY}{}@{}", image.name, pin.digest)
 }
 
-/// The last test on a machine that the entry keeps: a pass with exactly `digest`, else
-/// `not-tested`. A new digest never keeps a pass (SF-254).
+/// A pass is kept only for exactly `digest` (SF-254).
 fn kept_test(tested: Option<&MachineTest>, digest: &str) -> MachineTest {
     match tested {
         Some(MachineTest::Passed { digests, .. }) if digests.as_slice() == [digest] => {
@@ -266,7 +255,6 @@ fn entry(image: &Image, plan: &Plan, pin: &Pin, existing: Existing<'_>) -> Strin
     text
 }
 
-/// The recipe folder of `image` from its plan.
 pub(super) fn recipe(image: &Image, plan: &Plan, pin: &Pin, existing: Existing<'_>) -> Recipe {
     Recipe {
         folder: plan.service.clone(),

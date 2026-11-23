@@ -27,17 +27,14 @@ const SECRET_PARTS: [&str; 21] = [
     "mfacode",
 ];
 
-/// A name with one of these as a whole word names a secret (`otpCode`, `sshKeyPem`, `sshPass`),
-/// while `notPaused`, `footprint` and `hotplug` do not. `auth` is not one: `authType` names a
-/// method, and `authKey`, `authToken`, `basicAuth` and `authorization` match `SECRET_PARTS`
-/// (a key named exactly `auth` is decided by its value, see `redaction::AUTH_METHODS`).
+/// A name with one of these as a whole word names a secret (`otpCode`), while `notPaused` does not.
+/// `auth` is not one: `authType` names a method, and a key named `auth` is decided by its value.
 const SECRET_WORDS: [&str; 7] = ["otp", "pem", "pin", "pass", "pwd", "pw", "psk"];
 
 /// With one of these in the name, `pin` means certificate pinning, not a PIN (`certPin`).
 const PINNING: [&str; 3] = ["cert", "tls", "spki"];
 
-/// Names written as one lower-case word that end in "key". A name whose last word is `key`
-/// (`apiKey`, `ssh_key`, `APIKeys`) is a secret too; `monkey`, `keyboard` and `keyId` are not.
+/// One-word names that end in "key"; a name whose last word is `key` (`apiKey`) is a secret too.
 const KEY_COMPOUNDS: [&str; 5] = [
     "apikey",
     "sshkey",
@@ -46,25 +43,18 @@ const KEY_COMPOUNDS: [&str; 5] = [
     "encryptionkey",
 ];
 
-/// With one of these and `key` in the name, it names a private key, even when it also ends like
-/// a public key (`privateHostKey`, `hostKeyPrivate`, `privNodeKey`).
+/// With one of these and `key` in the name, it names a private key, even one that ends like a public key.
 const PRIVATE: [&str; 2] = ["private", "priv"];
 
-/// Names ending in these are public keys, kept as audit evidence (SEC-006, WEB-009): `hostKey`,
-/// `newHostKey`, `publicKey`, `authorizedKeys`. A name that also has a secret part is a secret
-/// (`privateHostKey`, `secretHostKey`, `passwordNodeKey`).
+/// Names ending in these are public keys, kept as audit evidence (SEC-006, WEB-009), unless a secret part is there.
 const PUBLIC_KEYS: [&str; 4] = ["hostkey", "publickey", "nodekey", "authorizedkey"];
 
 /// What a name says about its value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Secrecy {
-    /// Not a secret.
     Plain,
-    /// Holds credentials (`credential`, `sshCredential`): a scalar value is a secret, and so is
-    /// every scalar inside an object or array under it except credential metadata (`kind`,
-    /// `username`, `createdAt`, …).
+    /// Holds credentials: each scalar under it is a secret, but credential metadata (`kind`, `username`, …).
     Holder,
-    /// The value is a secret.
     Secret,
 }
 
@@ -104,11 +94,8 @@ pub fn normalise(name: &str) -> String {
     words(name).concat()
 }
 
-/// Splits a name into lower-case ASCII words. NFKD with combining marks dropped turns `pässword`
-/// into `password` and full-width letters into ASCII. Any other character (separators,
-/// zero-width spaces, other scripts) ends a word, and so does a case change: `apiKey`, `api_key`
-/// and `APIKey` all give `["api", "key"]`. A plural `s` on the last word is dropped (`apiKeys`),
-/// but not a double `ss` (`pass`).
+/// Lower-case ASCII words: NFKD drops marks (`pässword`), and a separator or a case change ends a word.
+/// A plural `s` on the last word is dropped, but not a double `ss` (`pass`).
 fn words(name: &str) -> Vec<String> {
     let chars: Vec<char> = name.nfkd().filter(|c| !is_combining_mark(*c)).collect();
     let mut words = Vec::new();

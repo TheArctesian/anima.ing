@@ -3,14 +3,14 @@
 //! A read key may read the routes: no field holds a certificate or a key. Each change needs a
 //! login or a browser token: the three mutations are in `API_KEY_REFUSED_ROOTS`, and each
 //! resolver checks the kind of the token again, so no API key and no builder token changes a
-//! route. One rule for each caller (operator ruling of 2026-11-22 on adding a route): the person, the app, `anima` and an agent
-//! add and remove a route with no approval; a public route still serves only after the consent
-//! at the machine (OD-HOST-43). Adding and checking a route also need a second factor on the
-//! account (SF-232, HM-D14). Removing one needs only the signed-in token: a removal only takes a
-//! name and its reach away, and it cannot change, point again or make a route. On a hub that is
-//! not on Unix the routes cannot serve, so adding and checking a route is refused: "Routing
-//! needs a hub on Linux." (R-366). Each change writes one audit entry and one event in its own
-//! transaction.
+//! route. One rule for each caller (R-384): the person, the app, `anima` and an agent add and
+//! remove a route with no approval; a public route still serves only after the consent at the
+//! machine (OD-HOST-43). Adding and checking a route also need a second factor on the account
+//! (SF-232, HM-D14), except on a hosted hub, which has none (R-430). Removing one
+//! needs only the signed-in token: a removal only takes a name and its reach away, and it
+//! cannot change, point again or make a route. On a hub that is not on Unix the routes cannot
+//! serve, so adding and checking a route is refused: "Routing needs a hub on Linux." (R-366).
+//! Each change writes one audit entry and one event in its own transaction.
 
 mod trail;
 mod types;
@@ -89,9 +89,18 @@ const fn refusal_field(refusal: &KindRefusal) -> &'static str {
     }
 }
 
-/// A person with a login or browser token, whose account has a second factor (HM-D14).
-async fn person_with_second_factor(ctx: &Context<'_>, root: &str) -> Result<()> {
+/// A login or browser token, whose account has a second factor (HM-D14). A hosted hub asks
+/// for no second factor (R-430): its accounts sign in only through Anima.ing and
+/// have no TOTP of the hub (R-129). The hub knows that it is hosted from how it was started
+/// (`ANIMA_HOSTED_CLOUD_KEY_FILE`), never from the request.
+async fn signed_in_for_routes(ctx: &Context<'_>, root: &str) -> Result<()> {
     operator_only(ctx, root)?;
+    if schema_dependency::<Arc<Config>>(ctx)?
+        .hosted_cloud_key_file
+        .is_some()
+    {
+        return Ok(());
+    }
     let status = access::operator_status(pool(ctx)?)
         .await
         .map_err(internal)?;
@@ -162,7 +171,7 @@ impl Mutation {
     ) -> Result<AddedView> {
         super::routing_here(cfg!(unix)).map_err(to_graphql)?;
         let shape = shape(&input);
-        person_with_second_factor(ctx, "addApplicationRoute").await?;
+        signed_in_for_routes(ctx, "addApplicationRoute").await?;
         let new = NewRoute {
             application: parse(&input.application_id, "applicationId")?,
             device: parse(&input.device_id, "deviceId")?,
@@ -193,7 +202,7 @@ impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn check_application_route(&self, ctx: &Context<'_>, id: ID) -> Result<RouteView> {
         super::routing_here(cfg!(unix)).map_err(to_graphql)?;
-        person_with_second_factor(ctx, "checkApplicationRoute").await?;
+        signed_in_for_routes(ctx, "checkApplicationRoute").await?;
         let id = parse(&id, "id")?;
         let settings = settings(ctx)?;
         let resolver: Arc<dyn Resolver> = match ctx.data_opt::<Dns>() {

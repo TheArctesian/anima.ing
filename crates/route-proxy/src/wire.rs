@@ -1,11 +1,5 @@
-//! The one interface between the proxy and the hub (Section 12.3, SF-231): a
-//! Unix socket of the hub with three requests, one JSON line each. The proxy can ask for the
-//! table of names and streams, connect to a route of an application by the identifier of the
-//! application and the name of the route, and give what it counted. No request names a device,
-//! an address or a port: the hub finds them in its own record.
-//!
-//! `connect` is answered with one word on a line; after `ok` the bytes of the application
-//! follow on the same socket. Both sides use this module.
+//! The one interface between the proxy and the hub: JSON lines on a hub socket (Section 12.3, SF-231).
+//! No request names a device, an address or a port: the hub finds them in its own record.
 
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt as _, AsyncWrite, AsyncWriteExt as _};
@@ -17,7 +11,6 @@ pub const REQUEST_MAX: usize = 4 * 1024;
 /// The longest line of a table.
 pub const TABLE_MAX: usize = 16 * 1024 * 1024;
 
-/// One request of the proxy.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Request {
@@ -29,8 +22,7 @@ pub enum Request {
     Count { name: String, counts: Counts },
 }
 
-/// A connection that the proxy asks for: the application and the name of its route, never a
-/// device or a port.
+/// A connection that the proxy asks for: the application and the name of its route.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Dial {
@@ -207,8 +199,6 @@ pub async fn write_json<W: AsyncWrite + Unpin, T: Serialize>(
     Ok(())
 }
 
-/// Parses one request line.
-///
 /// # Errors
 /// [`WireError::Malformed`] for any other text.
 pub fn parse_request(line: &str) -> Result<Request, WireError> {
