@@ -66,6 +66,15 @@ fn mcp_035_an_agent_with_its_own_command_is_set_up_by_that_program_with_fixed_ar
     assert!(agent("codex").is_some() && agent("nobody").is_none());
 }
 
+/// The part of the path of `anima` that a different user than `user` can change, when the check
+/// refuses it for that reason.
+fn replaced(anima: &Path, user: u32) -> Option<std::path::PathBuf> {
+    match check_command(anima, user) {
+        Err(CommandError::Replaceable(others)) => Some(others.path),
+        _ => None,
+    }
+}
+
 #[test]
 fn mcp_033_the_program_of_the_entry_is_absolute_runnable_plain_and_not_replaceable_by_others() {
     let (_home, here, checked) = computer();
@@ -91,16 +100,12 @@ fn mcp_033_the_program_of_the_entry_is_absolute_runnable_plain_and_not_replaceab
         Err(CommandError::NotAProgram)
     );
     mode(&anima, 0o777);
-    assert!(matches!(
-        check_command(&anima, here.user),
-        Err(CommandError::Replaceable(others))
-            if fs::canonicalize(&others.path).ok() == fs::canonicalize(&anima).ok()
-    ));
+    assert_eq!(
+        replaced(&anima, here.user).and_then(|part| fs::canonicalize(part).ok()),
+        fs::canonicalize(&anima).ok()
+    );
     mode(&anima, 0o755);
-    assert!(matches!(
-        check_command(&anima, here.user + 1),
-        Err(CommandError::Replaceable(_))
-    ));
+    assert!(replaced(&anima, here.user + 1).is_some());
     // A folder above the program that all can write, and the folder of what a link points at.
     let shared = here.home.join("shared");
     fs::create_dir_all(shared.join("mine")).expect("folders");
@@ -109,14 +114,7 @@ fn mcp_033_the_program_of_the_entry_is_absolute_runnable_plain_and_not_replaceab
     std::os::unix::fs::symlink(&inside, &link).expect("link");
     assert!(check_command(&inside, here.user).is_ok() && check_command(&link, here.user).is_ok());
     mode(&shared, 0o777);
-    assert!(matches!(
-        check_command(&inside, here.user),
-        Err(CommandError::Replaceable(_))
-    ));
-    assert!(matches!(
-        check_command(&link, here.user),
-        Err(CommandError::Replaceable(_))
-    ));
+    assert!(replaced(&inside, here.user).is_some() && replaced(&link, here.user).is_some());
     // A path that an agent would read as a variable.
     let odd = here.home.join("${workspaceFolder}");
     fs::create_dir(&odd).expect("folder");
