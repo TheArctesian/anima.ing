@@ -14,6 +14,7 @@ Version: 8. Date: 2026-11-19. Version 2 added HM-R6 (a free hub sleeps) and the 
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
+Version 18 (2026-11-23) records R-NEW-workoslinear: build the shared Linear issue read for Hermes and Code. Section 6.15 gives the private-site implementation handoff and the remaining authority decision. No write access or deployment is authorized.
 Version 17 (2026-11-23) records R-NEW-workospilot: option A permits design of one project-bound read action through a trusted private-cloud broker. Section 6.14 proposes the concrete contract; provider, deployment, grant policy and implementation are not approved.
 Version 16 (2026-11-23) adds the bounded Pipes and Relay preparation in Section 6.13 and task HM-PIPES-PREP. It approves no integration, provider, deployment or grant policy.
 Version 15 (2026-11-23) amends HM-T33 for an explicit Linux lingering offer (R-447). The earlier installer is merged; real logout and reboot checks remain open.
@@ -432,7 +433,7 @@ The same session limited this task to plan and contract preparation until the po
 This section serves row 4.17 of the priorities. It is a proposal within this owner document, not
 an approved contract or permission to build. It adds no requirement identifier. The primary
 decision OD-W-NEW-workospilot in Section 7 is now decided: option A, design only
-(R-NEW-workospilot). The next decision is OD-W-NEW-workosaction. No production configuration was inspected.
+(R-NEW-workospilot). The provider decision is now R-NEW-workoslinear; the remaining authority decision is OD-W-NEW-workosauthority. No production configuration was inspected.
 
 **Existing owners and limits.** This document owns account sign-in and the cloud boundary
 (HMD-032 to HMD-035, HMD-061). [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)
@@ -518,7 +519,7 @@ no live account, credential, cloud write or deployment.
 **Status: proposed, not accepted.** R-NEW-workospilot permits this design, not its implementation.
 On 2026-11-23 the operator asked to use another provider because GitHub is already set up.
 The GitHub-specific example below is superseded as a pilot recommendation; it remains design
-background only until a different provider and operation are selected. No replacement is selected.
+background only. R-NEW-workoslinear selects Linear issue read for both Hermes and Code; Section 6.15 supersedes the provider example. The run-specific grant proposal below is not approved and is not assumed to apply to Hermes.
 Every choice below remains subject to the provider decision, the existing owners' review and
 separate approval of the complete contract under CON-001. No route, schema or deployment is
 created by this text. The base checked again on 2026-11-23 is `536d92dff`; origin/dev and its
@@ -648,12 +649,143 @@ and implementation, plus non-live cross-tenant, replay, revoke-race, disconnect-
 scope and output-bound tests. Real provider behavior needs a human check when built. This
 document specifies no deployed host and authorizes no WorkOS configuration change.
 
+### 6.15 Linear issue read: concrete implementation handoff
+
+**Authorization and boundary.** R-NEW-workoslinear authorizes a live Linear issue read and
+shared CLI/MCP interface usable by Hermes and Code. The issue supplies task context, not
+permission to run commands, start a thread, write a comment or change Linear. The grant,
+caller-authentication and audit choices in Section 6.14 remain proposals. No offline importer,
+unused provider library or mock-only endpoint is a substitute for the requested live read.
+
+**Repository evidence, 2026-11-23.** Public origin/dev and claims remain at
+`536d92dffe62837579f9ccd8da07585cd7a377c2`; no competing Pipes/Linear claim was found.
+The operator permitted read-only inspection of the two private repositories, not edits there:
+
+| Owner | Evidence and implementation seam |
+| --- | --- |
+| `anima-site`, clean main at `913404552f54d745bc526a6cc9aa4141907523ce` | Its `docs/hub-plan.md` and `docs/sign-in-methods-plan.md` own account/API/sign-in. `src/lib/server/app-route.ts::forOwner` calls `appUser` then `accountOf`; `owner.ts` distinguishes `Owner.id` (account owner) from `Owner.signer` (signed-in WorkOS identity). `src/lib/server/workos.ts` holds server-only WorkOS calls. This is the broker repository. No AGENTS or claim file was found in its file inventory; this does not establish that no active session owns it. Main must coordinate its owner and provide an isolated checkout. |
+| `anima-cloud`, clean main, three commits behind its remote-tracking main | `docs/plan.md` owns pool operations; ACL-001 accepts instructions from the site. It is not the WorkOS identity broker. No branch or file was changed. |
+
+**Prerequisites in the site.** The inspected `app-token.ts::appUser` checks signature, subject
+and expiry but has no explicit algorithm, issuer or client-claim check in `jwtVerify`.
+HMD-033 and private HUB-T1/HUB-T2 already own this prerequisite. Implement and test it with
+synthetic signed claims and approved expected issuer/client values before accepting provider
+requests. No real token was read. Do not key Pipes access by the caller's email, replace the
+account owner with `Owner.signer`, or assume a linked sign-in identity owns the account's
+Pipes connections. Store the chosen WorkOS subject explicitly in the account connection
+record; validate its ownership. Audit may name both owner and signer as opaque references.
+
+Use `knownHubOf(owner)` to read the account/hub mapping. `hubOf` can allocate a hub identifier
+and must not run as a side effect of an issue read. The site's Redis REST `store.ts` already
+has `command` and `/multi-exec` writes. A sequence of reads followed by those writes does not
+prove conditional grant/revoke serialization. The owner needs a checked atomic transition,
+for example a reviewed Redis script, tested at that production boundary. No new storage
+service is selected. Do not print the existing store's raw error text: commands may carry
+identifiers or content. Secret-free typed failures are required at the new boundary.
+
+**Provider verification.** [Linear OAuth](https://linear.app/developers/oauth-2-0-authentication)
+documents `read` access for the user's account. Request only `read`, not `write`,
+`issues:create`, `comments:create`, `admin` or agent-assignment scopes. This scope is broader
+than one issue/project; the broker must enforce the smaller binding. The
+[GraphQL guide](https://linear.app/developers/graphql) gives `https://api.linear.app/graphql`
+and GraphQL error envelopes. [WorkOS Relay](https://workos.com/docs/pipes/relay) supports
+`linear` on `api.linear.app` with POST GraphQL. Use the explicit connection header established
+in Section 6.13. Never fall back to the compatibility account or fetch a provider token.
+WorkOS OAuth configuration still needs separate authorized work.
+
+Proposed fixed query, using the [official schema](https://github.com/linear/linear/blob/master/packages/sdk/src/schema.graphql):
+
+```graphql
+query AnimaLinearIssue($issue: String!) {
+  organization { id }
+  issue(id: $issue) {
+    id
+    identifier
+    title
+    description
+    team { id }
+    project { id }
+  }
+}
+```
+
+The server resolves the issue UUID from the approved binding; no caller supplies GraphQL,
+URL, headers, fragments or cursor. Compare returned organization, issue, team and non-null
+project UUIDs with the binding before release. Anima project ID and Linear project ID are
+different fields. Labels, short issue identifiers and URL slugs prove no authority. A null
+project, moved issue or changed binding needs a new confirmation. Read no comments,
+attachments, images, sub-issues or linked pages. [Linear pagination](https://linear.app/developers/pagination)
+applies to list operations; this single-object query has no cursor or automatic paging.
+
+**Proposed minimum routes for the site owner.** These are reviewable shapes, not accepted K1
+or registered routes. Final caller authentication and audit authority must precede wiring:
+
+| Route | Input/authority | Output |
+| --- | --- | --- |
+| `POST /v1/connections/linear/authorize` | Authenticated account; server-derived subject; CSRF and initiating-session binding; exact registered callback. Require `completion: finish_required`. | Person-facing link only; no agent link or secret. |
+| Account callback and server finish | Matched state, authenticated initiating session, one-time code and server-held verifier. A code alone is insufficient. Reconcile SRC-020 with its existing owner before adopting WorkOS's hosted callback. | Opaque connection reference, never a token. |
+| `POST /v1/connections/linear/status` | Account and owned connection reference. | Connected, reconnect-required, disconnected or unavailable. |
+| `POST /v1/connections/linear/bind` | Account plus confirmed hub/project/resource and exact Linear workspace/team/project/issue IDs. Verify the hub mapping and provider IDs; caller text is not permission. | Versioned binding reference. |
+| `POST /v1/connections/linear/read` | Approved caller proof, binding/grant reference and request UUID. Derive every provider ID and Relay header from authoritative state. | Typed issue context or stable error. |
+| `POST /v1/connections/linear/revoke` | Authenticated account and owned grant; serialized with dispatch/release. | Revoked generation, not a promise to cancel a send already authorized. |
+| `POST /v1/connections/linear/disconnect` | Authenticated account and connection; block local use before external deletion. | Disconnected, or locally blocked with deletion pending. |
+
+Recommend bounds of 8 KiB input, one upstream call, 256 KiB decompressed input from Linear,
+32 KiB result and a 10-second total deadline; no redirects or automatic retry. Cap title at
+500 characters and description at 4,000, with explicit truncation. Reject nonempty GraphQL
+`errors`, including partial `data` with HTTP 200; return no raw error text. Distinguish Relay
+402 without upstream status (reconnect-required) from provider 402 (provider failure).
+A 429 is rate-limited, not authority to retry. Use the corrected dispatch/revoke/release
+ordering in Section 6.14 after policy acceptance; transport code cannot replace durable audit.
+
+**Public and agent boundary.** `crates/anima-cli/src/hub.rs` authenticates to the hub, not the
+site. `anima mcp` first checks hub `me` and declares Agent. Its existing token cannot simply
+be forwarded to the account API. The account-authenticated client path is a prerequisite;
+read no personal sign-in files and send no hub token to WorkOS. Candidate command:
+`anima project linear-issue <binding>`; candidate read-only MCP tool:
+`anima_linear_issue_read`, input `{bindingId, requestId}`. No input grants access or selects
+its acting identity. One production broker client serves both adapters after the account
+transport is approved. CLI and MCP precede the UI under CMD-030.
+
+Hermes's [official MCP interface](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/mcp.md)
+supports stdio command/args and discovery. That establishes a transport option, not an
+installed or tested Anima integration. The public tree has no Hermes code. AXT-089, AX49
+and AX50 in [agent-tools-as-extensions.md](agent-tools-as-extensions.md) Section 6.11 own its
+handover; both tasks are Not started and OD-AXT35 still controls automatic start. This read
+adapter does not start Code. Code's owner controls MCP injection/runner state. Do not assume
+Hermes has a Code run key. The vault Section 3b/R-381 to R-384/OD-THR18 same-user boundary
+stays accepted; adapter labels are attribution, not hostile same-user isolation.
+
+Output separates typed source references from `untrustedContent` (title/body), with a
+truncation flag and fixed warning. Issue text is context, never system/developer instruction,
+permission to change grants, a shell command, a tool argument, or an automatic launch.
+Fetch no link embedded in it. Both consumers retain that boundary. A warning is not proof
+against prompt injection; authorization continues to apply after a model reads the issue.
+
+**Synthetic acceptance cases for the implementing owner.** At the production broker's real
+I/O boundary, capture the exact connection header and fixed query; refuse unknown request
+fields, wrong account/workspace/team/project/issue, null project, partial GraphQL errors,
+oversize streaming bodies, redirects and timeouts. Assert that retry count stays zero and
+secret/raw provider fields never reach results. Distinguish Relay/provider 402. Feed hostile
+instruction-like title/body and verify the untrusted boundary in both MCP consumers. Grant
+race tests belong to the production atomic transition; a mock that grants permission by
+fiat proves nothing. No production broker or account client exists in this checkout, so no
+unused abstraction or mock-only claim of live reads is added here.
+
+**Next dependency.** Main is arranging a repository-bound isolated anima-site owner after a
+rejected cross-project delegation. This session may inspect that main checkout but not edit
+it. OD-W-NEW-workosauthority is the remaining caller-policy choice. The site owner then
+supplies HMD-033, authenticated routes and serialized grant/audit state. Public CLI/MCP and
+both real consumer checks follow that concrete contract. No connect/read/revoke or Hermes
+task handover is claimed as built or verified; no local database or live credential was used.
+
 ## 7. Open decisions
 
 | ID | Decision | Facts | Proposal |
 | --- | --- | --- | --- |
+| OD-W-NEW-workosauthority | Which caller authority should the shared Linear read use? | The CLI holds a hub token; the site uses account sessions; Hermes has no Code enrollment. Same-user authority is already accepted. Section 6.14 grant lifetime and audit policy remain proposals. | Open. A (recommended): account-owned project read permission and a narrow broker credential for the shared CLI/MCP client, with same-user limits disclosed and adapter labels used only for attribution; settle lifetime/revoke and durable fail-closed audit together. B: separately enrolled per-run authority for Code and Hermes; finer attribution but both enrollment implementations are prerequisites. Neither choice exposes the WorkOS environment key. |
 | OD-W-NEW-workospilot | Which bounded Pipes and Relay direction should be designed next? | Section 6.13: HMD-035 keeps the environment key in the private cloud; source connection is not identity or a project grant. | Decided: A, design one project-bound read-only action through a trusted private-cloud broker, then separately approve the concrete provider, policy and contract (R-NEW-workospilot). No provider, deployment, grant policy or executable integration is approved. |
-| OD-W-NEW-workosaction | Which non-GitHub provider and read operation should the pilot contract target? | On 2026-11-23 the operator said GitHub is already set up and requested another provider. The prior GitHub example in Section 6.14 is superseded as the recommendation. | Open: select another provider and one useful read operation, then verify supported Pipes integration, scopes and resource boundaries. Slack channel summary and Google Drive selected-document summary were suggested in chat, not selected or verified as least-privilege designs. This selects a design target only; the complete contract and deployment need separate approval. |
+| OD-W-NEW-workosaction | Which provider and read operation should the pilot target? | The GitHub example is superseded. Section 6.15 gives the Linear handoff. | Decided by R-NEW-workoslinear: build a shared read-only Linear issue path for Hermes and the coding agent. Writes require later explicit permission; automatic Hermes-to-Code launch is not authorized. |
 | HM-D1 | How can each free hub cost less than the paid hubs earn? | Estimates: a paid Solo hub earns about $13 a month after its hardware and the payment fee. A free always-on slice costs about $2 to $3. At a conversion of 1% to 3%, one paid hub carries 33 to 99 free hubs, so a free hub must cost less than about $0.13 to $0.40 a month. | Decided: HM-R6. The free hub sleeps. |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | The cost is the disk of the hub and its share of memory while it is on. One hub with no device, on the first pool host on 2026-11-17 (the private service's plan, T5): 308 MiB of memory and 56 MiB of disk in use, a sleep in 1.3 seconds, a wake in 0.2 seconds, and about 10 seconds from a make to a ready hub. Not measured: a hub with devices, and many hubs on one host. | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. |
 | HM-D2 | Where does the usage line sit? | Hub memory is not measured. | Set it after the load test of [shared-pool-hosting.md](shared-pool-hosting.md). |
@@ -785,7 +917,8 @@ Tasks that a ruling names:
 
 | Task | Work | Ruling | State |
 | --- | --- | --- | --- |
-| HM-PIPES-PREP | Prepare the bounded Pipes and Relay owner map and concrete contract proposal in Sections 6.13 and 6.14. Build no integration. | R-NEW-workospilot; design only | Direction A recorded; concrete proposal prepared for OD-W-NEW-workosaction and separate contract review. No executable integration. Local branch `t3/workos-pipes-relay`, held for independent review before push. |
+| HM-PIPES-LINEAR | Build live Linear issue read and shared CLI/MCP for Hermes and Code; Section 6.15 supplies the private-site handoff and acceptance cases. | R-NEW-workoslinear | Not started: waits for isolated anima-site owner, HMD-033 and OD-W-NEW-workosauthority. Public adapters wait for its authenticated contract. No offline replacement or mock-only live-read claim. |
+| HM-PIPES-PREP | Prepare the bounded Pipes and Relay owner map and concrete contract proposal in Sections 6.13 and 6.14. Build no integration. | R-NEW-workospilot; design only | Direction A and the Linear/both-consumers build authorization are recorded; Section 6.15 supplies the implementation handoff and remaining authority/owner dependencies. No executable integration. Local branch `t3/workos-pipes-relay`, held for independent review before push. |
 | HM-T2 | The hub side of HMD-038 to HMD-040: the hosted mode (`ANIMA_HOSTED_CLOUD_KEY_FILE`, which needs `ANIMA_LINK_CONTROL`), `hostedDeviceInvite` and `claimDeviceToken` (K1), the claim book in memory (`crates/hub/src/fleet/link/claims.rs`), the token of the operator `owner` (`crates/hub/src/fleet/access/login/hosted.rs`), and the refusal of the password sign-in. Tests: `crates/hub/tests/it/link/hosted.rs`. | R-129 | Done: built in 921ee045, 2f7a4eff; merged to main; HT-022 Passed (operator, 2026-11-17). |
 | HM-T3 | The client side of HMD-040 and HMD-041: the `HubAccess` holds the invite (or none) and the claim; `apps/client/src/lib/hosted/join.ts` joins the link, trades the claim for the token through the link, keeps it, saves and marks the address; a hosted hub signs in again through the first-run choices (`signInPathFor`). | R-129 | Done: built in 921ee045; merged to main; HT-022 Passed (operator, 2026-11-17). |
 | HM-T7 | `anima-local-hub run --hosted-cloud-key-file <path>` passes `ANIMA_HOSTED_CLOUD_KEY_FILE` to the hub, so a hub of the pool can run in the hosted mode of HM-T2: `anima-local-hub` starts the hub with a cleared environment, and without the option no hub could be hosted. `crates/anima-local-hub/src/members.rs` (`hosted`), the procedure in [local-hub.md](../procedures/setup/local-hub.md). | R-129 | Done: built in 9babe035; merged to main. The pool's hub image `anima-hub-9babe035` uses it. HT-022 Passed (operator, 2026-11-17). |

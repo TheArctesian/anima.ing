@@ -673,3 +673,15 @@ that design. It does not select a provider, broker deployment, grant policy or c
 scope, and does not authorize executable integration, cloud writes or deployment.
 The branch stays local until independent review. HMD-035 and the identity boundaries
 remain in force; self-hosted and local operation remain independent of WorkOS.
+
+### R-NEW-workoslinear — build the Linear read for Hermes and Code
+
+Operator, 2026-11-23, first-hand in the main conversation and relayed by the main
+orchestrator; not first-hand in this recording session. In response to the recommendation
+of a shared connection layer and a first read-only Linear issue to coding task, reusable
+by Hermes, his words were: "Yeah lets do that make it work for both hermes and the coding agent".
+This selects Linear issue read and both consumers for implementation (HM-PIPES-LINEAR in
+[hosted-mode.md](proposals/hosted-mode.md) Section 6.15), replacing the GitHub pilot target.
+Writes wait for explicit permission. It does not select unsettled grant or audit policies,
+authorize a deployment, cloud configuration or secret migration, or authorize automatic
+Hermes-to-Code launch. HMD-035 and the existing same-user policy remain in force.
