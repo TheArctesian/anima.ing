@@ -1,5 +1,6 @@
 import type { RunRow } from '$lib/agent-threads/live/run';
 import type { Details } from '../details/model';
+import { shows, type ShownChoices, type ShownId } from '../details/shown';
 
 /**
  * The card of a thread's details beside the chat (T3 Code `threadDetailsCardLayout.ts`, `chatCanvasLayout.ts`): 280 px
@@ -26,9 +27,19 @@ export function detailsOf(row: RunRow): Details {
   };
 }
 
-/** The run of the open thread `chosen`, when the card has something real of it to show; otherwise none, and no toggle. */
-export function detailedRun(row: RunRow | undefined, chosen: string | null): RunRow | undefined {
-  return row !== undefined && row.id === chosen && Object.keys(detailsOf(row)).length > 0 ? row : undefined;
+/** The item of the "Choose what to show" menu that shows each part `detailsOf` can give. */
+const PART_ITEM = { runContext: 'environment', branch: 'branch', context: 'context' } as const satisfies Partial<Record<keyof Details, ShownId>>;
+
+/**
+ * The run of the open thread `chosen`, when the card has something of it to show by the person's `choices`; otherwise
+ * none, and no toggle. A run whose only part is hidden by default (the context window of a scratch folder) has no card:
+ * an empty card would stand over the chat with only "Choose what to show" in it. A part that the person hid keeps the
+ * card, so its menu can show the part again (T3 keeps an emptied card for that).
+ */
+export function detailedRun(row: RunRow | undefined, chosen: string | null, choices: ShownChoices = {}): RunRow | undefined {
+  if (row === undefined || row.id !== chosen) return undefined;
+  const items = (Object.keys(detailsOf(row)) as (keyof typeof PART_ITEM)[]).map((part) => PART_ITEM[part]);
+  return items.some((item) => shows(choices, item) || choices[item] === false) ? row : undefined;
 }
 
 /** The card stands inline in a canvas of this size; otherwise it opens as a popover. */
