@@ -1,13 +1,15 @@
-# Model work: the work types of the model service, the copies and the runtime report
+# K11 — Model work: the work types of the model service, the copies and the runtime report
 
-Status: **Draft, waits for a ruling (R-344) and the security review (SEC-C-012).** Version 0.3,
+Status: **accepted** (R-344, operator, 2026-11-22: "all of it review after"; version 0.3 as written). The security review
+SEC-C-012 still runs, after the acceptance and beside the build; SF-298 and SF-300 stay Open until code closes them or the
+operator accepts them ([security-findings.md](../../docs/security-findings.md)). Version 0.3,
 2026-11-20 (version 0.3 takes the answers of the operator to OD-C22 to OD-C25: R-346,
 R-339, R-342, R-326; each stricter form is a setting at the machine,
 Section 10.1. Version 0.1, 2026-11-20, was the text of the first security read; version 0.2 has the corrections of
 its 14 plain findings, and the safe default of its 4 findings that wait for the operator, marked "until the
 operator decides"; [security-findings.md](../../docs/security-findings.md), the section of the model work).
-This contract has no K number: no ruling gave one. Task L1-3 of [compute-plan.md](../../docs/plans/compute-plan.md) Section 12.4. No code may be built
-from this text before the ruling (CON-001, AGT-004). Change it only through a programme ruling.
+R-344 gives this contract the number K11. Task L1-3 of [compute-plan.md](../../docs/plans/compute-plan.md) Section 12.4. Code may be built from this text
+(R-344; CON-001, AGT-004). Change it only through a programme ruling.
 
 Requirements: CAG-002 to CAG-006, CAG-008, CAG-009, PULL-004 to PULL-011, RTC-002 to RTC-006, SEC-C-001,
 SEC-C-003, SEC-C-007 to SEC-C-010 of the compute plan; USE-004 to USE-009 of [jobs.md](../../docs/proposals/jobs.md);
@@ -25,16 +27,15 @@ This file holds no secret, no token, no key and no example value of a secret.
   the pattern of `agent_install` (R-153) would need without K10. It adds the model work types to the fixed list of
   K10, with a new kind `model`. K10 Section 13, point W1-P5, says: "Each is one more type of the fixed list, added
   with a ruling." R-344 is that ruling.
-- **Changes to K10 that wait for R-344.** The text of this contract is the change. K10 itself is not
-  edited before the ruling. The changes are: the list of work types of K10 Section 1 and Section 6 gets the ten
+- **Changes to K10 that R-344 permits.** The text of this contract is the change. The changes are: the list of work types of K10 Section 1 and Section 6 gets the ten
   types of Section 2 below; the kind `model` (Section 1 below); the purpose `hf_token` of K10 Section 8
   (Section 7 below); the causes of refusal of Section 5 below; the order of the claim (Section 3 below).
-- **Changes to K8 that wait for R-344.** The optional member `runtimes` of the `Batch` of K8 Section 4
+- **Changes to K8 that R-344 permits.** The optional member `runtimes` of the `Batch` of K8 Section 4
   (Section 8 below). It is an optional member, so it needs no `/daemon/v2/` (K8 Section 1).
-- **A change of the design specification that waits for R-344.** MET-020 says that the daemon connects
+- **A change of the design specification that R-344 permits.** MET-020 says that the daemon connects
   only to the hub and sends no request to a TCP port of its own computer. A pull (PULL-004), a runtime install
-  (CAG-008) and a measure or a validation (PULL-011) need more. Section 4 gives the rule; open point MW-P1 asks
-  the operator for the text.
+  (CAG-008) and a measure or a validation (PULL-011) need more. Section 4 gives the rule; MET-020 has the
+  exception in its text (R-344).
 - **What this contract does not hold.** The model request and its address (task L1-10, `model-request.md`); the
   wait policy, the pin and the readiness of a request (task L1-15); the device policy itself (task L1-5); the
   library and the choice of a variant (tasks L1-4 and L1-7); the model key (task L1-9).
@@ -215,8 +216,8 @@ Rules of the fetch process (both sources):
 The fetch process and the probe process are child processes of the daemon, made from the same program file with a
 fixed mode. They get no daemon token, no hub origin and no proxy variable. They take their instruction on their
 standard input as JSON from the daemon, and give back fixed codes and numbers. The part of the daemon that speaks
-to the hub makes no other connection. This follows K10 point W1-P1. MET-020 must get this exception in its text
-(open point MW-P1).
+to the hub makes no other connection. This follows K10 point W1-P1. MET-020 has this exception in its text
+(MW-P1, R-344).
 
 **For task L1-6 only (R-336).** The build of task L1-6 downloads a runtime archive in the daemon
 process, with a client of its own that holds no token, no hub origin and no proxy, and verifies the SHA-256 before it
@@ -522,8 +523,7 @@ setting, no file of a user, no package, no service unit.
   folder (`openat`, `renameat`, `unlinkat`), with `O_NOFOLLOW`. `copy_delete` and each clean-up follow no
   symbolic link.
 - MET-002 gets one more exception, which R-165 decided (OD-C9): "the daemon does the model work of the fixed list
-  of CAG-003, and with it changes only its own folders (CAG-009)". The text of MET-002 changes with
-  R-344.
+  of CAG-003, and with it changes only its own folders (CAG-009)". The text of MET-002 has it (R-344).
 
 ### 10.1 Settings at the machine
 
@@ -570,7 +570,7 @@ The daemon keeps the state of each copy in its state folder. The hub keeps the r
 
 | Point | Question | Proposal |
 | --- | --- | --- |
-| MW-P1 | MET-020 permits the daemon only the hub. A pull, an install and a measure need Hugging Face, a release host and loopback | A child fetch process and a child probe process, with no token and fixed hosts (Section 4); MET-020 gets that exception in its text with R-344 |
+| MW-P1 | MET-020 permits the daemon only the hub. A pull, an install and a measure need Hugging Face, a release host and loopback | A child fetch process and a child probe process, with no token and fixed hosts (Section 4); Decided (R-344): MET-020 has that exception in its text |
 | MW-P7 | The SHA-256 comes from the hub (F4) | Decided (R-339): the hub hash only; `secondHash` and `revisionAgeDays` are settings at the machine, off |
 | MW-P8 | Is `mlx-community` in the default list? (F5) | Decided (R-342): yes; `organisations` is a setting at the machine |
 | MW-P9 | A runtime runs with the rights of the user of the daemon (F2) | Decided (R-346): no required isolation; `sandbox` is a setting at the machine, off |
