@@ -35,6 +35,10 @@ impl Runner {
         let Some(folder) = self.git.thread_folder(id) else {
             return Err(worktree(GitRefusal::BadPath));
         };
+        let tmp = super::private_tmp::made(&self.dir, id).map_err(|error| {
+            tracing::warn!(%error, %id, "the temporary folder of a thread could not be made");
+            Refusal::FolderNotPermitted
+        })?;
         let daemon = self.dir.parent().unwrap_or(&self.dir);
         let confinement = Confinement {
             mode: asking.new.mode,
@@ -47,13 +51,9 @@ impl Runner {
                 .rights
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            rights.coming.insert(
-                id,
-                Seat {
-                    folder,
-                    confinement,
-                },
-            );
+            rights
+                .coming
+                .insert(id, Seat::new(folder, confinement, tmp));
             rights.copies.insert(id, asking.path.clone());
         }
         let project = asking.new.folder.clone();

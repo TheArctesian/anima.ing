@@ -17,6 +17,7 @@ const ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
 use crate::threads::wire;
 
 mod new_thread;
+pub(super) mod private_tmp;
 mod scratch;
 mod worktree;
 pub(super) use crate::threads::notice::chosen_folder;
@@ -251,8 +252,12 @@ impl Runner {
             let event = agent_threads::drive::DriveEvent::Notice { text };
             self.publish(id, agent_threads::control::Change::Said { event });
         }
+        // The hold of the Git engine counts the roots of this thread before its agent starts
+        // (THR-050).
+        self.rights_now();
         let Some(command) = self.command(action).await else {
             self.threads.remove(&id);
+            self.rights_now();
             return Err(Refusal::Holder);
         };
         let files = self.adopt_draft(&new, id);

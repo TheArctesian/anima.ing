@@ -95,7 +95,13 @@ impl Runner {
             session: SessionStart::New(id),
         };
         let invocation = launch.invocation().map_err(|_| Refusal::BadValue)?;
-        let mut env = login::with_folder_of(self.env.clone(), path);
+        // The `TMPDIR` of the agent is made before the thread has a seat (THR-050).
+        let tmp = super::private_tmp::made(&self.dir, id).map_err(|error| {
+            tracing::warn!(%error, %id, "the temporary folder of a thread could not be made");
+            Refusal::FolderNotPermitted
+        })?;
+        let env = login::with_folder_of(self.env.clone(), path);
+        let mut env = super::private_tmp::with_tmp(env, &tmp);
         if new.program == Program::ClaudeCode {
             env.extend(
                 login::CLAUDE_VARIABLES.map(|(name, value)| (name.to_owned(), value.to_owned())),
