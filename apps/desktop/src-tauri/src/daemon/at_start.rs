@@ -95,6 +95,12 @@ pub fn update_at_start<R: Runtime>(app: &AppHandle<R>) {
                 "this build has no Developer ID signature: after an update, the Keychain asks the person once for the new daemon"
             );
         }
+        // The team of the bundle, read with its seal: a Developer ID build takes only a new copy
+        // of the same team, so a program put in the bundle after this check does not pass.
+        let bundle = bundle_of(&carried);
+        let sealed = bundle.as_deref().is_some_and(signature::sealed);
+        let team = bundle.as_deref().and_then(signature::team_of);
+        let signed = |part: &Path| signature::sealed_by(part, team.as_deref());
         let swap = update::Swap {
             copy: &copy,
             carried: &carried,
@@ -102,8 +108,8 @@ pub fn update_at_start<R: Runtime>(app: &AppHandle<R>) {
             env: &env,
             restart: super::INSTALL_DEADLINE,
             stop: &claim.stop,
-            sealed: bundle_of(&carried).is_some_and(|bundle| signature::sealed(&bundle)),
-            signed: &signature::sealed,
+            sealed,
+            signed: &signed,
             healthy: &answers,
         };
         let result = update::update_here(&swap);

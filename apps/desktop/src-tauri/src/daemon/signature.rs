@@ -5,7 +5,7 @@
 //! hash of its own code, so each build is a new program, and its first read of the token waits
 //! for the person to allow it: after an update to such a build, the Keychain asks the person once
 //! (R-NEW-updateall). Linux has no Keychain: there it always keeps its identity. The seal of
-//! the bundle and of the new copy is checked here too ([`sealed`]).
+//! the bundle and of the new copy is checked here too ([`sealed`], [`sealed_by`]).
 
 use std::path::Path;
 
@@ -26,21 +26,29 @@ pub enum Identity {
     expect(dead_code, reason = "read only on macOS and by its tests")
 )]
 pub fn identity(success: bool, shown: &str) -> Identity {
-    let team = shown
-        .lines()
-        .find_map(|line| line.strip_prefix("TeamIdentifier="))
-        .map(str::trim);
-    let is_team = |team: &str| {
-        team.len() == 10
-            && team
-                .bytes()
-                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
-    };
-    if success && team.is_some_and(is_team) {
+    if team(success, shown).is_some() {
         Identity::Kept
     } else {
         Identity::NewEachBuild
     }
+}
+
+/// The team that signed, from what `codesign -d --verbose=2` showed and whether it succeeded:
+/// a `TeamIdentifier=` of ten capital letters and digits, else none.
+#[cfg_attr(
+    all(not(target_os = "macos"), not(test)),
+    expect(dead_code, reason = "read only on macOS and by its tests")
+)]
+pub fn team(success: bool, shown: &str) -> Option<String> {
+    let team = shown
+        .lines()
+        .find_map(|line| line.strip_prefix("TeamIdentifier="))
+        .map(str::trim)?;
+    let is_team = team.len() == 10
+        && team
+            .bytes()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit());
+    (success && is_team).then(|| team.to_owned())
 }
 
 /// The identity of `program` on this system: on macOS from `/usr/bin/codesign`, which must
@@ -62,6 +70,39 @@ pub fn sealed(path: &Path) -> bool {
 /// No seals outside macOS: the package manager of the system checks the files of the app.
 #[cfg(not(target_os = "macos"))]
 pub const fn sealed(_path: &Path) -> bool {
+    true
+}
+
+/// The team that signed `path` (an app bundle); none for an ad hoc signature or one that could
+/// not be read.
+#[cfg(target_os = "macos")]
+pub fn team_of(path: &Path) -> Option<String> {
+    codesign(&["-d", "--verbose=2"], path).and_then(|(success, shown)| team(success, &shown))
+}
+
+/// No teams outside macOS.
+#[cfg(not(target_os = "macos"))]
+pub const fn team_of(_path: &Path) -> Option<String> {
+    None
+}
+
+/// Whether the seal of the program `path` verifies and, when `team` names one, the program was
+/// signed by that team with a Developer ID: a program of a different signer, also one with a
+/// seal of its own, does not pass. With no team (an ad hoc build) only the seal is checked.
+#[cfg(target_os = "macos")]
+pub fn sealed_by(path: &Path, team: Option<&str>) -> bool {
+    let Some(team) = team else {
+        return sealed(path);
+    };
+    let requirement =
+        format!("=anchor apple generic and certificate leaf[subject.OU] = \"{team}\"");
+    codesign(&["--verify", "--strict", "-R", &requirement], path)
+        .is_some_and(|(success, _)| success)
+}
+
+/// No seals outside macOS.
+#[cfg(not(target_os = "macos"))]
+pub const fn sealed_by(_path: &Path, _team: Option<&str>) -> bool {
     true
 }
 
@@ -131,5 +172,7 @@ mod tests {
             Identity::NewEachBuild
         );
         assert_eq!(identity(true, ""), Identity::NewEachBuild);
+        assert_eq!(team(true, developer_id).as_deref(), Some("ABCDE12345"));
+        assert_eq!(team(true, ad_hoc), None);
     }
 }

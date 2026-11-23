@@ -27,7 +27,10 @@
 //! seal must verify ([`Swap::sealed`]); the folder `~/.local/bin` and each folder above it pass
 //! the checks of the install, and the copy and the copy of before are plain files of this user,
 //! never links; the new copy is checked under its fresh name before its rename (its seal and its
-//! version), so a change of the bundle after the check puts no other program in place; and the
+//! version, and for a Developer ID build the team of the bundle), so a change of the bundle after
+//! the check puts no program of a different team in place. An ad hoc build names no team: its
+//! copy is checked only for its seal and its version, and whoever can change its bundle can
+//! change the app itself; and the
 //! new daemon must answer with its version after its start ([`Swap::healthy`]), or the copy of
 //! before runs again. After a good start the copy of before stays as `anima-daemon.<version>`,
 //! the last one only, so the person can go back by hand.
