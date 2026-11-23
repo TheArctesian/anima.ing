@@ -513,6 +513,17 @@ Do not use the installed daemon of the operator. Set `ANIMA_DAEMON_HOME` to a ne
 7. Write `{"agentTypes": ["model_report"]}` and give a `server_start` item with `actor` `Agent`.
    Expected: `refused` with `actor_not_permitted`.
 
+Partial results on `pop-os` (operator, 2026-11-23: "Record partial results"). The Mac is not run. A session ran the
+steps with a test program that calls `Node::cycle` against a scripted hub, in a transient user unit with
+`Delegate=yes`. The release was llama.cpp `b12613`, the `.tar.gz` for Ubuntu x64.
+
+- Step 1, on `dev` 2d24b1269, 2026-11-22: `succeeded`. 61 files and no link; the links of the archive are
+  regular files with mode 0755. Not as expected: the top folder `b12613-cpu` was 0775. The correction is in `dev`
+  at 648ac9a77; step 1 was not run again after it.
+- Steps 2 to 7, on 2026-11-21: as expected. Step 3 used a runtime placed by hand, because step 1 failed on that day
+  (R-387 was not yet built). This release accepts `--verbosity 0`, `--no-slots` and the router mode with no model.
+  Step 5: the folder `model-state/servers/<server>/` (`output.log`, `tmp/`) stays after each stop.
+
 Result: Open.
 
 ### HT-121: the hardware values agree with what each system shows
@@ -3640,6 +3651,18 @@ the agents) is found. An agent can also remove the mark from its own environment
 6. Start a thread whose program runs `(perl -e 'setpgrp(0,0); sleep 600' & sleep 5) & sleep 600`. Wait 10 seconds,
    then stop the thread.
    Expected: no `sleep 600` is left: the holder saw the child before it left the tree.
+
+Partial results on `pop-os`, 2026-11-22, with a checkout of `dev` (operator, 2026-11-23: "Record partial results").
+The Mac steps (3, 4 and 5a) are not run.
+
+- Step 1: 259 passed and 1 failed. `thr_040` found descriptors `0 1 103 2 3`. Descriptor 103 came from the
+  terminal of the Claude desktop application: the holder passes on a descriptor that it inherited without
+  close-on-exec. The correction is on the branch `fix/holder-fds`. With `103<&-`: 260 passed, 403 skipped.
+- Step 2: the `tree` tests passed (30 and 8), and each line of `ps` had a number, a number and a date of five words.
+- Steps 5 and 6: not run. `anima agents start` was refused: "Only the person can answer a request", because the
+  call came from a process of an agent. Under the systemd user unit, the runner cannot read
+  `/proc/<pid>/environ` of the caller, and it counts a caller that it cannot read as an agent. The correction is on
+  the branch `fix/peer-environ-userns`.
 
 Result: Open.
 
