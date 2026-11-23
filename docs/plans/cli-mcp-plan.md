@@ -264,6 +264,13 @@ Not in the command line, with the reason:
   scope is OD-AXT44. An API key must not call `openFiles` (INT-003 is not lifted). Against
   the recommendation. Not approved; no effect before the security review AX63 and the
   approval of AXT-090 to AXT-102.
+  Exception (R-439, OD-THR77, THR-177 and THR-180 of
+  [agent-threads.md](../proposals/agent-threads.md) Section 4.16): the holder of a device lease
+  (the caller's hub token, OD-THR78) may use `anima_device_open` on the one device of that
+  lease: read the screen, tap, swipe, type, press a key or a button, and install an app from the
+  thread's own worktree. The tool has no device selector and no command line. It must not
+  confirm the wipe of a phone (THR-187). Each start, end and install is audited (THR-174).
+  No effect before the security review TH145 passes with no High finding open.
 - **MCP-007.** A tool that deletes takes `confirm`, which must be the name of the thing.
 - **MCP-008.** Text that comes from a device or a check (names, log lines, messages) is data. Each
   result gives it in named fields with a length limit, and the server instructions tell the agent
