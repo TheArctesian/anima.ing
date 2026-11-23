@@ -24,7 +24,12 @@ pub(super) fn as_the_person(hooks: Option<Arc<AtomicUsize>>) -> AsThread {
     AsThread::new(move |run| {
         let is_git = run.program.file_name().is_some_and(|name| name == "git");
         let shaped = match run.kind {
-            Kind::Read => pack::is_read(&run, &run.program),
+            // The records of the bench: `<top>/records` beside `<top>/worktrees/<thread>/<name>`.
+            Kind::Read => run
+                .dir
+                .ancestors()
+                .nth(3)
+                .is_some_and(|top| pack::is_read(&run, &run.program, &top.join("records"))),
             Kind::Hook => !is_git,
         };
         if !shaped {

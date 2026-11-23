@@ -93,3 +93,54 @@ async fn a_folder_that_cannot_be_read_is_not_taken_as_gone() {
     assert!(said.contains("d/f"), "{said}");
     assert!(said.contains("cannot be read"), "{said}");
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_thread_that_cannot_write_the_store_of_the_person_still_gets_its_worktree() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let bench = Bench::new().await;
+    // As the sandbox of a confined thread: the store of the person is read-only for it.
+    let objects = bench.project.join(".git/objects");
+    let folders: Vec<_> = walkdir(&objects);
+    let mode = |mode| std::fs::Permissions::from_mode(mode);
+    for folder in &folders {
+        std::fs::set_permissions(folder, mode(0o555)).expect("a mode");
+    }
+    let result = bench
+        .engine
+        .worktree(bench.plan(super::super::THREAD))
+        .await;
+    for folder in &folders {
+        std::fs::set_permissions(folder, mode(0o755)).expect("a mode");
+    }
+    result.expect("a worktree with a read-only store");
+    let tmp = folders
+        .iter()
+        .filter_map(|folder| std::fs::read_dir(folder).ok());
+    let left = tmp
+        .flatten()
+        .flatten()
+        .filter(|entry| entry.file_name().to_string_lossy().starts_with("tmp_"))
+        .count();
+    assert_eq!(left, 0, "the thread wrote into the store of the person");
+}
+
+/// Each folder at and below `top`.
+fn walkdir(top: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut found = vec![top.to_owned()];
+    let mut at = 0;
+    while let Some(folder) = found.get(at).cloned() {
+        at += 1;
+        let Ok(entries) = std::fs::read_dir(&folder) else {
+            continue;
+        };
+        found.extend(
+            entries
+                .flatten()
+                .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+                .map(|entry| entry.path()),
+        );
+    }
+    found
+}

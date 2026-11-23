@@ -72,63 +72,10 @@ pub fn folder(worktree: &Worktree) -> OsString {
 /// The start of the name of each such folder.
 pub const PREFIX: &str = ".anima-pack-";
 
-/// The start of each read of a thread, after [`CLOSED`]: it lists the objects of commits.
-const LIST: [&str; 4] = ["rev-list", "--objects", "--quiet", "--end-of-options"];
+mod shape;
 
-/// The start of each read of a thread that makes a pack, after [`CLOSED`].
-const PACK: [&str; 3] = ["pack-objects", "--revs", "--quiet"];
-
-/// Whether `run` is a read of a thread as this engine makes it, and nothing else: the kind
-/// [`Kind::Read`], `program` as given, the closed options first, the environment of
-/// [`QUIET`], and one of the two reads. The launcher of the runner asks it before it starts a
-/// read, also for a confined thread; a read runs no program of the repository.
-#[must_use]
-pub fn is_read(run: &ThreadRun, program: &Path) -> bool {
-    let quiet = run.env.len() == QUIET.len()
-        && run
-            .env
-            .iter()
-            .zip(QUIET)
-            .all(|((name, value), (quiet, set))| *name == quiet && value == set);
-    let Some(rest) = run.args.strip_prefix(CLOSED.map(OsString::from).as_slice()) else {
-        return false;
-    };
-    run.kind == Kind::Read
-        && run.program == program
-        && quiet
-        && (lists(rest) && run.input.is_none() || packs(rest, run) && run.input.is_some())
-}
-
-/// `rev-list` of commits, then `--not` and the commits that are known: each an ID.
-fn lists(args: &[OsString]) -> bool {
-    let Some(rest) = args.strip_prefix(LIST.map(OsString::from).as_slice()) else {
-        return false;
-    };
-    let not = rest.iter().position(|arg| arg == "--not");
-    let Some(not) = not else {
-        return false;
-    };
-    let ids = rest[..not].iter().chain(&rest[not + 1..]);
-    not > 0 && ids.clone().all(|arg| is_id(arg))
-}
-
-/// `pack-objects` into the folder of the pack of the thread, in its worktree.
-fn packs(args: &[OsString], run: &ThreadRun) -> bool {
-    let Some([base]) = args.strip_prefix(PACK.map(OsString::from).as_slice()) else {
-        return false;
-    };
-    let name = format!("{PREFIX}{}", run.thread.as_simple());
-    *base == run.dir.join(name).join("p").into_os_string()
-}
-
-/// An object ID of `git`: 40 or 64 small hex digits.
-fn is_id(arg: &OsStr) -> bool {
-    let id = arg.as_encoded_bytes();
-    matches!(id.len(), 40 | 64)
-        && id
-            .iter()
-            .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
-}
+pub use shape::is_read;
+use shape::{LIST, PACK};
 
 /// Runs `git <args>` with the rights of the thread of `worktree`, in its worktree, with the
 /// file `input` as standard input. `false` when `git` ended with a code that is not 0.
@@ -138,8 +85,8 @@ fn is_id(arg: &OsStr) -> bool {
 async fn as_thread(
     git: &Git,
     worktree: &Worktree,
-    args: Vec<OsString>,
-    input: Option<&Path>,
+    (args, input): (Vec<OsString>, Option<&Path>),
+    objects: Vec<(&'static str, OsString)>,
 ) -> Result<Result<(), String>, GitError> {
     let start = git.as_thread().ok_or_else(|| {
         failed(
@@ -157,6 +104,7 @@ async fn as_thread(
         env: QUIET
             .iter()
             .map(|(name, value)| (*name, OsString::from(value)))
+            .chain(objects)
             .collect(),
         input: input.map(Path::to_owned),
         within: LONG,
@@ -179,11 +127,30 @@ pub async fn reads(
     worktree: &Worktree,
     (commits, known): (&[&str], &[&str]),
 ) -> Result<bool, GitError> {
+    let args = list_args(commits, known);
+    Ok(as_thread(git, worktree, (args, None), Vec::new())
+        .await?
+        .is_ok())
+}
+
+/// The arguments of the read of [`reads`], after the closed options: `git` refuses `--not`
+/// after the commits, so each known commit has `^` instead.
+#[must_use]
+pub fn list_args(commits: &[&str], known: &[&str]) -> Vec<OsString> {
     let mut args: Vec<OsString> = LIST.map(Into::into).into();
     args.extend(commits.iter().map(OsString::from));
-    args.push("--not".into());
-    args.extend(known.iter().map(OsString::from));
-    Ok(as_thread(git, worktree, args, None).await?.is_ok())
+    args.extend(
+        known
+            .iter()
+            .map(|known| OsString::from(format!("^{known}"))),
+    );
+    args
+}
+
+/// The options that each read of a thread gets first.
+#[must_use]
+pub fn closed() -> Vec<OsString> {
+    CLOSED.map(OsString::from).into()
 }
 
 /// Has the thread make one pack of the history of `wanted` without the history of `known`,
@@ -212,10 +179,37 @@ pub async fn make(
     let top = Dir::open(worktree.folder()).map_err(GitError::Files)?;
     let made = top.remove_all(&name).and_then(|()| top.new_folder(&name));
     made.map_err(GitError::Files)?;
-    let base = worktree.folder().join(&name).join("p");
+    let store = Path::new(&name).join("objects");
+    let below = |path: &Path| {
+        top.below(path, Make::No)?
+            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))
+    };
+    below(Path::new(&name))
+        .and_then(|ours| ours.new_folder("objects".as_ref()))
+        .and_then(|()| below(&store))
+        .and_then(|objects| objects.new_folder("pack".as_ref()))
+        .map_err(GitError::Files)?;
+    let at = worktree.folder().join(&name);
     let args = PACK.map(OsString::from);
-    let args = args.into_iter().chain([base.into_os_string()]).collect();
-    let packed = as_thread(git, worktree, args, Some(&want)).await;
+    let args = args
+        .into_iter()
+        .chain([at.join("p").into_os_string()])
+        .collect();
+    // `git` writes the files of a pack in a folder of the object store first. The store of
+    // the person stays as it is: the thread writes only in the folder of its pack, and reads
+    // the store of the person as one more store.
+    let store = record.common_dir.join("objects");
+    if shape::no_list(store.as_os_str()) {
+        return Err(failed(
+            "the path of the repository has a character that a list of folders of git cannot hold"
+                .to_owned(),
+        ));
+    }
+    let objects = vec![
+        ("GIT_OBJECT_DIRECTORY", at.join("objects").into_os_string()),
+        ("GIT_ALTERNATE_OBJECT_DIRECTORIES", store.into_os_string()),
+    ];
+    let packed = as_thread(git, worktree, (args, Some(&want)), objects).await;
     let packed = packed.and_then(|ended| {
         ended.map_err(|said| failed(format!("the repository could not be read: {said}")))
     });
