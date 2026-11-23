@@ -24,6 +24,8 @@
   const rows = $derived(portRows(system, selected));
 
   async function read(show: boolean): Promise<void> {
+    published = [];
+    problem = '';
     try {
       await checkAccessHub(hub);
       access = await localAccess();
@@ -34,8 +36,11 @@
       messages = {};
       problem = '';
       opened = show || !access.configured;
-    } catch {
-      if (show) { opened = true; problem = 'Connect this computer to a hub before setting up remote access.'; }
+    } catch (error) {
+      if (show) {
+        opened = true;
+        problem = error instanceof Error ? error.message : 'Could not read remote access status. Try again.';
+      }
     }
   }
 

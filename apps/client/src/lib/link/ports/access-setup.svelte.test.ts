@@ -190,3 +190,24 @@ it('reads saved hub access when reopening without requiring another enable actio
   expect(calls.publishAccess).not.toHaveBeenCalled();
   expect(calls.localAccess).toHaveBeenCalledExactlyOnceWith();
 });
+
+it('invalidates saved publication when a later opening cannot read the hub', async () => {
+  calls.localAccess.mockResolvedValue({ ...fresh, configured: true, open: [22], ready: [22] });
+  calls.publishedAccess.mockResolvedValueOnce([22]).mockRejectedValueOnce(new Error('Hub status unavailable. Retry.'));
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(AccessSetup, { target });
+  target.querySelector<HTMLButtonElement>('button')?.click();
+  await settle();
+  expect(document.body.textContent).toContain('Ready in Anima');
+  document.querySelector<HTMLButtonElement>('[aria-label="Close"]')?.click();
+  await settle();
+  target.querySelector<HTMLButtonElement>('button')?.click();
+  await settle();
+  expect(calls.publishedAccess).toHaveBeenCalledTimes(2);
+  expect(document.body.textContent).not.toContain('Ready in Anima');
+  expect(document.body.textContent).toContain('Hub status unavailable. Retry.');
+  expect(document.querySelector('[aria-label="Enable in Anima: SSH"]')?.getAttribute('aria-disabled')).toBe('false');
+  expect(calls.publishAccess).not.toHaveBeenCalled();
+  expect(calls.localAccess.mock.calls).toEqual([[], []]);
+});
