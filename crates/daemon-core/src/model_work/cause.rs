@@ -53,6 +53,9 @@ pub enum Cause {
     /// Linux: the tree of a server cannot be contained; the detail says which step failed.
     /// There is no start with less containment (R-331, R-330).
     ContainmentFailed(Containment),
+    /// Linux, only where the model launcher is used: the SHA-256 of the runtime program is on no
+    /// valid signed list of runtimes (R-347; the launcher exit code 125).
+    RuntimeNotSigned,
 }
 
 /// The step at which the containment of a server failed: the detail of `containment_failed`.
@@ -74,6 +77,10 @@ pub enum Containment {
     UsernsDenied,
     /// The launcher could not run the runtime, or its arguments were wrong.
     ExecFailed,
+    /// The model launcher is used, and it or its profile is not installed (L1-6c).
+    LauncherMissing,
+    /// The model launcher gives a different protocol number (L1-6c).
+    LauncherOutdated,
 }
 
 impl Containment {
@@ -96,6 +103,8 @@ impl Containment {
             Self::ParentGone => "parent_gone",
             Self::UsernsDenied => "userns_denied",
             Self::ExecFailed => "exec_failed",
+            Self::LauncherMissing => "launcher_missing",
+            Self::LauncherOutdated => "launcher_outdated",
         }
     }
 
@@ -104,7 +113,10 @@ impl Containment {
     #[must_use]
     pub const fn exit_code(self) -> Option<i32> {
         match self {
-            Self::NoDelegation | Self::NoNsdelegate => None,
+            Self::NoDelegation
+            | Self::NoNsdelegate
+            | Self::LauncherMissing
+            | Self::LauncherOutdated => None,
             Self::CgroupJoinFailed => Some(120),
             Self::BackstopFailed => Some(121),
             Self::ParentGone => Some(122),
@@ -112,6 +124,10 @@ impl Containment {
             Self::ExecFailed => Some(124),
         }
     }
+
+    /// The exit code of the launcher for a runtime that is not on the signed list
+    /// ([`Cause::RuntimeNotSigned`]).
+    pub const NOT_SIGNED_EXIT_CODE: i32 = 125;
 
     /// The step of a launcher exit code.
     #[must_use]
@@ -164,6 +180,7 @@ impl Cause {
             Self::ProgramMismatch => "program_mismatch",
             Self::ArchiveRejected => "archive_rejected",
             Self::ContainmentFailed(_) => "containment_failed",
+            Self::RuntimeNotSigned => "runtime_not_signed",
         }
     }
 
@@ -197,6 +214,7 @@ impl Cause {
                 | Self::ProgramMismatch
                 | Self::ArchiveRejected
                 | Self::ContainmentFailed(_)
+                | Self::RuntimeNotSigned
         )
     }
 }

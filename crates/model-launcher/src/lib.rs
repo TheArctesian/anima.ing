@@ -35,5 +35,12 @@ pub fn protocol_line() -> String {
 /// `tauri.conf.json` holds it. A test keeps the two the same.
 pub const UPDATER_PUBLIC_KEY: &str = include_str!("../updater-public-key.txt");
 
+/// The parsed [`UPDATER_PUBLIC_KEY`]; `None` only when the built-in text is broken, which a test
+/// rules out.
+#[must_use]
+pub fn updater_key() -> Option<updater_signature::PublicKey> {
+    updater_signature::PublicKey::from_key_file(UPDATER_PUBLIC_KEY.trim()).ok()
+}
+
 #[cfg(test)]
 mod tests;

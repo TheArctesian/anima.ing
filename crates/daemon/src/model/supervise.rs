@@ -108,8 +108,8 @@ impl Server {
             if let Some((mut running, _)) = self.running.take() {
                 server::kill(&mut running).await;
             }
-            if let Some(step) = failure {
-                self.state = ServerState::Failed(Cause::ContainmentFailed(step));
+            if let Some(cause) = failure {
+                self.state = ServerState::Failed(cause);
                 return None;
             }
             return Some(());

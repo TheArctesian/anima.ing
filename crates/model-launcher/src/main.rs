@@ -11,7 +11,6 @@ fn main() {
 
     use model_launcher::code::Step;
     use model_launcher::launch::{self, Order, Signed};
-    use updater_signature::PublicKey;
 
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     if arguments.len() == 1 && arguments[0] == model_launcher::PROTOCOL_ARGUMENT {
@@ -19,7 +18,7 @@ fn main() {
         return;
     }
     let refuse = || std::process::exit(Step::Exec.code());
-    let Ok(key) = PublicKey::from_key_file(model_launcher::UPDATER_PUBLIC_KEY.trim()) else {
+    let Some(key) = model_launcher::updater_key() else {
         refuse()
     };
     let [list, signature, rest @ ..] = arguments.as_slice() else {

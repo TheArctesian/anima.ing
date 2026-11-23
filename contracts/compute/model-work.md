@@ -566,7 +566,7 @@ of the batches between.
 - **The program.** `/usr/local/libexec/anima/anima-model-launcher`: owner root, mode 0755, in folders that root owns
   and that no other user can write. The AppArmor profile `anima-model-launcher` attaches to that path and allows
   `userns`; each program that the launcher runs goes to the profile `anima-model-runtime`, which does not allow it.
-  The launcher takes the arguments of `__model-launch`, then the path of the signed list and of its signature. It
+  The launcher takes the path of the signed list and of its signature, then the arguments of `__model-launch`. It
   does the steps of Section 9 with the same exit codes. Before it makes the namespaces it opens the runtime program
   (no symbolic link, a regular file only), checks the signature of the list with the updater public key that is
   built into it, requires an entry of the list with the SHA-256 of the open file, and else exits with 125. It runs the

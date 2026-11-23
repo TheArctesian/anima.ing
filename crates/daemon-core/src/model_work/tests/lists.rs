@@ -138,6 +138,8 @@ fn each_failed_step_of_containment_has_its_own_detail_and_launcher_code() {
         Containment::ParentGone,
         Containment::UsernsDenied,
         Containment::ExecFailed,
+        Containment::LauncherMissing,
+        Containment::LauncherOutdated,
     ];
     for step in steps {
         let cause = Cause::ContainmentFailed(step);
@@ -147,11 +149,15 @@ fn each_failed_step_of_containment_has_its_own_detail_and_launcher_code() {
         );
         if let Some(code) = step.exit_code() {
             assert_eq!(Containment::of_exit_code(code), Some(step));
-            assert_ne!(code, 125);
+            assert_ne!(code, Containment::NOT_SIGNED_EXIT_CODE);
         }
     }
     assert_eq!(Containment::UsernsDenied.as_str(), "userns_denied");
     assert_eq!(Containment::of_exit_code(125), None);
+    assert_eq!(Containment::NOT_SIGNED_EXIT_CODE, 125);
+    assert_eq!(Containment::LauncherMissing.as_str(), "launcher_missing");
+    assert_eq!(Containment::LauncherOutdated.as_str(), "launcher_outdated");
+    assert_eq!(Containment::LauncherMissing.exit_code(), None);
     assert_eq!(Cause::Listener.detail(), None);
 }
 
@@ -163,4 +169,42 @@ fn the_new_causes_have_their_words_and_their_states() {
     assert_eq!(Cause::FileRejected.as_str(), "file_rejected");
     assert!(Cause::FileRejected.is_refusal());
     assert_eq!(Cause::FileRejected.detail(), None);
+    assert_eq!(Cause::RuntimeNotSigned.as_str(), "runtime_not_signed");
+    assert!(!Cause::RuntimeNotSigned.is_refusal());
+    assert_eq!(Cause::RuntimeNotSigned.detail(), None);
+}
+
+#[test]
+fn the_model_launcher_is_used_only_where_apparmor_restricts_user_namespaces() {
+    use crate::model_work::launcher::is_used;
+    assert!(is_used(Some("Y\n"), Some("1\n")));
+    assert!(!is_used(Some("N\n"), Some("1\n")));
+    assert!(!is_used(Some("Y\n"), Some("0\n")));
+    assert!(!is_used(None, Some("1\n")));
+    assert!(!is_used(Some("Y\n"), None));
+}
+
+#[test]
+fn the_launcher_checks_read_the_profile_list_the_owner_and_the_protocol() {
+    use crate::model_work::cause::Containment;
+    use crate::model_work::launcher::{only_root_writes, profile_loaded, protocol};
+    let profiles = "anima-model-runtime (unconfined)\nanima-model-launcher (unconfined)\n";
+    assert!(profile_loaded(profiles, "anima-model-launcher"));
+    assert!(!profile_loaded(
+        "anima-model-launcher-old (enforce)\n",
+        "anima-model-launcher"
+    ));
+    assert!(!profile_loaded("", "anima-model-launcher"));
+    assert!(only_root_writes(0, 0o100_755));
+    assert!(!only_root_writes(1000, 0o100_755));
+    assert!(!only_root_writes(0, 0o100_775));
+    assert!(!only_root_writes(0, 0o040_757));
+    let line = "anima-model-launcher 1";
+    assert_eq!(protocol(b"anima-model-launcher 1\n", line), Ok(()));
+    assert_eq!(
+        protocol(b"anima-model-launcher 2\n", line),
+        Err(Containment::LauncherOutdated)
+    );
+    assert_eq!(protocol(b"", line), Err(Containment::LauncherOutdated));
+    assert_eq!(protocol(&[0xff], line), Err(Containment::LauncherOutdated));
 }

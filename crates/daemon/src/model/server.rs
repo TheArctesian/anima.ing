@@ -7,17 +7,17 @@
 mod handshake;
 #[cfg(target_os = "linux")]
 mod join;
+mod starter;
 
 use std::io;
 use std::net::TcpListener;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use std::time::Duration;
 
 use daemon_core::model_work::cause::{Cause, Containment};
 use rustix::process::Signal;
-use tokio::process::{Child, Command};
+use tokio::process::Child;
 use zeroize::{Zeroize as _, Zeroizing};
 
 use super::ring::Ring;
@@ -134,16 +134,22 @@ impl Running {
         }
     }
 
-    /// The step at which the launcher failed, when the main process ended with the exit code of
-    /// a launcher step and the launcher wrote that code to its failure file (an exit code of
-    /// the runtime alone is not taken as one of the launcher).
+    /// The cause of a failed launcher step, when the main process ended with the exit code of
+    /// that step and the launcher wrote that code to its failure file (an exit code of the
+    /// runtime alone is not taken as one of the launcher): `containment_failed` with its step,
+    /// or `runtime_not_signed` (the model launcher, code 125).
     #[must_use]
-    pub fn launch_failure(&self, status: std::process::ExitStatus) -> Option<Containment> {
-        let step = Containment::of_exit_code(status.code()?)?;
+    pub fn launch_failure(&self, status: std::process::ExitStatus) -> Option<Cause> {
+        let exit = status.code()?;
+        let cause = if exit == Containment::NOT_SIGNED_EXIT_CODE {
+            Cause::RuntimeNotSigned
+        } else {
+            Cause::ContainmentFailed(Containment::of_exit_code(exit)?)
+        };
         let path = self.record.with_file_name(tree::LAUNCH_FAILURE);
         let written = tree::read_capped(&path, tree::LAUNCH_FAILURE_BYTES)?;
-        let code = std::str::from_utf8(&written).ok()?.trim().parse().ok();
-        (code == step.exit_code()).then_some(step)
+        let code: Option<i32> = std::str::from_utf8(&written).ok()?.trim().parse().ok();
+        (code == Some(exit)).then_some(cause)
     }
 
     fn tree(&self) -> Tree {
@@ -243,56 +249,6 @@ pub fn fresh_temporary(state: &Path, path: &Path) -> io::Result<()> {
     super::folders::private_below(state, relative).map(drop)
 }
 
-fn command(launch: &Launch, cgroup: Option<&Path>) -> Command {
-    let mut command = match cgroup {
-        #[cfg(target_os = "linux")]
-        Some(cgroup) => {
-            let mut command = Command::new(&launch.launcher);
-            command
-                .arg(super::tree::linux::LAUNCH_MODE)
-                .arg(cgroup.join("cgroup.procs"))
-                .arg(std::process::id().to_string())
-                .arg(launch.place.join(tree::LAUNCH_FAILURE))
-                .arg(&launch.program);
-            command
-        }
-        _ => Command::new(&launch.program),
-    };
-    command
-        .args(&launch.arguments)
-        .env_clear()
-        .envs(launch.environment.iter().map(|(name, value)| (name, value)))
-        .current_dir(&launch.temporary)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .process_group(0)
-        .kill_on_drop(true);
-    command
-}
-
-/// The cgroup of the server on Linux; none on macOS.
-#[cfg_attr(
-    not(target_os = "linux"),
-    expect(
-        clippy::unnecessary_wraps,
-        reason = "Linux can fail; one signature for both"
-    )
-)]
-fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
-    #[cfg(target_os = "linux")]
-    {
-        super::tree::linux::make(&launch.server.to_string())
-            .map(Some)
-            .map_err(Cause::ContainmentFailed)
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        let _ = launch;
-        Ok(None)
-    }
-}
-
 /// Starts the process of `launch` in its tree. On Linux it returns when the launcher is in the
 /// cgroup of the server, or has ended (the next look reads its end), so the first poll does not
 /// read the tree before the join.
@@ -302,8 +258,10 @@ fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
 /// the thread that started it ends ([`super::tree::linux::launch`]).
 ///
 /// # Errors
-/// `containment_failed` when the cgroup cannot be made, or the launcher is not in it after
-/// 5 seconds (Linux); `start_failed` for an error of the folders, the ring or the start.
+/// `containment_failed` when the cgroup cannot be made, the model launcher is missing or
+/// outdated, or the launcher is not in the cgroup after 5 seconds (Linux); `runtime_not_signed`
+/// where the model launcher is used and the program is not on the kept list; `start_failed` for
+/// an error of the folders, the ring or the start.
 #[cfg_attr(
     not(target_os = "linux"),
     expect(
@@ -319,8 +277,9 @@ pub async fn spawn(launch: &Launch) -> Result<Running, Cause> {
         Err(_) => return Err(Cause::StartFailed),
     }
     let ring = Ring::create(&launch.ring).map_err(|_| Cause::StartFailed)?;
-    let cgroup = contain(launch)?;
-    let mut command = command(launch, cgroup.as_deref());
+    let starter = starter::contain(launch).await?;
+    let mut command = starter::command(launch, &starter);
+    let cgroup = starter.cgroup();
     #[cfg(target_os = "linux")]
     let startup = Some(handshake::attach(&mut command).map_err(|_| Cause::StartFailed)?);
     let mut child = command.spawn().map_err(|_| Cause::StartFailed)?;

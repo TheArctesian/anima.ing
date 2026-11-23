@@ -52,7 +52,9 @@ pub struct Signed<'a> {
 }
 
 /// Runs the steps of `order` and becomes the runtime; it never returns. With `signed`, a runtime
-/// program whose SHA-256 is not on that list is refused with [`Step::NotSigned`].
+/// program whose SHA-256 is not on that list is refused with [`Step::NotSigned`], and the open
+/// file that was checked runs. With no list, the program runs from its path, as the launch mode
+/// of the daemon always did.
 ///
 /// The parent-death signal fires when the *thread* that started the launcher ends, not the
 /// daemon process; the daemon starts servers from a thread that lives as long as it does. Call
@@ -77,12 +79,9 @@ pub fn run(order: &Order<'_>, signed: Option<&Signed<'_>>) -> ! {
     if parent.is_none_or(|pid| order.daemon.parse().ok() != Some(pid.get())) {
         fail(failure, Step::ParentGone);
     }
-    let mut program = open_program(order.program).unwrap_or_else(|_| fail(failure, Step::Exec));
-    if let Some(signed) = signed
-        && !on_list(&mut program, signed)
-    {
-        fail(failure, Step::NotSigned);
-    }
+    let checked = signed.map(|signed| {
+        checked_program(order.program, signed).unwrap_or_else(|step| fail(failure, step))
+    });
     if hide_cgroups().is_err() {
         fail(failure, Step::Userns);
     }
@@ -93,15 +92,43 @@ pub fn run(order: &Order<'_>, signed: Option<&Signed<'_>>) -> ! {
     if rustix::io::write(&ready, &[0]) != Ok(1) {
         fail(failure, Step::Exec);
     }
-    // The open file runs, not the path: the kernel opens `/proc/self/fd/<n>` at the start of
-    // `exec`, before it closes the descriptor, so the file that was checked is the file that runs.
-    let _error = std::process::Command::new(format!("/proc/self/fd/{}", program.as_raw_fd()))
+    // A checked program runs from its open file, not its path, so the file that was checked is
+    // the file that runs.
+    let path = checked.as_ref().map_or_else(
+        || order.program.to_owned(),
+        |file| format!("/proc/self/fd/{}", file.as_raw_fd()),
+    );
+    let _error = std::process::Command::new(path)
         .arg0(order.program)
         .args(order.arguments)
         .stdin(std::process::Stdio::null())
         .exec();
     let _ = rustix::io::write(&ready, &[1]);
     fail(failure, Step::Exec);
+}
+
+/// Whether the runtime program at `path` is a regular file whose SHA-256 is on the list of
+/// `signed` for this system. The daemon checks this before it starts the launcher, which checks
+/// it again on the file that it runs.
+#[must_use]
+pub fn is_signed(path: &str, signed: &Signed<'_>) -> bool {
+    open_program(path).is_ok_and(|mut program| on_list(&mut program, signed))
+}
+
+/// The open runtime program at `path` when its SHA-256 is on the list of `signed`. The file stays
+/// open across `exec`: an interpreter of a `#!` program reads it through `/proc/self/fd/<n>`
+/// after the kernel has read the first line.
+///
+/// # Errors
+/// [`Step::Exec`] when the program cannot be opened; [`Step::NotSigned`] when it is not on a
+/// valid list.
+fn checked_program(path: &str, signed: &Signed<'_>) -> Result<File, Step> {
+    let mut program = open_program(path).map_err(|_| Step::Exec)?;
+    if !on_list(&mut program, signed) {
+        return Err(Step::NotSigned);
+    }
+    rustix::io::fcntl_setfd(&program, rustix::io::FdFlags::empty()).map_err(|_| Step::Exec)?;
+    Ok(program)
 }
 
 /// Opens the runtime program: no symbolic link, no FIFO, a regular file only.

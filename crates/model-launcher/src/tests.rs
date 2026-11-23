@@ -165,7 +165,7 @@ fn the_built_in_key_is_the_updater_key_of_the_desktop_application() {
     .unwrap();
     let pubkey = config["plugins"]["updater"]["pubkey"].as_str().unwrap();
     assert_eq!(crate::UPDATER_PUBLIC_KEY.trim(), pubkey);
-    assert!(PublicKey::from_key_file(crate::UPDATER_PUBLIC_KEY.trim()).is_ok());
+    assert!(crate::updater_key().is_some());
 }
 
 #[test]

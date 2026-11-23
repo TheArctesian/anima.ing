@@ -540,18 +540,19 @@ program stays the launcher (`__model-launch`), as now, and the signed list does 
 
 **The program.** A separate small program, `anima-model-launcher` (crate `crates/model-launcher`, Linux only), not
 the daemon program: the program that a root path holds must be small enough for its own security review (point
-(4)). It has no network, no configuration file, no async runtime and no log. It takes the same arguments as
-`__model-launch`, and two more: the path of the signed list and the path of its signature. It does the steps of
+(4)). It has no network, no configuration file, no async runtime and no log. It takes two arguments, the path of
+the signed list and the path of its signature, then the arguments of `__model-launch`. It does the steps of
 `__model-launch` in the same order, with the same exit codes, and one more step before it makes the namespaces:
 
-1. It opens the runtime program with `O_RDONLY | O_NOFOLLOW | O_CLOEXEC`, and refuses a file that is not a regular file.
+1. It opens the runtime program with `O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK`, and refuses a file that is not a regular file.
 2. It reads the list and the signature (each with a size cap), checks the signature with the public key that is built
    into it (the updater key, R-NEW-launcherkey), and requires the trusted comment to name the file
    `runtime-list.json` and the sequence of the list.
 3. It computes the SHA-256 of the open program file and requires one entry of the list with that value, the
    operating system `linux` and the architecture of the launcher. Else it exits with code 125 (`runtime_not_signed`).
-4. It makes the namespaces, then runs the open file with `execveat(fd, "", AT_EMPTY_PATH)`, not the path, so the file
-   that runs is the file that it hashed (the path cannot be changed between the check and the start).
+4. It makes the namespaces, then runs the open file through `/proc/self/fd/<n>`, not the path, so the file that runs
+   is the file that it hashed (the path cannot be changed between the check and the start). The kernel opens that
+   path at the start of `exec`, before it closes the descriptor (`O_CLOEXEC`).
 
 `anima-model-launcher --protocol` writes one line, `anima-model-launcher <n>`, and exits 0. The daemon compares `n`
 with its own protocol number.

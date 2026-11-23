@@ -270,6 +270,7 @@ dependencies = [
  "hyper-util",
  "hyperlocal-with-windows",
  "keyring",
+ "model-launcher",
  "plist",
  "reqwest 0.12.28",
  "rpassword",

@@ -1,7 +1,8 @@
 //! One cgroup v2 for each server (Linux; R-331). The cgroup is below the cgroup of
 //! the daemon, which its unit must delegate. The server joins it through the launcher: the
-//! daemon program in the fixed mode `__model-launch`, which writes its own id to
-//! `cgroup.procs`, sets the parent-death signal as a backstop, and then becomes the runtime
+//! daemon program in the fixed mode `__model-launch`, or the root-owned model launcher where
+//! `AppArmor` restricts user namespaces (crate `model-launcher`; L1-6c). Both write their own id
+//! to `cgroup.procs`, set the parent-death signal as a backstop, and then become the runtime
 //! with `exec`. No shell runs.
 
 use std::io;
@@ -161,54 +162,6 @@ pub fn sweep_cgroups() {
     }
 }
 
-/// Moves the launcher into a new cgroup namespace whose root is the cgroup of its server
-/// (R-330): the runtime then sees `/` as its cgroup, and the kernel refuses a move of
-/// a process to a cgroup outside that root, such as the cgroup of the daemon. A user of the
-/// system may make a cgroup namespace only inside a user namespace of its own, so both are made
-/// in one call; the user namespace maps the user and the group of the daemon to themselves.
-/// Called with one thread only (a new user namespace needs it).
-///
-/// # Errors
-/// An I/O error when the system does not permit the namespaces; the launcher then refuses the
-/// start (`containment_failed`), with no fallback.
-fn hide_cgroups() -> io::Result<()> {
-    use rustix::thread::UnshareFlags;
-    let uid = rustix::process::getuid().as_raw();
-    let gid = rustix::process::getgid().as_raw();
-    #[expect(
-        deprecated,
-        reason = "unshare_unsafe needs `unsafe`, which the workspace forbids; its hazard is                   CLONE_FILES and CLONE_FS, which this call does not pass"
-    )]
-    rustix::thread::unshare(UnshareFlags::NEWUSER | UnshareFlags::NEWCGROUP)?;
-    std::fs::write("/proc/self/setgroups", "deny")?;
-    std::fs::write("/proc/self/uid_map", format!("{uid} {uid} 1"))?;
-    std::fs::write("/proc/self/gid_map", format!("{gid} {gid} 1"))?;
-    Ok(())
-}
-
-/// Writes the exit code of the failed launcher step `step` to the file `failure`, then exits
-/// with it.
-fn fail(failure: &str, step: Containment) -> ! {
-    use std::io::Write as _;
-    use std::os::unix::fs::OpenOptionsExt as _;
-    let code = step.exit_code().unwrap_or(1);
-    // A new file only (the daemon removes it before each start), no link, no wait on a FIFO.
-    let file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .custom_flags(
-            (rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK)
-                .bits()
-                .cast_signed(),
-        )
-        .open(failure);
-    if let Ok(mut file) = file {
-        let _ = file.write_all(code.to_string().as_bytes());
-    }
-    std::process::exit(code);
-}
-
 /// Becomes the launcher when the first argument is [`LAUNCH_MODE`]; otherwise returns. The
 /// launcher (R-331, R-330) joins the cgroup of the server, hides the cgroups
 /// above it and becomes the runtime; it never returns. `main` calls this first, before the async
@@ -221,54 +174,16 @@ pub fn dispatch_if_launch() {
 }
 
 /// The launcher: `__model-launch <cgroup.procs> <daemon pid> <failure file> <program>
-/// <arguments…>`. It never returns. At a failed step it writes the exit code of that step
-/// ([`Containment::exit_code`]) to the failure file, then exits with it. The environment is the one that the daemon gave it, already the fixed list.
+/// <arguments…>`, the steps of [`model_launcher::launch::run`] with no signed list. It never
+/// returns. The environment is the one that the daemon gave it, already the fixed list.
 ///
 /// The parent-death signal fires when the *thread* that started the launcher ends, not the
 /// daemon process. So the daemon must start servers from a thread that lives as long as the
 /// daemon (a worker of the async runtime), never from `spawn_blocking`, whose threads end
 /// after a time with no work and would kill each server with them.
 pub fn launch(arguments: &[String]) -> ! {
-    use std::os::unix::process::CommandExt as _;
-    let (Some(procs), Some(daemon), Some(failure), Some(program)) = (
-        arguments.first(),
-        arguments.get(1),
-        arguments.get(2),
-        arguments.get(3),
-    ) else {
-        std::process::exit(Containment::ExecFailed.exit_code().unwrap_or(1));
+    let Some(order) = model_launcher::launch::Order::parse(arguments) else {
+        std::process::exit(model_launcher::code::Step::Exec.code());
     };
-    let joined = Path::new(procs)
-        .file_name()
-        .is_some_and(|name| name == "cgroup.procs")
-        && std::fs::write(procs, std::process::id().to_string()).is_ok();
-    if !joined {
-        fail(failure, Containment::CgroupJoinFailed);
-    }
-    if rustix::process::set_parent_process_death_signal(Some(rustix::process::Signal::KILL))
-        .is_err()
-    {
-        fail(failure, Containment::BackstopFailed);
-    }
-    // The daemon may have ended before the signal was set: then nothing would end the runtime.
-    let parent = rustix::process::getppid().map(rustix::process::Pid::as_raw_nonzero);
-    if parent.is_none_or(|pid| daemon.parse().ok() != Some(pid.get())) {
-        fail(failure, Containment::ParentGone);
-    }
-    if hide_cgroups().is_err() {
-        fail(failure, Containment::UsernsDenied);
-    }
-    // Duplication preserves the handshake while exec's stdio setup restores /dev/null.
-    // Successful exec closes the duplicate in the kernel; runtime code cannot forge it.
-    let ready = rustix::io::fcntl_dupfd_cloexec(std::io::stdin(), 3)
-        .unwrap_or_else(|_| fail(failure, Containment::ExecFailed));
-    if rustix::io::write(&ready, &[0]) != Ok(1) {
-        fail(failure, Containment::ExecFailed);
-    }
-    let _error = std::process::Command::new(program)
-        .args(&arguments[4..])
-        .stdin(std::process::Stdio::null())
-        .exec();
-    let _ = rustix::io::write(&ready, &[1]);
-    fail(failure, Containment::ExecFailed);
+    model_launcher::launch::run(&order, None)
 }

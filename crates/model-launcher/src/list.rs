@@ -7,6 +7,8 @@ use updater_signature::{PublicKey, SignatureCheck};
 
 /// The name of the list file, which the trusted comment of its signature must name.
 pub const FILE: &str = "runtime-list.json";
+/// The name of the signature file of the list.
+pub const SIGNATURE_FILE: &str = "runtime-list.json.sig";
 /// The largest list that is read; a real one is a few kilobytes.
 pub const MAX_BYTES: usize = 1 << 20;
 

@@ -15,6 +15,8 @@
 #[cfg(target_os = "linux")]
 pub mod delegation;
 #[cfg(target_os = "linux")]
+pub mod launcher;
+#[cfg(target_os = "linux")]
 pub mod linux;
 pub mod mounts;
 pub mod walk;
