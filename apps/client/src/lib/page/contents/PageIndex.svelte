@@ -95,6 +95,7 @@
   }
 
   a {
+    box-sizing: border-box;
     flex: none;
     display: flex;
     align-items: center;
@@ -135,7 +136,9 @@
 
     nav.stacked {
       flex-direction: column;
-      overflow: visible;
+      max-block-size: 60dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
 
     .stacked a {

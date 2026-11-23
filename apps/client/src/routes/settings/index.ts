@@ -6,6 +6,8 @@ export interface IndexShown {
   readonly remoteAccess?: boolean;
   readonly localHub?: boolean;
   readonly linkDevices?: boolean;
+  readonly extensions?: boolean;
+  readonly leave?: boolean;
   readonly stayAwake: boolean;
   readonly runnerReport?: boolean;
   readonly desktopRows: boolean;
@@ -47,12 +49,12 @@ export const GROUPS = { hub: 'Hub and account', computer: 'This computer', code:
 
 /** WP-50 F-10, R-224. */
 export function indexOf(shown: IndexShown): readonly IndexEntry[] {
-  const { account, hub, remoteAccess, localHub, linkDevices, routes, stayAwake, appearance, codeAppearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
+  const { account, hub, extensions, leave, remoteAccess, localHub, linkDevices, routes, stayAwake, appearance, codeAppearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
   const groups: readonly (readonly [string, readonly (IndexEntry | false)[]])[] = [
     [GROUPS.hub, [account, shown.keyStore && hub, shown.linkDevices === true && linkDevices, routes, notifications, checkDefaults, retention]],
     [GROUPS.computer, [shown.remoteAccess === true && remoteAccess, shown.localHub === true && localHub, shown.stayAwake && stayAwake, appearance, (shown.runnerReport ?? false) && runner, shown.desktopRows && updates, shown.mcpPermissions && mcp]],
     [GROUPS.code, [codeAppearance]],
-    [GROUPS.connections, [integrations, apiKeys, shown.vpn && vpn]],
+    [GROUPS.connections, [integrations, apiKeys, shown.extensions === true && extensions, shown.vpn && vpn, shown.leave === true && leave]],
   ];
   return groups.flatMap(([group, entries]) => entries.filter((entry) => entry !== false).map((entry) => ({ ...entry, group })));
 }
