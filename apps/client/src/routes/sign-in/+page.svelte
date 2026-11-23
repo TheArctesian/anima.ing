@@ -6,7 +6,6 @@
   import { needsListenerCheck, type ListenerProblem } from '$lib/access/listener/listener';
   import { goToDevices, loadClientAt, reloadClient } from '$lib/access/navigation';
   import { storeHubAddress } from '$lib/desktop/address';
-  import { writeTokenAndCommandLine } from '$lib/desktop/command-line/sign-in';
   import { writeAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
   import { createRequestHub, parseHubAddress, type HubAddress, type RequestHub } from '$lib/hub/hub';
@@ -144,7 +143,7 @@
     const form = { username, password, totpCode };
     // The secrets leave the page state as soon as they are read; only the user name stays (LOG-007).
     password = '';
-    const outcome = await signIn({ api: accessApi(target), address: target.address, desktop, writeToken: writeTokenAndCommandLine(writeAccessToken) }, form);
+    const outcome = await signIn({ api: accessApi(target), address: target.address, desktop, writeToken: writeAccessToken }, form);
     if (outcome.signedIn && (!desktop || moved !== undefined)) {
       // A new page, so the socket opens with the cookie the hub just set (E-4), or with the address just chosen (CLI-002);
       // the button stays off while it loads.

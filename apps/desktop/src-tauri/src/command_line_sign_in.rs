@@ -107,6 +107,10 @@ fn from_main(label: &str) -> Result<(), SignInError> {
 }
 
 /// The name of this computer, for `issueCommandLineToken(computer)`; empty when the OS gives none.
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri hands a command its web view by value"
+)]
 #[tauri::command]
 pub fn command_line_computer<R: Runtime>(webview: Webview<R>) -> Result<String, SignInError> {
     from_main(webview.label())?;

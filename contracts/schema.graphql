@@ -4279,9 +4279,9 @@ type Query {
 
 type Mutation {
   login(input: LoginInput!): AuthPayload!
-  "Login, browser or command-line token only (D-23, R-100). The sign-out of the desktop app's login token also ends its command-line token, with an audit entry for each (R-383, SGN-NEW-linked)."
+  "Login or browser token only (D-23, R-100), and a command-line token (R-383). The sign-out of the desktop app's login token also ends its command-line token, with an audit entry for each (R-383, SGN-NEW-linked)."
   logout: Boolean!
-  "A token of the kind COMMAND_LINE for the anima program on computer (its name: 1 to 64 characters, no control characters), linked to the login token of this request. It acts as the person (R-383) and ends with that token: its logout, its expiry, and its deletion. A device of a hosted hub that signs in again moves it to its new login token. A new one for the same login token ends the one before. The desktop app's login token only, with no agent declaration: FORBIDDEN for each other token. The response is no-store. Writes an audit entry without the token (LOG-005, LOG-007)."
+  "A token of the kind COMMAND_LINE for the anima program on computer (its name: 1 to 64 characters, no control characters), linked to the login token of this request. It acts as the person (R-383) and ends with that token: its logout, its expiry, and its deletion. A device of a hosted hub that signs in again moves it to its new login token. A new one for the same login token ends the one before. The desktop app's login token only, with no agent declaration, never an API key: FORBIDDEN for each other token. The response is no-store. Writes an audit entry without the token (LOG-005, LOG-007)."
   issueCommandLineToken(computer: String!): AuthPayload!
 
   createSite(name: String!, subnet: Cidr!): Site!

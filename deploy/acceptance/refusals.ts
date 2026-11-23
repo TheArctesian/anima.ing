@@ -19,6 +19,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "apiKeys",
   "signInBrowser",
   "logout",
+  "issueCommandLineToken",
   "startSession",
   "openFiles",
   "setSshCredential",
