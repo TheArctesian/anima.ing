@@ -74,7 +74,19 @@ impl Holder {
 }
 
 impl Drop for Holder {
+    /// `SIGTERM` first, so that the holder ends its programs and what they left (THR-049); a
+    /// `SIGKILL` at once would leave them running. Killed when it still runs after 30 s.
     fn drop(&mut self) {
+        let pid = i32::try_from(self.child.id())
+            .ok()
+            .and_then(rustix::process::Pid::from_raw);
+        if let Some(pid) = pid {
+            let _ = rustix::process::kill_process(pid, rustix::process::Signal::TERM);
+        }
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        while matches!(self.child.try_wait(), Ok(None)) && std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+        }
         let _ = self.child.kill();
         let _ = self.child.wait();
     }
