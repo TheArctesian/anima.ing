@@ -192,12 +192,14 @@ pub async fn wait(
     {
         let _ = kill_process_group(group, Signal::KILL);
     }
-    let swept = tree::sweep(&seen).await;
+    let swept = tree::kill_seen(&seen).await;
     // A process that left the group before a look saw it is found by its mark (THR-049). The
-    // key of a thread holds one program at a time, so each marked process is a leftover.
-    let marked = super::marker::end_marked(&thread, &Keep::nothing()).await;
+    // key of a thread holds one program at a time, so each marked process is a leftover. Both
+    // wait one time.
+    let marked = super::marker::kill_marked(&thread, &Keep::nothing()).await;
+    let ended = swept.and(marked).settled().await;
     if let Some(slot) = locked(&shared).threads.get_mut(&thread) {
-        settle_sweep(slot, swept.all && marked.all);
+        settle_sweep(slot, ended.all);
     }
     finish(&shared, &thread, readers).await;
     let exit = status.map_or(

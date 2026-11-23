@@ -76,20 +76,21 @@ pub async fn end_left_over(dir: &Path) -> Vec<Entry> {
     kept
 }
 
-/// Whether the end of what `entry` names is proved after this holder ended it.
+/// Whether the end of what `entry` names is proved after this holder ended it: its program by
+/// its start time, while it still runs as the same process; then what it left, by start time
+/// and by the mark of its thread.
 async fn ended(entry: &Entry) -> bool {
-    if let Some(left) = &entry.left {
-        // What an ended program left: by its start time, then by the mark of its thread.
-        let swept = tree::sweep(left).await;
-        let marked =
-            super::marker::end_marked(&entry.thread, &super::marker::Keep::nothing()).await;
-        return swept.all && marked.all;
-    }
     let same = entry.started.is_some() && tree::started(entry.pid).await == entry.started;
-    !same
+    let program = !same
         || tree::end(entry.pid, true, &tree::Known::new(), Duration::from_secs(3))
             .await
-            .all
+            .all;
+    let Some(left) = &entry.left else {
+        return program;
+    };
+    let swept = tree::kill_seen(left).await;
+    let marked = super::marker::kill_marked(&entry.thread, &super::marker::Keep::nothing()).await;
+    program && swept.and(marked).settled().await.all
 }
 
 #[cfg(test)]
