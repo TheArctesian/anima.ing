@@ -4809,3 +4809,22 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
    Expected: the hub denies access before remote login. Restore your intended permissions afterwards.
 
 Result: Open.
+
+### HT-NEW-gitengine: the Git actions of a thread, when a person can reach them (TC7, steps W1 to W4)
+
+Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` at `56e0132c6` and `6791fb123`). Nothing reaches it yet: this check cannot start before step W2 (the command) or W4 (the page) of Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md). The tests use made repositories in temporary folders, a launcher that stands in, and no remote on the network. They do not cover: a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.
+
+1. In a repository with a `pre-commit` hook, commit from a thread in Accept edits, then from a thread in Full access.
+   Expected: the first commit runs no hook and says in a short line that the hooks of the repository were skipped; the second runs the hook.
+2. Push a branch of a thread through Anima to a private remote. Then push one more commit with `git push` in a terminal, and look at the status of the thread.
+   Expected: no prompt for credentials that Anima shows; after the question to the remote the status says "pushed" for the commit that the remote has, however it came there; the upstream is not written into the settings of the repository.
+3. Remove a worktree that has files that are not committed, with one large file tracked by Git LFS.
+   Expected: the removal names the ref that keeps the work; `git show` of that ref in the repository has each file; the large file can be checked out.
+4. Start a thread in `/Users/Shared`, and one in the home folder.
+   Expected: the first is refused with words that say why; the second starts with the warning of THR-041.
+5. Open a project that was made with `git clone --shared`, and a project on Windows.
+   Expected: a refusal in plain words for the first; "not available on Windows yet" for the second.
+6. Look at the folder of the records (`/Users/Shared/anima-<uid>` on a Mac) as a different user of the same Mac.
+   Expected: that user cannot list it or read it.
+
+Result: Open. Not started: the steps W1 to W4 are not built.
