@@ -6,9 +6,9 @@ import type { HostingCalls, Machine } from './api';
 // Test support: three machines in the hub's shape, and calls that answer with them and record what the list asked.
 
 export const MACHINES: readonly Machine[] = [
-  { id: 'm-pop', name: 'pop-os' },
-  { id: 'm-nas', name: 'nas' },
-  { id: 'm-mini', name: 'mini' },
+  { id: 'm-pop', name: 'pop-os', state: 'UP' },
+  { id: 'm-nas', name: 'nas', state: 'UP' },
+  { id: 'm-mini', name: 'mini', state: 'DOWN' },
 ];
 
 export const CONTAINERS: Readonly<Record<string, readonly Container[]>> = {

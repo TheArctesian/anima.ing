@@ -246,6 +246,7 @@ pub(super) fn write_error(path: &Path) -> impl FnOnce(io::Error) -> InstallError
     }
 }
 
+/// Refuses a hub folder, or a folder of the unit file, that another user can change.
 /// A folder that is not there yet is made by `install` with the right mode.
 pub(super) fn check_private(request: &Request<'_>) -> Result<(), InstallError> {
     let root = request.folders.root();

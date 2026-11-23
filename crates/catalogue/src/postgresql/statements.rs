@@ -16,6 +16,7 @@ pub enum PasswordError {
 
 /// The password of an application's user, made on the machine (OD-HOST-42 A); only ASCII
 /// letters and digits, so SQL, Compose, a connection address and a shell need no quoting (SF-223).
+/// This crate never makes one, and no `Debug` or `Display` shows it.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Password(String);
 
