@@ -55,6 +55,10 @@ def run(iso,package,output,resume=False):
         machine.command("timeout 90 sh -c 'until anima-os-update status | jq -e \".value.phase == \\\"current\\\"\"; do sleep 2; done'",timeout=95)
         machine.command('! cmp -s /persist/update-before <(readlink -f /run/current-system); cmp /persist/update-identity /etc/machine-id; cmp /persist/update-hostname /proc/sys/kernel/hostname; grep -qx keep-work /persist/update-work; findmnt -n -o OPTIONS / | tr , "\\n" | grep -qx ro')
         results.append({'case':'updated-system-health-and-persistence','result':'Passed'})
+        from console_checks import wait_label
+        wait_label(output, 'Local session locked')
+        screenshot(output, 'updated-console-locked')
+        results.append({'case':'updated-graphical-console','result':'Passed'})
         machine.send('anima-os-update rollback')
         login(machine,password)
         machine.command('cmp /persist/update-before <(readlink -f /run/current-system); cmp /persist/update-identity /etc/machine-id; cmp /persist/update-hostname /proc/sys/kernel/hostname; grep -qx keep-work /persist/update-work')

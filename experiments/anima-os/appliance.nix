@@ -114,5 +114,5 @@
   services.journald.extraConfig = "SystemMaxUse=128M";
   systemd.targets.reboot.unitConfig = { JobTimeoutSec = "60s"; JobTimeoutAction = "reboot-force"; };
   systemd.settings.Manager = { RuntimeWatchdogSec = "20s"; RebootWatchdogSec = "60s"; };
-  environment.etc."anima-preview".text = "Experimental UEFI preview. Enrollment/monitoring and local Podman only; managed jobs/agents are not integrated.\n";
+  environment.etc."anima-preview".text = "Anima OS. Enrollment/monitoring and local Podman; managed jobs/agents are not integrated.\n";
 }

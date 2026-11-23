@@ -12,7 +12,7 @@ html = html.replace('<link rel="stylesheet" href="style.css">', '<style>\n' + (s
 wordmark = base64.b64encode((source.parent / 'branding/wordmark.svg').read_bytes()).decode()
 html = html.replace('src="wordmark.svg"', 'src="data:image/svg+xml;base64,' + wordmark + '"')
 fixture = Path(__file__).with_name('fixture.js').read_text()
-fixture += "\nsetTimeout(()=>{fixture.signedIn=true;document.querySelector('[name=password]').value='preview';document.querySelector('#unlock-form').requestSubmit();},100);\n"
+fixture += "\nfixture.scan=[{device:'wlan0',bssid:'00:11:22:33:44:01',ssid:'Workshop',signal:'91',security:'WPA3'},{device:'wlan0',bssid:'00:11:22:33:44:02',ssid:'Guest',signal:'64',security:'--'}];\nsetTimeout(()=>{fixture.signedIn=true;document.querySelector('[name=password]').value='preview';document.querySelector('#unlock-form').requestSubmit();},100);\n"
 html = html.replace('<script src="qrc:///qtwebchannel/qwebchannel.js"></script>', '<script>\n' + fixture + '</script>')
 for name in ('telemetry.js', 'ui.js'):
     html = html.replace(f'<script src="{name}"></script>', '<script>\n' + (source / name).read_text() + '</script>')
