@@ -230,8 +230,8 @@ are private to `events`.
 | `containers` (work, new; R-149, operator, 2026-11-18; HOST-001, HOST-010) | `devices` (`Device`, `get`, `Error` only), `ssh` (`link`, `FixedCommand`, `HexDigits`, `CommandOutput`, `LinkError` only), `credentials` (`Vault` only) |
 | `catalogue` (work, new; R-299, R-300; HOST-047; task H38) | — (no domain; the crate `catalogue` and the leaf `ids` only) |
 | `routes` (work, new; R-302, R-299; HOST-046; task H21) | `devices` (`get`, `Device`, `Error` only), `events` (the trail types), `credentials` (`Vault`, `Secret`, `Sealed`, `Error` only); the leaves `targets` (`resolve_checked`, `connect`, `on_link`, `AddressPolicy`) and `config`; the crate `anima-route-proxy` (`wire` only) |
-| `metrics` (R-135, adds) | `agent_usage` (`record` only, in the push transaction) |
-| `metrics` (TH21, adds) | `agent_threads` (`record` only, in the push transaction) |
+| `metrics` (R-135, adds) | `agent_usage` (`record_announced` only, in the push transaction) |
+| `metrics` (TH21, adds) | `agent_threads` (`record_announced` only, in the push transaction) |
 | `files` (engine, new; R-148; K-E4 Sections 9, 10) | `events` (the trail types, `audit`, `NewAudit`), `extensions` (`Key`, `Sensitivity` only: the data class of the extension of a form, VIS-002), `access` (`identify`, `client_addr`, `Identity`, `Scope` only, and only in `files/routes.rs`: the bearer of `/files/v1`); the leaves `sealing_keys` and `records` |
 | `places` (engine, new; R-148; K-E4 Section 8) | `links` (`retarget`, `retarget_named`, `count`, `Titles`, `Unavailable` only), `events` (the trail types), `records` (leaf) |
 | `locations` (engine, new; R-145; K-E4 Sections 11 to 13) | `places` (`Place`, `list`, `place_of_site` only), `events` (the trail types, `audit`, `NewAudit`, `ActorKind`), `access` (`client_addr` only, and only in `locations/routes.rs`: the address of a post of the OwnTracks path; OD-E24 names this edge, which K-E4 Section 13 does not list); the leaves `sealing_keys` and `records`. (R-261) `sources` (`Intake`, `Page`, `Taken`, `Counts`, `IntakeError` only: the intake of the Dawarich pull) and `extensions` (`INTEGRATIONS` and `Key` only); the crate `provider-dawarich` |
@@ -590,7 +590,7 @@ pub async fn batteries(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId
 
 Folder `crates/hub/src/fleet/agent_threads/`. The domain owns the summary persistence of K8
 Section 4. The metrics push passes the authenticated device and an accepted summary batch to
-`record` with the device row locked. `record` returns the stored revisions and hub thread IDs.
+`record_announced` with the device row locked. It returns the stored revisions and hub thread IDs.
 The push sends the receipt after commit.
 
 ## agent_usage (R-135, operator, 2026-11-17; AIS-018 to AIS-024; AU-2)

@@ -106,8 +106,7 @@ pub(super) async fn write(
     if created > MAX_NEW_SERIES {
         return Ok(Written::Refused(RefusalCode::Malformed));
     }
-    let (access_changed, receipt) = write_announcements(&mut tx, &push, now).await?;
-    if access_changed {
+    if write_announcements(&mut tx, &push, now).await? {
         events::record(
             &mut tx,
             bus,
@@ -130,6 +129,7 @@ pub(super) async fn write(
     if taken.needed {
         events::record(&mut tx, bus, now, need_gone(push.device, push.name)).await?;
     }
+    let receipt = agent_threads::record_announced(&mut tx, push.device, push.agent_threads).await?;
     tx.commit().await?;
     Ok(Written::Kept(kept, receipt))
 }
@@ -140,7 +140,7 @@ async fn write_announcements(
     tx: &mut PgConnection,
     push: &Push<'_>,
     now: DateTime<Utc>,
-) -> Result<(bool, Option<ThreadSummariesReceipt>), Error> {
+) -> Result<bool, Error> {
     let mut changed = false;
     if let Some(gpus) = push.gpus {
         // The daemon sends no boot time: its own discovery cadence (MET-006) replaces the
@@ -170,11 +170,7 @@ async fn write_announcements(
     if let Some(usage) = push.agent_usage {
         agent_usage::record(&mut *tx, push.device, usage, now).await?;
     }
-    let receipt = match push.agent_threads {
-        Some(summaries) => Some(agent_threads::record(tx, push.device, summaries).await?),
-        None => None,
-    };
-    Ok((changed, receipt))
+    Ok(changed)
 }
 
 /// The one event of a daemon that sends again after it was marked stale (MET-018).
