@@ -162,6 +162,14 @@ impl Identity {
         self.grant.kind == TokenKind::Browser && self.operator.actor.kind() == ActorKind::User
     }
 
+    /// True when the request is a person, not an AI agent: no agent was declared with the
+    /// token (OD-HOST-54). A login token of the `anima` command is one; the same token used by
+    /// MCP, which declares the agent, is not.
+    #[must_use]
+    pub fn is_person(&self) -> bool {
+        self.operator.actor.kind() == ActorKind::User
+    }
+
     /// The token of a builder identity, which names its builder record (BLD-024); `None` for
     /// an operator token.
     #[must_use]

@@ -1,11 +1,14 @@
 import { keyAction, type KeyAction } from '$lib/agent-threads/keys';
 
 /** A key of the page Code: one of the thread keys (THR-016), or ⌘N for a new thread (02 section 5.3). */
-export type PageKey = KeyAction | { readonly kind: 'new' | 'inbox' | 'back' | 'forward' | 'settle' | 'pin' };
+export type PageKey = KeyAction | { readonly kind: 'new' | 'inbox' | 'back' | 'forward' | 'settle' | 'pin' | 'details' };
 
-/** T3 Code's keys of the page beyond THR-016: ⌘N, ⌘B, ⌘[ and ⌘] (no Shift); ⇧⌘S settles and ⇧⌘P pins the open thread. */
+/**
+ * T3 Code's keys of the page beyond THR-016: ⌘N, ⌘B, ⌘[ and ⌘] (no Shift); ⇧⌘S settles and ⇧⌘P pins the open thread;
+ * ⇧⌘B shows or hides its details.
+ */
 const PLAIN_MOD: Readonly<Record<string, PageKey>> = { n: { kind: 'new' }, b: { kind: 'inbox' }, '[': { kind: 'back' }, ']': { kind: 'forward' } };
-const SHIFT_MOD: Readonly<Record<string, PageKey>> = { s: { kind: 'settle' }, p: { kind: 'pin' } };
+const SHIFT_MOD: Readonly<Record<string, PageKey>> = { s: { kind: 'settle' }, p: { kind: 'pin' }, b: { kind: 'details' } };
 
 /**
  * Parts that use the arrow keys, Escape and Enter themselves: a key that starts in one is theirs, never the page's.

@@ -47,7 +47,7 @@ describe("the switches of `anima` alone", () => {
     expect(decide).toMatch(/release_cli=false\n\s+if \[ "\$release" = true \]; then/);
     expect(decide).toContain('if [ "$decided_cli" = "release $version" ] && [ "$CLI_SWITCH" = on ]; then');
     expect(job("commit").steps.find((step) => step.id === "read")?.env?.["CLI_SWITCH"]).toBe("${{ vars.ANIMA_PUBLIC_CLI }}");
-    expect(job("cli").if).toBe("needs.commit.outputs.release_cli == 'true'");
+    expect(ownCondition(job("cli").if, needs("cli"))).toBe("needs.commit.outputs.release_cli == 'true'");
   });
 
   test("the desktop application does not wait for it: a fault of these jobs cannot stop a release", () => {

@@ -94,32 +94,40 @@ impl CodexInput {
         json!({"jsonrpc": "2.0", "method": CodexMethod::Initialized.name()}).to_string()
     }
 
-    /// A new thread in `folder`; the mode goes here, so the project file cannot change it
+    /// A new thread in its folder; the mode goes here, so the project file cannot change it
     /// (TH18 3.3).
     #[must_use]
-    pub fn thread_start(id: i64, folder: &Path, mode: Mode, model: Option<&Model>) -> String {
+    pub fn thread_start(
+        id: i64,
+        place: CodexPlace<'_>,
+        mode: Mode,
+        model: Option<&Model>,
+    ) -> String {
         call(
             id,
             CodexMethod::ThreadStart,
-            &thread_params(None, folder, mode, model),
+            &thread_params(None, place, mode, model),
         )
     }
 
+    /// The profile of THR-041 was measured on `thread/start` only, so these two never send it.
     #[must_use]
     pub fn thread_resume(id: i64, thread: &str, folder: &Path, mode: Mode) -> String {
+        let place = CodexPlace { folder, kept: None };
         call(
             id,
             CodexMethod::ThreadResume,
-            &thread_params(Some(thread), folder, mode, None),
+            &thread_params(Some(thread), place, mode, None),
         )
     }
 
     #[must_use]
     pub fn thread_fork(id: i64, thread: &str, folder: &Path, mode: Mode) -> String {
+        let place = CodexPlace { folder, kept: None };
         call(
             id,
             CodexMethod::ThreadFork,
-            &thread_params(Some(thread), folder, mode, None),
+            &thread_params(Some(thread), place, mode, None),
         )
     }
 
@@ -135,7 +143,10 @@ impl CodexInput {
         if let Some(mode) = turn.mode {
             let (sandbox, approval) = mode.codex();
             params["approvalPolicy"] = Value::from(approval);
-            params["sandboxPolicy"] = sandbox_policy(sandbox);
+            // A policy of a turn takes the place of the profile of the thread.
+            if !(turn.keeps && mode.folder_sandbox()) {
+                params["sandboxPolicy"] = sandbox_policy(sandbox);
+            }
         }
         call(id, CodexMethod::TurnStart, &params)
     }
@@ -226,6 +237,37 @@ pub struct TurnSettings<'a> {
     pub model: Option<&'a Model>,
     pub effort: Option<Effort>,
     pub mode: Option<Mode>,
+    /// The thread has the profile that keeps a folder read-only (THR-041): a mode in the sandbox
+    /// of the folder goes with its approvals only, so that the profile stays.
+    pub keeps: bool,
+}
+
+/// Where a thread of Codex works: its folder, and the folder in it that its sandbox keeps
+/// read-only, when the folder holds the folder of Anima (THR-041).
+#[derive(Clone, Copy, Debug)]
+pub struct CodexPlace<'a> {
+    pub folder: &'a Path,
+    pub kept: Option<&'a KeptFolder>,
+}
+
+/// A folder that the sandbox of a Codex thread keeps read-only, with the name of the profile of
+/// permissions that does it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KeptFolder {
+    pub folder: std::path::PathBuf,
+    profile: String,
+}
+
+impl KeptFolder {
+    /// The profile is named for the thread, so that a profile of the same name in a file of
+    /// configuration, written before the start, cannot add to it.
+    #[must_use]
+    pub fn new(folder: std::path::PathBuf, thread: uuid::Uuid) -> Self {
+        Self {
+            folder,
+            profile: format!("anima-keeps-{}", thread.simple()),
+        }
+    }
 }
 
 /// The `sandboxPolicy` of a `turn/start` for the `sandbox` of a `thread/start` (Codex 0.170;
@@ -239,14 +281,34 @@ fn sandbox_policy(sandbox: &str) -> Value {
     json!({"type": kind})
 }
 
-fn thread_params(thread: Option<&str>, folder: &Path, mode: Mode, model: Option<&Model>) -> Value {
+fn thread_params(
+    thread: Option<&str>,
+    place: CodexPlace<'_>,
+    mode: Mode,
+    model: Option<&Model>,
+) -> Value {
     let (sandbox, approval) = mode.codex();
     let mut params = json!({
-        "cwd": folder.to_string_lossy(),
+        "cwd": place.folder.to_string_lossy(),
         "sandbox": sandbox,
         "approvalPolicy": approval,
         "approvalsReviewer": "user",
     });
+    if let Some(kept) = place.kept.filter(|_| mode.folder_sandbox()) {
+        // The sandbox of the folder, with the folder of Anima read-only: a profile that Codex
+        // takes only when the start names no `sandbox` (Codex 0.170, measured 2026-11-22). It wins
+        // over `sandbox_mode` and `default_permissions` in the files of the user and the project.
+        if let Some(fields) = params.as_object_mut() {
+            fields.remove("sandbox");
+        }
+        params["config"] = json!({
+            "default_permissions": kept.profile,
+            "permissions": {kept.profile.as_str(): {
+                "extends": ":workspace",
+                "filesystem": {kept.folder.to_string_lossy(): "read"},
+            }},
+        });
+    }
     if let Some(thread) = thread {
         params["threadId"] = Value::from(thread);
         params["excludeTurns"] = Value::from(true);

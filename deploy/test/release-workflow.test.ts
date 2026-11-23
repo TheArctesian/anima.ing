@@ -115,15 +115,17 @@ describe("which push is a release (R-184, R-198)", () => {
     const text = runText(job("commit"));
     for (const feed of ["darwin-aarch64", "darwin-x86_64", "linux-x86_64", "windows-x86_64"]) expect(text).toContain(`published ${feed}`);
     expect(text).toContain('sh deploy/bin/release-decision --before "$BEFORE" "$sha" desktop "$mac_arm" "$mac_intel" "$linux" "$windows"');
+    expect(text).toContain('sh deploy/bin/release-decision --before "$BEFORE" "$sha" desktop "$mac_arm" "$mac_intel" "$linux")');
     expect(job("commit").steps.find((step) => step.id === "read")?.env?.["BEFORE"]).toBe("${{ github.event.before }}");
     expect(text).toContain("404) echo none ;;");
     expect(text).toMatch(/\*\) echo "::error::The feed \$1 answered \$code\." >&2; return 1 ;;/);
   });
 
   test("when the decision is nothing, no job builds, signs or publishes", () => {
-    for (const name of ["tool", "macos", "linux", "windows"]) {
+    for (const name of ["tool", "macos", "linux"]) {
       expect(job(name).if).toBe("needs.commit.outputs.release == 'true'");
     }
+    expect(job("windows").if).toBe("needs.commit.outputs.release_windows == 'true'");
     for (const name of ["sign", "publish", "trial"]) {
       expect(waitsFor(name).has("macos")).toBe(true);
       expect(() => ownCondition(job(name).if, needsOf(name))).not.toThrow();
@@ -176,8 +178,9 @@ describe("permissions and pinning", () => {
     expect(workflow.permissions).toEqual({});
     for (const [name, found] of Object.entries(jobs)) {
       const granted = JSON.stringify(found.permissions);
-      // The first job also reads the list of the runs of the gates.
-      if (name === "commit") expect(granted).toBe('{"contents":"read","actions":"read"}');
+      // The first job also reads the list of the runs of the gates, and so does the called
+      // workflow `gates`.
+      if (name === "commit" || name === "gates-linux") expect(granted).toBe('{"contents":"read","actions":"read"}');
       else expect(granted === "{}" || granted === '{"contents":"read"}').toBe(true);
     }
     expect(RAW).not.toMatch(/:\s*write\b/);

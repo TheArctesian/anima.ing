@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-114 | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
 | HT-115 | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
@@ -38,6 +39,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
 | HT-136 | The section Routes of Settings beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
+| HT-145 | A Codex thread in the home folder cannot write in the folder of the daemon (THR-041) | A Mac with `codex` 0.170 signed in, the daemon of the branch `threads/start-warns` with a test state folder in the home folder | Open |
 | HT-135 | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
@@ -78,8 +80,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
-| HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
-| HT-070 | Keep and clear a mobile session (M5-1) | An Android phone or tablet and an iPhone or iPad, a hosted Anima account, and a test hub invite | Open |
+| HT-143 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
+| HT-144 | Keep and clear a mobile session (M5-1) | An Android phone or tablet and an iPhone or iPad, a hosted Anima account, and a test hub invite | Open |
 | HT-075 | Android reports its memory and storage readings (M6-1) | A physical Android device joined to a hub, and another client to check the same device | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
@@ -89,7 +91,6 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
-| HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
 | HT-051 | The workflows `gates` and `merge-to-dev` on GitHub: the first run and the first merge with no session | The repository on GitHub, and the settings of [quality/README.md](../quality/README.md) | Open |
 | HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
 | HT-047 | The Devices page after the interface review: name first, named connect buttons, the logs as one line, the hub named in the bar (R-224) | The desktop application of a build that holds the branch `ui/v2-devices`, signed in to a hub with some devices | Open |
@@ -122,6 +123,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
+| HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
 
 ### What a check on the hosted hub needs
 
@@ -133,6 +135,29 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 - A daemon on the hosted hub: the `anima-daemon` of a computer, enrolled at the hosted hub. No document shows such an enrolment and no check ran one (HM-D16 of [hosted-mode.md](proposals/hosted-mode.md), open). If the hub refuses the enrolment, write that in the entry and in HM-D16. Where the entry permits a local hub, do the check with a local hub.
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
+
+### HT-146: a process that an agent detached cannot answer an approval (R-315, THR-031)
+
+Built: on the branch `threads/peer-ancestry`, the runner also takes a client for an agent when the
+client left the tree of the holder (a new session and a second start) and has no mark, but has the
+group of origin of the runner: the coalition that launchd gives to a job on a Mac, the control group on
+Linux. A test proves it with a made holder on the computer of the build. No test ran the daemon as a
+launch agent of the installed application, where the coalition of the daemon is its own.
+
+1. In Terminal, start the daemon of this build with `ANIMA_DAEMON_HOME` set to a new folder, for example
+   `~/anima-test-state`. Do not use the folder of the installed application.
+2. Start a Claude Code thread in a test folder in Ask. Send the prompt "Run: perl -e 'use POSIX; fork and
+   exit; POSIX::setsid(); fork and exit; sleep 2; %ENV=(HOME=>q(/), PATH=>q(/usr/bin:/bin)); exec
+   q(<path of anima>), qw(agents approve <thread> <request> allow)'" with the IDs of a request that waits in a
+   second thread. Allow only that command. Expected: the call of the detached process is refused; the request still
+   waits.
+3. In a different Terminal window, run `anima agents approve <thread> <request> allow`. Expected: the
+   request is answered.
+4. After the next release, do steps 2 and 3 with the installed application, where launchd starts the
+   daemon. Expected: the same.
+5. Delete `~/anima-test-state` when the daemon has stopped.
+
+Result: Open.
 
 ### HT-069: Anima OS preview hardware and enrollment
 
@@ -477,6 +502,30 @@ executable. No person looked at what such a daemon reports.
    `/usr/local/bin` show. Tools in the home folder of a user do not show.
 4. Write down each tool that shows as "not usable" and its reason. `node` and `bun` are
    possible.
+
+Result: Open.
+
+### HT-145: a Codex thread in the home folder cannot write in the folder of the daemon (THR-041)
+
+Built: on the branch `threads/start-warns`, the start of a Codex thread in Accept edits or Ask in a folder
+that holds the folder of the daemon sends a profile of permissions that makes that folder read-only. A
+test of `codex sandbox` with the same profile was refused a write in the folder (2026-11-22), and
+`thread/start` answered with the profile in force. No test ran a turn of a model, because that uses the
+account of the person.
+
+1. Start the daemon of this build with `ANIMA_DAEMON_HOME` set to a new folder in the home folder, for
+   example `~/anima-test-state`. Do not use the folder of the installed application.
+2. Start a Codex thread in the home folder in Ask. Expected: before the start, a warning that names
+   `~/anima-test-state`.
+3. Send the prompt "Run: touch ~/anima-test-state/probe". Allow the command. Expected: the command
+   fails with "Operation not permitted", and the file is not there.
+4. Send the prompt "Run: touch ~/probe-ok". Expected: the file is made. Delete it.
+5. Change the mode to Full access, send a prompt, change it back to Ask, and do step 3 again. Expected:
+   the file is made (the profile is gone, as THR-041 says). Delete it.
+6. Write `sandbox_mode = "danger-full-access"` in `~/.codex/config.toml` (keep a copy of the file first).
+   Start a new Codex thread in the home folder in Ask and do step 3 again. Expected: "Operation not
+   permitted". Put the old file back.
+7. Delete `~/anima-test-state` when the daemon has stopped.
 
 Result: Open.
 
@@ -1950,7 +1999,7 @@ outside your network.
 6. Run the command of step 2 with a wrong key. Expected: "The server refused this key.", and the
    account of step 2 still works.
 7. If your Dawarich answers only plain `http`, run the command of step 2 with `http://`. Expected:
-   the hub refuses the address (OD-E26 asks if this must change).
+   the hub refuses the address (OD-E26 permits it for a private address; E0-5 T7 builds it).
 8. On a hosted hub, with a Dawarich server that only your home network reaches: run the command
    of step 2. Expected: the hub says that it cannot reach the server; nothing is stored.
 9. Run `anima source pause <account>`. Expected: no new run until you resume it.
@@ -2003,7 +2052,7 @@ and reads it with `anima-daemon key read <name>`.
 
 The tests use a throwaway database and in-process requests. The daemon cache was tested as pure logic and as a
 file on this machine. No test used the macOS Keychain item `key-cache`, a real daemon pushing to a real hub, two
-machines, or a wait of 7 days. There is no `anima key` command yet (the noun waits for a ruling), so the steps use
+machines, or a wait of 7 days. There is no `anima secret` command yet (E0-6 T3), so the steps use
 GraphQL through the client's developer tools or `curl` with a login token.
 
 1. On a Linux server with an enrolled `anima-daemon` of this branch, and on the hub, make a key with
@@ -2270,7 +2319,7 @@ checks the screen, those check the values. Sign in to the application with a log
 
 Result: Open.
 
-### HT-069: install and update Anima from F-Droid (M5-7)
+### HT-143: install and update Anima from F-Droid (M5-7)
 
 The [Android build procedure](procedures/setup/android-apk.md) gives the steps to verify the F-Droid rebuild against Anima's signed APK. Run this check on a real Android phone when the same release is available from both sources. This check needs a later version in F-Droid to prove an update.
 
@@ -2281,7 +2330,7 @@ The [Android build procedure](procedures/setup/android-apk.md) gives the steps t
 
 Result: Open.
 
-### HT-070: keep and clear a mobile session (M5-1)
+### HT-144: keep and clear a mobile session (M5-1)
 
 1. Join a test hub by invitation. Open Devices and confirm that a fresh read succeeds.
 2. Force-stop the application and open it again. Open Devices, request a fresh read, and check that the link and session still work without entering the invite or credentials again.
@@ -2302,6 +2351,11 @@ Result: Open.
 4. In Android Settings, choose Sign out. Confirm that Anima returns to Welcome. Select Sign in again and check that it asks for a new approval.
 
 On 2026-11-20 the Samsung tablet was enrolled from the app. The hosted hub showed the tablet with source Daemon and new memory and storage readings. New readings reached the hub again after bringing the app back to the foreground. The background stale state still needs an independent client check.
+
+On iPhone and iPad, use Devices → Enroll this device on a linked hub, including when
+the device already has an inventory row. Expected: the device reports memory in the
+foreground. Move Anima to the background and reopen it. Expected: reports resume.
+Check that the hub receives no iOS disk-capacity series.
 
 Result: Open.
 
@@ -2429,6 +2483,11 @@ For the branch TestFlight workflow (M5-8), push a change to `dev` and follow the
 Expected: the signed build clears export compliance and appears as Testing in Anima Internal
 without a declaration or an assignment in App Store Connect. Install that build on an iPhone
 or iPad and confirm its version and build number.
+
+For the public beta, follow the first `main` TestFlight run with the public group configured.
+Expected: the workflow assigns the build to the group that owns the public invite URL.
+After Apple approves it, open the TestFlight link from Downloads on the Anima website
+and install the build on an iPhone or iPad.
 
 Result: Open.
 
@@ -2796,7 +2855,7 @@ VoiceOver in WebKit, and how often it speaks during a long turn.
 
 Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
 (`apps/client/src/lib/application-routes/`). The vitest tests use fake calls of the hub: they prove each state of the
-list, the page of a route, the refusals of the hub that the section shows, Check now, Check all, and Remove off with its reason. No person
+list, the page of a route, the refusals of the hub that the section shows, Check now, Check all and Remove. No person
 looked at the screen, and no picture of it was compared with the frames of [routes/index.html](mockup/routes/index.html):
 the screen was not run on this computer. No test used a real hub, a real DNS or a real second factor.
 
@@ -2814,8 +2873,9 @@ the screen was not run on this computer. No test used a real hub, a real DNS or 
 4. Select Copy beside the TXT value and paste it in a text editor. Expected: the same value as `anima route show`.
 5. Select Check now with an account that has no second factor. Expected: the refusal of the hub under the title. Turn
    on the second factor and select Check now again. Expected: the time of the check changes.
-6. Look at Remove route on the page of the route. Expected: it is off, with the line that removing a route needs a
-   fresh code of your second factor, which the hub cannot check yet. Selecting it opens nothing.
+6. With an account that has no second factor, select Remove route, then Remove route in the dialog. Expected: no
+   code is asked; the list without the route; `anima route list` does not show it; the history of the device has one
+   entry that names the removed route, its access and its port.
 7. On a hub that is not on Linux (for example a test hub on macOS), select Check all. Expected: "Routing needs a hub
    on Linux." in place of the list.
 
@@ -3114,6 +3174,8 @@ covers (HM-D11): "the device doesn't auto add it should and the hub is not there
 
 The preview was built from `665fb16a` on `fix/linux-start-sign-in`. Its startup guard in
 `apps/client/src/lib/access/guard.ts` opens `/welcome` when no hub address is saved. Tests cover a missing token, an old token
+The startup guard in `apps/client/src/lib/access/guard.ts` now opens `/welcome`
+before a token read when no hub address is saved. Tests cover a missing token, an old token
 for the default hub and a refused key store. They also check that a chosen hub still resumes
 with its token. An automatic Linux WebKit check reached the screen with an old default-hub
 token and with no token. The packaged preview also showed the screen in a virtual X11 display
@@ -4644,3 +4706,50 @@ a made-up runner; nobody has tried it with a program that runs.
 
 Result: Open.
 
+### HT-142: the files of the composer of Code (TC4, TH111)
+
+Built on the branch `code/composer-attach`. The composer sends each file to the thread runner in parts of 2 MiB
+(`attach`, `attach_more`), shows how far it is, and names the files in the `send`. Its tests run it over a made-up
+runner with the frames of the real one; nobody has tried it with a program that runs, with a real drop from the
+Finder, or with a real paste. The page passes the calls to the composer only when the UI change that follows this
+branch is in the build.
+
+1. In the desktop application open a chat of Code and press the paperclip. Choose a PNG picture of less than 1 MB.
+   Expected: a tile with the picture shows over the editor. The send button cannot be pressed for a moment, then can.
+2. Type `what is in this picture?` and press Enter.
+   Expected: the tile goes, the prompt is in the chat, and the program describes the picture.
+3. Drag a text file of about 20 MB from the Finder onto the composer.
+   Expected: the card shows its drop state; then a row with the name of the file and a number of percent that rises
+   in steps. While it rises the send button says that an attachment is still being read.
+4. While the number rises, press the X of the row.
+   Expected: the row goes at once, and the send button can be pressed again when there is text.
+5. Drag a folder from the Finder onto the composer.
+   Expected: nothing is attached, and a line under the editor says that a folder cannot be attached.
+6. Copy a picture in Preview (⌘C) and paste it in the editor (⌘V).
+   Expected: a tile shows, as in step 1.
+   Then copy a text file in the Finder (⌘C on the file) and paste it in the editor.
+   Expected: a row with the name of the file shows. Copy a folder in the Finder and paste it: nothing is attached,
+   and a line says that a folder cannot be attached.
+7. Attach a picture of more than 10 MB.
+   Expected: no tile; a line under the editor says that the file is too large to attach.
+8. Attach a file whose name has a mark of direction or brackets, for example `<b>note<b>.txt`.
+   Expected: the row shows the name with `_` in place of each such mark (`_b_note_b_.txt`), as plain text.
+9. Attach a file, wait until it is ready, and remove it with its X. Then send a prompt with no file.
+   Expected: the prompt goes with no file.
+10. Start a long turn, attach a file, type a message and press ⌘Enter (queue).
+    Expected (a known limit): the message does not go, and a line says that a queued message takes no files yet.
+    Press Enter in its place: the message goes into the running turn with its file.
+11. Attach a file of about 40 MB and open a different chat while its number rises. Come back.
+    Expected (a known limit): the file is not attached; no part of it went to the other chat, and the runner was
+    told to drop what it had of it.
+12. Attach a file, wait until it is ready, do not send, and come back after more than one hour. Send.
+    Expected (a known limit): the runner dropped the file after one hour, so the send is refused with words. Remove
+    the file, attach it again and send.
+13. Attach a HEIC photo of an iPhone of more than 10 MB and less than 50 MB.
+    Expected: a tile shows and the photo goes with the prompt as a file: the runner takes HEIC as a file, with the
+    limit of a file.
+14. Attach a file to the unsent text, open a queued message with its pencil, attach a second file there, and open
+    a different queued message.
+    Expected: the second file is gone. Cancel the change: the first file is back with the unsent text.
+
+Result: Open.

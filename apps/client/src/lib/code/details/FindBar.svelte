@@ -14,9 +14,11 @@
     onRetry: () => void;
     onClose: () => void;
     input?: HTMLInputElement | undefined;
+    /** What is searched, as the name of the field: the thread, or the page of a browser tab. */
+    words?: string;
   }
 
-  let { query, find, onQuery, onNext, onPrevious, onRetry, onClose, input = $bindable() }: Props = $props();
+  let { query, find, onQuery, onNext, onPrevious, onRetry, onClose, input = $bindable(), words = 'Find in thread' }: Props = $props();
   const none = $derived(find.kind === 'matches' && find.total === 0);
   const count = $derived.by(() => {
     if (query === '' || find.kind === 'idle') return '';
@@ -40,8 +42,8 @@
 </script>
 
 <!-- "Find in thread" (07 section 9): it takes the place of the details card while it is open. -->
-<div class="find" role="search" aria-label="Find in thread" aria-busy={find.kind === 'loading' || (find.kind === 'matches' && find.counting === true)}>
-  <input type="search" aria-label="Find in thread" placeholder="Find in thread" maxlength="200" autocomplete="off" spellcheck="false" value={query} bind:this={input} oninput={(event) => onQuery(event.currentTarget.value)} {onkeydown} />
+<div class="find" role="search" aria-label={words} aria-busy={find.kind === 'loading' || (find.kind === 'matches' && find.counting === true)}>
+  <input type="search" aria-label={words} placeholder={words} maxlength="200" autocomplete="off" spellcheck="false" value={query} bind:this={input} oninput={(event) => onQuery(event.currentTarget.value)} {onkeydown} />
   <span class="count" class:none aria-live="polite">{count}</span>
   {#if find.kind === 'failed'}<button type="button" class="retry" onclick={onRetry}>Retry</button>{/if}
   <IconButton label="Previous match" icon="chevron-up" disabled={still} onclick={onPrevious} />

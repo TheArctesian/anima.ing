@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use agent_threads::control::{Action, Call, Change, Outcome, Reply, RunState, SOCKET};
 use agent_threads::drive::{Answer, Mode, Program};
-use anima_daemon::threads::link::HolderLink;
-use anima_daemon::threads::wire;
+use anima_daemon::threads::{holder, tree};
+use rustix::process::{Pid, Signal};
 use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, Lines};
 use tokio::net::UnixStream;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
@@ -140,25 +140,52 @@ impl Kit {
     }
 }
 
+/// How long the holder may take to end its programs after `SIGTERM`: a grace of a few seconds
+/// for each thread, on a busy computer.
+const HOLDER_END: Duration = Duration::from_secs(30);
+
 impl Drop for Kit {
+    /// Ends the runner, then the holder with its programs. The holder outlives the runner
+    /// (THR-113) and refuses a `Quit` while a thread runs, so it gets `SIGTERM`, which ends each
+    /// program it holds (THR-049). A holder that still runs after that fails the test: it would
+    /// stay behind with its folder deleted.
     fn drop(&mut self) {
         self.end_runner();
-        let dir = self.threads();
-        // The holder ends with the test: a thread of its own, as a drop runs inside the runtime.
-        let _ = std::thread::spawn(move || {
-            let runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("a runtime");
-            runtime.block_on(async move {
-                if let Ok(mut link) = HolderLink::connect(&dir).await {
-                    let _ = link.send(wire::Action::Quit).await;
-                    tokio::time::sleep(Duration::from_millis(200)).await;
-                }
-            });
-        })
-        .join();
+        let Some(pid) = holder_of(&self.threads()) else {
+            return;
+        };
+        let _ = rustix::process::kill_process(pid, Signal::TERM);
+        let raw = pid.as_raw_nonzero().get().unsigned_abs();
+        let deadline = std::time::Instant::now() + HOLDER_END;
+        while tree::alive(raw) && std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        // A second panic while the test already fails would abort the whole test binary.
+        assert!(
+            std::thread::panicking() || !tree::alive(raw),
+            "the holder {raw} of the test still runs {HOLDER_END:?} after SIGTERM"
+        );
     }
+}
+
+/// The process that answers on the socket of the holder in `dir`, from the peer of a
+/// connection. A thread of its own, as a drop runs inside the runtime of the test.
+fn holder_of(dir: &Path) -> Option<Pid> {
+    let socket = dir.join(holder::SOCKET);
+    std::thread::spawn(move || {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("a runtime");
+        runtime.block_on(async move {
+            let stream = UnixStream::connect(&socket).await.ok()?;
+            stream.peer_cred().ok()?.pid()
+        })
+    })
+    .join()
+    .ok()
+    .flatten()
+    .and_then(Pid::from_raw)
 }
 
 pub(super) struct Client {
@@ -245,6 +272,8 @@ async fn start_and_answer(kit: &Kit) -> (Uuid, Uuid, u32) {
             effort: None,
             prompt: "Run the command".to_owned(),
             program_path: None,
+            draft: None,
+            attachments: Vec::new(),
         })
         .await;
     let Outcome::Started { thread } = client.done(start).await else {

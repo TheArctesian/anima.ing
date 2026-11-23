@@ -54,6 +54,8 @@ pub struct Attachments {
     /// The files of a prompt whose line the holder did not take yet: they are where the program
     /// reads them, and go back to `pending` when the prompt does not go.
     going: BTreeMap<Uuid, Upload>,
+    /// The draft of each new thread whose first prompt did not go yet (TH111).
+    drafts: BTreeMap<Uuid, Uuid>,
 }
 
 impl Attachments {
@@ -71,6 +73,7 @@ impl Attachments {
             folder,
             pending: BTreeMap::new(),
             going: BTreeMap::new(),
+            drafts: BTreeMap::new(),
         }
     }
 
@@ -204,6 +207,7 @@ impl Attachments {
 
     /// Removes each file of a thread that the person removed.
     pub fn forget(&mut self, thread: Uuid) {
+        self.drafts.remove(&thread);
         self.pending.retain(|_, upload| upload.thread != thread);
         self.going.retain(|_, upload| upload.thread != thread);
         remove(&self.folder.join(thread.to_string()));
@@ -261,6 +265,10 @@ impl Attachments {
     fn drop_pending(&mut self, id: Uuid) {
         if let Some(upload) = self.pending.remove(&id) {
             remove(&self.pending_folder(upload.thread, id));
+            // The folders above go when they are empty: a draft leaves nothing behind.
+            let key = self.folder.join(upload.thread.to_string());
+            let _ = std::fs::remove_dir(key.join("pending"));
+            let _ = std::fs::remove_dir(key);
         }
     }
 }
@@ -309,6 +317,7 @@ fn too_large(name: &str, why: &str) -> Refusal {
     }
 }
 
+mod drafts;
 mod taking;
 #[cfg(test)]
 mod tests;

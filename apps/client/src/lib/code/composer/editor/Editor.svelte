@@ -6,6 +6,7 @@
   import '../../kit/code.css';
   import '../composer.css';
   import type { CaretAt, ChipReader } from '../draft';
+  import { splitDropped } from '../attachments/drop';
   import { edit, type Mode } from './edit';
   import './editor.css';
   import { chordAction, leavesAfter } from './keys/chords';
@@ -31,7 +32,7 @@
     /** Gets every key first; true means the composer took it, and the editor stops the key there. */
     onKey?: (event: KeyboardEvent) => boolean;
     /** Files pasted or dropped: the editor only hands them up. False: they were not taken, and pasted text goes in. */
-    onFiles?: (files: readonly File[], how: 'paste' | 'drop') => boolean;
+    onFiles?: (files: readonly File[], how: 'paste' | 'drop', folders?: number) => boolean;
     /** The id of the list a trigger opened, and of its lit row, for assistive technology (03, The editor: Element tree). */
     controls?: string | undefined;
     activeDescendant?: string | undefined;
@@ -177,10 +178,11 @@
     event.preventDefault();
     if (sheet === undefined || disabled) return;
     sheet.heed();
-    const files = Array.from(event.clipboardData?.files ?? []);
+    // A folder that was copied in the file manager comes as a file with no bytes: it is told apart, so that it is refused as a folder.
+    const { files, folders } = event.clipboardData === null ? { files: [], folders: [] } : splitDropped(event.clipboardData);
     const text = event.clipboardData?.getData('text/plain') ?? '';
     // Cells of a spreadsheet come as a picture and as text: where the picture is not taken, the text is not lost.
-    if (files.length === 0 || onFiles?.(files, 'paste') !== true) put(text);
+    if (files.length + folders.length === 0 || onFiles?.(files, 'paste', folders.length) !== true) put(text);
   }
 
   /** Copy and cut write the selection's Markdown as plain text (03, The editor: Markdown round trip). */

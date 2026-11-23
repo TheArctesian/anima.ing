@@ -36,8 +36,11 @@ export function splitDropped(transfer: Transfer): { files: File[]; folders: File
   for (const entry of transfer.items) {
     const file = entry.kind === 'file' ? entry.getAsFile() : null;
     if (file === null) continue;
-    (entry.webkitGetAsEntry()?.isDirectory === true ? folders : files).push(file);
+    const listed = typeof entry.webkitGetAsEntry === 'function' ? entry.webkitGetAsEntry() : null;
+    (listed?.isDirectory === true ? folders : files).push(file);
   }
+  // A web view can list a copied file only in `files`: it is not lost.
+  if (files.length + folders.length === 0) return { files: [...transfer.files], folders: [] };
   return { files, folders };
 }
 

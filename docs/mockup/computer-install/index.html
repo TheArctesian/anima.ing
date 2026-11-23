@@ -6,8 +6,8 @@
 <title>Add a computer: mockup</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@200;400;500&amp;display=swap">
 <style>
-/* Layout: a review board of the page "Add a computer with no application" (task HM-T33, Section 8.1 of hosted-mode.md,
-   rulings R-359 to R-363). Each frame is one state of the page. The query `?theme=dark|light` and `?w=1440|390` choose the
+/* Layout: a review board of the dialog "Add a computer with no application" (task HM-T33, Section 8.1 of hosted-mode.md,
+   rulings R-359 to R-363). Each frame is one state of the dialog. The query `?theme=dark|light` and `?w=1440|390` choose the
    appearance and the width of every frame; with no query the board shows the dark appearance at 1440 px.
    The colours, sizes and spaces of the frames are the values of design/tokens (Graphite), copied from devices-v2; no glass. */
 body { margin: 0; padding: 24px 16px 48px; background: #101214; color: #E6E7E9; font-family: "IBM Plex Sans", system-ui, sans-serif; }
@@ -210,7 +210,7 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2.phone .card { padding: var(--space-4); }
 .v2 .card h2 { font-size: var(--t-lg); font-weight: 500; line-height: 1.2; display: flex; align-items: baseline; gap: var(--space-2); }
 .v2 .card h2 .no { color: var(--text-secondary); font-weight: 400; font-variant-numeric: tabular-nums; }
-.v2 .card.done h2 { color: var(--text-secondary); }
+.v2 .card.pending h2, .v2 .card.pending h3 { color: var(--text-secondary); }
 .v2 .card .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .v2 .card .row.end { justify-content: flex-end; }
 .v2 .summary { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-4) var(--space-6); background: var(--surface-raised); border-radius: var(--radius-lg); font-size: var(--t-sm); }
@@ -240,7 +240,7 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .seg input:checked + span, .v2 .seg span.on { background: var(--surface-raised); color: var(--text); font-weight: 500; }
 
 /* ---------- The line and the code ---------- */
-.v2 .line { position: relative; padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--t-sm); line-height: 1.6; word-break: break-all; color: var(--text); }
+.v2 .line { position: relative; margin: 0; padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--t-sm); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; color: var(--text); }
 .v2 .line .v { color: var(--accent); }
 .v2 .codebox { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .v2 .codebox input.input { color: var(--text); }
@@ -324,11 +324,46 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .stops .said { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text); }
 .v2 .stops .th { color: var(--text-secondary); font-weight: 500; font-size: var(--t-xs); padding-top: 0; }
 .v2.phone .stops .th { display: none; }
+
+/* ---------- The steps in a dialog over Devices (ruling 1 B, 2026-11-22) ---------- */
+/* On the board the wide dialog is drawn whole, in the flow of its frame, over the list of Devices. */
+.v2 .scrimmed:has(.dialog.wide) { display: grid; grid-template-columns: minmax(0, 1fr); }
+.v2 .scrimmed:has(.dialog.wide) > * { grid-area: 1 / 1; }
+.v2 .dialog.wide { position: relative; top: auto; left: auto; transform: none; justify-self: center; align-self: start; width: 720px; max-width: 100%; min-width: 0; margin-bottom: var(--space-8); }
+.v2.phone .dialog.wide { width: 100%; margin-bottom: 0; }
+.v2 .dialog .card h2 { justify-content: flex-start; font-size: var(--t-lg); }
+.v2 .dialog .dhead { display: flex; align-items: center; gap: var(--space-2); }
+.v2 .dialog .dhead h2 { flex: 1; font-size: var(--t-xl); font-weight: 500; line-height: 1.2; }
+.v2 .dialog .dintro { color: var(--text-secondary); font-size: var(--t-sm); }
+.v2 .dialog .card { background: var(--surface-raised); padding: var(--space-4); }
+.v2 .dialog .summary { padding: var(--space-3) var(--space-4); }
+.v2 details.fold { border-top: var(--border-thin) solid var(--border-subtle); padding-top: var(--space-3); }
+.v2 details.fold > summary { cursor: pointer; font-weight: 500; min-height: var(--control-md); display: flex; align-items: center; }
+.v2.phone details.fold > summary { min-height: var(--target-min-touch); }
+.v2 details.fold > .card { margin-top: var(--space-3); }
+.v2 .line.short { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; cursor: pointer; }
+/* The dialog keeps its head in view and scrolls its body (frame 3 is drawn at the height of a real window). */
+.v2 .dialog.wide .dhead { position: sticky; top: calc(-1 * var(--space-6)); z-index: 1; margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) 0; padding: var(--space-4) var(--space-6); background: var(--surface-overlay); border-bottom: var(--border-thin) solid var(--border-subtle); }
+.v2.phone .dialog.wide .dhead { top: calc(-1 * var(--space-4)); margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0; padding: var(--space-2) var(--space-4); }
+.v2.real { height: 900px; overflow: hidden; }
+.v2.real.phone { height: 844px; }
+.v2.real .dialog.wide { max-height: calc(900px - 2 * var(--space-8)); overflow-y: auto; overscroll-behavior: contain; margin-top: var(--space-8); }
+.v2.real.phone .dialog.wide { max-height: calc(844px - var(--target-min-touch) - var(--space-4)); margin-top: var(--space-4); }
+.v2 .dialog .card, .v2 .dialog .summary { background: var(--surface-base); border: var(--border-thin) solid var(--border-subtle); }
+.v2 .card h3 { font-size: var(--t-lg); font-weight: 500; line-height: 1.2; display: flex; align-items: baseline; gap: var(--space-2); }
+.v2 .card h3 .no { color: var(--text-secondary); font-weight: 400; font-variant-numeric: tabular-nums; }
+.v2 details.fold > summary { list-style: none; gap: var(--space-2); }
+.v2 details.fold > summary::-webkit-details-marker { display: none; }
+.v2 details.fold > summary::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform var(--dur-fast, 120ms); }
+.v2 details.fold[open] > summary::before { transform: rotate(45deg); }
+.v2.phone .seg label { flex: 1; }
+.v2.phone .seg { height: calc(var(--target-min-touch) + 2 * var(--space-1)); }
+.v2 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
 </head>
 <body>
 <h1 class="board">Add a computer with no application</h1>
-<p class="about">The page that gives the one line which installs the link and the daemon on a computer with no Anima application (HM-T33, Section 8.1 of hosted-mode.md, rulings R-359 to R-363). Proposed on 2026-11-22, not approved, not built. The names, the version, the times and the SHA-256 values are examples. Open the page from the "Add device" dialog of Devices.</p>
+<p class="about">The dialog that gives the one line which installs the link and the daemon on a computer with no Anima application (HM-T33, Section 8.1 of hosted-mode.md, rulings R-359 to R-363). Ruled by the user on 2026-11-22 (a dialog over Devices; the install code hidden, with Show and Copy; live progress; the line cut short, with Copy and Show; Linux x86_64 first). Not built. The names, the version, the times and the SHA-256 values are examples. It opens from the "Add device" dialog of Devices and stays a dialog over Devices.</p>
 <p class="switches"><a href="?theme=dark&amp;w=1440">Dark 1440</a><a href="?theme=light&amp;w=1440">Light 1440</a><a href="?theme=dark&amp;w=390">Dark phone</a><a href="?theme=light&amp;w=390">Light phone</a></p>
 
 <template id="side">
@@ -344,16 +379,18 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </template>
 
 <template id="head">
-<header class="head">
-  <span class="crumb"><a href="#" class="link">Devices</a><span aria-hidden="true">/</span><span>Add a computer</span></span>
-  <h1>Add a computer with no application</h1>
-  <p>For a server, or a computer where you do not want the Anima application. You run one line in its terminal. It joins this hub and reports to it while you are logged in. You do not sign in on that computer.</p>
-</header>
+<div class="dhead">
+  <button class="iconbtn" type="button" aria-label="Back to the choices"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg></button>
+  <h2>Add a computer with no application</h2>
+  <button class="iconbtn" type="button" aria-label="Close"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+</div>
+<p class="dintro">For a server, or a computer where you do not want the Anima application. You run one line in its terminal. It joins this hub and reports to it while you are logged in. You do not sign in on that computer.</p>
 </template>
 
 <template id="does">
-<section class="card" aria-labelledby="does-h">
-  <h2 id="does-h">What the line does</h2>
+<details class="fold">
+<summary>What the line does</summary>
+<section class="card" aria-label="What the line does">
   <ol class="does">
     <li><span>Downloads the install script of version <span class="mono">0.42.0</span> and checks its SHA-256 fingerprint before it runs it.</span></li>
     <li><span>Downloads two programs, the link and the daemon, and checks the fingerprint of each. If one does not agree, it stops and installs nothing.</span></li>
@@ -365,9 +402,10 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <dl class="kv">
     <dt>Needs</dt><dd>A user account, <span class="mono">curl</span>, <span class="mono">sh</span> and <span class="mono">sha256sum</span> (Linux x86_64, with a systemd user session) or <span class="mono">shasum</span> (macOS).</dd>
     <dt>Checked</dt><dd>The fingerprints come from the signed release record of version 0.42.0.</dd>
-    <dt>To remove</dt><dd>Run <span class="mono">sh ~/.local/share/anima-link/anima-install.sh --remove</span> on the computer (the page shows the path for the system and the folder that the script chose), then remove the computer in Devices and from the link.</dd>
+    <dt>To remove</dt><dd>Run <span class="mono">sh ~/.local/share/anima-link/anima-install.sh --remove</span> on the computer (the dialog shows the path for the system and the folder that the script chose), then remove the computer in Devices and from the link.</dd>
   </dl>
 </section>
+</details>
 </template>
 
 <div id="frames">
@@ -379,7 +417,7 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
     <header class="head"><h1 class="display" style="font-size: var(--t-display); font-weight: 200; letter-spacing: -0.03em;">Devices</h1></header>
     <div class="scrimmed">
       <div class="ghostlist" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-      <div class="dialog" role="dialog" aria-labelledby="dlg-h">
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-h">
         <h2 id="dlg-h">Add device<button class="iconbtn" type="button" aria-label="Close"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></h2>
         <a class="choice" href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M5.5 13.5h5"/></svg><span><b>Enrol this computer</b><span>This computer, where the Anima application runs.</span></span><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></a>
         <a class="choice" href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="1.5" width="7" height="13" rx="1.5"/><path d="M7.5 12h1"/></svg><span><b>Enrol another device</b><span>A computer or a phone with the Anima application: send it an invite.</span></span><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></a>
@@ -388,18 +426,20 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
     </div>
   </main>
 </div>
-<figcaption>1. The way in. The "Add device" dialog of Devices gets a third choice, "Add a computer with no application", which opens the page. The other two choices do not change. (The blue edge marks the new choice in this mockup only.)</figcaption>
+<figcaption>1. The way in. The "Add device" dialog of Devices gets a third choice, "Add a computer with no application", which goes on in the same dialog (frames 2 to 7). The other two choices do not change. (The blue edge marks the new choice in this mockup only.)</figcaption>
 </figure>
 
 <figure>
-<div class="v2" data-frame>
+<div class="v2 modal" data-frame>
   <slot-side></slot-side>
   <main class="page">
-    <slot-head></slot-head>
-    <div class="body">
-      <div class="main">
+    <header class="head"><h1 style="font-size: var(--t-display); font-weight: 200; letter-spacing: -0.03em;">Devices</h1></header>
+    <div class="scrimmed">
+      <div class="ghostlist" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="dialog wide" role="dialog" aria-label="Add a computer with no application">
+        <slot-head></slot-head>
         <section class="card" aria-labelledby="s1">
-          <h2 id="s1"><span class="no">1</span>Name the computer</h2>
+          <h3 id="s1"><span class="no">1</span>Name the computer</h3>
           <div class="field">
             <label for="nm">Name</label>
             <span class="input"><input id="nm" value="build-01" style="border:0;outline:0;background:none;flex:1;min-width:0;"></span>
@@ -412,35 +452,37 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           </div>
           <div class="row end"><button class="btn primary" type="button">Make the line</button></div>
         </section>
-        <section class="card done" aria-labelledby="s2a"><h2 id="s2a"><span class="no">2</span>Run the line on the computer</h2></section>
-        <section class="card done" aria-labelledby="s3a"><h2 id="s3a"><span class="no">3</span>Wait for the computer to join</h2></section>
+        <section class="card pending" aria-labelledby="s2a"><h3 id="s2a"><span class="no">2</span>Run the line on the computer</h3></section>
+        <section class="card pending" aria-labelledby="s3a"><h3 id="s3a"><span class="no">3</span>Wait for the computer to join</h3></section>
+        <slot-does></slot-does>
       </div>
-      <div class="aside"><slot-does></slot-does></div>
     </div>
   </main>
 </div>
-<figcaption>2. The form. One name and one system; Linux x86_64 is chosen first, because most computers with no application are servers. "Make the line" asks the hub for an install code (createComputerInstall, a signed-in operator only). "What the line does" stays beside the steps on each state; on a phone it is under them.</figcaption>
+<figcaption>2. The form, in a wider dialog over Devices (ruling 1 B): Back goes to the three choices, Close ends the dialog. On a phone the dialog is a sheet that leaves the top bar in view. Its head (Back, the title, Close) stays in view while its body scrolls; frame 3 is drawn at the height of a real window to show that, and the other frames are drawn whole. The form: One name and one system; Linux x86_64 is chosen first, because most computers with no application are servers. "Make the line" asks the hub for an install code (createComputerInstall, a signed-in operator only). "What the line does" is a folded part under the steps in each state; it is open in frames 3 and 3b.</figcaption>
 </figure>
 
 <figure>
-<div class="v2" data-frame>
+<div class="v2 modal" data-frame>
   <slot-side></slot-side>
   <main class="page">
-    <slot-head></slot-head>
-    <div class="body">
-      <div class="main">
+    <header class="head"><h1 style="font-size: var(--t-display); font-weight: 200; letter-spacing: -0.03em;">Devices</h1></header>
+    <div class="scrimmed">
+      <div class="ghostlist" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="dialog wide" role="dialog" aria-label="Add a computer with no application">
+        <slot-head></slot-head>
         <div class="summary"><span class="sec">1</span><b>build-01</b><span class="sec">Linux x86_64</span><button class="btn quiet" type="button">Change</button></div>
         <section class="card" aria-labelledby="s2">
-          <h2 id="s2"><span class="no">2</span>Run the line on build-01</h2>
-          <p class="note">Log in to build-01 as the user that will run it, not as root, and paste this line in its terminal. "Change" makes a new code: the code of this line then stops working.</p>
-          <div class="line" aria-label="The install line">(f=$(mktemp) &amp;&amp; trap 'rm -f "$f"' EXIT &amp;&amp; curl -fsSL --proto '=https' --proto-redir '=https' 'https://releases.anima.ing/install/<span class="v">0.42.0</span>/anima-install.sh' -o "$f" &amp;&amp; printf '%s  %s\n' '9ad6415c67888e6a9e7719db4d5689628d87b80f16c01d964a7dfdcb8d6b83ba' "$f" | sha256sum -c - &amp;&amp; sh "$f" --version '<span class="v">0.42.0</span>' --target 'linux-x86_64' --link-sha256 '8b858e5940f59c508d8af1627b5cbbafac3e8974f0a87770618b782b313e0f03' --daemon-sha256 '99541bb236c5862749f8edceab9896184c225e18894698d8af723bfe2d02776d')</div>
-          <div class="row"><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="8.5" height="8.5" rx="1"/><path d="M11 5V3.5a1 1 0 0 0-1-1H3.5a1 1 0 0 0-1 1V10a1 1 0 0 0 1 1H5"/></svg>Copy the line</button></div>
+          <h3 id="s2"><span class="no">2</span>Run the line on build-01</h3>
+          <p class="note">Log in to build-01 as the user that will run it, not as root, and paste the line in its terminal. Read the whole line before you run it: "Show the whole line" opens it. "Change" makes a new code; the code shown here then stops working.</p>
+          <div class="line short" id="install-line" role="group" aria-label="The install line, cut short. Show the whole line to read it." title="Show the whole line">(f=$(mktemp) &amp;&amp; trap 'rm -f "$f"' EXIT &amp;&amp; curl -fsSL --proto '=https' --proto-redir '=https' 'https://releases.anima.ing/install/<span class="v">0.42.0</span>/anima-install.sh' -o "$f" &amp;&amp; printf '%s  %s\n' '9ad6415c67888e6a9e7719db4d5689628d87b80f16c01d964a7dfdcb8d6b83ba' "$f" | sha256sum -c - &amp;&amp; sh "$f" --version '<span class="v">0.42.0</span>' --target 'linux-x86_64' --link-sha256 '8b858e5940f59c508d8af1627b5cbbafac3e8974f0a87770618b782b313e0f03' --daemon-sha256 '99541bb236c5862749f8edceab9896184c225e18894698d8af723bfe2d02776d')</div>
+          <div class="row"><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="8.5" height="8.5" rx="1"/><path d="M11 5V3.5a1 1 0 0 0-1-1H3.5a1 1 0 0 0-1 1V10a1 1 0 0 0 1 1H5"/></svg>Copy the whole line</button><button class="btn" type="button" aria-expanded="false" aria-controls="install-line">Show the whole line</button></div>
           <div class="rule"></div>
           <div class="field">
             <label for="code">Install code</label>
             <span class="hint">The script asks for it. Paste it there; it is not in the line.</span>
             <div class="codebox">
-              <input class="input" id="code" type="password" readonly value="anima-install.1.example-hidden-code" aria-describedby="code-exp">
+              <input class="input" id="code" type="password" readonly autocomplete="off" value="anima-install.1.example-hidden-code" aria-describedby="code-exp">
               <button class="btn" type="button" aria-pressed="false">Show</button>
               <button class="btn" type="button">Copy the code</button>
             </div>
@@ -448,53 +490,106 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           </div>
         </section>
         <section class="card" aria-labelledby="s3">
-          <h2 id="s3"><span class="no">3</span>Wait for build-01 to join</h2>
+          <h3 id="s3"><span class="no">3</span>Wait for build-01 to join</h3>
           <ol class="steps" aria-live="polite">
-            <li class="now"><span class="mk"></span><span class="t"><b>Waiting for build-01 to run the line</b><span>This page follows it. You can leave the page; the computer joins all the same.</span></span><time></time></li>
+            <li class="now"><span class="mk"></span><span class="t"><b>Waiting for build-01 to run the line</b><span>This dialog follows it. You can close it; the computer joins all the same.</span></span><time></time></li>
             <li><span class="mk"></span><span class="t"><b>Joins the link</b></span><time>Not yet</time></li>
             <li><span class="mk"></span><span class="t"><b>The daemon enrols and sends its first report</b></span><time>Not yet</time></li>
           </ol>
+        
+          <details class="fold"><summary>If the script stops</summary><p class="note">The reasons and what to do: frame 7.</p></details>
         </section>
+        <slot-does></slot-does>
       </div>
-      <div class="aside"><slot-does></slot-does></div>
     </div>
   </main>
 </div>
-<figcaption>3. The line is ready. The whole line shows, wrapped, so the person can read what runs before they copy it; the version is the accent colour. The install code is apart from the line and hidden, with "Show" and "Copy the code", and the time until it expires (15 minutes, LNK-003). "Cancel the code" ends the invite and the claim. The time is not a live region: a screen reader hears it at 5 minutes, at 1 minute and at the end only. The macOS line has <span style="font-family: monospace">shasum -a 256 -c -</span> and the target darwin-universal.</figcaption>
+<figcaption>3. The line is ready. The line shows cut short on one line with "…" (ruling 4 B). "Copy the whole line" always copies the whole real line, never the short text. "Show the whole line" opens it (frame 3b), so the person can read all of what they paste before they run it. The install code is apart from the line, because the script asks for it, and hidden, with "Show" and "Copy the code", and the time until it expires (15 minutes, LNK-003). "Cancel the code" ends the invite and the claim. Back after "Make the line" keeps the code alive; only "Change" and "Cancel the code" end it. The time is not a live region: a screen reader hears it at 5 minutes, at 1 minute and at the end only. The macOS line has <span style="font-family: monospace">shasum -a 256 -c -</span> and the target darwin-universal.</figcaption>
 </figure>
 
 <figure>
-<div class="v2" data-frame>
+<div class="v2 modal" data-frame>
   <slot-side></slot-side>
   <main class="page">
-    <slot-head></slot-head>
-    <div class="body">
-      <div class="main">
+    <header class="head"><h1 style="font-size: var(--t-display); font-weight: 200; letter-spacing: -0.03em;">Devices</h1></header>
+    <div class="scrimmed">
+      <div class="ghostlist" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="dialog wide" role="dialog" aria-label="Add a computer with no application">
+        <slot-head></slot-head>
+        <div class="summary"><span class="sec">1</span><b>build-01</b><span class="sec">Linux x86_64</span><button class="btn quiet" type="button">Change</button></div>
+        <section class="card" aria-labelledby="s2w">
+          <h3 id="s2w"><span class="no">2</span>Run the line on build-01</h3>
+          <p class="note">Log in to build-01 as the user that will run it, not as root, and paste the line in its terminal. Read the whole line before you run it: "Show the whole line" opens it. "Change" makes a new code; the code shown here then stops working.</p>
+          <div class="line" id="install-line" role="group" aria-label="The whole install line">(f=$(mktemp) &amp;&amp; trap 'rm -f "$f"' EXIT &amp;&amp; curl -fsSL --proto '=https' --proto-redir '=https' 'https://releases.anima.ing/install/<span class="v">0.42.0</span>/anima-install.sh' -o "$f" &amp;&amp; printf '%s  %s\n' '9ad6415c67888e6a9e7719db4d5689628d87b80f16c01d964a7dfdcb8d6b83ba' "$f" | sha256sum -c - &amp;&amp; sh "$f" --version '<span class="v">0.42.0</span>' --target 'linux-x86_64' --link-sha256 '8b858e5940f59c508d8af1627b5cbbafac3e8974f0a87770618b782b313e0f03' --daemon-sha256 '99541bb236c5862749f8edceab9896184c225e18894698d8af723bfe2d02776d')</div>
+          <div class="row"><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>Copied the whole line</button><span class="sr" role="status">The whole line is copied.</span><button class="btn" type="button" aria-expanded="true" aria-controls="install-line">Hide the whole line</button></div>
+          <div class="rule"></div>
+          <div class="field">
+            <label for="codew">Install code</label>
+            <span class="hint">The script asks for it. Paste it there; it is not in the line.</span>
+            <div class="codebox">
+              <input class="input" id="codew" type="password" readonly autocomplete="off" value="anima-install.1.example-hidden-code" aria-describedby="code-expw">
+              <button class="btn" type="button" aria-pressed="false">Show</button>
+              <button class="btn" type="button">Copy the code</button>
+            </div>
+            <div class="row" style="justify-content: space-between;"><span class="clock" id="code-expw"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>Works once. Expires in <b>14:32</b></span><button class="btn quiet" type="button">Cancel the code</button></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="s3w">
+          <h3 id="s3w"><span class="no">3</span>Wait for build-01 to join</h3>
+          <ol class="steps" aria-live="polite">
+            <li class="now"><span class="mk"></span><span class="t"><b>Waiting for build-01 to run the line</b><span>This dialog follows it. You can close it; the computer joins all the same.</span></span><time></time></li>
+            <li><span class="mk"></span><span class="t"><b>Joins the link</b></span><time>Not yet</time></li>
+            <li><span class="mk"></span><span class="t"><b>The daemon enrols and sends its first report</b></span><time>Not yet</time></li>
+          </ol>
+        
+          <details class="fold"><summary>If the script stops</summary><p class="note">The reasons and what to do: frame 7.</p></details>
+        </section>
+        <slot-does></slot-does>
+      </div>
+    </div>
+  </main>
+</div>
+<figcaption>3b. "Show the whole line" opens it in place, wrapped, so the person can read each part of what they will paste into a shell before they run it: the address, the fingerprint of the script, the version, the target and the fingerprints of the two programs. The version is the accent colour. "Hide the whole line" folds it again; the button says which state it is in (aria-expanded on one element, the line). After Copy the button says "Copied the whole line" for a few seconds, and a status line tells a screen reader. The short line in frame 3 cannot be selected; a click on it opens the whole line, so no person pastes the short text.</figcaption>
+</figure>
+
+<figure>
+<div class="v2 modal" data-frame>
+  <slot-side></slot-side>
+  <main class="page">
+    <header class="head"><h1 style="font-size: var(--t-display); font-weight: 200; letter-spacing: -0.03em;">Devices</h1></header>
+    <div class="scrimmed">
+      <div class="ghostlist" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="dialog wide" role="dialog" aria-label="Add a computer with no application">
+        <slot-head></slot-head>
         <div class="summary"><span class="sec">1</span><b>build-01</b><span class="sec">Linux x86_64</span></div>
         <div class="summary"><span class="sec">2</span><b>build-01 joined</b><span class="sec">The code is in use. It works for nothing else.</span></div>
         <section class="card" aria-labelledby="s3b">
-          <h2 id="s3b"><span class="no">3</span>build-01 is joining</h2>
+          <h3 id="s3b"><span class="no">3</span>build-01 is joining</h3>
           <ol class="steps" aria-live="polite">
             <li class="done"><span class="mk"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t"><b>Ran the line</b><span>The fingerprints agreed.</span></span><time>04:31</time></li>
             <li class="done"><span class="mk"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t"><b>Joined the link</b><span class="mono">100.64.0.12</span></span><time>04:31</time></li>
             <li class="now"><span class="mk"></span><span class="t"><b>The daemon enrols and sends its first report</b><span>Usually less than a minute. After 3 minutes this step turns to a warning.</span></span><time></time></li>
           </ol>
+        
+          <details class="fold"><summary>If the script stops</summary><p class="note">The reasons and what to do: frame 7.</p></details>
         </section>
+        <slot-does></slot-does>
       </div>
-      <div class="aside"><slot-does></slot-does></div>
     </div>
   </main>
 </div>
-<figcaption>4. While the computer joins. The page sees the join on the link and then the device and its first report; each step gets its time. Step 1 shows done with the join, because the page cannot see the line run before that. Nothing for the person to do here.</figcaption>
+<figcaption>4. While the computer joins. The dialog sees the join on the link and then the device and its first report; each step gets its time. Step 1 shows done with the join, because the dialog cannot see the line run before that. Nothing for the person to do here.</figcaption>
 </figure>
 
 <figure>
-<div class="v2" data-frame>
+<div class="v2 modal" data-frame>
   <slot-side></slot-side>
   <main class="page">
-    <slot-head></slot-head>
-    <div class="body">
-      <div class="main">
+    <header class="head"><h1 style="font-size: var(--t-display); font-weight: 200; letter-spacing: -0.03em;">Devices</h1></header>
+    <div class="scrimmed">
+      <div class="ghostlist" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="dialog wide" role="dialog" aria-label="Add a computer with no application">
+        <slot-head></slot-head>
         <div class="notice up" role="status">
           <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M5 8.25l2 2 4-4.5"/></svg>
           <div><b>build-01 is in Devices</b>Its daemon sent its first report at 04:32.
@@ -502,7 +597,7 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           </div>
         </div>
         <section class="card" aria-labelledby="s4">
-          <h2 id="s4">build-01</h2>
+          <h3 id="s4">build-01</h3>
           <dl class="kv">
             <dt>Kind</dt><dd>Server</dd>
             <dt>System</dt><dd>Linux x86_64</dd>
@@ -515,8 +610,8 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
             <div>On Linux the link and the daemon stop when you log out. To keep them running, run <span class="mono">loginctl enable-linger</span> on build-01; the script showed this command if it is needed. This is a setting of that computer, so the script does not change it.</div>
           </div>
         </section>
+        <slot-does></slot-does>
       </div>
-      <div class="aside"><slot-does></slot-does></div>
     </div>
   </main>
 </div>
@@ -524,12 +619,15 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </figure>
 
 <figure>
-<div class="v2" data-frame>
+<div class="v2 modal" data-frame>
   <slot-side></slot-side>
   <main class="page">
-    <slot-head></slot-head>
-    <div class="body" style="grid-template-columns: minmax(0, 1fr);">
-      <div class="main grid2">
+    <header class="head"><h1 style="font-size: var(--t-display); font-weight: 200; letter-spacing: -0.03em;">Devices</h1></header>
+    <div class="scrimmed">
+      <div class="ghostlist" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="dialog wide" role="dialog" aria-label="Add a computer with no application">
+        <slot-head></slot-head>
+        <div class="grid2">
         <div class="card">
           <span class="caption">A. The name is on two devices of the link</span>
           <div class="field">
@@ -557,7 +655,7 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <span class="caption">D. The release cannot be checked</span>
           <div class="notice down" role="alert">
             <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.5h.01"/></svg>
-            <div><b>No line to show</b>The signed release record of version 0.42.0 for Linux x86_64 did not pass its check, so this page cannot vouch for the files. No code was made. Try again in a few minutes.
+            <div><b>No line to show</b>The signed release record of version 0.42.0 for Linux x86_64 did not pass its check, so Anima cannot vouch for the files. No code was made. Try again in a few minutes.
               <div class="row"><button class="btn" type="button">Try again</button></div></div>
           </div>
         </div>
@@ -586,7 +684,7 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <div class="notice info" role="status">
             <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.5v4M8 5h.01"/></svg>
             <div><b>The install code was cancelled</b>It no longer works. If a script on build-01 asks for it, stop that script with Ctrl-C.
-              <div class="row"><button class="btn primary" type="button">Make a new code</button><button class="btn" type="button">Back to Devices</button></div></div>
+              <div class="row"><button class="btn primary" type="button">Make a new code</button><button class="btn" type="button">Close</button></div></div>
           </div>
         </div>
         <div class="card">
@@ -602,39 +700,42 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <div class="line" aria-label="The install line for macOS">(f=$(mktemp) &amp;&amp; trap 'rm -f "$f"' EXIT &amp;&amp; curl -fsSL --proto '=https' --proto-redir '=https' 'https://releases.anima.ing/install/<span class="v">0.42.0</span>/anima-install.sh' -o "$f" &amp;&amp; printf '%s  %s\n' '9ad6415c67888e6a9e7719db4d5689628d87b80f16c01d964a7dfdcb8d6b83ba' "$f" | shasum -a 256 -c - &amp;&amp; sh "$f" --version '<span class="v">0.42.0</span>' --target 'darwin-universal' --link-sha256 '3f1c0e9a7b2d64e8a5c91f0b6d3e27a48c5b9f1e0d7a3c6b2e8f4a1d9c0b5e73' --daemon-sha256 '6e2a9d1c4b8f07e3a5d2c9b1f6e04a7d3c8b5e2f1a9d6c0b4e7f3a2d8c1b5e09')</div>
           <p class="note">"To remove" names <span class="mono">~/Library/Application Support/anima-link/anima-install.sh</span>.</p>
         </div>
+        </div>
       </div>
     </div>
   </main>
 </div>
-<figcaption>6. The refusals that the page can see. A and B come from the hub when the person makes the line (a name must point to at most one computer of the link, R-360). C: the 15 minutes of the invite. D: the page shows no line when the signature of the release record does not hold (R-361). E: after 3 minutes with no report the step turns to a warning. F: the choice in the dialog of frame 1. G: the name rule of frame 2. H: after "Cancel the code" or "Change"; a new code for a name also cancels each open invite of that name. I: a different device of the link sent the claim, which spends it (Section 8.1); the page learns it from the hub, which must say so (not yet in the contract). J: on macOS the line checks with shasum and names darwin-universal, and the removal path is the macOS folder (R-362).</figcaption>
+<figcaption>6. The refusals that the dialog can see. A and B come from the hub when the person makes the line (a name must point to at most one computer of the link, R-360). C: the 15 minutes of the invite. D: the dialog shows no line when the signature of the release record does not hold (R-361). E: after 3 minutes with no report the step turns to a warning. F: the choice in the dialog of frame 1. Each refusal shows in the same dialog. G: the name rule of frame 2. H: after "Cancel the code" or "Change"; a new code for a name also cancels each open invite of that name. I: a different device of the link sent the claim, which spends it (Section 8.1); the dialog learns it from the hub, which must say so (not yet in the contract). J: on macOS the line checks with shasum and names darwin-universal, and the removal path is the macOS folder (R-362).</figcaption>
 </figure>
 
 <figure>
-<div class="v2" data-frame>
+<div class="v2 modal" data-frame>
   <slot-side></slot-side>
   <main class="page">
-    <slot-head></slot-head>
-    <div class="body">
-      <div class="main">
+    <header class="head"><h1 style="font-size: var(--t-display); font-weight: 200; letter-spacing: -0.03em;">Devices</h1></header>
+    <div class="scrimmed">
+      <div class="ghostlist" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="dialog wide" role="dialog" aria-label="Add a computer with no application">
+        <slot-head></slot-head>
         <section class="card" aria-labelledby="s5">
-          <h2 id="s5">If the script stops</h2>
-          <p class="note">The script stops and says why in the terminal. This page cannot see that terminal, so the reasons are here. Only when a fingerprint does not agree is it sure that nothing was installed; run the line again after you correct the cause.</p>
+          <h3 id="s5">If the script stops</h3>
+          <p class="note">The script stops and says why in the terminal. Anima cannot see that terminal, so the reasons are here. Only when a fingerprint does not agree is it sure that nothing was installed; run the line again after you correct the cause.</p>
           <ul class="stops">
             <li class="th"><span>The script says</span><span>What to do</span></li>
             <li><span class="said">Do not run this as root.</span><span>Log in as an ordinary user and run the line again.</span></li>
-            <li><span class="said">A fingerprint does not agree. Nothing was installed.</span><span>Copy the line again from this page. If it stays, do not run it, and report it to Anima.ing support.</span></li>
+            <li><span class="said">A fingerprint does not agree. Nothing was installed.</span><span>Copy the line again from Anima. If it stays, do not run it, and report it to Anima.ing support.</span></li>
             <li><span class="said">The Anima application keeps the link of this computer.</span><span>Nothing to do: the application installs the daemon by itself.</span></li>
             <li><span class="said">A daemon is enrolled already, and this script did not install it.</span><span>This computer reports already, from the application or from its own daemon install.</span></li>
             <li><span class="said">This computer joined the link as a different name.</span><span>Make the line again with that name.</span></li>
-            <li><span class="said">The install code is not right, or it expired.</span><span>Make a new code on this page and paste it.</span></li>
+            <li><span class="said">The install code is not right, or it expired.</span><span>Make a new code in Anima and paste it.</span></li>
           </ul>
         </section>
+        <slot-does></slot-does>
       </div>
-      <div class="aside"><slot-does></slot-does></div>
     </div>
   </main>
 </div>
-<figcaption>7. What the script prints when it stops, and what to do (R-363, Section 8.1). A folded part under step 3 in frames 3 and 4; drawn open here. The words of the script are examples and come from deploy/bin/anima-install when the page is built.</figcaption>
+<figcaption>7. What the script prints when it stops, and what to do (R-363, Section 8.1). A folded part under step 3 in frames 3 and 4; drawn open here. The words of the script are examples and come from deploy/bin/anima-install when the dialog is built.</figcaption>
 </figure>
 
 </div>
@@ -648,6 +749,18 @@ figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   fill('slot-side', 'side');
   fill('slot-head', 'head');
   fill('slot-does', 'does');
+  // "What the line does" is open where the line shows (frames 3 and 3b).
+  document.querySelectorAll('figure').forEach((figure, index) => { if (index === 2 || index === 3) figure.querySelectorAll('details.fold').forEach((fold) => { fold.open = true; }); });
+  // Each dialog is modal and named by its own title.
+  document.querySelectorAll('.dialog.wide').forEach((dialog, index) => {
+    const title = dialog.querySelector('.dhead h2');
+    title.id = `dialog-title-${index}`;
+    dialog.removeAttribute('aria-label');
+    dialog.setAttribute('aria-labelledby', title.id);
+    dialog.setAttribute('aria-modal', 'true');
+  });
+  // Frame 3 is drawn at the height of a real window, so the scroll of the dialog shows.
+  document.querySelectorAll('figure')[2].querySelector('[data-frame]').classList.add('real');
   document.querySelectorAll('[data-frame]').forEach((frame) => {
     frame.classList.add('v2');
     frame.dataset.theme = theme;

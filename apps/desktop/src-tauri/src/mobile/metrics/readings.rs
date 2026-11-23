@@ -1,4 +1,9 @@
-use std::{fs, path::Path};
+use std::path::Path;
+
+#[cfg(target_os = "ios")]
+mod ios;
+#[cfg(target_os = "ios")]
+use ios::memory;
 
 use chrono::{DateTime, Utc};
 use daemon_core::{
@@ -7,8 +12,9 @@ use daemon_core::{
 };
 use uuid::Uuid;
 
+#[cfg(target_os = "android")]
 fn memory() -> Option<(u64, u64)> {
-    let text = fs::read_to_string("/proc/meminfo").ok()?;
+    let text = std::fs::read_to_string("/proc/meminfo").ok()?;
     let kib = |key| {
         let line = text.lines().find_map(|line| line.strip_prefix(key))?;
         line.split_whitespace().next()?.parse::<u64>().ok()
@@ -18,6 +24,7 @@ fn memory() -> Option<(u64, u64)> {
     Some((total, total.checked_sub(available)?))
 }
 
+#[cfg(target_os = "android")]
 fn storage(path: &Path) -> Option<(u64, u64)> {
     let stats = rustix::fs::statvfs(path).ok()?;
     let total = stats.f_blocks.checked_mul(stats.f_frsize)?;
@@ -58,6 +65,9 @@ fn add(
 pub(super) fn batch(device: Uuid, now: DateTime<Utc>, path: &Path) -> Option<Batch> {
     let mut series = Vec::new();
     let mut mean = Vec::new();
+    #[cfg(target_os = "ios")]
+    let _ = path;
+    #[cfg(target_os = "android")]
     if let Some(reading) = storage(path) {
         add(
             &mut series,

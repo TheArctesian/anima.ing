@@ -12,6 +12,7 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt as _, AsyncWriteExt as _, BufReade
 use tokio::process::{Child, ChildStdin};
 
 use super::holder::{Shared, locked};
+use super::marker::Keep;
 use super::outbox::{MAX_LINE, TOO_LONG};
 use super::tree;
 use super::wire::{Event, Exit, Line, Stream, ThreadKey};
@@ -189,8 +190,11 @@ pub async fn wait(
         let _ = kill_process_group(group, Signal::KILL);
     }
     let swept = tree::sweep(&seen).await;
+    // A process that left the group before a look saw it is found by its mark (THR-049). The
+    // key of a thread holds one program at a time, so each marked process is a leftover.
+    let marked = super::marker::end_marked(&thread, &Keep::nothing()).await;
     if let Some(slot) = locked(&shared).threads.get_mut(&thread) {
-        settle_sweep(slot, swept.all);
+        settle_sweep(slot, swept.all && marked.all);
     }
     finish(&shared, &thread, readers).await;
     let exit = status.map_or(

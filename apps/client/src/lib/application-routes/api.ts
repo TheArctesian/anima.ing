@@ -56,6 +56,12 @@ const CHECK_APPLICATION_ROUTE = graphql(`
   }
 `);
 
+const REMOVE_APPLICATION_ROUTE = graphql(`
+  mutation RemoveApplicationRoute($id: ID!) {
+    removeApplicationRoute(id: $id)
+  }
+`);
+
 export type ApplicationRoute = ApplicationRoutesQuery['applicationRoutes'][number];
 
 /** The routes of the hub, with the name of each device that the hub gave on its first page of devices. */
@@ -70,6 +76,8 @@ export interface RouteCalls {
   list(): Promise<HubResult<RouteList>>;
   /** Reads the proof of the name once. A person with a browser token and a second factor only (SF-232). */
   check(id: string): Promise<HubResult<ApplicationRoute>>;
+  /** Removes the name with its certificate and its key. A signed-in person; no second factor (ruling of 2026-11-22). */
+  remove(id: string): Promise<HubResult<string>>;
 }
 
 /** The route calls of the hub. */
@@ -84,6 +92,10 @@ export function routesApi(hub: Pick<Hub, 'request'>): RouteCalls {
     check: async (id) => {
       const result = await hub.request(CHECK_APPLICATION_ROUTE, { id });
       return result.ok ? { ok: true, value: result.value.checkApplicationRoute } : result;
+    },
+    remove: async (id) => {
+      const result = await hub.request(REMOVE_APPLICATION_ROUTE, { id });
+      return result.ok ? { ok: true, value: result.value.removeApplicationRoute } : result;
     },
   };
 }

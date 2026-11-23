@@ -56,12 +56,8 @@ fn work() -> Result<(), Cause> {
         order.size_bytes,
         &mut archive,
     );
-    let sha = runtime
-        .block_on(tokio::time::timeout(
-            download_deadline(order.size_bytes),
-            fetched,
-        ))
-        .map_err(|_| Cause::SourceFailed)??;
+    let sha = within(&runtime, download_deadline(order.size_bytes), fetched)
+        .ok_or(Cause::SourceFailed)??;
     within_deadline(move || finish(archive, &sha, &order, checked))
 }
 
@@ -99,6 +95,16 @@ fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
     });
 }
 
+/// Runs `work` on `runtime` and gives up at `deadline`: `None` past it. The timer is made in
+/// the runtime; a timer made before `block_on` has no reactor and panics.
+fn within<T>(
+    runtime: &tokio::runtime::Runtime,
+    deadline: std::time::Duration,
+    work: impl Future<Output = T>,
+) -> Option<T> {
+    runtime.block_on(async { tokio::time::timeout(deadline, work).await.ok() })
+}
+
 /// Runs `unpack` on a thread and waits at most [`UNPACK_DEADLINE`]; past it the child gives
 /// back `archive_rejected`, and its exit ends the thread.
 fn within_deadline(
@@ -131,4 +137,33 @@ pub fn finish(
     let into = Path::new(&order.unpack_folder);
     let holds = || folders::free_bytes(into).is_ok_and(|free| free >= order.reserve);
     unpack::unpack(archive, checked.format, into, holds)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::within;
+
+    fn runtime() -> tokio::runtime::Runtime {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn work_on_a_thread_with_no_runtime_ends_with_its_value() {
+        assert_eq!(
+            within(&runtime(), Duration::from_secs(5), async { 7 }),
+            Some(7)
+        );
+    }
+
+    #[test]
+    fn work_past_its_deadline_gives_nothing() {
+        let slow = async { tokio::time::sleep(Duration::from_secs(60)).await };
+
+        assert_eq!(within(&runtime(), Duration::from_millis(10), slow), None);
+    }
 }

@@ -81,9 +81,9 @@ fn unreadable() -> loopback::Socket {
 }
 
 impl Server {
-    fn launch_now(&mut self, now: u64) -> Result<(), Cause> {
+    async fn launch_now(&mut self, now: u64) -> Result<(), Cause> {
         let (launch, port) = (self.launch)().ok_or(Cause::StartFailed)?;
-        let running = server::spawn(&launch)?;
+        let running = server::spawn(&launch).await?;
         self.running = Some((running, port));
         self.state = ServerState::Starting;
         self.since = now;
@@ -148,7 +148,7 @@ impl Server {
                 Next::Failed => ServerState::Failed(Cause::StartFailed),
             };
         }
-        if self.restart_at.is_some_and(|at| at <= now) && self.launch_now(now).is_err() {
+        if self.restart_at.is_some_and(|at| at <= now) && self.launch_now(now).await.is_err() {
             self.state = ServerState::Failed(Cause::StartFailed);
         }
     }
@@ -168,7 +168,7 @@ impl Servers {
     ) -> Result<(), Cause> {
         self.stop(id).await;
         server.record.started();
-        server.launch_now(clock())?;
+        server.launch_now(clock()).await?;
         loop {
             let now = clock();
             if server.look(now, 0).await.is_some() {

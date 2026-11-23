@@ -16,6 +16,7 @@
   import type { MentionEntry } from './mentions/sources';
   import { afterCaretMove, afterEdit, afterEscape, NO_TRIGGER, triggerAt } from './mentions/trigger';
   import ModelPicker from './picker/ModelPicker.svelte';
+  import PermissionsChip from './picker/popup/PermissionsChip.svelte';
   import SendButton from './primary/SendButton.svelte';
   import StopButton from './primary/StopButton.svelte';
   import { enterSends, showsSend, showsStop } from './primary/send';
@@ -33,6 +34,8 @@
     title?: string | undefined;
     /** The text to start from, for the specimen and the gallery. */
     start?: string;
+    /** The strip under the card of a chat that is not started, with the permissions at its end (03 B.6.5; T3 shows them there only on a new thread). */
+    contextStrip?: boolean;
   }
 
   /*
@@ -40,7 +43,7 @@
    * footer with the paperclip, the model, the microphone and the round send. The card is opaque and shows a focus
    * ring while the editor has focus: T3's is glass with no ring (R-354, D7 and D9).
    */
-  const { engine, draft, title, start }: Props = $props();
+  const { engine, draft, title, start, contextStrip = false }: Props = $props();
   const menuId = $props.id();
   // The chat column mounts one composer for each chat (`{#key}` in Composer.svelte), so the key is read once.
   // svelte-ignore state_referenced_locally
@@ -196,8 +199,8 @@
     bind:this={surface}
     {@attach dropZone({
       onOver: (now) => (over = now && engine.attach.can),
-      onFiles: (files) => {
-        if (engine.attach.can) card.add(files);
+      onFiles: (files, folders) => {
+        if (engine.attach.can) card.add(files, folders.length);
         else card.problem = engine.attach.reason;
       },
     })}
@@ -220,10 +223,10 @@
         {onKey}
         controls={trigger === null ? undefined : menuId}
         activeDescendant={trigger === null ? undefined : activeOption}
-        onFiles={(files, how) => {
+        onFiles={(files, how, folders) => {
           // A drop goes on to the card's own drop zone, which takes it one time.
           if (how === 'drop') return true;
-          if (engine.attach.can) card.add(files);
+          if (engine.attach.can) card.add(files, folders);
           else card.problem = engine.attach.reason;
           return engine.attach.can;
         }}
@@ -235,12 +238,19 @@
       <AttachButton can={engine.attach} onFiles={(files) => card.add(files)} />
       <div class="actions">
         <ModelPicker catalogue={engine.catalogue} value={card.shownChoice(engine.choice)} onChange={(next) => void card.choose(next)} can={engine.pick} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
-        <MicButton can={engine.dictate} onStart={() => undefined} />
+        <!-- T3 mounts the microphone only where dictation works (`ChatComposer.tsx:3897`); ours has none yet. -->
+        {#if engine.dictate.can}<MicButton can={engine.dictate} onStart={() => undefined} />{/if}
         {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => pressed(() => card.submit(alternate))} />{/if}
         {#if showsStop(card.turn, card.stop)}<StopButton pending={card.stop === 'pending'} onStop={() => pressed(() => card.interrupt())} />{/if}
       </div>
     </div>
   </form>
+  {#if contextStrip && engine.pick.can}
+    {@const shown = card.shownChoice(engine.choice)}
+    <div class="context-strip" data-slot="composer-context-strip">
+      <PermissionsChip modes={engine.catalogue.modes} value={shown.mode} onChange={(mode) => void card.choose({ ...shown, mode })} />
+    </div>
+  {/if}
 </div>
 <Preview {images} openId={previewed} onOpen={(id) => (previewed = id)} onClose={() => (previewed = null)} />
 
@@ -265,6 +275,16 @@
   .card:has(:global([role='textbox']:focus)) {
     outline: var(--border-focus) solid var(--focus-ring);
     outline-offset: calc(var(--border-thin) * -1);
+  }
+
+  /* T3's context strip (03 A.8): 8 px over it and at its sides, 4 px between its parts, 12 px text; bare, under the card. */
+  .context-strip {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    inline-size: 100%;
+    padding: var(--space-2) var(--space-2) 0;
+    font-size: var(--code-text-meta);
   }
 
   /* Files are dragged over it (03 B.2.6): a fill and a line in the accent. */
