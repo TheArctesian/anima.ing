@@ -60,6 +60,13 @@ impl Runner {
             chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         }
         self.draft_ready(&new)?;
+        if !self
+            .said
+            .models
+            .offers(new.program, new.model.as_deref(), new.effort)
+        {
+            return Err(Refusal::BadValue);
+        }
         if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
             self.ask_login_again(new.program).await;
         }
