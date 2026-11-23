@@ -80,6 +80,8 @@ pub struct Shared {
     /// The holder ends: no new start, so that no program outlives it (THR-049).
     pub closing: bool,
     pub limit: usize,
+    /// What an older holder left that this one could not prove ended: kept in the record.
+    pub inherited: Vec<record::Entry>,
 }
 
 impl Shared {
@@ -101,17 +103,18 @@ impl Shared {
         let running = self
             .threads
             .iter()
-            .filter(|(_, slot)| slot.exit.is_none())
+            .filter(|(_, slot)| slot.exit.is_none() || slot.left_behind)
             .map(|(thread, slot)| record::Entry {
                 thread: thread.clone(),
                 pid: slot.pid,
                 started: slot.started.clone(),
+                left: (slot.exit.is_some() && slot.left_behind).then(|| slot.seen.clone()),
             });
         let written = record::write(
             &self.dir,
             &Record {
                 version: wire::VERSION,
-                threads: running.collect(),
+                threads: running.chain(self.inherited.iter().cloned()).collect(),
             },
         );
         if let Err(error) = written {
@@ -168,7 +171,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
     // The build of the file this holder started from, before an update replaces it (TH98).
     let _ = wire::this_build();
     let _lock = lock(dir)?;
-    record::end_left_over(dir).await;
+    let inherited = record::end_left_over(dir).await;
     let listener = bind(dir)?;
     let shared = Arc::new(Mutex::new(Shared {
         threads: BTreeMap::new(),
@@ -179,6 +182,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         draining: false,
         closing: false,
         limit: if limit == 0 { LIMIT } else { limit },
+        inherited,
     }));
     // One command at a time, from any connection: the check that a command was done and the
     // command itself are one step, so a command sent again on a new connection while the first

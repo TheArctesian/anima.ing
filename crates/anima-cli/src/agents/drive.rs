@@ -9,11 +9,12 @@ use std::path::PathBuf;
 use agent_threads::control::{
     Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow, WorkspaceKind,
 };
-use agent_threads::drive::{Answer, Effort, Mode, Program};
+use agent_threads::drive::{Effort, Mode, Program};
 use uuid::Uuid;
 
 use super::runner::{RunnerLink, refusal};
 
+mod approve;
 mod queue;
 mod send;
 mod set;
@@ -21,6 +22,7 @@ use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
 use crate::output::{Cell, Table, Tone};
+pub use approve::ApproveArgs;
 pub use queue::QueueArgs;
 pub use send::SendArgs;
 pub use set::SetArgs;
@@ -76,22 +78,6 @@ pub struct StartArgs {
 }
 
 #[derive(Debug, clap::Args)]
-pub struct ApproveArgs {
-    thread: Uuid,
-    /// The ID of the request, as `anima agents watch` shows it.
-    request: Uuid,
-    /// Deny, with this message to the agent.
-    #[arg(long, conflicts_with_all = ["for_session", "choose"])]
-    deny: Option<String>,
-    /// Allow, and send back the session rule at this place of the request (0 is the first).
-    #[arg(long, conflicts_with = "choose")]
-    for_session: Option<usize>,
-    /// The answer to a question, as KEY=CHOICE; once for each choice.
-    #[arg(long, value_parser = parse_choice)]
-    choose: Vec<(String, String)>,
-}
-
-#[derive(Debug, clap::Args)]
 pub struct ThreadIdArgs {
     thread: Uuid,
 }
@@ -105,12 +91,6 @@ pub struct WatchArgs {
 fn parse_effort(text: &str) -> Result<Effort, String> {
     serde_json::from_value(serde_json::Value::from(text))
         .map_err(|_| "low, medium, high, xhigh or max".to_owned())
-}
-
-fn parse_choice(text: &str) -> Result<(String, String), String> {
-    text.split_once('=')
-        .map(|(key, choice)| (key.to_owned(), choice.to_owned()))
-        .ok_or_else(|| "KEY=CHOICE".to_owned())
 }
 
 /// Gives a result that is not a refusal.
@@ -192,35 +172,27 @@ fn one(text: &str) -> Table {
 /// Sends one call whose answer is only that it was done.
 async fn simple(invocation: &Invocation, action: Action, done: &str) -> Result<(), Failure> {
     let mut link = RunnerLink::connect().await?;
-    if let Outcome::Stopped { all_ended: false } = accepted(link.call(action).await?)? {
-        invocation.output.message(
-            "The program ended, but a process below it could not be proved to have ended.",
-        );
+    let stopped = match &action {
+        Action::Stop { thread } => Some(*thread),
+        _ => None,
+    };
+    if let (Outcome::Stopped { all_ended: false }, Some(thread)) =
+        (accepted(link.call(action).await?)?, stopped)
+    {
+        invocation.output.message(&not_proved(thread));
     } else {
         invocation.output.message(done);
     }
     Ok(())
 }
 
-impl ApproveArgs {
-    /// # Errors
-    /// [`Failure`] for a refusal of the runner.
-    pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let answer = match (self.deny, self.for_session, self.choose.is_empty()) {
-            (Some(message), _, _) => Answer::Deny { message },
-            (None, Some(rule), _) => Answer::AllowForSession { rule },
-            (None, None, false) => Answer::Choose {
-                answers: self.choose,
-            },
-            (None, None, true) => Answer::Allow,
-        };
-        let action = Action::Answer {
-            thread: self.thread,
-            request: self.request,
-            answer,
-        };
-        simple(invocation, action, "Answered.").await
-    }
+/// What the person does when a stop could not prove that each process of the thread ended
+/// (THR-049): the holder sweeps it again at its next start; until then, the person can find what
+/// still runs by the mark of the thread.
+fn not_proved(thread: Uuid) -> String {
+    format!(
+        "The program ended, but a process below it could not be proved to have ended. The next start of the holder looks for it again. To look now: `ps axeww | grep -F AGENT_THREAD={thread} | grep -v grep` shows a process of the thread, and `kill` with its process ID ends it. On a Mac this cannot show a program signed by Apple, such as /bin/sh, because macOS hides its environment."
+    )
 }
 
 /// `anima agents interrupt`: the running turn stops; the program stays.

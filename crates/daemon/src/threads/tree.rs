@@ -10,6 +10,9 @@ use std::time::Duration;
 
 use rustix::process::{Pid, Signal, kill_process, test_kill_process};
 
+mod settle;
+pub use settle::{left_running, zombies_in};
+
 /// One row of the process table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Row {
@@ -247,9 +250,8 @@ pub async fn end(root: u32, with_root: bool, spare: &Known, grace: Duration) -> 
     } else {
         signal(root, Signal::CONT);
     }
-    tokio::time::sleep(Duration::from_millis(100)).await;
     // The root is reaped by its holder, so a root that ended may still answer a signal test.
-    let left = known.iter().filter(|pid| alive(**pid)).count();
+    let left = left_running(&known).await;
     let count = known.len() + usize::from(with_root);
     Ended {
         count: u32::try_from(count).unwrap_or(u32::MAX),
@@ -295,8 +297,7 @@ pub async fn sweep(known: &Known) -> Ended {
     for pid in &found {
         signal(*pid, Signal::KILL);
     }
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    let left = found.iter().filter(|pid| alive(**pid)).count();
+    let left = left_running(&found).await;
     Ended {
         count: u32::try_from(found.len()).unwrap_or(u32::MAX),
         all: left == 0,
@@ -306,6 +307,12 @@ pub async fn sweep(known: &Known) -> Ended {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn thr_049_a_zombie_that_ps_lists_is_an_end() {
+        let shown = "  401 Z\n  402 S+\n  403 Zs\nnot a row\n";
+        assert_eq!(zombies_in(shown), BTreeSet::from([401, 403]));
+    }
 
     #[test]
     fn thr_049_a_zombie_does_not_run() {
