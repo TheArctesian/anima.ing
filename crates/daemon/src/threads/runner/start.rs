@@ -84,37 +84,39 @@ impl Runner {
             }
             Some(false) => Err(self.silence.refusal(new.program, &path, &copies)),
             None => {
-                // The ask runs away from the loop; the start goes on when it answers (TH97).
-                // One ask for each copy at a time: a later start waits for the same answer.
-                let asked = self.asks.open.values().any(|open| open.path == path);
-                let env = login::with_folder_of(self.env.clone(), &path);
-                let ask = {
-                    let (path, copies) = (path.clone(), copies.clone());
-                    async move {
-                        let load = super::silence::load().await;
-                        super::silence::ask(path, copies, env, load).await
-                    }
-                };
-                let sender = self.asks.sender.clone();
-                let id = self.asks.next;
-                self.asks.next += 1;
-                self.asks.open.insert(
-                    id,
-                    Asking {
-                        new,
-                        back,
-                        path,
-                        copies,
-                    },
-                );
-                if !asked {
-                    tokio::spawn(async move {
-                        // A runner that ended does not need the answer.
-                        let _ = sender.send((id, ask.await)).await;
-                    });
-                }
+                self.ask_copy(Asking {
+                    new,
+                    back,
+                    path,
+                    copies,
+                });
                 Ok(())
             }
+        }
+    }
+
+    /// Asks the copy of `asking` its version away from the loop; the start goes on when it
+    /// answers (TH97). One ask for each copy at a time: a later start waits for the same answer.
+    fn ask_copy(&mut self, asking: Asking) {
+        let path = &asking.path;
+        let asked = self.asks.open.values().any(|open| &open.path == path);
+        let env = login::with_folder_of(self.env.clone(), path);
+        let ask = {
+            let (path, copies) = (path.clone(), asking.copies.clone());
+            async move {
+                let load = super::silence::load().await;
+                super::silence::ask(path, copies, env, load).await
+            }
+        };
+        let sender = self.asks.sender.clone();
+        let id = self.asks.next;
+        self.asks.next += 1;
+        self.asks.open.insert(id, asking);
+        if !asked {
+            tokio::spawn(async move {
+                // A runner that ended does not need the answer.
+                let _ = sender.send((id, ask.await)).await;
+            });
         }
     }
 
