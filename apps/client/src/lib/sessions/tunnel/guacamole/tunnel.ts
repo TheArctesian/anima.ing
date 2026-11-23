@@ -60,6 +60,35 @@ interface Events {
   readonly onend?: (state: GuacamoleState) => void;
 }
 
+function watchDisplays(
+  tunnel: Guacamole.Tunnel,
+  display: Guacamole.Display,
+  read: () => GuacamoleState,
+  update: (change: Partial<GuacamoleState>) => void,
+) {
+  const instruction = tunnel.oninstruction;
+  tunnel.oninstruction = (opcode, args) => {
+    if (opcode === 'displays') {
+      const [active, ...monitors] = args;
+      if (active === undefined || monitors.length > 64 || monitors.some((id) => !/^\d{1,10}$/.test(id))) return;
+      if (active !== 'all' && !monitors.includes(active)) return;
+      display.flush(() => {
+        update({ displays: { active, monitors }, displayPending: false });
+      });
+    } else {
+      instruction?.(opcode, args);
+    }
+  };
+  return (id: string) => {
+    const state = read();
+    const displays = state.displays;
+    if (displays === undefined || id === displays.active || state.displayPending === true) return;
+    if (id !== 'all' && !displays.monitors.includes(id)) return;
+    update({ displayPending: true });
+    tunnel.sendMessage('display', id);
+  };
+}
+
 /** Nothing in this scope sees the token. */
 function trackedTunnel(url: string, events: Events, waking: boolean) {
   const tunnel = new Guacamole.WebSocketTunnel(url);
@@ -79,19 +108,7 @@ function trackedTunnel(url: string, events: Events, waking: boolean) {
     connected = true;
     if (state !== initial) events.onchange?.(state);
   };
-  const instruction = tunnel.oninstruction;
-  tunnel.oninstruction = (opcode, args) => {
-    if (opcode === 'displays') {
-      const [active, ...monitors] = args;
-      if (active === undefined || monitors.length > 64 || monitors.some((id) => !/^\d{1,10}$/.test(id))) return;
-      if (active !== 'all' && !monitors.includes(active)) return;
-      client.getDisplay().flush(() => {
-        update({ displays: { active, monitors }, displayPending: false });
-      });
-    } else {
-      instruction?.(opcode, args);
-    }
-  };
+  const selectDisplay = watchDisplays(tunnel, client.getDisplay(), () => state, update);
   client.onstatechange = (clientState) => {
     update({ phase: PHASES[clientState] ?? 'disconnected' });
   };
@@ -121,13 +138,7 @@ function trackedTunnel(url: string, events: Events, waking: boolean) {
   const handle: SessionTunnel = {
     client,
     state: () => state,
-    selectDisplay: (id) => {
-      const displays = state.displays;
-      if (displays === undefined || id === displays.active || state.displayPending === true) return;
-      if (id !== 'all' && !displays.monitors.includes(id)) return;
-      update({ displayPending: true });
-      tunnel.sendMessage('display', id);
-    },
+    selectDisplay,
     close: () => {
       client.disconnect();
     },
