@@ -1,7 +1,4 @@
-//! The environment every build step runs in (BLD-044). Build scripts, `build.rs`, proc-macros
-//! and npm packages run in these steps, so the step gets an allow-list of the app's variables and
-//! nothing else: no signing key, no builder or hub token, no URL with a secret, no
-//! `DATABASE_URL` (BLD-042). Pure: the app's environment is a parameter.
+//! A build step gets an allow-list of the app's variables and nothing else: no signing key, token, URL with a secret or `DATABASE_URL` (BLD-042, BLD-044).
 
 #[cfg(windows)]
 mod windows;
@@ -11,7 +8,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Variables passed through from the app. Everything else is dropped.
 const PASSED: &[&str] = &[
     "HOME",
     "USER",
@@ -53,9 +49,7 @@ const PASSED: &[&str] = &[
     "WindowsSDKVersion",
 ];
 
-/// Set for every step: CI behaviour, no colour codes, no prompts, and git with no user or system
-/// configuration (a credential helper or `url.insteadOf` there could redirect the clone), no
-/// replace refs and no grafts.
+/// Git runs with no user or system configuration: a credential helper or `url.insteadOf` there could redirect the clone.
 const FIXED: &[(&str, &str)] = &[
     ("CI", "true"),
     ("NO_COLOR", "1"),
@@ -70,9 +64,7 @@ const FIXED: &[(&str, &str)] = &[
     ("RUSTC_WRAPPER", ""),
     #[cfg(windows)]
     ("PATHEXT", ".COM;.EXE;.BAT;.CMD"),
-    // Replace refs and grafts a build left in the clone cannot rewrite history (D-15). The graft
-    // file is a path under `/dev/null`, so nothing can create it, and git prints no deprecation
-    // hint for a graft file that does not exist (D-21).
+    // Replace refs and grafts a build left cannot rewrite history (D-15); nothing can create a file under `/dev/null` (D-21).
     ("GIT_NO_REPLACE_OBJECTS", "1"),
     (
         "GIT_GRAFT_FILE",
@@ -84,8 +76,7 @@ const FIXED: &[(&str, &str)] = &[
     ),
 ];
 
-/// Folders searched after the app's `PATH`: an app started from the Dock or a desktop menu often
-/// lacks the ones rustup, bun, Homebrew and the Go installer install into.
+/// An app started from the Dock or a desktop menu often lacks the folders that rustup, bun, Homebrew and Go install into.
 const EXTRA_DIRS: &[&str] = &[
     "/opt/homebrew/bin",
     "/usr/local/bin",
@@ -94,7 +85,6 @@ const EXTRA_DIRS: &[&str] = &[
     "/bin",
 ];
 
-/// The variables and program folders of a build step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Environment {
     passed: Vec<(OsString, OsString)>,
@@ -102,7 +92,6 @@ pub struct Environment {
 }
 
 impl Environment {
-    /// The allow-listed part of `parent`, the app's environment.
     pub fn from_parent(parent: impl IntoIterator<Item = (OsString, OsString)>) -> Self {
         let parent: Vec<(OsString, OsString)> = parent.into_iter().collect();
         let value = |name: &str| {
@@ -144,13 +133,10 @@ impl Environment {
         self
     }
 
-    /// Program folders, in search order. Each is absolute.
     pub fn dirs(&self) -> &[PathBuf] {
         &self.dirs
     }
 
-    /// The full environment of one step: the passed variables, `PATH`, the fixed ones, then the
-    /// step's own (`BASE_REF`, for example).
     pub fn for_step(&self, step: &[(&'static str, String)]) -> Vec<(OsString, OsString)> {
         let mut vars = self.passed.clone();
         let path = std::env::join_paths(&self.dirs).unwrap_or_default();
@@ -167,7 +153,6 @@ impl Environment {
         vars
     }
 
-    /// The first `program` in the program folders for which `exists` holds.
     pub fn find(&self, program: &str, exists: impl Fn(&Path) -> bool) -> Option<PathBuf> {
         self.dirs
             .iter()
@@ -188,9 +173,7 @@ impl Environment {
     }
 }
 
-/// The app's `PATH`, then cargo's and bun's folders and `EXTRA_DIRS`, without repeats. A relative
-/// entry (`.`, an empty one) is dropped: it would find programs in the clone, which the build
-/// writes.
+/// A relative entry is dropped: it would find programs in the clone, which the build writes.
 fn search_dirs(path: Option<&OsStr>, home: Option<&OsStr>, cargo: Option<&OsStr>) -> Vec<PathBuf> {
     let home = home.map(PathBuf::from).filter(|home| home.is_absolute());
     let cargo_bin = cargo

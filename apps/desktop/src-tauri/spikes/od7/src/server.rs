@@ -1,6 +1,4 @@
-//! The local test servers: one plain HTTP site and one HTTPS site with a fresh self-signed
-//! certificate, both on 127.0.0.1 only. Every request is its own connection (no keep-alive),
-//! so each HTTPS request is a new TLS handshake.
+//! Local test sites on 127.0.0.1 only; no keep-alive, so each HTTPS request is a new TLS handshake.
 
 use std::convert::Infallible;
 use std::io;
@@ -23,24 +21,19 @@ use crate::event::{Event, Events};
 use crate::pages;
 use crate::pin::Fingerprint;
 
-/// Largest report body read; anything longer is refused.
 const REPORT_LIMIT: usize = 16 * 1024;
-/// Most connections served at once per site; more are closed on accept.
 const CONNECTIONS: usize = 64;
 
-/// A running site. Dropping it does not stop it; call `stop`.
+/// Dropping a site does not stop it; call `stop`.
 pub struct Site {
     pub port: u16,
-    /// The leaf SHA-256 for an HTTPS site.
     pub fingerprint: Option<Fingerprint>,
     accept: JoinHandle<()>,
 }
 
 impl Site {
-    /// Stops accepting and closes every open connection, then frees the port.
     pub async fn stop(self) {
         self.accept.abort();
-        // An aborted task reports `JoinError::Cancelled`; that is the expected result.
         let _cancelled = self.accept.await;
     }
 }
@@ -73,7 +66,6 @@ pub fn serve_http(events: Events) -> Result<Site, SiteError> {
     })
 }
 
-/// Serves HTTPS on `port` (0 for any) as `tls-<generation>` with a new certificate.
 pub fn serve_tls(port: u16, generation: u32, events: Events) -> Result<Site, SiteError> {
     let names = vec!["127.0.0.1".to_owned(), "localhost".to_owned()];
     let issued = rcgen::generate_simple_self_signed(names)
@@ -98,7 +90,7 @@ pub fn serve_tls(port: u16, generation: u32, events: Events) -> Result<Site, Sit
     })
 }
 
-/// Loopback only, with address reuse so a restarted site gets the same port.
+/// Address reuse lets a restarted site get the same port.
 fn bind(port: u16) -> io::Result<TcpListener> {
     let socket = TcpSocket::new_v4()?;
     socket.set_reuseaddr(true)?;

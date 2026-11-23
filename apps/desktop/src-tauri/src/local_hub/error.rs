@@ -1,5 +1,4 @@
-//! Why the shell could not do what was asked of the hub on this computer, as the client sees
-//! it: a stable code and fixed text, never a path or an OS error.
+//! A local hub failure carries a stable code and fixed text, never a path or an OS error.
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
@@ -34,7 +33,6 @@ pub enum LocalHubError {
 }
 
 impl LocalHubError {
-    /// Every error, for the tests that check each one.
     #[cfg(all(test, unix))]
     pub const ALL: [Self; 12] = [
         Self::Caller,

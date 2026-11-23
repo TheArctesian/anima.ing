@@ -1,5 +1,4 @@
-//! Why a stay-awake command failed, as the client sees it: a stable code and fixed text, never
-//! a path or an OS error (LOG-007).
+//! A stay-awake failure carries a stable code and fixed text, never a path or an OS error (LOG-007).
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 

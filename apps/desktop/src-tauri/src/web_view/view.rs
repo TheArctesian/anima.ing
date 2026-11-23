@@ -1,8 +1,4 @@
-//! The native device web view (D-2, D-3, WEB-006, WEB-007): built as a child of the main
-//! window on a blank start, with the device's store, the `http`/`https` filter, new windows
-//! kept in the same view, page loads reported to the main web view and, on macOS, the trust
-//! hook that answers certificate challenges with the tab's pin. OS work only; the rules it
-//! applies live in the pure units beside it.
+//! The native device web view (D-2, D-3, WEB-006, WEB-007): OS work only; its rules live in the pure units beside it.
 
 use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, Rect, Url, Webview, WebviewBuilder,
@@ -22,12 +18,9 @@ use super::{
     tabs::{Generation, TabId},
 };
 
-/// The address a device web view is created on. The real address is loaded only after the
-/// view exists, so a trust hook installed on the new view sees the first real load (OD-7).
-/// The filter refuses it like any non-web scheme, which leaves the view empty until then.
+/// The real address loads only after the view exists, so the trust hook sees the first real load (OD-7).
 const BLANK: &str = "about:blank";
 
-/// How long the main thread may take to put the trust hook on a new view.
 #[cfg(target_os = "macos")]
 const GUARD_PATIENCE: std::time::Duration = std::time::Duration::from_secs(10);
 
@@ -40,7 +33,6 @@ fn native(_: tauri::Error) -> WebViewError {
     WebViewError::Native
 }
 
-/// Creates the device web view for `id` in `window` at `rect`, on the blank start.
 pub fn attach(
     window: &Window,
     id: &TabId,
@@ -82,8 +74,7 @@ fn builder(app: &AppHandle, id: &TabId) -> Result<WebviewBuilder<tauri::Wry>, We
     )
 }
 
-/// Puts the trust hook on a new device web view and waits until it is there (WEB-008, OD-7).
-/// Call it before the first real load; on an error, load nothing and close the view.
+/// Call it before the first real load; on an error, load nothing and close the view (WEB-008, OD-7).
 #[cfg(target_os = "macos")]
 pub async fn guard(view: &Webview, id: &TabId) -> Result<(), WebViewError> {
     let (app, tab) = (view.app_handle().clone(), id.clone());
@@ -104,7 +95,7 @@ pub async fn guard(view: &Webview, id: &TabId) -> Result<(), WebViewError> {
         .map_err(|_| WebViewError::Native)?
 }
 
-/// No trust hook outside macOS yet: `https` opens in the system browser (D-6).
+/// Outside macOS there is no trust hook: `https` opens in the system browser (D-6).
 #[cfg(not(target_os = "macos"))]
 #[expect(
     clippy::unused_async,
@@ -114,9 +105,7 @@ pub async fn guard(_view: &Webview, _id: &TabId) -> Result<(), WebViewError> {
     Ok(())
 }
 
-/// Answers one challenge in tab `id` from the tab's pin, and tells the main web view what the
-/// operator must see. On the main thread, inside `WebKit`'s callback: the tab lock is held only
-/// to copy the tab, and the event is sent from a task. A closed tab loads nothing.
+/// Inside the `WebKit` callback on the main thread: the tab lock is held only to copy the tab, and events go from a task.
 #[cfg(target_os = "macos")]
 fn decide(
     app: &AppHandle,
@@ -143,8 +132,7 @@ fn decide(
     ruling.answer
 }
 
-/// Loads a page's new-window request in its own web view instead. Off the `WebKit` callback,
-/// so the view is not driven from inside its own delegate; the filter checks it again.
+/// Off the `WebKit` callback, so the view is not driven from inside its own delegate; the filter checks the URL again.
 fn follow(app: AppHandle, label: String, id: TabId, url: Url) {
     tauri::async_runtime::spawn(async move {
         let Some(view) = app.get_webview(&label) else {
@@ -174,7 +162,6 @@ fn with_store(
     Ok(builder.data_store_identifier(device.store_identifier()))
 }
 
-/// Linux: a `WebKitGTK` data folder per device under the app's data folder.
 #[cfg(not(target_os = "macos"))]
 fn with_store(
     builder: WebviewBuilder<tauri::Wry>,
@@ -190,12 +177,7 @@ fn with_store(
     Ok(builder.data_directory(folder))
 }
 
-/// Moves `view` to a window of its own, filling it; the store goes with the view. Closing
-/// that window closes the web view and ends the tab, if the tab is still the reservation
-/// `generation` that moved.
-///
-/// If the window cannot be made or the view cannot move, the tab is back in the main window:
-/// the mark is taken back and the empty window closed. Once the view has moved, it stays.
+/// Closing the new window ends the tab if it is still reservation `generation`; on a failure the tab goes back to the main window.
 pub fn pop_out(
     app: &AppHandle,
     view: &Webview,
@@ -230,7 +212,6 @@ pub fn pop_out(
     view.show().map_err(native)
 }
 
-/// Closes the tab's web view, and its own window if it was popped out.
 pub fn close(app: &AppHandle, id: &TabId, popped_out: bool) -> Result<(), WebViewError> {
     if popped_out && let Some(window) = app.get_window(&id.window_label()) {
         return window.close().map_err(native);

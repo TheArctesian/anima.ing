@@ -1,4 +1,3 @@
-//! Windows files used by the shared persistent-link lifecycle.
 use std::{
     ffi::OsString,
     path::{Path, PathBuf},
@@ -33,7 +32,6 @@ pub(super) fn socket_present(socket: &Path) -> bool {
     anima_windows::socket::private(socket).unwrap_or(false)
 }
 
-/// Whether a Windows listener belongs to this user's protected persistent link executable.
 pub fn owns_background(pid: u32) -> bool {
     let Some(application) = crate::user_folders::of_this_user() else {
         return false;

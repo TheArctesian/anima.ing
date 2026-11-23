@@ -1,8 +1,5 @@
-//! The start of a sign-in inside the app (mobile plan M3-5): the authorization code flow of `WorkOS`
-//! `AuthKit` with PKCE (RFC 7636), for a public client that holds only the client ID (HMD-032, HMD-035).
-//! The endpoint and its fields are those of
-//! <https://workos.com/docs/reference/user-management/authentication/get-authorization-url>, read on
-//! 2026-11-19. This file makes values and calls no network.
+//! PKCE (RFC 7636) for the `WorkOS` `AuthKit` code flow of a public client (M3-5, HMD-032, HMD-035).
+//! Fields: <https://workos.com/docs/reference/user-management/authentication/get-authorization-url>.
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use sha2::{Digest, Sha256};
@@ -12,15 +9,12 @@ const AUTHORIZE_URL: &str = "https://api.workos.com/user_management/authorize";
 
 /// One sign-in inside the app. No `Debug`: the verifier is a secret until the exchange.
 pub(super) struct Attempt {
-    /// The code verifier: only the shell that made it can trade the code for tokens.
     pub verifier: Zeroizing<String>,
-    /// The value that the return of the browser must carry, so that an answer to a different
-    /// sign-in is refused.
+    /// The return of the browser must carry it, so that an answer to a different sign-in is refused.
     pub state: String,
 }
 
 impl Attempt {
-    /// A sign-in from 64 random bytes: 32 for the verifier and 32 for the state.
     pub(super) fn from_random(random: &[u8; 64]) -> Self {
         Self {
             verifier: Zeroizing::new(URL_SAFE_NO_PAD.encode(&random[..32])),
@@ -28,7 +22,6 @@ impl Attempt {
         }
     }
 
-    /// The page that the person signs in on. `WorkOS` sends the browser to `redirect` after it.
     pub(super) fn page(&self, client_id: &str, redirect: &str) -> Option<String> {
         let challenge = challenge(&self.verifier);
         reqwest::Url::parse_with_params(
@@ -48,7 +41,6 @@ impl Attempt {
     }
 }
 
-/// The S256 code challenge of `verifier`.
 fn challenge(verifier: &str) -> String {
     URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()))
 }

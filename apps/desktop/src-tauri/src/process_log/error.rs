@@ -1,11 +1,6 @@
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
-/// Why the log folder did not open. Carries no path and no OS error text: the path names the
-/// operator's home folder, so only the variant crosses to the client.
-///
-/// - `unavailable`: this OS gives the app no log folder, or it has no file-manager opener
-///   (`/usr/bin/open` on macOS, `xdg-open` on Linux).
-/// - `failed`: the folder could not be created, or the opener ran and reported a failure.
+/// Carries no path and no OS error text: the path names the operator's home folder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum ProcessLogError {
     #[error("the log folder cannot be opened on this system")]

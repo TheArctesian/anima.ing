@@ -1,5 +1,4 @@
-//! The stay-awake control of this computer: the operator's choice, the holds that are taken
-//! for it and the state the client and the tray show (AWK-001 to AWK-008).
+//! AWK-001 to AWK-008.
 
 use std::{
     fs,
@@ -17,32 +16,24 @@ use super::{
     power, saved,
 };
 
-/// After a refused administrator step, the next one is refused with no dialog for this long,
-/// so a script in the web view cannot show the operator one password dialog after another.
+/// Stops a web-view script from showing the operator one password dialog after another.
 const REFUSAL_REST: Duration = Duration::from_secs(15);
 
-/// The two administrator steps of the lid-closed level (macOS).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Step {
     SetUp,
     Remove,
 }
 
-/// One administrator step, ready to run. It runs with no lock on the control: the password
-/// dialog can stay open for minutes, and the app must still be able to end its holds.
+/// Runs with no lock on the control: the password dialog can stay open for minutes.
 #[derive(Debug)]
 pub struct Ask {
     platform: Platform,
     step: Step,
-    /// Anima changed the sleep setting and could not set it back before a `Remove`.
     set_sleep_back: bool,
 }
 
 impl Ask {
-    /// Shows the dialog and waits for it.
-    ///
-    /// # Errors
-    /// `Refused` when the dialog was cancelled or the script failed.
     pub fn run(&self) -> Result<(), SetUpError> {
         match self.step {
             Step::SetUp => lid_set_up::set_up(&self.platform),
@@ -51,21 +42,17 @@ impl Ask {
     }
 }
 
-/// What the client and the tray show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Status {
-    /// The operator's choice.
     pub level: Level,
     pub battery_floor: Option<u8>,
-    /// The level the computer is held at now.
     pub held: Level,
     /// Why `held` is lower than `level`.
     pub pause: Option<Pause>,
     pub lid: Lid,
 }
 
-/// Why a change was not made.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum ControlError {
     #[error("the choice could not be saved")]
@@ -77,23 +64,19 @@ pub enum ControlError {
 #[derive(Debug)]
 pub struct Control {
     platform: Platform,
-    /// The app's configuration folder: the saved choice and the marker.
     folder: PathBuf,
     wanted: Wanted,
     was_low: bool,
     idle: Option<Hold>,
     lid: Option<LidHold>,
-    /// An administrator dialog is open.
     asking: bool,
     refused_at: Option<Instant>,
 }
 
 impl Control {
-    /// The control with the saved choice and no hold yet. A sleep setting that an earlier run
-    /// of the app left changed is set back first (AWK-007).
+    /// Sets back a sleep setting that an earlier run left changed (AWK-007).
     #[must_use]
     pub fn open(platform: Platform, folder: PathBuf) -> Self {
-        // A failure keeps the marker, so the next start tries again.
         let _ = hold::restore(&platform, &saved::marker(&folder));
         Self {
             wanted: saved::load(&folder),
@@ -107,13 +90,11 @@ impl Control {
         }
     }
 
-    /// Whether a level is chosen, so the holds need a look from time to time.
     #[must_use]
     pub fn active(&self) -> bool {
         self.wanted.level != Level::Off
     }
 
-    /// The power source, read only when a floor can change the answer.
     fn power(&self) -> Power {
         if self.active() && self.wanted.battery_floor.is_some() {
             power::read(&self.platform)
@@ -144,12 +125,10 @@ impl Control {
 
     fn drop_lid(&mut self) {
         if let Some(lid) = self.lid.take() {
-            // A failure keeps the marker; the next start sets the setting back.
             let _ = hold::release_lid(&self.platform, &saved::marker(&self.folder), lid);
         }
     }
 
-    /// Takes and ends holds for the choice on `power`, and gives the state that results.
     pub fn apply(&mut self, power: Power) -> Status {
         let lid = lid_set_up::lid(&self.platform);
         // No lid hold is taken while an administrator step runs: the rule can go at any moment.
@@ -180,7 +159,6 @@ impl Control {
         }
     }
 
-    /// `apply` on the power source of this moment.
     pub fn refresh(&mut self) -> Status {
         self.apply(self.power())
     }
@@ -193,10 +171,6 @@ impl Control {
         Ok(self.refresh())
     }
 
-    /// The operator chose `level`.
-    ///
-    /// # Errors
-    /// `Unsaved` when the choice could not be saved; nothing changes then.
     pub fn choose(&mut self, level: Level) -> Result<Status, ControlError> {
         self.change(Wanted {
             level,
@@ -204,21 +178,11 @@ impl Control {
         })
     }
 
-    /// The operator set or removed the battery floor.
-    ///
-    /// # Errors
-    /// As `choose`.
     pub fn set_floor(&mut self, floor: Option<u8>) -> Result<Status, ControlError> {
         self.change(self.wanted.with_floor(floor))
     }
 
-    /// Starts an administrator step. `None`: there is nothing to ask, the computer is already
-    /// in the state the step gives. A `Remove` sets the sleep setting back first, while the
-    /// rule still lets it.
-    ///
-    /// # Errors
-    /// `SetUp(Unsupported)` off macOS; `SetUp(Refused)` while a dialog is open, and for a short
-    /// time after a refused step.
+    /// A `Remove` sets the sleep setting back first, while the rule still lets it.
     pub fn begin(&mut self, step: Step, now: Instant) -> Result<Option<Ask>, ControlError> {
         if self.platform.os != Os::Mac {
             return Err(SetUpError::Unsupported.into());
@@ -244,10 +208,6 @@ impl Control {
         }))
     }
 
-    /// Ends the administrator step `ask` with what its dialog answered.
-    ///
-    /// # Errors
-    /// `SetUp(Refused)` when the step did not finish; the state is as before the step.
     pub fn finish(
         &mut self,
         ask: &Ask,
@@ -264,7 +224,7 @@ impl Control {
         asked.map(|()| status).map_err(ControlError::from)
     }
 
-    /// Ends every hold: the computer sleeps as before (AWK-007). The choice stays saved.
+    /// Ends every hold (AWK-007). The choice stays saved.
     pub fn release(&mut self) {
         self.idle = None;
         self.drop_lid();

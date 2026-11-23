@@ -126,7 +126,6 @@ fn log_007_an_error_serialises_as_its_code_only() {
     );
 }
 
-/// A folder of this test only, removed when the test ends.
 fn phone_folder(test: &str) -> tempfile::TempDir {
     tempfile::Builder::new()
         .prefix(&format!("anima-phone-{test}-"))

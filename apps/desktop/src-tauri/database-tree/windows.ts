@@ -1,5 +1,5 @@
 // Native PostgreSQL runtime, pinned official EDB and Microsoft distributions (WIN2).
-// bun windows.ts <work-folder> <output-folder>; no installer is executed or installed globally.
+// No installer is executed or installed globally.
 import { spawnSync } from 'node:child_process';
 import { copyFile, mkdir, mkdtemp, readdir, rename, rm } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
@@ -8,11 +8,9 @@ import pin from './windows.pin.json' with { type: 'json' };
 interface Archive { url: string; sha256: string }
 
 const MINUTE = 60_000;
-// The whole build takes about a minute; a run that hung here once held the runner for hours.
 const WHOLE_BUILD_MINUTES = 25;
 const ATTEMPTS = 2;
 
-/** Runs one step of the build, and stops it when it takes more than `minutes`. */
 function checked(step: string, minutes: number, program: string, args: string[]): void {
   const result = spawnSync(program, args, { stdio: 'inherit', windowsHide: true, timeout: minutes * MINUTE });
   if ((result.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT') {
@@ -88,7 +86,7 @@ async function build(work: string, output: string): Promise<void> {
     await visualCpp(temporary, tree, join(system, 'expand.exe'));
     checked('the version check of PostgreSQL', 2, join(tree, 'bin/postgres.exe'), ['--version']);
     await Bun.write(join(tree, 'anima-runtime.json'), `${JSON.stringify(pin, null, 2)}\n`);
-    // Fail if output exists: never merge stale runtime DLLs into a new runtime tree.
+    // mkdir fails when the output exists, so stale runtime DLLs never merge into a new tree.
     await mkdir(output);
     try {
       for (const name of await readdir(tree)) await rename(join(tree, name), join(output, name));
@@ -109,7 +107,6 @@ setTimeout(() => {
   console.error(`database-tree: the build took more than ${WHOLE_BUILD_MINUTES} minutes and was stopped`);
   process.exit(1);
 }, WHOLE_BUILD_MINUTES * MINUTE).unref();
-// One more attempt: a run hung here once for a cause that is not known, and three runs in four passed.
 for (let attempt = 1; ; attempt += 1) {
   try {
     await build(resolve(work), resolve(output));

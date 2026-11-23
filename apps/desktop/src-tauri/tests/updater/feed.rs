@@ -1,5 +1,4 @@
-//! A throwaway release channel: a key pair made in memory, signed builds, and a loopback HTTP
-//! server that answers like `releases.anima.ing` (200 for a file it has, 404 for any other).
+//! A throwaway release channel that answers like `releases.anima.ing`.
 
 use std::collections::HashMap;
 use std::io::Cursor;
@@ -15,7 +14,7 @@ use tokio::net::TcpListener;
 const CONFIG: &str = include_str!("../../tauri.conf.json");
 const ORIGIN: &str = "https://releases.anima.ing";
 
-/// This computer's updater target, as `tauri-plugin-updater` names it: `linux-x86_64`.
+/// This computer's updater target, as `tauri-plugin-updater` names it.
 fn target() -> String {
     let os = if cfg!(target_os = "macos") {
         "darwin"
@@ -25,18 +24,15 @@ fn target() -> String {
     format!("{os}-{}", std::env::consts::ARCH)
 }
 
-/// Where the app must ask for this computer's feed.
 pub fn feed_path() -> String {
     format!("/{}/latest.json", target())
 }
 
-/// The updater block of the shipped `tauri.conf.json`.
 fn shipped_updater() -> serde_json::Value {
     let config: serde_json::Value = serde_json::from_str(CONFIG).unwrap();
     config["plugins"]["updater"].clone()
 }
 
-/// The one endpoint the shipped configuration lists.
 pub fn shipped_endpoint() -> String {
     let updater = shipped_updater();
     let endpoints = updater["endpoints"].as_array().unwrap();
@@ -44,18 +40,14 @@ pub fn shipped_endpoint() -> String {
     endpoints[0].as_str().unwrap().to_owned()
 }
 
-/// A key pair standing in for the operator's; it signs builds and the app trusts its public half.
 pub struct Channel(KeyPair);
 
-/// A built file: the bytes the server holds, the version the feed announces, and the signature
-/// text it lists.
 pub struct Build {
     bytes: Vec<u8>,
     announced: String,
     signature: String,
 }
 
-/// How a build is listed in the feed: under this computer's target or under another.
 pub struct Listing<'a> {
     key: String,
     build: &'a Build,
@@ -96,12 +88,10 @@ impl Channel {
         STANDARD.encode(signature.into_string())
     }
 
-    /// A build of `version`, signed for `version`.
     pub fn build(&self, version: &str) -> Build {
         self.build_signed_for(version, version)
     }
 
-    /// A build announced as `announced` whose signature names `signed_for`.
     pub fn build_signed_for(&self, announced: &str, signed_for: &str) -> Build {
         let bytes = format!("AppImage of Anima {signed_for}").into_bytes();
         Build {
@@ -121,7 +111,6 @@ impl Channel {
         }
     }
 
-    /// A build whose bytes were changed after it was signed.
     pub fn build_tampered(&self, version: &str) -> Build {
         let mut build = self.build(version);
         build.bytes.extend_from_slice(b" and then some");
@@ -142,7 +131,6 @@ impl Build {
 
 type Routes = HashMap<String, Vec<u8>>;
 
-/// A loopback server and the app configured to trust one channel and read from it.
 pub struct Served {
     port: u16,
     pubkey: String,
@@ -150,7 +138,6 @@ pub struct Served {
 }
 
 impl Served {
-    /// Serves `listing` (or nothing, so every path answers 404) for an app that trusts `channel`.
     pub async fn start(channel: &Channel, listing: Option<Listing<'_>>) -> Self {
         let socket = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = socket.local_addr().unwrap().port();
@@ -177,13 +164,10 @@ impl Served {
         }
     }
 
-    /// The paths the server was asked for, in order.
     pub fn requested(&self) -> Vec<String> {
         self.asked.lock().unwrap().clone()
     }
 
-    /// One update check by the real plugin, configured from the shipped block with the key and the
-    /// origin swapped for this server's.
     pub async fn check(&self) -> tauri_plugin_updater::Result<Option<Update>> {
         let mut updater = shipped_updater();
         let endpoint =
@@ -204,7 +188,6 @@ impl Served {
     }
 }
 
-/// Answers each connection with the route's bytes (200) or 404, and keeps the path asked for.
 async fn answer(socket: TcpListener, routes: Routes, asked: Arc<Mutex<Vec<String>>>) {
     loop {
         let (mut stream, _) = socket.accept().await.unwrap();

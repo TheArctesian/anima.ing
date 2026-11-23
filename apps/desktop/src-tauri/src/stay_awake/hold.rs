@@ -1,14 +1,5 @@
-//! The holds that keep this computer awake (AWK-002, AWK-003). Each hold is a child program
-//! that the OS ties to the app's process, so a hold ends when the app ends, also after a
-//! failure (AWK-007).
-//!
-//! - Idle sleep, macOS: `caffeinate -i -w <pid>` holds a power assertion.
-//! - Idle sleep, Linux: `systemd-inhibit --what=sleep` holds a `logind` inhibitor.
-//! - Lid, Linux: `systemd-inhibit --what=handle-lid-switch`.
-//! - Lid, macOS: `pmset -a disablesleep 1` as root through the set-up rule, with a watcher
-//!   that sets it back when the app's process ends. A marker file records that Anima set it.
-//!
-//! Nothing here logs: the caller logs at its boundary.
+//! Each hold is a child program that the OS ties to the app's process, so it ends when the app
+//! ends, also after a failure (AWK-002, AWK-003, AWK-007).
 
 use std::{
     ffi::OsStr,
@@ -34,23 +25,20 @@ use crate::os_program::{self, AfterLimit, Limit, Stdout};
 /// A hold program that ends this soon after its start was refused by the OS.
 const SETTLE: Duration = Duration::from_millis(400);
 
-/// How long a hold program gets to end after `SIGTERM`, before `SIGKILL`.
 const END: Duration = Duration::from_secs(1);
 
 const POLL: Duration = Duration::from_millis(10);
 
-/// `sudo -n` never waits for a password; `pmset` writes one setting.
 const PMSET_WRITE: Limit = Limit {
     patience: Duration::from_secs(5),
     after: AfterLimit::Kill,
 };
 
-/// The watcher: waits for the followed process to end, then sets the sleep setting back.
-/// `$0` is the process ID, `$1` is `sudo`, `$2` is `pmset`, `$3` is the marker. The marker goes
-/// with the setting: a later start must not set back a setting that a different program made.
+/// `$0` is the followed process ID, `$1` is `sudo`, `$2` is `pmset`, `$3` is the marker.
+/// The marker goes with the setting: a later start must not set back a setting that a different
+/// program made.
 const WATCHER: &str = r#"while /bin/kill -0 "$0" 2>/dev/null; do /bin/sleep 2; done; "$1" -n "$2" -a disablesleep 0 && /bin/rm -f "$3""#;
 
-/// Why a hold was not taken.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum HoldError {
     #[error("the hold program could not start")]
@@ -63,7 +51,7 @@ pub enum HoldError {
     Setting,
 }
 
-/// A running hold program, in a process group of its own. Dropping it ends the group.
+/// Dropping it ends its process group.
 #[derive(Debug)]
 pub struct Hold(Child);
 
@@ -88,7 +76,6 @@ impl Hold {
         Ok(hold)
     }
 
-    /// Whether the hold program still runs.
     pub fn alive(&mut self) -> bool {
         matches!(self.0.try_wait(), Ok(None))
     }
@@ -102,8 +89,7 @@ impl Hold {
         }
     }
 
-    /// Lets the hold program run on with nobody to end it. Only for the watcher, which ends
-    /// by itself when the app's process ends.
+    /// Only for the watcher, which ends by itself when the app's process ends.
     fn leave(self) {
         std::mem::forget(self);
     }
@@ -116,14 +102,13 @@ impl Drop for Hold {
         while self.alive() && asked.elapsed() < END {
             thread::sleep(POLL);
         }
-        // A program that ignores the first signal must not keep the hold, or the caller waiting.
+        // A program that ignores `SIGTERM` must not keep the hold, or the caller waiting.
         self.signal(Signal::SIGKILL);
         let _ = self.0.wait();
     }
 }
 
-/// The arguments of `systemd-inhibit` for one kind of inhibitor. Its command waits for the
-/// followed process, so the inhibitor ends with the app.
+/// The command waits for the followed process, so the inhibitor ends with the app.
 fn inhibit_args(what: &str, followed: u32) -> Vec<String> {
     vec![
         format!("--what={what}"),
@@ -143,10 +128,7 @@ fn inhibit(platform: &Platform, what: &str) -> Result<Hold, HoldError> {
     Hold::start(&platform.inhibit, &args)
 }
 
-/// Stops idle sleep of the computer; the display can sleep (AWK-002).
-///
-/// # Errors
-/// `CouldNotStart` or `Refused` when the hold program did not stay running.
+/// The display can still sleep (AWK-002).
 pub fn idle(platform: &Platform) -> Result<Hold, HoldError> {
     match platform.os {
         Os::Mac => {
@@ -161,10 +143,10 @@ pub fn idle(platform: &Platform) -> Result<Hold, HoldError> {
 /// What keeps the computer on with the lid closed (AWK-003).
 #[derive(Debug)]
 pub enum LidHold {
-    /// A `logind` inhibitor (Linux).
     Inhibitor(Hold),
-    /// Anima set `SleepDisabled` and sets it back (macOS).
-    Setting { watcher: Hold },
+    Setting {
+        watcher: Hold,
+    },
     /// A different program had already set `SleepDisabled`: Anima leaves it alone (AWK-007).
     Borrowed,
 }
@@ -179,7 +161,6 @@ impl LidHold {
     }
 }
 
-/// Whether the report of `pmset -g` says that all sleep is disabled.
 #[must_use]
 pub fn sleep_disabled(report: &str) -> bool {
     report.lines().any(|line| {
@@ -243,11 +224,6 @@ fn setting(platform: &Platform, marker: &Path) -> Result<LidHold, HoldError> {
     }
 }
 
-/// Keeps the computer on with the lid closed.
-///
-/// # Errors
-/// `NotSetUp` on a Mac without the set-up rule; `Setting` when the sleep setting did not
-/// change; `CouldNotStart` or `Refused` when a hold program did not stay running.
 pub fn lid(platform: &Platform, marker: &Path) -> Result<LidHold, HoldError> {
     match platform.os {
         Os::Mac => setting(platform, marker),
@@ -255,11 +231,7 @@ pub fn lid(platform: &Platform, marker: &Path) -> Result<LidHold, HoldError> {
     }
 }
 
-/// Sets the sleep setting back when the marker says that Anima changed it, then removes the
-/// marker. The marker stays when the setting did not change, so the next start tries again.
-///
-/// # Errors
-/// `Setting` when the sleep setting did not change or the marker could not be removed.
+/// The marker stays when the setting did not change, so the next start tries again.
 pub fn restore(platform: &Platform, marker: &Path) -> Result<(), HoldError> {
     if !marker.exists() {
         return Ok(());
@@ -271,10 +243,7 @@ pub fn restore(platform: &Platform, marker: &Path) -> Result<(), HoldError> {
     }
 }
 
-/// Ends a lid hold: the computer sleeps with the lid closed as before (AWK-007).
-///
-/// # Errors
-/// As `restore`.
+/// Ends a lid hold (AWK-007).
 pub fn release_lid(platform: &Platform, marker: &Path, hold: LidHold) -> Result<(), HoldError> {
     match hold {
         LidHold::Inhibitor(_) | LidHold::Borrowed => Ok(()),

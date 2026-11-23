@@ -1,9 +1,4 @@
-//! The tools a builder needs before it claims a job (BLD-028): git, bun, Rust with
-//! cargo-nextest (the gates run the Rust tests with it, R-112), Go (the gates of `link/`),
-//! PostgreSQL 17 (R-009), the Tauri
-//! system packages, on Linux the tools that build the PostgreSQL tree, the app's own updater
-//! public key and, on macOS, the Developer ID signing identity (BLD-083). No updater key: the hub
-//! signs (R-117).
+//! The tools a builder needs before it claims a job (BLD-028). No updater key: the hub signs (R-117).
 //! Pure: whether a path exists is a parameter, and nothing is run.
 
 pub mod readings;
@@ -34,31 +29,24 @@ pub enum Tool {
     TauriPackages,
     /// On Linux, a program or the zlib header that `database-tree/build.sh` needs (S12 T3).
     TreeTools,
-    /// This app was built without the updater public key (`plugins.updater.pubkey` is the
-    /// placeholder), so what it builds could never update (R-108).
+    /// The app's `plugins.updater.pubkey` is the placeholder, so what it builds could never update (R-108).
     UpdaterPublicKey,
-    /// The login keychain has no valid identity named `bundle.macOS.signingIdentity`, so this
-    /// Mac cannot sign a release (BLD-083).
+    /// The login keychain has no valid identity named `bundle.macOS.signingIdentity` (BLD-083).
     SigningIdentity,
-    /// The Rust toolchain that builds has no standard library for `aarch64-apple-darwin`; the
-    /// universal app and `anima` need it (BLD-043, INS-002).
+    /// No standard library for `aarch64-apple-darwin`; the universal app and `anima` need it (BLD-043, INS-002).
     #[serde(rename = "rust-target-aarch64-apple-darwin")]
     RustTargetAarch64Darwin,
-    /// The same for `x86_64-apple-darwin`: `rustup target add x86_64-apple-darwin` with rustup.
+    /// The same for `x86_64-apple-darwin`.
     #[serde(rename = "rust-target-x86_64-apple-darwin")]
     RustTargetX86_64Darwin,
 }
 
-/// The Rust targets a `darwin-universal` build compiles, and the tool each one's absence is.
 const DARWIN_TARGETS: [(&str, Tool); 2] = [
     ("aarch64-apple-darwin", Tool::RustTargetAarch64Darwin),
     ("x86_64-apple-darwin", Tool::RustTargetX86_64Darwin),
 ];
 
-/// The Rust targets whose standard library is missing for `target`: none for Linux, which builds
-/// for the host. `sysroot` is what `rustc --print sysroot` printed for the toolchain the steps
-/// run, rustup's or a system one; `None` when it printed nothing, so every target is missing.
-/// A target is there when `<sysroot>/lib/rustlib/<triple>/lib` exists.
+/// None for Linux, which builds for the host.
 pub fn rust_targets(
     target: Target,
     sysroot: Option<&Path>,
@@ -79,8 +67,7 @@ pub fn rust_targets(
 /// The length of a minisign public key: `Ed`, the 8-byte key ID and the 32-byte key.
 const PUBLIC_KEY_BYTES: usize = 42;
 
-/// The last line of the public key file whose base64 is `encoded` (`plugins.updater.pubkey`),
-/// if it is text.
+/// `encoded` is the base64 of the public key file (`plugins.updater.pubkey`).
 pub fn key_line(encoded: &str) -> Option<String> {
     let text = String::from_utf8(STANDARD.decode(encoded).ok()?).ok()?;
     text.lines()
@@ -89,8 +76,7 @@ pub fn key_line(encoded: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// [`Tool::UpdaterPublicKey`] unless `line`, the key line of the app's updater public key, is a
-/// minisign public key (R-108). The placeholder has no key line.
+/// The placeholder has no key line (R-108).
 pub fn app_public_key(line: Option<&str>) -> Option<Tool> {
     let key = line
         .and_then(|line| STANDARD.decode(line).ok())
@@ -98,9 +84,7 @@ pub fn app_public_key(line: Option<&str>) -> Option<Tool> {
     (!key).then_some(Tool::UpdaterPublicKey)
 }
 
-/// [`Tool::SigningIdentity`] unless `keychain`, the lines `security find-identity -v -p
-/// codesigning` printed, lists `identity`, the one this app's `bundle.macOS.signingIdentity`
-/// names (BLD-083). `-v` lists valid identities only, each name in double quotes.
+/// `security find-identity -v` lists valid identities only, each name in double quotes (BLD-083).
 pub fn signing_identity(identity: Option<&str>, keychain: &[String]) -> Option<Tool> {
     let found = identity
         .filter(|name| !name.is_empty())
@@ -112,8 +96,7 @@ pub fn signing_identity(identity: Option<&str>, keychain: &[String]) -> Option<T
 /// The PostgreSQL major version the gates start (DB-001, R-009).
 const POSTGRES_MAJOR: u8 = 17;
 
-/// The folders the gates search for `initdb` and `pg_ctl` before `PATH`
-/// (`quality/src/gates/postgres.ts`).
+/// The folders `quality/src/gates/postgres.ts` searches before `PATH`.
 fn postgres_dirs(path_dirs: &[PathBuf]) -> Vec<PathBuf> {
     let major = POSTGRES_MAJOR;
     let mut dirs = vec![
@@ -125,7 +108,6 @@ fn postgres_dirs(path_dirs: &[PathBuf]) -> Vec<PathBuf> {
     dirs
 }
 
-/// The pkg-config folders of the Linux distributions Anima builds on.
 const PKG_CONFIG_DIRS: &[&str] = &[
     "/usr/lib/x86_64-linux-gnu/pkgconfig",
     "/usr/lib64/pkgconfig",
@@ -137,7 +119,6 @@ const PKG_CONFIG_DIRS: &[&str] = &[
 /// The development packages the Tauri shell links on Linux (quality/README.md).
 const LINUX_PACKAGES: &[&str] = &["webkit2gtk-4.1", "libsoup-3.0", "librsvg-2.0", "dbus-1"];
 
-/// The Xcode command line tools, or Xcode itself, on macOS.
 const MAC_DEVELOPER_DIRS: &[&str] = &[
     "/Library/Developer/CommandLineTools/usr/bin",
     "/Applications/Xcode.app/Contents/Developer/usr/bin",
@@ -163,15 +144,12 @@ fn tauri_packages(target: Target, env: &Environment, exists: &impl Fn(&Path) -> 
     }
 }
 
-/// The programs `database-tree/build.sh` runs on Linux, `curl` for the source archive among them.
-/// The recipe runs with `PATH=/usr/bin:/bin` only, so each must be in one of those two folders.
+/// The recipe runs with `PATH=/usr/bin:/bin` only, so each program must be in one of those two folders.
 const TREE_PROGRAMS: &[&str] = &["make", "bison", "flex", "patchelf", "readelf", "curl"];
 const TREE_FOLDERS: &[&str] = &["/usr/bin", "/bin"];
-/// The header the recipe's PostgreSQL build compiles against for zlib.
 const ZLIB_HEADER: &str = "/usr/include/zlib.h";
 
-/// Whether this computer has what the recipe needs to build the tree for `target`. On macOS the
-/// Xcode tools have it, and [`tauri_packages`] asks for them already.
+/// On macOS the Xcode tools have it, and [`tauri_packages`] asks for them already.
 fn tree_tools(target: Target, exists: &impl Fn(&Path) -> bool) -> bool {
     match target {
         Target::LinuxX86_64 => {
@@ -186,8 +164,7 @@ fn tree_tools(target: Target, exists: &impl Fn(&Path) -> bool) -> bool {
     }
 }
 
-/// The tools missing for `target`, in the order the Settings row lists them. `psql` is not one:
-/// the gates start their own PostgreSQL with `initdb` and `pg_ctl` and never run it.
+/// In the order the Settings row lists them; `psql` is not one, as the gates never run it.
 pub fn missing(target: Target, env: &Environment, exists: impl Fn(&Path) -> bool) -> Vec<Tool> {
     let has = |program: &str| env.find(program, &exists).is_some();
     let postgres = postgres_dirs(env.dirs()).iter().any(|dir| {

@@ -1,12 +1,10 @@
-//! The retired updater key entries are deleted at start (R-117, D-41).
-
 use super::{SECRET, use_memory_store};
 use crate::keystore::{
     retired::forget_updater_key,
     token::{SERVICE, TokenKind, read_token, write_token},
 };
 
-/// The account names the T2 builder import wrote, spelled out so a wrong name in the code fails.
+/// Spelled out, not imported, so a wrong name in the code fails.
 const WRITTEN_BY_T2: [&str; 2] = ["updater-key", "updater-key-public"];
 
 #[test]
@@ -27,6 +25,5 @@ fn r_117_d_41_the_retired_updater_key_entries_are_deleted_and_nothing_else() {
         read_token(TokenKind::Access, origin).unwrap().as_deref(),
         Some(SECRET)
     );
-    // Missing entries, as on every start after the first, are not an error.
     forget_updater_key().unwrap();
 }

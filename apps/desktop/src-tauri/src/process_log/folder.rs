@@ -3,16 +3,13 @@ use std::{fs, path::Path, time::Duration};
 use super::error::ProcessLogError;
 use crate::os_program::{self, OsProgramError};
 
-/// The file-manager opener. An absolute path on macOS, so `PATH` cannot swap it.
+/// An absolute path on macOS, so `PATH` cannot swap it.
 #[cfg(target_os = "macos")]
 pub(super) const OPENER: &str = "/usr/bin/open";
 #[cfg(target_os = "linux")]
 pub(super) const OPENER: &str = "xdg-open";
 
-/// Creates `folder` if it is missing, then runs `opener` with the folder as its one argument
-/// (no shell). The opener's output is discarded: it can echo the path. An opener still running
-/// after `patience` is taken as a file manager in the foreground (see
-/// `os_program::open_within`).
+/// No shell. The opener's output is discarded: it can echo the path.
 pub(super) fn open_with(
     folder: &Path,
     opener: &str,

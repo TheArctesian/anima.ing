@@ -1,12 +1,7 @@
-//! Where the application keeps this user's files: the hub root of `anima-local-hub` and the
-//! device link's folder are below it. The same rule as `anima-database`'s `Layout::for_user`,
-//! which the local hub uses; a test holds the two paths of `docs/procedures/setup/local-hub.md`.
+//! The same rule as `Layout::for_user` of `anima-database`, which the local hub uses.
 
 use std::path::{Path, PathBuf};
 
-/// The application's folder: `~/Library/Application Support/ing.anima.desktop` on macOS,
-/// `$XDG_DATA_HOME/anima` on Linux (`~/.local/share/anima` when the variable is unset or not
-/// an absolute path).
 pub fn application(macos: bool, home: &Path, xdg_data_home: Option<&Path>) -> PathBuf {
     if macos {
         return home.join("Library/Application Support/ing.anima.desktop");
@@ -17,7 +12,6 @@ pub fn application(macos: bool, home: &Path, xdg_data_home: Option<&Path>) -> Pa
         .join("anima")
 }
 
-/// The home folder of the user of this app; none without an absolute `HOME`.
 pub fn home() -> Option<PathBuf> {
     Some(PathBuf::from(std::env::var_os(if cfg!(windows) {
         "USERPROFILE"
@@ -27,7 +21,6 @@ pub fn home() -> Option<PathBuf> {
     .filter(|home| home.is_absolute())
 }
 
-/// The application's folder for the user of this app; none without an absolute `HOME`.
 pub fn of_this_user() -> Option<PathBuf> {
     if cfg!(windows) {
         return std::env::var_os("LOCALAPPDATA")
@@ -44,7 +37,6 @@ pub fn of_this_user() -> Option<PathBuf> {
     ))
 }
 
-/// The hub root of the hub on this computer.
 pub fn hub_root(application: &Path) -> PathBuf {
     application.join("hub")
 }

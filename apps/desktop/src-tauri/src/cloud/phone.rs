@@ -1,18 +1,12 @@
-//! The name of a phone on the link of its hosted hub (mobile plan M3-4, HMD-043). A phone gives an
-//! app no name of its own that is safe to use: iOS answers "iPhone" for each one. So the app makes a
-//! name one time and keeps it in its data folder; the name is not a secret.
+//! HMD-043: iOS answers "iPhone" for each phone, so the app makes a name once and keeps it; it is not a secret.
 
 use std::{fs, path::Path};
 
 use super::name;
 
-/// The file of the kept name, in the data folder of the app.
 const FILE: &str = "cloud-device";
 
-/// The name of this phone: the kept one, or a new one of `kind` (`iphone`, `android`) with the six
-/// hexadecimal digits of `random`, which is then kept. With no folder, or a folder that refuses,
-/// the name is new at each start; the cloud then gives the device a new invite. With no random
-/// bytes the name is `kind` alone.
+/// A name that cannot be kept is new at each start, and the cloud then gives the device a new invite.
 pub(super) fn device_name(
     folder: Option<&Path>,
     kind: &str,
@@ -32,7 +26,7 @@ pub(super) fn device_name(
     made
 }
 
-/// The name in `file`, when it is a name that the cloud takes.
+/// Only a name that the cloud takes.
 fn kept(file: &Path) -> Option<String> {
     let text = fs::read_to_string(file).ok()?;
     let text = text.trim();

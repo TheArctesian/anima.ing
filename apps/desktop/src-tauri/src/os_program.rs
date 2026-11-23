@@ -1,7 +1,4 @@
-//! Runs a fixed OS program (no shell) and waits for it for a limited time. The shell's
-//! program runs share it: the URL, folder and settings openers, the computer-name reader and
-//! the VPN client questions.
-//! It logs nothing; callers log at their own boundary (LOG-007).
+//! Runs a fixed OS program, with no shell, for a limited time; it logs nothing (LOG-007).
 
 use std::{
     ffi::OsStr,
@@ -11,15 +8,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// How long the openers wait for an exit status. `open` and most `xdg-open` back ends hand
-/// the target to an app and exit at once; some `xdg-open` fallbacks run the app in the
-/// foreground and exit only when it closes. System Settings uses the same limit.
+/// Some `xdg-open` fallbacks run the app in the foreground and exit only when it closes.
 pub const OPENER_PATIENCE: Duration = Duration::from_secs(3);
 
 const POLL: Duration = Duration::from_millis(20);
 
-/// Why a program run gave no output. Carries no OS error text: paths and names stay out of
-/// logs and answers.
+/// Carries no OS error text, so paths and names stay out of logs and answers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum OsProgramError {
     #[error("the program does not exist")]
@@ -34,40 +28,28 @@ pub enum OsProgramError {
     Unreadable,
 }
 
-/// What happens to a program still running when the wait limit ends.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AfterLimit {
-    /// Leave it running; a thread reaps it when it exits. For an opener that runs its app in
-    /// the foreground.
     LetRun,
-    /// Kill it and reap it before returning. For a program whose answer is needed.
     Kill,
 }
 
-/// How long to wait, and what to do with a program that outlives it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Limit {
     pub patience: Duration,
     pub after: AfterLimit,
 }
 
-/// What to do with the program's standard output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stdout {
-    /// Throw it away: an opener can echo the path or URL.
+    /// An opener can echo the path or URL.
     Discard,
-    /// Keep at most this many bytes. Use it with `Kill`: a program left running (`LetRun`)
-    /// has its output dropped.
+    /// At most this many bytes; a program left running (`LetRun`) has its output dropped.
     Capture { max_bytes: u64 },
 }
 
-/// Runs `program` with `args`, standard input and error closed. Returns the captured output
-/// (empty for `Stdout::Discard`) when it exits successfully within `limit.patience`.
-///
 /// # Errors
-/// `NotFound` when `program` does not exist; `CouldNotStart` for any other start failure;
-/// `Exited` for a non-zero exit; `TimedOut` when it ran past the limit (it is then handled as
-/// `limit.after` says); `Unreadable` when its exit status or output could not be read.
+/// `NotFound`, `CouldNotStart`, `Exited`, `TimedOut` (then handled as `limit.after` says) or `Unreadable`.
 pub fn run(
     program: &str,
     args: &[&OsStr],
@@ -97,7 +79,6 @@ pub fn run(
     match wait_within(&mut child, limit.patience) {
         Ok(Some(status)) if !status.success() => Err(OsProgramError::Exited),
         Ok(Some(_)) => read_output(&mut child, output),
-        // Still running at the limit, or its state unknown: the reap rule applies either way.
         Ok(None) => {
             leave(child, limit.after);
             Err(OsProgramError::TimedOut)
@@ -109,10 +90,7 @@ pub fn run(
     }
 }
 
-/// Runs an opener (`open`, `xdg-open`) with `target` as its one argument. A program still
-/// running after `OPENER_PATIENCE` is taken as an app in the foreground: that is success, and
-/// a thread reaps it when it exits, so a blocking opener never leaves the caller pending.
-///
+/// An opener still running after `OPENER_PATIENCE` runs its app in the foreground, which counts as success.
 /// # Errors
 /// As `run`, except that `TimedOut` is never returned.
 #[cfg(unix)]
@@ -120,8 +98,6 @@ pub fn open(opener: &str, target: &OsStr) -> Result<(), OsProgramError> {
     open_within(opener, target, OPENER_PATIENCE)
 }
 
-/// `open` with the wait limit as a parameter.
-///
 /// # Errors
 /// As `open`.
 pub fn open_within(opener: &str, target: &OsStr, patience: Duration) -> Result<(), OsProgramError> {
@@ -135,7 +111,6 @@ pub fn open_within(opener: &str, target: &OsStr, patience: Duration) -> Result<(
     }
 }
 
-/// The exit status if the child exits within `patience`; `None` if it is still running.
 fn wait_within(
     child: &mut Child,
     patience: Duration,
@@ -151,7 +126,6 @@ fn wait_within(
     }
 }
 
-/// Applies the reap rule to a child that outlived its limit.
 fn leave(mut child: Child, after: AfterLimit) {
     match after {
         AfterLimit::LetRun => {
@@ -159,7 +133,6 @@ fn leave(mut child: Child, after: AfterLimit) {
             thread::spawn(move || child.wait());
         }
         AfterLimit::Kill => {
-            // The output no longer matters; killing and waiting only reap the child.
             let _ = child.kill();
             let _ = child.wait();
         }
@@ -183,8 +156,6 @@ fn read_output(child: &mut Child, output: Stdout) -> Result<Vec<u8>, OsProgramEr
 
 #[cfg(all(test, unix))]
 mod tests {
-    //! The tests run `/bin/sh`, `/bin/sleep` or a missing program; none opens an app.
-
     use std::{
         ffi::OsStr,
         fs,

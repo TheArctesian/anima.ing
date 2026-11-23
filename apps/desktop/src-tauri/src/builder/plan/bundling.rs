@@ -1,4 +1,3 @@
-//! Platform-specific compilation, packaging and signing plans.
 use super::{Command, Program, command};
 use crate::builder::{
     carried,
@@ -15,11 +14,8 @@ fn tauri(clone: &Path, args: &[&str], config: &serde_json::Value) -> Command {
     step
 }
 
-/// Compile with `--no-bundle`, then bundle, with the version in `--config` and no updater
-/// artifact: the builder signs nothing, and the hub signs the updater file (BLD-043, R-117). On
-/// macOS Tauri signs the app with `identity`, the one this builder was built with, also in
-/// `--config` (BLD-083). Both carry the seven programs and the PostgreSQL tree the carried steps
-/// put in place (INS-002, S12 2.1).
+/// No updater artifact: the builder signs nothing and the hub signs the updater file (BLD-043, R-117).
+/// On macOS Tauri signs the app with `identity` (BLD-083).
 pub fn bundle(
     clone: &Path,
     target: Target,
@@ -61,8 +57,7 @@ pub fn bundle(
     }
 }
 
-/// The macOS bundle checks of UPD-011 (BLD-047): the signature, then the architectures of the
-/// app's binary, whose output must name exactly `x86_64` and `arm64`.
+/// The macOS bundle checks of UPD-011 (BLD-047).
 pub fn bundle_checks(app: &Path, binary: &Path) -> [Command; 2] {
     let folder = app.parent().unwrap_or(app);
     let mut codesign = command(
@@ -76,12 +71,10 @@ pub fn bundle_checks(app: &Path, binary: &Path) -> [Command; 2] {
     [codesign, lipo]
 }
 
-/// The `notarytool` keychain profile that holds the Apple credentials; they never reach a step's
-/// environment (BLD-084, R-116).
+/// The Apple credentials stay in this keychain profile and never reach a step's environment (BLD-084, R-116).
 const NOTARY_PROFILE: &str = "anima-notary";
 
-/// Sends the DMG to Apple's notary service and waits for its answer (BLD-084). `notarytool`
-/// exits 0 for a rejected submission too, so the output's `status:` line decides (BLD-085).
+/// `notarytool` exits 0 for a rejected submission too, so the output's `status:` line decides (BLD-085).
 pub fn notarize(dmg: &Path) -> Command {
     let folder = dmg.parent().unwrap_or(dmg);
     let mut notarize = command(Program::Xcrun, folder, &["notarytool", "submit"]);
@@ -94,8 +87,7 @@ pub fn notarize(dmg: &Path) -> Command {
     notarize
 }
 
-/// Staples the notarization ticket to `bundle`, a DMG or an app, then checks it is there
-/// (BLD-084, UPD-011).
+/// Staples and validates the notarization ticket (BLD-084, UPD-011).
 pub fn staple(bundle: &Path) -> [Command; 2] {
     let folder = bundle.parent().unwrap_or(bundle);
     [["stapler", "staple"], ["stapler", "validate"]].map(|args| {

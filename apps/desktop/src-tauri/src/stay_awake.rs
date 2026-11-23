@@ -1,9 +1,5 @@
-//! "Stay awake" (AWK-001 to AWK-008): keeps this computer from sleeping so a hub or an agent
-//! on it keeps working. Three levels: off, no idle sleep, and on with the lid closed. The
-//! Settings page and the tray item change it; both show each change.
-//!
-//! Only the main web view may ask (WEB-007). Every hold ends with the app (AWK-007): the OS
-//! ties each hold program to the app's process, and `release` runs at exit.
+//! "Stay awake" (AWK-001 to AWK-008); only the main web view may ask (WEB-007).
+//! Every hold ends with the app (AWK-007): the OS ties each hold program to the app's process, and `release` runs at exit.
 
 #[cfg(windows)]
 #[path = "stay_awake/windows/journal.rs"]
@@ -47,13 +43,10 @@ use platform::Platform;
 
 use crate::web_view::MAIN;
 
-/// The event the main web view gets with each new state.
 const EVENT: &str = "stay-awake";
 
-/// How often the battery and the hold programs get a look.
 const WATCH: Duration = Duration::from_secs(60);
 
-/// The control of this computer, shared by the commands, the tray and the watch.
 #[derive(Clone)]
 pub struct StayAwake(Arc<Mutex<Control>>);
 
@@ -63,13 +56,11 @@ impl StayAwake {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Ends every hold. The app calls it at exit (AWK-007).
     pub fn release(&self) {
         self.control().release();
     }
 }
 
-/// Starts the control with the saved choice, makes the tray item and starts the watch.
 pub fn start(app: &AppHandle) {
     let Ok(folder) = app.path().app_config_dir() else {
         log::warn!("stay awake is off: the app has no configuration folder");
@@ -88,7 +79,6 @@ pub fn start(app: &AppHandle) {
     thread::spawn(move || watch(&app, &shared, status));
 }
 
-/// Looks at the battery and the hold programs once a minute while a level is chosen (AWK-006).
 fn watch(app: &AppHandle, shared: &StayAwake, mut shown: Status) {
     loop {
         thread::sleep(WATCH);
@@ -106,7 +96,6 @@ fn watch(app: &AppHandle, shared: &StayAwake, mut shown: Status) {
     }
 }
 
-/// Shows `status` in the tray and sends it to the main web view.
 fn publish(app: &AppHandle, status: Status) {
     tray::show(app, status);
     if app
@@ -117,7 +106,6 @@ fn publish(app: &AppHandle, status: Status) {
     }
 }
 
-/// Runs one change of the control off the async threads, then shows the new state.
 async fn change(
     app: AppHandle,
     job: impl FnOnce(&StayAwake) -> Result<Status, ControlError> + Send + 'static,
@@ -144,8 +132,7 @@ async fn change(
     }
 }
 
-/// One administrator step. The lock on the control is not held while the dialog is open, so
-/// the tray, the watch and the release at exit do not wait for the operator.
+/// The lock is not held while the dialog is open, so the tray, the watch and the release at exit do not wait for the operator.
 fn administrator_step(shared: &StayAwake, step: Step) -> Result<Status, ControlError> {
     let Some(ask) = shared.control().begin(step, Instant::now())? else {
         return Ok(shared.control().refresh());
@@ -177,7 +164,6 @@ fn from_main(label: &str) -> Result<(), StayAwakeError> {
     }
 }
 
-/// The state of the control now.
 #[tauri::command]
 pub async fn stay_awake_read(
     webview: Webview,
@@ -190,7 +176,6 @@ pub async fn stay_awake_read(
         .map_err(|_| StayAwakeError::Failed)
 }
 
-/// Chooses a level (AWK-001).
 #[tauri::command]
 pub async fn stay_awake_choose(
     webview: Webview,

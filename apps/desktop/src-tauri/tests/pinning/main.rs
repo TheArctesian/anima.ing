@@ -1,16 +1,5 @@
-//! R-069, WEB-008, OD-7: the macOS trust hook end to end, in a real `WKWebView` that the shell's
-//! own `open_tab` and `pin_tab` drive, against HTTPS sites on loopback with fresh self-signed
-//! certificates. It proves that an untrusted certificate is stopped and shown, that the pinned
-//! one loads, and that a mismatched one is cancelled, also after the view moves window.
-//!
-//! Not libtest (`harness = false`): Tauri's event loop must own the main thread, and libtest
-//! runs every test on a thread of its own. `cargo test -p anima-app` runs it with the rest;
-//! alone: `cargo test -p anima-app --test pinning`. It prints `PASS|FAIL <check> <detail>`
-//! and exits 0 only if every check passed. Every window stays hidden and the app takes the
-//! Accessory policy, so it neither shows nor takes the screen.
-//!
-//! The web view module is compiled in from the shell's source, so the proof runs the
-//! production code, not a copy.
+//! R-069, WEB-008, OD-7: the macOS trust hook end to end, in a real `WKWebView`.
+//! Not libtest (`harness = false`): Tauri's event loop must own the main thread.
 
 #[cfg(target_os = "macos")]
 mod freed;
@@ -18,10 +7,7 @@ mod freed;
 mod proof;
 #[cfg(target_os = "macos")]
 mod site;
-/// The shell's source folder: `web_view` and its folder load from there as in the shell.
-/// Cargo builds this target with `--cfg test` but no libtest, so the module's unit tests
-/// compile without their `#[test]` functions; with the commands the proof does not call,
-/// that code is unused here, and only here.
+/// The shell's own `web_view` source, so the proof runs the production code, not a copy.
 #[cfg(target_os = "macos")]
 #[path = "../../src"]
 #[expect(

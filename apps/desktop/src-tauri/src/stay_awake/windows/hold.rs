@@ -9,7 +9,7 @@ pub struct Hold {
 }
 impl Hold {
     pub fn alive(&mut self) -> bool {
-        // The hold has no child to exit: its request exists for this object's lifetime.
+        // No child to exit: the request lives as long as this object.
         self.request.active()
     }
 }

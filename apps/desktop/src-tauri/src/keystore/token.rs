@@ -4,22 +4,20 @@ use super::error::KeystoreError;
 
 pub(super) const RELEASE_SERVICE: &str = "ing.anima.desktop";
 
-/// Release builds use the shipped service name; debug builds use their own so a development
-/// build never reads or overwrites a released app's token.
+/// Debug builds use their own service so they never read or overwrite a released app's token.
 pub(crate) const SERVICE: &str = if cfg!(debug_assertions) {
     "ing.anima.desktop.dev"
 } else {
     RELEASE_SERVICE
 };
 
-/// This computer's builder token, apart from the operator's access token (BLD-022, BLD-023).
+/// Kept apart from the operator's access token (BLD-022, BLD-023).
 pub(super) const BUILDER_SERVICE: &str = if cfg!(debug_assertions) {
     "ing.anima.desktop.dev.builder"
 } else {
     "ing.anima.desktop.builder"
 };
 
-/// Which hub token an entry holds. Both are kept per hub origin.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
     /// The operator's access token (CLI-003).
@@ -38,16 +36,13 @@ impl TokenKind {
 }
 
 const SCHEME: &str = "https://";
-/// Plain `http` is allowed only for this computer (CLI-002), as in `parseHubAddress`.
-/// No `[::1]`: the CSP cannot name an IPv6 literal, so the client never saves one.
-/// Desktop loopback hubs are `127.0.0.1` only (S6 F-1, F-10): `localhost` can resolve to an
-/// address that the loopback owner check does not cover.
+/// Plain `http` is allowed only for `127.0.0.1` (CLI-002, S6 F-1, F-10): `localhost` can resolve
+/// outside the loopback owner check.
+/// No `[::1]`: the CSP cannot name an IPv6 literal.
 const LOOPBACK_SCHEMES: [&str; 1] = ["http://127.0.0.1"];
 
-/// Input check only, no URL resolution (REPO-003): `https://` (or `http://` for a loopback host) then a lowercase host (letters,
-/// digits, `.`, `-`, `_`, IPv6 brackets) with an optional port, as `parseHubAddress` produces.
-/// Anything with a path, query, whitespace, uppercase or trailing slash is not the canonical
-/// origin the client sends.
+/// Input check only, no URL resolution (REPO-003): only the canonical origin that `parseHubAddress`
+/// produces passes.
 fn is_canonical_origin(origin: &str) -> bool {
     let after_scheme = origin.strip_prefix(SCHEME).or_else(|| {
         LOOPBACK_SCHEMES.iter().find_map(|prefix| {
@@ -63,7 +58,6 @@ fn is_canonical_origin(origin: &str) -> bool {
     })
 }
 
-/// Empty, or `:` and a port of one to five digits: what follows a loopback host.
 fn is_port_or_nothing(rest: &str) -> bool {
     rest.is_empty()
         || rest.strip_prefix(':').is_some_and(|port| {
@@ -71,8 +65,7 @@ fn is_port_or_nothing(rest: &str) -> bool {
         })
 }
 
-/// The entry for one hub. The account is the hub origin, so a token is only ever read back for
-/// the hub that issued it.
+/// The account is the hub origin, so a token is only read back for the hub that issued it.
 fn entry_for(kind: TokenKind, origin: &str) -> Result<Entry, KeystoreError> {
     if !is_canonical_origin(origin) {
         return Err(KeystoreError::BadOrigin);
@@ -80,7 +73,6 @@ fn entry_for(kind: TokenKind, origin: &str) -> Result<Entry, KeystoreError> {
     Entry::new(kind.service(), origin).map_err(KeystoreError::from)
 }
 
-/// Reads the token of `kind` stored for `origin`. A missing entry is `None`.
 pub fn read_token(kind: TokenKind, origin: &str) -> Result<Option<String>, KeystoreError> {
     match entry_for(kind, origin)?.get_password() {
         Ok(token) => Ok(Some(token)),
@@ -89,7 +81,6 @@ pub fn read_token(kind: TokenKind, origin: &str) -> Result<Option<String>, Keyst
     }
 }
 
-/// Stores the token of `kind` for `origin`, replacing any earlier one. An empty token is refused.
 pub fn write_token(kind: TokenKind, origin: &str, token: &str) -> Result<(), KeystoreError> {
     let entry = entry_for(kind, origin)?;
     if token.is_empty() {
@@ -98,7 +89,6 @@ pub fn write_token(kind: TokenKind, origin: &str, token: &str) -> Result<(), Key
     entry.set_password(token).map_err(KeystoreError::from)
 }
 
-/// Removes the token of `kind` stored for `origin`. A missing entry is already cleared.
 pub fn clear_token(kind: TokenKind, origin: &str) -> Result<(), KeystoreError> {
     match entry_for(kind, origin)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),

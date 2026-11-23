@@ -1,10 +1,7 @@
-//! The job fields the hub sends, read before any process starts (BLD-027, BLD-041, BLD-043). They
-//! come from the web view, so each is parsed into a type that can only hold a safe value: it
-//! becomes a process argument and a path part.
+//! Job fields come from the web view and become process arguments and path parts, so each parses into a safe type (BLD-027, BLD-041, BLD-043).
 
 use super::error::BuilderError;
 
-/// A commit hash: 40 lower-case hex digits, as the hub stores it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Commit(String);
 
@@ -23,8 +20,7 @@ impl Commit {
     }
 }
 
-/// A release version, `MAJOR.MINOR.PATCH`, each part 1 to 9 digits with no leading zero: the
-/// same rule as the hub's (BLD-002), so the text is also a valid semver and a safe file name part.
+/// The same rule as the hub's (BLD-002), so the text is also a valid semver and a safe file name part.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Version(String);
 
@@ -65,7 +61,6 @@ impl Target {
         }
     }
 
-    /// Whether this computer can build the target: Linux on `x86_64`, or macOS on `aarch64`.
     pub fn buildable_on(self, os: &str, arch: &str) -> bool {
         match self {
             Self::LinuxX86_64 => os == "linux" && arch == "x86_64",
@@ -83,7 +78,6 @@ impl Target {
         }
     }
 
-    /// The target this computer can build, if any.
     pub fn here() -> Result<Self, BuilderError> {
         [
             Self::LinuxX86_64,
