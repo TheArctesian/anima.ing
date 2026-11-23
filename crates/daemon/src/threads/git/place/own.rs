@@ -263,13 +263,15 @@ fn large_files(common: &Dir, own: &Path) -> std::io::Result<()> {
                 let Some((into, name)) = common.above(&at, Make::Missing)? else {
                     continue;
                 };
-                match into.new_file(name, false) {
-                    Ok(mut written) => {
-                        std::io::copy(&mut std::fs::File::open(path)?, &mut written)?
-                    }
-                    Err(there) if there.kind() == std::io::ErrorKind::AlreadyExists => 0,
-                    Err(failed) => return Err(failed),
+                // A content with its whole length is there already. A shorter one is what
+                // a copy that was stopped left: it is written again.
+                let whole = match into.file(name)? {
+                    Some(there) => there.metadata()?.len() == entry.metadata()?.len(),
+                    None => false,
                 };
+                if !whole {
+                    placed(&into, name, &path)?;
+                }
             }
         }
     }

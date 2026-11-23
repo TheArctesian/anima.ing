@@ -11,7 +11,7 @@ use super::place::{Worktree, own, shared};
 use super::run::{Git, GitError, Run};
 mod staged;
 
-use staged::{Lists, Staging, fitted};
+use staged::{Lists, Staged, Staging, fitted};
 
 /// Who a checkpoint commit says it is from: never the person.
 const WHO: [(&str, &str); 4] = [
@@ -102,15 +102,26 @@ pub async fn tree_now(
         inner: &inner,
     };
     let staged = fitted(git, worktree, (&held.0, &lists), left).await?;
-    if !staged.is_empty() {
-        // Large files take long to pack; a `git` that is ended in the middle helps nobody.
-        let add = Run::new(&held.0, ADD)
-            .with_env("GIT_WORK_TREE", &held.0)
-            .with_time(shared::LONG);
-        git.output(add.with_input(staged)).await?;
-    }
+    index_of(git, &held.0, staged).await?;
     drop(held);
     git.text(Run::new(dir, ["write-tree"])).await
+}
+
+/// Puts what was copied into `staging` in the index of the runner: the files that are gone
+/// leave it first, then the copies come in.
+async fn index_of(git: &Git, staging: &std::path::Path, staged: Staged) -> Result<(), GitError> {
+    if !staged.gone.is_empty() {
+        let gone = Run::new(staging, GONE).with_env("GIT_WORK_TREE", staging);
+        git.output(gone.with_input(staged.gone)).await?;
+    }
+    if !staged.there.is_empty() {
+        // Large files take long to pack; a `git` that is ended in the middle helps nobody.
+        let add = Run::new(staging, ADD)
+            .with_env("GIT_WORK_TREE", staging)
+            .with_time(shared::LONG);
+        git.output(add.with_input(staged.there)).await?;
+    }
+    Ok(())
 }
 
 /// Lists the files of the last commit that differ in the worktree or are gone.
@@ -140,6 +151,10 @@ const ADD: [&str; 6] = [
     "--pathspec-from-file=-",
     "--pathspec-file-nul",
 ];
+
+/// Takes the named files out of the index, with no look at the folder: the name of a file
+/// that is gone can be below a folder that is now a link or a file.
+const GONE: [&str; 4] = ["update-index", "-z", "--force-remove", "--stdin"];
 
 /// Makes a commit of the files of the worktree as they are now, with no ref and no change of
 /// the branch, and gives its ID. Its parent is the last commit of the branch.
@@ -199,7 +214,9 @@ async fn nested(git: &Git, list: Run<'_>) -> Result<Vec<String>, GitError> {
         .filter(|paths| paths.len() <= MOST_NESTED)
         .ok_or_else(|| GitError::Failed {
             code: None,
-            said: "the worktree has a nested repository that cannot be left out".to_owned(),
+            said: "the worktree has a nested repository that cannot be left out (its name is \
+                   not text, or there are too many); delete or move it"
+                .to_owned(),
         })
 }
 

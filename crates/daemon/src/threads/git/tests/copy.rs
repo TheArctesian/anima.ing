@@ -46,6 +46,7 @@ pub(super) fn as_the_person(hooks: Option<Arc<AtomicUsize>>) -> AsThread {
 mod budget;
 mod removal;
 mod review;
+mod staged;
 
 impl Bench {
     /// An engine on the records of the bench with the launcher `as_thread`, or with none.

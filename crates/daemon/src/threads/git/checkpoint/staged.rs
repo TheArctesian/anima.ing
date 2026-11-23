@@ -19,7 +19,7 @@ pub(super) async fn fitted(
     worktree: &Worktree,
     (staging, lists): (&Path, &Lists<'_>),
     mut left: u64,
-) -> Result<Vec<u8>, GitError> {
+) -> Result<Staged, GitError> {
     let dir = worktree.folder();
     let mut staged = copied(dir, staging, lists, &mut left);
     if matches!(&staged, Err(full) if full.kind() == std::io::ErrorKind::FileTooLarge) {
@@ -38,8 +38,39 @@ pub(super) async fn fitted(
                 failed.to_string()
             },
         },
+        // These words name the file or the folder and what the person can do.
+        std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::InvalidData => {
+            GitError::Failed {
+                code: None,
+                said: failed.to_string(),
+            }
+        }
         _ => GitError::Files(failed),
     })
+}
+
+/// The names to stage for one snapshot, each with a zero byte after it.
+#[derive(Default)]
+pub(super) struct Staged {
+    /// The files that have a copy.
+    pub(super) there: Vec<u8>,
+    /// The files of the last commit that are gone. They are staged apart and first: `git add`
+    /// refuses the name of a file below a folder that is now a link.
+    pub(super) gone: Vec<u8>,
+}
+
+/// The error of a file that the runner cannot read, with its name and what to do.
+fn unreadable(path: &Path, failed: std::io::Error) -> std::io::Error {
+    if failed.kind() != std::io::ErrorKind::PermissionDenied {
+        return failed;
+    }
+    std::io::Error::new(
+        failed.kind(),
+        format!(
+            "the file {} of the worktree cannot be read; make it readable or delete it",
+            path.display()
+        ),
+    )
 }
 
 /// What `git` listed for one snapshot.
@@ -67,7 +98,7 @@ fn copied(
     staging: &Path,
     lists: &Lists<'_>,
     left: &mut u64,
-) -> std::io::Result<Vec<u8>> {
+) -> std::io::Result<Staged> {
     let _ = std::fs::remove_dir_all(staging);
     place::private_folder(staging)?;
     let root = files::Root::open(dir)?;
@@ -82,7 +113,7 @@ fn copied(
         let of_a_copy = name.starts_with(shared::pack::PREFIX.as_bytes());
         !name.is_empty() && !name.ends_with(b"/") && !of_a_copy && !lists.nested.iter().any(below)
     };
-    let mut staged = Vec::new();
+    let mut staged = Staged::default();
     let mut taken = std::collections::HashSet::new();
     for (list, tracked, stage) in [
         (lists.changed, true, true),
@@ -95,17 +126,26 @@ fn copied(
             if !files::inside(&path) || !taken.insert(name) {
                 continue;
             }
-            let there = root.take(&path, &into, left)?;
-            if stage && (there || tracked) {
-                staged.extend_from_slice(name);
-                staged.push(0);
-            }
+            let there = root
+                .take(&path, &into, left)
+                .map_err(|failed| unreadable(&path, failed))?;
+            let names = match (stage, there, tracked) {
+                (true, true, _) => &mut staged.there,
+                (true, false, true) => &mut staged.gone,
+                _ => continue,
+            };
+            names.extend_from_slice(name);
+            names.push(0);
         }
     }
     for (file, kept_at) in lists.inner {
-        if root.take_to(file, (&into, kept_at), left)? {
-            staged.extend_from_slice(kept_at.as_os_str().as_encoded_bytes());
-            staged.push(0);
+        let there = root
+            .take_to(file, (&into, kept_at), left)
+            .map_err(|failed| unreadable(file, failed))?;
+        if there {
+            let name = kept_at.as_os_str().as_encoded_bytes();
+            staged.there.extend_from_slice(name);
+            staged.there.push(0);
         }
     }
     Ok(staged)
@@ -150,7 +190,9 @@ pub(super) async fn inner_files(
     if folders.len() > MOST_INNER {
         return Err(GitError::Failed {
             code: None,
-            said: "the worktree holds too many repositories of its own to save them".to_owned(),
+            said: "the worktree holds too many repositories of its own to save them; delete or \
+                   move some of those folders, then remove the worktree again"
+                .to_owned(),
         });
     }
     let root = files::Root::open(dir).map_err(GitError::Files)?;
@@ -166,7 +208,7 @@ pub(super) async fn inner_files(
         let list = Run::new(&at, NEW_FILES)
             .with_env("GIT_WORK_TREE", &at)
             .with_env("GIT_INDEX_FILE", &none);
-        let listed = git.output(list).await?;
+        let listed = git.output(list).await.map_err(|_| unlisted(&folder))?;
         for name in listed
             .split(|byte| *byte == 0)
             .filter(|name| !name.is_empty())
@@ -189,6 +231,18 @@ pub(super) async fn inner_files(
         }
     }
     Ok(found)
+}
+
+/// The refusal for a repository inside the worktree whose files `git` cannot list.
+fn unlisted(folder: &Path) -> GitError {
+    GitError::Failed {
+        code: None,
+        said: format!(
+            "the files of the repository in the folder {} of the worktree cannot be listed; \
+             delete or move that folder, then remove the worktree again",
+            folder.display()
+        ),
+    }
 }
 
 /// Lists the files of a work folder that are in no index and that git does not ignore.

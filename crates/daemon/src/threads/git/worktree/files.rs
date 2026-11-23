@@ -60,7 +60,8 @@ fn listed(folder: &Dir, at: &Path, left: usize, found: &mut Vec<PathBuf>) -> std
     let too_many = || {
         std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "a folder of a repository in the worktree holds too much to save",
+            "a folder of a repository in the worktree holds too much to save; delete or move \
+             that folder, then remove the worktree again",
         )
     };
     for name in folder.names()? {
@@ -110,7 +111,12 @@ impl Root {
     /// The error of the system when the copy cannot be written, or the file is larger than
     /// `left`.
     pub fn take(&self, path: &Path, into: &Dir, left: &mut u64) -> std::io::Result<bool> {
-        self.take_to(path, (into, path), left)
+        match self.take_to(path, (into, path), left) {
+            // Two names of the worktree that differ only in the case of a letter are one
+            // name on a disk that does not tell them apart: the copy is there.
+            Err(there) if there.kind() == std::io::ErrorKind::AlreadyExists => Ok(true),
+            taken => taken,
+        }
     }
 
     /// As [`Root::take`], with the place of the copy named: the path `at` below `into`, the
@@ -277,6 +283,9 @@ mod tests {
         let into = Dir::open(&own).expect("the folder of the runner");
         let take = |path: &str| root.take(Path::new(path), &into, &mut { u64::MAX });
         assert!(take("plain.txt").expect("a copy"));
+        // A second name for the same file (a disk that does not tell `A` from `a`) is no
+        // failure: the copy is there.
+        assert!(take("plain.txt").expect("the copy that is there"));
         assert!(take("link").expect("a copy"));
         assert!(own.join("link").is_symlink(), "the link was followed");
         // `dir` is a link: nothing below it is a file of the worktree.
