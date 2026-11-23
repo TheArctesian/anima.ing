@@ -3,8 +3,6 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import OpenPortRows from './OpenPortRows.svelte';
 
-// The switches in Settings, with the shell call in place of the link program.
-
 const mocks = vi.hoisted(() => ({ linkPorts: vi.fn() }));
 vi.mock('$lib/desktop/link/shell', async (original) => ({
   ...(await original<typeof import('$lib/desktop/link/shell')>()),

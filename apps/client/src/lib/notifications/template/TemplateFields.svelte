@@ -6,7 +6,6 @@
   interface Props {
     template: NotificationTemplateInput;
     problems: TemplateProblems;
-    /** The hub's placeholders (D-21), named in the hint. */
     placeholders: readonly string[];
     disabled?: boolean;
   }

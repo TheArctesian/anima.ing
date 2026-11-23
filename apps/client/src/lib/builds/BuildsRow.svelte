@@ -38,7 +38,6 @@
 
 <!-- A hub that cannot publish a release has no builders to show (PRO-038). -->
 {#if publishing.on}
-  <!-- Rows of the Updates card, like the version and Logs rows above: name and hint at the start, control at the end (SET-001). -->
   <SettingRow label="Build releases on this computer" for="builder-toggle">
     {#snippet hint()}
       <!-- Each line keeps its height while it is empty, so the controls below do not move when it fills (MOT-007). -->
@@ -89,7 +88,6 @@
 {/if}
 
 <style>
-  /* The one line a row of the card keeps for a list that may be empty (MOT-007). */
   .note {
     box-sizing: border-box;
     min-block-size: calc(var(--text-sm) * var(--leading-tight) + 2 * var(--space-3) + var(--border-thin));

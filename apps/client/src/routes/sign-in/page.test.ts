@@ -42,7 +42,6 @@ function open(answers: Parameters<typeof fakeHub>[0]): HTMLElement {
   return target;
 }
 
-/** Both steps: the user name and password, then the code pasted into the first box ('' skips the code). */
 async function signInWith(target: HTMLElement, code = '123456'): Promise<void> {
   await continueWith(target, 'ann', PASSWORD);
   if (code === '') {
@@ -288,7 +287,7 @@ describe('in a browser', () => {
   it('D-3: the boxes and links stay off while the new page loads, so a second submit sends nothing', async () => {
     const target = open({ SignInBrowser: SIGNED_IN });
     await signInWith(target);
-    // Off but focusable: the focused box keeps focus, so it does not drop to the page (NAV-005).
+    // Off but focusable, so the focused box keeps focus (NAV-005).
     expect(boxes(target).every((box) => box.readOnly && box.getAttribute('aria-disabled') === 'true')).toBe(true);
     expect(target.querySelector('.links button:disabled')).not.toBeNull();
     await pasteInto(target, 0, '654321');

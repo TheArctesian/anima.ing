@@ -20,7 +20,6 @@ function made(change: Partial<CommandInput> = {}): InstallCommand {
   return result.command;
 }
 
-/** The command with every single-quoted span removed: what the shell reads as syntax. */
 function outsideQuotes(text: string): string {
   return text.replace(/'(?:[^']|'\\'')*'/g, '');
 }
@@ -32,7 +31,6 @@ describe('installCommand with a release (MET-019, D-10 b)', () => {
     expect(text).toContain(`'https://releases.anima.ing/daemon/v1.2.3/anima-daemon-${target}'`);
     expect(text).toContain(`'${SHA[target]}'`);
     expect(text).toContain(`| ${verify} && `);
-    // The check sits between the download and the install, joined by && so a failure ends the chain.
     expect(text.indexOf('curl')).toBeLessThan(text.indexOf(verify));
     expect(text.indexOf(verify)).toBeLessThan(text.indexOf('install -m 0755'));
     expect(text.indexOf('install -m 0755')).toBeLessThan(text.indexOf(' enrol '));

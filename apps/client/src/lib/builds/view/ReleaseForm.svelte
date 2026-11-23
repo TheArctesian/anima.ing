@@ -8,7 +8,6 @@
   import { TARGETS } from './release';
 
   interface Props {
-    /** The version the hub proposes, or `null` before the first release. */
     proposed: string | null;
     /** Asks the hub for the release; the answer is its refusal, or `null` when the release started (BLD-001, BLD-002). */
     onrelease: (version: string, commit: string, targets: readonly BuildTarget[]) => Promise<HubError | null>;
@@ -25,7 +24,6 @@
   let refusal = $state('');
   let busy = $state(false);
 
-  // The proposal fills the field until the operator types in it.
   $effect(() => {
     if (proposed !== null && !edited) version = proposed;
   });

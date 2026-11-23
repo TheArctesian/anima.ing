@@ -1,12 +1,7 @@
-/**
- * The chats of the timeline kit page (stage 3 of the T3 Code copy): each state of the timeline once, with made-up
- * entries, for the gallery. The time is fixed so the pictures do not change.
- */
-
 import type { LiveEntry, OpenAsk } from '$lib/agent-threads/live/timeline';
 import type { ToolCall, ToolKind } from '$lib/agent-threads/thread';
 
-/** The time now of every scene: 09:01:12 on the day of the copy. */
+/** Fixed, so the gallery pictures do not change. */
 export const NOW = new Date(Date.UTC(2026, 10, 21, 9, 1, 12));
 
 const at = (seconds: number): Date => new Date(Date.UTC(2026, 10, 21, 9, 0, seconds));

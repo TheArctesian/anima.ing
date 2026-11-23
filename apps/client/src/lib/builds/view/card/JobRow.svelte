@@ -10,12 +10,11 @@
 
   interface Props {
     job: JobView;
-    /** The release the job belongs to, as its controls name it: "0.1.1", or "0.1.1, attempt 2". */
+    /** The release as its controls name it: "0.1.1, attempt 2". */
     version: string;
     builders: readonly Builder[] | null;
     now: Date;
     selected: boolean;
-    /** The hub's refusal of the last cancel of this job. */
     problem?: string | undefined;
     onselect: () => void;
     oncancel: () => void;
@@ -100,7 +99,6 @@
     font-family: var(--font-mono);
   }
 
-  /* Room for two facts side by side; on a narrow window they drop under the target together. */
   .facts {
     display: inline-flex;
     flex: 1 1 calc(var(--space-16) * 3);

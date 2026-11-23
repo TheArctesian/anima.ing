@@ -7,7 +7,6 @@
 
   interface Props {
     webhook: ChannelDraft['webhook'];
-    /** `null` for a new channel. */
     stored: Stored | null;
     problemOf: (field: DraftField) => string;
   }
@@ -104,7 +103,6 @@
     outline-offset: var(--border-focus);
   }
 
-  /* Name and value side by side where there is room, under each other on a phone. */
   .row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(calc(var(--space-16) * 2), 1fr));

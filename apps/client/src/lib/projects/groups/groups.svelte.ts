@@ -1,6 +1,6 @@
 import { created, deleted, nameProblem, put, renamed, storeClusters, storedClusters, type Clusters, type Group } from './clusters';
 
-/** The groups of the Projects screen with their changes, each kept in the storage of this computer at once (PRO-059). */
+/** Each change is kept in the storage of this computer at once (PRO-059). */
 export class ProjectGroups {
   #clusters = $state.raw<Clusters>({ groups: [], of: {} });
   readonly groups = $derived(this.#clusters.groups.toSorted((a, b) => a.name.localeCompare(b.name)));
@@ -12,7 +12,6 @@ export class ProjectGroups {
     this.#clusters = storedClusters(storage);
   }
 
-  /** The group of the project, if it is in one. */
   of(projectId: string): Group | undefined {
     const id = this.#clusters.of[projectId];
     return id === undefined ? undefined : this.#clusters.groups.find((group) => group.id === id);
@@ -22,7 +21,7 @@ export class ProjectGroups {
     return Object.keys(this.#clusters.of).filter((project) => this.#clusters.of[project] === id);
   }
 
-  /** Makes the group with the projects; the reason when the name cannot be used, else null (PRO-060). */
+  /** The reason when the name cannot be used, else null (PRO-060). */
   create(name: string, projectIds: readonly string[]): string | null {
     return this.#change(nameProblem(this.#clusters, name), () => created(this.#clusters, this.newId(), name, projectIds));
   }
@@ -31,7 +30,7 @@ export class ProjectGroups {
     return this.#change(nameProblem(this.#clusters, name, id), () => renamed(this.#clusters, id, name));
   }
 
-  /** Puts the projects in the group, or in none with null (PRO-060, PRO-063). */
+  /** `null` puts the projects in no group (PRO-060, PRO-063). */
   put(projectIds: readonly string[], groupId: string | null): void {
     this.#change(null, () => put(this.#clusters, projectIds, groupId));
   }

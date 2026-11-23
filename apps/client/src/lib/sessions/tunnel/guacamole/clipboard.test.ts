@@ -51,7 +51,6 @@ describe('receiveClipboard (D-9)', () => {
 });
 
 describe('receiveClipboard streams and the limit (D-9)', () => {
-  /** A stream on a fresh client, and the texts it delivered. */
   function opened() {
     const { client, typed } = fakeClient();
     const heard: string[] = [];

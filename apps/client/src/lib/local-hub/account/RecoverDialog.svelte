@@ -19,8 +19,7 @@
   }
 </script>
 
-<!-- The same steps as the first run (FRN-004). When the hub saves, the shell asks the person at this computer in a
-     native dialog, which script cannot answer (F-9). -->
+<!-- On save, the shell asks the person at this computer in a native dialog that script cannot answer (F-9). -->
 <Modal open title="Recover account" preset="md" closeOnScrim={false} onClose={onclose}>
   {#if chosen === null}
     <AccountStep heading="New name and password" onnext={(account) => (chosen = account)} />

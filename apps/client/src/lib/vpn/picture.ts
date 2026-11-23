@@ -1,10 +1,9 @@
-// How the VPN picture reads: path and key words, key tone and the order of the nodes (VPN-009 to VPN-011, UI-003).
+// VPN-009 to VPN-011, UI-003.
 import type { KeyState, SiteRouteState, VpnPath } from '$lib/hub/generated/graphql';
 import type { BrokerState, VpnNode } from './api';
 
 const DAY_MS = 86_400_000;
 
-/** How the hub reaches a node; the DERP region names a relayed path. */
 export function pathLabel(path: VpnPath, region: string | null): string {
   switch (path) {
     case 'DIRECT':
@@ -18,7 +17,6 @@ export function pathLabel(path: VpnPath, region: string | null): string {
   }
 }
 
-/** Whether the site's subnet router is carrying its traffic. */
 export function stateLabel(state: SiteRouteState): string {
   switch (state) {
     case 'SERVING':
@@ -37,7 +35,6 @@ function dateText(iso: string, locale?: string): string {
   return Number.isNaN(at.getTime()) ? 'an unknown date' : new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(at);
 }
 
-/** The key's expiry in words, relative to `now`. */
 export function keyText(node: Pick<VpnNode, 'keyState' | 'keyExpiry'>, now: Date, locale?: string): string {
   const { keyState, keyExpiry } = node;
   if (keyState === 'NEVER' || keyExpiry === null) return keyState === 'NEVER' ? 'Does not expire' : 'Expiry not known';
@@ -56,7 +53,7 @@ export function keyText(node: Pick<VpnNode, 'keyState' | 'keyExpiry'>, now: Date
   }
 }
 
-/** The status tone of a key; a word always sits beside it (UI-003). */
+/** A word always sits beside the tone (UI-003). */
 export function keyTone(state: KeyState): 'up' | 'warning' | 'down' {
   switch (state) {
     case 'NEVER':
@@ -70,20 +67,18 @@ export function keyTone(state: KeyState): 'up' | 'warning' | 'down' {
   }
 }
 
-/** An untagged operator computer whose key is expiring or expired: the broker can renew it (BD-17). */
+/** The broker can renew it (BD-17). */
 export function renewable(node: Pick<VpnNode, 'role' | 'tags' | 'keyState'>): boolean {
   return node.role === 'CLIENT' && node.tags.length === 0 && (node.keyState === 'EXPIRING' || node.keyState === 'EXPIRED');
 }
 
 const needsAttention = (state: KeyState): boolean => state !== 'NEVER' && state !== 'VALID';
 
-/** Nodes not in Anima.ing first, then those whose key needs attention, then by name. */
 export function sortedNodes(nodes: readonly VpnNode[]): readonly VpnNode[] {
   const rank = (node: VpnNode): number => (node.inAnima ? 2 : 0) + (needsAttention(node.keyState) ? 0 : 1);
   return [...nodes].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
 }
 
-/** How long ago the hub read its VPN status. */
 export function readAgo(readAt: string, now: Date): string {
   const seconds = Math.max(0, Math.floor((now.getTime() - Date.parse(readAt)) / 1000));
   if (Number.isNaN(seconds)) return 'Read at an unknown time';
@@ -95,7 +90,7 @@ export function readAgo(readAt: string, now: Date): string {
   return `Read ${plural(Math.round(hours / 24), 'day')} ago`;
 }
 
-/** Why the actions that need the broker are off; `null` when the broker is ready (VP-7). */
+/** Why the actions that need the broker are off (VP-7). */
 export function brokerReason(state: BrokerState): string | null {
   switch (state) {
     case 'READY':

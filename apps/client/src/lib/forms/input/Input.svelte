@@ -4,14 +4,14 @@
   import type { IconName } from '$lib/icons/icons';
 
   interface Props extends Omit<HTMLInputAttributes, 'class' | 'size' | 'children'> {
-    /** Height: `control-md` (default) or `control-lg` (sign-in). It matches the buttons and selects beside it (UI-013). */
+    /** `lg` is for sign-in; the height matches the buttons and selects beside it (UI-013). */
     size?: 'md' | 'lg';
-    /** Machine text: an address, a port, a key, a command. The monospace font, ligatures off (UI-011). */
+    /** Machine text: monospace, ligatures off (UI-011). */
     mono?: boolean;
-    /** The value failed validation: a danger edge and `aria-invalid`. Say why in a Field's error line, not here. */
+    /** Say why in a Field's error line, not here. */
     invalid?: boolean;
     value?: string | number | null;
-    /** An icon inside the field's start, for a search or filter field (UR-7). The field still needs its label. */
+    /** UR-7. The field still needs its label. */
     icon?: IconName | undefined;
   }
 
@@ -80,7 +80,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* A placeholder is an example, not a value: lighter and slanted, so the two never look alike (finding 23). */
+  /* A placeholder is an example, not a value: lighter and slanted, so the two never look alike. */
   input::placeholder {
     color: var(--text-tertiary);
     font-style: italic;

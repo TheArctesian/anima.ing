@@ -5,16 +5,13 @@
   interface Props {
     /** Why the page is not shown: fixed text, never text from the hub or the page (R-035, LOG-007). */
     reason: string;
-    /** The shell's short code, shown for a report; absent for a Down device. */
     code?: string;
-    /** Absent when reloading cannot help: the interface itself cannot be opened. */
     onreload?: () => void;
   }
 
   const { reason, code, onreload }: Props = $props();
 </script>
 
-<!-- WEB-010: the reason and a Reload button, as EndedPanel. -->
 <section class="down" role="status" tabindex="-1">
   <p class="reason">
     <Icon name="carbon:unlink" />

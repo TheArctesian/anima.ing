@@ -7,11 +7,8 @@
   import { followers, moved } from './live-notice';
 
   interface Props {
-    /** Why live updates stopped, or null while they run. */
     message: string | null;
-    /** What stopped: "updates" for a device screen, "logs" for the log panel. */
     subject?: 'updates' | 'logs';
-    /** Where the space to its neighbours is: above it, below it, or padding inside it (the log panel's rows). */
     gap?: 'start' | 'end' | 'padded';
     preference?: MotionPreference;
   }
@@ -20,7 +17,6 @@
 
   let root: HTMLElement | undefined = $state();
   let region: HTMLElement | undefined = $state();
-  /** The notice is in the document while it shows and while it fades out. */
   let present = $state(untrack(() => message !== null));
   let leaving = $state(false);
   /** The last text, kept while the notice fades out. */
@@ -29,12 +25,7 @@
 
   const fade = () => tweenMotion('base', 'enter', preference.reduced);
 
-  /**
-   * The leaving branch waits on a screen that clears its `liveError`; none does today, so only the tests reach it.
-   * Disclosure (5.7.3, NET-004): the notice fades and what lies below moves by FLIP on `spring-default`, so the list never
-   * steps by the notice's height in one frame. On leaving, the notice drops out of the layout at once and fades where it was,
-   * so the FLIP has no end snap. Under reduced motion the layout change is instant and the fade takes `duration-base`.
-   */
+  /** Disclosure (5.7.3, NET-004): the notice fades and what lies below moves by FLIP, so the list never steps by the notice's height. */
   async function change(next: string | null): Promise<void> {
     const showing = present && !leaving;
     if (next !== null) text = next;
@@ -42,7 +33,6 @@
       present = next !== null;
       return;
     }
-    // Nothing to show, already fading out, or already showing (the text is updated above).
     if (next === null ? !showing : showing) return;
     const first = measure(followers(root));
     if (next === null) {

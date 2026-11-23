@@ -90,18 +90,15 @@ function show(metrics: Shown, source: 'SSH' | 'NONE' | 'DAEMON' = 'SSH', range: 
   return { time, calls };
 }
 
-/** Text as read, without the icon glyphs (private-use code points), which are hidden from assistive technology. */
 const words = (node: Element | null | undefined) => (node?.textContent ?? '').replace(/\p{Co}/gu, '').replace(/\s+/g, ' ').trim();
-/** The words a button shows and says now: labels hidden from screen readers are the ones faded out. */
+/** Labels hidden from screen readers are the ones faded out. */
 const shown = (node: Element) => {
   const copy = node.cloneNode(true) as Element;
   for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
   return words(copy);
 };
 const button = (name: string) => [...document.querySelectorAll('button')].find((one) => shown(one) === name);
-/** A card by its heading, as a screen reader finds the region. */
 const card = (title: string) => [...document.querySelectorAll('section')].find((one) => words(one.querySelector('h2')) === title);
-/** A card's stat figures as label and value pairs. */
 const figures = (title: string) => [...(card(title)?.querySelectorAll('dt') ?? [])].map((term) => [words(term), words(term.nextElementSibling)]);
 
 it('D-10: the panel shows status, maintenance, uptime, check counts and the key, each in its card', () => {
@@ -122,7 +119,6 @@ it('D-10: Copy puts the fingerprint alone on the clipboard and says so', async (
     expect(words(card('SSH host key')?.querySelector('[role="status"]'))).toBe('Copied.');
   });
   expect(writeText).toHaveBeenCalledExactlyOnceWith('SHA256:abc');
-  // M-6: the button itself turns to a check and Copied.
   expect(button('Copied')).toBeDefined();
   vi.unstubAllGlobals();
 });
@@ -181,7 +177,7 @@ it('MET-011: an DAEMON device has metrics: the range control shows and "Metrics 
 it('MET-029: the Storage section follows Metrics with a row per drive; it is absent when metrics are off', () => {
   show({ ...LOADED, view: { ...LOADED.view, drives: POP_OS } as Shown['view'] });
   const headings = [...document.querySelectorAll('section h2')].map((one) => words(one));
-  // The cards beside the Overview follow the main column in the page (R-224).
+  // R-224
   expect(headings.slice(headings.indexOf('Metrics'), headings.indexOf('Metrics') + 2)).toEqual(['Metrics', 'Storage']);
   expect(words(card('Storage'))).toContain('Not mounted');
   if (app) void unmount(app);
@@ -203,7 +199,6 @@ it('MOT-007, 5.7.3 Loading: the skeleton draws as many cells as the last answer 
   time.advance(threshold.loading);
   flushSync();
   expect(document.querySelectorAll('.chart-grid > .cell').length).toBe(7);
-  // A chart with several series has a legend row, so its placeholder reserves it.
   expect(document.querySelectorAll('.chart-grid > .cell .legend').length).toBe(2);
 });
 

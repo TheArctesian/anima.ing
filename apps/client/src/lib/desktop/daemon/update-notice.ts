@@ -13,7 +13,7 @@ function stepWords(step: string): string {
   return describeDaemonProblem(step as DaemonShellProblem).replace(/\.$/, '');
 }
 
-/** One sentence or two for each notice; an older daemon after a failed update is said once. Null when there is nothing to say. */
+/** An older daemon after a failed update is said once; null when there is nothing to say. */
 export function noticeWords(notices: readonly DaemonNotice[]): string | null {
   const failed = notices.some((notice) => notice.kind === 'not_updated');
   const words = notices.flatMap((notice): string[] => {
@@ -37,7 +37,7 @@ function isNotice(value: unknown): value is DaemonNotice {
   return typeof value === 'object' && value !== null && 'kind' in value && ['updated', 'not_updated', 'older'].includes(String(value.kind));
 }
 
-/** The words of the update of the daemon for the page, once for an update; null outside the app or when the shell does not answer. */
+/** Once for each update; null outside the app or when the shell does not answer. */
 export async function daemonUpdateWords(): Promise<string | null> {
   if (!isTauri()) return null;
   try {

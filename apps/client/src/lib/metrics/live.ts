@@ -15,9 +15,8 @@ function seriesKey(kind: string, label: string, gpuIndex: number | null): string
 }
 
 /**
- * Add a live batch to the HOUR series (D-5). Each sample becomes a point at `added.at` on the series with the
- * same kind and label, or for a GPU the same kind and GPU index; a sample for an unknown series starts a new one. A sample not newer than the series'
- * last point is ignored; a batch with an unreadable time changes nothing, and a point with one, is dropped rather than trusted. Points older than `added.at` minus one hour drop off the left. The input is not changed.
+ * Adds a live batch to the HOUR series (D-5). A sample not newer than its series' last point is ignored, a batch with an
+ * unreadable time changes nothing, and points older than one hour drop off. The input is not changed.
  */
 export function mergeLive(series: readonly MetricSeries[], added: NewMetrics): readonly MetricSeries[] {
   const at = Date.parse(added.at);

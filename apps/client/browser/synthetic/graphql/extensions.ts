@@ -1,5 +1,4 @@
-// The extensions of the synthetic hub: one that can be set on, the fixed one, and some that are not built (EXT-001).
-// Nothing here is on but the fixed one, unless a screen sets more on, so the bar of the other screens is as it was.
+// Only the fixed extension is on unless a screen sets more on, so the bar of the other screens stays the same (EXT-001).
 
 interface ExtensionRow {
   readonly key: string;

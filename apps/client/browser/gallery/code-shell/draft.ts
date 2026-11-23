@@ -1,11 +1,8 @@
-/** The steps of the gallery that open a new thread (T3 Code's draft) and its pickers. */
 import { expect, type Locator, type Page } from '@playwright/test';
 import { HEIGHT } from '../shots';
 
-/** The card of the thread named `title` in the inbox. */
 export const card = (inbox: Locator, title: string): Locator => inbox.getByRole('button', { name: new RegExp(title) }).first();
 
-/** Opens a new thread from the open "Review the sign-in flow"; `picking` opens its project picker too. */
 export async function newThread(page: Page, inbox: Locator, picking: boolean): Promise<readonly Locator[]> {
   await card(inbox, 'Review the sign-in flow').click();
   await inbox.getByRole('button', { name: 'New thread' }).click();
@@ -20,7 +17,6 @@ export async function newThread(page: Page, inbox: Locator, picking: boolean): P
   return [];
 }
 
-/** Opens the draft's model picker; `program` opens that program's tab of the rail. */
 export async function openModels(page: Page, inbox: Locator, program: string | null, listed = true): Promise<readonly Locator[]> {
   await newThread(page, inbox, false);
   await page.getByRole('button', { name: /^Claude Code default/ }).click();
@@ -32,7 +28,6 @@ export async function openModels(page: Page, inbox: Locator, program: string | n
 }
 
 
-/** Opens the "Add project" palette from the draft's project picker; `browse` opens "Local folder" too. */
 export async function addProject(page: Page, inbox: Locator, browse: boolean): Promise<readonly Locator[]> {
   await newThread(page, inbox, true);
   await page.getByRole('option', { name: 'Add project' }).click();

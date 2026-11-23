@@ -9,7 +9,6 @@
   import { checkThresholds, thresholdsText, DEFAULT_DAYS } from './days';
 
   interface Props {
-    /** `null` while the hub has not answered: the form keeps its size and its controls wait. */
     settings: NotificationSettings | null;
     loadFailed: boolean;
     onRetry: () => Promise<void>;
@@ -29,7 +28,7 @@
   const waiting = $derived(settings === null);
   const placeholders = $derived(settings?.placeholders ?? D21_PLACEHOLDERS);
 
-  // The fields follow the hub's settings when they arrive or are saved; a refused save leaves what the operator typed.
+  // A refused save leaves what the operator typed.
   $effect(() => {
     if (settings === null) return;
     days = thresholdsText(settings.certificateDays);
@@ -57,7 +56,7 @@
     outcome = result.ok ? 'Saved.' : failureText(result.error, 'settings');
   }
 
-  /** Retry: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to the first field (NAV-005). */
+  /** On success, focus goes to the first field (NAV-005). */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;
@@ -128,7 +127,6 @@
       {/snippet}
     </SettingRow>
   </fieldset>
-  <!-- One row holds the outcome or, when the load failed, its message and retry, so the form keeps its height (MOT-007). -->
   <SettingRow>
     {#snippet label()}
       <div class="note">
@@ -158,7 +156,6 @@
     border: 0;
   }
 
-  /* The sub-heading is a row of its own, inset like the rows (SET-001). */
   h4 {
     margin: 0;
     padding: var(--space-3) var(--space-4);
@@ -168,7 +165,6 @@
     line-height: var(--leading-tight);
   }
 
-  /* Text controls are wider than a number's: they hold a sentence, and shrink with a narrow card. */
   .settings .wide {
     box-sizing: border-box;
     inline-size: calc(var(--space-8) * 8);

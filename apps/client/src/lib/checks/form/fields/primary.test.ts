@@ -4,7 +4,6 @@ import { expect, it } from 'vitest';
 
 const FILE = 'PressButton.svelte';
 
-/** The component's stylesheet as Svelte compiles it: declarations by selector, scoping classes removed. */
 function rules(): Map<string, Map<string, string>> {
   const source = readFileSync(new URL(FILE, import.meta.url), 'utf8');
   const code = (compile(source, { filename: FILE, css: 'external' }).css?.code ?? '').replaceAll(/\/\*[\s\S]*?\*\//g, '');

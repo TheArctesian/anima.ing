@@ -7,7 +7,6 @@ import {
 } from '$lib/desktop/command-line/shell';
 import { installTarget, refusalText } from './command-line';
 
-/** The shell calls the row makes; a test passes its own. */
 export interface CommandLineShell {
   readonly read: () => Promise<CommandLineResult>;
   readonly install: (folder: string) => Promise<CommandLineResult>;
@@ -20,13 +19,9 @@ export const desktopCommandLineShell: CommandLineShell = {
   remove: removeCommandLine,
 };
 
-/**
- * The "Command line tool" row (INS-006): the state the shell reports, Install after the operator confirms the exact path
- * the shell proposed, and Remove. One call at a time; each answer replaces the state.
- */
+/** The "Command line tool" row (INS-006): Install runs only after the operator confirms the exact path the shell proposed. */
 export class CommandLineTool {
   status = $state<CommandLineStatus | null>(null);
-  /** The path Install will write, while the operator is asked to confirm it. */
   confirming = $state<{ readonly folder: string; readonly path: string } | null>(null);
   busy = $state(false);
   problem = $state<string | null>(null);
@@ -56,7 +51,6 @@ export class CommandLineTool {
     return this.run(() => this.shell.read(), null);
   }
 
-  /** Shows the exact path Install will write and asks to confirm it. */
   askInstall(): void {
     this.problem = null;
     this.confirming = installTarget(this.status);

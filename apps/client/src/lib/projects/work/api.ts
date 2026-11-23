@@ -244,7 +244,7 @@ const DISPATCH = graphql(`
 
 export type RunChange = 'rerun' | 'rerunFailed' | 'cancel';
 
-/** The reads of the Work tab: pull requests, issues and runs, all open to a read key (PRJ-031, PRJ-032). */
+/** Every read is open to a read key (PRJ-031, PRJ-032). */
 function workReads(hub: Asker) {
   return {
     async pullRequests(repository: string, state: OpenOrClosed, ask: PageAsk = {}): Promise<HubResult<PullRequestPage>> {
@@ -260,7 +260,7 @@ function workReads(hub: Asker) {
   };
 }
 
-/** The changes; each names what the operator saw, so a moved head is refused (PRJ-028, PRJ-033, PRJ-034). */
+/** Each change names what the operator saw, so a moved head is refused (PRJ-028, PRJ-033, PRJ-034). */
 function workChanges(hub: Asker) {
   return {
     createIssue: (repository: string, title: string, body: string) =>
@@ -295,5 +295,5 @@ function workChanges(hub: Asker) {
   };
 }
 
-/** The hub's calls for the Work tab (PRJ-027, PRJ-028, PRJ-033, PRJ-034). */
+/** PRJ-027, PRJ-028, PRJ-033, PRJ-034. */
 export const workApi = (hub: Asker) => ({ ...workReads(hub), ...workChanges(hub) });

@@ -24,7 +24,6 @@ async function open(): Promise<HTMLElement> {
   return target;
 }
 
-/** Each choice: its title, its link (if it can be chosen) and its reason (if not). */
 function choices(target: HTMLElement) {
   return [...target.querySelectorAll('li')].map((item) => ({
     title: item.querySelector('strong')?.textContent,

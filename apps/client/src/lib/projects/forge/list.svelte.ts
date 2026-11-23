@@ -9,11 +9,7 @@ export function readWords(read: ForgeRead, now: Date): string {
   return read.stale ? `Stale, read ${age}` : `Read ${age}`;
 }
 
-/**
- * One list the hub reads from GitHub (PRJ-031, PRJ-032): its first page, more pages on request, Refresh that skips the
- * hub's cache and keeps the rows on screen meanwhile, and a row put back in place after a change. Rows are keyed, since
- * GitHub's pages can repeat a row when the list changes between pages.
- */
+/** Rows are keyed, since GitHub's pages can repeat a row when the list changes between pages (PRJ-031, PRJ-032). */
 export class ForgeList<T, P extends ForgePage<T> = ForgePage<T>> {
   status = $state<'loading' | 'ready' | 'failed'>('loading');
   rows = $state.raw<readonly T[]>([]);

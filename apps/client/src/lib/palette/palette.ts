@@ -14,7 +14,6 @@ function isPalette(text: string | null): text is Palette {
   return PALETTES.some((palette) => palette.id === text);
 }
 
-/** The palette the operator chose on this device; Graphite when nothing valid is stored or the storage refuses to be read. */
 export function storedPalette(storage: Storage): Palette {
   let text: string | null;
   try {
@@ -25,15 +24,12 @@ export function storedPalette(storage: Storage): Palette {
   return isPalette(text) ? text : DEFAULT_PALETTE;
 }
 
-/** Save the palette on this device; throws when the storage refuses (quota, privacy modes). */
+/** Throws when the storage refuses (quota, privacy modes). */
 export function storePalette(storage: Storage, palette: Palette): void {
   storage.setItem(STORAGE_KEY, palette);
 }
 
-/**
- * Mark the document with the palette; the generated `tokens.css` gives each `data-palette` its colours, so every
- * component follows without reading the choice (UI-032).
- */
+/** The generated `tokens.css` gives each `data-palette` its colours (UI-032). */
 export function applyPalette(root: HTMLElement, palette: Palette): void {
   root.dataset['palette'] = palette;
 }

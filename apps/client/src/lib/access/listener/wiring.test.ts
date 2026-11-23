@@ -8,8 +8,7 @@ import { route as current } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
 import { forgetListener, loopbackProblem } from './check';
 
-// The F-10 wiring of the desktop start: on this computer's hub address the root layout's hub and the start guard read
-// the key store only after the listener check. These tests fail when either is given `readAccessToken` directly.
+// F-10: on this computer's hub address the root layout's hub and the start guard read the key store only after the listener check.
 
 const mocks = vi.hoisted(() => ({
   goto: vi.fn(() => Promise.resolve()),

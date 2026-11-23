@@ -7,10 +7,6 @@ import { HEIGHT, MODES, storedSettings } from '../shots';
 import { installDesktopShell, type Scenario } from '../threads/desktop-shell';
 import { EVERY_STATE } from '../threads/scenario';
 
-// A Codex thread not started in Anima, from the page test's capture of a real session file (code mode: each tool one
-// `exec` of JavaScript), opened on the page Code: T3 Code's timeline, the work group and its commands open.
-// `GALLERY_CODE_SHELL=1`; pictures go to `gallery-shots/code-shell/<theme>-1440/21-stored-codex.png`.
-
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-shell/', import.meta.url));
 const CAPTURE = JSON.parse(readFileSync(new URL('../../../src/lib/code/chat/tests/codex-code-mode-thread.json', import.meta.url), 'utf8')) as Record<string, unknown>;
 const STORED: Scenario = {

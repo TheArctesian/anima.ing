@@ -19,16 +19,11 @@ export type HeaderDevice = Pick<
   readonly vnc: Pick<DeviceDetail['vnc'], 'enabled' | 'username'>;
 };
 
-/**
- * What the SSH action does (D-8, DEV-022, WP-14 H-1): start a session; open the connection test, because the hub
- * refuses a session without an accepted host key; or open Settings at SSH, because SSH is off.
- */
+/** SSH opens the connection test when the hub has no accepted host key, since the hub refuses a session then (DEV-022). */
 export type SshAction = 'connect' | 'test' | 'set-up';
 
-/** What a protocol action does: start a session, open the connection test, or open Settings at its section (DEV-022). */
 export type ProtocolMode = 'connect' | 'test' | 'set-up';
 
-/** The accessible name of a protocol action, and the Settings section it opens when it does not connect (DEV-022). */
 export function protocolButton(
   protocol: SessionProtocol,
   mode: ProtocolMode,
@@ -40,14 +35,10 @@ export function protocolButton(
 }
 
 export interface HeaderLine {
-  /** The IP address in the bar's meta, after the host; `null` when it is empty or the same as the host (D-8). */
   readonly ip: string | null;
-  /** The operating system's logo, the bar's mark before the name. */
   readonly osIcon: IconName;
   readonly ssh: SshAction;
-  /** RDP connects when on and opens Settings at RDP when off (DEV-022). */
   readonly rdp: 'connect' | 'set-up';
-  /** VNC is offered only when on (D-4). */
   readonly vnc: boolean;
   /** "Set up screen sharing" stands in for VNC on a macOS or Linux device with VNC off (R-079). */
   readonly screenSharing: boolean;
@@ -60,7 +51,6 @@ function sshAction(ssh: HeaderDevice['ssh']): SshAction {
   return ssh.hostKey == null ? 'test' : 'connect';
 }
 
-/** What the detail bar shows of a device besides its name and status (DEV-020, D-8, D16). */
 export function headerLine(device: HeaderDevice): HeaderLine {
   const ip = device.ip ?? '';
   return {
@@ -74,21 +64,14 @@ export function headerLine(device: HeaderDevice): HeaderLine {
   };
 }
 
-/** One protocol action of the connect split button. */
 export interface ProtocolAction {
   readonly protocol: SessionProtocol;
   readonly mode: ProtocolMode;
-  /** The accessible name: "SSH to nas", "Test the SSH connection", "Set up RDP". */
   readonly label: string;
-  /** The Settings section it opens; `null` when it starts a session. */
   readonly section: SettingsSection | null;
 }
 
-/**
- * The connect split button (D16, DEV-022): the first protocol that connects, in the order SSH, RDP, VNC, is the main
- * action, or SSH's test or set-up when none does. The menu holds the rest, the ones that connect first. `null` for
- * the hub's own device, which has no way in to offer (HMD-046).
- */
+/** The connect split button (D16, DEV-022); `null` for the hub's own device (HMD-046). */
 export function connectActions(line: HeaderLine, deviceName: string): { readonly main: ProtocolAction; readonly others: readonly ProtocolAction[] } | null {
   if (!line.waysIn) return null;
   const action = (protocol: SessionProtocol, mode: ProtocolMode): ProtocolAction => ({ protocol, mode, ...protocolButton(protocol, mode, deviceName) });
@@ -99,22 +82,17 @@ export function connectActions(line: HeaderLine, deviceName: string): { readonly
   return { main, others: [...rest.filter((each) => each.mode === 'connect'), ...rest.filter((each) => each.mode !== 'connect')] };
 }
 
-/** The words of a protocol action on its button or menu row: "SSH", "Test SSH", "Set up RDP". */
 export function actionWords(action: Pick<ProtocolAction, 'protocol' | 'mode'>): string {
   if (action.mode === 'connect') return action.protocol;
   return action.mode === 'test' ? `Test ${action.protocol}` : `Set up ${action.protocol}`;
 }
 
-/** A detail-page check in the list's shape, its last heartbeat as the one beat the reason reads. */
 function lookCheck(check: DeviceCheck): CardDevice['checks'][number] {
   const beat = check.lastHeartbeat;
   return { id: check.id, name: check.name, status: check.status, paused: check.paused, heartbeats: { edges: beat == null ? [] : [{ node: beat }] } };
 }
 
-/**
- * Why the device is not up, as one sentence under the bar (D16): the list's reason (D18) from the device's checks.
- * `null` when it is up, and while the checks the reason needs have not arrived.
- */
+/** Why the device is not up, as the list's reason (D16, D18); `null` while the checks it needs have not arrived. */
 export function statusReason(device: Pick<HeaderDevice, 'id' | 'status'>, checks: readonly DeviceCheck[] | null): string | null {
   if (device.status === 'UP' || (checks === null && device.status !== 'MAINTENANCE')) return null;
   const reason = reasonOf({ id: device.id, status: device.status, checks: (checks ?? []).map(lookCheck) }, undefined, 0);

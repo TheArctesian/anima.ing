@@ -4,19 +4,16 @@
   import FormButton from '$lib/forms/FormButton.svelte';
 
   interface Props {
-    /** What failed, in plain words: "Devices did not load". */
     message: string;
-    /** The next step's label (UI-030). */
     retryLabel?: string;
     onRetry: () => void;
-    /** The technical cause, for a HelpTip; never shown as plain text here. */
     cause?: Snippet;
   }
 
   const { message, retryLabel = 'Retry', onRetry, cause }: Props = $props();
 </script>
 
-<!-- It replaces the content that failed to load and nothing else (UI-030). The text stays the text colour: --status-down text is under 4.5:1 (MAT-005). -->
+<!-- UI-030. The text keeps the text colour: --status-down text is under 4.5:1 (MAT-005). -->
 <div class="error" role="alert">
   <span class="mark"><Icon name="carbon:warning" size="lg" /></span>
   <p>{message}</p>

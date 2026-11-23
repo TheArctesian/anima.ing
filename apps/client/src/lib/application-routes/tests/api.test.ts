@@ -14,7 +14,6 @@ afterEach(async () => {
   await Promise.all(hubs.splice(0).map((hub) => hub.close()));
 });
 
-/** The route calls on a real hub client whose HTTP endpoint answers with `body`, recording what was sent. */
 function routesAnswering(body: unknown) {
   const sent: Sent[] = [];
   const fakeFetch: typeof fetch = (_input, init) => {

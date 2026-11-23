@@ -2,7 +2,6 @@ import { timeLabel } from '$lib/events/panel/view';
 import type { Protocol, SessionEndReason } from '$lib/hub/generated/graphql';
 import type { SessionPage } from '$lib/sessions/api';
 
-/** One past or live session of the device (Section 6.7). */
 export type DeviceSession = SessionPage['edges'][number]['node'];
 
 /** A session as the Sessions tab shows it (D-10). */
@@ -63,7 +62,6 @@ function row(session: DeviceSession, now: Date): SessionRow {
   };
 }
 
-/** D-10: the rows newest first by start; a live session's duration runs to `now`. */
 export function sessionRows(sessions: readonly DeviceSession[], now: Date): readonly SessionRow[] {
   return sessions.toSorted((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt)).map((session) => row(session, now));
 }

@@ -9,7 +9,6 @@ import type { CheckFormValues } from './values';
 
 const DNS_NAME = /^(?=.{1,253}\.?$)([A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?\.)*[A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?\.?$/;
 
-/** An IPv4 or IPv6 literal, not a host name. */
 function isIpLiteral(text: string): boolean {
   const host = normalizeHost(text);
   return isValidHost(host) && (host.includes(':') || /^\d+(\.\d+){3}$/.test(host));
@@ -67,7 +66,7 @@ function nameErrors(name: string): FieldError[] {
   return [...trimmed].length > LIMITS.nameChars ? [{ field: 'name', message: `A name is at most ${String(LIMITS.nameChars)} characters.` }] : [];
 }
 
-/** The four settings every check has, as text; the Default check settings section checks the same four (D-26). */
+/** The four settings every check has, as text (D-26). */
 export type CheckSettingsText = Pick<CheckFormValues, 'intervalSeconds' | 'retries' | 'retryIntervalSeconds' | 'degradedThresholdMs'>;
 
 /** CHK-008: the reasons the interval, retries, retry interval or degraded threshold is outside the hub's bounds. */
@@ -88,10 +87,7 @@ function commonErrors(values: CheckFormValues): FieldError[] {
   return [...nameErrors(values.name), ...settingsErrors(values).filter((error) => !hidden.includes(error.field))];
 }
 
-/**
- * Section 6.4: every reason the form cannot be saved, with stable field paths (the hub's names for
- * the settings, so its `VALIDATION` fields land on the same inputs). `initial` is null in create mode.
- */
+/** Section 6.4: field paths are the hub's names, so its `VALIDATION` fields land on the same inputs. */
 export function validateCheck(values: CheckFormValues, initial: CheckFormValues | null): FieldError[] {
   const configSent = initial === null || configChanged(initial, values);
   return [...commonErrors(values), ...typeErrors(values, configSent)];

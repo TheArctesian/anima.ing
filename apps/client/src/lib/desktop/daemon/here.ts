@@ -8,57 +8,38 @@ import { metricsApi } from '$lib/metrics/api';
 import { warnToProcessLog } from '../process-log';
 import { daemonBundled, daemonKeychainWaits, installDaemon, type DaemonShellProblem, type DaemonShellResult } from './shell';
 
-/** The most devices that are read to find this computer: one page of the hub. */
 const ONE_PAGE = 200;
 
-/** A device of the hub, as far as the install needs it. */
 export interface HubDevice {
   readonly id: string;
   readonly host: string;
   readonly metricsSource: MetricsSource;
 }
 
-/** What the install on this computer needs; each part is injected, so that tests need no shell and no hub. */
 export interface DaemonHereParts {
-  /** Whether this build of the app carries the daemon. */
   readonly bundled: () => Promise<boolean>;
-  /** This computer as the shell reads it; `null` when it cannot. */
   readonly device: () => Promise<CloudDevice | null>;
-  /** The devices on the link of the hub, with the name the hub gave each one. */
   readonly linkDevices: () => Promise<HubResult<readonly { readonly name: string; readonly address: string }[]>>;
-  /** The devices of the hub. A hub with more than one page of devices gives the first page. */
+  /** A hub with more than one page of devices gives the first page. */
   readonly devices: () => Promise<HubResult<readonly HubDevice[]>>;
-  /** A new enrolment code for the device; it works once. */
+  /** The code works once. */
   readonly enrol: (deviceId: string) => Promise<HubResult<{ readonly code: string }>>;
-  /** Has the shell install the daemon with the code, enrolled at the hub that the app reaches at `origin`. */
   readonly install: (code: string, origin: string) => Promise<DaemonShellResult>;
-  /** The address at which the app reaches the hub. */
   readonly origin: string;
-  /** Whether the daemon of this computer waits for the person in the macOS Keychain; no part means never. */
+  /** No part means the daemon never waits for the person in the macOS Keychain. */
   readonly keychainWaits?: () => Promise<boolean>;
-  /** Waits; a test passes one that does not. Default: a timer. */
   readonly wait?: (milliseconds: number) => Promise<void>;
-  /** Takes one line for the log of the app. Each line is fixed text and a fixed code: never a name, an address or the code. */
+  /** Each line is fixed text and a fixed code: never a name, an address or the code. */
   readonly log?: (line: string) => void;
 }
 
-/** Why this computer was not found among the devices of the hub; a fixed code for the log. */
 export type NotFound = 'shell-does-not-read-this-computer' | 'link-list-not-read' | 'not-on-the-link' | 'device-list-not-read' | 'not-a-device-yet';
 
-/**
- * The install can start before it can work: the person is not signed in yet, this computer is not a device of the hub
- * yet (HMD-044), or the link has no socket for the daemon yet, which the shell answers with `origin` (the unit of the
- * link is made a short time after the sign-in, HMD-058). The install then waits and tries again, this many times in all.
- */
+/** The install can start before this computer is a device (HMD-044) or the link has a daemon socket (HMD-058). */
 const TRIES = 5;
 const WAIT_MS = 30_000;
 const timer = (milliseconds: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-/**
- * What the install did: it installed the daemon; the daemon of this computer reports already; the daemon is there but
- * waits for the person to allow it in the macOS Keychain; there was nothing to do it with (no daemon in this build, or
- * this computer is not a device of the hub yet); or the step that failed.
- */
 export type DaemonHere =
   | { readonly kind: 'installed' }
   | { readonly kind: 'present' }
@@ -66,10 +47,8 @@ export type DaemonHere =
   | { readonly kind: 'not-ready' }
   | { readonly kind: 'failed'; readonly step: 'enrol' | DaemonShellProblem };
 
-/** What finding this computer among the devices of the hub needs. */
 export type FindHereParts = Pick<DaemonHereParts, 'device' | 'linkDevices' | 'devices'>;
 
-/** The device of the hub whose host is the link address of this computer, or why it was not found. */
 export async function deviceHere(parts: FindHereParts): Promise<HubDevice | NotFound> {
   const computer = await parts.device();
   if (computer === null) return 'shell-does-not-read-this-computer';
@@ -83,21 +62,17 @@ export async function deviceHere(parts: FindHereParts): Promise<HubDevice | NotF
   return devices.value.find((device) => comparable(device.host) === mine) ?? 'not-a-device-yet';
 }
 
-/** One turn: what it did, and whether a later turn of this start can do better. */
 interface Turn {
   readonly did: DaemonHere;
   readonly again: boolean;
-  /** What the log says of this turn. */
   readonly note: string;
 }
 
 async function turn(parts: DaemonHereParts): Promise<Turn> {
-  // Not signed in yet, or this computer is not a device of the hub yet: a later turn finds it. No code is made.
   const device = await deviceHere(parts);
   if (typeof device === 'string') return { did: { kind: 'not-ready' }, again: true, note: `not ready (${device})` };
   if (device.metricsSource === 'DAEMON') return { did: { kind: 'present' }, again: false, note: 'the daemon reports already' };
-  // The code lives in this turn only: it goes to the shell and nowhere else (LOG-007). The shell checks the address
-  // before it uses the code, so a code of a turn that waits for the socket is never used and expires at the hub.
+  // The code goes to the shell and nowhere else (LOG-007); a code the shell does not use expires at the hub.
   const made = await parts.enrol(device.id);
   if (!made.ok) return { did: { kind: 'failed', step: 'enrol' }, again: false, note: 'the hub made no enrolment code' };
   const done = await parts.install(made.value.code, parts.origin);
@@ -123,7 +98,6 @@ async function install(parts: DaemonHereParts): Promise<DaemonHere> {
   }
 }
 
-/** `did`, or 'needs-you' when the daemon is there but its read of the token waits for the person in the Keychain. */
 async function waitsForYou(did: DaemonHere, parts: DaemonHereParts, log: (line: string) => void): Promise<DaemonHere> {
   if (did.kind !== 'installed' && did.kind !== 'present') return did;
   if (!(await parts.keychainWaits?.())) return did;
@@ -131,17 +105,12 @@ async function waitsForYou(did: DaemonHere, parts: DaemonHereParts, log: (line: 
   return { kind: 'needs-you' };
 }
 
-/** The install that runs now; a second page that opens meanwhile waits for it, so one code is made, not two. */
+/** A second page that opens meanwhile waits for this install, so one code is made, not two. */
 let running: Promise<DaemonHere> | null = null;
-/** Set once an install of this start of the app has ended: the app tries once for each start (HMD-053). */
+/** The app tries once for each start (HMD-053). */
 let tried = false;
 
-/**
- * Installs the daemon on the computer the app runs on, enrolled at the hosted hub, with no question (HMD-053, R-240):
- * the daemon that the app carries, as a unit of the user. It does nothing when the device of this computer has the
- * daemon as its metrics source. It runs once for each start of the app and waits for what it needs (see `TRIES`); a
- * failure is quiet, and the next start tries again. The enrolment code is never shown, stored or logged.
- */
+/** Installs with no question and fails quietly (HMD-053, R-240); the enrolment code is never shown, stored or logged. */
 export function installDaemonHere(parts: DaemonHereParts): Promise<DaemonHere> {
   if (tried && running === null) return Promise.resolve({ kind: 'not-ready' });
   running ??= install(parts)
@@ -153,10 +122,6 @@ export function installDaemonHere(parts: DaemonHereParts): Promise<DaemonHere> {
   return running;
 }
 
-/**
- * The install for the computer the app runs on, with the calls of `hub` and of the desktop shell. `show` gets
- * 'installing' at once and what the install did at its end, so that a page can say where it stands.
- */
 export function installDaemonOnThisComputer(hub: Hub, show: (did: DaemonHere | 'installing') => void): Promise<DaemonHere> {
   show('installing');
   const done = installDaemonHere({
@@ -172,7 +137,6 @@ export function installDaemonOnThisComputer(hub: Hub, show: (did: DaemonHere | '
   return done;
 }
 
-/** The calls of the shell and of `hub` that find this computer among the devices of the hub. */
 export function findHereParts(hub: Hub): FindHereParts {
   return {
     device: readCloudDevice,
@@ -184,7 +148,6 @@ export function findHereParts(hub: Hub): FindHereParts {
   };
 }
 
-/** For tests: the next call runs as the first of a start of the app. */
 export function forgetDaemonHere(): void {
   tried = false;
   running = null;

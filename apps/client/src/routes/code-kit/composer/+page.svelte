@@ -26,11 +26,9 @@
   ].map((menu) => ({ ...menu, trigger: triggerAt(menu.prompt, menu.prompt.length) }));
   let choice = $state(pickerChoice);
   let pickerOpen = $state(false);
-  // Each menu hangs over a stand-in for the composer's card, as it does over the real one.
   const stands = $state<Record<string, HTMLElement | undefined>>({});
 </script>
 
-<!-- Stage 4 of the T3 Code copy: the composer in each state, for the gallery. The engine here is made up. -->
 <div class="page">
   <PageHeader title="Code kit: composer" detail="T3 Code's composer in Anima's skin" eyebrow={{ text: 'Stage 4', icon: 'carbon:code' }} />
 

@@ -8,9 +8,7 @@
 
   interface Props {
     label: string;
-    /** `null` while the hub has not answered: the row keeps its size and its controls wait. */
     period: RetentionPeriod | null;
-    /** Absent while there is no period to save. */
     save?: (days: number) => Promise<HubResult<RetentionPeriod>>;
   }
 
@@ -21,7 +19,7 @@
   let busy = $state(false);
   const saved = useActionFeedback();
 
-  // The field follows the hub's days when they arrive or change; a refused save leaves what the operator typed.
+  // A refused save leaves what the operator typed.
   $effect(() => {
     if (period !== null) draft = String(period.days);
   });

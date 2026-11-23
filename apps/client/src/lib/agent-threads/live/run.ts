@@ -1,8 +1,4 @@
-/**
- * The frames of the local socket of the thread runner (TH14, THR-128), as the desktop shell passes them: the threads that
- * the daemon of this computer runs, their updates, and the calls that drive them. Each frame crosses a process
- * boundary, so each field is checked; a frame that does not read is left out.
- */
+/** Frames of the thread runner's local socket (TH14, THR-128); each crosses a process boundary, so each field is checked. */
 
 import { attachedFrom, promptFilesFrom, type AttachAction, type Attached, type PromptFiles } from './attachments';
 import { usageFrom, workspaceFrom, type RunUsage, type RunWorkspace } from './details';
@@ -17,7 +13,6 @@ export type Mode = 'full_access' | 'accept_edits' | 'ask' | 'plan';
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra';
 export type RequestKind = 'command' | 'file_change' | 'tool' | 'question';
 
-/** A thread that the runner started. */
 export interface RunRow {
   readonly id: string;
   readonly program: Program;
@@ -35,9 +30,7 @@ export interface RunRow {
   readonly open: readonly string[];
   /** The prompts that wait for the turn to end, oldest first (TH109). */
   readonly queued?: readonly QueuedPrompt[];
-  /** How the last turn ended, when one ended (TH109). */
   readonly lastTurn?: LastTurn | null;
-  /** The effort of the model, when the person chose one (TH110). */
   readonly effort?: Effort | null;
   /** Where the thread works, and the use of tokens that the program last said (TH112). */
   readonly workspace?: RunWorkspace | null;
@@ -86,7 +79,6 @@ export interface Update {
   readonly change: Change;
 }
 
-/** Why the runner did not do a call. */
 export type Refusal = (typeof REFUSALS)[number];
 
 export interface Limits {
@@ -102,7 +94,6 @@ export type Outcome =
   | { readonly outcome: 'threads'; readonly threads: readonly RunRow[]; readonly holder?: string }
   | { readonly outcome: 'limits'; readonly limits: Limits }
   | { readonly outcome: 'stopped'; readonly allEnded: boolean }
-  /** How the person lists each thread that has a listing (TH46). */
   | { readonly outcome: 'listings'; readonly listings: readonly Listing[] }
   /** A folder's notice (THR-046), the files of a thread's folder (TH108), or the folders in a folder (TH113). */
   | FolderOutcome
@@ -121,7 +112,6 @@ export type Answer =
   | { readonly answer: 'deny'; readonly message: string }
   | { readonly answer: 'choose'; readonly answers: readonly (readonly [string, string])[] };
 
-/** A call to the runner, in the form of its socket. */
 export type Action =
   | { readonly call: 'list' }
   | {
@@ -183,7 +173,6 @@ function strings(value: unknown): readonly string[] | null {
   return Array.isArray(value) && value.every((each) => typeof each === 'string') ? (value as string[]) : null;
 }
 
-/** A row of the runner, or `null` when it does not read. */
 export function runRowFrom(value: unknown): RunRow | null {
   if (!isRecord(value)) return null;
   const id = str(value.id);
@@ -287,7 +276,6 @@ function changeFrom(value: Fields): Change | null {
   }
 }
 
-/** One update of the runner, or `null` for a frame that does not read or a change the page does not draw. */
 export function updateFrom(value: unknown): Update | null {
   if (!isRecord(value)) return null;
   const thread = str(value.thread);
@@ -317,7 +305,6 @@ function refusedFrom(value: unknown): Outcome | null {
   return { outcome: 'refused', why, ...(said === null ? {} : { said }), ...(answered.length === 0 ? {} : { answered }) };
 }
 
-/** The listings of the threads, or the models of each program. */
 function listsFrom(value: Fields): Outcome | null {
   if (value.outcome === 'models') {
     const models = modelListsFrom(value.models);
@@ -327,7 +314,6 @@ function listsFrom(value: Fields): Outcome | null {
   return listings === null ? null : { outcome: 'listings', listings };
 }
 
-/** The result of a call, or `null` when it does not read. */
 export function outcomeFrom(value: unknown): Outcome | null {
   if (!isRecord(value)) return null;
   switch (value.outcome) {

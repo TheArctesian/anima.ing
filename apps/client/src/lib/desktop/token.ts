@@ -1,7 +1,6 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { parseHubAddress, type HubAddress } from '$lib/hub/hub';
 
-/** Why the key store did not answer. `not-desktop` is the client's own; the rest are the shell's (CLI-003). */
 export type AccessTokenProblem = 'unavailable' | 'denied' | 'failed' | 'empty' | 'origin' | 'caller' | 'not-desktop';
 
 const MESSAGES: Record<AccessTokenProblem, string> = {
@@ -24,7 +23,6 @@ export class AccessTokenError extends Error {
   }
 }
 
-/** The shell's typed error code, or `failed` for any shape it does not recognise. */
 function problemOf(reason: unknown): AccessTokenProblem {
   const code = typeof reason === 'object' && reason !== null && 'code' in reason ? reason.code : undefined;
   return SHELL_CODES.find((known) => known === code) ?? 'failed';
@@ -43,11 +41,7 @@ function requireDesktop(): void {
   if (!isTauri()) throw new AccessTokenError('not-desktop');
 }
 
-/**
- * The key for `address`: its origin, once the whole address is what `parseHubAddress` makes of that origin. A hub's token
- * goes only to that hub's endpoints, so a hand-built address cannot pair one hub's key with another hub's `http` or
- * `socket` (CLI-002, CLI-003).
- */
+/** A hub's token goes only to that hub's endpoints, so a hand-built address cannot pair one hub's key with another's (CLI-002, CLI-003). */
 function keyOf(address: HubAddress): string {
   const parsed = parseHubAddress(address.origin);
   const same =
@@ -56,11 +50,7 @@ function keyOf(address: HubAddress): string {
   return address.origin;
 }
 
-/**
- * The access token stored for `address.origin`, or `null` when none is stored for it or the app is not the desktop app.
- * A token is never sent to another hub (CLI-002). A key-store failure rejects with `AccessTokenError`, which
- * `createHub` shows as an unreadable token.
- */
+/** `null` off desktop or when none is stored; a key-store failure rejects with `AccessTokenError` (CLI-002). */
 export async function readAccessToken(address: HubAddress): Promise<string | null> {
   // In a browser a spoofed `isTauri()` only reaches `failed` (no shell, nothing to leak).
   if (!isTauri()) return null;
@@ -70,22 +60,17 @@ export async function readAccessToken(address: HubAddress): Promise<string | nul
   return token;
 }
 
-/**
- * Keep `token` in the OS key store for `address.origin` (CLI-003). Write with the `hub.address` of the Hub that ran the
- * login mutation. Rejects with `AccessTokenError`: `not-desktop` off desktop, `origin` for a non-canonical address.
- */
+/** Write with the `hub.address` of the hub that ran the login mutation (CLI-003). */
 export async function writeAccessToken(address: HubAddress, token: string): Promise<void> {
   requireDesktop();
   await invokeKeyStore('access_token_write', { origin: keyOf(address), token });
 }
 
-/** Remove the access token stored for `address.origin`, for log out (CLI-003). Rejects as `writeAccessToken` does. */
 export async function clearAccessToken(address: HubAddress): Promise<void> {
   requireDesktop();
   await invokeKeyStore('access_token_clear', { origin: keyOf(address) });
 }
 
-/** This computer's builder token for `address.origin`, or `null` when none is stored or off desktop (BLD-023). */
 export async function readBuilderToken(address: HubAddress): Promise<string | null> {
   if (!isTauri()) return null;
   const token = await invokeKeyStore('builder_token_read', { origin: keyOf(address) });
@@ -100,7 +85,6 @@ export async function writeBuilderToken(address: HubAddress, token: string): Pro
   await invokeKeyStore('builder_token_write', { origin: keyOf(address), token });
 }
 
-/** Remove the builder token when the operator turns building off (BLD-025). */
 export async function clearBuilderToken(address: HubAddress): Promise<void> {
   requireDesktop();
   await invokeKeyStore('builder_token_clear', { origin: keyOf(address) });

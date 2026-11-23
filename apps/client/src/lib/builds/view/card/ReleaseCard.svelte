@@ -8,9 +8,8 @@
 
   interface Props {
     release: ReleaseView;
-    /** The newest release: drawn larger, the first thing the operator reads (BLD-080). */
+    /** The newest release, drawn larger (BLD-080). */
     prominent?: boolean;
-    /** An earlier attempt at the version, folded under the newest: quieter, and named by its number. */
     attempt?: number | undefined;
     builders: readonly Builder[] | null;
     now: Date;
@@ -22,10 +21,8 @@
 
   const { release, prominent = false, attempt, builders, now, selectedId, cancelError, onselect, oncancel }: Props = $props();
   const summary = $derived(releaseSummary(release.jobs));
-  /** How the card and its jobs' controls name the release; attempts at one version need their number to differ. */
   const name = $derived(attempt === undefined ? release.version : `${release.version}, attempt ${String(attempt)}`);
 
-  /** The date and time a release was started, in the operator's locale. */
   function started(iso: string): string {
     const at = new Date(iso);
     return Number.isNaN(at.getTime()) ? '—' : at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -89,7 +86,6 @@
     --edge: var(--status-degraded);
   }
 
-  /* An earlier attempt keeps its colours in its pills, not on its edge, so the newest release stays the loud one. */
   .earlier {
     --edge: var(--border-subtle);
   }

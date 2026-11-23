@@ -1,4 +1,4 @@
-/** The coding agents of this computer and their entry `anima`, as the Settings part shows them (MCP-039). */
+// MCP-039.
 
 /** What the entry of an agent is to this program (MCP-027). */
 export type AgentState = 'not_installed' | 'not_set_up' | 'set_up' | 'different' | 'unreadable';
@@ -13,7 +13,6 @@ export interface AgentRow {
   readonly name: string;
   readonly state: AgentState;
   readonly steps: readonly AgentStep[];
-  /** Why the last change of this agent failed; `null` when it did not. */
   readonly problem: string | null;
 }
 
@@ -42,7 +41,6 @@ export function stateTone(state: AgentState): 'up' | 'warning' | 'down' | 'unkno
   return TONES[state];
 }
 
-/** The agents that are on this computer: only these are rows of the part. */
 export function present(rows: readonly AgentRow[]): readonly AgentRow[] {
   return rows.filter((row) => row.state !== 'not_installed');
 }
@@ -64,7 +62,6 @@ export function stepWords(step: AgentStep): string {
   return step.copy === null ? `writes ${step.file}` : `writes ${step.file} and keeps a copy, ${step.copy}`;
 }
 
-/** What a change of `row` touches, as one line for the list before the change. */
 export function touched(row: AgentRow): string {
   const steps = row.steps.map(stepWords).join('; then ');
   return row.state === 'different' ? `${steps}. This replaces your entry "anima".` : `${steps}.`;

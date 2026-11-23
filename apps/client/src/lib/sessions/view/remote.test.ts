@@ -119,13 +119,12 @@ describe('find (RA-003)', () => {
     const input = target.querySelector<HTMLInputElement>('input[aria-label="Find in terminal"]');
     if (input === null) throw new Error('no find bar');
     expect(document.activeElement).toBe(input);
-    // MOT-007: the find bar lies over the toolbar row, which keeps its height, so the terminal does not move.
+    // MOT-007: the find bar covers the toolbar row, so the terminal does not move.
     expect(input.closest('.toolbar > .cover')).not.toBeNull();
     expect(target.querySelector('.stage')?.contains(input)).toBe(false);
     input.value = 'needle';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     flushSync();
-    // Searching starts as the operator types, so the first Enter has a match to move from.
     expect(target.querySelector('.find [role="status"]')?.textContent).toBe('');
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     flushSync();

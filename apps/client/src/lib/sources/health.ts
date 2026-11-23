@@ -19,7 +19,6 @@ const MEANING: Record<Exclude<SourceHealth, 'PAUSED'>, HealthWords> = {
   NEEDS_RECONNECT: { name: 'Needs reconnect', meaning: 'The source refused the key. Disconnect, then reconnect with a working key.' },
 };
 
-/** The words for the account's health; a paused account also says who paused it. */
 export function healthWords(account: Pick<SourceAccount, 'health' | 'pausedBy'>): HealthWords {
   if (account.health !== 'PAUSED') return MEANING[account.health];
   return { name: 'Paused', meaning: PAUSE_MEANING[account.pausedBy ?? 'OPERATOR'] };
@@ -29,7 +28,6 @@ function plural(count: number, unit: string): string {
   return `${String(count)} ${unit}${count === 1 ? '' : 's'}`;
 }
 
-/** How long ago `iso` was, for example "4 min ago"; "at an unknown time" for a time the client cannot read. */
 export function agoText(iso: string, now: Date): string {
   const seconds = Math.floor((now.getTime() - Date.parse(iso)) / 1000);
   if (Number.isNaN(seconds)) return 'at an unknown time';
@@ -41,7 +39,7 @@ export function agoText(iso: string, now: Date): string {
   return `${plural(Math.round(hours / 24), 'day')} ago`;
 }
 
-/** The last successful sync (ITG-002), for example "Synced 4 min ago". */
+/** The last successful sync (ITG-002). */
 export function lastSyncText(lastSyncAt: string | null, now: Date): string {
   return lastSyncAt === null ? 'Never synced' : `Synced ${agoText(lastSyncAt, now)}`;
 }

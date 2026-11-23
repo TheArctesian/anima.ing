@@ -17,7 +17,6 @@
   let width = $state(Number.NaN);
 </script>
 
-<!-- The diff surface in its states: a file open with the list of files, all files collapsed, two columns, no patch. -->
 <div class="scenes">
   <section data-kit="diff-surface" aria-label="Diff surface, a file open">
     <DiffSurface scope={{ kind: 'branch' }} scopes={SCOPES} onscope={say('scope')} {files} view={open} onview={(next) => (open = next)} revealed="src/routes/sign-in/back.ts" {theme} onrefresh={say('refresh')} onopen={say('open file')} treeWidth={width} ontreewidth={(next) => (width = next)}>

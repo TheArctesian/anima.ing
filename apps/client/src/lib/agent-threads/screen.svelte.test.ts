@@ -117,7 +117,6 @@ it('THR-014, THR-015: a selected thread shows its prompt, its tool call with the
   expect(document.querySelector('[data-prompt]')?.textContent).toContain('Prompt of c2');
   expect(document.querySelector('summary .result')?.textContent).toBe('Failed');
   expect(document.querySelector('.composer')?.textContent).toContain('To continue it, use Codex');
-  // Text of a session is drawn as text, never as markup (THR-014).
   expect(document.querySelector('.reply')?.textContent).toContain('<img src=x');
   expect(document.querySelector('article img')).toBeNull();
   expect(document.querySelector('[data-thread="c2"]')?.getAttribute('aria-current')).toBe('true');

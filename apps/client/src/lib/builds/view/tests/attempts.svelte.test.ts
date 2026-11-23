@@ -15,7 +15,6 @@ vi.mock('motion', async (importOriginal) => ({
 
 let app: ReturnType<typeof mount> | undefined;
 
-/** Three attempts at 0.1.1, as an operator makes them after fixing a failed build, and one older release. */
 const ATTEMPTS = [
   release('rel-0', '0.1.0', '2026-11-10T10:00:00Z', [job({ id: 'job-0', releaseId: 'rel-0', state: 'PUBLISHED' })]),
   release('rel-1', '0.1.1', '2026-11-12T21:28:00Z', [
@@ -121,7 +120,6 @@ it('BLD-080: a job under way or failed shows its stages, the failed one the step
   const tracks = [...target.querySelectorAll('ol[aria-label="Stages"]')].map(words);
   expect(tracks[0]).toBe('Claim: done Build: in progress checkout, gates, bundle, notarize Upload: not started Publish: not started');
   expect(tracks).toContain('Claim: done Build: failed the bundle failed Upload: not run Publish: not run');
-  // The published 0.1.0 job has no track: its state says every stage is done.
   expect(tracks).toHaveLength(4);
 });
 

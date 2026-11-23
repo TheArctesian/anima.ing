@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 
-/** Why the log folder did not open. `unavailable` and `failed` are the shell's codes (LOG-008). */
+/** The shell's codes (LOG-008). */
 export type LogFolderProblem = 'unavailable' | 'failed';
 
 const MESSAGES: Record<LogFolderProblem, string> = {
@@ -8,7 +8,7 @@ const MESSAGES: Record<LogFolderProblem, string> = {
   failed: 'The log folder could not be opened.',
 };
 
-/** A failure to open the log folder. The message is fixed text; nothing from the shell's error is kept. */
+/** The message is fixed text; nothing from the shell's error is kept. */
 export class LogFolderError extends Error {
   constructor(readonly problem: LogFolderProblem) {
     super(MESSAGES[problem]);
@@ -21,7 +21,6 @@ function problemOf(reason: unknown): LogFolderProblem {
   return code === 'unavailable' ? 'unavailable' : 'failed';
 }
 
-/** Opens the folder holding the process log in the system's file manager (LOG-008). */
 export async function openLogFolder(): Promise<void> {
   try {
     await invoke('process_log_folder_open');
@@ -30,10 +29,7 @@ export async function openLogFolder(): Promise<void> {
   }
 }
 
-/**
- * Writes one warning line to the process log. Callers pass fixed text only: the plugin writes whatever it is given to
- * a file on disk (LOG-007). A failure to write is reported on the console and never reaches the caller.
- */
+/** Callers pass fixed text only: the plugin writes whatever it is given to a file on disk (LOG-007). */
 export function warnToProcessLog(text: string): void {
   void import('@tauri-apps/plugin-log')
     .then(({ warn }) => warn(text))

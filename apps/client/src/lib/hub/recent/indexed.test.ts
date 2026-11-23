@@ -3,11 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { Copy } from './copy';
 import { indexedCopyStore } from './indexed';
 
-// The store against an IndexedDB in memory (fake-indexeddb): each test has its own factory, as a new computer has.
-
 const copy = (key: string, at: number, text = `"${key}"`): Copy => ({ key, at, text });
 
-/** Resolves when the browser has deleted the database of the copy, as "clear site data" does. */
 function deleted(factory: IDBFactory): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = factory.deleteDatabase('anima-recent');

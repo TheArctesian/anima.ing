@@ -1,4 +1,4 @@
-/** One pointer reading: when (event timestamp, ms) and where (px along the axis). */
+/** `at` is the event timestamp in ms; `value` is px along the axis. */
 export interface Sample {
   readonly at: number;
   readonly value: number;
@@ -9,10 +9,7 @@ export const VELOCITY_WINDOW_MS = 100;
 
 const msPerSecond = 1000;
 
-/**
- * The pointer's speed in px/s at `until`, from the samples in the last `VELOCITY_WINDOW_MS`. A pointer that
- * stopped before it was released has speed 0. Time comes from the samples, never from a clock.
- */
+/** The pointer's speed in px/s at `until`. */
 export function velocityOf(samples: readonly Sample[], until: number): number {
   const recent = samples.filter((sample) => until - sample.at <= VELOCITY_WINDOW_MS);
   const first = recent[0];

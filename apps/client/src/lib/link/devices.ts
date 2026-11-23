@@ -14,21 +14,19 @@ export function pathText(device: Pick<LinkDevice, 'path' | 'relay'>): string {
   }
 }
 
-/** A device key's expiry for the operator; "No expiry" when the link gives none. */
 export function expiryText(expiresAt: string | null, locale?: string): string {
   if (expiresAt === null) return 'No expiry';
   const at = new Date(expiresAt);
   return Number.isNaN(at.getTime()) ? '—' : at.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-/** Whole seconds until `expiresAt`, never below 0; 0 for a time the client cannot read (LNK-003). */
+/** 0 for a time the client cannot read (LNK-003). */
 export function secondsLeft(expiresAt: string, now: Date): number {
   const end = Date.parse(expiresAt);
   if (Number.isNaN(end)) return 0;
   return Math.max(0, Math.ceil((end - now.getTime()) / 1000));
 }
 
-/** A countdown as minutes and seconds, for example "14:59". */
 export function countdownText(seconds: number): string {
   const whole = Math.max(0, Math.floor(seconds));
   return `${String(Math.floor(whole / 60))}:${String(whole % 60).padStart(2, '0')}`;

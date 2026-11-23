@@ -8,16 +8,12 @@
   import { brokerReason, keyText, keyTone, renewable, sortedNodes } from '../picture';
 
   interface Props {
-    /** The hub's own node, listed first. */
     hub: VpnNode;
     nodes: readonly VpnNode[];
     now: Date;
     broker: BrokerState;
-    /** Opens the enrolment modal for a computer of the operator. */
     onEnrol: () => void;
-    /** Renews an operator key (BD-17). */
     renew: (name: string) => Promise<HubResult<VpnRegistration>>;
-    /** The id of the line that says why the broker actions are off. */
     reasonId: string;
   }
 
@@ -26,7 +22,6 @@
   const rows = $derived([hub, ...sortedNodes(nodes)]);
 </script>
 
-<!-- Each node and when its key expires, in words beside a tone dot (VPN-010, VPN-011, UI-003). -->
 <ul class="nodes" aria-label="VPN nodes">
   {#each rows as node, index (node.address)}
     <li class="row" transition:listRow={{ index }} aria-label={node.name}>
@@ -67,7 +62,6 @@
     border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
-  /* A narrow card gives the name a line of its own; the role and the address share the next one. */
   @container (max-inline-size: 28rem) {
     .row {
       grid-template-columns: auto minmax(0, 1fr);

@@ -1,5 +1,4 @@
-// CR-14: a channel that moves to a new target needs its stored secrets again; URLs are https only; a server is an
-// origin only; the Apprise mode and header list rules. Pure: the draft in, the input or the refusals out.
+// CR-14: a channel that moves to a new target needs its stored secrets again.
 import { describe, expect, it } from 'vitest';
 import type { NotificationChannel } from '../api';
 import { CONFIG_KEY_CHANNEL, DIRTY_SERVER_CHANNEL, FAKE_SECRET, fixtureChannel, FIXTURE_SETTINGS } from '../notifications.fixture';

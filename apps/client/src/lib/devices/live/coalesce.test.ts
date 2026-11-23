@@ -1,7 +1,6 @@
 import { expect, it } from 'vitest';
 import { coalesced } from './coalesce';
 
-/** A run that finishes when the test says so. */
 function slowRun() {
   const finishers: (() => void)[] = [];
   const run = () =>

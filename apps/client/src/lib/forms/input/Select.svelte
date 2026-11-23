@@ -4,7 +4,6 @@
   import Icon from '$lib/icons/Icon.svelte';
 
   interface Props extends Omit<HTMLSelectAttributes, 'class' | 'size' | 'children' | 'multiple'> {
-    /** The `<option>` elements. */
     children: Snippet;
     size?: 'md' | 'lg';
     invalid?: boolean;

@@ -40,7 +40,6 @@ async function settle(): Promise<void> {
   flushSync();
 }
 
-/** A screen whose Devices answer waits until `answer()` is called. */
 async function slowScreen(view: 'grid' | 'table' = 'grid') {
   const fake = fakeHub({ Devices: devicesAnswer([device('a')]), Tags: { tags: [] } });
   let release: () => void = () => undefined;

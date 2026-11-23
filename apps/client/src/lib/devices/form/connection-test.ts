@@ -2,7 +2,6 @@ import type { ConnectionTestInput, TestConnectionMutation } from '$lib/hub/gener
 import { credentialInput, sameSsh, sshInput } from './input';
 import { normalizedValues, type DeviceFormValues, type HostKey } from './values';
 
-/** The hub's answer to a connection test (DEV-013). */
 export type ConnectionTestResult = TestConnectionMutation['testConnection'];
 
 /** Whether the saved device's host and SSH settings are as saved, so that the test can run against the stored record. */
@@ -13,10 +12,7 @@ export function testsSavedRecord(initial: DeviceFormValues | null, values: Devic
   return before.host === now.host && sameSsh(before.ssh, now.ssh);
 }
 
-/**
- * DEV-013, D-5: a saved device whose host and SSH settings are unchanged is tested by ID (plus a newly typed
- * credential). Anything else sends the form's values with no ID, since the hub refuses both together.
- */
+/** DEV-013, D-5: an unchanged saved device is tested by ID; anything else sends the form's values with no ID, as the hub refuses both. */
 export function connectionTestInput(initial: DeviceFormValues | null, values: DeviceFormValues, deviceId: string | null): ConnectionTestInput {
   const credential = credentialInput(values);
   const extra = credential === null ? {} : { credential };

@@ -27,7 +27,6 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-/** The tab of a device (HSE-008): the one list narrowed to the device, with both Compose projects open. */
 async function open(): Promise<HostingStore> {
   const hosting = new HostingStore(deviceHosting(calls));
   hosting.only = DEVICE;
@@ -74,7 +73,6 @@ it('HOST-013: the log of a container is read only when the operator asks, with 2
   expect(hosting.pane?.store.selected).toBe(APP_ID);
   expect(document.querySelector('.log h3')?.textContent).toBe('Log of tracks-app-1');
   expect([...document.querySelectorAll('.lines li > span')].map((line) => line.textContent)).toEqual(['listening on :3000', '<b>ready</b>']);
-  // A line of a container is text: it never becomes an element of the page.
   expect(document.querySelector('.lines b')).toBeNull();
   expect(button('Log of tracks-app-1')?.getAttribute('aria-pressed')).toBe('true');
 });

@@ -85,7 +85,6 @@ describe('host key review and accept (SEC-007, D-6)', () => {
     await click('Accept new key');
     expect(calls.acceptHostKey).toEqual([]);
     expect(button('Reconnect')).toBeUndefined();
-    // A double click: the second click lands while the first accept is under way.
     const confirm = button('Yes, accept');
     confirm?.click();
     confirm?.click();

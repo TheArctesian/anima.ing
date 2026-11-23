@@ -1,11 +1,9 @@
-// The channel editor as plain values: what the operator typed and chose, for every kind at once, so that switching
-// the kind of a new channel loses nothing. Secret fields start empty, always: the hub never returns a secret, and the
-// form never shows a stored one (D-17, F-8). What is stored is known only as a fact (`Stored`).
+// Secret fields start empty: the hub never returns a secret, and the form never shows a stored one (D-17, F-8).
 import type { AppriseMode, SmtpSecurity, WebhookMethod } from '$lib/hub/generated/graphql';
 import type { ChannelKind, NotificationChannel, NotificationTemplateInput } from '../api';
 import { shownOrigin, storedTarget } from '../channels/target';
 
-/** A secret the operator may type. `clear` asks the hub to remove a stored optional secret (`""` in the input). */
+/** `clear` asks the hub to remove a stored optional secret (`""` in the input). */
 export interface SecretDraft {
   value: string;
   clear: boolean;
@@ -37,9 +35,8 @@ export interface Stored {
   readonly headerNames: readonly string[];
   readonly ntfyToken: boolean;
   readonly emailPassword: boolean;
-  /** The Apprise mode whose URLs or key the hub holds. */
   readonly appriseMode: AppriseMode | null;
-  /** Where the channel sends now (`storedTarget`); a new target needs every stored secret again (CR-14.1). */
+  /** A new target needs every stored secret again (CR-14.1). */
   readonly target: string | null;
 }
 
@@ -60,7 +57,6 @@ function emptySecret(): SecretDraft {
   return { value: '', clear: false };
 }
 
-/** A new channel: the K1 defaults, and the default template ready to be edited if the operator wants their own. */
 export function newDraft(defaultTemplate: NotificationTemplateInput): ChannelDraft {
   return {
     name: '',
@@ -76,7 +72,6 @@ export function newDraft(defaultTemplate: NotificationTemplateInput): ChannelDra
   };
 }
 
-/** A saved channel's values, every secret field empty. */
 export function savedDraft(channel: NotificationChannel, defaultTemplate: NotificationTemplateInput): ChannelDraft {
   const draft = newDraft(channel.template ?? defaultTemplate);
   draft.name = channel.name;
@@ -122,10 +117,7 @@ export function storedOf(channel: NotificationChannel): Stored {
   };
 }
 
-/**
- * Empties every secret the draft holds, in place, so the caller can drop them from the DOM in the same task (F-8).
- * Header names stay: they are not secret, and K1 returns them.
- */
+/** Empties every secret in place, so the caller can drop them from the DOM in the same task (F-8); header names are not secret. */
 export function forgetSecrets(draft: ChannelDraft): void {
   draft.mobile.url = '';
   draft.mobile.token = '';

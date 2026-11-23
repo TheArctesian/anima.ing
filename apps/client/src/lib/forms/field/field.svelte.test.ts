@@ -19,7 +19,6 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-/** A field around a real Input, the way a caller builds one. */
 function field({ help: withHelp = false, ...props }: { constraint?: string; error?: string; help?: boolean; layout?: 'stacked' | 'inline' }) {
   installAnimations();
   const children = createRawSnippet<[{ id: string; 'aria-describedby': string | undefined; 'aria-invalid': true | undefined }]>((link) => ({

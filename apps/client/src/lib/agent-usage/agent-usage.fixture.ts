@@ -2,8 +2,6 @@ import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
 import type { AgentAccount, DayRow, DeviceRow, DeviceSourceRow, ModelRow, RepositoryRow, SessionRow, UsageDevice, UsageSums } from './api';
 
-// Test support: an answer in the hub's shape and a hub that gives it, recording what the page asked for.
-
 const MAC = { id: 'd-mac', name: 'mac-mini', batteries: [] };
 const LINUX = { id: 'd-nas', name: 'nas', batteries: [] };
 const BOX = { id: 'd-box', name: 'gpu-box', batteries: [] };
@@ -16,7 +14,6 @@ export const DEVICES: readonly UsageDevice[] = [
 
 const NONE: UsageSums = { prompts: 0, toolCalls: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, estimatedCostUsd: 0, unpricedTokens: 0, sessions: 0 };
 
-/** The counts of a group; what `change` leaves out is none. */
 export function sums(change: Partial<UsageSums> = {}): UsageSums {
   return { ...NONE, ...change };
 }
@@ -24,7 +21,6 @@ export function sums(change: Partial<UsageSums> = {}): UsageSums {
 const OPUS = { source: 'CLAUDE_CODE', model: 'claude-opus-4' } as const;
 const CODEX = { source: 'CODEX', model: 'gpt-5-codex' } as const;
 
-/** What the hub answers for the choices of the page; the days are 2026-11-11 to 2026-11-17. */
 export interface HubUsage {
   firstDay: string;
   lastDay: string;
@@ -44,7 +40,6 @@ export interface HubUsage {
   shares: readonly DeviceSourceRow[];
 }
 
-/** One session of the mac-mini; what `change` leaves out is a Claude Code session of yesterday in acme/anima. */
 export function session(change: Partial<SessionRow> = {}): SessionRow {
   return {
     id: 's-1',
@@ -132,9 +127,8 @@ export const ANSWER: HubUsage = {
 };
 
 export interface FakeUsageHub extends Pick<Hub, 'request' | 'subscribe'> {
-  /** The variables of each read, in order. */
   readonly asked: Record<string, unknown>[];
-  /** How many subscriptions are open: the page listens for the charge of each battery (MET-032). */
+  /** Open subscriptions; the page listens for the charge of each battery (MET-032). */
   listening: number;
   /** What the next read answers instead of the answer. */
   fail: HubError | null;
@@ -142,7 +136,6 @@ export interface FakeUsageHub extends Pick<Hub, 'request' | 'subscribe'> {
   everyone: readonly UsageDevice[];
 }
 
-/** A hub that answers `AgentUsage` with `answer`, and `everyone` as the devices of the whole fleet. */
 export function fakeUsageHub(answer: HubUsage = ANSWER, everyone: readonly UsageDevice[] = answer.states): FakeUsageHub {
   const hub: FakeUsageHub = {
     asked: [],

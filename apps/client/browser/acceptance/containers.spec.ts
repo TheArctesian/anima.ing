@@ -1,9 +1,7 @@
 import { expect, test } from '../test-hub';
 import { HUB_ORIGIN } from '../synthetic/access';
 
-// The tab "Containers" of a device against the production build (HOST-001, HOST-013, HOST-015, HOST-017 to HOST-021): the
-// groups by Compose project with the state of each, the log of the selected container with its tools, the details, the
-// mark of a newer image, the images, volumes and networks, and a device the hub cannot read.
+// HOST-001, HOST-013, HOST-015, HOST-017 to HOST-021.
 
 test.describe('signed in', () => {
   test.use({ signedIn: true });

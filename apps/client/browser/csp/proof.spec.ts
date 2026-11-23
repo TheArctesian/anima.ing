@@ -5,9 +5,8 @@ import { inlineScriptHashes } from '../synthetic/inline-scripts';
 import { builtIndex, k7Policy } from './k7-policy';
 import { expectNoViolations, servePolicy, violationsSeen, type PolicyReports } from './violations';
 
-// The clean runs in csp.spec.ts prove something only if the same check fails when the page breaks the policy. Each case
-// here breaks it once, on purpose, and shows both channels see it and `expectNoViolations` fails. Test-only: the header
-// variant lives in this spec, never in the hub or the build.
+// Each case breaks the K7 policy once, so the clean runs in csp.spec.ts are shown to fail on a breach.
+// The weakened header lives only in this spec, never in the hub or the build.
 
 test.use({ signedIn: true });
 
@@ -24,12 +23,10 @@ test('SEC-001: without the start script hash the app never boots, and both chann
   page.on('request', (request) => requested.push(new URL(request.url()).pathname));
   await page.goto(`${HUB_ORIGIN}/devices`);
   const seen = await violationsSeen(page, watch, policy);
-  // The enforced policy refused it, not only the Report-Only copy.
   const enforced = seen.events.filter((found) => found.disposition === 'enforce').map((found) => found.effectiveDirective);
   expect(enforced).toContain('script-src-elem');
   expect(seen.reports.map((found) => found.effectiveDirective)).toContain('script-src-elem');
-  // index.html preloads the layout node (and some engines fetch what it imports) whether or not the start script runs. A
-  // page's own route node is imported only by the running app, so no route node beyond the preloads means it never started.
+  // index.html preloads the layout node either way; only the running app imports a route node beyond the preloads.
   const preloaded = [...builtIndex().matchAll(/<link href="([^"]+)" rel="modulepreload">/g)].map((found) => found[1]);
   expect(preloaded.filter((path) => path?.startsWith('/_app/immutable/nodes/'))).not.toHaveLength(0);
   expect(requested.filter((path) => path.startsWith('/_app/immutable/nodes/') && !preloaded.includes(path))).toEqual([]);
@@ -38,7 +35,6 @@ test('SEC-001: without the start script hash the app never boots, and both chann
   await expect(expectNoViolations(page, watch, policy)).rejects.toThrow();
 });
 
-/** One thing the K7 policy forbids, done from inside the page after the app booted. */
 type Breach =
   | 'inline script'
   | 'foreign script'
@@ -50,7 +46,7 @@ type Breach =
   | 'blob worker'
   | 'blob frame';
 
-/** The directive each breach must be reported under; a browser may name the narrower or the fallback directive. */
+/** A browser may report a breach under the narrower or the fallback directive. */
 const BREACHES: Record<Breach, readonly string[]> = {
   'inline script': ['script-src-elem', 'script-src'],
   'foreign script': ['script-src-elem', 'script-src'],
@@ -63,7 +59,6 @@ const BREACHES: Record<Breach, readonly string[]> = {
   'blob frame': ['frame-src', 'child-src', 'default-src'],
 };
 
-// Runs in the page. Every branch is something the build must never do; the policy must refuse it.
 function breach(kind: Breach): void {
   const add = (element: HTMLElement): void => {
     document.body.append(element);
@@ -101,15 +96,12 @@ function breach(kind: Breach): void {
       add(sheet);
       break;
     case 'eval':
-      // The breach under test: the policy must refuse eval.
       later(() => eval('1'));
       break;
     case 'new Function':
-      // The breach under test: the policy must refuse the Function constructor.
       later(() => new Function('return 1'));
       break;
     case 'string timer':
-      // The breach under test: a string timer is an eval.
       setTimeout('window.animaBreach = 1;', 0);
       break;
     case 'inline handler':
@@ -147,7 +139,6 @@ test.describe('under the exact K7 policy', () => {
       const reportVisible = !(kind === 'blob frame' && browserName === 'firefox');
       if (reportVisible) expect(seen.reports.filter(named), JSON.stringify(seen.reports)).not.toHaveLength(0);
       await expect(expectNoViolations(page, watch, policy)).rejects.toThrow();
-      // The policy stopped it in the page: nothing reached another origin.
       expect(hub.recording.foreignRequests).toBe(0);
     });
   }

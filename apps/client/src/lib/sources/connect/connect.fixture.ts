@@ -1,7 +1,5 @@
 import type { ConnectAttempt } from './api';
 
-// Test support: a GitHub connection attempt in the hub's shape, and the hub's answers to the connection calls.
-
 export function attempt(more: Partial<ConnectAttempt> = {}): ConnectAttempt {
   return {
     id: 'attempt-1',
@@ -20,13 +18,11 @@ export function attempt(more: Partial<ConnectAttempt> = {}): ConnectAttempt {
   };
 }
 
-/** What the fake hub holds for the connection: the open attempt and the one-time link it hands out. */
 interface Held {
   connect: ConnectAttempt | null;
   readonly link: string;
 }
 
-/** The answer to a connection mutation, or undefined for any other operation. */
 export function connectAnswer(held: Held, operation: string): Record<string, unknown> | undefined {
   if (operation === 'StartGithubConnect') {
     held.connect = attempt();

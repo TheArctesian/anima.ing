@@ -3,12 +3,6 @@ import type { Screen } from './shots';
 import type { Fixtures } from '../synthetic/fixtures';
 import { openDevices, openedDialog } from './steps';
 
-// The device list: its two views, each filter, the logs panel, the live sessions popover and Add device.
-
-/**
- * A list with a device that is down and a device with a long name and an IPv6 address, so the pictures show the rows
- * that are not the plain ones.
- */
 function withProblems(loaded: Fixtures): Fixtures {
   const down = loaded.devices.find((device) => device.name === 'mac-mini');
   const long = loaded.devices.find((device) => device.name === 'amd-box');
@@ -24,7 +18,6 @@ function withProblems(loaded: Fixtures): Fixtures {
 
 const toolbar = (page: Page) => page.getByRole('search', { name: 'Filter devices' });
 
-/** Opens the toolbar menu `name` and ticks its first choice. */
 async function chooseFirst(page: Page, name: string): Promise<void> {
   await toolbar(page).getByRole('button', { name, exact: true }).click();
   const panel = page.getByRole('group', { name, exact: true });

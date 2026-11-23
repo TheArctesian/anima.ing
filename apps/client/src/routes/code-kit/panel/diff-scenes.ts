@@ -1,7 +1,6 @@
 import type { MenuEntry } from '$lib/code/kit/menu';
 import { PATCH } from './scenes';
 
-/** A patch of four files: a changed file, a new test file, a deleted file and a renamed file. */
 export const PATCHES = `${PATCH}diff --git a/src/routes/sign-in/back.test.ts b/src/routes/sign-in/back.test.ts
 new file mode 100644
 index 0000000..5c1e9d2
@@ -54,7 +53,6 @@ export const SCOPES: readonly MenuEntry[] = [
   },
 ];
 
-/** The files of a project, for the tree of the Files surface. */
 export const PROJECT_PATHS: readonly string[] = [
   'README.md',
   'package.json',

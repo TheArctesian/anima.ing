@@ -1,8 +1,6 @@
 <script lang="ts">
   interface Props {
-    /** What is loading, for assistive technology: "Loading devices". */
     label: string;
-    /** How many placeholder rows; the skeleton is as tall as the rows it stands for. */
     rows?: number;
   }
 
@@ -10,7 +8,6 @@
   const lines = $derived(Array.from({ length: rows }, (_, index) => index));
 </script>
 
-<!-- Static blocks, so reduced motion needs no change. The caller decides when to show it: `skeletonDelay` in `$lib/motion/loading` (5.7.3, Loading). -->
 <div class="skeleton" role="status" aria-label={label} aria-busy="true">
   {#each lines as line (line)}<span class="row"></span>{/each}
 </div>

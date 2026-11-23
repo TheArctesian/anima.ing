@@ -6,7 +6,7 @@ import { decodeInstructions, encodeInstruction, FAKE_TUNNEL_SOCKET, FakeTunnelSo
 import { openTunnel, type SessionTunnel, type GuacamoleState } from './tunnel';
 import Guacamole from '../vendor/guacamole.js';
 
-/** A ticket token that is easy to find anywhere it should not be (43 base64url characters, K4 §1). */
+/** Easy to find anywhere it should not be (43 base64url characters, K4 §1). */
 const TOKEN = 'TOKENMARKER_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const ORIGIN = 'https://hub.anima.ing';
 
@@ -70,7 +70,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** Every string reachable from `root` through own properties (cycles and DOM nodes skipped). */
 function strings(root: unknown, seen = new Set<unknown>()): string[] {
   if (typeof root === 'string') return [root];
   if (root === null || typeof root !== 'object' || seen.has(root) || root instanceof Node) return [];
@@ -115,7 +114,6 @@ describe('tunnel request (K4 §2, SEC-002, D-3)', () => {
     const opening = openTunnel({ waking: false, origin: ORIGIN, ticket: { tunnelPath: '/tunnel', token: TOKEN }, WebSocket: throwing });
     expect(opening).toEqual({ ok: false, error: { problem: 'not-opened', message: 'The session tunnel could not be opened.' } });
     expect(globalThis.WebSocket).toBe(real);
-    // The library's timers were stopped: nothing fires against the missing socket.
     expect(() => vi.advanceTimersByTime(60_000)).not.toThrow();
   });
 
@@ -230,7 +228,6 @@ describe('tunnel state (K4 §4)', () => {
   });
 });
 
-/** The hub's side of each K4 §5 end, driven on an open tunnel. */
 const closes: readonly { readonly name: string; readonly drive: (socket: FakeTunnelSocket) => void; readonly reason: string | undefined }[] = [
   { name: '1000 after disconnect', drive: (s) => { s.disconnect(); s.closeWith(1000); }, reason: 'REMOTE_CLOSED' },
   { name: '1001 hub shutdown', drive: (s) => { s.closeWith(1001); }, reason: 'HUB_SHUTDOWN' },
@@ -275,7 +272,7 @@ describe('tunnel end through the real client (K4 §5, RA-007)', () => {
   });
 });
 
-/** A deterministic generator (CQ-021): the same seed gives the same cases on every run. */
+/** Deterministic (CQ-021). */
 function generator(seed: number) {
   let state = seed;
   return (below: number) => {

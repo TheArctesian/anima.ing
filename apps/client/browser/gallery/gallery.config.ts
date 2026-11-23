@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 import { runProxyUrl } from '../isolation/shared-proxy';
 import { BUILD_FOLDER, BUILD_MISSING } from '../synthetic/static-files';
 
-// The screenshot gallery: `bun run --cwd apps/client gallery`. Its files end in `.gallery.ts`, so `test:browsers` never runs them.
+// Gallery files end in `.gallery.ts`, so `test:browsers` never runs them.
 if (!existsSync(`${BUILD_FOLDER}index.html`)) throw new Error(`apps/client/build/ is missing: ${BUILD_MISSING}`);
 
 export default defineConfig({

@@ -79,7 +79,6 @@ it('PRO-002: Leave out removes the entry at once and Restore brings it back', as
   await openList();
   document.querySelectorAll('li.entry')[0]?.querySelector('button')?.click();
   flushSync();
-  // At once, before the hub answers: the tile fades where it stands (5.7.3 Reorder), and is gone when the fade ends.
   const leaving = [...document.querySelectorAll('li.entry')].find((entry) => entry.textContent.includes('acme/acme-site'));
   expect(played.some((each) => each.element === leaving)).toBe(true);
   await settled();
@@ -108,7 +107,6 @@ it('PRO-001: with no projects the empty state links to the Integrations section'
   await openList();
   expect(text()).toContain('Connect GitHub.');
   expect(document.querySelector('a')?.getAttribute('href')).toBe('/settings#settings-integrations');
-  // Nothing to sort or to filter: the page draws no Sort, Language or Size control.
   expect(document.querySelector('select')).toBeNull();
 });
 

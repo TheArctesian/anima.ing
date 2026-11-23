@@ -6,7 +6,6 @@ export interface StoredChannels {
   resendEveryBeats: number;
 }
 
-/** What the section edits: the chosen channel IDs and the resend interval as typed. */
 export interface ChannelValues {
   channelIds: string[];
   resend: string;
@@ -45,7 +44,6 @@ export function notificationsInput(values: ChannelValues): CheckNotificationsInp
   return { channelIds: [...values.channelIds].toSorted(), resendEveryBeats: Number(values.resend.trim()) };
 }
 
-/** Whether `values` differ from what the hub holds, so an untouched section sends nothing. */
 export function differs(stored: StoredChannels, values: ChannelValues): boolean {
   const input = notificationsInput(values);
   const held = [...stored.channelIds].toSorted();

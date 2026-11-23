@@ -8,7 +8,7 @@ import DeviceScreen from '../screen/DeviceScreen.svelte';
 import { device, devicesAnswer, url } from '../screen/screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 
-// How the rows of the Devices list come, go and move (5.7.3, Reorder and Loading).
+// Spec 5.7.3, Reorder and Loading.
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),

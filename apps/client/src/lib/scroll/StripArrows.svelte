@@ -6,9 +6,8 @@
   import './strip-fade.css';
 
   interface Props {
-    /** The strip the arrows scroll; the arrows sit on its ends, inside a parent with `position: relative`. */
+    /** The arrows sit on its ends, inside a parent with `position: relative`. */
     strip: HTMLElement | undefined;
-    /** The ends that have tabs past them, from `stripEdges`: an arrow shows only at such an end. */
     edges: StripEdges;
     preference?: MotionPreference;
   }
@@ -20,10 +19,7 @@
   }
 </script>
 
-<!--
-  The clear sign that more tabs lie past an end (NAV-005), and the way to them for a pointer that cannot scroll sideways.
-  Out of the tab order and hidden from assistive technology: the arrow keys reach each tab, and a focused tab scrolls into view.
--->
+<!-- Out of the tab order and hidden from assistive technology: the arrow keys reach each tab, and a focused tab scrolls into view. -->
 {#if edges.start}
   <button type="button" class="arrow start" tabindex="-1" aria-hidden="true" title="Earlier tabs" onclick={() => { scroll('start'); }} {@attach press(preference)}>
     <Icon name="carbon:chevron-left" size="sm" />

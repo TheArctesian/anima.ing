@@ -19,12 +19,10 @@ export interface Chart {
   readonly format: (value: number) => string;
 }
 
-/** The colour of the series at `position` (0-based): 1 to 6, then round again. */
 function seriesColour(position: number): SeriesColour {
   return ((position % SERIES_COLOURS) + 1) as SeriesColour;
 }
 
-/** The hub's points as chart points: `at` in milliseconds, oldest first; a point with an unreadable time is dropped. */
 function pointsOf(series: MetricSeries): ChartPoint[] {
   return series.points
     .map((point) => ({ at: Date.parse(point.at), value: point.value, min: point.min, max: point.max }))
@@ -32,7 +30,6 @@ function pointsOf(series: MetricSeries): ChartPoint[] {
     .sort((a, b) => a.at - b.at);
 }
 
-/** A line of the chart from each pair of a legend name and the hub series that feeds it; a missing series gives no line. */
 function lines(pairs: readonly (readonly [string, MetricSeries | undefined])[]): ChartSeries[] {
   const found = pairs.flatMap(([label, series]) => (series ? [{ label, series }] : []));
   return found.map(({ label, series }, position) => ({ label, colour: seriesColour(position), points: pointsOf(series) }));
@@ -61,7 +58,6 @@ function diskCharts(all: readonly MetricSeries[]): Chart[] {
   return byLabel(all, 'DISK_PERCENT').filter((mount) => mount.label !== LEGACY_IOS_DISK_MOUNT).flatMap((mount) => percentChart(`disk:${mount.label}`, `Disk ${mount.label}`, mount.label, mount));
 }
 
-/** One chart of two rates per label, ordered by label: a network interface's in and out, a drive's read and write. */
 function pairCharts(all: readonly MetricSeries[], title: 'Drive' | 'Network', kinds: readonly [MetricKind, MetricKind], names: readonly [string, string]): Chart[] {
   const one = byLabel(all, kinds[0]);
   const other = byLabel(all, kinds[1]);
@@ -113,11 +109,8 @@ export function tileFigures(chart: Chart): { readonly now: string; readonly peak
 }
 
 /**
- * The charts the Overview draws, in a fixed order: CPU, memory, each disk mount (by mount point), each drive's
- * read and write (by drive name, MET-028), each network interface (in then out), load (1, 5, 15), then per GPU by index its usage, its VRAM and the shared memory of a unified-memory GPU (MET-007, MET-009, D-30).
- * Uptime is a fact, not a chart. A chart is listed only when at least one of its series exists, so a device
- * that reports no load, or a GPU with no samples yet, shows no empty frame; a series that exists with no
- * points still gets its chart (the Overview shows its empty state).
+ * In a fixed order: CPU, memory, disks, drives, networks, load, then each GPU (MET-007, MET-009, MET-028, D-30).
+ * A chart is listed only when one of its series exists, even one with no points.
  */
 export function chartsOf(series: readonly MetricSeries[], gpus: readonly DeviceGpu[]): readonly Chart[] {
   return [

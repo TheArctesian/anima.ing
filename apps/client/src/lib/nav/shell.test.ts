@@ -54,7 +54,6 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
           return fake.status;
         },
       },
-      // The live-session item asks the hub; nothing answers here.
       request: () => new Promise(() => undefined),
       subscribe: () => () => undefined,
       close: () => fake.close(),
@@ -101,7 +100,6 @@ it('NAV-001: Devices comes first, then the divider, Live sessions and the status
   expect(destinations.map((node) => node.getAttribute('href') ?? node.textContent?.trim())).toEqual([
     '/devices', '/hosting', '/agents/usage', '', 'Connected', '/extensions', '/settings',
   ]);
-  // Live sessions is at the foot: after the divider, with only the name of the hub between it and the status.
   const children = [...nav.children];
   const live = children.findIndex((child) => child.classList.contains('live'));
   const status = children.findIndex((child) => child.classList.contains('status'));
@@ -156,7 +154,6 @@ it('NAV-005: every link is focusable by Tab (tabindex 0 for WebKit)', () => {
 });
 
 it('NET-004: when unreachable the banner shows the problem, the hub, the advice and the data age', () => {
-  // The desktop app, so the hub is the default one the banner names.
   keyStore.available.mockReturnValue(true);
   const lastContactAt = new Date(NOW.getTime() - 5 * 60_000);
   const nav = show('/devices', { connection: 'unreachable', lastContactAt });
@@ -183,7 +180,6 @@ it('NET-004: no banner text while connected, but the status container is always 
 
 it('MOT-007: the banner sits before the divider, so the divider, label and Settings keep their places', () => {
   const nav = show('/devices', { connection: 'unreachable', lastContactAt: null });
-  // The resize edge is laid over the bar's border, out of the flow, so it takes no place in the column.
   const children = [...nav.children].filter((child) => child.getAttribute('role') !== 'separator');
   const notice = children.findIndex((child) => child.getAttribute('role') === 'status');
   expect(notice).toBeGreaterThan(0);

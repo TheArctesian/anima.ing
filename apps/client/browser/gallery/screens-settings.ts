@@ -3,7 +3,6 @@ import { expect } from '@playwright/test';
 import type { Screen } from './shots';
 import { openedDialog, openSettings, section } from './steps';
 
-// The Settings page: the whole page, each section on its own, a scrolled window and the dialogs the sections open.
 // The Updates section is desktop only (UPD-001), so the web client the gallery drives never shows it.
 
 const SECTIONS = ['Account', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'API keys', 'VPN'] as const;

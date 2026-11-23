@@ -9,7 +9,7 @@ import type { Screen } from './shots';
 import { HUB_ORIGIN } from '../synthetic/access';
 import { expect } from '@playwright/test';
 
-/** Every screen, in the order that numbers its pictures. A screen added in the middle moves the numbers after it. */
+/** The order numbers the pictures; a screen added in the middle renumbers those after it. */
 export const SCREENS: readonly Screen[] = [
   ...SIGN_IN_SCREENS,
   ...DEVICE_LIST_SCREENS,

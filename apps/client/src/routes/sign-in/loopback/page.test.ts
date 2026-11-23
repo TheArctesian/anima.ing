@@ -11,9 +11,7 @@ import { boxes, continueWith, settle, type } from '../page.fixture';
 const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,
   loopbackProblem: vi.fn(),
-  /** Each gated reader `tokenFor` made, by origin. */
   readers: new Map<string, () => Promise<string | null>>(),
-  /** What the page gave each candidate hub, and what that hub was sent. */
   candidates: [] as { origin: string; token: unknown; sent: string[] }[],
 }));
 
@@ -57,7 +55,6 @@ let hub: ReturnType<typeof fakeHub>;
 
 function open(): HTMLElement {
   const made = fakeHub({ Login: ok({ login: { token: 'tok-secret' } }) });
-  // This computer's hub address, which the page checks (F-10).
   const local = parseHubAddress('http://127.0.0.1:8443');
   if (!local.ok) throw new Error('bad address');
   hub = { ...made, hub: { ...made.hub, address: local.value } as Hub };
@@ -119,7 +116,6 @@ it('F-10, M-A: a loopback address typed into the hub field is checked first; wit
   expect([fetch.mock.calls.length, sockets.mock.calls.length, hub.sent.length]).toEqual([0, 0, 0]);
 });
 
-/** Opens the page, types `typed` into the hub field and continues to the code step. */
 async function towardsTyped(typed: string): Promise<HTMLElement> {
   const target = open();
   await settle();

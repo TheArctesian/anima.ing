@@ -4,7 +4,6 @@ import { FakeFilesSocket } from './fake/socket.fixture';
 import { connected, settle, source } from './fake/link.fixture';
 import { HOLD_BACK_BYTES, type UploadSource } from './upload';
 
-/** A source of `size` bytes whose reads finish only when the test runs what lands in `reads`. */
 function gated(size: number, reads: (() => void)[]): UploadSource {
   return {
     size,

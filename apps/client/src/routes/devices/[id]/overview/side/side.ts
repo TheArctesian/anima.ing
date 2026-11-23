@@ -11,14 +11,12 @@ export type SideDevice = HeaderDevice &
     readonly vnc: Pick<DeviceDetail['vnc'], 'enabled' | 'username' | 'port'>;
   };
 
-/** One way in to the device: its name, one line of detail, and what its button does. */
 export interface WayIn {
   readonly key: string;
   readonly name: string;
   readonly detail: string;
   /** The words of the button; `null` draws no button, because nothing here can start that way. */
   readonly button: string | null;
-  /** The first way that opens a session is the main one. */
   readonly main: boolean;
   readonly action: ProtocolAction | null;
   readonly webInterface: DeviceDetail['webInterfaces'][number] | null;
@@ -37,7 +35,6 @@ function protocolDetail(device: SideDevice, action: ProtocolAction): string {
   return port;
 }
 
-/** "https, port 3000" from the address of a web interface; the address itself when it cannot be read. */
 export function webDetail(url: string): string {
   if (!URL.canParse(url)) return url;
   const { protocol, port } = new URL(url);
@@ -45,7 +42,7 @@ export function webDetail(url: string): string {
   return `${scheme}, port ${port === '' ? (scheme === 'https' ? '443' : '80') : port}`;
 }
 
-/** The one row of the hub's own device in place of SSH, RDP and VNC: nothing to set up (HMD-045, HMD-046). */
+/** The hub's own device has no SSH, RDP or VNC to set up (HMD-045, HMD-046). */
 const NO_WAY_IN: WayIn = {
   key: 'none',
   name: 'SSH, RDP and VNC',
@@ -56,11 +53,7 @@ const NO_WAY_IN: WayIn = {
   webInterface: null,
 };
 
-/**
- * Each way in, in the order SSH, RDP, VNC, then each web interface (WEB-001): what the bar's connect button and its
- * menu hold, one row each. `web` is false where the page has no way to open a web interface. The hub's own device has
- * one row that says it has none (HMD-046).
- */
+/** SSH, RDP, VNC, then each web interface (WEB-001); `web` is false where the page cannot open a web interface. */
 export function waysIn(device: SideDevice, web: boolean): readonly WayIn[] {
   const actions = connectActions(headerLine(device), device.name);
   if (actions === null) return [NO_WAY_IN, ...webWays(device, web)];
@@ -98,7 +91,6 @@ export interface Fact {
   readonly text: string;
 }
 
-/** The daemon in words: its version and whether it sends, or what reads the metrics in its place. */
 export function daemonText(device: Pick<SideDevice, 'metricsSource' | 'metricsStale' | 'daemonVersion'>): string {
   if (device.metricsSource === 'SSH') return 'Not installed. Metrics are read over SSH';
   if (device.metricsSource !== 'DAEMON') return 'Not installed';
@@ -106,7 +98,7 @@ export function daemonText(device: Pick<SideDevice, 'metricsSource' | 'metricsSt
   return device.metricsStale ? `${version}, not sending now` : `${version}, sending metrics`;
 }
 
-/** What the device is: the facts of the card "About"; the tags are drawn apart, as marks. */
+/** The tags are drawn apart, as marks. */
 export function aboutFacts(device: SideDevice): readonly Fact[] {
   return [
     { label: 'System', text: osLabel(device.os, device.distribution) },

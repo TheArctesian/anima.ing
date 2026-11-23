@@ -6,7 +6,6 @@ import type { RoleTransition } from '$lib/motion/roles/transitions';
 import type { Origin } from '../tabs';
 
 export interface GrowParams {
-  /** The control that opened the tab; `null` when it is not known. */
   readonly origin: Origin | null;
   readonly preference?: MotionPreference;
 }
@@ -25,12 +24,7 @@ function startScale(origin: Origin, tab: DOMRectReadOnly): number {
   return tab.width > 0 ? Math.min(Math.max(origin.width / tab.width, 0), 1) : 0;
 }
 
-/**
- * `transform-origin` in `tab` for which the tab, scaled to `scale`, is centred on the control
- * that opened it: the fixed point of that scale. The tab then grows from where the control is
- * along a straight line to its place in the strip (MOT-005). At scale 1 nothing moves, so the
- * control's centre serves.
- */
+/** The fixed point of `scale` that centres the scaled tab on the control, so it grows along a straight line (MOT-005). */
 function originIn(origin: Origin, tab: DOMRectReadOnly, scale: number): string {
   const controlX = origin.left + origin.width / 2;
   const controlY = origin.top + origin.height / 2;
@@ -45,17 +39,11 @@ function opening(origin: Origin, tab: DOMRectReadOnly): Path {
   return { atZero, origin: originIn(origin, tab, atZero) };
 }
 
-/** The style at progress `t` along `path`; with no path, a fade only. */
 function draw(path: Path | null) {
   return scaledFade(path?.atZero, path?.origin);
 }
 
-/**
- * Session tab open (5.7.3): the tab grows from the control that opened it on `spring-snappy`
- * (MOT-005) and closes to its place in the strip over `duration-fast`. Reduced motion: fade.
- * One bidirectional transition whose path is fixed by its first direction, so a close mid-open
- * goes back to the control from where the tab is, with no step (MOT-002).
- */
+/** The path is fixed by the first direction, so a close mid-open goes back to the control with no step (MOT-002). */
 export function grow(node: Element, { origin, preference = motionPreference() }: GrowParams): RoleTransition {
   const { reduced } = preference;
   // `null` once fixed is a fade only, so it is kept too.

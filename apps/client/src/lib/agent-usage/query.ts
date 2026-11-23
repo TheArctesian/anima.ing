@@ -1,18 +1,15 @@
 import type { AgentSource, AgentUsageFilter } from '$lib/hub/generated/graphql';
 import type { UsageRequest } from './api';
 
-/** What the chart and the share bars count. */
 export type Count = 'cost' | 'tokens' | 'sessions';
 
 /** The page state that lives in the address, so Back, Forward and a copied link restore the page. */
 export interface UsageQuery {
-  /** How many days, ending today (UTC). */
   readonly days: Days;
   readonly count: Count;
-  /** A device ID, or null for every device. */
   readonly device: string | null;
   readonly source: AgentSource | null;
-  /** `host/owner/name` as the daemon sends it, or null for every repository. */
+  /** `host/owner/name` as the daemon sends it. */
   readonly repository: string | null;
 }
 
@@ -34,7 +31,7 @@ export const DEFAULT_QUERY: UsageQuery = { days: 30, count: 'cost', device: null
 
 const DAY_MS = 86_400_000;
 
-/** The query that `params` describe; the address is typed by hand, so unknown values fall back to the defaults. */
+/** The address is typed by hand, so unknown values fall back to the defaults. */
 export function parseUsageQuery(params: URLSearchParams): UsageQuery {
   const days = DAY_CHOICES.find((choice) => String(choice) === params.get('days')) ?? DEFAULT_QUERY.days;
   const count = COUNT_CHOICES.find((choice) => choice.value === params.get('count'))?.value ?? DEFAULT_QUERY.count;
@@ -42,7 +39,6 @@ export function parseUsageQuery(params: URLSearchParams): UsageQuery {
   return { days, count, device: params.get('device') || null, source, repository: params.get('repository') || null };
 }
 
-/** The search parameters for `query`: defaults are left out and the order is fixed. */
 export function writeUsageQuery(query: UsageQuery): URLSearchParams {
   const params = new URLSearchParams();
   if (query.days !== DEFAULT_QUERY.days) params.set('days', String(query.days));
@@ -53,12 +49,11 @@ export function writeUsageQuery(query: UsageQuery): URLSearchParams {
   return params;
 }
 
-/** The UTC day, `YYYY-MM-DD`, of `moment`. */
 export function utcDay(moment: number): string {
   return new Date(moment).toISOString().slice(0, 10);
 }
 
-/** What the hub is asked for `query` when the time is `now`: the days end today in UTC (AIS-020). What is counted is a choice of the page, not of the hub. */
+/** The days end today in UTC (AIS-020); what is counted is the page's choice, not the hub's. */
 export function usageRequest(query: UsageQuery, now: Date): UsageRequest {
   const filter: AgentUsageFilter = {
     firstDay: utcDay(now.getTime() - (query.days - 1) * DAY_MS),

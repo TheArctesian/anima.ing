@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 
-// The CSP hashes of the inline scripts in `index.html`, read exactly as the hub reads them (WP-43 A-2,
-// `crates/hub/src/web_client/scripts.rs`): the same scan, the same edge cases, so a page the hub would block is blocked here.
+// CSP hashes of the inline scripts in `index.html`, read exactly as `crates/hub/src/web_client/scripts.rs` reads them (WP-43 A-2).
 
 const OPEN = '<script';
 const CLOSE = '</script';
@@ -37,14 +36,12 @@ function tagEnd(tag: string): number | undefined {
   return undefined;
 }
 
-/** The first offset at or after `start` where `skip` is false, or the end of `text`. */
 function skipWhile(text: string, start: number, skip: (char: string | undefined) => boolean): number {
   let offset = start;
   while (offset < text.length && skip(text[offset])) offset += 1;
   return offset;
 }
 
-/** The text after one attribute value at the start of `value`: quoted, or up to whitespace. */
 function afterValue(value: string): string {
   const quote = value[0];
   if (quote === '"' || quote === "'") {
@@ -54,7 +51,6 @@ function afterValue(value: string): string {
   return value.slice(skipWhile(value, 0, (char) => !isAsciiWhitespace(char)));
 }
 
-/** The names of the attributes in a start tag's attribute text, values skipped. */
 function attributeNames(attributes: string): string[] {
   const names: string[] = [];
   let rest = attributes;
@@ -68,10 +64,7 @@ function attributeNames(attributes: string): string[] {
   }
 }
 
-/**
- * The body of each inline script in `html`, in page order. A script with a `src` attribute is not inline and is left out;
- * an unclosed script ends the search.
- */
+/** Inline script bodies in page order; a script with `src` is left out, and an unclosed one ends the search. */
 export function inlineScripts(html: string): string[] {
   const lower = asciiLower(html);
   const bodies: string[] = [];

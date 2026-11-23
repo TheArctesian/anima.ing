@@ -1,4 +1,3 @@
-// Test support: a hub that answers the access operations from canned results and records what it was sent.
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import type { Hub, HubError, HubResult, HubStatus } from '$lib/hub/hub';
@@ -24,7 +23,6 @@ export function ok<T>(value: T): HubResult<T> {
   return { ok: true, value };
 }
 
-/** `answers` maps an operation name to the data it returns; an operation without an answer is `unreachable`. `status` is what the hub reports. */
 export function fakeHub(
   answers: Partial<Record<Operation, HubResult<unknown> | Promise<HubResult<unknown>>>>,
   status: HubStatus = { connection: 'connected', lastContactAt: null },

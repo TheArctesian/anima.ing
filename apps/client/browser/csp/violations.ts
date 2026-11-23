@@ -4,22 +4,16 @@ import { HUB_ORIGIN } from '../synthetic/access';
 import { untilClosed } from '../synthetic/closed';
 import { staticSite } from '../synthetic/static-files';
 
-// The second channel for CSP violations: the browser's own report, sent by a Report-Only copy of the enforced policy. It
-// needs no script in the page, so a violation during boot, before any page script runs, is reported here too.
-// Firefox sends every CSP report past `context.route`, straight to the network, the clean sentinel reports too. The
-// control is the `.invalid` report host (RFC 6761): it never resolves, so a report goes no further than a DNS lookup and
-// no TLS connection or body is ever sent. A same-origin report URL would reach the real hub.anima.ing.
+// A Report-Only copy of the policy is the second channel: it needs no page script, so it also sees violations during boot.
+// Firefox sends CSP reports past `context.route`, so the report host is `.invalid` (RFC 6761) and no report leaves the machine.
 
 const REPORT_HOST = 'csp-report.invalid';
-/** A URL every K7 `connect-src` refuses; fetching it is the end-of-test marker in both channels. */
 const SENTINEL = 'https://csp-sentinel.invalid/';
 
-/** What the browser reported about violations of the page's policy. */
 export interface PolicyReports {
   readonly reports: readonly CspViolation[];
 }
 
-/** What the two channels saw, without the sentinel. */
 export interface Seen {
   readonly events: readonly CspViolation[];
   readonly reports: readonly CspViolation[];
@@ -44,10 +38,7 @@ function reportOf(request: Request): CspViolation {
   };
 }
 
-/**
- * Serves every page of the hub origin with `policy` as its enforced CSP (the rest of the K7 headers unchanged), plus the
- * same policy as Report-Only with a report URL, and collects the reports. Call before the first navigation.
- */
+/** Call before the first navigation. */
 export async function servePolicy(context: BrowserContext, policy: string): Promise<PolicyReports> {
   const site = staticSite();
   const reports: CspViolation[] = [];
@@ -83,10 +74,7 @@ export async function servePolicy(context: BrowserContext, policy: string): Prom
 
 const isSentinel = (violation: CspViolation): boolean => violation.blockedUri.includes('csp-sentinel.invalid');
 
-/**
- * The violations both channels saw so far. It first makes one sentinel violation and waits until both channels show it,
- * so a dead channel, or a report still in flight, cannot pass for "none".
- */
+/** A sentinel violation reaches both channels first, so a dead channel or a report in flight cannot pass for "none". */
 export async function violationsSeen(page: Page, watch: PageWatch, policy: PolicyReports): Promise<Seen> {
   await page.evaluate(async (url) => {
     // eslint-disable-next-line no-restricted-globals -- test code in the page: the sentinel request the policy must refuse
@@ -101,13 +89,11 @@ export async function violationsSeen(page: Page, watch: PageWatch, policy: Polic
   return violationsSoFar(watch, policy);
 }
 
-/** The violations in both channels, without the sentinel, with no new round trip: for a check after the test body. */
 export function violationsSoFar(watch: PageWatch, policy: PolicyReports): Seen {
   const real = (violations: readonly CspViolation[]): CspViolation[] => violations.filter((violation) => !isSentinel(violation));
   return { events: real(watch.cspViolations), reports: real(policy.reports) };
 }
 
-/** Fails unless neither channel saw a violation since the page's first script. */
 export async function expectNoViolations(page: Page, watch: PageWatch, policy: PolicyReports): Promise<void> {
   expect(await violationsSeen(page, watch, policy)).toEqual({
     events: [],

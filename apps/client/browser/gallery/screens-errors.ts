@@ -4,10 +4,9 @@ import { HUB_ORIGIN } from '../synthetic/access';
 import type { Screen } from './shots';
 import { DEVICE_IDS, failOperations, onOperations, openDevice } from './steps';
 
-// The failures of the other screens: an address the app does not have, a project that is not there, and the hub
-// failing on Projects, Agent usage, Extensions and Containers. They come last, so the numbers before them stay.
+// The failure screens come last, so the numbers of the screens before them stay.
 
-/** Projects is an extension, off in the synthetic hub: on, so its pages show and not the Devices page. */
+/** Projects is an extension that the synthetic hub has off. */
 const projectsOn = (loaded: Fixtures): Fixtures => ({ ...loaded, extensionsOn: ['projects'] });
 
 export const ERROR_SCREENS: readonly Screen[] = [
@@ -63,7 +62,7 @@ export const ERROR_SCREENS: readonly Screen[] = [
     },
   },
   {
-    // A hub from before project groups (PRO-059) does not know the field: the page says so quietly, with no Retry.
+    // PRO-059: a hub from before project groups does not know the field.
     name: 'projects-older-hub',
     fixtures: projectsOn,
     open: async (page) => {

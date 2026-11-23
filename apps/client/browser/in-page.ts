@@ -1,14 +1,12 @@
 import type { Page } from '@playwright/test';
 
-// Calls a spec makes from inside the page, so the request carries the page's cookies and `Origin` as a real client's would.
-// Client code reaches the network only through `$lib/hub` (CQ-045); this file is test code and runs in the page.
+// Calls from inside the page carry its cookies and `Origin`; client code reaches the network only through `$lib/hub` (CQ-045).
 
 export interface GraphqlAnswer {
   readonly data: Record<string, unknown> | null;
   readonly errors?: readonly { readonly message: string; readonly extensions?: { readonly code?: string } }[];
 }
 
-/** POSTs one GraphQL document to the hub from the page. `headers` adds request headers, such as `authorization`. */
 export function callGraphql(page: Page, query: string, variables: object = {}, headers: Record<string, string> = {}): Promise<GraphqlAnswer> {
   return page.evaluate(
     async ([document, input, extra]) => {
@@ -32,13 +30,11 @@ export interface SocketOutcome {
 }
 
 interface Conversation {
-  /** Text messages to send once the socket is open. */
   readonly send: readonly string[];
   /** How many frames to wait for before the page closes the socket. */
   readonly expect: number;
 }
 
-/** Opens a WebSocket from the page, plays `conversation`, and returns what arrived. */
 export function talkOnSocket(page: Page, url: string, protocol: string, conversation: Conversation): Promise<SocketOutcome> {
   return page.evaluate(
     ([target, subprotocol, { send, expect }]) =>

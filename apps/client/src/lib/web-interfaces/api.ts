@@ -74,7 +74,7 @@ export type WebInterfaceSuggestion = WebInterfaceSuggestionFieldsFragment;
 
 export type { OpenIn, WebInterfaceInput };
 
-/** The web interface mutations of one device's settings (WEB-001, WEB-002) through a `Hub` (CQ-045). */
+/** WEB-001, WEB-002, CQ-045. */
 export function webInterfacesApi(hub: Hub) {
   return {
     create: async (deviceId: string, input: WebInterfaceInput): Promise<HubResult<WebInterface>> => {
@@ -90,7 +90,6 @@ export function webInterfacesApi(hub: Hub) {
       const result = await hub.request(DeleteWebInterface, { id });
       return result.ok ? { ok: true, value: result.value.deleteWebInterface } : result;
     },
-    /** Makes a web interface from the suggestion of a check. */
     acceptSuggestion: async (
       checkId: string,
     ): Promise<HubResult<AcceptWebInterfaceSuggestionMutation['acceptWebInterfaceSuggestion']>> => {

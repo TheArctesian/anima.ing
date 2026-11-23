@@ -8,10 +8,6 @@ import { section } from '../steps';
 import { installDesktopShell } from '../threads/desktop-shell';
 import { EVERY_STATE } from '../threads/scenario';
 
-// The settings of Code in Settings (TC6; R-354, "All that apply"): the section Code appearance at its defaults and
-// changed, and the page Code at each chat width, font size and contrast. It runs only when asked,
-// `GALLERY_CODE_SETTINGS=1`; pictures go to `gallery-shots/code-settings/<theme>-1440/`.
-
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-settings/', import.meta.url));
 const SETTLE_MS = 400;
 const WIDTH = 1440;

@@ -20,23 +20,15 @@ import {
   type Tabs,
 } from './tabs';
 
-/** The hub calls behind the store; the root layout supplies them (K1 `startSession`, `endSession`). */
+/** The hub calls behind the store (K1 `startSession`, `endSession`). */
 export interface SessionPort {
-  /**
-   * How a session view starts sessions on `deviceId` (D-5, D-7), one start per tunnel:
-   * `sessionStart(sessionsApi(hub), deviceId, hub.address.origin)`. Only the view calls it, because only the
-   * view knows its display; the store wraps it to learn each session ID (see `startIn`).
-   */
+  /** One start per tunnel (D-5, D-7); only the view calls it, because only the view knows its display. */
   start(deviceId: string): DeviceStarts;
   /** End the session, or return an ended one unchanged (K1 `endSession`, D-4). */
   end(sessionId: string): Promise<HubResult<unknown>>;
 }
 
-/**
- * Opens a window that starts its own session on `device` through `openSession` (RA-002, D-13); only the desktop
- * shell has one (WP-16). A hub session cannot change hands (K4: one ticket per `startSession`), so the port is never
- * given a session ID and the tab's session ends (`OPERATOR`).
- */
+/** A hub session cannot change hands (K4: one ticket per `startSession`), so the new window starts its own (RA-002, D-13). */
 export type PopOutPort = (device: PoppedOutDevice) => Promise<void>;
 
 /** What a new window needs to open its own session with `openSession` (D-13): the device, never a session ID. */
@@ -46,7 +38,6 @@ export interface PoppedOutDevice {
   readonly protocol: SessionProtocol;
 }
 
-/** What `openSession` needs: the device, the protocol and the control that opened it (H-1). */
 export interface SessionRequest {
   readonly deviceId: string;
   readonly deviceName: string;
@@ -56,7 +47,6 @@ export interface SessionRequest {
   readonly origin: Origin | null;
 }
 
-/** What `openWeb` needs: the interface, its device and the control that opened it (WEB-003, MOT-005). */
 export interface WebRequest {
   readonly deviceId: string;
   readonly deviceName: string;
@@ -86,13 +76,11 @@ interface Refused {
 /** What a start in a tab that has gone answers; the view of that tab has gone too, so no one shows it. */
 const TAB_CLOSED: Refused = { ok: false, error: { problem: 'not-opened', message: 'The session tab was closed.' } };
 
-/** What a start through the other tunnel's view answers: an SSH tab has no remote display, and the reverse. */
 const OTHER_VIEW: Refused = { ok: false, error: { problem: 'not-opened', message: 'This session tab uses another protocol.' } };
 
 /** Starts one attempt; `ended` is called when its tunnel ends, before the view hears it. */
 type Launch<Tunnel> = (ended: () => void) => Promise<ViewStartResult<Tunnel>>;
 
-/** `onend`, after `ended`. */
 function afterEnded<State>(ended: () => void, onend: (state: State) => void): (state: State) => void {
   return (state) => {
     ended();
@@ -100,48 +88,35 @@ function afterEnded<State>(ended: () => void, onend: (state: State) => void): (s
   };
 }
 
-/** What one start in a tab has learnt from its tunnel so far. */
 interface Attempt {
   sessionId: string | undefined;
   /** The tunnel ended, so the view ends the session itself to learn the recorded reason (D-4). */
   ended: boolean;
 }
 
-/** The open session tabs (RA-001): order, selection and the hub sessions behind them. */
+/** The open session tabs (RA-001). */
 export interface Sessions {
   readonly tabs: readonly Tab[];
   readonly active: Tab | null;
   /** Whether "Pop out" and drag-out may be offered (D-13). */
   readonly canPopOut: boolean;
-  /**
-   * Opens and selects a tab for `request`; its view then starts the session (D-11). The one entry point: the device
-   * page's SSH button calls `useSessions().openSession({ deviceId, deviceName, protocol: 'SSH', origin:
-   * button.getBoundingClientRect() })` (WP-14 H-1, WP-12).
-   */
+  /** The one entry point for a session; its view then starts the session (D-11). */
   openSession(request: SessionRequest): TabId;
   /** Opens and selects a web tab for `request` (WEB-003); its pane starts the page and reads the pin (WEB-008). */
   openWeb(request: WebRequest): TabId;
   /**
-   * The `SessionStart` for the SSH view in tab `id`. Each call starts a hub session and records its ID on the tab;
-   * one that replaces a live session ends that first (D-5); one that finishes after the tab closed, or after a
-   * newer start, has its session ended here. A session whose tunnel ended is the view's to end (D-4). In an RDP
-   * or VNC tab it starts nothing.
+   * A start that replaces a live session ends that first (D-5); one that finishes after the tab closed, or after a
+   * newer start, has its session ended here. A session whose tunnel ended is the view's to end (D-4).
    */
   startIn(id: TabId): SessionStart;
-  /** The same for the remote view of an RDP or VNC tab, which asks `startSession` for the tab's protocol. */
   remoteStartIn(id: TabId): RemoteStart;
   select(id: TabId): void;
   deselect(): void;
-  /** Show `title` (the remote shell's, cleaned) in the tab; `''` clears it. */
   retitle(id: TabId, title: string): void;
   /** Removes the tab and ends its session once; rejects with `SessionEndError` when the hub could not end it. */
   close(id: TabId): Promise<void>;
   move(from: number, to: number): void;
-  /**
-   * Opens the tab's device in a new window, then removes the tab and ends its session once; the window starts its
-   * own. Rejects with the port's error and keeps the tab when no window opens, or with `SessionEndError` (the tab
-   * gone) when the hub could not end the session.
-   */
+  /** Keeps the tab when no window opens; rejects with `SessionEndError` (the tab gone) when the hub could not end the session. */
   popOut(id: TabId): Promise<void>;
 }
 
@@ -239,10 +214,7 @@ class OpenSessions implements Sessions {
     return this.#find(id) !== undefined && this.#latestStart.get(id) === start;
   }
 
-  /**
-   * One start in tab `id` through the launch `pick` gives for the tab (`undefined`: none for this view). The tab
-   * gives up the attempt's session when its tunnel ends (K4 §5).
-   */
+  /** The tab gives up the attempt's session when its tunnel ends (K4 §5). */
   async #begin<Tunnel extends { close(): void }>(
     id: TabId,
     pick: (tab: Tab) => Launch<Tunnel> | undefined,
@@ -266,9 +238,7 @@ class OpenSessions implements Sessions {
     if (!result.ok) return result;
     attempt.sessionId = result.value.sessionId;
     if (!this.#isLatest(id, mine)) {
-      // The view that asked has gone or moved on, so nothing owns this session: close its tunnel now (the view
-      // may close it too; that is safe) and end it. A failure has no one to tell: the hub also records the end
-      // when the tunnel closes (K4 §5).
+      // Nothing owns this session: close its tunnel and end it; the hub also records the end when the tunnel closes (K4 §5).
       result.value.tunnel.close();
       await this.#port.end(attempt.sessionId);
     } else if (!attempt.ended) {
@@ -277,7 +247,6 @@ class OpenSessions implements Sessions {
     return result;
   }
 
-  /** The tunnel of `attempt` ended: the tab gives up its session, so the view ends it (K4 §5). */
   #ended(id: TabId, attempt: Attempt): void {
     attempt.ended = true;
     if (attempt.sessionId !== undefined && this.#find(id)?.sessionId === attempt.sessionId) {
@@ -285,12 +254,7 @@ class OpenSessions implements Sessions {
     }
   }
 
-  /**
-   * A new start ends the tab's live session once before it asks for another (D-5). The tab gives the id up first,
-   * so a close or another start meanwhile cannot end it again; on a failure it takes the id back. If a newer start
-   * or a close has replaced the tab's id by then, the failed session is left to the hub, which ends it when its
-   * tunnel closes (K4 §5): the view that owned it closed that tunnel before starting again.
-   */
+  /** D-5: the tab gives the id up first, so a close or another start meanwhile cannot end it again; a failure takes it back. */
   async #endPrevious(id: TabId, previous: string): Promise<HubError | undefined> {
     this.#state = withSession(this.#state, id, null);
     const ended = await this.#port.end(previous);
@@ -314,19 +278,17 @@ class OpenSessions implements Sessions {
   }
 }
 
-/** The session store over `port`; pass `popOut` only where a window can take a session (D-13). */
+/** Pass `popOut` only where a window can take a session (D-13). */
 export function createSessions(port: SessionPort, popOut?: PopOutPort): Sessions {
   return new OpenSessions(port, popOut);
 }
 
 const [getSessions, setSessions] = createContext<Sessions>();
 
-/** Make `sessions` available to every component below; call once in the root layout. */
 export function provideSessions(sessions: Sessions): void {
   setSessions(sessions);
 }
 
-/** The sessions set by `provideSessions` in a parent component; throws when there is none. */
 export function useSessions(): Sessions {
   return getSessions();
 }

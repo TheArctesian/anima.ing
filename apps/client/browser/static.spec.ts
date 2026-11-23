@@ -1,8 +1,6 @@
 import { expect, test } from './test-hub';
 import { HUB_ORIGIN } from './synthetic/access';
 
-// The web client as the hub serves it (K7 "HTTP surface"): fallback, 404 under /_app/, cache headers, content types.
-
 test('K7: an unknown path gets index.html, a missing /_app/ file gets 404, both with the CSP', async ({ page }) => {
   const route = await page.goto(`${HUB_ORIGIN}/no/such/page`);
   expect(route?.status()).toBe(200);

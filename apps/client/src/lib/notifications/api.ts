@@ -9,9 +9,8 @@ import type {
 } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult } from '$lib/hub/hub';
 
-// Own documents (WP-50 F-3): the notification fields of K1 are @pending, so a hub without them fails these documents
-// only, and only the Notifications section shows an error. No document here selects a secret: K1 has none to select
-// (D-17); a webhook gives its origin, ntfy and Apprise their server, email its host.
+// Own documents (WP-50 F-3): the K1 notification fields are @pending, so a hub without them fails only these documents.
+// No document here selects a secret (D-17).
 void graphql(`
   fragment DeliveryFields on Delivery {
     id
@@ -141,7 +140,7 @@ export type NotificationSettings = NotificationSettingsFieldsFragment;
 
 export type { ChannelKind, NotificationChannelInput, NotificationSettingsInput, NotificationTemplateInput };
 
-/** The notification calls of the hub (NOT-002 to NOT-004, NOT-006, NOT-007) as plain functions of a `Hub`. */
+/** NOT-002 to NOT-004, NOT-006, NOT-007. */
 export interface NotificationsApi {
   channels(): Promise<HubResult<readonly NotificationChannel[]>>;
   settings(): Promise<HubResult<NotificationSettings>>;
@@ -149,7 +148,6 @@ export interface NotificationsApi {
   create(input: NotificationChannelInput): Promise<HubResult<NotificationChannel>>;
   /** A secret that is `null` keeps the stored one; `""` clears an optional one (K1). */
   update(id: string, input: NotificationChannelInput): Promise<HubResult<NotificationChannel>>;
-  /** The id of the deleted channel. */
   remove(id: string): Promise<HubResult<string>>;
   /** Sends at once; the hub waits at most 8 seconds for the target (NOT-004). */
   sendTest(id: string): Promise<HubResult<Delivery>>;

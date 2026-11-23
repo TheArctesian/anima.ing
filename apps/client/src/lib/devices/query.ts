@@ -19,12 +19,11 @@ export const DEFAULT_QUERY: ListQuery = { view: 'table', name: '', statuses: [],
 const STATUSES: readonly Status[] = ['UP', 'DOWN', 'DEGRADED', 'MAINTENANCE', 'UNKNOWN'];
 const SORTS: readonly DeviceSort[] = ['NAME', 'STATUS', 'UPTIME'];
 
-/** The values of `allowed` that appear in `values`, in the order of `allowed`; anything else is dropped. */
 function known<T extends string>(values: readonly string[], allowed: readonly T[]): T[] {
   return allowed.filter((value) => values.includes(value));
 }
 
-/** The query that `params` describe; the URL is typed by hand, so unknown values fall back to the defaults. */
+/** The URL is typed by hand, so unknown values fall back to the defaults. */
 export function parseListQuery(params: URLSearchParams): ListQuery {
   return {
     view: params.get('view') === 'grid' ? 'grid' : DEFAULT_QUERY.view,
@@ -36,7 +35,6 @@ export function parseListQuery(params: URLSearchParams): ListQuery {
   };
 }
 
-/** The search parameters for `query`: defaults are left out and the order is fixed (view, q, status, tag, site, sort). */
 export function writeListQuery(query: ListQuery): URLSearchParams {
   const params = new URLSearchParams();
   if (query.view !== DEFAULT_QUERY.view) params.set('view', query.view);
@@ -48,7 +46,6 @@ export function writeListQuery(query: ListQuery): URLSearchParams {
   return params;
 }
 
-/** The hub filter for `query`, with empty parts left out; none at all when nothing is filtered. */
 function filterOf(query: ListQuery): DeviceFilter | null {
   const filter: DeviceFilter = {
     ...(query.name === '' ? {} : { name: query.name }),
@@ -59,7 +56,6 @@ function filterOf(query: ListQuery): DeviceFilter | null {
   return Object.keys(filter).length === 0 ? null : filter;
 }
 
-/** The `Devices` variables for `query`; `after` is the cursor of the page to load next. */
 export function listVariables(query: ListQuery, after?: string | null): DevicesQueryVariables {
   const filter = filterOf(query);
   return {

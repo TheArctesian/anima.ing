@@ -12,18 +12,16 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('$lib/motion/engine.fixture')).fakeRun,
 }));
 
-/** The desktop shell, faked at the IPC edge: every shell command the panel reaches goes through this `invoke`. */
 const tauri = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true) }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: tauri.invoke, isTauri: tauri.isTauri }));
 
-/** The shell's calls, through a hub that names its VPN login server (ADR-005). */
+/** ADR-005: the hub names its VPN login server. */
 const desktopShell = () => thisComputerShell(fakeHub({ VpnLoginServer: { vpnLoginServer: 'https://hs.anima.ing' } }).hub);
 
 const HERE = '100.64.0.9';
 const MACHINE = { name: 'nas', user: 'ada', os: 'LINUX', vpnAddress: HERE, sshListening: true };
 const INSTALLED = { DaemonStatus: { device: { id: 'd1', metricsSource: 'DAEMON', metricsStale: false } } };
 
-/** Answers the shell's commands; `daemon_install` as `install` says. */
 function shellAnswers(install: () => Promise<unknown>, bundled = true): void {
   tauri.invoke.mockImplementation((command: string) => {
     if (command === 'this_machine_read') return Promise.resolve(MACHINE);
@@ -130,7 +128,6 @@ const MACHINE_HERE = { ...MACHINE, os: 'LINUX' as const };
 const DEVICE = { id: 'd1', host: HERE };
 const CODE_MADE = { ok: true as const, value: { code: CODE, expiresAt: '2026-11-09T10:15:00Z' } };
 
-/** A promise and the function that settles it. */
 function pending<T>(): { promise: Promise<T>; settle: (value: T) => void } {
   let settle: (value: T) => void = () => undefined;
   const promise = new Promise<T>((resolve) => { settle = resolve; });

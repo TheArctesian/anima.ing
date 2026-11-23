@@ -10,24 +10,16 @@
   }
 
   interface Props {
-    /** The group's accessible name: what the choice is about, for example "Status". */
     label: string;
     options: readonly Option[];
     value: Value;
     size?: 'sm' | 'md' | 'lg';
-    /**
-     * Whether an arrow key also chooses (the default, as radios do) or only moves focus, stopping at the ends, so that
-     * Space or Enter chooses. For a choice that is risky to pass through on the way to another.
-     */
+    /** False: arrows only move focus, stopping at the ends, for a choice risky to pass through. */
     arrowsChoose?: boolean;
     onchange?: (value: Value) => void;
   }
 
-  /*
-   * One choice from a few, so it is a radio group, not a row of toggle buttons: `aria-pressed` says "on or off",
-   * and a screen reader would read the row as independent switches. Radios also give arrow keys, which move and
-   * choose together, and one tab stop (the chosen option).
-   */
+  /* A radio group, not toggle buttons: `aria-pressed` would read as independent switches. */
   let { label, options, value = $bindable(), size = 'md', arrowsChoose = true, onchange }: Props = $props();
   let radios: (HTMLButtonElement | undefined)[] = $state([]);
 

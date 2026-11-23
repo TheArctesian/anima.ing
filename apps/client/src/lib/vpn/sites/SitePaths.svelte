@@ -11,11 +11,8 @@
   interface Props {
     sites: readonly SitePath[];
     broker: BrokerState;
-    /** Opens the enrolment modal for the router of this site. */
     onEnrol: (siteId: string) => void;
-    /** Approves the waiting route of the site's router (R-055). */
     approve: (siteId: string) => Promise<HubResult<unknown>>;
-    /** The id of the line that says why the broker actions are off. */
     reasonId: string;
   }
 
@@ -25,7 +22,6 @@
   const TONES = { SERVING: 'up', OFFLINE: 'down', NO_ROUTER: 'unknown' } as const;
 </script>
 
-<!-- One row for each site: how the hub reaches it, in words beside a dot (VPN-009, UI-003). -->
 <ul class="sites" aria-label="Sites">
   {#each sites as entry, index (entry.site.id)}
     <li class="row" transition:listRow={{ index }} aria-label={entry.site.name}>
@@ -73,7 +69,7 @@
     border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
-  /* A narrow card keeps the name and the state on the first line; the subnet and the path each take a full line, so a wide state cannot squeeze them. */
+  /* The subnet and the path each take a full line, so a wide state cannot squeeze them. */
   @container (max-inline-size: 28rem) {
     .row {
       grid-template-columns: minmax(0, 1fr) auto;
@@ -143,7 +139,7 @@
     justify-self: start;
   }
 
-  /* The approval is a line of text and its button: it takes the width of the row (its own container has no width of its own). */
+  /* Its own container has no width, so it takes the width of the row. */
   div.action {
     justify-self: stretch;
   }

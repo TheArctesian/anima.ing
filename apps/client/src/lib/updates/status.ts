@@ -3,7 +3,6 @@ import type { FailureReason, UpdateSnapshot } from './schedule';
 const NEXT = (nextCheckAt: number | null, time: (at: Date) => string): string =>
   nextCheckAt === null ? '' : ` Next check at ${time(new Date(nextCheckAt))}.`;
 
-/** What a failed attempt says, by reason. */
 function describeFailure(reason: FailureReason): string {
   switch (reason) {
     case 'no-feed':
@@ -15,7 +14,7 @@ function describeFailure(reason: FailureReason): string {
   }
 }
 
-/** The update state in plain words for the Settings row (UPD-006). `time` writes the next check's clock time. */
+/** The update state for the Settings row (UPD-006). */
 export function describeUpdate({ state, nextCheckAt }: UpdateSnapshot, time: (at: Date) => string): string {
   switch (state.kind) {
     case 'unchecked':
@@ -33,7 +32,6 @@ export function describeUpdate({ state, nextCheckAt }: UpdateSnapshot, time: (at
   }
 }
 
-/** Whether "Check for updates" can run: not while a check or download runs, and not once an update is installed. */
 export function canCheck({ state }: UpdateSnapshot): boolean {
   return state.kind === 'unchecked' || state.kind === 'idle' || state.kind === 'failed';
 }

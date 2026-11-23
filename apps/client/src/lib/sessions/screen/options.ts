@@ -7,14 +7,12 @@ const SCROLLBACK_LINES = 5000;
 const FALLBACK_FONT_PX = 12;
 const ROOT_FALLBACK_PX = 16;
 
-/** The font the terminals of a `host` draw with: token family and size in pixels. */
 export function terminalFont(host: HTMLElement): { readonly fontFamily: string; readonly fontSize: number } {
   const tokens = tokensOf(host);
   const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || ROOT_FALLBACK_PX;
   return { fontFamily: tokens('--font-mono-opendyslexic'), fontSize: sizeInPx(tokens('--text-xs'), rootPx, FALLBACK_FONT_PX) };
 }
 
-/** The xterm.js options the session terminal opens with: Nord theme, font tokens, scroll-back, contrast. */
 export function terminalOptions(host: HTMLElement, font = terminalFont(host)): ITerminalOptions {
   return {
     scrollback: SCROLLBACK_LINES,

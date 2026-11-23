@@ -13,7 +13,6 @@ vi.mock('motion', async (importOriginal) => ({
 const HEIGHT = 36;
 let app: ReturnType<typeof mount> | undefined;
 
-/** A notice slot with a list after it whose top is pushed down while the notice is in the layout. */
 function screen(initial: string | null, reduced = false) {
   const target = document.body.appendChild(document.createElement('div'));
   const props = $state({ message: initial, preference: { reduced } });
@@ -53,7 +52,6 @@ it('MOT-007: when the notice appears the list starts where it was and moves by s
   props.message = 'The connection closed';
   await tick();
   await tick();
-  // The list is HEIGHT lower in the layout; it is held HEIGHT above that and springs to it.
   expect(list.style.translate).toBe(`0px ${String(-HEIGHT)}px`);
   expect(runs.some((run) => run.keyframes.at(-1) === 0)).toBe(true);
 });
@@ -85,7 +83,7 @@ it('MOT-002: a double toggle leaves one notice, shown again from where its fade 
   expect(notice()?.textContent).toBe('Live updates stopped: Still closed');
 });
 
-/** The runs that fade the notice: a tween over opacity, not a spring over a place. */
+/** Fades are tweens over opacity, not springs. */
 const fades = () => runs.filter((run) => run.options['duration'] !== undefined);
 
 it('5.7.3 Disclosure: the notice starts invisible and fades in over duration-base with ease-enter', async () => {

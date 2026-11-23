@@ -2,8 +2,6 @@ import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { Extension } from './api';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
 
-// Test support: extensions in the hub's shape and a hub that keeps their switches in memory.
-
 function entry(key: string, name: string, more: Partial<Extension> = {}): Extension {
   return { key, name, built: true, fixed: false, on: false, needs: [], worksWith: [], neededBy: [], ...more };
 }
@@ -17,13 +15,11 @@ export const FIXTURE_EXTENSIONS: readonly Extension[] = [
 ];
 
 export interface FakeHub extends Pick<Hub, 'request'> {
-  /** The switches sent, as `key:on`, in order. */
   readonly sent: string[];
-  /** What the next `setExtension` answers instead of changing anything. */
   refuse: HubError | null;
 }
 
-/** A hub that answers `Extensions` from `start` and applies `SetExtension` as the hub does (EXT-011). */
+/** Applies `SetExtension` as the hub does (EXT-011). */
 export function fakeHub(start: readonly Extension[] = FIXTURE_EXTENSIONS): FakeHub {
   let all = start;
   const hub: FakeHub = {

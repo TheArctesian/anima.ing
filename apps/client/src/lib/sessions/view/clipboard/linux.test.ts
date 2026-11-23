@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// xterm.js reads the platform once, when it loads: as Firefox on Linux it puts a mouse selection in its text field
-// (the primary selection) and handles a right click on `mousedown`. Node's `process.title` would make it think it
-// runs in Node, so it is hidden until xterm.js has loaded.
+// xterm.js reads the platform once at load, and `process.title` would make it think it runs in Node, so it is hidden until then.
 const hidden = vi.hoisted(() => {
   Object.defineProperty(navigator, 'platform', { configurable: true, value: 'Linux x86_64' });
   Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0' });
@@ -40,7 +38,6 @@ afterEach(async () => {
 const COPY_OFF: SessionTransfer = { copy: false, paste: true };
 const ON: SessionTransfer = { copy: true, paste: true };
 
-/** A connected SSH view of a device answering `transfer`, with "needle" drawn and selected. */
 async function selectedNeedle(transfer: SessionTransfer) {
   let screen: TerminalScreen | undefined;
   const view = showView((open) => async (host, hooks) => (screen = await open(host, hooks)));

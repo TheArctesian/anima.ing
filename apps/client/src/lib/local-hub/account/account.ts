@@ -3,10 +3,10 @@ import { localHubMessage, type LocalHubProblem } from '$lib/desktop/local-hub/sh
 /** The operator name rule of `anima-hub operator` (`docs/procedures/setup/local-hub.md` Section 7). */
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
-/** The shortest password the hub's `operator set` rules take. */
+/** Mirrors the hub's `operator set` minimum. */
 export const PASSWORD_MIN = 12;
 
-/** What the account step asks for. The password and its repeat are secrets (LOG-007). */
+/** The password and its repeat are secrets (LOG-007). */
 export interface AccountForm {
   readonly name: string;
   readonly password: string;
@@ -17,7 +17,7 @@ export type AccountField = keyof AccountForm;
 
 export type AccountProblems = Partial<Record<AccountField, string>>;
 
-/** The problems the client sees before anything leaves the page; empty when the form is good (FRN-003). */
+/** Checked before anything leaves the page (FRN-003). */
 export function checkAccount(form: AccountForm): AccountProblems {
   const problems: AccountProblems = {};
   if (!NAME.test(form.name)) {
@@ -30,12 +30,11 @@ export function checkAccount(form: AccountForm): AccountProblems {
 
 const FIELDS: readonly AccountField[] = ['name', 'password', 'repeat'];
 
-/** The first field in page order with a problem, for focus. */
 export function firstProblem(problems: AccountProblems): AccountField | undefined {
   return FIELDS.find((field) => problems[field] !== undefined);
 }
 
-/** A TOTP secret for the eye: groups of four characters, so that it can be typed into an authenticator by hand. */
+/** Groups of four, so the secret can be typed into an authenticator by hand. */
 export function groupedSecret(secret: string): string {
   return secret.match(/.{1,4}/g)?.join(' ') ?? '';
 }
@@ -43,7 +42,7 @@ export function groupedSecret(secret: string): string {
 /** TOTP changes its code every 30 seconds (RFC 6238). */
 export const TOTP_STEP_S = 30;
 
-/** Whole seconds until the authenticator shows its next code, from 1 to 30 (FRN-004). */
+/** From 1 to 30 (FRN-004). */
 export function secondsToNextCode(now: Date): number {
   const seconds = Math.floor(now.getTime() / 1000);
   return TOTP_STEP_S - (seconds % TOTP_STEP_S);
@@ -56,7 +55,7 @@ const ACCOUNT_TEXT: Partial<Record<LocalHubProblem, string>> = {
   argument: 'The hub refused the name: use 1 to 64 letters, digits, dots, underscores or hyphens, starting with a letter or a digit.',
 };
 
-/** The fixed text for a refused account change (FRN-004, FRN-007). */
+/** Fixed text (FRN-004, FRN-007). */
 export function accountFailure(problem: LocalHubProblem): string {
   return ACCOUNT_TEXT[problem] ?? localHubMessage(problem);
 }

@@ -21,17 +21,13 @@ export { desktopRecentCopy, forgetRecentCopy } from './recent/desktop';
 export type { GatewayAnswer } from './gateway';
 export { readGateway } from './gateway';
 
-/** GraphQL variables: an object, or an empty one for a document without variables. */
 export type Variables = Record<string, unknown>;
 
-/** How long a request waits for its answer, and the socket for `connection_ack`, before the hub counts as unreachable (NET-004). */
 const HUB_TIMEOUT_MS = 10_000;
 
 /**
- * The one GraphQL transport of the client (CQ-045). Domain clients in `$lib/<domain>/api.ts` take a `Hub`.
- * Failures are values (`HubResult`), not exceptions: an unreachable hub is an everyday state (NET-004),
- * and the result type makes every caller handle it. Nothing here rejects or throws for a hub, network
- * or token failure; a token provider that rejects gives `UNAUTHENTICATED` ("The access token could not be read.").
+ * The client's one GraphQL transport (CQ-045). It never rejects or throws for a hub, network or token failure: failures
+ * are `HubResult` values (NET-004), and a token provider that rejects gives `UNAUTHENTICATED`.
  */
 export interface Hub {
   readonly address: HubAddress;
@@ -41,26 +37,19 @@ export interface Hub {
     variables: TVariables,
   ): Promise<HubResult<TResult>>;
   /**
-   * Start a subscription on the shared socket; returns the function that stops it (API-002).
-   * The sink hears `error` (UNAUTHENTICATED) when the hub refuses the token (close 4403) or the token cannot be
-   * read; the subscription is not sent again. After a refusal the socket keeps probing on the backoff, reading the
-   * token anew each time; after an unreadable token it waits for the next `subscribe`.
+   * Returns the function that stops it (API-002). A refused (close 4403) or unreadable token gives the sink `error`
+   * (UNAUTHENTICATED), and the subscription is not sent again.
    */
   subscribe<TResult, TVariables extends Variables>(
     document: TypedDocumentNode<TResult, TVariables>,
     variables: TVariables,
     sink: Sink<TResult>,
   ): () => void;
-  /**
-   * Connection status and last contact, as Svelte state (NAV-003, NET-004). The socket keeps it current from
-   * creation on: `connected` on `connection_ack` or a refused token, `unreachable` on failure or no ack in time.
-   */
+  /** `connected` on `connection_ack` or a refused token, `unreachable` on failure or no ack in time (NAV-003, NET-004). */
   readonly status: LiveStatus;
   /**
-   * End every subscription (each sink hears `complete`), stop any connection attempt or retry wait, and close
-   * the socket. A later `subscribe` completes at once without connecting; `request` keeps working, since HTTP
-   * holds no connection. Subscriptions end synchronously; the promise resolves once closing has begun and
-   * rejects with the reason when an open socket could not be closed.
+   * Ends every subscription and the socket; a later `subscribe` completes at once, and `request` keeps working. Rejects
+   * only when an open socket could not be closed.
    */
   close(): Promise<void>;
 }
@@ -68,20 +57,13 @@ export interface Hub {
 export interface HubOptions {
   readonly address: HubAddress;
   readonly token: TokenProvider;
-  /**
-   * The socket's reader, for each `connection_init`; `token` when absent. The socket reconnects by itself, so a reader
-   * that must check the address each time (F-10) is given here.
-   */
+  /** The socket reconnects by itself, so a reader that checks the address each time (F-10) goes here; `token` when absent. */
   readonly socketToken?: TokenProvider;
   readonly fetch?: typeof fetch;
   readonly WebSocket?: typeof WebSocket;
   readonly now?: () => Date;
-  /** How long to wait for an answer or `connection_ack`; defaults to 10 s (NET-004). */
   readonly timeoutMs?: number;
-  /**
-   * Where the client keeps its read-only copy of recent answers, and how large it may be (FND-007). When given, a
-   * copied query that the hub does not answer gives its last answer, and the status holds the age of that copy.
-   */
+  /** When given, a copied query that the hub does not answer gives its last answer (FND-007). */
   readonly recent?: CopyPlace;
 }
 
@@ -120,13 +102,9 @@ export function createHub(options: HubOptions): Hub {
   };
 }
 
-/** A hub that sends requests only: no socket, no status. */
 export type RequestHub = Pick<Hub, 'address' | 'request'>;
 
-/**
- * A hub at `address` for HTTP requests only, for a token that opens no socket: the builder token permits only the
- * builder operations (BLD-022, D-1). Its failures do not change the operator's connection status.
- */
+/** For a token that opens no socket, such as the builder token (BLD-022, D-1); its failures leave the connection status alone. */
 export function createRequestHub(options: Omit<HubOptions, 'WebSocket' | 'now' | 'socketToken'>): RequestHub {
   const address: HubAddress = Object.freeze({ ...options.address });
   const http = {

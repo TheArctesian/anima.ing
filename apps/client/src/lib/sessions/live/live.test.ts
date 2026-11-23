@@ -231,7 +231,6 @@ it('RA-034 / MAT-002: the open panel lives in the body, outside the bar, and a p
 it('RA-034: after Stop succeeds focus moves to the next Stop button, else the previous, else the control', async () => {
   await show({ LiveSessions: ANSWER(DESK, LAPTOP), EndSession: { id: 'x' } });
   await open();
-  // Newest first: laptop, desk. Stopping laptop moves focus to desk; stopping desk then has no neighbour.
   stopButton('laptop').focus();
   stopButton('laptop').click();
   await vi.waitFor(() => {
@@ -271,7 +270,6 @@ it('D-6: an answer that a newer refresh superseded is dropped, and pushed change
   await vi.waitFor(() => {
     expect(release).toHaveLength(2);
   });
-  // The second query is the newer: it answers first, then a change arrives, then the stale first answer.
   release[1]?.(ANSWER(DESK));
   await vi.waitFor(() => {
     expect(control().querySelector('.count')?.textContent).toBe('1');

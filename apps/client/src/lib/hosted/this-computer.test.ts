@@ -19,7 +19,6 @@ const failed = (code: 'UNAVAILABLE' | 'CONFLICT' | 'FORBIDDEN' | 'unreachable' |
 
 type Answers = { readonly [Part in keyof ThisComputerParts]?: Awaited<ReturnType<ThisComputerParts[Part]>> };
 
-/** A hub with no device and no site, and this Mac on its link; `answers` replaces what a part answers. */
 function parts(answers: Answers = {}) {
   return {
     device: vi.fn(() => Promise.resolve(answers.device === undefined ? MAC : answers.device)),

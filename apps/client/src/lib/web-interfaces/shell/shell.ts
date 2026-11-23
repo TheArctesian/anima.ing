@@ -12,10 +12,9 @@ export interface Bounds {
   readonly height: number;
 }
 
-/** A history step or a reload of a web view. */
 export type WebViewStep = 'BACK' | 'FORWARD' | 'RELOAD';
 
-/** What `web_view_open` is given; `pin` is the fingerprint the view must accept, or `null` for system trust. */
+/** `pin` is the fingerprint the view must accept, or `null` for system trust. */
 export interface WebViewOpening {
   readonly tabId: string;
   readonly deviceId: string;
@@ -49,7 +48,7 @@ export interface WebViewShell {
   openSystemBrowser(url: string): Promise<void>;
   /** The SHA-256 fingerprint of the leaf certificate an `https` URL presents now. */
   readCertificate(url: string): Promise<Fingerprint>;
-  /** Hear `web-view` events; unknown shapes are dropped. Resolves to the function that stops listening. */
+  /** Unknown event shapes are dropped. */
   listen(onevent: (event: WebViewEvent) => void): Promise<() => void>;
 }
 
@@ -61,7 +60,6 @@ export function codeOf(reason: unknown): string {
   return typeof code === 'string' && CODE.test(code) ? code : 'failed';
 }
 
-/** The `{ fingerprintSha256 }` answer of `web_certificate_read`, checked field by field. */
 export function certificateFrom(answer: unknown): Fingerprint {
   const fingerprint =
     typeof answer === 'object' && answer !== null && 'fingerprintSha256' in answer ? fingerprintFrom(answer.fingerprintSha256) : null;

@@ -2,16 +2,11 @@ import type { Attachment } from 'svelte/attachments';
 import { motionPreference, type MotionPreference } from '../preference';
 import { flip, measure, type Places } from './flip';
 
-/** Whether two places are the same spot on screen. */
 function samePlace(a: DOMRectReadOnly, b: DOMRectReadOnly): boolean {
   return a.left === b.left && a.top === b.top;
 }
 
-/**
- * The reorder role (5.7.3) for a keyed list: when `order` changes, the items that moved slide to their new
- * places with `spring-move`. Under reduced motion the order changes at once. Call during component init;
- * attach the returned function to each item with its id.
- */
+/** The reorder role (5.7.3); call during component init. */
 export function reorderMotion(
   order: () => string,
   preference: MotionPreference = motionPreference(),
@@ -25,7 +20,6 @@ export function reorderMotion(
     before = measure(cards.values());
   });
 
-  /** Slides the items that are not where they were. */
   function play(places: Places): void {
     const moved = [...places].filter(
       ([element, place]) => element.isConnected && !samePlace(place, element.getBoundingClientRect()),

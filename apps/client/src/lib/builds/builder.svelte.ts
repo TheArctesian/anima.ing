@@ -27,10 +27,8 @@ export interface ThisBuilderPorts {
   readonly ids: BuilderIdStore;
   /** The operator's access token, removed from every log line like the builder token (BLD-049). */
   readonly operatorToken: () => Promise<string | null>;
-  /** The name the hub records for this computer (BLD-021). */
   readonly computerName: () => Promise<string>;
   readonly sleep: (ms: number) => Promise<void>;
-  /** The time now; it dates a release's feed (CQ-021). */
   readonly now: () => Date;
 }
 
@@ -44,7 +42,7 @@ const PROBLEMS = {
   tools: 'Platform not detected.',
 } as const;
 
-/** This computer as a builder: whether it is one, and its loop (BLD-020 to BLD-029). */
+/** This computer as a builder (BLD-020 to BLD-029). */
 export class ThisBuilder {
   /** `null` until the key store has been read. */
   enrolled = $state<boolean | null>(null);
@@ -89,7 +87,7 @@ export class ThisBuilder {
     });
   }
 
-  /** Starts the loop when this computer already holds a builder token; the builder runs while the app runs (BLD-026). */
+  /** The builder runs while the app runs (BLD-026). */
   async resume(): Promise<void> {
     try {
       const token = await this.#ports.tokens.read();
@@ -103,7 +101,7 @@ export class ThisBuilder {
     }
   }
 
-  /** Runs `call`; whether it worked. A failure shows `problem` (its reason may name the key store, so it is dropped: LOG-007). */
+  /** A failure's reason may name the key store, so only `problem` shows (LOG-007). */
   async #attempt(problem: string, call: () => Promise<unknown>): Promise<boolean> {
     try {
       await call();
@@ -124,7 +122,6 @@ export class ThisBuilder {
     }
   }
 
-  /** "Build releases on this computer" on: enrol with the operator's session, keep the token, start (BLD-021, BLD-023). */
   async enable(): Promise<void> {
     if (this.busy || this.enrolled === true) return;
     this.busy = true;
@@ -151,10 +148,7 @@ export class ThisBuilder {
     }
   }
 
-  /**
-   * Stops the loop and forgets the token and the builder ID on this computer. When the key store keeps the token, the ID
-   * and the enrolled state stay too, so turning building off again can finish the work.
-   */
+  /** When the key store keeps the token, the ID and the enrolled state stay, so turning building off again can finish. */
   async #forgetHere(): Promise<void> {
     await this.stop();
     if (!(await this.#attempt(PROBLEMS.clear, () => this.#ports.tokens.clear()))) return;
@@ -165,7 +159,6 @@ export class ThisBuilder {
     this.status = { kind: 'stopped' };
   }
 
-  /** "Build releases on this computer" off: stop, revoke the token on the hub and delete it from the key store (BLD-025). */
   async disable(): Promise<void> {
     if (this.busy) return;
     this.busy = true;
@@ -182,12 +175,11 @@ export class ThisBuilder {
     }
   }
 
-  /** After the operator revoked builder `id` in the list: when it is this computer, forget its token too (BLD-025). */
   async revoked(id: string): Promise<void> {
     if (this.#ports.ids.read() === id) await this.#forgetHere();
   }
 
-  /** Stops the loop, for example when the app closes; the token stays. */
+  /** The token stays. */
   async stop(): Promise<void> {
     const stop = this.#stop;
     this.#stop = null;
@@ -197,7 +189,6 @@ export class ThisBuilder {
 
 const [getThisBuilder, setThisBuilder] = createContext<ThisBuilder>();
 
-/** Make `builder` available to every component below; call once in the root layout. */
 export function provideThisBuilder(builder: ThisBuilder): void {
   setThisBuilder(builder);
 }

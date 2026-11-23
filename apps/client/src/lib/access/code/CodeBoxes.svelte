@@ -3,11 +3,9 @@
   import { arrow, backspace, codeOf, CODE_LENGTH, EMPTY_DIGITS, enter, isComplete, type Entry } from './code-entry';
 
   interface Props {
-    /** The code is being sent: the boxes take nothing, but keep focus, so it does not drop to the page (NAV-005). */
+    /** NAV-005: while sending, the boxes take nothing but keep focus. */
     disabled?: boolean;
-    /** The first box takes focus on mount; off where a step heading has just taken it. */
     autofocus?: boolean;
-    /** The sixth box was filled: the page sends the code. */
     oncomplete: (code: string) => void;
   }
 
@@ -49,7 +47,6 @@
       event.preventDefault();
       focusBox(arrow(index, event.key === 'ArrowLeft' ? -1 : 1));
     } else if (event.key.length === 1) {
-      // A printable key: a digit is taken here, anything else is dropped.
       event.preventDefault();
       put(index, event.key);
     }

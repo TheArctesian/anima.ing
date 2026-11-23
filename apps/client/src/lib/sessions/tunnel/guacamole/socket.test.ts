@@ -8,7 +8,6 @@ afterEach(() => {
   FakeTunnelSocket.reset();
 });
 
-/** `new WebSocket(url)` through whatever the global is at the time, as the library does. */
 function construct(url: string): void {
   // The library reads the global at call time; so does this stand-in.
   new globalThis.WebSocket(url, 'guacamole');

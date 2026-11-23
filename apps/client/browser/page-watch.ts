@@ -9,7 +9,6 @@ export interface CspViolation {
   readonly sourceFile: string;
 }
 
-/** What went wrong in a page, collected from its start. */
 export interface PageWatch {
   readonly cspViolations: readonly CspViolation[];
   readonly consoleErrors: readonly string[];
@@ -40,7 +39,7 @@ function listenForViolations(binding: string): void {
   );
 }
 
-/** Starts watching `page`; call before the first navigation. */
+/** Call before the first navigation. */
 export async function watchPage(page: Page): Promise<PageWatch> {
   const cspViolations: CspViolation[] = [];
   const consoleErrors: string[] = [];

@@ -16,7 +16,6 @@ describe('McpPermissionsStore', () => {
     shell.hold = true;
     const saving = store.change({ type: 'choose', names: ['anima_check_update'], state: 'ask' });
     expect(stateOf(store, 'anima_check_update')).toBe('ask');
-    // The write starts after the change is shown; wait until it is on its way.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(stateOf(store, 'anima_check_update')).toBe('ask');
     shell.release();
@@ -37,7 +36,6 @@ describe('McpPermissionsStore', () => {
     shell.writeProblem = null;
     await store.change({ type: 'choose', names: ['anima_check_update'], state: 'ask' });
     expect(stateOf(store, 'anima_check_update')).toBe('ask');
-    // The same tool was saved, so its failure is over.
     expect(store.problem).toBeNull();
   });
 

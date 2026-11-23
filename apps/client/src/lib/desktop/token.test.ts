@@ -17,7 +17,6 @@ function addressOf(host: string): HubAddress {
   return parsed.value;
 }
 
-/** A key store that keeps one token per origin. */
 function keyStoreHolding(entries: [string, string][]): void {
   const stored = new Map(entries);
   core.invoke.mockImplementation((_command: string, args: { origin: string }) => Promise.resolve(stored.get(args.origin) ?? null));

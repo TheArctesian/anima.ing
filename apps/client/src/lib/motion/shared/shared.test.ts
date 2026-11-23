@@ -27,7 +27,6 @@ interface Layout {
   height: number;
 }
 
-/** An element whose on-screen box is its layout box moved by `translate` and scaled about its centre. */
 function box(layout: Layout): HTMLElement {
   const node = document.createElement('span');
   document.body.append(node);
@@ -46,14 +45,12 @@ function box(layout: Layout): HTMLElement {
   return node;
 }
 
-/** The outgoing page's element: a card name still in the document while its page fades out. */
 function card(): HTMLElement {
   const node = box({ top: 300, left: 40, width: 100, height: 20 });
   node.dataset.shared = key;
   return node;
 }
 
-/** The new page's element: the detail header name, at twice the card's size. */
 function header(): HTMLElement {
   return box({ top: 20, left: 20, width: 200, height: 40 });
 }
@@ -95,7 +92,6 @@ it('card to detail: an element with another key is not a counterpart', () => {
   expect(runs).toEqual([]);
 });
 
-/** The copy that flies above both pages, if one is in flight. */
 const copy = () => document.querySelector<HTMLElement>('[data-flight]');
 
 it('card to detail, MOT-006: a copy starts on the card rect and springs to the item by translate and scale', () => {
@@ -162,7 +158,6 @@ it('card to detail: with several outgoing pages, the last one mounted is the cou
 
   attach(node);
 
-  // The copy starts on the second card: its centre is 70 px below the header's.
   expect(runs[1]?.keyframes).toEqual([70, 0]);
   expect(second.style.opacity).toBe('0');
   expect(first.style.opacity).toBe('');
@@ -219,7 +214,6 @@ it('MOT-002: a page that mounts mid-flight starts from where the flying copy is 
   attach(header());
   const first = copy();
   if (first === null) throw new Error('no copy in flight');
-  // The copy sits on the header's box (20, 20, 200 × 40) and is moved by its own translate and scale.
   first.getBoundingClientRect = () => {
     const [x, y] = pair(first.style.translate, 0);
     const [sx] = pair(first.style.scale, 1);

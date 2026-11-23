@@ -24,7 +24,6 @@ function hub(...changes: Parameters<typeof fakeHub>) {
   return fake;
 }
 
-/** Remember an open tunnel so the test closes it. */
 function kept<Result extends { ok: boolean; value?: { tunnel: { close(): void } } }>(result: Result): Result {
   if (result.value !== undefined) tunnels.push(result.value.tunnel);
   return result;
@@ -127,7 +126,6 @@ describe('the transfer policy read at each start (RA-033, K4 §4)', () => {
   });
 });
 
-/** A store whose starts run on the fake hub through the real `sessionStart`. */
 function store(api: ReturnType<typeof fakeHub>['api']) {
   return createSessions({
     start: (deviceId) => ({

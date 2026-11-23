@@ -12,10 +12,8 @@
 
   interface Props {
     items: readonly TabSpec[];
-    /** The `id` of the selected item. */
     selected: string;
     onSelect: (id: string) => void;
-    /** Names the strip for assistive technology, for example "Device". */
     label: string;
     /** Prefixes the tab and panel ids: the panel of item `x` is `<idPrefix>-panel-x`. */
     idPrefix: string;
@@ -31,7 +29,7 @@
     return list?.querySelectorAll<HTMLElement>('[role="tab"]')[index];
   }
 
-  /** The indicator spans the selected tab: `translate` and `scale` from its left edge only (MOT-006). */
+  /** Only `translate` and `scale`, from the left edge (MOT-006). */
   function place(motion: SpringMotion | InstantMotion): void {
     const tab = tabAt(items.findIndex((entry) => entry.id === selected));
     if (indicator === undefined || tab === undefined) return;
@@ -39,7 +37,7 @@
     animate(indicator, { translate: { x: tab.offsetLeft, y: 0 }, scale: { x: tab.offsetWidth / base, y: 1 } }, motion);
   }
 
-  /** Tab selection (5.7.3): the indicator moves on `spring-snappy`; in place at once on first paint and under reduced motion. */
+  /** Spec 5.7.3: `spring-snappy`; instant on first paint and under reduced motion. */
   $effect(() => {
     void selected;
     untrack(() => {
@@ -60,13 +58,10 @@
     };
   });
 
-  /*
-   * A strip too narrow for its tabs first drops the icons, so the words fit (UI-003 keeps the words); a strip still too
-   * narrow fades the far end and shows an arrow there (NAV-005: a focused tab is always scrolled into view).
-   */
+  /* Too narrow, the strip drops its icons first (UI-003), then fades its far end and scrolls (NAV-005). */
   let edges = $state<StripEdges>(NO_HIDDEN_EDGES);
   let compact = $state(false);
-  /** The width the tabs need with their icons, read when they stopped fitting; wide enough again, the icons come back. */
+  /** The tabs' width with icons, read when they stopped fitting. */
   let fullWidth = 0;
 
   function onEdges(next: StripEdges, strip: HTMLElement): void {
@@ -135,14 +130,12 @@
 </div>
 
 <style>
-  /* The arrows sit on the strip's ends. */
   .tab-strip {
     position: relative;
     min-inline-size: 0;
     margin-block-end: var(--space-4);
   }
 
-  /* The strip scrolls inside itself when the tabs do not fit, never the page; `strip-fade.css` fades a hidden end. */
   .tabs {
     position: relative;
     display: flex;
@@ -160,7 +153,6 @@
     display: none;
   }
 
-  /* The word is always there (UI-003); a tab is text, not a button. */
   button {
     flex: none;
     box-sizing: border-box;
@@ -212,7 +204,6 @@
     outline-offset: calc(var(--border-focus) * -1);
   }
 
-  /* Scaled from its left edge to the selected tab's width. */
   .indicator {
     position: absolute;
     inset-block-end: 0;

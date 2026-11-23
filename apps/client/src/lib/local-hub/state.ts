@@ -1,9 +1,8 @@
 import type { BlockedReason, LocalHubResult, LocalHubStatus } from '$lib/desktop/local-hub/shell';
 
-/** Where an install or a start has got to: still on its way, or settled in one of three ends (FRN-002). */
+/** FRN-002. */
 export type Progress = 'waiting' | 'ready' | 'blocked' | 'failed';
 
-/** The progress the status shows. A hub that is not installed, or stopped, is still on its way until it reports. */
 export function progressOf(status: LocalHubStatus): Progress {
   switch (status.state) {
     case 'ready':
@@ -15,7 +14,7 @@ export function progressOf(status: LocalHubStatus): Progress {
   }
 }
 
-/** Where the hub root is: what the operator needs to put `vault.key` back (`docs/procedures/setup/local-hub.md` Section 1). */
+/** Where the operator puts `vault.key` back (`docs/procedures/setup/local-hub.md` Section 1). */
 export function hubRoot(mac: boolean): string {
   return mac ? '~/Library/Application Support/ing.anima.desktop/hub' : '~/.local/share/anima/hub';
 }
@@ -34,7 +33,7 @@ const LINK: Readonly<Record<NonNullable<LocalHubStatus['link']>['state'], string
   down: 'Link down, retrying. This computer still reaches the hub.',
 };
 
-/** One true sentence for the hub's state (FRN-006, LHB-010). */
+/** FRN-006, LHB-010. */
 export function stateText(status: LocalHubStatus, mac: boolean): string {
   if (!status.installed) return 'Not installed.';
   switch (status.state) {
@@ -54,29 +53,22 @@ export function stateText(status: LocalHubStatus, mac: boolean): string {
   }
 }
 
-/** The link member's sentence, or `null` when the status carries none (F-6). */
+/** F-6. */
 export function linkText(status: LocalHubStatus): string | null {
   return status.link === undefined ? null : LINK[status.link.state];
 }
 
-/** What polling needs; each part is injected, so that tests need no shell or timer (CQ-021). */
+/** Every part is injected (CQ-021). */
 export interface Poll {
   readonly read: () => Promise<LocalHubResult<LocalHubStatus>>;
   readonly wait: (ms: number) => Promise<void>;
-  /** Each status read, for the screen. */
   readonly seen: (status: LocalHubStatus) => void;
-  /** True once the screen has gone: polling stops. */
   readonly stopped: () => boolean;
 }
 
-/** One read every second. */
 export const POLL_MS = 1000;
 
-/**
- * Reads the status every second until it settles (ready or blocked), the shell refuses or the screen goes. A failed
- * hub starts again by itself in 10 seconds, so the poll goes on through it and shows each status.
- * Returns the last answer, or `null` when stopped.
- */
+/** A failed hub restarts itself in 10 seconds, so polling goes on through `failed`. */
 export async function pollUntilSettled(poll: Poll): Promise<LocalHubResult<LocalHubStatus> | null> {
   while (!poll.stopped()) {
     const result = await poll.read();

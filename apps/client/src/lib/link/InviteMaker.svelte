@@ -10,7 +10,6 @@
     api: Pick<LinkApi, 'invite'>;
     /** The time for the countdown (CQ-021). */
     now: Date;
-    /** A new invite was made, for a list that shows the devices. */
     onmade?: () => void;
   }
 

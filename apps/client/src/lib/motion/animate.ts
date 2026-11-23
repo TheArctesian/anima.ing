@@ -14,7 +14,7 @@ export interface MotionTarget {
   readonly opacity?: number;
 }
 
-/** A started animation. `finished` settles when every value arrives, is stopped or is interrupted. */
+/** `finished` settles when every value arrives, is stopped or is interrupted. */
 export interface Playback {
   stop(): void;
   readonly finished: Promise<void>;
@@ -26,7 +26,6 @@ type Channel = 'x' | 'y' | 'scaleX' | 'scaleY' | 'opacity';
 
 interface Track {
   readonly value: MotionValue<number>;
-  /** Writes this value, with its partner axis, to the element's style. */
   readonly draw: () => void;
   running?: { stop(): void };
 }
@@ -42,7 +41,7 @@ function axisPair(text: string, single: (x: number) => number, rest: number): [n
   return [x, y ?? single(x)];
 }
 
-/** The values on screen now, so a new motion starts where the old one is (MOT-002). */
+/** A new motion starts where the old one is (MOT-002). */
 function rendered(element: Animatable): Record<Channel, number> {
   const style = getComputedStyle(element);
   const [x, y] = axisPair(style.translate, () => 0, 0);
@@ -142,10 +141,8 @@ function start(track: Track, from: number, to: number, motion: Motion): Playback
 }
 
 /**
- * Animates `element` to `target` from the values on screen now; a later call on the same
- * values interrupts this one and keeps its velocity (MOT-002). A spring's `velocity` applies
- * to every value in `target`; animate the axes in separate calls when they differ (MOT-035).
- * Instant motion is applied before this returns, so no caller waits for a timer (MOT-042).
+ * A later call on the same values interrupts this one and keeps its velocity (MOT-002). A spring's `velocity` applies
+ * to every value in `target` (MOT-035). Instant motion is applied before this returns (MOT-042).
  */
 export function animate(element: Animatable, target: MotionTarget, motion: Motion): Playback {
   const tracks = tracksFor(element);
@@ -159,7 +156,6 @@ export function animate(element: Animatable, target: MotionTarget, motion: Motio
   return together(moving.map(([channel, to]) => start(tracks[channel], now[channel], to, motion)));
 }
 
-/** One playback for several: `stop` stops all, `finished` settles when all have settled. */
 export function together(playbacks: readonly Playback[]): Playback {
   return {
     stop: () => {
@@ -169,13 +165,11 @@ export function together(playbacks: readonly Playback[]): Playback {
   };
 }
 
-/** A progress curve for a CSS transition: the ease token as a function of time 0 to 1. */
 export function easeCurve(name: EaseName): (t: number) => number {
   const [x1, y1, x2, y2] = ease[name];
   return cubicBezier(x1, y1, x2, y2);
 }
 
-/** The spring sampled as a progress curve over its settling time, for CSS transitions. */
 export function springCurve(motion: SpringMotion): { easing: (t: number) => number; durationMs: number } {
   const { stiffness, damping, mass } = motion;
   const sampled = createGeneratorEasing({ stiffness, damping, mass }, undefined, spring);

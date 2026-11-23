@@ -117,7 +117,6 @@ it('MOT-007, RA-034: a refused Stop reserves its line in every row first, so the
   });
   expect([...facts().children].map((child) => child.className)).toEqual(before);
   expect(document.querySelector('[role="alert"]')?.parentElement).toBe(reserved?.parentElement);
-  // A retry clears the line and shows it again in the same place.
   stopButton('desk').click();
   await vi.waitFor(() => {
     expect(document.querySelector('[role="alert"]')).not.toBeNull();
@@ -125,7 +124,6 @@ it('MOT-007, RA-034: a refused Stop reserves its line in every row first, so the
   expect([...facts().children].map((child) => child.className)).toEqual(before);
 });
 
-/** Holds every transition until `finish`, and lays the rows out 64 px apart, as the list does in a browser. */
 function holdTransitions() {
   const held: { onfinish: (() => void) | null }[] = [];
   const animate = Element.prototype.animate;

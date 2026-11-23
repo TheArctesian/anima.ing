@@ -4,20 +4,15 @@ import type { Place, Show } from './list';
 
 export type ReadStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
-/**
- * The machines of the hub and the containers of each (HSE-002, task H42). Each machine is read on its own, so a machine
- * that does not answer does not hold the others back. Nothing reads again by itself: the operator asks.
- */
+/** HSE-002: each machine is read on its own, so one that does not answer holds no other back; nothing reads again unless the operator asks. */
 export class HostingStore {
   status = $state<ReadStatus>('idle');
-  /** Why the machines did not load, in the hub's words. */
   problem = $state('');
   places = $state.raw<readonly Place[]>([]);
 
   search = $state('');
   machine = $state('');
   show = $state<Show>('all');
-  /** The keys of the applications that are open to their containers. */
   open = $state.raw<readonly string[]>([]);
 
   /** HSE-008: the one machine of a device page; the list then reads no other machine. Null on the page Hosting. */
@@ -28,7 +23,6 @@ export class HostingStore {
 
   /** HOST-021: idle until the operator asks; the hub then asks public registries for each machine. */
   updatesStatus = $state<ReadStatus>('idle');
-  /** Why a machine could not be asked, in the hub's words; empty when each answered. */
   updatesProblem = $state('');
 
   #generation = 0;
@@ -68,17 +62,14 @@ export class HostingStore {
     this.updatesStatus = failed === undefined ? 'ready' : 'failed';
   }
 
-  /** Opens an application to its containers, or closes it. */
   toggle(key: string): void {
     this.open = this.open.includes(key) ? this.open.filter((each) => each !== key) : [...this.open, key];
   }
 
-  /** HOST-001: shows the log of one container below the list and reads it. */
   async openLog(machineId: string, containerId: string, name: string): Promise<void> {
     await this.#open(machineId, containerId, name).select(containerId);
   }
 
-  /** HOST-017: shows the details of one container below the list and reads them. */
   async openDetail(machineId: string, containerId: string, name: string): Promise<void> {
     await this.#open(machineId, containerId, name).inspect(containerId);
   }
@@ -95,7 +86,6 @@ export class HostingStore {
     const result = await this.calls.containers(id);
     if (generation !== this.#generation) return;
     this.#change(id, result.ok ? { status: 'ready', containers: result.value } : { status: 'failed', problem: result.error.message });
-    // The container whose log or details are open is gone after a refresh: its pane closes.
     const pane = this.pane;
     if (pane !== null && pane.machineId === id && (!result.ok || !result.value.some((container) => container.id === pane.containerId))) {
       pane.store.close();

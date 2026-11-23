@@ -1,6 +1,6 @@
 import { panelPosition } from './actions';
 
-/** Puts a menu panel under `anchor`, or above it, inside the window; the panel's padding is the margin from the edge. */
+/** The panel's padding is its margin from the window edge. */
 export function placeNear(anchor: () => HTMLElement | undefined) {
   return (panel: HTMLElement): void => {
     const button = anchor();

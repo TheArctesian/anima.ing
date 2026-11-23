@@ -4,7 +4,7 @@ import type { ChecksState, CommitChecks, MergeState, RepositoryAccess, WorkflowR
 /** The first seven digits, as GitHub shows a commit. */
 export const shortSha = (sha: string): string => sha.slice(0, 7);
 
-/** Why the lists of a repository cannot be read, and what to do; null when they can (PRJ-032). */
+/** `null` when the lists of the repository can be read (PRJ-032). */
 export function accessWords(access: RepositoryAccess): { title: string; line: string } | null {
   switch (access) {
     case 'READY':
@@ -22,7 +22,7 @@ export function accessWords(access: RepositoryAccess): { title: string; line: st
   }
 }
 
-/** A mark and its words for the checks of a commit; the words go with the mark, so colour is never alone (UI-003). */
+/** The words go with the mark, so colour is never alone (UI-003). */
 export function checksMark(checks: CommitChecks | null | undefined): { icon: IconName; tone: string; words: string } {
   const state: ChecksState = checks?.state ?? 'NONE';
   switch (state) {
@@ -47,7 +47,6 @@ export const MERGE_STATE_WORDS: Readonly<Record<MergeState, string>> = {
   UNKNOWN: 'GitHub is still checking',
 };
 
-/** A run's state in words and the tone of its mark. */
 export function runState(run: WorkflowRun): { words: string; tone: string; icon: IconName } {
   if (run.status === 'QUEUED') return { words: 'Queued', tone: 'running', icon: 'carbon:circle-dash' };
   if (run.status === 'IN_PROGRESS') return { words: 'Running', tone: 'running', icon: 'carbon:circle-dash' };
@@ -69,5 +68,4 @@ export function runState(run: WorkflowRun): { words: string; tone: string; icon:
   }
 }
 
-/** Whether a run is still going, so the runs are read again every 30 seconds (PRJ-034). */
 export const running = (run: WorkflowRun): boolean => run.status !== 'COMPLETED';

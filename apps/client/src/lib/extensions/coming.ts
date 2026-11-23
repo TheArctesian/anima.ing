@@ -1,8 +1,4 @@
-/**
- * What each extension that is not built will do, in one sentence from its section of the extensions plan
- * (docs/plans/extensions-plan.md, Section 4). The hub sends no description of an extension, so the words are here,
- * by the key of the extension. A sentence gives no date and promises nothing that the plan does not hold (R-223).
- */
+/** The hub sends no description; each sentence is from extensions-plan.md Section 4, with no date or promise beyond it (R-223). */
 const WILL_DO: Readonly<Record<string, string>> = {
   map: 'It will show where you were, the places that you use, and where your sites and belongings are.',
   writing: 'It will keep your notes, drafts and documents in Anima.ing.',
@@ -19,10 +15,6 @@ const WILL_DO: Readonly<Record<string, string>> = {
   model_gateway: 'It will give each of your computers one address for AI model requests. The keys stay on the hub.',
 };
 
-/**
- * What the extension `key`, which is not built, will do, or nothing when the plan says nothing. The row shows the tag
- * "Coming soon" beside it (R-223).
- */
 export function willDo(key: string): string {
   return WILL_DO[key] ?? '';
 }

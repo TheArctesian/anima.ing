@@ -1,27 +1,24 @@
 import type { BatteryState } from '$lib/hub/generated/graphql';
 import { percentText, type Bar } from '../bars/bars';
 
-/** A battery as the hub lists it for a device (MET-032). Structural, so the `batteries` of any device query fits. */
+/** Structural, so the `batteries` of any device query fits (MET-032). */
 export interface BatteryListing {
   readonly name: string;
   readonly state: BatteryState;
 }
 
-/** The latest charge of each battery of one device, 0 to 100, by battery name: the series BATTERY_PERCENT. */
+/** The latest charge of each battery, 0 to 100, by battery name. */
 export type Charges = ReadonlyMap<string, number>;
 
-/** No charge known yet. */
 export const NO_CHARGES: Charges = new Map();
 
-/** The battery as one more meter beside CPU, memory and disk (MET-032). */
 export interface BatteryBar extends Bar {
   readonly key: 'battery';
   readonly charging: boolean;
-  /** Discharging at or under 20 %: the quiet warning. */
   readonly low: boolean;
 }
 
-/** MET-032: the quiet warning at 20 % and, stronger in words, at 10 %, while the battery discharges. */
+/** Warning thresholds while the battery discharges (MET-032). */
 export const LOW_AT = 20;
 export const VERY_LOW_AT = 10;
 
@@ -51,14 +48,12 @@ function isCharge(value: number): boolean {
   return Number.isFinite(value) && value >= 0 && value <= 100;
 }
 
-/** `known` with the battery samples of one batch added; the same map when the batch has none. */
 export function mergeCharges(known: Charges, samples: readonly Sample[]): Charges {
   const charges = samples.filter((sample) => sample.kind === KIND && isCharge(sample.value));
   if (charges.length === 0) return known;
   return new Map([...known, ...charges.map((sample) => [sample.label, sample.value] as const)]);
 }
 
-/** The newest point of each BATTERY_PERCENT series of a device. */
 export function chargesOfSeries(series: readonly Series[]): Charges {
   return new Map(
     series.flatMap((one) => {
@@ -74,7 +69,6 @@ interface Reading {
   readonly percent: number | null;
 }
 
-/** Low words for a battery that discharges; an empty string when it does not warn. */
 function warningOf(reading: Reading): string {
   if (reading.state !== 'DISCHARGING' || reading.percent === null || reading.percent > LOW_AT) return '';
   return reading.percent <= VERY_LOW_AT ? 'very low' : 'low';
@@ -84,15 +78,11 @@ function spokenOf(reading: Reading): string {
   return [percentText(reading.percent), warningOf(reading), STATE_WORDS[reading.state]].filter((part) => part !== '').join(', ');
 }
 
-/** The lowest charge first; a battery with no charge yet comes last. */
 function byCharge(a: Reading, b: Reading): number {
   return (a.percent ?? Number.POSITIVE_INFINITY) - (b.percent ?? Number.POSITIVE_INFINITY);
 }
 
-/**
- * The battery meter of a device, or `null` for a device with no battery (MET-032). With several batteries the meter
- * shows the lowest charge, the one that ends first; the words name each battery.
- */
+/** With several batteries the meter shows the lowest charge, the one that ends first (MET-032). */
 export function batteryBar(batteries: readonly BatteryListing[], charges: Charges | undefined): BatteryBar | null {
   const readings = batteries.map(({ name, state }) => ({ name, state, percent: charges?.get(name) ?? null })).sort(byCharge);
   const shown = readings[0];

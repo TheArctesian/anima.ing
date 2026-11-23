@@ -2,12 +2,8 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { isHostedHub } from '../mark';
 
-// The gateway as a browser page meets it. The network side has its own tests with a stand-in gateway
-// (`$lib/hub/gateway`); here the two calls of it answer as the test says.
-
 const mocks = vi.hoisted(() => ({
   desktop: false,
-  /** Whether a gateway is in front, and whether it confirms a sign-out. */
   gateway: { inFront: true, confirms: true },
   asked: 0,
   signedOut: 0,
@@ -30,7 +26,7 @@ vi.mock('$lib/platform/platform', async () => {
   return { capabilities: () => (mocks.desktop ? DESKTOP_MAC : BROWSER) };
 });
 
-/** The module anew, as a page load gives it: it asks the gateway once for each load. */
+/** A fresh module per page load, which asks the gateway once. */
 async function page() {
   vi.resetModules();
   return import('./here');

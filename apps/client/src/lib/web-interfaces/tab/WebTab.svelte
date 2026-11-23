@@ -36,13 +36,10 @@
     };
     device: { readonly id: string; readonly name: string; readonly status: Status };
     tabId: string;
-    /** Whether this tab is the one on screen. */
     visible: boolean;
-    /** Whether a menu, popover or modal lies over the tab: the native view would cover it (MAT-008). */
     overlayOpen: boolean;
     shell?: WebViewShell;
     api?: WebTabApi;
-    /** The clock, in milliseconds; tests pass their own (CQ-021). */
     now?: () => number;
   }
 
@@ -54,15 +51,14 @@
     browser: 'The system browser could not be opened.',
   } as const;
 
-  /** The interface as it is now, for a new run: a new URL or pin starts one (H-4, WEB-008). */
   const snapshot = (): WebTabTarget =>
     untrack(() => ({ id: webInterface.id, deviceId: webInterface.deviceId, url: webInterface.url, pinned: webInterface.pinnedFingerprintSha256 }));
 
   let fixed: WebTabTarget = $state.raw(snapshot());
-  /** Counts runs; an answer for an earlier run is dropped. */
+  /** An answer for an earlier run is dropped. */
   let runs = 0;
   let pinning = false;
-  /** After a restart, events wait for the new view: a late one from the closed view must not reach this run. */
+  /** After a restart, a late event from the closed view does not reach this run. */
   let restarted = false;
   let tab: WebTab | undefined = $state.raw();
   let viewState = $state<ViewState>('none');
@@ -73,7 +69,6 @@
   let reloadButton: HTMLButtonElement | undefined = $state();
   let reading: WebStep | undefined;
 
-  /** Move to the tab `event` leads to; undefined (and no change) when it does not apply now. */
   function apply(event: WebTabEvent): WebTab | undefined {
     if (tab === undefined) return undefined;
     const next = transition(tab, event, now());
@@ -92,7 +87,6 @@
     },
   });
 
-  /** Start a run of the tab for the interface as it is now. */
   function start() {
     runs += 1;
     fixed = snapshot();
@@ -157,8 +151,7 @@
     });
   });
 
-  // H-4: a new URL drops the pin and a new pin replaces it, so the view of the old one closes and the tab starts
-  // again; the pin this tab accepted itself coming back from the hub changes nothing.
+  // H-4: a new URL or pin restarts the tab; the pin this tab accepted, coming back from the hub, changes nothing.
   $effect(() => {
     const { url, pinnedFingerprintSha256: pinned } = webInterface;
     untrack(() => {
@@ -171,7 +164,6 @@
     });
   });
 
-  // The view opens once, when the tab first has an area and a page to load.
   $effect(() => {
     if (tab?.mode !== 'EMBEDDED' || current === undefined || !viewShows(current) || viewState !== 'none') return;
     if (bounds === undefined || !hasArea(bounds)) return;
@@ -242,7 +234,6 @@
         const presented = await shell.readCertificate(url);
         // Whatever came while reading counts: another run, a stop or a prompt now, or a new pin (WEB-008).
         if (run !== runs || tab === undefined || !browserAllowed(tab.current) || tab.pin !== pin) return;
-        // A different certificate stops the open, as in the web view.
         if (presented !== pin) {
           apply({ event: 'mismatch', expected: pin, presented });
           return;

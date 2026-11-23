@@ -1,7 +1,7 @@
 import type { TimeWindow } from '$lib/charts/scales';
 import type { MetricRange } from './api';
 
-/** The metric ranges an operator can choose (MET-003): the hub's enum, its URL word, its label and how a chart's text alternative says it. */
+/** The metric ranges an operator can choose (MET-003). */
 export const RANGES = [
   { range: 'HOUR', param: 'hour', label: '1 hour', phrase: 'last hour' },
   { range: 'DAY', param: 'day', label: '24 hours', phrase: 'last 24 hours' },
@@ -14,15 +14,11 @@ const SPAN_MS: Record<MetricRange, number> = { HOUR: HOUR_MS, DAY: DAY_MS, WEEK:
 /** WP-28 D-5: the width of one bucket of each range, in milliseconds. */
 const BUCKET_MS: Record<MetricRange, number> = { HOUR: 60_000, DAY: 600_000, WEEK: HOUR_MS };
 
-/** The time window a range shows at `now`, in milliseconds: HOUR 1 h, DAY 24 h, WEEK 7 d (MET-003). */
 export function rangeWindow(range: MetricRange, now: Date): TimeWindow {
   return { start: now.getTime() - SPAN_MS[range], end: now.getTime() };
 }
 
-/**
- * The window for series read at `now`. When the newest point is older than the window, the series is a copy of an
- * earlier answer (FND-007), and the window ends at that point, so that the chart shows the copy and its time axis.
- */
+/** A series whose newest point is older than the window is an earlier answer's copy (FND-007): the window ends at that point. */
 export function seriesWindow(range: MetricRange, now: Date, pointTimes: readonly number[]): TimeWindow {
   const newest = Math.max(...pointTimes);
   const old = Number.isFinite(newest) && newest < now.getTime() - SPAN_MS[range];

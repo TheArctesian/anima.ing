@@ -125,7 +125,7 @@ describe('crossFade', () => {
     expect(css(leaving(crossFade(box(), reduced)), 0.25)).toBe('opacity: 0.25;');
   });
 
-  /** Opacity of a layer `elapsed` (0 to 1) into its transition, as Svelte runs it: in goes 0 to 1, out goes 1 to 0. */
+  /** Svelte runs `t` from 0 to 1 for in and from 1 to 0 for out. */
   function opacityAt(config: TransitionConfig, direction: 'in' | 'out', elapsed: number): number {
     const progress = config.easing?.(elapsed) ?? elapsed;
     const t = direction === 'in' ? progress : 1 - progress;

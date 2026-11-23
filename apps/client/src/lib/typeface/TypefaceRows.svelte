@@ -27,7 +27,6 @@
       onchange={(typeface) => { choose(role.id, typeface as Typeface<typeof role.id>); }}
     />
     {#snippet message()}
-      <!-- One message for both fonts, under the last row. -->
       {#if problem !== null && index === TEXT_ROLES.length - 1}<p role="alert">{problem}</p>{/if}
     {/snippet}
   </SettingRow>

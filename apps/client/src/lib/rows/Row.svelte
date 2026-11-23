@@ -5,11 +5,8 @@
   import Icon from '$lib/icons/Icon.svelte';
 
   interface Props {
-    /** The row opens this page of the app: the whole row is the link, with a chevron at its end. */
     to?: Pathname | undefined;
-    /** The row's columns, as `grid-template-columns`; one column by default. */
     columns?: string | undefined;
-    /** A 2 px status edge at the row's start, for a row that needs a look (D18). */
     edge?: 'down' | 'degraded' | 'warning' | 'maintenance' | 'unknown' | undefined;
     children: Snippet;
   }
@@ -17,7 +14,6 @@
   const { to, columns, edge, children }: Props = $props();
 </script>
 
-<!-- One hairline row (UR-7, D9). A link row nudges its content toward the chevron on hover. -->
 <li class:edge={edge !== undefined} data-edge={edge}>
   {#if to !== undefined}
     <a class="row" href={resolve(to)} style:--row-columns={columns}>

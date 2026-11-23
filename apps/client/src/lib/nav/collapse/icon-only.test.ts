@@ -2,7 +2,6 @@
 import { expect, it } from 'vitest';
 import { watchIconOnly } from './icon-only';
 
-/** A window whose width can change, with the media query answered from it. */
 function windowOf(width: number) {
   const listeners = new Set<(event: MediaQueryListEvent) => void>();
   let current = width;

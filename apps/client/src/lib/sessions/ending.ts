@@ -2,17 +2,13 @@ import type { SessionEndReason } from '$lib/hub/generated/graphql';
 
 export type { SessionEndReason } from '$lib/hub/generated/graphql';
 
-/** What the tunnel saw when it ended (the `TunnelState` fields `ending` reads). */
 export interface TunnelClose {
   readonly closeCode: number | undefined;
-  /** The last Guacamole gateway `error` status; the terminal tunnel has none. */
   readonly gatewayError?: number | undefined;
   readonly opened: boolean;
-  /** The reason in the terminal tunnel's `end` message (K4 §8.4), which is the hub's own word for the close. */
   readonly endReason?: SessionEndReason;
 }
 
-/** Why a session ended, as the operator reads it. `reason` is undefined when the close alone does not tell. */
 export interface SessionEnding {
   readonly reason: SessionEndReason | undefined;
   readonly opened: boolean;
@@ -41,10 +37,9 @@ const REASON_TEXT: Readonly<Record<SessionEndReason, string>> = {
 
 const NOT_OPENED = 'Could not open the session.';
 const LOST = 'Connection to the hub lost.';
-/** For a reason this client does not know yet (a newer hub); never the reason's own name or text. */
+/** For a reason that a newer hub sends; never the reason's own name or text. */
 const UNKNOWN_REASON = 'The session ended for a reason this version does not know.';
 
-/** The reason a close code gives by itself, before any gateway error is considered. */
 const BY_CODE: ReadonlyMap<number, SessionEndReason> = new Map([
   [CLOSE.hostKey, 'HOST_KEY_MISMATCH'],
   [CLOSE.serverCertificate, 'SERVER_CERTIFICATE_MISMATCH'],
@@ -58,9 +53,8 @@ function gatewayReason(status: number): SessionEndReason {
 }
 
 /**
- * The provisional reason for a tunnel that opened (K4 §5). The client closes the socket itself when a gateway
- * `error` arrives, so the code may then be 1000 or 1005 instead of 1011: the error status decides, except that
- * 4001 is a host key change and 4003 a certificate change even though the hub sends each after `error` 0x0303.
+ * The client closes the socket itself on a gateway `error`, so the error status decides over 1000 or 1005 (K4 §5);
+ * 4001 and 4003 still win, although the hub sends each after `error` 0x0303.
  */
 function openedReason({ closeCode, gatewayError }: TunnelClose): SessionEndReason | undefined {
   const byCode = closeCode === undefined ? undefined : BY_CODE.get(closeCode);
@@ -72,12 +66,11 @@ function openedReason({ closeCode, gatewayError }: TunnelClose): SessionEndReaso
   return undefined;
 }
 
-/** Whether `value` is a `SessionEndReason` this client knows. */
 export function isEndReason(value: unknown): value is SessionEndReason {
   return typeof value === 'string' && Object.hasOwn(REASON_TEXT, value);
 }
 
-/** The text for a known reason; the lookup is checked because the hub may send a value newer than the schema. */
+/** The lookup is checked because the hub may send a value newer than the schema. */
 function reasonText(reason: SessionEndReason): string {
   return Object.hasOwn(REASON_TEXT, reason) ? REASON_TEXT[reason] : UNKNOWN_REASON;
 }
@@ -87,11 +80,7 @@ function textFor(reason: SessionEndReason | undefined, opened: boolean): string 
   return reason === undefined ? LOST : reasonText(reason);
 }
 
-/**
- * The provisional ending from the tunnel alone (D-4). A tunnel that never opened (a refusal before the upgrade
- * arrives as 1006 with no status) has no reason yet: "Could not open the session". The terminal tunnel's `end`
- * message names the reason itself, so it wins over the close code (K4 §8.6).
- */
+/** The provisional ending (D-4); the terminal tunnel's `end` message wins over the close code (K4 §8.6). */
 export function ending(close: TunnelClose): SessionEnding {
   const reason = close.endReason ?? (close.opened ? openedReason(close) : undefined);
   return { reason, opened: close.opened, text: textFor(reason, close.opened) };

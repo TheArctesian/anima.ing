@@ -3,7 +3,6 @@
   import type { StateTone } from './progress';
 
   interface Props {
-    /** The state's word: "Building", "Failed", "Partly published". */
     word: string;
     tone: StateTone;
   }
@@ -11,7 +10,6 @@
   const { word, tone }: Props = $props();
 </script>
 
-<!-- A new state cross-fades over the old one in the same cell (5.7.3, Status change); the same in reduced motion. -->
 <span class="slot">
   {#key word}
     <span class="pill {tone}" transition:crossFade><span class="dot" aria-hidden="true"></span>{word}</span>

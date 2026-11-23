@@ -50,7 +50,6 @@ describe('DEV-002: latestBeats merges the checks of a device', () => {
 
 describe('DEV-002: latestBeats on a large device list', () => {
   const time = (beat: Beat) => (Number.isNaN(Date.parse(beat.at)) ? Number.NEGATIVE_INFINITY : Date.parse(beat.at));
-  /** The definition: a beat is its check and its instant; the first of each stays; the newest 50 in time order. */
   function byDefinition(checks: readonly CardDevice['checks'][number][]): readonly Beat[] {
     const all = checks.flatMap((c) => c.heartbeats.edges.map(({ node }): Beat => ({ checkId: c.id, ...node })));
     const unique = all.filter((b, i) => all.findIndex((o) => o.checkId === b.checkId && time(o) === time(b)) === i);

@@ -2,7 +2,7 @@ import { networkAdvice } from '$lib/hosted/mark';
 import type { HubResult } from '$lib/hub/hub';
 import type { WakeSent } from './api';
 
-/** One sentence for each way a wake fails. Fixed text: the hub's own text may hold relay addresses (LOG-007). */
+/** Fixed text: the hub's own text may hold relay addresses (LOG-007). */
 const FAILURE_TEXT: Readonly<Record<string, string>> = {
   NOT_FOUND: 'This device no longer exists.',
   VALIDATION: 'The hub did not accept this wake request.',

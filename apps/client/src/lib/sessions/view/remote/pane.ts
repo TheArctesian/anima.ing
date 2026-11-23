@@ -3,36 +3,24 @@ import type { SessionTunnel } from '../../tunnel/guacamole/tunnel';
 import { isMeasured, remoteSize, sizeSender, type SettleTimer, type Size, type SizeSender } from '../display';
 import { followPaneFocus } from '../guacamole/input';
 
-/** What a remote pane tells its view. */
 export interface PaneHooks {
   /** The keyboard focus entered (true) or left (false) the pane; on leaving, held keys are already released. */
   readonly focus: (inside: boolean) => void;
-  /** The pane's size in CSS px, at every measure. */
   readonly measured: (css: Size) => void;
   /** The timer the size waits with (CQ-021). */
   readonly timer: SettleTimer;
 }
 
-/** The pane of one remote view: its keyboard, its focus and its size. */
 export interface RemotePane {
-  /** Listens to the pane only (D-8); the view binds it while the pane may take keys. */
+  /** Listens to the pane only (D-8). */
   readonly keyboard: PaneKeyboard;
-  /**
-   * Send `client` the pane's size in device pixels once it settles (RA-004, D-5), starting from `initial`, the size
-   * the session started with; the size now is heard at once in case it changed while the hub answered. Returns
-   * the function that stops it.
-   */
+  /** Sends the settled size in device pixels (RA-004, D-5); the size now is heard at once in case it changed while the hub answered. */
   sendSizes(client: SessionTunnel['client'], initial: Size): () => void;
-  /** Hear the pane's last size again, as after a change of `devicePixelRatio`. */
   remeasure(): void;
   stop(): void;
 }
 
-/**
- * Call `change` whenever `devicePixelRatio` changes, as when the window moves to another monitor: a `resolution`
- * media query for the ratio now, made again after each change. Returns the function that stops. Without
- * `matchMedia` nothing is followed.
- */
+/** A `resolution` media query matches only the ratio now, so it is made again after each change. */
 export function followPixelRatio(change: (ratio: number) => void): () => void {
   if (typeof window.matchMedia !== 'function') return () => undefined;
   let query: MediaQueryList | undefined;
@@ -50,7 +38,6 @@ export function followPixelRatio(change: (ratio: number) => void): () => void {
   };
 }
 
-/** Follow `element` as a remote pane, reporting to `hooks`. */
 export function remotePane(element: HTMLElement, hooks: PaneHooks): RemotePane {
   const keyboard = paneKeyboard(element);
   let last: Size | undefined;

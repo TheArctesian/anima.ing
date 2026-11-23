@@ -4,8 +4,7 @@ import { instruction } from '../synthetic/tunnels';
 import type { Screen } from './shots';
 import { openDevices } from './steps';
 
-// The session views: SSH in a terminal, VNC and RDP through Guacamole, the panels a session can show and the modals the
-// gateway's answers open. The synthetic hub draws one colour and a prompt; these screens change what the tunnel says.
+// The synthetic hub draws one colour and a prompt; these screens change what the tunnel says.
 
 const HOST_KEY_CHANGED = 4001;
 const CERTIFICATE_CHANGED = 4003;
@@ -13,7 +12,6 @@ const NORMAL_CLOSE = 1000;
 
 type Serve = (socket: WebSocketRoute) => void;
 
-/** Replaces the hub's answer on the tunnel `path` for this page. */
 async function tunnelSays(page: Page, path: '/terminal' | '/tunnel', serve: Serve): Promise<void> {
   await page.routeWebSocket((url) => url.pathname === path, serve);
 }

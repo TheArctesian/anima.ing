@@ -14,11 +14,10 @@ import type {
   UpdateDeviceInput,
 } from '$lib/hub/generated/graphql';
 
-/** The device calls a save needs; `settings/calls.ts` builds them from the devices and sessions clients. */
 export interface DeviceSaveCalls {
   update: (id: string, input: UpdateDeviceInput) => Promise<HubResult<DeviceDetail>>;
   setSshCredential: (id: string, credential: SshCredentialInput) => Promise<HubResult<StoredCredential>>;
-  /** DEV-011; the settings pass the sessions client's `setCredential`, whose errors never quote the password (LOG-007). */
+  /** DEV-011; its errors never quote the password (LOG-007). */
   setRdpCredential: (id: string, credential: PasswordCredentialInput) => Promise<HubResult<StoredCredential>>;
   setVncCredential: (id: string, credential: PasswordCredentialInput) => Promise<HubResult<StoredCredential>>;
 }
@@ -29,11 +28,7 @@ export interface DeviceSave {
   readonly result: HubResult<unknown>;
 }
 
-/**
- * D-2, D-4: sends only the changed fields, then each newly typed credential (SSH, RDP, VNC). A failed credential keeps
- * the updated device, so the page shows what the hub holds, and the form shows the first error and keeps the typed
- * password. An unchanged form sends nothing.
- */
+/** D-2, D-4: a failed credential keeps the updated device, and the form keeps the typed password. */
 export async function saveDevice(saved: DeviceDetail, values: DeviceFormValues, calls: DeviceSaveCalls): Promise<DeviceSave> {
   const input = updateInput(formValues(saved), values);
   let device = saved;
@@ -64,13 +59,12 @@ export async function saveDevice(saved: DeviceDetail, values: DeviceFormValues, 
   return { device, result: failure ?? { ok: true, value: device } };
 }
 
-/** The check calls a save needs; the route passes `checksApi(hub)`. */
 export interface CheckSaveCalls {
   create: (input: CreateCheckInput) => Promise<HubResult<DeviceCheck>>;
   update: (id: string, input: UpdateCheckInput) => Promise<HubResult<DeviceCheck>>;
 }
 
-/** Section 6.4: creates the check, or sends only what changed; an unchanged form answers the check as it is. */
+/** Section 6.4: an unchanged form answers the check as it is. */
 export function saveCheck(
   deviceId: string,
   check: DeviceCheck | null,

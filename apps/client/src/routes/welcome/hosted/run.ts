@@ -11,7 +11,6 @@ function failed(result: Answer<unknown> & { ok: false }): HostedEvent {
 
 type Wait = (ms: number) => Promise<void>;
 
-/** Polls at the interval of `code` until the person signs in or the cloud stops the sign-in. */
 async function signIn(code: SignInCode, account: HostedAccount, wait: Wait): Promise<HostedEvent> {
   for (;;) {
     const polled = await account.poll(code);
@@ -21,7 +20,6 @@ async function signIn(code: SignInCode, account: HostedAccount, wait: Wait): Pro
   }
 }
 
-/** Asks for the hub until its state is not the job of `step`: the first ask is at once, a job that runs is asked again later. */
 async function hubChange(step: HostedStep & { kind: 'hub' }, account: HostedAccount, wait: Wait): Promise<HostedEvent> {
   for (;;) {
     if (step.job !== null) await wait(HUB_INTERVAL * 1000);
@@ -31,10 +29,7 @@ async function hubChange(step: HostedStep & { kind: 'hub' }, account: HostedAcco
   }
 }
 
-/**
- * Does the work of `step` with the cloud until something changes, and gives the event. A step that waits for
- * nothing gives `null`. `wait` takes milliseconds; a page that has gone passes a wait that never ends.
- */
+/** `null` for a step that waits for nothing; `wait` takes milliseconds, and a page that has gone passes one that never ends. */
 export async function runStep(step: HostedStep, parts: HostedParts, wait: Wait): Promise<HostedEvent | null> {
   const { account } = parts;
   switch (step.kind) {

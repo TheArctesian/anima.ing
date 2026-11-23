@@ -28,7 +28,6 @@ interface Sent {
   readonly variables: unknown;
 }
 
-/** A hub that answers the two policy operations in turn from `loads` and `saves`, and records every request. */
 function hubWith(loads: HubResult<unknown>[], saves: HubResult<unknown>[] = []): Sent[] {
   const sent: Sent[] = [];
   mocks.hub = {
