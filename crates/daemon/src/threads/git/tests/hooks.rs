@@ -319,10 +319,12 @@ async fn a_hook_changed_after_its_check_does_not_run_its_new_text() {
     let records = bench.home.with_file_name("records");
     let home = Home::at(&bench.home, &records).expect("a home");
     let engine = Engine::new(bench.git.clone(), home).with_launcher(swapping);
-    bench.one_hook("pre-commit", "exit 0");
+    let checked = bench.home.parent().expect("the root").join("CHECKED");
+    bench.one_hook("pre-commit", &format!("touch \"{}\"", checked.display()));
     accept(&engine).await;
     std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
     let reviewed = bench.reviewed().await;
     let _ = engine.call(FULL, target(), commit(&reviewed, None)).await;
+    assert!(checked.exists(), "the text that was checked ran");
     assert!(!ran.exists(), "the text written after the check ran");
 }

@@ -145,7 +145,11 @@ fn thr_050_a_thread_in_a_folder_above_the_records_holds_them() {
 async fn thr_050_a_run_ends_with_its_program_though_a_background_child_holds_its_error_stream() {
     let folder = tempfile::tempdir().expect("a folder");
     let (rights, thread) = rights(Mode::FullAccess, folder.path());
-    let mut run = shell(thread, folder.path(), "echo begun >&2; sleep 30 & exit 0");
+    let mut run = shell(
+        thread,
+        folder.path(),
+        "echo begun >&2; sleep 30 & echo $! > child.pid; exit 0",
+    );
     run.within = Duration::from_secs(10);
     let started = std::time::Instant::now();
     let Ended { code, said } = start(&rights, run).await.expect("it ended");
@@ -154,5 +158,21 @@ async fn thr_050_a_run_ends_with_its_program_though_a_background_child_holds_its
         started.elapsed() < Duration::from_secs(5),
         "git does not wait for it either"
     );
-    let _ = said;
+    assert!(
+        said.contains("begun"),
+        "what it said before its end is kept"
+    );
+    let pid =
+        std::fs::read_to_string(folder.path().join("child.pid")).expect("the child wrote its ID");
+    let alive = |signal: &str| {
+        std::process::Command::new("/bin/kill")
+            .args([signal, pid.trim()])
+            .status()
+            .is_ok_and(|status| status.success())
+    };
+    assert!(
+        alive("-0"),
+        "as with git, the background child keeps running"
+    );
+    assert!(alive("-9"), "the test ends its child");
 }

@@ -138,27 +138,35 @@ pub(super) async fn start(rights: &SharedRights, run: ThreadRun) -> io::Result<E
         .kill_on_drop(true)
         .spawn()?;
     let mut group = Group(child.id());
-    let mut reading = tokio::spawn(said_of(child.stderr.take()));
-    let Ok(status) = tokio::time::timeout(run.within, child.wait()).await else {
-        reading.abort();
+    let mut kept = Vec::new();
+    let waited = {
+        let reading = read_into(child.stderr.take(), &mut kept);
+        tokio::pin!(reading);
+        let ended = async {
+            tokio::select! {
+                status = child.wait() => {
+                    // As git: the run ends with its program; what it wrote just before its end
+                    // is still read, for a moment.
+                    let _ = tokio::time::timeout(SAID_AFTER_END, &mut reading).await;
+                    status
+                }
+                () = &mut reading => child.wait().await,
+            }
+        };
+        tokio::time::timeout(run.within, ended).await
+    };
+    let Ok(status) = waited else {
         return Err(io::Error::new(
             io::ErrorKind::TimedOut,
             "the run took too long",
         ));
     };
     let status = status?;
-    // As git: the run ends with its program. A process that it left in the background is not
-    // waited for, and keeps running.
+    // A process that the program left in the background is not waited for, and keeps running.
     group.0 = None;
-    let said = if let Ok(Ok(said)) = tokio::time::timeout(SAID_AFTER_END, &mut reading).await {
-        said
-    } else {
-        reading.abort();
-        String::new()
-    };
     Ok(Ended {
         code: status.code(),
-        said,
+        said: String::from_utf8_lossy(&kept).into_owned(),
     })
 }
 
@@ -178,12 +186,11 @@ impl Drop for Group {
     }
 }
 
-/// The first [`MOST_SAID`] bytes of the standard error; the rest is read and left.
-async fn said_of(stderr: Option<tokio::process::ChildStderr>) -> String {
+/// Reads the standard error into `kept` until its end, keeping the first [`MOST_SAID`] bytes.
+async fn read_into(stderr: Option<tokio::process::ChildStderr>, kept: &mut Vec<u8>) {
     let Some(mut stderr) = stderr else {
-        return String::new();
+        return;
     };
-    let mut kept = Vec::new();
     let mut buffer = [0_u8; 8192];
     while let Ok(read) = stderr.read(&mut buffer).await {
         if read == 0 {
@@ -192,7 +199,6 @@ async fn said_of(stderr: Option<tokio::process::ChildStderr>) -> String {
         let room = MOST_SAID.saturating_sub(kept.len());
         kept.extend_from_slice(&buffer[..read.min(room)]);
     }
-    String::from_utf8_lossy(&kept).into_owned()
 }
 
 impl Runner {

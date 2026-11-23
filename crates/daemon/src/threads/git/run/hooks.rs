@@ -181,15 +181,20 @@ impl Hooks<'_> {
         Ok(folder.join(name))
     }
 
-    /// A copy of the checked `bytes` of the hook `name`, in the Git folder of the runner, that
-    /// only this user can run. What the hook starts or reads (its interpreter, a file of the
-    /// worktree) is not in the copy: an agent with full access can change those, as it can
-    /// change the hook itself.
+    /// A copy of the checked `bytes` of the hook `name`, under its own name in a folder of the
+    /// Git folder of the runner, that only this user can run. Only the file of the hook is
+    /// checked and copied: what it starts or reads is not. Its interpreter is found on the
+    /// `PATH` of the login; a file that it reads from the worktree, or from the shared folder
+    /// of the hooks, can be changed by any thread of the repository, also a confined one, and
+    /// the hook reads it as it is then. A hook that reads files beside itself (`$0`, as husky
+    /// does) does not find them beside the copy, and refuses with the words of its shell.
     fn copy(&self, name: &str, bytes: &[u8]) -> Result<PathBuf, GitRefusal> {
         use std::io::Write as _;
         #[cfg(unix)]
         use std::os::unix::fs::OpenOptionsExt as _;
-        let copy = self.file(&format!("run-{name}"))?;
+        let folder = self.file("run")?;
+        super::super::place::private_folder(&folder).map_err(|failed| unwritten(&failed))?;
+        let copy = folder.join(name);
         match std::fs::remove_file(&copy) {
             Err(failed) if failed.kind() != std::io::ErrorKind::NotFound => {
                 return Err(unwritten(&failed));
