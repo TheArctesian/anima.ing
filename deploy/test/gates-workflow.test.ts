@@ -139,8 +139,10 @@ describe("the gates workflow: each crate alone", () => {
 describe("the gates workflow: the tests that only a Mac runs", () => {
   const job = workflow.jobs["macos"];
 
-  test("it runs deploy/bin/macos-tests for the same runs as the job windows, after the merge with dev", () => {
+  test("it runs deploy/bin/macos-tests for the same runs as the job windows, never in a call, after the merge step", () => {
     expect(job?.if).toBe(workflow.jobs["windows"]?.if);
+    // A called run (release.yml, android-release.yml) passes `ref` and has the event of its caller.
+    expect(job?.if?.startsWith("${{ !inputs.ref && ")).toBe(true);
     expect(job?.needs).toEqual("base" as unknown as string[]);
     const runs = job?.steps.map((step) => step.run ?? "") ?? [];
     const merged = runs.findIndex((run) => run.includes("gates-merge.sh"));

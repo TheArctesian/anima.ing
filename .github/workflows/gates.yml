@@ -144,8 +144,10 @@ jobs:
   windows:
     needs: base
     # dev, a train, or a run that a person started by hand (`gh workflow run gates.yml --ref <branch>`),
-    # the only way to run the Windows gates for a branch before it reaches dev.
-    if: (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true'
+    # the only way to run the Windows gates for a branch before it reaches dev. Never in a call
+    # (`ref` is set): a called run has the event of its caller, so a trial of the release, a
+    # `workflow_dispatch`, would run it beside the Windows and Mac jobs of the release.
+    if: ${{ !inputs.ref && (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true' }}
     permissions:
       contents: read
     uses: ./.github/workflows/windows-trial.yml
@@ -160,7 +162,7 @@ jobs:
   # would save the 8 of 42 minutes that the dependencies take (quality/README.md, "The gates on GitHub").
   macos:
     needs: base
-    if: (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true'
+    if: ${{ !inputs.ref && (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true' }}
     runs-on: macos-15
     timeout-minutes: 90
     permissions:
