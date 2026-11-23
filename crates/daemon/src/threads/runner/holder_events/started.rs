@@ -48,6 +48,8 @@ impl Runner {
         if matches!(outcome, HolderOutcome::Refused { .. }) {
             self.threads.remove(&id);
             self.attached.give_back(id);
+            // The launcher lets go of the seat of the thread at once.
+            self.rights_now();
             refused(Refusal::Holder)
         } else {
             self.began(id, prompt, files).await
