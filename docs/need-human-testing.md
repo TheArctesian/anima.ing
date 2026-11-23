@@ -418,6 +418,8 @@ sources, the command line and the environment, the waits of a restart, the loopb
 folders) and `crates/daemon/src/model/` (the claim and the report through the work route,
 `runtime_install`, `server_start`, `server_stop`, the supervision, `model_report`), task L1-6 of
 the compute plan (CAG-001 to CAG-009, RTC-002 to RTC-006, SEC-C-001, SEC-C-007, SEC-C-008). The
+contract is `contracts/compute/model-work.md` version 0.4, which waits for R-344 and the
+security review SEC-C-012. The tests use a scripted hub and a scripted runtime (a Perl program);
 contract is `contracts/compute/model-work.md` version 0.3 (K11), accepted by R-344; the
 security review SEC-C-012 still runs, and SF-298 and SF-300 are Open. The tests use a scripted hub and a scripted runtime (a Perl program);
 no test downloads a real release or starts a real `llama-server`. The claim loop is not yet
@@ -431,7 +433,9 @@ Do not use the installed daemon of the operator. Set `ANIMA_DAEMON_HOME` to a ne
    size, and the path of `llama-server` in it). Give a `runtime_install` item from the test hub.
    Expected: the report is `succeeded`; `<home>/runtimes/llama_server/<version>-<backend>/` holds
    the files, with mode 0755 for folders and programs and 0644 for each other file, and no link.
-   The upstream `.zip` or `.tar.gz` both work (R-329); write which one was used.
+   Each symbolic link of the archive (`libllama.so -> libllama.so.1` and the like) is a regular
+   file with the bytes and the mode of the file that it named (R-387, contract
+   version 0.4). The upstream `.zip` or `.tar.gz` both work (R-329); write which one was used.
 2. Give a `runtime_install` item with a wrong SHA-256 in `model-sources.json`. Expected: `failed`
    with `checksum`, and no new folder.
 3. Give a `server_start` item. Expected: `succeeded`. `lsof -nP -iTCP -sTCP:LISTEN` (Mac) or
