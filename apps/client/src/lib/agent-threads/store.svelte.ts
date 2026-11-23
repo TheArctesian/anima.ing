@@ -72,12 +72,20 @@ export class ThreadsStore {
     this.seen = markSeen(this.storage, this.seen, id, this.now());
   }
 
-  /** Opens the thread `id`; an answer for a thread that is no longer chosen is dropped. */
-  async open(id: string): Promise<void> {
+  /**
+   * Opens the thread `id`; an answer for a thread that is no longer chosen is dropped. A thread the runner just
+   * `started` has no session file under its ID: its row is read from the runner instead, before the watch's first
+   * update of it, and it shows as loading until one of the two comes.
+   */
+  async open(id: string, started = false): Promise<void> {
     this.chosen = id;
     this.markSeen(id);
     this.threadProblem = null;
     if (this.live?.threads.has(id) === true) return;
+    if (started && this.live !== null) {
+      await this.live.readRows().catch(() => undefined);
+      return;
+    }
     this.loadingThread = true;
     try {
       const thread = await this.shell.read(id);

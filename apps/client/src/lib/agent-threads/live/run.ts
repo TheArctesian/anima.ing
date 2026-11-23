@@ -6,7 +6,7 @@
 
 import { attachedFrom, promptFilesFrom, type AttachAction, type Attached, type PromptFiles } from './attachments';
 import { usageFrom, workspaceFrom, type RunUsage, type RunWorkspace } from './details';
-import { filesFrom, type FoundFile } from './files';
+import { folderOutcomeFrom, type FolderOutcome } from './files';
 import { modelListsFrom, type ModelLists } from './models';
 import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
 import type { Program } from '../thread';
@@ -104,10 +104,8 @@ export type Outcome =
   | { readonly outcome: 'stopped'; readonly allEnded: boolean }
   /** How the person lists each thread that has a listing (TH46). */
   | { readonly outcome: 'listings'; readonly listings: readonly Listing[] }
-  /** What the project files of a folder make the program do with no question (THR-046); empty when nothing. */
-  | { readonly outcome: 'folder'; readonly notice: readonly string[] }
-  /** The files and folders of the folder of a thread, the best match first; `more` when more matched (TH108). */
-  | { readonly outcome: 'files'; readonly paths: readonly FoundFile[]; readonly more: boolean }
+  /** A folder's notice (THR-046), the files of a thread's folder (TH108), or the folders in a folder (TH113). */
+  | FolderOutcome
   /** The models that each program named at the start of its newest thread (TH104). */
   | { readonly outcome: 'models'; readonly models: ModelLists }
   | Attached
@@ -145,6 +143,8 @@ export type Action =
   | { readonly call: 'stop'; readonly thread: string }
   | { readonly call: 'raise_limit' }
   | { readonly call: 'folder'; readonly folder: string }
+  /** The folders in an absolute folder, to choose a project by browsing (TH113); hidden ones only with `hidden`. */
+  | { readonly call: 'folders'; readonly folder: string; readonly hidden?: boolean }
   | { readonly call: 'listings' }
   | { readonly call: 'change_listing'; readonly thread: string; readonly change: ListingChange }
   /** The `@` list of the composer (TH108): at most `most` paths that match `query`; `most` is 1 to 200. */
@@ -317,15 +317,6 @@ function refusedFrom(value: unknown): Outcome | null {
   return { outcome: 'refused', why, ...(said === null ? {} : { said }), ...(answered.length === 0 ? {} : { answered }) };
 }
 
-/** The notice of a folder (THR-046), or the files of the folder of a thread (TH108). */
-function folderFrom(value: Fields): Outcome | null {
-  if (value.outcome === 'files') {
-    const paths = filesFrom(value.paths);
-    return paths === null ? null : { outcome: 'files', paths, more: value.more === true };
-  }
-  return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
-}
-
 /** The listings of the threads, or the models of each program. */
 function listsFrom(value: Fields): Outcome | null {
   if (value.outcome === 'models') {
@@ -351,8 +342,9 @@ export function outcomeFrom(value: unknown): Outcome | null {
     case 'stopped':
       return { outcome: 'stopped', allEnded: value.all_ended === true };
     case 'folder':
+    case 'folders':
     case 'files':
-      return folderFrom(value);
+      return folderOutcomeFrom(value);
     case 'listings':
     case 'models':
       return listsFrom(value);

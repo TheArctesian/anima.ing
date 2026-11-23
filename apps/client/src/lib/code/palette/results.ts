@@ -25,7 +25,8 @@ export interface PaletteRow {
 }
 
 export interface PaletteGroup {
-  readonly id: 'actions' | 'recent' | 'chats';
+  /** `sources` and `folders` are the groups of the "Add project" palette. */
+  readonly id: 'actions' | 'recent' | 'chats' | 'sources' | 'folders';
   readonly label: string;
   readonly rows: readonly PaletteRow[];
 }

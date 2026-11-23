@@ -94,7 +94,7 @@ export interface PaletteHost {
 const NOT_BUILT: Readonly<Record<PaletteAction, string>> = {
   'chat.new': 'Comes with the composer (TC4)',
   'chat.newWithoutProject': 'Comes with the composer (TC4)',
-  'project.add': 'Projects are not in Code yet',
+  'project.add': 'Projects are added with the thread runner running',
   'filePicker.toggle': 'Comes with the files panel (TC5)',
   'projectSearch.toggle': 'Comes with the files panel (TC5)',
   'chat.find': 'Comes with the timeline (TC3)',
