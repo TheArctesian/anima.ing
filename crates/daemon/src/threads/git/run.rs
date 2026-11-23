@@ -94,9 +94,12 @@ pub struct Git {
     signs: bool,
     /// A push to a folder of this computer is allowed; only the tests have such a remote.
     local_remotes: bool,
-    /// The bytes that the checked copy of a project can hold besides three times the size of
-    /// the object store of the project (`place::shared::room`).
+    /// The bytes that the checked copy of a project can hold besides three times its first
+    /// size (`place::shared`).
     copy_room: u64,
+    /// The bytes that the Git folder of the runner for one worktree can hold
+    /// (`place::own::within`).
+    own_room: u64,
     /// How a program is started with the rights of a thread ([`hooks::AsThread`]): the only
     /// way the repository of the person is read.
     as_thread: Option<hooks::AsThread>,
@@ -139,6 +142,7 @@ impl Git {
             signs: false,
             local_remotes: false,
             copy_room: super::place::shared::ROOM,
+            own_room: super::place::own::ROOM,
             as_thread: None,
             folder: None,
             bound: Vec::new(),
@@ -165,13 +169,26 @@ impl Git {
         Ok(quiet)
     }
 
-    /// This `git` with a different size that the copy of a project can always have, for the
-    /// tests: their repositories are small.
-    #[cfg(test)]
+    /// This `git` with a different size that the copy of a project can always have (a
+    /// setting of the person; the tests use a small one).
     #[must_use]
-    pub(super) const fn with_copy_room(mut self, bytes: u64) -> Self {
+    pub const fn with_copy_room(mut self, bytes: u64) -> Self {
         self.copy_room = bytes;
         self
+    }
+
+    /// This `git` with a different size for the checkpoints of one thread (a setting of the
+    /// person; the tests use a small one).
+    #[must_use]
+    pub const fn with_own_room(mut self, bytes: u64) -> Self {
+        self.own_room = bytes;
+        self
+    }
+
+    /// The bytes that the checkpoints of one thread can use.
+    #[must_use]
+    pub const fn own_room(&self) -> u64 {
+        self.own_room
     }
 
     /// The bytes that the copy of a project can always have.

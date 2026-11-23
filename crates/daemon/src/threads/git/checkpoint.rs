@@ -72,6 +72,7 @@ pub async fn tree_now(
     tip: Option<&str>,
 ) -> Result<String, GitError> {
     let dir = worktree.folder();
+    own::within(git, worktree).await?;
     let start = match tip {
         Some(tip) => vec!["read-tree", "--reset", tip],
         None => vec!["read-tree", "--empty"],
@@ -269,6 +270,21 @@ pub async fn list(git: &Git, worktree: &Worktree) -> Result<Vec<Checkpoint>, Git
         .collect();
     found.sort_by_key(|checkpoint| checkpoint.turn);
     Ok(found)
+}
+
+/// Removes the checkpoints of the turns before `before` and what only they needed on the disk,
+/// and gives the checkpoints that stay.
+///
+/// # Errors
+/// A [`GitError`] when a step of `git` fails.
+pub async fn forget_before(
+    git: &Git,
+    worktree: &Worktree,
+    before: u32,
+) -> Result<Vec<Checkpoint>, GitError> {
+    forget(git, worktree, |turn| turn < before).await?;
+    own::small(git, worktree).await?;
+    list(git, worktree).await
 }
 
 /// Deletes the refs of the checkpoints for which `gone` says yes.

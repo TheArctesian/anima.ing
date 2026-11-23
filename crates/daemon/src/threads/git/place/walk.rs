@@ -41,7 +41,7 @@ mod held {
     use std::path::Path;
 
     use rustix::fs::{
-        AtFlags, Mode, OFlags, mkdirat, openat, readlinkat, renameat, statat, symlinkat, unlinkat,
+        AtFlags, Mode, OFlags, mkdirat, openat, readlinkat, renameat, symlinkat, unlinkat,
     };
     use rustix::io::Errno;
 
@@ -56,34 +56,6 @@ mod held {
 
     /// The most folders in folders that [`Dir::remove_all`] goes into.
     const DEEPEST: usize = 128;
-
-    /// The most entries that [`Dir::used`] looks at: an agent can make a folder with millions.
-    const MOST_ENTRIES: usize = 500_000;
-
-    /// What [`Dir::used`] counted so far.
-    #[derive(Default)]
-    struct Count {
-        bytes: u64,
-        entries: usize,
-        /// The files with more than one name that were counted: device and number.
-        linked: std::collections::HashSet<(u64, u64)>,
-    }
-
-    impl Count {
-        fn file(&mut self, about: &rustix::fs::Stat) {
-            let number = |value: i128| u64::try_from(value).unwrap_or(0);
-            let twice = about.st_nlink > 1
-                && !self
-                    .linked
-                    .insert((number(about.st_dev.into()), number(about.st_ino.into())));
-            if twice {
-                return;
-            }
-            let blocks = number(about.st_blocks.into()).saturating_mul(512);
-            let says = number(about.st_size.into());
-            self.bytes = self.bytes.saturating_add(blocks.min(says));
-        }
-    }
 
     /// A folder that is held open.
     #[derive(Debug)]
@@ -256,40 +228,6 @@ mod held {
             Ok(names)
         }
 
-        /// The bytes of the disk that the files below this folder use: the blocks that each file
-        /// has, not the size that it says (a file with holes says more than it uses), and a
-        /// file with two names once. A link is not followed and counts as nothing. After
-        /// [`MOST_ENTRIES`] entries or below [`DEEPEST`] folders nothing more is counted.
-        #[must_use]
-        pub fn used(&self) -> u64 {
-            let mut count = Count::default();
-            self.counted(DEEPEST, &mut count);
-            count.bytes
-        }
-
-        fn counted(&self, left: usize, count: &mut Count) {
-            let Ok(names) = self.names() else {
-                return;
-            };
-            for name in names {
-                count.entries += 1;
-                let about = statat(&self.0, &name, AtFlags::SYMLINK_NOFOLLOW);
-                let (Ok(about), true) = (about, count.entries <= MOST_ENTRIES) else {
-                    continue;
-                };
-                let kind = rustix::fs::FileType::from_raw_mode(about.st_mode);
-                let inside = match kind {
-                    rustix::fs::FileType::Directory if left > 0 => self.step(&name, Make::No),
-                    _ => Ok(None),
-                };
-                match (kind, inside) {
-                    (rustix::fs::FileType::RegularFile, _) => count.file(&about),
-                    (_, Ok(Some(inside))) => inside.counted(left - 1, count),
-                    _ => {}
-                }
-            }
-        }
-
         /// Removes the folder `name` with all that it holds. A link in it is removed, never
         /// followed. A tree of folders deeper than [`DEEPEST`] is refused: an agent can make one.
         ///
@@ -389,11 +327,6 @@ mod none {
 
         pub fn names(&self) -> io::Result<Vec<OsString>> {
             none()
-        }
-
-        #[must_use]
-        pub const fn used(&self) -> u64 {
-            0
         }
 
         pub fn remove_all(&self, _name: &OsStr) -> io::Result<()> {

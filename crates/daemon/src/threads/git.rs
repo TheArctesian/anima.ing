@@ -37,21 +37,9 @@ use agent_threads::git::{GitAction, GitOutcome, GitRefusal};
 use uuid::Uuid;
 
 use place::{BadPlace, Home, Record, Worktree};
-use project::ProjectError;
 use push::pull_request;
 use run::hooks::{self, Access, AsThread};
 use run::{Git, GitError};
-
-impl From<ProjectError> for GitRefusal {
-    fn from(error: ProjectError) -> Self {
-        match error {
-            ProjectError::NotARepository => Self::NotARepository,
-            other => Self::Failed {
-                said: other.to_string(),
-            },
-        }
-    }
-}
 
 impl From<GitError> for GitRefusal {
     fn from(error: GitError) -> Self {
@@ -331,6 +319,9 @@ impl Engine {
             GitAction::PullRequest => GitOutcome::PullRequest(
                 pull_request::prepare(git, worktree, &listed().await?).await?,
             ),
+            GitAction::Forget { before } => GitOutcome::Checkpoints {
+                checkpoints: checkpoint::forget_before(git, worktree, before).await?,
+            },
             GitAction::Remove => GitOutcome::Removed {
                 kept: Some(worktree::remove(&self.git, &self.home, worktree).await?),
             },

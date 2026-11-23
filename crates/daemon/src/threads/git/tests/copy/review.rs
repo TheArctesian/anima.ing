@@ -142,7 +142,7 @@ fn copy_of(bench: &Bench) -> std::path::PathBuf {
 }
 
 /// Bytes that do not get smaller when they are packed.
-fn noise(bytes: usize) -> Vec<u8> {
+pub(super) fn noise(bytes: usize) -> Vec<u8> {
     let mut at = 0x2545_f491_4f6c_dd1d_u64;
     let next = || {
         at ^= at << 13;
@@ -183,24 +183,58 @@ fn greedy() -> AsThread {
 #[tokio::test]
 async fn a_thread_that_leaves_more_than_the_copy_can_hold_brings_nothing() {
     let bench = Bench::new().await;
-    // A file with a hole in the store of the person says a large size and uses no disk: the
-    // copy gets no more room from it.
+    // The first history of the project is in the copy: its size is the measure from now on.
+    let folder = bench.worktree().await;
+    // What costs an agent nothing does not make the copy larger: a file with a hole in the
+    // store of the person says a large size and uses no disk.
     let hole = std::fs::File::create(bench.project.join(".git/objects/hole")).expect("a file");
     hole.set_len(256 * 1024 * 1024).expect("a size");
+    let who = [
+        "-c",
+        "user.name=Agent",
+        "-c",
+        "user.email=a@example.invalid",
+    ];
+    std::fs::write(folder.join("a.txt"), "second\n").expect("a file");
+    let made = [&who[..], &["commit", "--quiet", "--all", "--message=agent"]].concat();
+    bench.git_in(&folder, &made).await;
     let engine = engine_with_room(&bench, 64 * 1024, greedy());
-    let made = engine.worktree(bench.plan(THREAD)).await;
+    let refusal = engine.call(PERSON, target(), GitAction::Status).await;
     assert!(
-        matches!(&made, Err(GitRefusal::Failed { said }) if said.contains("can hold")),
-        "{made:?}"
+        matches!(refused(&refusal), Some(GitRefusal::Failed { said }) if said.contains("can hold")),
+        "{refusal:?}"
     );
     let used = engine.disk().first().map_or(0, |used| used.bytes);
     assert!(used < 1024 * 1024, "the copy took {used} bytes");
-    // With an honest run the same small copy takes the small project.
+    // With an honest run the same small copy takes the small commit.
     let engine = engine_with_room(&bench, 64 * 1024, as_the_person(None));
-    engine
-        .worktree(bench.plan(THREAD))
-        .await
-        .expect("a worktree");
+    let status = engine.call(PERSON, target(), GitAction::Status).await;
+    assert!(matches!(status, GitOutcome::Status(_)), "{status:?}");
+}
+
+#[tokio::test]
+async fn a_list_of_shallow_ends_that_comes_later_does_not_change_the_copy() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let copy = copy_of(&bench);
+    assert!(!copy.join("shallow").exists());
+    // What an agent can write after the first history: "the history ends at this commit".
+    let tip = bench.git_in(&folder, &["rev-parse", "HEAD"]).await;
+    std::fs::write(bench.project.join(".git/shallow"), format!("{tip}\n")).expect("a list");
+    let who = [
+        "-c",
+        "user.name=Agent",
+        "-c",
+        "user.email=a@example.invalid",
+    ];
+    std::fs::write(folder.join("a.txt"), "second\n").expect("a file");
+    let made = [&who[..], &["commit", "--quiet", "--all", "--message=agent"]].concat();
+    bench.git_in(&folder, &made).await;
+    let _ = bench.call(PERSON, GitAction::Status).await;
+    assert!(
+        !copy.join("shallow").exists(),
+        "the copy of the project took a list that a thread wrote"
+    );
 }
 
 #[tokio::test]

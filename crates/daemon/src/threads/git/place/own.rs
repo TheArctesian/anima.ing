@@ -55,6 +55,66 @@ pub async fn make(git: &Git, own: &Path, shared: &Path, long_ids: bool) -> Resul
     std::fs::write(own.join("objects/info/alternates"), borrowed).map_err(GitError::Files)
 }
 
+/// The bytes that the Git folder of the runner for one worktree can hold, when the person set
+/// no other size: its checkpoints, and each file that changed in each of them.
+pub const ROOM: u64 = 2 * 1024 * 1024 * 1024;
+
+/// The file that says how large the folder was after the last time it was made small. While
+/// it has that size, making it small again gives nothing.
+const SMALL_AT: &str = "anima-small-at";
+
+/// Checks that the Git folder of the runner for `worktree` is within its size, before a
+/// snapshot writes more into it. Each status and each list of changes writes the changed
+/// files as objects, and the bytes are the ones that the agent chose: without a size, one
+/// thread fills the disk of the records for each project. A folder that is over is made small
+/// first: the objects that no checkpoint, no reviewed snapshot and no kept ref of the thread
+/// needs go. The caller holds the lock of the index of the worktree, so no snapshot of this
+/// worktree is in the middle of its work.
+///
+/// # Errors
+/// A [`GitError`] when the folder is over its size also after that; the words say what the
+/// person can do.
+pub async fn within(git: &Git, worktree: &Worktree) -> Result<(), GitError> {
+    let own = &worktree.record().own;
+    let room = git.own_room();
+    let used = super::disk::bytes(own);
+    if used <= room {
+        return Ok(());
+    }
+    let at = std::fs::read_to_string(own.join(SMALL_AT)).ok();
+    if at.and_then(|at| at.trim().parse::<u64>().ok()) != Some(used) {
+        small(git, worktree).await?;
+    }
+    let used = super::disk::bytes(own);
+    if used <= room {
+        return Ok(());
+    }
+    let mib = |bytes: u64| bytes / (1024 * 1024);
+    Err(GitError::Failed {
+        code: None,
+        said: format!(
+            "the checkpoints of this chat use {} MiB of the disk of Anima's records, more than \
+             the {} MiB that one chat can have. Remove old checkpoints of the chat, remove \
+             the worktree of the chat, or set a larger size in the settings",
+            mib(used),
+            mib(room)
+        ),
+    })
+}
+
+/// Removes from the Git folder of the runner for `worktree` each object that no ref of it and
+/// no file of its index needs, and writes down the size after it.
+///
+/// # Errors
+/// A [`GitError`] when `git prune` fails.
+pub async fn small(git: &Git, worktree: &Worktree) -> Result<(), GitError> {
+    let own = &worktree.record().own;
+    let prune = Run::new(worktree.folder(), ["prune", "--expire=now"]);
+    git.output(prune.with_time(shared::LONG)).await?;
+    let used = super::disk::bytes(own).to_string();
+    std::fs::write(own.join(SMALL_AT), used).map_err(GitError::Files)
+}
+
 /// Where the worktree is, with the history of its last commit in the checked copy of the
 /// project ([`shared::learn`]).
 ///

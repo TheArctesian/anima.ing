@@ -24,6 +24,9 @@ pub struct Used {
     pub bytes: u64,
     /// The threads that have a worktree of it.
     pub worktrees: usize,
+    /// The bytes of the checkpoints of the thread that uses the most; one thread can have
+    /// `place::own::ROOM`, or what the person set.
+    pub largest_thread: u64,
 }
 
 /// Writes down in the copy at `shared` which repository it is of.
@@ -84,9 +87,10 @@ impl Engine {
                     .iter()
                     .filter(|record| record.project == project)
                     .collect();
-                let own: u64 = of_it.iter().map(|record| bytes(&record.own)).sum();
+                let own: Vec<u64> = of_it.iter().map(|record| bytes(&record.own)).collect();
                 Some(Used {
-                    bytes: bytes(&copy.path()) + own,
+                    bytes: bytes(&copy.path()) + own.iter().sum::<u64>(),
+                    largest_thread: own.iter().copied().max().unwrap_or(0),
                     worktrees: of_it.len(),
                     project,
                 })
