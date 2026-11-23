@@ -1,11 +1,9 @@
-//! The fixed sentence the operator reads for each way a wake fails, in the event and in the
-//! mutation's error (LOG-005, LOG-007). No sentence holds a name, a host, an address, the MAC
-//! address or the relay's output. Pure.
+//! No sentence holds a name, a host, an address, the MAC address or the relay's output
+//! (LOG-005, LOG-007).
 
 use super::Error;
 use crate::fleet::ssh::LinkError;
 
-/// The sentence for `error`.
 pub(super) fn sentence(error: &Error) -> &'static str {
     match error {
         Error::NotFound(_) => "No Wake-on-LAN packet was sent: the device does not exist.",
@@ -30,11 +28,9 @@ pub(super) fn sentence(error: &Error) -> &'static str {
     }
 }
 
-/// A store failure: the operator can only try again.
 const HUB_FAULT: &str = "No Wake-on-LAN packet was sent: the hub could not read or write its \
                          records. Try again.";
 
-/// The sentence for a link to the relay that failed.
 fn link_sentence(error: &LinkError) -> &'static str {
     match error {
         LinkError::SshOff => {

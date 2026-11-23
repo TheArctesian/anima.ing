@@ -1,10 +1,5 @@
-//! A workflow started by hand (PRJ-035; K-E1 Section 13.3): the K1 input and answer, the input
-//! checked into the parts of a change, and the workflow it names found among the repository's
-//! workflows. Pure.
-//!
-//! The operator types the inputs as name and value pairs and GitHub checks them; the hub parses
-//! no YAML. A value goes into the change's JSON body and nowhere else: no error, audit entry,
-//! event or log line holds one (LOG-007).
+//! A workflow started by hand (PRJ-035; K-E1 Section 13.3).
+//! An input value goes into the change's JSON body only: no error, audit entry, event or log line holds one (LOG-007).
 
 use async_graphql::{ID, InputObject, SimpleObject};
 use chrono::{DateTime, Utc};

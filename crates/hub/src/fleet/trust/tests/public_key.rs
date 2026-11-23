@@ -1,4 +1,4 @@
-//! Key blobs parse with every length checked; fingerprints are OpenSSH's (SEC-006, SEC-007).
+//! SEC-006, SEC-007.
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 

@@ -1,5 +1,4 @@
-//! The installation token of an account, for a sync run and for a live read or change alike
-//! (PRJ-018, K-E1 Sections 6 and 7). The key is opened only here.
+//! The key of an account is opened only here (PRJ-018, K-E1 Sections 6 and 7).
 
 use std::sync::Arc;
 
@@ -31,9 +30,8 @@ pub(in crate::engine::sources) fn rate_limited(until: chrono::DateTime<chrono::U
     }
 }
 
-/// The account's installation token: the one in memory while more than five minutes of it
-/// are left, otherwise a new one minted with the stored key. The key is opened only here
-/// (K-E1 Section 6) and dropped as soon as the token is minted.
+/// A kept token serves while more than five minutes of it are left; the key is dropped as
+/// soon as a token is minted (K-E1 Section 6).
 pub(in crate::engine::sources) async fn token(
     scheduling: &Scheduling,
     account: &Account,
@@ -43,8 +41,7 @@ pub(in crate::engine::sources) async fn token(
     if let Some(token) = scheduling.transport.tokens().fresh(account.id, now) {
         return Ok(token);
     }
-    // Taken before the key is read: a removal that forgets the token after this point makes
-    // the keep below store nothing.
+    // Taken before the key is read, so a removal after this point makes `keep` store nothing.
     let ticket = scheduling.transport.tokens().ticket();
     let credential = account.credential_id.ok_or(Failure::new(
         ErrorKind::Auth,

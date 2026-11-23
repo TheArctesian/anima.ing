@@ -1,8 +1,4 @@
-//! The credential argument of `setRdpCredential` and `setVncCredential` (K1
-//! `PasswordCredentialInput`) and the check on it (DEV-011, SEC-005, LOG-007).
-//!
-//! Parsed as [`super::SshCredential`] is: a derived parse error quotes the value, so it is
-//! dropped and replaced by a fixed one, and the string moves into a [`Secret`] without a copy.
+//! The credential argument of `setRdpCredential` and `setVncCredential` (DEV-011, SEC-005, LOG-007).
 
 use std::borrow::Cow;
 
@@ -48,7 +44,7 @@ impl InputType for PasswordCredential {
     }
 
     fn parse(value: Option<Value>) -> InputValueResult<Self> {
-        // The derived error is dropped unread: its message quotes the input.
+        // The derived error is dropped unread: its message quotes the input (LOG-007).
         let PasswordCredentialInput { password } =
             PasswordCredentialInput::parse(value).map_err(|_| unreadable())?;
         Ok(Self(Secret::from(password)))

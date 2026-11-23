@@ -1,6 +1,4 @@
-//! The broker client's time limits against the broker's own (BD-10, BD-15): a change the
-//! broker makes at its last moment reaches the hub, and a call behind a hung broker gives up
-//! after the turn wait, having sent nothing. Time is paused, so the waits take no real time.
+//! The broker client's time limits against the broker's own (BD-10, BD-15).
 
 use std::{
     sync::{
@@ -24,7 +22,6 @@ use crate::fleet::vpn::{
     reader::{BROKER_WAIT, read_broker},
 };
 
-/// A broker that accepts every connection, reads nothing and never answers; it counts them.
 fn hung_broker(folder: &tempfile::TempDir) -> (Broker, Arc<AtomicUsize>) {
     let path = folder.path().join("broker.sock");
     #[cfg(windows)]
@@ -42,7 +39,6 @@ fn hung_broker(folder: &tempfile::TempDir) -> (Broker, Arc<AtomicUsize>) {
     (Broker::new(path), accepted)
 }
 
-/// Waits until the hung broker holds the first call's connection.
 async fn connected(accepted: &AtomicUsize) {
     while accepted.load(Ordering::SeqCst) == 0 {
         tokio::time::sleep(Duration::from_millis(1)).await;
@@ -96,8 +92,6 @@ async fn bd_15_the_reader_s_node_read_is_busy_at_once_while_a_call_holds_the_tur
     assert_eq!(accepted.load(Ordering::SeqCst), 1);
 }
 
-/// The broker's worst case: it waited for its lock, for the request line, then made the key
-/// at its request deadline.
 #[tokio::test(start_paused = true)]
 async fn bd_10_a_key_the_broker_makes_at_its_last_moment_reaches_the_hub() {
     let folder = tempfile::tempdir().unwrap();
@@ -133,7 +127,6 @@ fn broker_file(name: &str) -> String {
     std::fs::read_to_string(path).unwrap()
 }
 
-/// The number in `text` right after `prefix`, ignoring `_` separators.
 fn number_after(text: &str, prefix: &str) -> u64 {
     let (_, rest) = text
         .split_once(prefix)
@@ -167,8 +160,6 @@ fn bd_10_the_call_limit_outlasts_the_broker_s_worst_case_as_its_files_set_it() {
     );
 }
 
-/// The reader's node read holds the turn in a task of its own: the read publishes after
-/// `BROKER_WAIT` without the list, and the turn stays taken until the call ends.
 #[tokio::test(start_paused = true)]
 async fn bd_15_a_hung_node_read_holds_up_the_reader_only_for_its_broker_wait() {
     let folder = tempfile::tempdir().unwrap();

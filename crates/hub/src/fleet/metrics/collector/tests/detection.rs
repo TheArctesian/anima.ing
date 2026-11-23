@@ -1,6 +1,4 @@
-//! Operating system detection: `uname -s` answers read as hostile text, and rounds in which a
-//! device at Other is detected, then collected from the next round, while an unknown answer
-//! and an operator's choice are left alone (DEV-025, MET-005).
+//! Operating system detection (DEV-025, MET-005).
 
 use proptest::prelude::*;
 use sqlx::PgPool;
@@ -50,7 +48,6 @@ fn dev_025_any_other_answer_is_no_operating_system() {
 }
 
 proptest! {
-    /// Whatever a hostile device answers, the result is nothing, Linux or macOS.
     #[test]
     fn dev_025_any_answer_gives_linux_macos_or_nothing(
         answer in proptest::collection::vec(any::<u8>(), 0..64),
@@ -63,8 +60,7 @@ proptest! {
     }
 }
 
-/// The metrics events about `docker-host`; `pve-01`, also on SSH metrics in the bench, fails
-/// every round and has its own.
+/// `pve-01`, also on SSH metrics in the bench, fails every round and has its own events.
 async fn docker_host_events(pool: &PgPool) -> usize {
     events(pool)
         .await

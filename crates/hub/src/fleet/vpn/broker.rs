@@ -1,7 +1,5 @@
-//! The hub's client of the VPN broker on the VPS (R-055, VP-7, BD-10, BD-15): one JSON
-//! request line out, one JSON reply line in, over the broker's Unix socket. The reply is
-//! hostile input: it is read to at most 64 KiB, parsed once, and never echoed into an error,
-//! because a key reply holds a pre-auth key (LOG-007).
+//! The hub's client of the VPN broker (R-055, VP-7, BD-10, BD-15). The reply is hostile input:
+//! read to at most 64 KiB, parsed once, never echoed into an error, as it can hold a key (LOG-007).
 
 use std::{
     fmt,
@@ -29,47 +27,38 @@ use zeroize::Zeroizing;
 
 use super::Error;
 
-/// The longest reply line the hub reads, without its newline (BD-10).
+/// Without the newline (BD-10).
 pub(super) const MAX_REPLY_BYTES: usize = 64 * 1024;
-/// How long the broker waits for its lock behind the node audit before it starts
-/// (`flock -w 8` in `deploy/headscale/broker/anima-broker@.unit`).
+/// `flock -w 8` in `deploy/headscale/broker/anima-broker@.unit`.
 pub(super) const BROKER_LOCK_WAIT: Duration = Duration::from_secs(8);
-/// How long the broker waits for the request line (`READ_MS` in `broker/main.ts`).
+/// `READ_MS` in `broker/main.ts`.
 pub(super) const BROKER_REQUEST_READ: Duration = Duration::from_secs(5);
-/// The broker's request deadline: no Headscale change starts that could end after it
-/// (`REQUEST_MS` in `broker/main.ts`, `broker/deadline.ts`).
+/// `REQUEST_MS` in `broker/main.ts`.
 pub(super) const BROKER_REQUEST_DEADLINE: Duration = Duration::from_secs(45);
-/// systemd stops a broker request that runs longer (`RuntimeMaxSec=60` in the unit).
+/// `RuntimeMaxSec=60` in the unit.
 pub(super) const BROKER_RUNTIME_MAX: Duration = Duration::from_secs(60);
-/// Time for the reply line to cross the socket after the broker wrote it.
 const REPLY_MARGIN: Duration = Duration::from_secs(5);
-/// How long one call may take once it has the turn, from connect to the reply line (BD-10):
-/// 65 s, longer than a broker request can live, so a change the broker made is never reported
-/// as "did not answer", and the turn is never let go while a broker request still runs.
+/// Outlives any broker request, so a change it made is never reported as unanswered and the
+/// turn is never let go while it runs (BD-10).
 pub(super) const CALL_LIMIT: Duration =
     Duration::from_secs(BROKER_RUNTIME_MAX.as_secs() + REPLY_MARGIN.as_secs());
-// The broker's own worst case (lock, request line, deadline) fits in its run time limit.
 const _: () = assert!(
     BROKER_LOCK_WAIT.as_secs() + BROKER_REQUEST_READ.as_secs() + BROKER_REQUEST_DEADLINE.as_secs()
         <= BROKER_RUNTIME_MAX.as_secs()
 );
-/// How long a call waits for the turn behind another call; then it gives up with
-/// `BrokerBusy`, having sent nothing (BD-15).
+/// Then the call gives up with `BrokerBusy`, having sent nothing (BD-15).
 pub(super) const TURN_WAIT: Duration = Duration::from_secs(20);
-/// How long a call, holding the turn, waits after the reply line for the broker to close the
-/// connection: systemd's `MaxConnections=1` closes the next connection at once while the
-/// broker request still runs (BD-15). Never past [`CALL_LIMIT`] from connect.
 pub(super) const CLOSE_WAIT: Duration = Duration::from_secs(2);
 
-/// The broker at one socket path. Clones share one turn, so no two calls of the hub reach the
-/// socket at the same time: systemd closes a second connection at once (BD-15).
+/// Clones share one turn, held until the broker closes, so no two calls reach the socket at
+/// once: systemd's `MaxConnections=1` closes a second connection at once (BD-15).
 #[derive(Clone, Debug)]
 pub struct Broker {
     path: PathBuf,
     turn: Arc<Mutex<()>>,
 }
 
-/// One node as the broker lists it, without any key (BD-9).
+/// Holds no key (BD-9).
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub(super) struct BrokerNode {
     pub id: u64,
@@ -83,7 +72,6 @@ pub(super) struct BrokerNode {
     pub available: Vec<IpNet>,
 }
 
-/// The broker's `nodes` reply: every node, and each policy site by name and subnet.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(from = "NodesReply")]
 pub(super) struct BrokerView {
@@ -116,12 +104,11 @@ impl From<NodesReply> for BrokerView {
     }
 }
 
-/// A one-use pre-auth key. It has no `Display`, its `Debug` prints no key, and its memory is
-/// zeroed when it drops (LOG-007).
+/// No `Display`, a `Debug` without the key, and zeroed when it drops (LOG-007).
 pub(super) struct PreAuthKey(Zeroizing<String>);
 
 impl PreAuthKey {
-    /// The key, for the one reply that hands it to the operator.
+    /// Only for the one reply that hands the key to the operator.
     pub fn expose(&self) -> &str {
         &self.0
     }
@@ -139,7 +126,6 @@ impl<'de> Deserialize<'de> for PreAuthKey {
     }
 }
 
-/// The broker's reply to `personal-key` and `router-key`.
 #[derive(Debug, Deserialize)]
 pub(super) struct NewKey {
     pub key: PreAuthKey,
@@ -147,7 +133,6 @@ pub(super) struct NewKey {
     pub expires_at: DateTime<Utc>,
 }
 
-/// The broker's reply to `register` and `renew`: the node's name, IPv4 address and expiry.
 #[derive(Debug, Deserialize)]
 pub(super) struct Registered {
     pub name: String,
@@ -156,7 +141,7 @@ pub(super) struct Registered {
     pub key_expiry: Option<DateTime<Utc>>,
 }
 
-/// Why the broker refused a request; the words of its wire format.
+/// The words of the broker's wire format.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Refusal {
@@ -203,8 +188,8 @@ impl Broker {
         }
     }
 
-    /// Every node and the policy sites (`nodes`); `BrokerBusy` at once when another call holds
-    /// the turn, so the reader never queues behind a mutation (BD-15).
+    /// `BrokerBusy` at once when the turn is held, so a reader never queues behind a mutation
+    /// (BD-15).
     pub(super) async fn nodes_if_free(&self) -> Result<BrokerView, Error> {
         let turn = self.turn.try_lock().map_err(|_| Error::BrokerBusy)?;
         self.call_holding(turn, &json!({ "verb": "nodes" })).await
@@ -227,7 +212,6 @@ impl Broker {
             .await
     }
 
-    /// Approves the one subnet of the policy site `site` that router `node` offers (R-055).
     pub(super) async fn approve_route(&self, node: u64, site: &str) -> Result<(), Error> {
         let request = json!({ "verb": "approve-route", "node": node, "site": site });
         self.call::<serde::de::IgnoredAny>(&request).await.map(drop)
@@ -238,7 +222,6 @@ impl Broker {
         self.call(&json!({ "verb": "renew", "node": node })).await
     }
 
-    /// Waits at most [`TURN_WAIT`] for the turn, then sends `request` and reads its reply.
     async fn call<T: DeserializeOwned>(&self, request: &Value) -> Result<T, Error> {
         let turn = tokio::time::timeout(TURN_WAIT, self.turn.lock())
             .await
@@ -246,8 +229,7 @@ impl Broker {
         self.call_holding(turn, request).await
     }
 
-    /// Sends `request` and reads its reply within [`CALL_LIMIT`], holding `_turn` from connect
-    /// to close.
+    /// Holds the turn from connect to close.
     async fn call_holding<T: DeserializeOwned>(
         &self,
         _turn: MutexGuard<'_, ()>,
@@ -263,7 +245,6 @@ impl Broker {
         parse_reply(&line)
     }
 
-    /// One connection: the request line out, the reply line in, and the connection to wait on.
     async fn exchange(&self, request: &Value) -> Result<(Zeroizing<Vec<u8>>, UnixStream), Error> {
         let mut stream =
             UnixStream::connect(&self.path)
@@ -283,16 +264,13 @@ impl Broker {
     }
 }
 
-/// Reads and drops whatever follows the reply line until the broker closes the connection
-/// (EOF) or it fails; the bytes go into a small buffer that is zeroed when it drops.
 async fn closed(mut stream: UnixStream) {
     let mut rest = Zeroizing::new([0_u8; 512]);
     while matches!(stream.read(&mut rest[..]).await, Ok(read) if read > 0) {}
 }
 
-/// The first line of `stream`, at most [`MAX_REPLY_BYTES`]; EOF before any byte, or a longer
-/// line, is unreadable. The bytes go from the socket straight into one buffer of the full size,
-/// which never grows and is zeroed when it drops, so no copy of a key is left (LOG-007).
+/// One buffer of the full size that never grows and is zeroed on drop, so no copy of a key is
+/// left (LOG-007).
 async fn read_line(stream: &mut UnixStream) -> Result<Zeroizing<Vec<u8>>, Error> {
     let mut line = Zeroizing::new(vec![0_u8; MAX_REPLY_BYTES + 1]);
     let mut filled = 0;
@@ -316,8 +294,8 @@ async fn read_line(stream: &mut UnixStream) -> Result<Zeroizing<Vec<u8>>, Error>
     Ok(line)
 }
 
-/// The value of one reply line, or the broker's refusal. A parse error never carries the
-/// line's text: serde quotes the value it could not read, and that can be a key (LOG-007).
+/// A parse error never carries the line's text: serde quotes the value it could not read, and
+/// that can be a key (LOG-007).
 pub(super) fn parse_reply<T: DeserializeOwned>(line: &[u8]) -> Result<T, Error> {
     let reply: Reply<T> = serde_json::from_slice(line).map_err(|_| Error::BrokerUnreadable)?;
     match (reply.ok, reply.value, reply.refusal) {
@@ -330,10 +308,9 @@ pub(super) fn parse_reply<T: DeserializeOwned>(line: &[u8]) -> Result<T, Error> 
     }
 }
 
-/// The longest refusal detail the hub keeps.
 const DETAIL_CHARS: usize = 160;
 
-/// The first IPv4 address of a broker node, as the picture matches nodes by it (BD-14).
+/// The picture matches nodes by their first IPv4 address (BD-14).
 pub(super) fn ipv4_of(node: &BrokerNode) -> Option<Ipv4Addr> {
     node.ips.iter().find_map(|ip| match ip {
         IpAddr::V4(v4) => Some(*v4),

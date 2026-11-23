@@ -45,7 +45,6 @@ async fn send(egress: &Egress, server: &Server, security: SmtpSecurity) -> Resul
     egress.send_mail(&target, Some(&login()), &message()).await
 }
 
-/// Whether any line the server received names the login, or is a login or message command.
 fn credential_or_message_reached(server: &Server) -> bool {
     let plain = STANDARD.encode(format!("\0{USER}\0{PASSWORD}"));
     server.lines().iter().any(|line| {
@@ -57,8 +56,7 @@ fn credential_or_message_reached(server: &Server) -> bool {
     })
 }
 
-/// The command verbs the server received, up to DATA: what lettre sends after the message
-/// (QUIT) is its own business.
+/// Command verbs up to DATA; what lettre sends after the message is its own business.
 fn verbs(server: &Server) -> Vec<String> {
     let mut verbs: Vec<String> = server
         .lines()
@@ -121,8 +119,7 @@ async fn p3_003_open_reaches_the_given_address_and_names_the_given_host() {
         .unwrap();
     let address: SocketAddr = ([127, 0, 0, 1], server.port).into();
 
-    // `.invalid` never resolves (RFC 6761): the connection reached the address it was given,
-    // and the handshake named the host it was given.
+    // `.invalid` never resolves (RFC 6761), so the connection used the given address and host.
     let mut connection = open(&[address], SmtpSecurity::Implicit, tls).await.unwrap();
     connection.abort().await;
 
@@ -210,8 +207,7 @@ async fn d_16_a_queued_message_is_sent_though_quit_is_never_answered() {
     .await
     .expect("QUIT waited past the time limit");
 
-    // The 250 after DATA decided (S-A): a retry would send the mail twice. QUIT got only what
-    // was left of the one time limit (C-1).
+    // The 250 after DATA decides, so no retry (S-A); QUIT gets what is left of the time limit (C-1).
     assert_eq!(sent, Ok(()));
     assert!(
         started.elapsed() < TIME_LIMIT + SLACK,

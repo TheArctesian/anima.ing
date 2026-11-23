@@ -1,5 +1,3 @@
-//! The import rule over every case of a listed repository (PRO-001, PRO-002, PRJ-016, SRC-012).
-
 use uuid::Uuid;
 
 use crate::{

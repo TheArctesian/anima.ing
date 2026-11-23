@@ -1,5 +1,4 @@
-//! The SQL on `trust.server_certificates`: the RDP server certificate accepted for each
-//! device (SEC-007).
+//! The SQL on `trust.server_certificates`: each device's accepted RDP certificate (SEC-007).
 
 use std::collections::HashMap;
 
@@ -33,8 +32,7 @@ impl From<ServerCertificateRow> for (DeviceId, ServerCertificate) {
     }
 }
 
-/// The accepted server certificate of each listed device that has one, in one query
-/// (API-005). An empty list returns an empty map without a query.
+/// The accepted certificate of each listed device that has one, in one query (API-005).
 pub(in crate::fleet::trust) async fn server_certificates<'e>(
     db: impl PgExecutor<'e>,
     devices: &[DeviceId],
@@ -55,9 +53,7 @@ pub(in crate::fleet::trust) async fn server_certificates<'e>(
         .collect())
 }
 
-/// Waits for, then holds until the transaction ends, this domain's advisory lock on the
-/// device's server certificate, so two accepts for one device run one after the other and each
-/// audit entry names the certificate it replaced.
+/// Serialises accepts for one device, so each audit entry names the certificate it replaced.
 pub(in crate::fleet::trust) async fn lock_server_certificate(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -72,15 +68,12 @@ pub(in crate::fleet::trust) async fn lock_server_certificate(
     Ok(())
 }
 
-/// A server certificate the operator accepts for a device.
 pub(in crate::fleet::trust) struct AcceptedCertificate<'a> {
     pub(in crate::fleet::trust) device: DeviceId,
     pub(in crate::fleet::trust) certificate: &'a ServerCertificate,
     pub(in crate::fleet::trust) by: OperatorId,
 }
 
-/// Stores the accepted certificate, replacing the device's previous one; `NotFound` when the
-/// device is gone.
 pub(in crate::fleet::trust) async fn put_server_certificate(
     conn: &mut PgConnection,
     accepted: &AcceptedCertificate<'_>,

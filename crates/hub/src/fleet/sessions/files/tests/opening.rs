@@ -1,5 +1,4 @@
-//! `openFiles` (K1, K4 Section 9): a files ticket only for a live SSH session of the same
-//! operator and client address whose terminal tunnel is open, and none while shutting down.
+//! A files ticket only for the operator and address of a live SSH session (K1, K4 Section 9).
 
 use sqlx::PgPool;
 
@@ -33,7 +32,6 @@ async fn ra_032_a_live_ssh_session_gets_a_files_ticket(pool: PgPool) {
     assert!(!format!("{ticket:?}").contains(ticket.token()), "LOG-007");
 }
 
-/// `openFiles` refuses with `NotFound` for the session.
 fn not_found(result: Result<crate::fleet::sessions::Ticket, Error>, session: SessionId) {
     match result {
         Err(Error::NotFound(Missing::Session(missing))) => assert_eq!(missing, session),

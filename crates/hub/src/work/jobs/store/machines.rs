@@ -1,5 +1,3 @@
-//! What the hub knows of a machine for work, in schema `jobs`.
-
 use chrono::{DateTime, Utc};
 use daemon_core::wire::Switch;
 use sqlx::PgConnection;
@@ -22,7 +20,6 @@ type MachineRow = (
     bool,
 );
 
-/// What the hub knows of the machine, locked; `None` before its first claim.
 pub(in crate::work::jobs) async fn machine_locked(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -61,7 +58,6 @@ type ListedRow = (
     bool,
 );
 
-/// What the hub knows of each machine for work; a device that never asked has no entry.
 pub(in crate::work::jobs) async fn machines(
     db: &sqlx::PgPool,
 ) -> Result<std::collections::HashMap<DeviceId, Machine>, Error> {
@@ -89,7 +85,6 @@ pub(in crate::work::jobs) async fn machines(
         .collect()
 }
 
-/// Writes the state of the machine for work at `now`; the exclusion is not changed.
 pub(in crate::work::jobs) async fn save_machine(
     conn: &mut PgConnection,
     machine: &Machine,
@@ -113,8 +108,6 @@ pub(in crate::work::jobs) async fn save_machine(
     Ok(())
 }
 
-/// Records that the machine refused or lost a job at `at`, and returns how many it refused or
-/// lost since `since`. A machine with no row of its own (a device that was removed) counts 0.
 pub(in crate::work::jobs) async fn add_fault(
     conn: &mut PgConnection,
     (device, fault): (DeviceId, Fault),
@@ -138,7 +131,6 @@ pub(in crate::work::jobs) async fn add_fault(
     Ok(usize::try_from(known.map_or(0, |(faults,)| faults)).unwrap_or(usize::MAX))
 }
 
-/// Sets the end of the hour with no work of the machine.
 pub(in crate::work::jobs) async fn set_off_until(
     conn: &mut PgConnection,
     device: DeviceId,

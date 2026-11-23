@@ -1,9 +1,5 @@
-//! Whether a run may run again, run its failed jobs again or be cancelled, decided from the run
-//! as the hub just read it (PRJ-034; K-E1 Section 13.3; decisions item 10). Pure: the time
-//! comes in as a parameter (CQ-021).
-//!
-//! GitHub runs a run again only within 30 days of its start and at most 50 times; a run of a
-//! fork is not run again from Anima, but it can be cancelled because that stops code (PRO-013).
+//! Whether a control may be used on a run (PRJ-034; K-E1 Section 13.3; decisions item 10; CQ-021).
+//! A run of a fork is not run again from Anima, but it can be cancelled because that stops code (PRO-013).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use provider_github::live::runs::Run;
@@ -16,7 +12,6 @@ const RERUN_DAYS: i64 = 30;
 /// GitHub runs a run again at most this many times, whole or in part.
 const MOST_ATTEMPTS: u32 = 50;
 
-/// One of the three controls of a run.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Control {
     Rerun,
@@ -24,11 +19,9 @@ pub enum Control {
     Cancel,
 }
 
-/// What the rule reads of a run.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RunState {
     pub status: WorkflowRunStatus,
-    /// `None` until the run is completed.
     pub conclusion: Option<WorkflowConclusion>,
     pub head_sha: String,
     pub from_fork: bool,
@@ -37,7 +30,6 @@ pub struct RunState {
 }
 
 impl RunState {
-    /// The state of `run`, with K1's status and conclusion.
     #[must_use]
     pub fn of(run: &Run) -> Self {
         let status = run_status(run.status);
@@ -74,14 +66,8 @@ pub enum Barred {
     Finished,
 }
 
-/// Whether `control` may be used on `run`, whose head the operator saw as `expected`, at
-/// `now`.
-///
 /// # Errors
-/// The [`Barred`] reason: the head is not `expected`; for either run again, the run is not
-/// completed, is from a fork, started more than 30 days before `now` or ran 50 times, and for
-/// the failed jobs its conclusion is not a failure, a cancellation or a timeout; for cancel,
-/// the run is completed.
+/// The [`Barred`] reason.
 pub fn decide(
     control: Control,
     run: &RunState,
@@ -120,7 +106,6 @@ pub fn decide(
     }
 }
 
-/// The rules both kinds of running again share.
 fn again(run: &RunState, completed: bool, now: DateTime<Utc>) -> Result<(), Barred> {
     if !completed {
         Err(Barred::NotFinished)

@@ -20,9 +20,7 @@ pub(in crate::fleet::checks) async fn delete_orphan_heartbeats(db: &PgPool) -> R
     Ok(deleted.rows_affected())
 }
 
-/// Deletes aggregate buckets older than 7 days (minute), 90 days (hour) and 2 years (day)
-/// before `now`, or before the database clock when `now` is later (DB-009, CQ-021). A
-/// bucket that starts exactly at the limit is kept.
+/// Counts from the database clock when `now` is later (DB-009, CQ-021).
 pub(in crate::fleet::checks) async fn trim_aggregates(
     db: &PgPool,
     now: DateTime<Utc>,
@@ -49,9 +47,7 @@ pub(in crate::fleet::checks) async fn trim_aggregates(
     Ok(())
 }
 
-/// The first UTC day whose heartbeats are kept at `now` when they are kept `keep`. It is one
-/// day later than the database allows, so a hub clock slightly ahead of the database clock is
-/// never refused; the extra day is dropped on the next run.
+/// One day later than the database allows, so a hub clock slightly ahead of it is never refused.
 fn first_kept_day(now: DateTime<Utc>, keep: Days) -> NaiveDate {
     now.naive_utc()
         .checked_sub_days(keep)
@@ -59,8 +55,7 @@ fn first_kept_day(now: DateTime<Utc>, keep: Days) -> NaiveDate {
         .unwrap_or(NaiveDate::MIN)
 }
 
-/// Drops the heartbeat partitions older than `keep` at `now`; returns their names. The
-/// database refuses a cutoff inside its 1-day floor (DB-005).
+/// The database refuses a cutoff inside its 1-day floor (DB-005).
 pub(in crate::fleet::checks) async fn drop_heartbeat_days_before(
     db: &PgPool,
     now: DateTime<Utc>,
@@ -75,8 +70,7 @@ pub(in crate::fleet::checks) async fn drop_heartbeat_days_before(
     )
 }
 
-/// Creates the heartbeat partitions of the UTC day of `today` and the `days` days after it,
-/// in one statement (DB-004).
+/// The heartbeat partitions of today and the `days` days after it (DB-004).
 pub(in crate::fleet::checks) async fn create_days_ahead(
     db: &PgPool,
     today: DateTime<Utc>,

@@ -1,6 +1,5 @@
-//! What an operator's change to an account leaves behind: one audit entry and one event, in
-//! the mutation's own transaction (LOG-004, LOG-005). The change names the account and never
-//! holds the key or a token (LOG-007, PRJ-018).
+//! One audit entry and one event in the mutation's transaction (LOG-004, LOG-005). The change
+//! names the account and never holds the key or a token (LOG-007, PRJ-018).
 
 use serde_json::json;
 
@@ -22,7 +21,6 @@ fn entry(action: AuditAction, target: SourceAccountId, message: String) -> Trail
     }
 }
 
-/// An account was connected, or its key replaced (`created` false).
 pub(super) fn connected(
     id: SourceAccountId,
     (source, label, instance_key): (&str, &str, &str),
@@ -40,7 +38,6 @@ pub(super) fn connected(
     }
 }
 
-/// An account was paused or resumed.
 pub(super) fn paused(account: &Account, paused: bool) -> TrailEntry {
     let (action, words) = if paused {
         (AuditAction::Pause, "paused")

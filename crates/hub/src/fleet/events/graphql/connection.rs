@@ -1,5 +1,4 @@
-//! The pages that `Query.events` and `Query.audit` return, and the K1 `Event` and `AuditEntry`
-//! types (API-006, LOG-004, LOG-005).
+//! K1; API-006, LOG-004, LOG-005.
 
 use async_graphql::{ID, Json, SimpleObject};
 use chrono::{DateTime, Utc};

@@ -1,5 +1,3 @@
-//! All SQL on schema `locations`: I/O only.
-
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
@@ -10,7 +8,6 @@ use super::{
 };
 use crate::ids::{EventId, IngestTokenId, SampleId};
 
-/// One row of `locations.sample`, still sealed.
 #[derive(sqlx::FromRow)]
 pub(super) struct SampleRow {
     pub id: SampleId,
@@ -24,8 +21,8 @@ pub(super) struct SampleRow {
 
 const SAMPLE: &str = "id, provider, account, sample_key, observed_at, received_at, sealed";
 
-/// Stores one sample; `false` when the hub already has a sample of this provider, account
-/// and key, which then stays as it is.
+/// `false` when the hub already has a sample of this provider, account and key, which then
+/// stays as it is.
 pub(super) async fn insert_sample(
     conn: &mut PgConnection,
     (id, origin, key): (SampleId, &Origin, &str),
@@ -50,7 +47,6 @@ pub(super) async fn insert_sample(
     Ok(done.rows_affected() == 1)
 }
 
-/// Deletes each sample of `origin` and gives their count.
 pub(super) async fn delete_samples(
     conn: &mut PgConnection,
     origin: &Origin,
@@ -63,7 +59,6 @@ pub(super) async fn delete_samples(
         .map(|done| done.rows_affected())
 }
 
-/// The samples observed from `from` to `to`, oldest first, at most `limit`.
 pub(super) async fn samples_between(
     db: impl PgExecutor<'_>,
     (from, to): (DateTime<Utc>, DateTime<Utc>),
@@ -81,8 +76,6 @@ pub(super) async fn samples_between(
     .await
 }
 
-/// The samples that the hub got after `after` and not after `until`, in the order of their
-/// arrival, at most `limit`.
 pub(super) async fn samples_received(
     db: impl PgExecutor<'_>,
     (after, until): (DateTime<Utc>, DateTime<Utc>),
@@ -141,7 +134,6 @@ pub(super) async fn insert_token(
     .map(drop)
 }
 
-/// Every ingest token, newest first.
 pub(super) async fn tokens(db: impl PgExecutor<'_>) -> Result<Vec<IngestToken>, sqlx::Error> {
     let rows: Vec<TokenRow> = sqlx::query_as(&format!(
         "SELECT {TOKEN} FROM locations.ingest_token ORDER BY created_at DESC, id"
@@ -151,8 +143,6 @@ pub(super) async fn tokens(db: impl PgExecutor<'_>) -> Result<Vec<IngestToken>, 
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
-/// Ends the token `id` at `at`; `None` when there is none, and a token that was already
-/// revoked keeps its first time.
 pub(super) async fn revoke_token(
     conn: &mut PgConnection,
     id: IngestTokenId,
@@ -169,7 +159,6 @@ pub(super) async fn revoke_token(
     Ok(row.map(Into::into))
 }
 
-/// The token with this hash that is not revoked, marked as used at `at`.
 pub(super) async fn use_token(
     conn: &mut PgConnection,
     hash: &[u8],
@@ -186,8 +175,6 @@ pub(super) async fn use_token(
     Ok(row.map(Into::into))
 }
 
-/// Adds `fixes` to the count of `token` for `hour`, and keeps `client` as the address of the
-/// last post of the hour.
 pub(super) async fn count_fixes(
     conn: &mut PgConnection,
     (token, hour): (IngestTokenId, DateTime<Utc>),
@@ -207,7 +194,6 @@ pub(super) async fn count_fixes(
     .map(drop)
 }
 
-/// One hour of one ingest token that has ended.
 #[derive(sqlx::FromRow)]
 pub(super) struct ClosedHour {
     pub token_id: IngestTokenId,
@@ -217,8 +203,6 @@ pub(super) struct ClosedHour {
     pub client: std::net::IpAddr,
 }
 
-/// Takes each count of an hour before `open_hour` out of the table, oldest first. A second
-/// caller at the same time skips the rows that this one holds.
 pub(super) async fn take_closed_hours(
     conn: &mut PgConnection,
     open_hour: DateTime<Utc>,
@@ -297,7 +281,6 @@ fn end(device: Option<Uuid>, site: Option<Uuid>, place: Option<Uuid>) -> End {
     }
 }
 
-/// The stored context of the transfer event `event`.
 pub(super) async fn context(
     db: impl PgExecutor<'_>,
     event: EventId,

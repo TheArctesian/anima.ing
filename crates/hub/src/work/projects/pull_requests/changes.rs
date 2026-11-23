@@ -1,12 +1,9 @@
-//! The merge changes (K1; OD-E14, PRJ-027, PRJ-028, PRJ-033): merge one pull request, or many
-//! one after another.
+//! The merge changes (K1; OD-E14, PRJ-027, PRJ-028, PRJ-033).
 //!
-//! Each merge checks its input first, then reads the pull request and the repository's merge
-//! methods fresh from GitHub, and applies the merge rule ([`merge::decide`]); a refusal there
-//! sends nothing and records nothing. The merge is sent once, bound to the head commit the
-//! caller saw, and recorded by [`forge::send`]. Both roots are login or browser token only
-//! (D-23, R-100; K-E1 Section 13.5): a merge makes code run with the repository's secrets. A
-//! pull request from a fork is a person's trust decision (PRO-013).
+//! A refusal by [`merge::decide`] sends and records nothing; a merge is sent once, bound to the
+//! head commit the caller saw. Both roots are login or browser token only (D-23, R-100; K-E1
+//! Section 13.5): a merge runs code with the repository's secrets. A fork is a person's trust
+//! decision (PRO-013).
 
 use std::{sync::Arc, time::Duration};
 
@@ -63,8 +60,7 @@ impl Mutation {
     ) -> Result<PullRequestView> {
         operator_only(ctx, "mergePullRequest")?;
         let seen = input::one(&input)?;
-        // Boxed, as below: the merged Mutation holds every resolver's future, and a merge's
-        // reads and send are deep.
+        // Boxed: the merged Mutation holds every resolver's future, and a merge's future is deep.
         Box::pin(alone(ctx, &input, &seen)).await
     }
 

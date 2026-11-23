@@ -1,17 +1,10 @@
-//! SMTP egress: one message to a mail server at its checked addresses, encrypted before any
-//! command that carries a credential or the message (D-17).
+//! SMTP egress (D-17): one message to a mail server at its checked addresses, encrypted before
+//! any command that carries a credential or the message; there is no plaintext mode.
 //!
-//! The connection goes to the checked IP addresses; the TLS parameters name the host, so SNI
-//! and the certificate check use the host name. Implicit TLS or STARTTLS is required; there is
-//! no plaintext or opportunistic mode, so a server that does not offer STARTTLS gets no login
-//! and no message.
-//!
-//! The reply to the message (after DATA) decides the outcome, within the time limit. QUIT is
-//! sent afterwards in whatever time is left and its answer is ignored, so a server that queued
-//! the message but never answers QUIT still counts as sent and is not sent to again (S-A).
-//!
-//! The client greets with the address literal `[127.0.0.1]` (RFC 5321 4.1.4), never the
-//! machine's host name, which would name the hub's container or host to every mail server.
+//! SNI and the certificate check use the host name, not the checked address.
+//! The reply after DATA decides the outcome and the answer to QUIT is ignored, so a server that
+//! queued the message is not sent to again (S-A).
+//! The client greets with `[127.0.0.1]` (RFC 5321 4.1.4), so no mail server learns the hub's host name.
 
 use std::{
     io,
@@ -34,21 +27,18 @@ use tokio::time::{Instant, timeout_at};
 use super::{Egress, SendError, TIME_LIMIT, causes, tls_broke};
 use crate::fleet::targets::resolve_checked;
 
-/// How the connection to a mail server is encrypted. There is no plaintext choice. An e-mail
-/// channel stores it as `tls` or `starttls` (K1 `SmtpSecurity`).
+/// An e-mail channel stores it as `tls` or `starttls` (K1 `SmtpSecurity`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum SmtpSecurity {
     /// TLS from the first byte (port 465).
     #[serde(rename = "tls")]
     Implicit,
-    /// Plain connection upgraded with STARTTLS before anything else (port 587); a server that
-    /// does not offer it is refused. Implicit TLS is the recommended mode: lettre reads a reply
-    /// an attacker injects in plaintext right after the STARTTLS answer as if it came over TLS.
+    /// STARTTLS before anything else (port 587). Implicit TLS is preferred: lettre reads a reply
+    /// injected in plaintext right after the STARTTLS answer as if it came over TLS.
     #[serde(rename = "starttls")]
     StartTls,
 }
 
-/// The mail server a message goes to.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct SmtpServer {
     /// A host name or IP literal; resolved and checked on each send.
@@ -57,24 +47,16 @@ pub(crate) struct SmtpServer {
     pub(crate) security: SmtpSecurity,
 }
 
-/// The login mechanisms offered, only ever over TLS.
 const MECHANISMS: [Mechanism; 2] = [Mechanism::Plain, Mechanism::Login];
 
-/// The name the client greets with: a fixed address literal, so no mail server learns the
-/// hub's host name.
 pub(super) const HELLO: ClientId = ClientId::Ipv4(Ipv4Addr::LOCALHOST);
 
 impl Egress {
-    /// Sends `message` to its envelope's recipients through `server`, logging in with `login`
-    /// when given. The outcome is decided within [`TIME_LIMIT`] from the lookup; QUIT then
-    /// gets only what is left of it, and its answer changes nothing (S-A).
+    /// The outcome is decided within [`TIME_LIMIT`] from the lookup (S-A).
     ///
     /// # Errors
-    /// [`SendError::Target`] when the host does not resolve or names a refused address, with
-    /// no connection made; [`SendError::NoStartTls`] when STARTTLS is required and not
-    /// offered; [`SendError::Tls`] when the certificate is not trusted for the host name;
-    /// [`SendError::SmtpReply`] when the server refuses a command; otherwise the setup,
-    /// connection or time limit failure.
+    /// [`SendError::Target`] with no connection made for a refused or unresolved host; else the
+    /// [`SendError`] of the failed step.
     pub(crate) async fn send_mail(
         &self,
         server: &SmtpServer,
@@ -85,14 +67,10 @@ impl Egress {
         let (mut connection, outcome) = timeout_at(deadline, self.deliver(server, login, message))
             .await
             .map_err(|_| SendError::TimedOut)??;
-        // The outcome is decided; a QUIT that is not answered in time is dropped with the
-        // connection.
         let _ = timeout_at(deadline, connection.abort()).await;
         outcome
     }
 
-    /// Connects, logs in and sends; returns the open connection and the server's verdict on
-    /// the message, which the reply after DATA decides.
     async fn deliver(
         &self,
         server: &SmtpServer,
@@ -106,8 +84,6 @@ impl Egress {
         Ok((connection, outcome))
     }
 
-    /// TLS parameters that verify the server's certificate for `host` against the built-in
-    /// roots (and a test's extra root).
     pub(super) fn tls_parameters(&self, host: &str) -> Result<TlsParameters, SendError> {
         let name = host
             .strip_prefix('[')
@@ -123,8 +99,7 @@ impl Egress {
     }
 }
 
-/// Connects to the first of `addresses` that answers and encrypts the connection as
-/// `security` says. Never returns a connection that is not encrypted.
+/// Never returns a connection that is not encrypted.
 pub(super) async fn open(
     addresses: &[SocketAddr],
     security: SmtpSecurity,
@@ -153,7 +128,6 @@ pub(super) async fn open(
     }
 }
 
-/// Logs in when `login` is given, then sends `message`, on an encrypted connection.
 async fn submit(
     connection: &mut AsyncSmtpConnection,
     login: Option<&Credentials>,
@@ -172,8 +146,7 @@ async fn submit(
     Ok(())
 }
 
-/// The [`SendError`] a lettre error stands for, judged from its kind and causes, never its
-/// text.
+/// Judged from the error's kind and causes, never its text.
 fn classify(error: &smtp::Error) -> SendError {
     if let Some(code) = error.status() {
         SendError::SmtpReply(u16::from(code))

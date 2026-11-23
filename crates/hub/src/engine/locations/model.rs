@@ -5,12 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::ids::{IngestTokenId, SampleId};
 
-/// The longest account or sample key, in characters.
 pub(super) const MAX_KEY: usize = 200;
-/// The longest name of an ingest token, in characters.
 pub(super) const MAX_TOKEN_NAME: usize = 64;
 
-/// Where a sample came from. The identity of the provider stays with the sample (R-145).
+/// The identity of the provider stays with the sample (R-145).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Provider {
     Dawarich,
@@ -20,7 +18,6 @@ pub enum Provider {
 }
 
 impl Provider {
-    /// The text stored in `locations.sample.provider`.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -30,7 +27,6 @@ impl Provider {
         }
     }
 
-    /// The provider whose stored text is `text`.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         [Self::Dawarich, Self::OwnTracks, Self::Anima]
@@ -39,15 +35,13 @@ impl Provider {
     }
 }
 
-/// The provider and the account or ingest token that gave a batch of samples.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Origin {
     pub provider: Provider,
     pub account: String,
 }
 
-/// The sealed part of a sample. Each number is `None` when the provider gave none: no code
-/// puts a number in the place of a missing one.
+/// Sealed. Each number is `None` when the provider gave none: no code fills a missing one.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Position {
     pub latitude: Option<f64>,
@@ -57,17 +51,13 @@ pub struct Position {
     pub speed_mps: Option<f64>,
 }
 
-/// One sample as a provider gave it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct NewSample {
-    /// The identity that the provider gives the sample.
     pub key: String,
-    /// The time of the fix; `None` when the provider gave none.
     pub observed_at: Option<DateTime<Utc>>,
     pub position: Position,
 }
 
-/// One stored sample, opened.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Sample {
     pub id: SampleId,
@@ -79,14 +69,13 @@ pub struct Sample {
     pub position: Position,
 }
 
-/// How many samples of a batch were new and how many the hub already had.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Stored {
     pub added: u64,
     pub known: u64,
 }
 
-/// One ingest token of the OwnTracks path, without its value.
+/// An ingest token without its value.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IngestToken {
     pub id: IngestTokenId,
@@ -96,7 +85,6 @@ pub struct IngestToken {
     pub revoked_at: Option<DateTime<Utc>>,
 }
 
-/// One input field to fix, with what to give.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bad {
     pub field: String,
@@ -119,7 +107,6 @@ fn one_line(text: &str, most: usize) -> Option<String> {
     valid.then(|| text.to_owned())
 }
 
-/// The name of an ingest token: one line of 1 to 64 characters.
 pub(super) fn token_name(text: &str) -> Option<String> {
     one_line(text, MAX_TOKEN_NAME)
 }
@@ -128,8 +115,6 @@ fn within(value: Option<f64>, low: f64, high: f64) -> bool {
     value.is_none_or(|number| number.is_finite() && (low..=high).contains(&number))
 }
 
-/// Each field of the sample at `index` that is not valid. A sample gives a latitude and a
-/// longitude together or gives neither.
 pub(super) fn faults(index: usize, sample: &NewSample) -> Vec<Bad> {
     let position = sample.position;
     let field = |name: &str| format!("samples[{index}].{name}");

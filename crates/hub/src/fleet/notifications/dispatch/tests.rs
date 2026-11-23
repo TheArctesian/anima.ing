@@ -1,7 +1,4 @@
-//! Tests of the dispatcher (D-16, NOT-001, NOT-002, NOT-004, CR-14 item 5, LOG-007, P3-003).
-//!
-//! Local TLS servers stand in for every target, and a dispatcher's ticks are driven with chosen
-//! instants, so the retry schedule runs in no time. The key and every secret are synthetic.
+//! Dispatcher tests (D-16, NOT-001, NOT-002, NOT-004, CR-14 item 5, LOG-007, P3-003); every key and secret is synthetic.
 
 mod decisions;
 mod kinds;
@@ -44,7 +41,7 @@ use crate::{
     ids::{ChannelId, CheckId},
 };
 
-/// Every secret a fixture channel holds. None may appear in a delivery, an event or the log.
+/// No fixture secret may appear in a delivery, an event or the log (LOG-007).
 pub(in crate::fleet::notifications) const SECRETS: [&str; 7] = [
     "synthetic-path-secret",
     "synthetic-header-secret",
@@ -68,7 +65,6 @@ pub(in crate::fleet::notifications) fn secret(text: &str) -> Secret {
     Secret::from(text.to_owned())
 }
 
-/// A dispatcher of its own on `pool`, sending through `egress`.
 pub(super) fn dispatcher(pool: &PgPool, egress: Egress) -> Arc<Dispatcher> {
     Arc::new(Dispatcher {
         db: pool.clone(),
@@ -77,8 +73,6 @@ pub(super) fn dispatcher(pool: &PgPool, egress: Egress) -> Arc<Dispatcher> {
     })
 }
 
-/// A TLS server for `localhost` answering as `behaviour` says with the acceptor given, and an
-/// egress that trusts it.
 pub(in crate::fleet::notifications) async fn target(
     behaviour: impl FnOnce(tokio_rustls::TlsAcceptor) -> Behaviour,
 ) -> (Server, Egress) {
@@ -87,13 +81,11 @@ pub(in crate::fleet::notifications) async fn target(
     (server, local().trusting(der))
 }
 
-/// An HTTPS server that answers every request with `reply`.
 pub(in crate::fleet::notifications) async fn answering(reply: &[u8]) -> (Server, Egress) {
     let reply = reply.to_vec();
     target(|acceptor| Behaviour::Http(reply, Some(acceptor))).await
 }
 
-/// The database's time to the microsecond, with the delivery partitions around it.
 pub(in crate::fleet::notifications) async fn start(pool: &PgPool) -> DateTime<Utc> {
     let now: DateTime<Utc> = sqlx::query_scalar("SELECT pg_catalog.now()")
         .fetch_one(pool)
@@ -173,11 +165,9 @@ pub(in crate::fleet::notifications) fn apprise_key(server: &Server) -> (Settings
     (settings, Secrets::Apprise(key))
 }
 
-/// A stateless Apprise URL the hub permits, holding a synthetic secret.
 pub(in crate::fleet::notifications) const DISCORD: &str =
     "discord://synthetic-apprise-secret/synthetic-apprise-secret";
 
-/// Stores a channel named `name` with `settings` and `secrets` sealed for it.
 pub(in crate::fleet::notifications) async fn channel(
     pool: &PgPool,
     name: &str,
@@ -201,7 +191,6 @@ pub(in crate::fleet::notifications) async fn channel(
     id
 }
 
-/// Queues a Down notification of `check` for `channel`, due `at`.
 pub(in crate::fleet::notifications) async fn queue(
     pool: &PgPool,
     channel: ChannelId,
@@ -228,7 +217,6 @@ pub(in crate::fleet::notifications) async fn queue(
     id
 }
 
-/// An outbox row as the tests read it.
 #[derive(Debug, PartialEq, Eq)]
 pub(in crate::fleet::notifications) struct Row {
     pub(in crate::fleet::notifications) attempts: i32,
@@ -254,7 +242,6 @@ pub(in crate::fleet::notifications) async fn row(pool: &PgPool, id: OutboxId) ->
     }
 }
 
-/// Every delivery, oldest first.
 pub(in crate::fleet::notifications) async fn deliveries(pool: &PgPool) -> Vec<Delivery> {
     let mut all = store::deliveries_page(pool, None, None, 1000)
         .await
@@ -263,7 +250,6 @@ pub(in crate::fleet::notifications) async fn deliveries(pool: &PgPool) -> Vec<De
     all
 }
 
-/// The messages of every Warning event, oldest first.
 pub(in crate::fleet::notifications) async fn warnings(pool: &PgPool) -> Vec<String> {
     sqlx::query_scalar(
         "SELECT message FROM events.event_log WHERE severity = 'warning' ORDER BY at, id",
@@ -273,7 +259,6 @@ pub(in crate::fleet::notifications) async fn warnings(pool: &PgPool) -> Vec<Stri
     .unwrap()
 }
 
-/// Every event message and audit change, as one text to search for secrets.
 pub(in crate::fleet::notifications) async fn recorded(pool: &PgPool) -> String {
     let events: Vec<String> = sqlx::query_scalar("SELECT message FROM events.event_log")
         .fetch_all(pool)
@@ -286,7 +271,6 @@ pub(in crate::fleet::notifications) async fn recorded(pool: &PgPool) -> String {
     [events, audits].concat().join("\n")
 }
 
-/// Panics when `text` holds any fixture secret.
 pub(in crate::fleet::notifications) fn assert_no_secret(text: &str) {
     for secret in SECRETS {
         assert!(!text.contains(secret), "{secret} leaked: {text}");

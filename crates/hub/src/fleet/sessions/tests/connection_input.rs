@@ -1,5 +1,4 @@
-//! `ConnectionTestInput` as the operator sends it (DEV-013): which subject it names, and K1's
-//! defaults.
+//! `ConnectionTestInput` as the operator sends it (DEV-013, K1).
 
 use async_graphql::{InputType, value};
 

@@ -1,4 +1,4 @@
-//! How a checks failure appears in a GraphQL response (K7, API-010).
+//! K7, API-010.
 
 use async_graphql::Error as GraphQlError;
 

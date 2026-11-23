@@ -5,12 +5,9 @@ use sqlx::{PgConnection, PgPool};
 
 use super::{privileges::execute, test_role};
 
-/// Migration 0502 as written; the upgrade test runs it again.
 const MIGRATION_0502: &str =
     include_str!("../../../../migrations/0502_events_partition_privileges.sql");
 
-/// Every grant on the named partitions to a role other than their owner, as
-/// `(partition, grantee, privilege)`, sorted.
 async fn grants_on(conn: &mut PgConnection, partitions: &[&str]) -> Vec<(String, String, String)> {
     sqlx::query_as(
         "select c.relname::text, a.grantee::regrole::text, a.privilege_type \
@@ -24,7 +21,6 @@ async fn grants_on(conn: &mut PgConnection, partitions: &[&str]) -> Vec<(String,
     .unwrap()
 }
 
-/// SELECT and INSERT for `anima_runtime` on each partition, as `grants_on` lists them.
 fn select_and_insert(partitions: &[&str]) -> Vec<(String, String, String)> {
     partitions
         .iter()
@@ -40,8 +36,6 @@ fn select_and_insert(partitions: &[&str]) -> Vec<(String, String, String)> {
         .collect()
 }
 
-/// A new partition's privileges come from `events.ensure_day_partition` alone: default
-/// privileges for another role or PUBLIC, global or in `events`, never reach it (0502, R-023).
 #[sqlx::test(migrations = "./migrations")]
 async fn r_023_new_partitions_get_select_and_insert_for_anima_runtime_only(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
@@ -74,7 +68,6 @@ async fn r_023_new_partitions_get_select_and_insert_for_anima_runtime_only(pool:
     }
     let partitions = ["audit_log_20300606", "event_log_20300606"];
     let grants = grants_on(&mut conn, &partitions).await;
-    // The owner keeps its own grants on the partition, so it can still maintain it directly.
     let owner_grants: i64 = sqlx::query_scalar(
         "select count(*) \
          from pg_catalog.pg_class c cross join lateral pg_catalog.aclexplode(c.relacl) a \
@@ -96,10 +89,8 @@ async fn r_023_new_partitions_get_select_and_insert_for_anima_runtime_only(pool:
     assert_eq!(owner_grants, 2);
 }
 
-/// A partition created before 0502 may carry grants that 0500's function kept from default
-/// privileges, including grants that grantees passed on with GRANT OPTION (C5); 0502 resets it
-/// once, like a new partition. The two roles grant to each other, so whichever the reset revokes
-/// first has a dependent grant, and only CASCADE lets it through.
+/// Pre-0502 grants include ones passed on with GRANT OPTION (C5); the two roles grant to each
+/// other, so only CASCADE lets the reset through.
 #[sqlx::test(migrations = "./migrations")]
 async fn r_023_migration_0502_resets_partitions_created_before_it(pool: PgPool) {
     // Detached: the leftovers script changes this connection's role (R-019).

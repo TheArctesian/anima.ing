@@ -1,6 +1,4 @@
-//! What K1 shows of a commit list and a release list that the provider's types leave out: the
-//! shas of each commit's parents and the time each release was made. Read from the same body,
-//! in the same order, as `issues` reads the pull request mark. Pure.
+//! What K1 shows of commit and release lists that the provider's types leave out.
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;

@@ -1,5 +1,4 @@
-//! The Apprise rules: an https server origin, the secret of the mode, tags Apprise cannot read
-//! as an expression, and the CR-14 update rules for a mode or server change.
+//! The Apprise channel rules and the CR-14 update rules for a mode or server change.
 
 use super::{
     Kept, NONE, Prepared, Secrets, Settings, SettingsDraft, accepted, draft, fields, new_errors,
@@ -41,7 +40,6 @@ fn urls(secret: &AppriseSecrets) -> Vec<&str> {
     }
 }
 
-/// A stored stateless channel with one Discord URL.
 fn changed(next: SettingsDraft) -> Result<Prepared, Vec<FieldError>> {
     let before = Settings::Apprise(AppriseSettings {
         server: SERVER.to_owned(),

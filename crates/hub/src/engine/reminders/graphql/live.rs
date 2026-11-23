@@ -1,5 +1,4 @@
-//! `Subscription.reminderFirings`: each firing when it is sent, for an application that shows a
-//! notification of the device (K-E6 Section 5; REM-008, REM-009).
+//! `Subscription.reminderFirings` (K-E6 Section 5; REM-008, REM-009).
 
 use async_graphql::{
     Context, Result, Subscription as GraphQlSubscription,

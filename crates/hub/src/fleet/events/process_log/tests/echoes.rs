@@ -1,5 +1,4 @@
-//! Syntax and validation errors keep their position and code but never quote the request
-//! (H-6 (e) and (f), LOG-007).
+//! Syntax and validation errors never quote the request (H-6 (e) and (f), LOG-007).
 
 use std::collections::BTreeMap;
 
@@ -51,7 +50,6 @@ fn errors(response: &Response) -> Vec<Value> {
 #[tokio::test]
 async fn h_6_e_a_syntax_error_keeps_its_position_and_not_the_query_line() {
     let (capture, _guard) = capture_log("trace");
-    // The selection set is never closed.
     let query = format!(r#"mutation {{ login(input: {{ username: "a", password: "{SECRET}" }}) "#);
 
     let response = hardened().execute(query.as_str()).await;
@@ -65,7 +63,7 @@ async fn h_6_e_a_syntax_error_keeps_its_position_and_not_the_query_line() {
     assert!(error.get("extensions").is_none(), "{error}");
     assert!(!error.to_string().contains(SECRET), "{error}");
     assert!(!capture.text().contains(SECRET));
-    // Without the boundary, async-graphql quotes the line: this is what the test guards.
+    // Control: without the boundary, async-graphql quotes the line.
     let plain = Schema::new(super::leaks::Query, EmptyMutation, EmptySubscription);
     assert!(
         plain.execute(query.as_str()).await.errors[0]
@@ -152,7 +150,7 @@ async fn log_007_an_unknown_operation_name_is_not_echoed() {
         json!({ "message": "The request names an operation it does not hold." })
     );
     assert!(!capture.text().contains(SECRET));
-    // Without the boundary, async-graphql quotes the name: this is what the test guards.
+    // Control: without the boundary, async-graphql quotes the name.
     let plain = Schema::new(Query, EmptyMutation, EmptySubscription);
     let echoed = plain
         .execute(Request::new("query A { __typename }").operation_name(SECRET))

@@ -1,6 +1,6 @@
-//! The library GraphQL part: root `Query` and `Mutation` (K1; LIBM-001 to LIBM-008, SEL-003,
-//! SEL-005). Each mutation writes its change, one audit entry and one event in one
-//! transaction. `addLibraryModel` reads the repository before the transaction starts.
+//! The library GraphQL part (K1; LIBM-001 to LIBM-008, SEL-003, SEL-005). Each mutation
+//! writes its change, audit entry and event in one transaction; `addLibraryModel` reads the
+//! repository before it starts.
 
 mod trail;
 mod types;

@@ -1,5 +1,4 @@
-//! `sendTestNotification`: sent at once on the dispatcher's path, within the time limit,
-//! logged as a delivery with one audit entry, never queued (NOT-004, LOG-005, LOG-007).
+//! `sendTestNotification` (NOT-004, LOG-005, LOG-007).
 
 use std::{net::IpAddr, time::Duration};
 
@@ -238,7 +237,6 @@ async fn log_005_a_test_whose_request_is_dropped_after_the_target_has_it_is_stil
     .await;
     let hooks = channel(&pool, "hooks", webhook(&server)).await;
 
-    // The client goes away while the hub still reads the reply body.
     let dropped = tokio::time::timeout(Duration::from_secs(2), send(&pool, egress, hooks)).await;
 
     assert!(dropped.is_err(), "the send was still reading the reply");

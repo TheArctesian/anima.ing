@@ -1,9 +1,4 @@
-//! The sessions GraphQL part: root `Query`, `Mutation` and `Subscription` (K1; RA-008,
-//! RA-034, API-003, API-006, API-009). `acceptHostKey` and `acceptServerCertificate` are in
-//! `trust::graphql`.
-//!
-//! The types live in the sub-modules; each `#[Object]` block there is the single resolver block
-//! for its type.
+//! The sessions GraphQL part (K1; RA-008, RA-034, API-003, API-006, API-009).
 
 mod change;
 mod connection;

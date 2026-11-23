@@ -1,12 +1,7 @@
-//! The run controls and a workflow started by hand (K1; OD-E14, PRJ-034, PRJ-035): run a run
-//! again, run its failed jobs again, cancel it, and start a workflow on a branch.
+//! The run controls and a workflow started by hand (K1; OD-E14, PRJ-034, PRJ-035).
 //!
-//! Each checks its input into the parts of a [`Change`] first, then the repository, then reads
-//! GitHub: the run, never from the cache, whose state the rule of [`controls`] judges, or the
-//! repository's workflows, as the cache holds them, of which the one named must be active. A refusal there sends nothing and records
-//! nothing. The change is sent once and recorded by [`forge::make`]; a run is read back from
-//! GitHub. Each makes code run with the repository's secrets or stops it: login or browser
-//! token only (D-23, R-100; K-E1 Section 13.5).
+//! A refusal sends nothing and records nothing. Each makes code run with the repository's
+//! secrets or stops it: login or browser token only (D-23, R-100; K-E1 Section 13.5).
 
 use std::sync::Arc;
 

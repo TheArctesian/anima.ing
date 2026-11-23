@@ -1,8 +1,7 @@
-//! The checks of a built release that need only its bytes (BLD-045, BLD-046, BLD-061,
-//! BLD-065, UPD-010). The folder the files came from must hold `SHA256SUMS`, which the workflow
-//! writes from the digests its build jobs reported, so a file another step changed is refused.
-//! The signature is checked with the public key the release commit names, never with a key
-//! the files brought. Pure.
+//! BLD-045, BLD-046, BLD-061, BLD-065, UPD-010. `SHA256SUMS` holds the digests the build jobs
+//! reported, so a file another step changed is refused.
+//! The signature is checked with the public key the release commit names, never a key the
+//! files brought.
 
 use bytes::Bytes;
 use serde_json::{Map, Value, json};
@@ -18,26 +17,22 @@ use crate::fleet::builds::{
     },
 };
 
-/// A built release that passed every check that needs no bucket.
 pub struct CheckedBuilt {
-    /// Each file but the `.sig`, as the bucket must hold it.
+    /// Each file but the `.sig`.
     pub(super) files: Vec<UploadedFile>,
     pub(super) updater: String,
     pub(super) signature: String,
-    /// The feed without the signature, as [`feed::check`] takes it.
+    /// The feed without the signature.
     pub(super) feed: String,
 }
 
 impl CheckedBuilt {
-    /// The updater file the feed names.
     #[must_use]
     pub fn updater(&self) -> &str {
         &self.updater
     }
 }
 
-/// The files of `built` but the `.sig` of its updater file, each with its size and SHA-256,
-/// and the one updater file among them.
 fn measured(built: &Built) -> Result<(Vec<UploadedFile>, String), BuiltError> {
     let mut files: Vec<UploadedFile> = built
         .files
@@ -66,13 +61,10 @@ pub(super) fn bytes_of<'a>(built: &'a Built, name: &str) -> Option<&'a Bytes> {
     Some(&file.bytes)
 }
 
-/// Signs the updater file of `built` for its version with `key`, and checks the signature with
-/// the updater's own verifier before it gives it back (BLD-045, BLD-046). `signed_at` is the
-/// time in the trusted comment, so the same commit time gives the same text. Returns the name
-/// of the `.sig` file and its text.
+/// Checks the signature with the updater's own verifier before it returns it (BLD-045, BLD-046).
+/// `signed_at` is the trusted comment's time, so the same commit time gives the same text.
 ///
 /// # Errors
-///
 /// `Refused` when `built` has no single updater file or the signature does not hold.
 pub fn sign_built(
     key: &UpdaterKey,
@@ -100,7 +92,6 @@ pub fn sign_built(
     Ok((feed::signature_name(&updater), text))
 }
 
-/// The feed of `updater` with no signature: the version and one URL for each platform key.
 fn unsigned_feed(built: &Built, public_base: &str, updater: &str) -> String {
     let url = format!("{public_base}/{}/{}/{updater}", built.target, built.version);
     let platforms: Map<String, Value> = feed::platform_keys(built.target)
@@ -110,8 +101,7 @@ fn unsigned_feed(built: &Built, public_base: &str, updater: &str) -> String {
     json!({ "version": built.version.to_string(), "platforms": platforms }).to_string()
 }
 
-/// Whether `signature` is the updater signature of `bytes` for `version` by `public_key`, the
-/// `plugins.updater.pubkey` text (UPD-002, `requireSignedVersion`).
+/// `public_key` is the `plugins.updater.pubkey` text (UPD-002).
 fn verifies(public_key: &str, signature: &str, (bytes, version): (&[u8], &str)) -> bool {
     let Ok(public) = PublicKey::from_key_file(public_key) else {
         return false;
@@ -126,13 +116,7 @@ fn verifies(public_key: &str, signature: &str, (bytes, version): (&[u8], &str)) 
     stream.finish(version).is_ok()
 }
 
-/// Checks `built` with nothing but its bytes (BLD-046, BLD-061, BLD-065, UPD-010): only the
-/// files a release of the target has, `SHA256SUMS` listing each of them with its digest, one
-/// updater file whose `.sig` verifies for the version with `public_key`, and the feed the
-/// publisher's own check passes under `public_base`.
-///
 /// # Errors
-///
 /// `Refused` with the first check that failed.
 pub fn check_built(
     built: &Built,

@@ -1,5 +1,4 @@
-//! The ntfy rules: an https server origin, a topic that cannot leave the URL path, a priority
-//! from 1 to 5, and the CR-14 update rules for the topic and token.
+//! The ntfy channel rules and the CR-14 update rules for the topic and token.
 
 use super::{
     Kept, NONE, NtfyDraft, Prepared, Secrets, Settings, SettingsDraft, accepted, draft, fields,
@@ -28,7 +27,6 @@ fn parts(prepared: &Prepared) -> (&NtfySettings, &NtfySecrets) {
     }
 }
 
-/// A stored ntfy channel on `SERVER` with a topic and a token.
 fn changed(next: SettingsDraft) -> Result<Prepared, Vec<FieldError>> {
     let before = Settings::Ntfy(NtfySettings {
         server: SERVER.to_owned(),

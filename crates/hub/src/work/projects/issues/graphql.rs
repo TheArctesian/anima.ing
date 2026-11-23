@@ -1,5 +1,4 @@
-//! The issue roots (K1): a page of a repository's issues, one issue, and a page of the
-//! comments of an issue or a pull request.
+//! The issue roots (K1).
 
 use async_graphql::{Context, ID, Object, Result};
 use provider_github::live::{comments, issues as github};

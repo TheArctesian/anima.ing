@@ -18,7 +18,6 @@ fn cursor(micros: i64) -> Cursor {
     }
 }
 
-/// A well-formed cursor whose time is `micros` microseconds after the epoch.
 fn at_micros(micros: i64) -> String {
     let mut bytes = [0_u8; 24];
     bytes[..8].copy_from_slice(&micros.to_be_bytes());

@@ -1,6 +1,4 @@
-//! The SNMP configuration input as domain values: the secrets move into the input without a
-//! copy, and the form records whether one was sent. Absent and empty secrets keep the
-//! stored ones; the domain decides whether it may (D-5).
+//! Absent and empty secrets keep the stored ones; the domain decides whether it may (D-5).
 
 use super::{ConfigForm, or_default};
 use crate::fleet::{

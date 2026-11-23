@@ -8,13 +8,10 @@ use crate::engine::{
 
 const PREFIX: &str = "t1.";
 
-/// The cursor that points just after `mark`: the prefix, the start in microseconds since the
-/// epoch, a dot and the reference.
 pub(super) fn encode(mark: &Mark) -> String {
     format!("{PREFIX}{}.{}", micros(mark.start), mark.reference)
 }
 
-/// The mark a cursor points after; `None` for any text [`encode`] did not make.
 pub(super) fn decode(cursor: &str) -> Option<Mark> {
     let (count, reference) = cursor.strip_prefix(PREFIX)?.split_once('.')?;
     let mark = Mark {

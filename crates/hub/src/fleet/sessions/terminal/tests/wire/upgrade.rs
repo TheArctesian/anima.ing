@@ -1,6 +1,4 @@
-//! Between the response and the upgraded socket (K4 Sections 8.1 and 8.6, D-9): a failed
-//! upgrade, `endSession` before it, no upgrade in time, and a changed host key whose upgrade
-//! fails. The device's channel is closed whenever the hub signed in.
+//! Between the response and the upgraded socket (K4 Sections 8.1 and 8.6, D-9).
 
 use crate::fleet::sessions::Presented;
 use std::time::Duration;
@@ -24,7 +22,6 @@ use crate::fleet::sessions::{
     tests::fixture::{LOOPBACK, address, end_kinds, ended, ended_once, now, operator},
 };
 
-/// A session redeemed and signed in, with no client socket yet.
 async fn signed_in(pool: &PgPool, setup: Setup) -> (Bench, Redeemed, Opening) {
     let bench = bench(pool, setup).await;
     let redeemed = bench
@@ -38,7 +35,6 @@ async fn signed_in(pool: &PgPool, setup: Setup) -> (Bench, Redeemed, Opening) {
     (bench, redeemed, opening)
 }
 
-/// Runs the session after the response with `socket` as the upgrade.
 async fn after_response(
     bench: &Bench,
     redeemed: &mut Redeemed,
@@ -52,7 +48,6 @@ async fn after_response(
         .expect("the session ends without an upgraded socket")
 }
 
-/// The hub closed the one channel it opened.
 async fn channel_closed(bench: &Bench) {
     tokio::time::timeout(WAIT, async {
         while bench.ssh.ledger.lock().unwrap().closed.is_empty() {

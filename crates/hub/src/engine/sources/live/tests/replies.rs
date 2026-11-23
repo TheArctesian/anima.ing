@@ -1,4 +1,4 @@
-//! PRJ-032, K-E1 Section 13.1: what the cache serves, for how long, and what it lets go.
+//! K-E1 Section 13.1.
 
 use std::sync::Arc;
 
@@ -135,7 +135,6 @@ fn prj_032_the_cache_holds_at_most_its_entries_and_lets_the_least_recently_used_
     for path in ["/a", "/b", "/c"] {
         replies.keep(key(id, path), keep, held(b"1", now()));
     }
-    // "/a" is used again, so "/b" is now the least recently used.
     assert!(replies.fresh(&key(id, "/a"), keep, now()).is_some());
     replies.keep(key(id, "/d"), keep, held(b"1", now()));
 

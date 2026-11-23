@@ -1,5 +1,3 @@
-//! Database records of the `maintenance` schema and how its constraints map to field errors.
-
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
@@ -30,7 +28,6 @@ fn decode<E: std::error::Error + Send + Sync + 'static>(error: E) -> sqlx::Error
     sqlx::Error::Decode(Box::new(error))
 }
 
-/// The database holds a target type this build does not know.
 #[derive(Debug, thiserror::Error)]
 #[error("unknown target type '{0}'")]
 struct UnknownTargetType(String);
@@ -74,7 +71,6 @@ pub(super) fn to_windows(rows: Vec<WindowRow>) -> Result<Vec<Window>, Error> {
         .collect::<Result<_, _>>()?)
 }
 
-/// Turns a violated constraint into the field the operator must fix.
 pub(super) fn write_error(error: sqlx::Error) -> Error {
     let field = match error.as_database_error().and_then(|e| e.constraint()) {
         Some("windows_name_key") => {

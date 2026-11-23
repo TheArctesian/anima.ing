@@ -1,13 +1,7 @@
 //! Notifications (NOT-001 to NOT-007): the channels an operator sets up, the decision of what
 //! to send when a check changes state, and the deliveries that send it.
 //!
-//! Every notification connection leaves the hub through one path, `egress`: the target rule
-//! and the deny list judge each resolved address, the connection goes only to a checked
-//! address, and TLS is always verified (P3-003, D-17).
-//!
-//! A channel's settings are checked by `channels` before anything is stored; its secrets are
-//! sealed by `sealing` with the context `notifications.channels:<channel_id>` and never leave
-//! the hub (SEC-003, SEC-005).
+//! A channel's secrets are sealed by `sealing` and never leave the hub (SEC-003, SEC-005).
 
 mod channels;
 mod decision;
@@ -44,24 +38,20 @@ const DAYS_AHEAD: i32 = 7;
 /// How long a finished outbox row stays before clean-up (K2).
 const OUTBOX_KEPT: TimeDelta = TimeDelta::days(7);
 
-/// Why a notifications operation failed. Messages hold no SQL and no input value.
+/// Messages hold no SQL and no input value.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("database error")]
     Database(sqlx::Error),
-    /// Another channel already has the name.
     #[error("a channel with this name already exists")]
     NameTaken,
-    /// A check was linked to a channel that does not exist.
     #[error("the channel does not exist")]
     UnknownChannel,
-    /// A channel was linked to a check that does not exist.
     #[error("the check does not exist")]
     UnknownCheck,
     /// A stored row holds a value this version does not know.
     #[error("a stored notification row cannot be read")]
     Unreadable,
-    /// Sealed channel secrets do not open, are malformed, or could not be sealed.
     #[error("the channel secrets cannot be sealed or opened")]
     Credentials(#[from] credentials::Error),
     /// Sealed channel secrets were given for another kind, target or header names than the
@@ -102,8 +92,7 @@ impl Error {
     }
 }
 
-/// Creates the delivery partitions of today (UTC) and the next 7 days (DB-004). Wiring only:
-/// the daily job calls it.
+/// Creates the delivery partitions of today (UTC) and the next 7 days (DB-004).
 ///
 /// # Errors
 /// `Database` when a query fails, for instance when `now` is later than the database clock by
@@ -115,8 +104,7 @@ pub async fn create_partitions_ahead(db: &PgPool, now: DateTime<Utc>) -> Result<
 
 /// Drops the delivery partitions older than `keep` days before `now` (the `retention` period of
 /// deliveries, D-25), and returns their names. `now` is held to the database clock, and the
-/// database refuses to drop a partition less than 7 days old. Wiring only: the daily job calls
-/// it.
+/// database refuses to drop a partition less than 7 days old.
 ///
 /// # Errors
 /// `Database` when a query fails or the database refuses the cutoff.
@@ -150,7 +138,7 @@ pub async fn keep_deliveries(
 }
 
 /// Deletes the outbox rows sent or given up more than 7 days before `now`; returns how many
-/// (K2). Wiring only: the daily job calls it.
+/// (K2).
 ///
 /// # Errors
 /// `Database` when the query fails.

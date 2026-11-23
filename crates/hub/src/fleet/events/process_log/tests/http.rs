@@ -1,5 +1,4 @@
-//! The HTTP request span names the route and a standard method, never a value in the path or
-//! a method the sender made up (LOG-007, R-028).
+//! The request span names the route and a standard method, never a path value (LOG-007, R-028).
 
 use axum::{
     Router,
@@ -16,7 +15,7 @@ use super::{
 
 const TOKEN: &str = "pk_7f3a9c2e41b8d6f0a5e4c3b2a1908f7e";
 
-/// What WP-09 mounts: `GET|POST /push/{token}`, where the token is the only authentication.
+/// Stands in for `GET|POST /push/{token}`, where the token is the only authentication.
 fn push_stand_in() -> Router {
     crate::logged(Router::new().route(
         "/push/{token}",

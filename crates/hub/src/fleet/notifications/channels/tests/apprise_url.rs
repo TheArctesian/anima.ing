@@ -1,5 +1,4 @@
-//! N-4: which stateless Apprise URLs the hub hands to Apprise, both ways. Every URL here is
-//! synthetic.
+//! N-4.
 
 use crate::fleet::notifications::channels::{
     apprise_url::Refusal, permitted_apprise_url as permitted,
@@ -109,8 +108,6 @@ fn n_4_urls_apprise_would_split_or_read_twice_are_refused() {
     );
 }
 
-/// Defence in depth: each URL below is permitted without its comma, so the comma rule alone
-/// refuses it.
 #[test]
 fn n_4_a_comma_is_refused_when_it_is_the_only_fault() {
     for (with_comma, without) in [

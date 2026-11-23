@@ -1,6 +1,3 @@
-//! All SQL on schema `checks`: I/O only; rows are mapped in `rows`. Ids and time come in as
-//! parameters.
-
 /// Every column of a check, in the order `CheckRow` reads them.
 macro_rules! check_columns {
     () => {
@@ -11,7 +8,6 @@ macro_rules! check_columns {
     };
 }
 
-/// A check query with `$tail` after the `FROM`.
 macro_rules! select_check {
     ($($tail:expr),*) => {
         concat!("SELECT ", check_columns!(), " FROM checks.checks ", $($tail),*)
@@ -71,7 +67,6 @@ pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Ch
     Check::try_from(row)
 }
 
-/// The checks with these ids that exist, in one query.
 pub(super) async fn fetch_many(db: &PgPool, ids: &[CheckId]) -> Result<Vec<Check>, Error> {
     let rows = sqlx::query_as(select_check!("WHERE id = ANY($1)"))
         .bind(ids)
@@ -80,8 +75,7 @@ pub(super) async fn fetch_many(db: &PgPool, ids: &[CheckId]) -> Result<Vec<Check
     to_checks(rows)
 }
 
-/// The check as it is now, its row locked until the caller's transaction ends, so what an audit
-/// entry compares against cannot change underneath it.
+/// Locked until the caller's transaction ends, so an audit entry compares against a fixed row.
 pub(super) async fn fetch_for_update(
     conn: &mut sqlx::PgConnection,
     id: CheckId,
@@ -94,8 +88,7 @@ pub(super) async fn fetch_for_update(
     Check::try_from(row)
 }
 
-/// The children of a group, their rows locked until the caller's transaction ends: a child
-/// that another transaction is moving is waited for, so the answer is what was committed.
+/// Locked until the caller's transaction ends; a child another transaction moves is waited for.
 pub(super) async fn children_for_update(
     conn: &mut sqlx::PgConnection,
     group: CheckId,
@@ -109,7 +102,6 @@ pub(super) async fn children_for_update(
     Ok(ids)
 }
 
-/// The checks of the devices grouped by device, each group in name order.
 pub(super) async fn grouped_by_devices(
     db: &PgPool,
     devices: &[DeviceId],
@@ -121,7 +113,6 @@ pub(super) async fn grouped_by_devices(
     Ok(grouped)
 }
 
-/// The checks of the devices, each device's in byte order of the name.
 pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<Check>, Error> {
     let rows = sqlx::query_as(select_check!(
         "WHERE device_id = ANY($1) ORDER BY device_id, name COLLATE \"C\", id"
@@ -132,8 +123,6 @@ pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<
     to_checks(rows)
 }
 
-/// The id and URL of every HTTP check of the devices, by device, name (byte order) and id.
-/// Reads only the `url` field of the stored JSON, so no other check's config is parsed.
 pub(super) async fn http_urls(
     db: &PgPool,
     devices: &[DeviceId],
@@ -153,7 +142,6 @@ pub(super) async fn http_urls(
     Ok(grouped)
 }
 
-/// What the status rules need about every check of the devices, in one query.
 pub(super) async fn standings(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<Standing>, Error> {
     let rows: Vec<StandingRow> = sqlx::query_as(
         "SELECT id, device_id, parent_id, type, paused, status FROM checks.checks \
@@ -165,7 +153,6 @@ pub(super) async fn standings(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<S
     rows.into_iter().map(Standing::try_from).collect()
 }
 
-/// The device of each of the checks, in one query.
 pub(super) async fn devices_of(
     db: &PgPool,
     checks: &[CheckId],
@@ -177,7 +164,6 @@ pub(super) async fn devices_of(
     Ok(rows)
 }
 
-/// The PUSH check that holds this token, if any.
 pub(super) async fn by_push_token(db: &PgPool, token: &str) -> Result<Option<Check>, Error> {
     let row = sqlx::query_as::<_, CheckRow>(select_check!("WHERE push_token = $1"))
         .bind(token)
@@ -186,8 +172,7 @@ pub(super) async fn by_push_token(db: &PgPool, token: &str) -> Result<Option<Che
     row.map(Check::try_from).transpose()
 }
 
-/// Moves the due time of each PUSH check with this name that is not paused to one whole
-/// interval after `now`, when it is earlier. A check with no due time keeps none.
+/// A check with no due time keeps none.
 pub(super) async fn postpone_push_named(
     db: &PgPool,
     name: &str,
@@ -205,7 +190,6 @@ pub(super) async fn postpone_push_named(
     Ok(())
 }
 
-/// The device's oldest PUSH check with this name, if any.
 pub(super) async fn push_check_named(
     conn: &mut sqlx::PgConnection,
     device: DeviceId,
@@ -222,8 +206,7 @@ pub(super) async fn push_check_named(
     Ok(id)
 }
 
-/// For each device, the address of the ICMP, TCP or TLS check with the latest beat that has
-/// one. Only those probe the device's own host; an HTTP or DNS check can name another.
+/// Only ICMP, TCP and TLS checks probe the device's own host; HTTP and DNS can name another.
 pub(super) async fn resolved_ips(
     db: &PgPool,
     devices: &[DeviceId],
@@ -240,8 +223,7 @@ pub(super) async fn resolved_ips(
     Ok(rows.into_iter().collect())
 }
 
-/// Checks that are not paused and are due at `now`, the longest-waiting first. Groups are
-/// never probed, so they are never due.
+/// Groups are never probed, so they are never due.
 pub(super) async fn due(db: &PgPool, now: DateTime<Utc>, limit: u32) -> Result<Vec<Due>, Error> {
     let rows: Vec<CheckRow> = sqlx::query_as(select_check!(
         "WHERE NOT paused AND type <> 'group' AND (next_due_at IS NULL OR next_due_at <= $1) \
@@ -254,8 +236,6 @@ pub(super) async fn due(db: &PgPool, now: DateTime<Utc>, limit: u32) -> Result<V
     rows.into_iter().map(CheckRow::into_due).collect()
 }
 
-/// The devices with a check whose last beat is at or after `since`, from any writer: the
-/// scheduler or the push route.
 pub(super) async fn devices_beaten_since(
     db: &PgPool,
     since: DateTime<Utc>,

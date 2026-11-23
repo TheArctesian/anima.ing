@@ -1,7 +1,5 @@
-//! The connection test (DEV-013, K4 §6): for SSH, reads the host's key, keeps what it
-//! saw for `acceptHostKey` (`trust::Sightings`), and signs in only when the key is the
-//! accepted one, so a man in the middle never receives a credential. RDP and VNC are tested
-//! in `desktop_test`.
+//! The SSH connection test (DEV-013, K4 §6) signs in only when the host presents the accepted
+//! key, so a man in the middle never receives a credential.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -20,36 +18,31 @@ use crate::{
     ids::DeviceId,
 };
 
-/// What to test.
 pub(in crate::fleet::sessions) enum TestSubject {
-    /// A saved device over SSH. `credential`, when given, is used for this test instead of the
-    /// stored secret and is not stored.
+    /// A given `credential` replaces the stored secret for this test and is not stored.
     Device {
         id: DeviceId,
         credential: Option<SshSecret>,
     },
-    /// SSH values from the device form. No key can be accepted for them yet, so the test
-    /// reads the host key and sends no credential.
+    /// No key can be accepted for form values yet, so the test sends no credential.
     Unsaved(Unsaved),
     /// RDP or VNC, which never sends a credential.
     Desktop(DesktopSubject),
 }
 
-/// A host and SSH port typed into the form.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::sessions) struct Unsaved {
     pub(in crate::fleet::sessions) host: String,
     pub(in crate::fleet::sessions) port: u16,
 }
 
-/// A test and the time it starts, which stamps what it sees (CQ-021).
+/// `at` stamps what the test sees (CQ-021).
 pub(in crate::fleet::sessions) struct TestRequest {
     pub(in crate::fleet::sessions) subject: TestSubject,
     pub(in crate::fleet::sessions) at: DateTime<Utc>,
 }
 
-/// K1 `ConnectionTestResult`. `message` is one of this module's fixed texts, never the
-/// host's banner or error text.
+/// K1 `ConnectionTestResult`; `message` is a fixed text, never the host's banner or error text.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[expect(
     clippy::struct_excessive_bools,
@@ -58,10 +51,8 @@ pub(in crate::fleet::sessions) struct TestRequest {
 pub(in crate::fleet::sessions) struct ConnectionTest {
     pub(in crate::fleet::sessions) reachable: bool,
     pub(in crate::fleet::sessions) authenticated: bool,
-    /// Set when no key is accepted or the host presented another key.
     pub(in crate::fleet::sessions) host_key: Option<HostKey>,
     pub(in crate::fleet::sessions) host_key_changed: bool,
-    /// Set when no certificate is accepted or the RDP server presented another one.
     pub(in crate::fleet::sessions) server_certificate: Option<ServerCertificate>,
     pub(in crate::fleet::sessions) certificate_changed: bool,
     /// True only when the RDP server presented the accepted certificate (SEC-007).
@@ -92,7 +83,6 @@ pub(in crate::fleet::sessions) const TIMED_OUT: &str =
 pub(in crate::fleet::sessions) const NOT_SSH: &str =
     "The device did not complete an SSH key exchange.";
 
-/// Where the test goes and what it may send.
 struct Plan {
     host: String,
     port: u16,
@@ -103,21 +93,15 @@ struct Plan {
     credential_moved: bool,
 }
 
-/// What the probe saw.
 enum Seen {
     SignedIn,
     Key(Observation<PublicKey>),
 }
 
-/// Runs the connection test (DEV-013). Every key the host presents is kept for 15 minutes
-/// for `acceptHostKey` (D-5). A credential, given or stored, is read and sent only when the
-/// device has an accepted key and the host presents exactly that key.
+/// Every key the host presents is kept 15 minutes for `acceptHostKey` (D-5).
 ///
 /// # Errors
-/// `NotFound` for an unknown device; `Validation` on `host` when it resolves to an address
-/// the target rule or the hub's deny list refuses (R-030, R-032); `Database`, `Devices` or
-/// `Credentials` when a dependency fails. A host that cannot be reached or signed in to is a
-/// result, not an error.
+/// `NotFound`, `Validation` on a refused `host` (R-030, R-032), or a failed dependency.
 pub(in crate::fleet::sessions) async fn test_connection(
     db: &PgPool,
     vault: &Vault,
@@ -161,9 +145,7 @@ pub(in crate::fleet::sessions) async fn test_connection(
     outcome(plan.accepted.as_ref(), plan.credential_moved, seen)
 }
 
-/// A saved device's plan: its host and SSH port, its accepted key, and the credential only
-/// when a key is accepted and, for the stored one, only when it was entered for the device's
-/// host now (SEC-011).
+/// A credential is read only when a key is accepted and, if stored, entered for the current host (SEC-011).
 async fn plan(
     db: &PgPool,
     vault: &Vault,
@@ -199,9 +181,7 @@ pub(super) fn refused_host() -> FieldError {
     )
 }
 
-/// The result K1 describes for what the probe saw, given the accepted key and whether the
-/// stored credential was held back because it was entered for another host; a refused target
-/// is the operator's `Validation` error on `host` (R-032).
+/// A refused target is the operator's `Validation` error on `host` (R-032).
 fn outcome(
     accepted: Option<&HostKey>,
     credential_moved: bool,
@@ -284,7 +264,6 @@ mod tests {
         })
     }
 
-    /// SSH has no server certificate, so even the accepted host key is no certificate match.
     #[test]
     fn sec_007_an_ssh_test_never_matches_a_certificate() {
         let accepted = HostKey {

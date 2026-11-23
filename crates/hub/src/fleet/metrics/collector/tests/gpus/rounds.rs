@@ -1,8 +1,4 @@
-//! GPU discovery and GPU samples in rounds against a test SSH device on loopback: found at the
-//! first collection and stored, only the known vendors read after, found again after a
-//! restart, a hung GPU tool and the GPU window that end only the GPU reads, numbers kept
-//! across a failed collection, and a deny-listed device that gets nothing (MET-006, MET-007,
-//! MET-009, D-11, P2-004).
+//! GPU discovery and samples in rounds (MET-006, MET-007, MET-009, D-11, P2-004).
 
 use std::time::Duration;
 
@@ -22,7 +18,6 @@ use crate::{
     },
 };
 
-/// `docker-host`'s stored GPUs.
 async fn stored(pool: &PgPool) -> Vec<Gpu> {
     let id = device(DOCKER_HOST);
     metrics::gpus(pool, &[id])
@@ -32,7 +27,6 @@ async fn stored(pool: &PgPool) -> Vec<Gpu> {
         .unwrap_or_default()
 }
 
-/// The stored discovery of `docker-host`: when, and the boot time seen then.
 async fn discovery(pool: &PgPool) -> Option<(DateTime<Utc>, Option<DateTime<Utc>>)> {
     sqlx::query_as("select found_at, boot_at from metrics.discovery where device_id = $1")
         .bind(device(DOCKER_HOST))
@@ -41,7 +35,6 @@ async fn discovery(pool: &PgPool) -> Option<(DateTime<Utc>, Option<DateTime<Utc>
         .unwrap()
 }
 
-/// The GPU series stored: kind, label and GPU index.
 async fn gpu_series(pool: &PgPool) -> Vec<(String, String, Option<i32>)> {
     sqlx::query_as(
         "select kind, label, gpu_index from metrics.series \
@@ -60,7 +53,6 @@ fn value(added: &MetricsAdded, kind: MetricKind, label: &str) -> Option<f64> {
         .map(|sample| sample.value)
 }
 
-/// The metrics events stored for `docker-host`.
 async fn collection_events(pool: &PgPool) -> i64 {
     sqlx::query_scalar(
         "select count(*) from events.event_log \
@@ -71,7 +63,6 @@ async fn collection_events(pool: &PgPool) -> i64 {
     .unwrap()
 }
 
-/// The lines heard since `from`.
 fn heard_since(heard: &[String], from: usize) -> Vec<&str> {
     heard[from..].iter().map(String::as_str).collect()
 }
@@ -142,7 +133,6 @@ async fn met_006_later_rounds_read_only_known_vendors_and_a_restart_looks_again(
     expected.push(LINUX_GPU_LINES[0]);
     assert_eq!(heard_since(&heard, first), expected, "only nvidia-smi");
 
-    // The device restarted: its uptime is 100 seconds, so it booted 4 days later than before.
     bench.server.answer("cat /proc/uptime", b"100.00 50.00\n");
     bench.server.answer(LINUX_GPU_LINES[1], &amd_card(0));
     bench.clock.advance(30);
@@ -265,7 +255,6 @@ async fn met_009_after_a_failed_collection_the_next_looks_again_and_keeps_the_nu
     bench.clock.advance(30);
     bench.collector.round().await;
     let failed = bench.server.heard().len();
-    // The device rebooted unseen and its first NVIDIA GPU is gone.
     let second_line = NVIDIA_SMI_TWO
         .iter()
         .position(|byte| *byte == b'\n')

@@ -30,9 +30,10 @@ pub struct Places {
     /// The folder of the records; `None` is the place of this user
     /// ([`records::standard`]).
     pub records: Option<PathBuf>,
-    /// The runner gives each agent a `TMPDIR` of its own, never the one of the login (THR-050).
-    /// While it does not, records in `/tmp` or in the `TMPDIR` of the login are refused: each
-    /// agent can write there.
+    /// The runner gives each agent a `TMPDIR`, `TMP` and `TEMP` of its own, never the ones of
+    /// the login (THR-050). While it does not, records in those of the login are refused: each
+    /// agent can write there. Records in `/tmp` or in the `XDG_RUNTIME_DIR` of the login are
+    /// refused always: agents share them.
     pub private_tmp: bool,
 }
 
@@ -83,7 +84,7 @@ pub fn engine(
         Some(place) => place.clone(),
         None => records::standard(this_user()).ok_or(BadRecords::NoPlace)?,
     };
-    if !places.private_tmp && in_temp(&place, &login) {
+    if in_temp(&place, &login, places.private_tmp) {
         return Err(BadRecords::InTemp.into());
     }
     let records = records::opened(&place)?;
@@ -109,17 +110,28 @@ impl Engine {
 }
 
 /// The names of the login environment that name a temporary folder of each program of the
-/// person, and so of each agent while agents get them from the login.
-const TEMPS: [&str; 4] = ["TMPDIR", "TMP", "TEMP", "XDG_RUNTIME_DIR"];
+/// person, and so of each agent while agents get them from the login. The runner gives each
+/// agent its own in their place when [`Places::private_tmp`] is set.
+const LOGIN_TEMPS: [&str; 3] = ["TMPDIR", "TMP", "TEMP"];
 
-/// The records at `records` are in a temporary folder that each agent can write while agents
-/// get the ones of the login: `/tmp`, or each folder that `login` names in [`TEMPS`]. A name
-/// that is not a full path counts as one that holds them: each agent reads it from its own
-/// folder.
-fn in_temp(records: &Path, login: &[(OsString, OsString)]) -> bool {
+/// The names of the login environment that name a folder that each agent shares, also with a
+/// `TMPDIR` of its own.
+const SHARED_TEMPS: [&str; 1] = ["XDG_RUNTIME_DIR"];
+
+/// The records at `records` are in a temporary folder that an agent can write: `/tmp`, a
+/// folder that `login` names in [`SHARED_TEMPS`], or, while agents get them from the login
+/// (`private` is false), one that it names in [`LOGIN_TEMPS`]. The hold of a thread ends when
+/// it stops; what its agent left in such a folder stays, so the place is refused, not held. A
+/// name that is not a full path counts as one that holds them: each agent reads it from its
+/// own folder.
+fn in_temp(records: &Path, login: &[(OsString, OsString)], private: bool) -> bool {
+    let named = |name: &OsString| {
+        SHARED_TEMPS.iter().any(|temp| name == temp)
+            || (!private && LOGIN_TEMPS.iter().any(|temp| name == temp))
+    };
     let temps: Vec<_> = login
         .iter()
-        .filter(|(name, value)| TEMPS.iter().any(|temp| name == temp) && !value.is_empty())
+        .filter(|(name, value)| named(name) && !value.is_empty())
         .map(|(_, value)| PathBuf::from(value))
         .chain(std::iter::once(PathBuf::from("/tmp")))
         .collect();

@@ -10,7 +10,6 @@ use super::{
     model::{Facts, LayerShape},
 };
 
-/// The part of the answer that the library reads.
 #[derive(Debug, Deserialize)]
 pub struct Listing {
     pub id: String,
@@ -50,13 +49,11 @@ pub struct RepositoryConfig {
     pub model_type: Option<String>,
 }
 
-/// What Hugging Face reads from the header of the GGUF files.
 #[derive(Debug, Deserialize)]
 pub struct GgufSummary {
     pub total: Option<u64>,
     pub architecture: Option<String>,
     pub context_length: Option<u32>,
-    /// The chat template of the files; a template that reads `tools` takes tool calls.
     pub chat_template: Option<String>,
 }
 
@@ -65,7 +62,7 @@ pub struct SafetensorsSummary {
     pub total: Option<u64>,
 }
 
-/// One file of the repository. Only a file in LFS has its SHA-256 value in the answer.
+/// Only a file in LFS has its SHA-256 value in the answer.
 #[derive(Debug, Deserialize)]
 pub struct Sibling {
     pub rfilename: String,
@@ -80,13 +77,11 @@ pub struct Lfs {
 }
 
 impl Listing {
-    /// Whether the files can be read without an account: not private, gated or turned off.
     #[must_use]
     pub fn is_open(&self) -> bool {
         !self.private && !self.disabled && matches!(self.gated, Value::Null | Value::Bool(false))
     }
 
-    /// Whether a repository file is `config.json` at the top.
     #[must_use]
     pub fn has_config(&self) -> bool {
         self.siblings
@@ -94,7 +89,6 @@ impl Listing {
             .any(|file| file.rfilename == "config.json")
     }
 
-    /// The organisation of the first base model that the card names.
     #[must_use]
     pub fn base_organisation(&self) -> Option<String> {
         let first = match &self.card.base_model {
@@ -107,8 +101,6 @@ impl Listing {
             .map(|(organisation, _)| organisation.to_owned())
     }
 
-    /// The tags of the task and the repository, and `Tools` when the chat template of the GGUF
-    /// files reads the tools of a request (LIBM-005).
     fn capabilities(&self) -> Vec<capability::Capability> {
         let mut found = capability::from_repository(self.pipeline_tag.as_deref(), &self.tags);
         let template = self
@@ -136,8 +128,7 @@ impl Listing {
         })
     }
 
-    /// The facts of the answer, completed by `config.json` when the repository has one. The
-    /// values of `config.json` come first: they are the files of the model itself.
+    /// The values of `config.json` come first: they are the files of the model itself.
     #[must_use]
     pub fn facts(&self, config: Option<&ModelConfig>, publisher: Option<String>) -> Facts {
         let gguf = self.gguf.as_ref();
@@ -162,8 +153,7 @@ impl Listing {
     }
 }
 
-/// The fields of `config.json` that the library reads. A model with vision or audio keeps
-/// its language part in `text_config`.
+/// A model with vision or audio keeps its language part in `text_config`.
 #[derive(Debug, Default, Deserialize)]
 pub struct ModelConfig {
     pub model_type: Option<String>,
@@ -203,8 +193,7 @@ impl ModelConfig {
         }
     }
 
-    /// The quantisation of safetensors files: `4bit` from the MLX field, else the weight
-    /// type, such as `bf16`.
+    /// `bits` is the MLX field; without it, the weight type names the quantisation.
     #[must_use]
     pub fn quantisation(&self) -> Option<String> {
         if let Some(bits) = self.quantization.as_ref().and_then(|each| each.bits) {
@@ -227,18 +216,14 @@ impl ModelConfig {
     }
 }
 
-/// Reads the answer for one repository.
-///
 /// # Errors
-/// The parser's error when the text is not an answer of the expected form.
+/// The text is not an answer of the expected form.
 pub fn listing(text: &[u8]) -> Result<Listing, serde_json::Error> {
     serde_json::from_slice(text)
 }
 
-/// Reads `config.json`.
-///
 /// # Errors
-/// The parser's error when the text is not a JSON object.
+/// The text is not a JSON object.
 pub fn model_config(text: &[u8]) -> Result<ModelConfig, serde_json::Error> {
     serde_json::from_slice(text)
 }

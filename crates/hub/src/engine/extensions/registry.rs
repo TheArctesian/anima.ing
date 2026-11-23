@@ -1,5 +1,4 @@
-//! The fifteen extensions of Section 1.1 of the extensions plan, as data (K-E7, EXT-006,
-//! EXT-010). Only Projects is built; Integrations is part of the engine and always on.
+//! The extensions of Section 1.1 of the extensions plan, as data (K-E7, EXT-006, EXT-010).
 
 use super::model::{Entry, Key, Navigation, NavigationGroup, Sensitivity};
 
@@ -7,7 +6,7 @@ const MAP: Key = Key::new("map");
 pub const PROJECTS: Key = Key::new("projects");
 const WRITING: Key = Key::new("writing");
 const SECRETS: Key = Key::new("secrets");
-/// The entry of the engine itself: always on (ENG-002). An intake of the engine names it.
+/// The entry of the engine itself, always on (ENG-002).
 pub const INTEGRATIONS: Key = Key::new("integrations");
 const PEOPLE: Key = Key::new("people");
 const MONEY: Key = Key::new("money");

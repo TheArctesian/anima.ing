@@ -1,4 +1,4 @@
-//! Remote access settings: the MAC address, defaults and the rules (RA-030..033, D-2, D-6).
+//! RA-030..033, D-2, D-6.
 
 use super::*;
 use super::{fields, new_device};

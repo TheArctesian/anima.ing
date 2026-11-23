@@ -1,4 +1,3 @@
-//! The kinds of data that have a retention period, and the error a bad period gives.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

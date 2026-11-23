@@ -1,5 +1,4 @@
-//! The files GraphQL part (K1 `openFiles`, WP-27 D-8): merged into the root `Mutation` behind
-//! the same guard as the sessions part.
+//! The files GraphQL part (K1 `openFiles`, WP-27 D-8), behind the same guard as the sessions part.
 
 use std::sync::Arc;
 

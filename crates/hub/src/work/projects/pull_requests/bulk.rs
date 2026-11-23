@@ -1,8 +1,5 @@
-//! What came of each pull request of a bulk merge (K1 `PullRequestMerge`; PRJ-033), and the
-//! deadline of the whole request (K-E1 Section 13.3). Pure: the time is a parameter.
-//!
-//! A message is always the hub's fixed words, never a reply of GitHub or text from the pull
-//! request (LOG-007).
+//! Outcomes of a bulk merge (PRJ-033; K-E1 Section 13.3).
+//! A message is the hub's fixed words, never a reply of GitHub or text from the pull request (LOG-007).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

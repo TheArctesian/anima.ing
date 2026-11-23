@@ -16,34 +16,26 @@ const COOKIE_DOMAINS: &str = "ANIMA_ROUTES_COOKIE_DOMAINS";
 const PUBLIC_ADDRESS: &str = "ANIMA_ROUTES_PUBLIC_ADDRESS";
 /// The public streams at one time on one link.
 const STREAMS_PER_LINK: &str = "ANIMA_ROUTES_STREAMS_PER_LINK";
-/// The default of [`STREAMS_PER_LINK`].
 const STREAMS_DEFAULT: usize = 32;
 /// The streams of the routes of one device at one time, each route together; below
 /// [`STREAMS_PER_LINK`], so the routes leave room for the sessions (SF-327).
 const STREAMS_PER_DEVICE: &str = "ANIMA_ROUTES_STREAMS_PER_DEVICE";
-/// The default of [`STREAMS_PER_DEVICE`].
 const STREAMS_PER_DEVICE_DEFAULT: usize = 16;
 /// The ports of the hub that streams may listen on, as `first-last`, both 1024 or more; unset:
 /// no stream (HOST-050, task H40).
 const STREAM_PORTS: &str = "ANIMA_ROUTES_STREAM_PORTS";
 
-/// The settings of the routes.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Routes {
     pub socket: Option<PathBuf>,
-    /// The user ID of the proxy process; set when [`Routes::socket`] is.
     pub proxy_uid: Option<u32>,
     pub cookie_domains: Vec<String>,
     pub public_address: Option<IpAddr>,
     pub streams_per_link: usize,
-    /// The streams of the routes of one device; below [`Routes::streams_per_link`].
     pub streams_per_device: usize,
-    /// The ports of the hub for streams; `None`: no stream.
     pub stream_ports: Option<RangeInclusive<u16>>,
 }
 
-/// Reads the settings of the routes.
-///
 /// # Errors
 /// [`Error::Routes`] for a malformed value or a socket with no user ID of the proxy; the path
 /// errors for the socket.
@@ -90,7 +82,6 @@ pub(super) fn from_env(env: &BTreeMap<String, String>) -> Result<Routes, Error> 
     })
 }
 
-/// A number above 0 from `variable`, or `default` when it is not set.
 fn limit(
     env: &BTreeMap<String, String>,
     variable: &'static str,
@@ -106,7 +97,6 @@ fn limit(
     }
 }
 
-/// The range of [`STREAM_PORTS`]: `first-last`, with `1024 <= first <= last`.
 fn stream_ports(env: &BTreeMap<String, String>) -> Result<Option<RangeInclusive<u16>>, Error> {
     let refused = Error::Routes {
         variable: STREAM_PORTS,

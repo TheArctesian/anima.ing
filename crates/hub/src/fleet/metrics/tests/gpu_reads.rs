@@ -9,7 +9,6 @@ use crate::fleet::metrics::{MetricKind, MetricRange, Sample, readings, record_co
 
 const VRAM: MetricKind = MetricKind::VramPercent;
 
-/// Records GPU samples (kind, GPU index, value) of the first fixture device taken at `at`.
 async fn write_gpu(pool: &PgPool, at: DateTime<Utc>, values: &[(MetricKind, u8, f64)]) {
     let samples: Vec<Sample> = values
         .iter()
@@ -20,7 +19,6 @@ async fn write_gpu(pool: &PgPool, at: DateTime<Utc>, values: &[(MetricKind, u8, 
         .unwrap();
 }
 
-/// Stores GPUs 0 and 1 of the first fixture device with the given `has_vram` flags.
 async fn store_gpus(pool: &PgPool, has_vram: [bool; 2]) {
     sqlx::query(
         "INSERT INTO metrics.gpus (device_id, index, name, vendor, has_vram) VALUES \

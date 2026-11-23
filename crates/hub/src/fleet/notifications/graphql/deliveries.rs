@@ -1,9 +1,5 @@
-//! `Query.deliveries`: the delivery log, newest first, a page at a time, of every channel or
-//! of one (NOT-004, API-006, R-014).
-//!
-//! A cursor is `d1.` + the delivery's time in microseconds since the epoch + `.` + its id as 32
-//! lower-case hex digits. It is parsed strictly: only the exact text `encode_cursor` writes is
-//! read; any other text is a `VALIDATION` error on `after`, never a panic or a guess.
+//! `Query.deliveries`, newest first, a page at a time (NOT-004, API-006, R-014).
+//! A cursor is only the exact text `encode_cursor` writes; any other is a `VALIDATION` error.
 
 use async_graphql::{Context, ID, Result, SimpleObject};
 use chrono::DateTime;

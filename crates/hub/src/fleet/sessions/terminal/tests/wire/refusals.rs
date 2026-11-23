@@ -1,6 +1,4 @@
-//! Refusals before the upgrade (K4 Section 8.1): 403 for every ticket problem, 400 without the
-//! subprotocol, 503 when the device cannot be opened; and the token and the password never
-//! reach the process log (LOG-007).
+//! K4 Section 8.1; the token and the password never reach the process log (LOG-007).
 
 use std::sync::Arc;
 
@@ -28,7 +26,6 @@ use crate::{
     },
 };
 
-/// Whether the session's row is still live.
 async fn is_live(pool: &PgPool, bench: &super::Bench) -> bool {
     crate::fleet::sessions::store::get(pool, bench.session)
         .await
@@ -219,8 +216,7 @@ async fn log_007_the_token_and_password_never_reach_the_log(pool: PgPool) {
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in the Guacamole tunnel's test: a second registered dispatcher makes every callsite
-    // registration ask all of them, so another test thread cannot disable these callsites.
+    // A second registered dispatcher keeps another test thread from disabling these callsites.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();

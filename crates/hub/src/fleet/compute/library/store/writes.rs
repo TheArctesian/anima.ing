@@ -1,4 +1,4 @@
-//! The writes of the library. Each runs on the caller's connection, inside its transaction.
+//! Each write runs on the caller's connection, inside its transaction.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;
@@ -13,9 +13,6 @@ fn signed(value: Option<u32>) -> Option<i32> {
     value.and_then(|each| i32::try_from(each).ok())
 }
 
-/// Stores the model with these facts and returns its id. A model of this name keeps its id,
-/// its time of addition and its publisher when the new facts give none; its other facts are
-/// replaced by those read now.
 pub(in super::super) async fn save_model(
     conn: &mut PgConnection,
     name: &str,
@@ -63,7 +60,6 @@ pub(in super::super) async fn save_model(
     .await?)
 }
 
-/// Stores the variant of the model, replacing a variant of the same tag and its files.
 pub(in super::super) async fn save_variant(
     conn: &mut PgConnection,
     model: Uuid,

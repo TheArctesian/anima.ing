@@ -1,6 +1,5 @@
-//! The device's SSH server on loopback, a `russh` server in the test: it presents its host
-//! key, accepts one password, answers every `exec` as told, and records each TCP connection
-//! and everything the hub asked of it, so a test can show what the link did and did not send.
+//! The device's SSH server on loopback; it records each connection and request so a test can
+//! show what the link did and did not send.
 
 use std::{
     future::ready,
@@ -22,42 +21,29 @@ use crate::fleet::{ssh::tests::fixture::PASSWORD, trust::PublicKey};
 /// The user `docker-host`'s SSH settings name in the devices fixture.
 const USER: &str = "operator";
 
-/// What the hub asked of the server, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Heard {
-    /// An authentication request by this method.
     Auth(&'static str),
-    /// A session channel opened.
     Session,
-    /// An `exec` request with this command line.
     Exec(String),
-    /// A channel closed by the hub.
     Close,
-    /// A request or channel the link must never send, by its SSH name.
     Forbidden(&'static str),
 }
 
-/// How the server answers every `exec`.
 #[derive(Clone, Debug)]
 pub(crate) enum Answer {
-    /// Writes `stdout` and `stderr`, then exits with `status`.
     Exit {
         stdout: Vec<u8>,
         stderr: Vec<u8>,
         status: u32,
     },
-    /// Writes the command line and a newline back, then exits 0.
     Echo,
-    /// Grants the `exec` and then sends nothing.
     Hang,
-    /// Grants the `exec`, then closes the channel with no exit status, as a command ended by
-    /// a signal does.
+    /// Closes the channel with no exit status, as a command ended by a signal does.
     NoStatus,
-    /// Refuses the `exec`.
     Refuse,
 }
 
-/// The server's port and host key, the TCP connections it accepted and what it heard.
 pub(crate) struct Server {
     pub(crate) port: u16,
     connections: Arc<AtomicUsize>,
@@ -65,18 +51,15 @@ pub(crate) struct Server {
 }
 
 impl Server {
-    /// The TCP connections accepted so far.
     pub(crate) fn connections(&self) -> usize {
         self.connections.load(Ordering::SeqCst)
     }
 
-    /// Everything heard so far.
     pub(crate) fn heard(&self) -> Vec<Heard> {
         self.heard.lock().unwrap().clone()
     }
 
-    /// Everything heard so far except channel closes, which may arrive after a command
-    /// returns.
+    /// Channel closes are left out: they may arrive after a command returns.
     pub(crate) fn requests(&self) -> Vec<Heard> {
         let mut heard = self.heard();
         heard.retain(|heard| *heard != Heard::Close);
@@ -84,7 +67,6 @@ impl Server {
     }
 }
 
-/// The ed25519 host key made from `seed`, as the hub stores it.
 pub(crate) fn host_key(seed: u8) -> PublicKey {
     let key = private(seed);
     PublicKey::from_blob(key.public_key().to_bytes().unwrap()).unwrap()
@@ -94,7 +76,6 @@ fn private(seed: u8) -> PrivateKey {
     PrivateKey::from(Ed25519Keypair::from_seed(&[seed; 32]))
 }
 
-/// Starts a server presenting the key made from `seed`, answering every `exec` with `answer`.
 pub(crate) async fn serve(seed: u8, answer: Answer) -> Server {
     let config = Arc::new(server::Config {
         keys: vec![private(seed)],
@@ -129,7 +110,6 @@ pub(crate) async fn serve(seed: u8, answer: Answer) -> Server {
     }
 }
 
-/// The server's side of one connection.
 struct Device {
     answer: Answer,
     heard: Arc<Mutex<Vec<Heard>>>,
@@ -140,7 +120,6 @@ impl Device {
         self.heard.lock().unwrap().push(heard);
     }
 
-    /// Records a forbidden channel request and refuses it.
     fn forbidden(
         &self,
         name: &'static str,
@@ -152,8 +131,6 @@ impl Device {
     }
 }
 
-/// Sends `answer`'s output, status, EOF and close on `channel`; stops when the hub has closed
-/// the channel or the connection.
 async fn reply(handle: server::Handle, channel: ChannelId, answer: Answer, line: Vec<u8>) {
     let (stdout, stderr, status) = match answer {
         Answer::Exit {

@@ -1,8 +1,5 @@
-//! The checks that the hub reports itself: PUSH checks that the hub adds to a device and
-//! finds again by their name. `Hub running` is on the hub's own device and is Up while the
-//! hub runs (HMD-045). `Connected` is on a computer of the link and is Up while that
-//! computer is connected to the link (HMD-047). Each is a PUSH check as any other: when the
-//! hub stops reporting, the scheduler records the missed push.
+//! Checks the hub reports itself (HMD-045, HMD-047): PUSH checks found by name, so a hub that
+//! stops reporting gets a missed push.
 
 use std::time::Duration;
 
@@ -20,7 +17,6 @@ use crate::{
     ids::{CheckId, DeviceId},
 };
 
-/// A check that the hub reports itself. The check is found by its name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OwnCheck {
     /// The hub runs (HMD-045).
@@ -30,7 +26,6 @@ pub enum OwnCheck {
 }
 
 impl OwnCheck {
-    /// The name of the check on its device.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -40,7 +35,6 @@ impl OwnCheck {
     }
 }
 
-/// What the hub reports for one of its own checks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OwnReport {
     Up,
@@ -48,8 +42,7 @@ pub enum OwnReport {
     Down(&'static str),
 }
 
-/// Makes sure that `device` has the PUSH check `own`, in the caller's transaction: the one
-/// that exists, else a new one with the stored defaults and a new token.
+/// The PUSH check `own` of `device`, made in the caller's transaction when missing.
 ///
 /// # Errors
 /// `Validation` (`deviceId`) when there is no such device; `Random` when no token can be made.
@@ -85,10 +78,8 @@ pub async fn find(db: &PgPool, device: DeviceId, own: OwnCheck) -> Result<Option
     store::push_check_named(&mut conn, device, own.name()).await
 }
 
-/// Reports the check at `now`, as a push of its device does, and returns the interval in
-/// which the check waits for the next report. `None` when the check or its device is gone:
-/// nothing is written. A paused check records nothing and keeps its interval. A Down report
-/// is one failed attempt, so the retries of the check apply to it (CHK-002).
+/// Reports as a push of the device does and returns the wait for the next report; `None` when
+/// the check or its device is gone. A Down report is one failed attempt (CHK-002).
 ///
 /// # Errors
 /// `Database`, `Devices` or `Maintenance` when a read or the write fails.
@@ -120,10 +111,8 @@ pub async fn report(
     Ok(Some(Duration::from_secs(interval)))
 }
 
-/// Makes each check `own` wait one whole interval from `now` for its next report, when it
-/// would be due sooner. The hub calls it when it starts and when it wakes: the time in which
-/// the hub did not run is not a missed push, and what reports the check needs time to come
-/// back. A check that is paused or was never due is not changed.
+/// Postpones each check `own` to one interval from `now`, so time the hub did not run is not
+/// a missed push.
 ///
 /// # Errors
 /// `Database` when the write fails.

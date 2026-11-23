@@ -1,5 +1,4 @@
-//! A local HTTPS server that stands in for every registry (HOST-021): it answers each request
-//! by its method and path, and records the head of each request. Nothing reaches the internet.
+//! A local HTTPS stand-in for every registry (HOST-021). Nothing reaches the internet.
 
 use std::{
     net::SocketAddr,
@@ -22,7 +21,6 @@ use crate::work::containers::updates::{
     registry::{Named, Reference, named},
 };
 
-/// The token the stand-in gives.
 pub(super) const TOKEN: &str = "anonymous-reader-token";
 
 pub(super) struct Registry {
@@ -32,25 +30,21 @@ pub(super) struct Registry {
 }
 
 impl Registry {
-    /// The rules of a connection that reaches this server in place of every registry.
     pub(super) fn egress(&self) -> Egress {
         let (origin, root) = self.place();
         Egress::new(crate::fleet::ssh::tests::reaching()).standing_in(origin, root)
     }
 
-    /// The origin of this server and the certificate it presents.
     pub(super) fn place(&self) -> (reqwest::Url, Vec<u8>) {
         let origin = format!("https://localhost:{}/", self.port).parse().unwrap();
         (origin, self.root.clone())
     }
 
-    /// The head of each request received, in order: the request line, then its header lines.
     pub(super) fn heads(&self) -> Vec<String> {
         let heads = self.heads.lock();
         heads.unwrap_or_else(PoisonError::into_inner).clone()
     }
 
-    /// The request lines received, sorted.
     pub(super) fn lines(&self) -> Vec<String> {
         let mut lines: Vec<String> = self
             .heads()
@@ -62,14 +56,12 @@ impl Registry {
     }
 }
 
-/// An answer with this status line, the header lines `headers` (each ends with a line break)
-/// and no body.
+/// Each line of `headers` ends with a line break.
 pub(super) fn answer(status: &str, headers: &str) -> Vec<u8> {
     format!("HTTP/1.1 {status}\r\nContent-Length: 0\r\nConnection: close\r\n{headers}\r\n")
         .into_bytes()
 }
 
-/// The answer of a token endpoint.
 pub(super) fn token() -> Vec<u8> {
     let body = format!(r#"{{"token":"{TOKEN}","expires_in":300}}"#);
     format!(
@@ -80,12 +72,10 @@ pub(super) fn token() -> Vec<u8> {
     .into_bytes()
 }
 
-/// A manifest answer that gives `digest`.
 pub(super) fn manifest(digest: &str) -> Vec<u8> {
     answer("200 OK", &format!("Docker-Content-Digest: {digest}\r\n"))
 }
 
-/// A server on 127.0.0.1 that answers a request with `reply(method, path)`.
 pub(super) async fn serve(
     reply: impl Fn(&str, &str) -> Vec<u8> + Send + Sync + 'static,
 ) -> Registry {
@@ -119,7 +109,6 @@ pub(super) async fn serve(
     Registry { port, root, heads }
 }
 
-/// Reads one request head, records it and writes the answer for its method and path.
 async fn respond(
     stream: tokio_rustls::server::TlsStream<tokio::net::TcpStream>,
     reply: &(dyn Fn(&str, &str) -> Vec<u8> + Send + Sync),
@@ -157,7 +146,6 @@ pub(super) fn reference(image: &str) -> Reference {
     }
 }
 
-/// A stand-in that knows two tags and refuses a third.
 pub(super) async fn known() -> Registry {
     serve(|method, path| match (method, path) {
         ("GET", path) if path.starts_with("/token?") => token(),

@@ -4,7 +4,6 @@
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-/// The reply is not a JSON object, or its `events` member is not a list.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 #[error("the RDAP reply cannot be read")]
 pub(super) struct Unreadable;
@@ -26,7 +25,6 @@ pub(super) fn expiration(body: &[u8]) -> Result<Option<DateTime<Utc>>, Unreadabl
     Ok(events.iter().filter_map(expiration_date).min())
 }
 
-/// The date of one event when it is an `expiration` event with a readable date.
 fn expiration_date(event: &Value) -> Option<DateTime<Utc>> {
     let action = event.get("eventAction")?.as_str()?;
     if !action.eq_ignore_ascii_case("expiration") {

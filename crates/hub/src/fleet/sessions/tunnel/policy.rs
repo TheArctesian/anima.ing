@@ -24,7 +24,6 @@ pub(super) struct Policy {
 }
 
 impl Policy {
-    /// The policy of a `desktop` session on `device`, as the record stands now.
     pub(super) const fn of(desktop: Desktop, device: &Device) -> Self {
         let rdp = matches!(desktop, Desktop::Rdp);
         Self {
@@ -35,12 +34,10 @@ impl Policy {
         }
     }
 
-    /// The client may write files to the shared drive.
     pub(super) const fn uploads(self) -> bool {
         self.shared_drive && self.transfer.upload
     }
 
-    /// The client may receive a file's content from the shared drive.
     pub(super) const fn downloads(self) -> bool {
         self.shared_drive && self.transfer.download
     }

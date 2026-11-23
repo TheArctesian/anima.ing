@@ -1,5 +1,3 @@
-//! Rows as the database returns them, and their mapping to the model.
-
 use chrono::{DateTime, Utc};
 
 use crate::{
@@ -13,7 +11,6 @@ use crate::{
     ids::{ChannelId, CheckId, DeliveryId},
 };
 
-/// Every column of a channel, in the order `ChannelRow` reads them.
 pub(super) const CHANNEL_COLUMNS: &str = "id, name, kind, on_by_default, settings, secrets, \
      title_template, body_template, created_at, updated_at";
 
@@ -106,7 +103,6 @@ impl TryFrom<OutboxRow> for Outbox {
     }
 }
 
-/// Every column of an outbox row, in the order `OutboxRow` reads them.
 pub(super) const OUTBOX_COLUMNS: &str =
     "id, channel_id, check_id, kind, payload, created_at, attempts, next_attempt_at";
 
@@ -142,7 +138,6 @@ impl TryFrom<DeliveryRow> for Delivery {
     }
 }
 
-/// Every column of a delivery, in the order `DeliveryRow` reads them.
 pub(super) const DELIVERY_COLUMNS: &str =
     "id, channel_id, channel_name, kind, at, ok, reason, code";
 
@@ -162,7 +157,7 @@ impl TryFrom<SettingsRow> for InstallationSettings {
             .into_iter()
             .map(|days| u16::try_from(days).map_err(|_| Error::Unreadable))
             .collect::<Result<Vec<_>, _>>()?;
-        // Largest first, as the operator reads them, whatever order they were written in.
+        // Largest first, as the operator reads them.
         certificate_days.sort_unstable_by(|a, b| b.cmp(a));
         Ok(Self {
             certificate_days,

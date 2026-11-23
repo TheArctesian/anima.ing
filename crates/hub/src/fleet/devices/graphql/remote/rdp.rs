@@ -1,6 +1,4 @@
-//! A device's RDP settings as the GraphQL type K1 calls `RdpSettings`, with whether the hub
-//! holds a password for it (RA-030, DEV-011, SEC-005, API-005) and the server certificate
-//! accepted for it (SEC-007).
+//! A device's K1 `RdpSettings` (RA-030, DEV-011, SEC-005, API-005, SEC-007).
 
 use std::{collections::HashMap, sync::Arc};
 

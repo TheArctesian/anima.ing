@@ -1,36 +1,14 @@
-//! Which stateless Apprise URLs the hub sends (N-4, WP-52 handoff, D-17, D-18).
+//! Which stateless Apprise URLs the hub sends (N-4, D-17, D-18).
 //!
-//! The hub hands these URLs to the Apprise API, which then connects on its own; the hub's
-//! target rule and deny list never see those connections. So the hub permits only URLs whose
-//! service talks to one fixed public host, with query keys that change how the message looks,
-//! never where it goes or what Apprise reads. The firewall around Apprise contains it too; the
-//! hub does not rely on that.
+//! Apprise connects on its own, outside the hub's target rule and deny list, so the hub permits
+//! only services that post to one fixed vendor host, and query keys that change how the message
+//! looks, never where it goes or what Apprise reads. Self-hosted targets use the hub's own
+//! webhook, ntfy and e-mail channels (P3-003).
 //!
-//! - **Schemes** ([`SCHEMES`]): Discord, Telegram, Slack, Pushover, Pushbullet, Google Chat,
-//!   `PagerDuty` and Opsgenie. Each posts to its vendor's fixed API host. Every scheme that takes
-//!   a host from the URL is refused: `json`, `jsons`, `form`, `forms`, `xml`, `xmls`,
-//!   `apprise`, `apprises` (post to any URL), `ntfy`, `gotify`, `mailto`, `matrix`,
-//!   `mattermost`, `rocket`, `mqtt`, `syslog` and the rest, and `http`/`https` (Apprise maps
-//!   some native URLs to services). Self-hosted targets use the hub's own webhook, ntfy and
-//!   e-mail channels, whose connections pass the target rule (P3-003).
-//! - **Query keys** ([`KEYS`]): display and routing options of those services only. Anything
-//!   else is refused, among them `template`, `attach` and `attachment` (read a file or URL),
-//!   `avatar_url`, `image`, `url` and `href` (hand over or read a URL or a local image), `verify`
-//!   (turns TLS verification off), `cto` and `rto` (timeouts), `store` (writes to disk), and
-//!   the `+`, `-` and `:` keys of the custom JSON, form and XML services.
-//!
-//! The rules are written for how Apprise reads a URL: it splits several URLs at a comma or a
-//! space, takes the query after the first `?`, splits it at `&` and `;`, percent-decodes each
-//! key, trims it and lowers its case. So a URL with a space, a comma, a control character, a
-//! second `://` or a second `?` is refused, and a key is compared after percent-decoding: it
-//! must be exactly an allowed key in ASCII, any case. A key Apprise would read differently from
-//! the hub is not on the list, so it is refused.
-//!
-//! The comma rule is defence in depth: a second URL after a comma needs its own `://`, which
-//! the one-scheme rule refuses already. The comma is refused on its own anyway, so the rule
-//! does not lean on how Apprise reads what follows a comma that has no scheme.
+//! The rules follow how Apprise reads a URL: it splits URLs at a comma or a space, takes the
+//! query after the first `?`, splits it at `&` and `;`, and percent-decodes, trims and lowers
+//! each key. A comma is refused even though a second URL also needs a second `://`.
 
-/// Services that post only to their vendor's fixed host.
 const SCHEMES: [&str; 8] = [
     "discord",
     "tgram",
@@ -42,24 +20,18 @@ const SCHEMES: [&str; 8] = [
     "opsgenie",
 ];
 
-/// Query keys that change how a message looks or which recipient of the same service gets it.
 const KEYS: [&str; 17] = [
     "format", "overflow", "emojis", "to", "tts", "avatar", "footer", "thread", "botname", "silent",
     "preview", "topic", "priority", "sound", "retry", "expire", "blocks",
 ];
 
-/// The longest URL accepted, in bytes.
 const URL_MAX: usize = 2048;
 
-/// Why a URL is refused; the operator reads it, so it never quotes the URL.
+/// The operator reads a refusal, so it never quotes the URL.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::fleet::notifications) enum Refusal {
-    /// Too long, empty, or holds a space, comma, control character, second scheme or second
-    /// query.
     Shape,
-    /// A scheme outside [`SCHEMES`].
     Scheme,
-    /// A query key outside [`KEYS`].
     Key,
 }
 
@@ -80,11 +52,7 @@ impl Refusal {
     }
 }
 
-/// `Ok` when the hub may hand `url` to Apprise (N-4). Called at save and again before each
-/// send.
-///
-/// # Errors
-/// The first rule the URL breaks.
+/// Checked at save and again before each send (N-4).
 pub(in crate::fleet::notifications) fn permitted(url: &str) -> Result<(), Refusal> {
     let shape_ok = !url.is_empty()
         && url.len() <= URL_MAX
@@ -117,7 +85,6 @@ pub(in crate::fleet::notifications) fn permitted(url: &str) -> Result<(), Refusa
     if keys_ok { Ok(()) } else { Err(Refusal::Key) }
 }
 
-/// The percent-decoded text, or `None` for a bad escape or bytes that are not UTF-8.
 fn decoded(text: &str) -> Option<String> {
     let bytes = text.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());

@@ -1,18 +1,14 @@
-//! Migration 0001 creates `anima_runtime` as a plain group, and 0001 and 0501 refuse one that
-//! has more rights (K2 "Roles", R-016, DB-001).
+//! K2 "Roles" (R-016, DB-001): migrations 0001 and 0501 accept `anima_runtime` only as a plain group.
 
 use sqlx::PgPool;
 
 use super::{privileges::execute, test_role};
 
-/// Migrations 0001 and 0501 as written; tests run them for a stand-in group name.
 const MIGRATION_0001: &str = include_str!("../../../../migrations/0001_access_runtime_role.sql");
 const MIGRATION_0501: &str =
     include_str!("../../../../migrations/0501_events_runtime_group_check.sql");
 
-/// Runs `migration` with `group` in place of `anima_runtime`, so a test can give the stand-in
-/// extra rights without touching the cluster-wide group other tests use. Returns the SQLSTATE,
-/// or `None` if it succeeded.
+/// A stand-in group keeps tests off the cluster-wide `anima_runtime` that other tests use.
 async fn migrate_for(
     conn: &mut sqlx::PgConnection,
     migration: &str,

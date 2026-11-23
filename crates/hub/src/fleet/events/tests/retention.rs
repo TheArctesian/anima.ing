@@ -1,5 +1,4 @@
-//! Dropping old day partitions, and the database's refusal to drop inside retention
-//! (DB-005, LOG-006, R-016).
+//! DB-005, LOG-006, R-016.
 
 use chrono::{DateTime, Days, NaiveDate, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
@@ -15,7 +14,6 @@ async fn database_now(pool: &PgPool) -> DateTime<Utc> {
         .unwrap()
 }
 
-/// Calls the drop function directly and returns its SQLSTATE, or `None` if it succeeded.
 async fn drop_refusal(
     conn: &mut PgConnection,
     (table, cutoff, instant): (&str, NaiveDate, DateTime<Utc>),

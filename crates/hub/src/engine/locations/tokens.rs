@@ -1,6 +1,5 @@
-//! The ingest tokens of the OwnTracks path (K-E4 Section 11). A token permits only
-//! `POST /locations/v1/owntracks`. The hub keeps the SHA-256 of a token and shows the token
-//! one time, when it is made; no log line and no audit entry holds it (LOG-007).
+//! OwnTracks ingest tokens (K-E4 Section 11): a token permits only `POST /locations/v1/owntracks`.
+//! The hub keeps the SHA-256 and shows a token once; no log line or audit entry holds it (LOG-007).
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
@@ -16,11 +15,10 @@ use super::{
 };
 use crate::ids::IngestTokenId;
 
-/// What starts each ingest token, so that a scanner can find one that leaked.
+/// Lets a scanner find a token that leaked.
 const PREFIX: &str = "anl_";
 const TOKEN_BYTES: usize = 32;
 
-/// A new ingest token with its value, which is shown one time.
 pub struct Issued {
     pub token: IngestToken,
     pub value: Zeroizing<String>,
@@ -30,13 +28,11 @@ fn hash_of(presented: &str) -> [u8; 32] {
     Sha256::digest(presented.as_bytes()).into()
 }
 
-/// Makes an ingest token named `name` in the caller's transaction.
-///
 /// # Errors
 /// `Invalid` for a name that is not one line of 1 to 64 characters; `Database`.
 ///
 /// # Panics
-/// When the OS gives no random bytes, which a running hub does not see.
+/// When the OS gives no random bytes.
 pub async fn create_token(
     conn: &mut PgConnection,
     name: &str,
@@ -62,8 +58,7 @@ pub async fn create_token(
     Ok(Issued { token, value })
 }
 
-/// Ends the token `id` in the caller's transaction; a token that was revoked before keeps its
-/// first time.
+/// A token that was revoked before keeps its first time.
 ///
 /// # Errors
 /// `NotFound`, `Database`.
@@ -77,7 +72,7 @@ pub async fn revoke_token(
         .ok_or(Error::NotFound)
 }
 
-/// Every ingest token, newest first, without its value.
+/// Newest first, without values.
 ///
 /// # Errors
 /// `Database`.

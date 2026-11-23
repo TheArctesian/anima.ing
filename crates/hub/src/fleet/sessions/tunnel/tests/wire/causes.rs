@@ -1,5 +1,4 @@
-//! Each K4 Section 5 cause on the wire: its close code, end reason, event severity and the
-//! one `session.end` audit entry.
+//! Each K4 Section 5 cause on the wire, with its one `session.end` audit entry.
 
 use std::time::Duration;
 
@@ -100,8 +99,7 @@ async fn k4_5_a_guacd_that_stops_reading_is_gateway_error(pool: PgPool) {
     let setup = Setup::route(|route| route.timing.client_idle = Duration::from_millis(500));
     let (guacd, bench, mut client) = session(&pool, setup).await;
     guacd.act.send(Act::Stall).ok();
-    // Clipboard data until the hub's writes to guacd stall and the hub stops reading the
-    // client: seven of the largest instructions per message.
+    // Clipboard data until writes to guacd stall and the hub stops reading the client.
     client.send("9.clipboard,1.0,10.text/plain;").await;
     let data = "A".repeat(8_000);
     let blobs = format!("4.blob,1.0,8000.{data};").repeat(7);

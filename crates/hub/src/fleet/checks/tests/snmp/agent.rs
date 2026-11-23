@@ -1,6 +1,5 @@
-//! A local SNMP agent on 127.0.0.1 for the probe tests: v2c with one community and v3
-//! authPriv with one user. Its message handling is written here from RFC 3412, RFC 3414 and
-//! RFC 3416; it shares only the BER writer and the USM primitives that the vectors pin.
+//! A local SNMP agent for the probe tests, written from RFC 3412, RFC 3414 and RFC 3416; it
+//! shares only the BER writer and the USM primitives that the vectors pin.
 
 use std::sync::{
     Arc,
@@ -21,7 +20,6 @@ pub const BOOTS: u32 = 3;
 pub const TIME: u32 = 1234;
 const AGENT_SALT: [u8; 8] = [0xa5; 8];
 
-/// How the agent behaves.
 pub struct Setup {
     pub community: &'static str,
     pub user: &'static str,
@@ -29,7 +27,6 @@ pub struct Setup {
     pub privacy: &'static str,
     /// The OIDs it knows, with their encoded values.
     pub values: Vec<(Vec<u32>, Vec<u8>)>,
-    /// It reads every request and answers none.
     pub silent: bool,
     /// Before each answer, a datagram from another port that would fail the probe if read.
     pub stray_first: bool,
@@ -66,7 +63,6 @@ pub struct Agent {
     pub requests: Arc<AtomicUsize>,
 }
 
-/// Starts the agent on an ephemeral loopback port.
 pub async fn spawn(setup: Setup) -> Agent {
     let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let stray = UdpSocket::bind("127.0.0.1:0").await.unwrap();
@@ -103,7 +99,6 @@ fn answer(setup: &Setup, datagram: &[u8]) -> Option<Vec<u8>> {
     }
 }
 
-/// The Response PDU to a `GetRequest` PDU.
 fn respond(setup: &Setup, request: &Tlv<'_>) -> Option<Vec<u8>> {
     let mut fields = request.reader();
     let request_id = fields.integer().ok()?;
@@ -140,7 +135,6 @@ fn v2c(setup: &Setup, message: &mut Reader<'_>) -> Option<Vec<u8>> {
     Some(ber::tlv(ber::SEQUENCE, &[&version, &community, &pdu]).to_vec())
 }
 
-/// The fields of a v3 request the agent uses.
 struct Request<'a> {
     id: i64,
     flags: u8,
@@ -252,7 +246,6 @@ fn report(id: i64, counter: u32) -> Vec<u8> {
     whole(id, 0, &security(&[], &[], &[]), &scoped(&pdu))
 }
 
-/// Where the digest of a message the agent built starts.
 fn digest_offset(message: &[u8]) -> usize {
     let mut fields = Reader::new(message).expect(ber::SEQUENCE).unwrap().reader();
     fields.integer().unwrap();

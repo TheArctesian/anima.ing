@@ -1,5 +1,4 @@
-//! The arguments and cursors of `Query.deliveries` (NOT-004, API-006): `first` is 1 to 200, and
-//! a cursor is read strictly, never trusted, never a panic.
+//! The arguments and cursors of `Query.deliveries` (NOT-004, API-006).
 
 use async_graphql::ID;
 use chrono::DateTime;

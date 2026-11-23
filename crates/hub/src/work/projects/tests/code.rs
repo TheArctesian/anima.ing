@@ -1,6 +1,3 @@
-//! Where a ref and a file are (PRJ-010, PRJ-033): a file's page keeps each name one part of
-//! the address, and only 40 hex digits name a commit.
-
 use crate::work::projects::code::address::{file, is_commit};
 
 #[test]

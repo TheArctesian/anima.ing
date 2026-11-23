@@ -2,11 +2,6 @@
 //! `agentUsage.accounts`, Section 8.2 `accountSalt`): the newest report of each device and
 //! source, and the hub's account salt. The address of an account is personal data: it is in no
 //! log line (its `Debug` shows no text) and goes with the row of its device.
-//!
-//! [`record`] stores a report in the transaction of its batch. [`salt`] gives the salt, made
-//! once. [`list`] reads the reports, and [`grouped`] puts the devices of one key under one
-//! account, with the plan and the limit windows of the newest report: the limit is the
-//! account's, so each device of it reports the same one.
 
 pub mod graphql;
 mod store;

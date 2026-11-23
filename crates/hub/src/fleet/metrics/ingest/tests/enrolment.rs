@@ -1,8 +1,5 @@
 //! MET-012, MET-013, K8 Section 3: the device row orders an enrolment against a revoke and
-//! against a second code. A revoke that commits after the code was redeemed stops the enrolment;
-//! one that starts while the enrolment is storing its token waits, then deletes the token; a
-//! second code made while the first is being stored waits, then voids it. A stored name the daemon
-//! would not keep enrols nothing.
+//! against a second code.
 
 use std::time::Duration;
 
@@ -20,9 +17,7 @@ use crate::fleet::{
     },
 };
 
-/// Whether `task` came to wait before it finished, seen as `count` sessions of this test's
-/// database waiting for a lock. Read from `pg_stat_activity`, so the answer does not depend on
-/// how fast either side runs.
+/// Reads lock waits from `pg_stat_activity`, so the answer does not depend on timing.
 pub(super) async fn waits_for_locks<T>(pool: &PgPool, task: &JoinHandle<T>, count: i64) -> bool {
     for _ in 0..2000 {
         if task.is_finished() {
@@ -171,8 +166,7 @@ async fn met_012_a_second_code_made_while_the_first_is_stored_waits_then_voids_i
     assert!(redeem(&pool, &second_text, now).await.unwrap().is_some());
 }
 
-/// T8a N2: a stored name older than the device rule, which the daemon would throw away, stores
-/// no token and leaves the metrics source as it was.
+/// T8a N2: a name stored before the device rule, which the daemon would throw away.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))

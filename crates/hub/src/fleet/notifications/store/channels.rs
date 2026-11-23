@@ -12,7 +12,7 @@ use crate::{
     ids::ChannelId,
 };
 
-/// Stores a new channel. `NameTaken` when another channel has the name.
+/// `NameTaken` when another channel has the name.
 pub(in crate::fleet::notifications) async fn insert_channel(
     conn: &mut PgConnection,
     id: ChannelId,
@@ -39,8 +39,7 @@ pub(in crate::fleet::notifications) async fn insert_channel(
     Ok(())
 }
 
-/// Replaces every field of a channel; false when there is no such channel. `NameTaken` when
-/// another channel has the name.
+/// `NameTaken` when another channel has the name.
 pub(in crate::fleet::notifications) async fn update_channel(
     conn: &mut PgConnection,
     id: ChannelId,
@@ -66,8 +65,7 @@ pub(in crate::fleet::notifications) async fn update_channel(
     Ok(done.rows_affected() == 1)
 }
 
-/// Deletes a channel, its check links and its queued notifications; its deliveries stay.
-/// False when there is no such channel.
+/// Its check links and queued notifications go with it; its deliveries stay.
 pub(in crate::fleet::notifications) async fn delete_channel(
     conn: &mut PgConnection,
     id: ChannelId,
@@ -79,9 +77,7 @@ pub(in crate::fleet::notifications) async fn delete_channel(
     Ok(done.rows_affected() == 1)
 }
 
-/// The channel with `id`, locked until the caller's transaction ends, so an update or delete
-/// reads, checks and writes the row no other writer changes meanwhile; `None` when there is
-/// no such channel.
+/// Locked until the caller's transaction ends, so an update or delete sees no other writer.
 pub(in crate::fleet::notifications) async fn channel_for_update(
     conn: &mut PgConnection,
     id: ChannelId,
@@ -95,8 +91,6 @@ pub(in crate::fleet::notifications) async fn channel_for_update(
     row.map(Channel::try_from).transpose()
 }
 
-/// The channels with `ids`, or every channel when `ids` is `None`, by name; an id with no
-/// channel has no entry.
 pub(in crate::fleet::notifications) async fn list_channels(
     db: impl PgExecutor<'_>,
     ids: Option<&[ChannelId]>,
@@ -115,7 +109,7 @@ pub(in crate::fleet::notifications) async fn list_channels(
     rows.into_iter().map(Channel::try_from).collect()
 }
 
-/// The ids of the channels a new check notifies (NOT-003), by name.
+/// The channels a new check notifies (NOT-003).
 pub(in crate::fleet::notifications) async fn on_by_default(
     db: impl PgExecutor<'_>,
 ) -> Result<Vec<ChannelId>, Error> {

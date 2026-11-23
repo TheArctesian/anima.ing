@@ -11,7 +11,6 @@ use crate::{fleet::metrics::MetricKind, ids::DeviceId};
 
 const CPU: MetricKind = MetricKind::CpuPercent;
 
-/// The (avg, min, max, count) of the row of `table` for the CPU series of `device`.
 async fn bucket(
     pool: &PgPool,
     table: &str,

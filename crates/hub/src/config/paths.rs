@@ -12,8 +12,8 @@ pub(super) fn optional_path(env: &BTreeMap<String, String>, name: &str) -> Optio
         .map(PathBuf::from)
 }
 
-/// An absolute folder from `name`; unset or empty is `None`. The root `/` is refused: as a
-/// web root it would serve the whole file system, and so is any path with a `..` part.
+/// The root `/` is refused, as a web root would serve the whole file system, and so is any `..`
+/// part.
 pub(super) fn optional_root(
     env: &BTreeMap<String, String>,
     name: &'static str,
@@ -33,7 +33,6 @@ pub(super) fn optional_root(
     }
 }
 
-/// An absolute Unix socket path from `name`; unset or empty is `None`.
 pub(super) fn optional_socket(
     env: &BTreeMap<String, String>,
     name: &'static str,
@@ -44,7 +43,6 @@ pub(super) fn optional_socket(
     }
 }
 
-/// An absolute path in the filesystem of the hub host.
 fn absolute_path(variable: &'static str, text: &str) -> Result<PathBuf, Error> {
     let path = PathBuf::from(text);
     if path.is_absolute() {

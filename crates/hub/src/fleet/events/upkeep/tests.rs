@@ -62,7 +62,6 @@ fn db_004_a_retry_never_waits_past_the_daily_run() {
     assert_eq!(plan(at(5, 0, 10, 0), 0).0, Duration::from_hours(24));
 }
 
-/// A clock that follows tokio's (paused) time from `base`.
 struct TokioClock {
     base: DateTime<Utc>,
     start: tokio::time::Instant,
@@ -92,7 +91,6 @@ async fn db_004_a_job_runs_at_start_retries_after_failures_then_runs_daily() {
         move |now: DateTime<Utc>| {
             let mut runs = runs.lock().unwrap();
             runs.push(now);
-            // A plan that never waits would spin here; stop it instead of hanging the test.
             assert!(runs.len() <= 10, "the job runs without waiting");
             drop(runs);
             let outcome = outcomes.lock().unwrap().pop_front().unwrap_or(Ok(()));

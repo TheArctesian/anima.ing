@@ -1,5 +1,4 @@
-//! The warning marks: which warning events the hub has written (VPN-010, VPN-011, BD-4). The
-//! only SQL on the `vpn` tables.
+//! The warning marks: which warning events the hub has written (VPN-010, VPN-011, BD-4).
 
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;

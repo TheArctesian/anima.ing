@@ -27,7 +27,6 @@ pub(super) struct Size {
     pub(super) rows: u16,
 }
 
-/// A client text message the hub accepts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Control {
     /// The terminal's size: the first opens the PTY, later ones change it.
@@ -49,8 +48,7 @@ pub(super) enum BadControl {
 
 /// The wire shape. `deny_unknown_fields` with struct variants refuses extra fields on both
 /// messages (a unit variant would ignore them); serde refuses a repeated field, a missing
-/// one, a float, a negative number and anything past `u16`. `parse` refuses the array form
-/// serde would also read.
+/// one, a float, a negative number and anything past `u16`.
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase", deny_unknown_fields)]
 enum Wire {

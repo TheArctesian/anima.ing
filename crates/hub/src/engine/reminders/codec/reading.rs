@@ -1,5 +1,3 @@
-//! Reads the stored form of a trigger and of `unless`, and checks each field. Pure.
-
 use chrono::{DateTime, NaiveTime, Utc, Weekday};
 use chrono_tz::Tz;
 use serde_json::Value;
@@ -16,8 +14,6 @@ const fn fault(field: &'static str, message: &'static str) -> Fault {
 
 /// The states of a source account that a rule can wait for (K-E1 Section 9).
 const STATES: [&str; 3] = ["connected", "stalled", "needs_reconnect"];
-/// Lower-case letters, digits and underscores, starting with a letter, at most 40 characters:
-/// the form of a reference kind.
 fn is_word(text: &str) -> bool {
     let mut chars = text.chars();
     chars.next().is_some_and(|first| first.is_ascii_lowercase())
@@ -25,7 +21,6 @@ fn is_word(text: &str) -> bool {
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
-/// `<extension>.<name>`, each a word: the form of a measure key and of an expiry subject.
 fn is_dotted(text: &str) -> bool {
     text.split_once('.')
         .is_some_and(|(extension, name)| is_word(extension) && is_word(name))
@@ -156,8 +151,6 @@ fn checked(stored: StoredTrigger) -> Result<Trigger, Fault> {
     }
 }
 
-/// The trigger that `json` holds.
-///
 /// # Errors
 /// The field to fix.
 pub fn trigger(json: &Value) -> Result<Trigger, Fault> {
@@ -166,8 +159,6 @@ pub fn trigger(json: &Value) -> Result<Trigger, Fault> {
     checked(stored)
 }
 
-/// The `unless` that `json` holds.
-///
 /// # Errors
 /// The field to fix.
 pub fn unless(json: &Value) -> Result<Unless, Fault> {

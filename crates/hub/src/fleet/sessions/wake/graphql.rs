@@ -1,5 +1,4 @@
-//! `wakeDevice` and `WakeResult` (K1; RA-031, D-8): a `Mutation` part behind the same guard as
-//! the sessions part, and the errors as the sessions part maps its own (K7, API-010).
+//! `wakeDevice` and `WakeResult` (K1; RA-031, D-8; K7, API-010).
 
 use std::sync::Arc;
 
@@ -52,8 +51,7 @@ impl Mutation {
         if matches!(sent, Err(Error::NotFound(_))) {
             return sent.map_err(to_graphql);
         }
-        // An attempt whose audit entry failed is logged here and stays `INTERNAL`: the
-        // mutation never reports an action it could not audit (LOG-005).
+        // The mutation never reports an action it could not audit (LOG-005).
         if let Err(error) = audit(db, &by, device, &sent).await {
             tracing::error!(%device, %error, "the audit entry of a Wake-on-LAN could not be written");
             return Err(to_graphql(error));

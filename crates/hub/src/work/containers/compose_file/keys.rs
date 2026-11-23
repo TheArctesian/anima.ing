@@ -1,8 +1,4 @@
-//! The keys of the Compose specification: those of the top level, and those of a service with
-//! the forms that the value of each may have.
-
-/// The forms that the value of a key may have. A value that is empty, or a reference to an
-/// anchor, passes each of them.
+/// A value that is empty, or a reference to an anchor, passes each of them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Accepts {
     Any,
@@ -12,7 +8,6 @@ pub(super) enum Accepts {
     TextOrList,
     TextOrMap,
     ListOrMap,
-    /// A text that is one of the restart policies of Compose.
     Restart,
 }
 
@@ -20,8 +15,7 @@ const TOP_LEVEL: [&str; 9] = [
     "name", "version", "services", "networks", "volumes", "configs", "secrets", "include", "models",
 ];
 
-/// Whether `key` is a key of the top level of a Compose file. Each key that starts with `x-`
-/// is an extension, which Compose ignores.
+/// A key that starts with `x-` is an extension, which Compose ignores.
 pub(super) fn top_level(key: &str) -> bool {
     key.starts_with("x-") || TOP_LEVEL.contains(&key)
 }
@@ -102,7 +96,6 @@ const LIST_OR_MAP: [&str; 7] = [
     "annotations",
 ];
 
-/// The keys of a service whose value the check does not look at.
 const ANY: [&str; 31] = [
     "attach",
     "cgroup",
@@ -137,7 +130,6 @@ const ANY: [&str; 31] = [
     "use_api_socket",
 ];
 
-/// The keys of a service, each with the forms of its value.
 const SERVICE: [(&[&str], Accepts); 8] = [
     (&TEXT, Accepts::Text),
     (&LIST, Accepts::List),
@@ -149,7 +141,6 @@ const SERVICE: [(&[&str], Accepts); 8] = [
     (&["restart"], Accepts::Restart),
 ];
 
-/// The forms of the value of `key` in a service; `None` for a key that Compose does not know.
 pub(super) fn service(key: &str) -> Option<Accepts> {
     SERVICE
         .iter()
@@ -157,8 +148,7 @@ pub(super) fn service(key: &str) -> Option<Accepts> {
         .map(|(_, accepts)| *accepts)
 }
 
-/// `key` as a name that Compose defines, of the top level or of a service; `None` for each
-/// other text, also an extension, which is a name that the operator chose.
+/// `None` for each other text, also an extension, which is a name that the operator chose.
 pub(super) fn defined(key: &str) -> Option<&'static str> {
     let service = SERVICE.iter().flat_map(|(keys, _)| keys.iter());
     TOP_LEVEL
@@ -168,8 +158,7 @@ pub(super) fn defined(key: &str) -> Option<&'static str> {
         .copied()
 }
 
-/// Whether `policy` is a restart policy of Compose. A text with a variable passes: Compose
-/// fills it later.
+/// A text with a variable passes: Compose fills it later.
 pub(super) fn restart_policy(policy: &str) -> bool {
     let retries = |count: &str| !count.is_empty() && count.bytes().all(|b| b.is_ascii_digit());
     policy.contains('$')

@@ -1,5 +1,3 @@
-//! The K1 inputs of the place mutations and their conversion to the places model.
-
 use async_graphql::{Error as GraphQlError, ID, InputObject, MaybeUndefined, Result};
 
 use super::{Entry, Patch};

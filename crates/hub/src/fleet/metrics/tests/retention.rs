@@ -1,5 +1,4 @@
-//! DB-004, DB-005, DB-009, DEV-015 and HUB-005: partitions kept ahead, partitions and rows
-//! dropped when they expire, and the samples of deleted series.
+//! Metrics retention (DB-004, DB-005, DB-009, DEV-015, HUB-005).
 
 use chrono::{DateTime, Days, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -11,7 +10,6 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The names of the day partitions of `metrics.samples`, oldest first.
 async fn partitions(pool: &PgPool) -> Vec<String> {
     sqlx::query_scalar(
         "SELECT c.relname::text FROM pg_inherits i JOIN pg_class c ON c.oid = i.inhrelid \
@@ -26,7 +24,6 @@ fn name_of(at: DateTime<Utc>) -> String {
     format!("samples_{}", at.format("%Y%m%d"))
 }
 
-/// A series of `device` and its aggregate rows `age` before `now`, one row per table.
 async fn aged_aggregates(pool: &PgPool, device: DeviceId, kind: &str, ages: [TimeDelta; 3]) {
     let series = Uuid::now_v7();
     sqlx::query(
@@ -269,7 +266,6 @@ async fn d5_rotating_labels_leave_only_the_current_series_after_retention(pool: 
         .fetch_all(&pool)
         .await
         .unwrap();
-    // A label that comes back is a new series again.
     write(
         &pool,
         pve,

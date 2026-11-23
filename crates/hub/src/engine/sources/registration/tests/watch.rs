@@ -1,7 +1,3 @@
-//! PRJ-039, NET-002: the watch's pace (backoff while GitHub does not answer, no wake sooner
-//! than one wait after the last ask) and the store that is dropped or panics, with the time as
-//! a parameter.
-
 use std::{sync::Arc, time::Duration};
 
 use chrono::TimeDelta;
@@ -79,7 +75,6 @@ fn waits_for_install(attempts: &Attempts, id: Uuid) -> bool {
         .unwrap()
 }
 
-/// What a store holds while it runs: back to `APP_CREATED` unless told otherwise.
 fn settle(attempts: &Attempts, id: Uuid, round: u32) -> Settle {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(at(1, 0)));
     Settle::new(attempts.clone(), id, clock, move |held, now| {

@@ -1,7 +1,4 @@
-//! The publish of a built release to the bucket, in the publisher's order (BLD-002, BLD-064 to
-//! BLD-069): the published versions, each file put and read back, the `.sig`, the stable name,
-//! then each feed last. I/O only; the decisions are in `checks` and in the publisher's own
-//! `feed` and `files`.
+//! The publish of a built release, in the publisher's order (BLD-002, BLD-064 to BLD-069); I/O only, the decisions are in `checks`.
 
 use reqwest::Client;
 use serde_json::Value;
@@ -27,11 +24,9 @@ use crate::{
     },
 };
 
-/// The most of a published `latest.json` that is read for its version.
 const MAX_FEED_BYTES: usize = 64 * 1024;
 
-/// What publishes a built release: the bucket, the HTTP client, the clock, and the updater
-/// public key of the release commit.
+/// `public_key` is the updater public key of the release commit.
 pub struct BuiltPublisher<'a> {
     pub bucket: &'a Bucket,
     pub http: &'a Client,
@@ -48,9 +43,6 @@ impl BuiltPublisher<'_> {
         }
     }
 
-    /// The version `object`, a `latest.json`, gives in the bucket now; `None` when the bucket
-    /// has no such object. Refused when `feed`, the feed of this release, is not the one the
-    /// bucket holds for the same version.
     async fn published(
         &self,
         object: &str,
@@ -82,7 +74,6 @@ impl BuiltPublisher<'_> {
         Ok(Some(published))
     }
 
-    /// The highest version the feeds of the target give now (BLD-002, BLD-069).
     async fn floor(&self, built: &Built, feed: &str) -> Result<Option<Version>, BuiltError> {
         let mut floor = None;
         for folder in feed::platform_keys(built.target) {
@@ -93,10 +84,7 @@ impl BuiltPublisher<'_> {
         Ok(floor)
     }
 
-    /// Puts `file` at its versioned name unless the bucket holds it, then reads it back from
-    /// the bucket itself and checks its size and SHA-256, and that people can read it
-    /// (BLD-064). A name the bucket already holds with other bytes is refused: a version is
-    /// never built twice (BLD-002). Returns the `ETag` of the checked object.
+    /// A name the bucket already holds with other bytes is refused: a version is never built twice (BLD-002).
     async fn place(&self, built: &Built, file: &UploadedFile) -> Result<String, BuiltError> {
         let reach = self.reach();
         let folder = format!("{}/{}", built.target, built.version);
@@ -125,16 +113,10 @@ impl BuiltPublisher<'_> {
         Ok(read.etag)
     }
 
-    /// Publishes `built` in the publisher's order (BLD-064 to BLD-069): every check of
-    /// [`check_built`], the published versions, each file put and read back, the `.sig`, the
-    /// stable name by the checked `ETag`, then `latest.json` of each feed folder last. Returns
-    /// the feed folders written. Each step can run again: a file the bucket holds with the same
-    /// bytes is kept, and the same feed is written again.
+    /// Each step can run again: a file the bucket holds with the same bytes is kept, and the same feed is written again.
     ///
     /// # Errors
-    ///
-    /// `Refused` when a check fails, with the feed as it was; `Unavailable` when the bucket
-    /// does not answer.
+    /// `Refused` when a check fails, with the feed as it was; `Unavailable` when the bucket does not answer.
     pub async fn publish(&self, built: &Built) -> Result<&'static [&'static str], BuiltError> {
         let reach = self.reach();
         let checked = check_built(built, self.public_key, reach.bucket.public_base())?;

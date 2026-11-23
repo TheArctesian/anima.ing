@@ -1,9 +1,8 @@
-//! The bytes of a file go through `/files/v1`, not through GraphQL (K-E4 Section 9, FIL-005):
-//! `POST /files/v1/attachments` streams an upload into the store, and
-//! `GET /files/v1/attachments/{id}` streams the plain bytes back, without the location of a
-//! JPEG (FIL-003). Each request needs `Authorization: Bearer` with a login token or an API key;
-//! an upload needs the write scope. No log line holds a token, a query value or a byte of a file
-//! (LOG-007): the route is logged by its template.
+//! The bytes of a file go through `/files/v1`, not through GraphQL (K-E4 Section 9, FIL-005);
+//! a download holds no location of a JPEG (FIL-003). Each request needs a bearer login token or
+//! API key; an upload needs the write scope.
+//! No log line holds a token, a query value or a byte of a file: the route is logged by its
+//! template (LOG-007).
 
 mod answer;
 mod download;
@@ -43,10 +42,8 @@ use crate::{
 };
 use answer::refused;
 
-/// The key of the engine's own files; every other key is an extension's.
 const ENGINE_KEY: &str = "engine";
 
-/// What the two routes need.
 #[derive(Clone)]
 struct Files {
     db: PgPool,
@@ -55,8 +52,7 @@ struct Files {
     store: Store,
 }
 
-/// The routes of `/files/v1`. They have no 1 MiB limit: an upload is counted while it streams
-/// and stops at 256 MB (FIL-005).
+/// No 1 MiB limit: an upload is counted while it streams and stops at 256 MB (FIL-005).
 pub fn router(db: &PgPool, bus: &Bus, clock: &Arc<dyn Clock>, store: &Store) -> Router {
     Router::new()
         .route("/files/v1/attachments", post(upload))
@@ -70,8 +66,7 @@ pub fn router(db: &PgPool, bus: &Bus, clock: &Arc<dyn Clock>, store: &Store) -> 
         })
 }
 
-/// The operator and the address of a request whose token grants `scope`; else the status of
-/// the refusal, with an empty body as the bearer layer gives it.
+/// A refusal has an empty body, as the bearer layer gives it.
 async fn signed_in(
     files: &Files,
     request: &Parts,
@@ -107,7 +102,6 @@ struct UploadQuery {
     keep_location: Option<bool>,
 }
 
-/// What an upload asks for, checked; or each field to fix.
 fn checked(
     query: &UploadQuery,
     headers: &HeaderMap,
@@ -125,8 +119,7 @@ fn checked(
         .map(str::parse::<ArchiveId>)
         .transpose()
         .ok();
-    // The hub has no key for Class A (K-E5 Section 1, VLT-001): such a file is sealed on the
-    // client and is not an upload of this path.
+    // The hub has no key for Class A (K-E5 Section 1, VLT-001): the client seals such a file.
     let key = (query.key != ENGINE_KEY).then(|| Key::parse(&query.key));
     let key_known = !matches!(key, Some(None));
     let class_a = matches!(key, Some(Some(key)) if key.entry().data_class == Sensitivity::A);
@@ -216,7 +209,6 @@ async fn upload(
     }
 }
 
-/// Stages the body, then places it and writes its trail in one transaction.
 async fn stored(
     files: &Files,
     who: (Operator, ClientAddr),

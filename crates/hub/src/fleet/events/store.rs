@@ -1,5 +1,3 @@
-//! The only SQL for `events.event_log` and `events.audit_log`.
-
 use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 use uuid::Uuid;
@@ -21,8 +19,7 @@ pub(super) use start_check::start_refusal;
 
 const ENSURE_DAY_PARTITION: &str = "select events.ensure_day_partition($1, $2)";
 
-/// Creates the UTC-day partition of `parent` that holds `at`, if it does not exist yet (D-4).
-/// Inside the caller's transaction.
+/// Runs in the caller's transaction (D-4).
 async fn ensure_day_partition(
     conn: &mut PgConnection,
     parent: &str,
@@ -36,13 +33,10 @@ async fn ensure_day_partition(
     Ok(())
 }
 
-/// How long a scheduled partition change waits for a lock on a log before it gives up (D-4).
-/// Waiting longer would queue every reader and writer of that log behind it; the daily job
-/// retries instead.
+/// Waiting longer would queue every reader and writer of the log; the daily job retries (D-4).
 const SCHEDULED_LOCK_TIMEOUT: &str = "set local lock_timeout = '2s'";
 
-/// A short transaction of its own for one scheduled partition change, with
-/// [`SCHEDULED_LOCK_TIMEOUT`]. Never a caller's transaction, so the lock ends at its commit.
+/// Never a caller's transaction, so the lock ends at its commit.
 async fn scheduled_change(db: &PgPool) -> Result<Transaction<'static, Postgres>, sqlx::Error> {
     let mut tx = db.begin().await?;
     sqlx::query(SCHEDULED_LOCK_TIMEOUT)
@@ -51,8 +45,6 @@ async fn scheduled_change(db: &PgPool) -> Result<Transaction<'static, Postgres>,
     Ok(tx)
 }
 
-/// Creates the day partitions of both logs that hold `at`, each in a short transaction of its
-/// own, so the lock it takes on a parent ends at once.
 pub(super) async fn create_day_partitions(
     db: &PgPool,
     at: DateTime<Utc>,
@@ -69,9 +61,7 @@ pub(super) async fn create_day_partitions(
     Ok(())
 }
 
-/// Drops the partitions of `log` for UTC days before `first_kept_day` and returns their names,
-/// in a short transaction of its own. The database refuses a day inside the retention period
-/// of `now` or of its own clock.
+/// The database refuses a day inside the retention period of `now` or of its own clock.
 pub(super) async fn drop_day_partitions_before(
     db: &PgPool,
     log: Log,
@@ -89,7 +79,7 @@ pub(super) async fn drop_day_partitions_before(
     Ok(dropped)
 }
 
-/// Inserts the event and returns it as stored (`at` at the database's microsecond precision).
+/// Returns the event as stored, with `at` at the database's microsecond precision.
 pub(super) async fn insert_event(
     conn: &mut PgConnection,
     at: DateTime<Utc>,
@@ -128,9 +118,7 @@ pub(super) async fn insert_event(
     })
 }
 
-/// Inserts the audit entry as given and returns it as stored; the caller has already redacted
-/// `change`. The actor's kind, token kind and key name go in their own columns; never the token
-/// (LOG-018).
+/// The caller has already redacted `change`; the actor's token is never stored (LOG-018).
 pub(super) async fn insert_audit(
     conn: &mut PgConnection,
     at: DateTime<Utc>,
@@ -163,7 +151,6 @@ pub(super) async fn insert_audit(
     Ok(stored.into())
 }
 
-/// A stored `event_log` row.
 #[derive(sqlx::FromRow)]
 struct EventRow {
     id: Uuid,
@@ -193,7 +180,6 @@ impl TryFrom<EventRow> for EventSummary {
     }
 }
 
-/// Up to `limit` events that pass `filter`, newest first, after `after` when it is given.
 pub(super) async fn list_events(
     db: &PgPool,
     filter: &EventFilter,
@@ -233,7 +219,6 @@ pub(super) async fn list_events(
     rows.into_iter().map(EventSummary::try_from).collect()
 }
 
-/// A stored `audit_log` row.
 #[derive(sqlx::FromRow)]
 struct AuditRow {
     id: Uuid,
@@ -249,8 +234,7 @@ struct AuditRow {
     api_key_name: Option<String>,
 }
 
-/// The kind stored as `text`, read with `parse`; `None` for a row written before the column
-/// existed, an error for text this hub does not know.
+/// `None` for a row written before the column existed; an error for text this hub does not know.
 fn stored_kind<T>(
     text: Option<&str>,
     parse: impl Fn(&str) -> Option<T>,
@@ -261,8 +245,7 @@ fn stored_kind<T>(
     .transpose()
 }
 
-/// Up to `limit` audit entries of `actor` (every kind when `None`), newest first, after
-/// `after` when it is given. An entry with no recorded kind matches only `None` (LOG-020).
+/// An entry with no recorded kind matches only `None` (LOG-020).
 pub(super) async fn list_audit(
     db: &PgPool,
     actor: Option<ActorKind>,

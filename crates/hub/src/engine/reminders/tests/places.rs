@@ -25,7 +25,6 @@ fn home() -> Place {
     }
 }
 
-/// A fix `minutes` after noon, at home or 1 km away, with `accuracy`.
 fn fix(number: u128, minutes: i64, at_home: bool, accuracy: Option<f64>) -> Sample {
     Sample {
         id: SampleId::from(Uuid::from_u128(number)),
@@ -75,7 +74,6 @@ fn rem_006_an_uncertain_or_an_older_fix_changes_no_state() {
         changed_at: at("2026-11-16T12:30:00Z"),
         sample: SampleId::from(Uuid::from_u128(9)),
     }];
-    // A late import of a fix outside, from before the arrival.
     let late = [fix(3, 10, false, Some(10.0))];
     assert_eq!(place_changes(&inside, &late, &places), []);
     let left = [fix(4, 45, false, Some(10.0))];

@@ -1,24 +1,7 @@
-//! Everything the tunnel does before the WebSocket upgrade, after the ticket is redeemed:
-//! load the device and check its protocol is still on, resolve and check its host (R-032),
-//! load the accepted RDP server certificate and check the device still presents it, load the
-//! stored password for the host just resolved (SEC-011), build the `connect` values and run
-//! the guacd handshake (K4 Sections 2 and 3). A password entered for another host ends the
-//! session before guacd is reached.
-//!
-//! The certificate check (SEC-007, K4 Section 3): for RDP with TLS or NLA and certificates
-//! not ignored, the hub reads the server certificate itself at the checked address, as the
-//! connection test does, before guacd is reached and before the password is loaded; guacd
-//! reports a mismatch only as a generic error. A different certificate opens nothing at guacd
-//! and ends the session `SERVER_CERTIFICATE_MISMATCH`. When the setting is `ANY`, guacd gets
-//! the TLS security the server chose instead (`pinned_security`), so its connection cannot
-//! fall back to standard RDP security, where no certificate is checked. guacd pins
-//! `cert-fingerprints` on that TLS connection, so a certificate that changes between the hub's
-//! read and guacd's connect fails closed as `GATEWAY_ERROR`. The read is not kept as an
-//! observation: only a connection test lets the operator accept a certificate.
-//!
-//! When the ticket's start sent a Wake-on-LAN packet, the opening first waits, up to the
-//! woken limit, until the device's port answers, so guacd connects to a device that is up
-//! (K4 Section 1). guacd's own connection to the device is not the hub's to retry.
+//! The tunnel's opening before the WebSocket upgrade (R-032, K4 Sections 1 to 3).
+//! The hub reads the RDP certificate itself before guacd and the password, as guacd reports a mismatch only generically (SEC-007).
+//! With `ANY`, guacd gets the TLS security the server chose, so it cannot fall back to standard RDP security.
+//! The read is not kept: only a connection test lets the operator accept a certificate.
 
 use std::{
     net::{IpAddr, SocketAddr},
@@ -55,32 +38,20 @@ use crate::{
     },
 };
 
-/// What the tunnel opens after the upgrade. Each way the opening can end with something to
-/// tell the client, rather than a refusal, is a variant.
 pub(super) enum Opening {
-    /// guacd is past `ready`: relay. Boxed, as it is far larger than the other variant.
     Gateway(Box<Opened>),
-    /// The device presented another RDP server certificate than the accepted one; guacd was
-    /// never reached.
     CertificateChanged,
 }
 
-/// guacd past `ready`, and what the device lets the session move, read with the rest of the
-/// device record so it holds for the session's life (K4 Section 4).
+/// The policy is read with the device record, so it holds for the session's life (K4 Section 4).
 pub(super) struct Opened {
     pub(super) connected: Connected,
     pub(super) policy: Policy,
-    /// The port of the hub that carries guacd to a computer on the link, for the life of
-    /// the session (HMD-048); none for a device that guacd reaches by the network.
+    /// Carries guacd to a computer on the link for the session's life (HMD-048).
     pub(super) carried: Option<LinkPort>,
 }
 
-/// Opens the gateway side of the ticket's session. Safe to drop at any await: the
-/// password leaves the hub only in the handshake's `connect`, after guacd's `args`, so
-/// dropping this earlier sends it nowhere (SEC-002).
-///
-/// # Errors
-/// [`NotOpened`] for each step that fails; the caller ends the session `GATEWAY_ERROR`.
+/// Safe to drop at any await: the password leaves the hub only in `connect`, after guacd's `args` (SEC-002).
 pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Opening, NotOpened> {
     let desktop = Desktop::of(ticket.protocol).ok_or(NotOpened::NotDesktop)?;
     let mut device = devices::get(&route.db, ticket.device)
@@ -122,16 +93,13 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
     through_gateway(route, ticket, desktop, checked).await
 }
 
-/// A device whose address the opening resolved and checked, with its accepted certificate.
 struct Checked<'a> {
     device: &'a Device,
     address: SocketAddr,
     certificate: Option<&'a ServerCertificate>,
 }
 
-/// Opens guacd for the device at its checked address. guacd cannot reach a computer
-/// on the link, so for a link address it gets a port of the hub that carries there (HMD-048);
-/// the port stays open with the session.
+/// guacd cannot reach a computer on the link, so it gets a hub port that carries there (HMD-048).
 async fn through_gateway(
     route: &Route,
     ticket: &PendingTicket,
@@ -174,8 +142,7 @@ async fn through_gateway(
     })))
 }
 
-/// The device's stored password for `desktop`, opened only for the device's host the opening
-/// resolved (SEC-011); a password entered for another host ends the opening before guacd.
+/// Opened only for the host the opening resolved; one entered for another host ends the opening (SEC-011).
 async fn password(
     route: &Route,
     device: &Device,
@@ -190,8 +157,7 @@ async fn password(
         })
 }
 
-/// The device's accepted RDP server certificate, when it has one; an RDP session that needs
-/// one and has none is refused, as `start` refuses it (K4 Section 2). VNC has none.
+/// An RDP session that needs a certificate and has none is refused, as `start` refuses it (K4 Section 2).
 async fn certificate(
     route: &Route,
     device: &Device,
@@ -210,10 +176,7 @@ async fn certificate(
     Ok(accepted)
 }
 
-/// The TLS security the RDP server at the checked `address` chose when it presents
-/// `accepted`; `None` when it presents another certificate. The hub asks for TLS or NLA, as
-/// the connection test does, and reads the certificate within the connect wait. The address
-/// is an IP, so it is not resolved again; the address policy still checks it.
+/// `None` when another certificate is presented; the address is an IP, so it is not resolved again.
 async fn presents(
     route: &Route,
     address: SocketAddr,
@@ -241,10 +204,7 @@ async fn presents(
     }
 }
 
-/// The address the session goes to: the first one the device's host resolves to, when
-/// `policy` lets the gateway reach every one of them (R-030, R-032), in its canonical form,
-/// so an IPv4-mapped address is checked and sent as the IPv4 address it is
-/// ([`targets::resolve_checked`]).
+/// The first resolved address, when `policy` lets the gateway reach every one (R-030, R-032).
 async fn target(host: &str, port: u16, policy: &AddressPolicy) -> Result<IpAddr, NotOpened> {
     let checked =
         targets::resolve_checked(host, port, policy)
@@ -259,9 +219,7 @@ async fn target(host: &str, port: u16, policy: &AddressPolicy) -> Result<IpAddr,
         .ok_or(NotOpened::Unresolved)
 }
 
-/// The address of the device that is waking up, once its port answers: the first of its
-/// checked addresses that accepts a connection, tried again every `retry`. The
-/// connection is closed at once; guacd makes its own.
+/// The probe connection is closed at once; guacd makes its own.
 async fn awake(
     host: &str,
     port: u16,

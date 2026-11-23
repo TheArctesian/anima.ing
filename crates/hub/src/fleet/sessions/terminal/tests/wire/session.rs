@@ -1,6 +1,4 @@
-//! One full terminal session (K4 Sections 7 and 8.4): the PTY at the client's size, bytes
-//! both ways in order (standard error included), `resize` as a window change, `ping` both
-//! ways, and the shell's exit as `REMOTE_CLOSED`.
+//! One full terminal session (K4 Sections 7 and 8.4).
 
 use std::{
     sync::{
@@ -25,7 +23,6 @@ use crate::fleet::sessions::{
     tests::fixture::{LOOPBACK, ended, ended_once, now, stored_text},
 };
 
-/// Everything the operator typed that reached the server, until it holds `expected`.
 async fn typed_until(bench: &mut super::Bench, expected: &[u8]) -> Vec<u8> {
     let mut typed = Vec::new();
     while !typed
@@ -115,8 +112,7 @@ async fn k4_8_4_the_hub_pings_when_silent_and_client_pings_keep_the_session(pool
         terminal.timing.client_idle = Duration::from_millis(1_500);
     });
     let (bench, mut client) = session(&pool, setup).await;
-    // The client pings for three of its idle waits; the hub pings it meanwhile, some 20
-    // times in all.
+    // The client pings for three idle waits; the hub pings some 20 times meanwhile.
     let mut hub_pings = 0;
     for _ in 0..15 {
         client.send(r#"{"type":"ping"}"#).await;
@@ -147,8 +143,7 @@ async fn k4_8_4_the_hub_pings_when_silent_and_client_pings_keep_the_session(pool
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn k4_8_5_output_the_client_has_not_read_waits_in_the_device_not_the_hub(pool: PgPool) {
-    // The client reads nothing while the shell writes until its writes stall (its window and
-    // the hub's channel buffer are full); once the client reads, every byte arrives in order.
+    // The client reads nothing until the shell's writes stall on full buffers; then every byte arrives in order.
     let (bench, mut client) = session(&pool, Setup::default()).await;
     let chunk = vec![b'x'; 32 * 1024];
     let ssh = Arc::new(bench.ssh);

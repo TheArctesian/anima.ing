@@ -1,17 +1,10 @@
-//! The check before the hub connects to the link's control socket: the rule of `DialOwned` in
-//! `link/statedir/statedir.go`, so that nothing the hub sends (an invite request, a revocation)
-//! can reach another user. The socket must be the hub user's and owner-only; its folder must be
-//! too; no folder above may be another user's or open to others without the sticky bit; and a
-//! symbolic link in the path passes only when no other user can change where it leads.
+//! The check before the hub connects to the link's control socket, the rule of `DialOwned` in
+//! `link/statedir/statedir.go`, so that nothing the hub sends can reach another user.
 //!
-//! On macOS an access-control list can admit another user whatever the mode bits say, so the
-//! socket and its folder must have none (the link drops them from its folder, `chmod -N`).
-//! Without `unsafe` the hub has no ACL call, so it reads them as `/bin/ls -lde` prints them.
-//! On Linux the group bits of a file with an ACL are its mask: the owner-only test already
-//! refuses any entry that grants access.
-//!
-//! The check reads file metadata. Between it and the connect, only this user or root can change
-//! what the path leads to.
+//! On macOS an access-control list can admit another user whatever the mode bits say; without
+//! `unsafe` the hub reads ACLs as `/bin/ls -lde` prints them. On Linux the group bits of a file
+//! with an ACL are its mask, so the owner-only test already refuses it. Between the check and
+//! the connect, only this user or root can change what the path leads to.
 
 use std::{
     fs::{self, Metadata},
@@ -30,11 +23,6 @@ const UNREADABLE: &str = "a folder of the socket's path cannot be read";
 #[cfg(target_os = "macos")]
 const ACL: &str = "the socket or its folder has an access-control list";
 
-/// Whether the socket at `path` is safe to connect to for the user `uid`.
-///
-/// # Errors
-/// `NotRunning` when the socket or a folder of its path is not there; `Exposed` with the rule
-/// it breaks otherwise.
 pub(super) fn check(path: &Path, uid: u32) -> Result<(), Error> {
     let folder = path.parent().ok_or(Error::Exposed(FOLDER))?;
     private(folder, uid)?;
@@ -45,7 +33,6 @@ pub(super) fn check(path: &Path, uid: u32) -> Result<(), Error> {
     without_acl(folder, path)
 }
 
-/// Neither path has an access-control list entry (macOS).
 #[cfg(target_os = "macos")]
 fn without_acl(folder: &Path, socket: &Path) -> Result<(), Error> {
     let listed = std::process::Command::new("/bin/ls")
@@ -76,8 +63,8 @@ const fn without_acl(_: &Path, _: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-/// A line `ls -le` prints for one ACL entry (` 0: group:everyone allow list`), or a mode with
-/// the `+` that marks an ACL. A name with a line break can only make the hub refuse.
+/// An entry line is ` 0: group:everyone allow list`; a name with a line break can only make the
+/// hub refuse.
 #[cfg(target_os = "macos")]
 fn acl_entry(line: &str) -> bool {
     let entry = line.starts_with(' ')
@@ -91,7 +78,6 @@ fn acl_entry(line: &str) -> bool {
     entry || marked
 }
 
-/// The folder is this user's and owner-only, and every folder above it is safe.
 fn private(folder: &Path, uid: u32) -> Result<(), Error> {
     let stat = fs::symlink_metadata(folder).map_err(|error| absent(&error))?;
     if !stat.is_dir() || !owner_only(&stat, uid) {
@@ -109,8 +95,6 @@ fn private(folder: &Path, uid: u32) -> Result<(), Error> {
     Ok(())
 }
 
-/// Each symbolic link in the path as written is root's or this user's, in a folder that is
-/// root's or this user's and that others cannot write to.
 fn no_foreign_link_above(folder: &Path, uid: u32) -> Result<(), Error> {
     for above in folder.ancestors().skip(1) {
         let Some(parent) = above.parent() else {
@@ -128,7 +112,6 @@ fn no_foreign_link_above(folder: &Path, uid: u32) -> Result<(), Error> {
     Ok(())
 }
 
-/// Group or others may write it, and the sticky bit does not stop them replacing an entry.
 fn open_to_others(stat: &Metadata) -> bool {
     const STICKY: u32 = 0o1000;
     let mode = stat.permissions().mode();
@@ -144,8 +127,7 @@ fn owner_only(stat: &Metadata, uid: u32) -> bool {
     stat.permissions().mode() & GROUP_AND_OTHERS == 0 && stat.uid() == uid
 }
 
-/// A missing part of the path means the link is not running; any other failure to read it
-/// means the hub cannot tell, so it sends nothing.
+/// Any failure other than a missing part means the hub cannot tell, so it sends nothing.
 fn absent(error: &io::Error) -> Error {
     if error.kind() == ErrorKind::NotFound {
         Error::NotRunning

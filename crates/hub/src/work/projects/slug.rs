@@ -1,17 +1,10 @@
-//! The slug of a new project: its address in the client (`/projects/<slug>`). Pure.
-//!
-//! The repository name in lower case, each run of other characters made one dash. When that
-//! is taken, the owner is added; when that is taken too, a number from 2. A slug never
-//! changes after the project is made, so a rename upstream keeps the address.
+//! The slug of a new project, its address in the client (`/projects/<slug>`).
+//! A slug never changes after the project is made, so a rename upstream keeps the address.
 
-/// Most characters kept from the repository name and from the owner.
 const NAME_CHARS: usize = 64;
 const OWNER_CHARS: usize = 40;
-/// The slug of a name with no letter or digit.
 const NAMELESS: &str = "project";
 
-/// `text` in lower case ASCII letters and digits, each run of anything else one dash, with no
-/// dash at either end, at most `max` characters.
 fn plain(text: &str, max: usize) -> String {
     let mut out = String::new();
     for c in text.chars() {
@@ -33,7 +26,6 @@ fn plain(text: &str, max: usize) -> String {
     out
 }
 
-/// The slug for the repository `full_name` (`owner/name`) that is not in `taken`.
 #[must_use]
 pub fn for_repository(full_name: &str, taken: &[String]) -> String {
     let (owner, name) = full_name.split_once('/').unwrap_or(("", full_name));
@@ -64,8 +56,7 @@ pub fn for_repository(full_name: &str, taken: &[String]) -> String {
         .unwrap_or(with_owner)
 }
 
-/// The base slug of `full_name`: every slug [`for_repository`] can give starts with it, so the
-/// store reads only the slugs that start with it.
+/// Every slug [`for_repository`] gives starts with this, so the store reads only those.
 #[must_use]
 pub fn stem(full_name: &str) -> String {
     let name = full_name

@@ -1,7 +1,5 @@
-//! The projects GraphQL part (K1; XP-02): the projects, one project, leave out and restore a
-//! repository, confirm a resource; and, merged in, the live reads of a repository's pull
-//! requests, issues, workflow runs, history and code (PRJ-027 to PRJ-035) and the changes made
-//! there (OD-E14).
+//! The projects GraphQL part (K1; XP-02), with the live reads of a repository (PRJ-027 to PRJ-035)
+//! and the changes made there (OD-E14) merged in.
 //!
 //! Every field is `CONFLICT` while Projects is off (EXT-002). Each mutation that changes
 //! something writes its change, one audit entry and one event in one transaction.

@@ -45,7 +45,6 @@ store_test! {
     async fn vpn_001_site_with_an_overlapping_subnet_is_a_subnet_error(pool: PgPool) {
         let mut conn = pool.acquire().await.unwrap();
         let id = site_id(NEW_SITE);
-        // Inside home 10.10.0.0/24, and identical to it: both are overlaps.
         for subnet in ["10.10.0.128/25", "10.10.0.0/24", "10.0.0.0/8"] {
             let error = store::create_site(&mut conn, id, &new_site("lab", subnet)).await;
             assert_eq!(field_of(error.unwrap_err()), "subnet", "{subnet}");

@@ -98,7 +98,6 @@ fn r_259_inside_20_seconds_the_machine_with_more_free_memory_gets_the_job_and_af
     let mut large = offer(&claim_of(MAC));
     large.memory_bytes = 32 * GB;
 
-    // The small machine asks first, 5 seconds after the job came; the large one asked before.
     let early = verdicts(&jobs, &small, std::slice::from_ref(&large), at(5));
     assert_eq!(early, [Verdict::WaitsForBetter]);
     assert_eq!(placement::choose(&jobs, &early, small.device), None);
@@ -108,7 +107,6 @@ fn r_259_inside_20_seconds_the_machine_with_more_free_memory_gets_the_job_and_af
         Some(&jobs[0])
     );
 
-    // After the 20 seconds the first machine that asks and fits gets it.
     let last = verdicts(&jobs, &small, std::slice::from_ref(&large), at(19));
     assert_eq!(last, [Verdict::WaitsForBetter]);
     let late = verdicts(&jobs, &small, std::slice::from_ref(&large), at(20));
@@ -188,7 +186,6 @@ fn rou_006_a_named_machine_that_can_never_run_the_job_is_refused_with_the_reason
         None
     );
 
-    // Too little free memory can change: the job waits.
     mac.memory_bytes = 1;
     assert_eq!(
         placement::never_fits(&job, Some((&known, &mac)), at(0)),

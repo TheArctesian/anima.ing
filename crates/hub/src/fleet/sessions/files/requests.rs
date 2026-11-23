@@ -1,6 +1,4 @@
-//! What the files tunnel does with each client message and each device answer (K4 Section 9):
-//! one transfer at a time; the device's transfer flags read at each request; an upload takes
-//! exactly its size and never replaces a file; each finished or refused transfer is recorded.
+//! K4 Section 9: the device's transfer flags are read again at each request.
 
 use std::sync::Arc;
 
@@ -22,7 +20,6 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The device's transfer flags now, or `None` when the device is gone.
 async fn flags(db: &PgPool, device: DeviceId) -> Result<Option<TransferPolicy>, Broken> {
     match devices::get(db, device).await {
         Ok(device) => Ok(Some(device.transfer)),
@@ -31,7 +28,6 @@ async fn flags(db: &PgPool, device: DeviceId) -> Result<Option<TransferPolicy>, 
     }
 }
 
-/// Opens `path` for a download when the device's flags allow it at this request.
 async fn readable(db: PgPool, device: DeviceId, remote: Arc<Remote>, path: DevicePath) -> Done {
     let open: Asked<(Handle, u64)> = match flags(&db, device).await {
         Ok(Some(flags)) if flags.download => remote.open_download(&path).await,
@@ -42,7 +38,6 @@ async fn readable(db: PgPool, device: DeviceId, remote: Arc<Remote>, path: Devic
     Done::Readable(open)
 }
 
-/// Creates `path` for an upload when the device's flags allow it at this request.
 async fn created(db: PgPool, device: DeviceId, remote: Arc<Remote>, path: DevicePath) -> Done {
     let create: Asked<Handle> = match flags(&db, device).await {
         Ok(Some(flags)) if flags.upload => remote.create(&path).await,
@@ -54,7 +49,6 @@ async fn created(db: PgPool, device: DeviceId, remote: Arc<Remote>, path: Device
 }
 
 impl Relay {
-    /// One WebSocket message from the client. Any message restarts the client's silence.
     pub(super) fn on_client(
         &mut self,
         message: Option<Result<Message, axum::Error>>,
@@ -72,7 +66,6 @@ impl Relay {
         }
     }
 
-    /// A binary frame: upload bytes, only while an upload takes them, never past its size.
     fn on_frame(&mut self, bytes: Bytes) -> Result<(), Cause> {
         let Some(Active { transfer, stage }) = self.active.as_mut() else {
             return Err(Cause::InvalidInstruction);
@@ -98,7 +91,6 @@ impl Relay {
         Ok(())
     }
 
-    /// A text request. While a transfer is in flight only `cancel` and `ping` are accepted.
     fn on_request(&mut self, request: Request) -> Result<(), Cause> {
         let (db, device) = (self.trail.db.clone(), self.trail.ticket.device);
         let remote = Arc::clone(&self.remote);
@@ -129,8 +121,6 @@ impl Relay {
         });
     }
 
-    /// Ends the transfer in flight at the client's request: an open file is closed (an
-    /// upload's is also removed) and `done` follows; a refused upload stops dropping frames.
     fn cancel(&mut self) {
         let Some(active) = self.active.as_mut() else {
             return;
@@ -155,7 +145,7 @@ impl Relay {
         }
     }
 
-    /// One answer from the device. The time it took is not the client's silence.
+    /// The time a device answer took is not the client's silence.
     pub(super) async fn on_done(&mut self, done: Done) -> Result<(), Cause> {
         self.work = None;
         self.device_quiet.restart(Instant::now());
@@ -188,8 +178,6 @@ impl Relay {
         self.send(Message::Text(text.into())).await
     }
 
-    /// The file opened: a download announces its size and starts reading; an upload waits
-    /// for frames. A transfer of 0 bytes closes at once.
     async fn opened(&mut self, handle: Handle, size: Option<u64>) -> Result<(), Cause> {
         let Some(active) = self.active.as_mut() else {
             return Err(Cause::GatewayError);
@@ -207,8 +195,6 @@ impl Relay {
         Ok(())
     }
 
-    /// The request was refused: the audit entry, then `refused`; a refused upload's frames
-    /// are dropped up to its size.
     async fn refused(&mut self, reason: Refusal) -> Result<(), Cause> {
         let Some(active) = self.active.take() else {
             return Err(Cause::GatewayError);
@@ -230,7 +216,6 @@ impl Relay {
         Ok(())
     }
 
-    /// A download's chunk: sent as one frame, then the next read, or the close at the end.
     async fn read(&mut self, data: Vec<u8>, asked: u32) -> Result<(), Cause> {
         let Some(active) = self.active.as_mut() else {
             return Err(Cause::GatewayError);
@@ -245,7 +230,6 @@ impl Relay {
         Ok(())
     }
 
-    /// Starts the download's next read, of at most what is left.
     fn read_next(&mut self) {
         let Some(Active {
             transfer,
@@ -259,7 +243,7 @@ impl Relay {
         self.start(async move { Done::Read(remote.read(&handle, offset, asked).await, asked) });
     }
 
-    /// Closes the open file once every byte has moved; `true` when it started the close.
+    /// `true` when it started the close.
     fn close_if_complete(&mut self) -> bool {
         let Some(active) = self.active.as_mut() else {
             return false;
@@ -276,9 +260,8 @@ impl Relay {
         true
     }
 
-    /// The file closed: the audit entry, then `done`. A finished upload the device did not
-    /// close cleanly has failed; a download's bytes are all sent either way, and a cancelled
-    /// transfer is over whether or not the device took the close or the removal.
+    /// Only a finished upload fails on a bad close: a download's bytes are all sent, and a
+    /// cancelled transfer is over either way.
     async fn closed(&mut self, closed: Result<(), Broken>) -> Result<(), Cause> {
         let Some(Active {
             transfer,

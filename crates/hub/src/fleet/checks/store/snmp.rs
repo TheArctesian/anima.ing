@@ -17,16 +17,12 @@ use crate::{
     ids::CheckId,
 };
 
-/// The type, configuration, sealed secrets and legacy host of a check row.
 type SnmpRow = (String, Value, Option<Vec<u8>>, Option<String>);
 
-/// An [`SnmpRow`] with the check's name.
 type NamedSnmpRow = (String, Value, Option<Vec<u8>>, Option<String>, String);
 
-/// The stored SNMP setup of the check, read like `load_http_secrets`: the secrets open only
-/// for the version and user name the stored configuration names, and for `host`, the device
-/// host the probe sends to (SEC-005, SEC-010). `None` when the check is not an SNMP check and
-/// holds no secrets.
+/// The secrets open only for the stored version and user name, and for `host`, the device host
+/// the probe sends to (SEC-005, SEC-010).
 pub(in crate::fleet::checks) async fn load_snmp_secrets<'e>(
     db: impl PgExecutor<'e>,
     vault: &Vault,
@@ -51,9 +47,7 @@ pub(in crate::fleet::checks) async fn load_snmp_secrets<'e>(
     Ok(Some(SnmpSetup { config, secrets }))
 }
 
-/// Removes the check's SNMP secrets, in the caller's transaction, when they were entered for
-/// another host than `host`; returns the check's name when it removed them. The row is locked
-/// and opened again first, so secrets entered meanwhile for `host` are kept.
+/// The row is locked and opened again first, so secrets entered meanwhile for `host` are kept.
 pub(in crate::fleet::checks) async fn forget_snmp_secrets(
     conn: &mut PgConnection,
     vault: &Vault,

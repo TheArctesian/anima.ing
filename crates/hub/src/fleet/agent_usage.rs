@@ -1,14 +1,7 @@
-//! The use of the AI agent programs on each device: the counts of prompts, tool calls and
-//! tokens of each session of Claude Code and Codex by UTC day and by model, as the daemon of
-//! the device sends them in its push batch, and what each daemon can read (R-135; AIS-018 to
-//! AIS-024; K8 Section 4).
+//! The use of the AI agent programs on each device (R-135; AIS-018 to AIS-024; K8 Section 4).
 //!
-//! [`record`] stores an accepted `agentUsage` member in the transaction of its batch: an
-//! upsert, so the same entry sent again changes nothing. [`usage`] sums the stored counts by
-//! the dimensions the operator asks for. The pure part: [`prices`] estimates the cost of
-//! tokens from a fixed table of public list prices (AIS-021), and [`grouping`] folds the sums
-//! by model into the groups asked for. The texts (model and repository names) come from a
-//! device: they were checked at ingest and only ever reach SQL as bound values.
+//! Model and repository names come from a device: they are checked at ingest and reach SQL only
+//! as bound values.
 
 pub mod accounts;
 pub mod graphql;
@@ -28,7 +21,6 @@ pub use model::{Ask, Dimension, DimensionSet, Report, Session, SessionList, Stor
 
 use crate::ids::DeviceId;
 
-/// The most groups one query may sum before the hub asks for fewer dimensions or days.
 const MAX_GRAINS: usize = 20_000;
 
 /// Why an agent usage operation failed. Messages are fixed text: they hold no SQL and no
@@ -37,19 +29,14 @@ const MAX_GRAINS: usize = 20_000;
 pub enum Error {
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// A stored source or state this version does not know.
     #[error("a stored agent usage row cannot be read")]
     Unreadable,
-    /// The groups asked for are more than the hub sums in one query.
     #[error("too many groups")]
     TooManyGroups,
 }
 
-/// Stores `usage`, accepted from a batch of `device`, in the caller's transaction (K8 Section
-/// 4): the state when the hub knows it, and each session day of a known source, which replaces
-/// what is stored for that session and day. Start, end and repository of a session come from
-/// its entry stored last. The accounts, when the batch sent them, replace the device's earlier
-/// report of each source (R-313).
+/// Stores `usage` from a batch of `device` in the caller's transaction (K8 Section 4, R-313):
+/// each session day replaces what is stored for that session and day.
 ///
 /// # Errors
 /// `Database` when a statement fails; nothing of the batch is then kept.
@@ -69,9 +56,8 @@ pub async fn record(
     Ok(())
 }
 
-/// The sums `ask` asks for over the days from `first_day` to `last_day`, both included: one
-/// group for each value of the dimensions in `ask.by`, the total, and the usage state of each
-/// device the filter admits. Groups are in no set order.
+/// The sums `ask` asks for, the total and the usage state of each device; groups are in no set
+/// order.
 ///
 /// # Errors
 /// `TooManyGroups` past [`MAX_GRAINS`]; `Database` when a query fails; `Unreadable` for a
@@ -91,9 +77,8 @@ pub async fn usage(db: &PgPool, ask: &Ask) -> Result<Report, Error> {
     })
 }
 
-/// At most `limit` sessions that `ask` admits, the newest use first, each with its sums and
-/// estimate over the days of `ask` (AIS-025), and how many it admits in all. `ask.by` is not
-/// read.
+/// At most `limit` sessions that `ask` admits, the newest use first, and how many it admits in
+/// all (AIS-025). `ask.by` is not read.
 ///
 /// # Errors
 /// `Database` when a query fails; `Unreadable` for a stored source this version does not know.
@@ -101,8 +86,7 @@ pub async fn sessions(db: &PgPool, ask: &Ask, limit: usize) -> Result<SessionLis
     store::sessions(db, ask, limit).await
 }
 
-/// The last day of the default range: `today`, and its first day: 29 days before, so the range
-/// holds 30 days (AIS-020).
+/// The first and last day of the default 30-day range ending `today` (AIS-020).
 #[must_use]
 pub fn default_days(today: NaiveDate) -> (NaiveDate, NaiveDate) {
     let first = today

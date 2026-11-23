@@ -1,6 +1,4 @@
-//! The operator's client as the app opens it: a WebSocket to `/files?token=…` with the
-//! subprotocol `anima-files`, JSON text for requests and binary frames for upload bytes
-//! (K4 Section 9).
+//! The files client as the app opens it (K4 Section 9).
 
 use futures_util::{SinkExt as _, StreamExt as _};
 use serde_json::Value;
@@ -23,7 +21,6 @@ use tokio_tungstenite::{
 
 use super::WAIT;
 
-/// What the client got next, the hub's pings skipped.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Received {
     Text(Value),
@@ -31,15 +28,11 @@ pub(super) enum Received {
     Closed(Option<u16>),
 }
 
-/// An open files tunnel from the client's side.
 pub(super) struct Socket {
     stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
-    /// Every hub ping seen so far.
     pub(super) pings: usize,
 }
 
-/// Opens the files tunnel at `url`, offering `anima-files` when `subprotocol` is set. A
-/// refusal before the upgrade gives its HTTP status.
 pub(super) async fn open_with(url: &str, subprotocol: bool) -> Result<Socket, StatusCode> {
     let mut request = url.into_client_request().unwrap();
     if subprotocol {
@@ -63,13 +56,11 @@ pub(super) async fn open_with(url: &str, subprotocol: bool) -> Result<Socket, St
     }
 }
 
-/// Opens the files tunnel as the app does.
 pub(super) async fn open(url: &str) -> Socket {
     open_with(url, true).await.expect("the files tunnel opens")
 }
 
 impl Socket {
-    /// The next message or the close, skipping WebSocket pings and the hub's `ping`.
     pub(super) async fn next(&mut self) -> Received {
         loop {
             let message = timeout(WAIT, self.stream.next()).await.expect("a message");
@@ -92,7 +83,6 @@ impl Socket {
         }
     }
 
-    /// The next text message, which must come before anything else.
     pub(super) async fn text(&mut self) -> Value {
         match self.next().await {
             Received::Text(value) => value,
@@ -100,7 +90,6 @@ impl Socket {
         }
     }
 
-    /// The close code, after any messages still on the way.
     pub(super) async fn close_code(&mut self) -> Option<u16> {
         loop {
             if let Received::Closed(code) = self.next().await {
@@ -109,7 +98,6 @@ impl Socket {
         }
     }
 
-    /// The `download` size, then the binary frames up to it, then `done`.
     pub(super) async fn download(&mut self, path: &str) -> Vec<u8> {
         self.send(&format!(r#"{{"type":"download","path":"{path}"}}"#))
             .await;
@@ -142,13 +130,11 @@ impl Socket {
             .unwrap();
     }
 
-    /// Sends `bytes` as one text frame without checking that they are UTF-8.
     pub(super) async fn send_unchecked_text(&mut self, bytes: &[u8]) {
         let frame = Frame::message(bytes.to_vec(), OpCode::Data(Data::Text), true);
         self.stream.send(Message::Frame(frame)).await.unwrap();
     }
 
-    /// Closes with 1000 and waits for the hub's close.
     pub(super) async fn close(&mut self) -> Option<u16> {
         let normal = CloseFrame {
             code: CloseCode::Normal,

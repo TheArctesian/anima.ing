@@ -1,6 +1,5 @@
-//! The hub's side of an SSH connection's key exchange and the channels the device offers
-//! (SEC-007, K4 Section 8.3): the presented key is reported once and must be the expected
-//! one, and every channel the device opens towards the hub is refused.
+//! The hub's side of an SSH key exchange (SEC-007, K4 Section 8.3).
+//! The presented key must be the expected one, and every channel the device opens towards the hub is refused (K4 Section 8.4).
 
 use russh::{
     Channel, ChannelOpenFailure,
@@ -11,21 +10,14 @@ use tokio::sync::oneshot;
 
 use crate::fleet::trust::PublicKey;
 
-/// The hub's side of the key exchange: reports the presented key once, and lets the
-/// connection go on only when it is the expected key. A certificate, or a key the hub does
-/// not accept, is reported as `None` and never matches (SEC-007, K4 Section 8.3).
-///
-/// The device may open no channel towards the hub: a session, X11, agent, TCP/IP or
-/// stream-local forwarding channel is refused, as is one of a type russh does not know
-/// (K4 Section 8.4: one session channel, opened by the hub).
+/// A certificate, or a key the hub does not accept, is reported as `None` and never matches (SEC-007).
 pub(crate) struct Observer {
     expected: Option<PublicKey>,
     seen: Option<oneshot::Sender<Option<PublicKey>>>,
 }
 
 impl Observer {
-    /// An observer that lets the connection go on only for `expected`, and the receiver of
-    /// the key the host presents. The receiver fails when no key exchange reached the key.
+    /// The receiver fails when no key exchange reached the key.
     pub(crate) fn expecting(
         expected: Option<PublicKey>,
     ) -> (Self, oneshot::Receiver<Option<PublicKey>>) {
@@ -37,8 +29,6 @@ impl Observer {
         (observer, receiver)
     }
 
-    /// The key as the hub stores it, rebuilt from the bytes russh decoded: a certificate or a
-    /// key the hub does not accept counts as no key.
     fn presented(presented: &PublicKeyOrCertificate) -> Option<PublicKey> {
         let PublicKeyOrCertificate::PublicKey { key, .. } = presented else {
             return None;
@@ -47,7 +37,6 @@ impl Observer {
     }
 }
 
-/// Refuses a channel the device opened; the channel itself is dropped unused.
 async fn refused(channel: Channel<Msg>, reply: ChannelOpenHandle) -> Result<(), russh::Error> {
     drop(channel);
     reply
@@ -59,10 +48,7 @@ async fn refused(channel: Channel<Msg>, reply: ChannelOpenHandle) -> Result<(), 
 impl client::Handler for Observer {
     type Error = russh::Error;
 
-    /// russh has verified the exchange signature with this key before it calls this, and
-    /// calls it for the first key exchange only. A later exchange (a rekey) runs inside the
-    /// encrypted connection, so only the device that proved the expected key can take part;
-    /// russh does not check its key again.
+    /// russh verifies the signature first and calls this for the first exchange only; a rekey runs inside the encrypted connection.
     fn check_server_key(
         &mut self,
         server_public_key: &PublicKeyOrCertificate,
@@ -151,8 +137,7 @@ impl client::Handler for Observer {
         refused(channel, reply)
     }
 
-    /// Unknown channel types stay refused, as russh's default does; said here so it is not
-    /// left to a default that could change.
+    /// Unknown channel types stay refused, as russh's default does, without relying on that default.
     fn should_accept_unknown_server_channel(
         &mut self,
         _id: russh::ChannelId,

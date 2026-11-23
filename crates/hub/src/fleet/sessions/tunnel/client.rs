@@ -1,16 +1,7 @@
 //! Which client instructions reach guacd (GW-011, GW-012, GW-013, GW-015, D-8).
-//!
-//! Only an allow-list of opcodes is forwarded, each with at least the arguments guacd's
-//! handler reads: libguac indexes `argv` without checking `argc` (guacamole-server 1.5.5 and
-//! 1.6.0 `src/libguac/user-handlers.c`; `guac_user_handle_instruction` in `user.c` passes
-//! `argc` through unchecked), so a short instruction would make guacd read past the
-//! arguments it got. Anything else closes the tunnel with 1002.
-//!
-//! The session's policy narrows the list (K4 Section 4). `clipboard` is on the list whatever
-//! the policy, so a paste the device refuses is dropped with its `blob` and `end`, and the
-//! session stays up: guacamole-common-js sends the local clipboard on its own. `audio`,
-//! `file`, `put` and `get` are on the list only while the policy permits them; otherwise they
-//! close the tunnel like any opcode off the list.
+//! Only allow-listed opcodes with at least the arguments guacd reads pass; anything else closes the tunnel with 1002.
+//! libguac indexes `argv` without checking `argc` (guacamole-server 1.5.5, 1.6.0 `src/libguac/user-handlers.c`).
+//! The policy narrows the list (K4 Section 4), but a refused paste is dropped, not closed: guacamole-common-js sends the clipboard on its own.
 
 use guac_protocol::{Display, Instruction};
 
@@ -18,15 +9,12 @@ use super::decimal::decimal;
 use super::ending::Cause;
 use super::relay::{ClientStep, MAX_STREAMS, Relay};
 
-/// The client may always set the terminal colour scheme (GW-012, K4 Section 4). Only guacd's
-/// terminal protocols register it; the RDP and VNC plugins do not apply it.
+/// Always allowed (GW-012, K4 Section 4); only guacd's terminal protocols apply it.
 const COLOR_SCHEME: &str = "color-scheme";
 /// Most digits in a `size` value: 8192 has four; one more allows a leading zero.
 const SIZE_DIGITS: usize = 5;
-/// Most digits in a stream index or an `ack` status.
 const NUMBER_DIGITS: usize = 5;
 
-/// Input opcodes forwarded as they are, with the number of arguments guacd reads.
 const INPUT_ARITY: [(&str, usize); 5] = [
     ("key", 2),
     ("mouse", 3),
@@ -36,7 +24,6 @@ const INPUT_ARITY: [(&str, usize); 5] = [
 ];
 
 impl Relay {
-    /// What to do with one decoded client instruction.
     pub(super) fn on_client(&mut self, i: Instruction) -> ClientStep {
         match i.opcode.as_str() {
             "" => internal(i),
@@ -63,8 +50,7 @@ impl Relay {
         }
     }
 
-    /// `argv,<stream>,<mimetype>,<name>`: forwarded for `color-scheme`, or once for a
-    /// credential guacd asked for with `required` (GW-015).
+    /// A credential `argv` passes once, only after guacd asked for it with `required` (GW-015).
     fn argv(&mut self, i: Instruction) -> ClientStep {
         let Some(name) = i.args.get(2) else {
             return invalid();
@@ -83,8 +69,6 @@ impl Relay {
         }
     }
 
-    /// `clipboard,<stream>,<mimetype>`: forwarded when paste is on; otherwise dropped, and
-    /// the stream's `blob` and `end` with it.
     fn clipboard(&mut self, i: Instruction) -> ClientStep {
         if self.policy.transfer.paste {
             return self.open_stream(i, 2, 0);
@@ -99,8 +83,6 @@ impl Relay {
         }
     }
 
-    /// An instruction that opens client stream `args[at]`; the stream may then carry `blob`
-    /// and `end`.
     fn open_stream(&mut self, i: Instruction, arity: usize, at: usize) -> ClientStep {
         match stream_index(&i, arity, at) {
             Some(stream) => {
@@ -112,8 +94,6 @@ impl Relay {
         }
     }
 
-    /// `blob` or `end` on client stream `args[0]`: forwarded when the stream is open, dropped
-    /// when its `clipboard` was; `end` closes it either way.
     fn on_stream(&mut self, i: Instruction, arity: usize, closes: bool) -> ClientStep {
         let Some(stream) = stream_index(&i, arity, 0) else {
             return invalid();
@@ -137,8 +117,7 @@ impl Relay {
     }
 }
 
-/// The internal ping `0.,4.ping,<n>.<timestamp>;` is answered with itself and never reaches
-/// guacd (GW-011); any other internal instruction is dropped.
+/// The internal ping is answered here and never reaches guacd (GW-011).
 fn internal(i: Instruction) -> ClientStep {
     if i.args.first().is_some_and(|first| first == "ping") {
         ClientStep::Reply(i)
@@ -147,9 +126,7 @@ fn internal(i: Instruction) -> ClientStep {
     }
 }
 
-/// `size,<width>,<height>[,<dpi>]`, forwarded as plain numbers when width and height are
-/// 1..=8192 and the DPI, when present, is 48..=480 (K4 Section 4, R-018); else dropped.
-/// guacamole-common-js sends no DPI (WP-08 H-6).
+/// Bounds per K4 Section 4 and R-018; guacamole-common-js sends no DPI (WP-08 H-6).
 fn size(i: &Instruction) -> ClientStep {
     let numbers: Option<Vec<u32>> = i.args.iter().map(|arg| decimal(arg, SIZE_DIGITS)).collect();
     let sides = Display::MIN_SIDE_PX..=Display::MAX_SIDE_PX;
@@ -169,8 +146,7 @@ fn size(i: &Instruction) -> ClientStep {
     }
 }
 
-/// `ack,<stream>,<message>,<status>` for a stream guacd opened. Forwarded when the stream
-/// and status are numbers; guacd ignores an `ack` for a stream it has not open.
+/// guacd ignores an `ack` for a stream it has not opened, so only the numbers are checked.
 fn ack(i: Instruction) -> ClientStep {
     let numbers = i.args.len() >= 3
         && decimal(&i.args[0], NUMBER_DIGITS).is_some()
@@ -182,8 +158,6 @@ fn ack(i: Instruction) -> ClientStep {
     }
 }
 
-/// The client stream index in `args[at]`, when the instruction has `arity` arguments or more
-/// and the index is below guacd's stream limit.
 fn stream_index(i: &Instruction, arity: usize, at: usize) -> Option<u16> {
     if i.args.len() < arity {
         return None;
@@ -194,7 +168,6 @@ fn stream_index(i: &Instruction, arity: usize, at: usize) -> Option<u16> {
         .filter(|index| *index < MAX_STREAMS)
 }
 
-/// `get` and `put` name guacd's filesystem object in `args[0]` as a plain number.
 fn object(i: &Instruction) -> bool {
     i.args
         .first()

@@ -1,4 +1,4 @@
-//! What the timeline shows: Evidence, its category and its basis (K-E3; TML-002 to TML-004).
+//! What the timeline shows (K-E3; TML-002 to TML-004).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

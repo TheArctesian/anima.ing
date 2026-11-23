@@ -1,10 +1,6 @@
-//! How a change spends GitHub's requests, by who asked (K-E1 Section 13.1): the operator's own
-//! change (a login or browser token) may spend the sync's reserve; a change made with an API
-//! key keeps it, and one key makes at most [`CHANGES_A_MINUTE`] changes a minute, so a script
-//! or an agent in a loop cannot take the account's budget from the sync and the operator.
-//!
-//! The count is in hub memory, in fixed windows of a minute from a key's first change; the
-//! time is a parameter (CQ-021) and no lock is held across an await.
+//! The operator's own change may spend the sync's reserve; an API key's keeps it and is paced, so
+//! a script in a loop cannot take the account's budget (K-E1 Section 13.1).
+//! The count is in hub memory, a minute from each key's first change; no lock spans an await.
 
 use std::{
     collections::HashMap,

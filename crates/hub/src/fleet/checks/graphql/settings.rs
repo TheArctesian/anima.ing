@@ -1,10 +1,8 @@
-//! The common settings of a check input (interval, retries, retry interval, Degraded limit),
-//! checked for range. Pure; errors name the field, never its value.
+//! Range checks of a check input's common settings; errors name the field, never its value.
 
 use super::form::{keep, number};
 use crate::fleet::checks::FieldError;
 
-/// The common settings an operator sent, in range or reported.
 pub(super) struct Settings {
     pub(super) interval_seconds: Option<u32>,
     pub(super) retries: Option<u8>,

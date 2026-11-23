@@ -19,7 +19,6 @@ use crate::engine::sources::Keep;
 const CHECKS: Keep = Keep::for_seconds(30);
 const SETTLED_SECONDS: i64 = 600;
 
-// The overall state of a commit's checks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
 #[graphql(name = "ChecksState")]
 pub enum ChecksState {

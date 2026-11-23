@@ -1,7 +1,4 @@
-//! A session start on a Down device (K4 Section 1, RA-031, VPN-006): the packet goes first
-//! and the ticket says so, the redeemed ticket included; an Up device, one without a MAC
-//! address or a site without a wake relay gets none; a wake that fails leaves the start
-//! standing.
+//! Wake on session start (K4 Section 1, RA-031, VPN-006).
 
 use std::sync::Arc;
 
@@ -21,7 +18,7 @@ use crate::{
     },
 };
 
-/// Turns VNC on for `pve-01`, so a session needs no accepted key or certificate.
+/// VNC needs no accepted key or certificate.
 async fn vnc_on(pool: &PgPool) {
     sqlx::query("update devices.vnc_settings set enabled = true where device_id = $1::uuid")
         .bind(PVE)
@@ -30,12 +27,10 @@ async fn vnc_on(pool: &PgPool) {
         .unwrap();
 }
 
-/// Starts a VNC session on `pve-01` from loopback on `live`, the device `asleep` or not.
 async fn started(bench: &Bench, live: &Live, asleep: bool) -> Ticket {
     starting(bench, live, asleep).await.unwrap()
 }
 
-/// The start of [`started`], refused or not.
 async fn starting(bench: &Bench, live: &Live, asleep: bool) -> Result<Ticket, Error> {
     vnc_on(&bench.db).await;
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));

@@ -5,14 +5,12 @@ use serde_json::json;
 use super::PEM;
 use crate::fleet::events::redaction::{redact, redact_text};
 
-/// Asserts that each `(text, expected)` pair is masked as expected.
 fn masks(cases: &[(&str, &str)]) {
     for (text, expected) in cases {
         assert_eq!(redact_text(text), *expected, "{text}");
     }
 }
 
-/// Asserts that each text is kept as it is.
 fn keeps(texts: &[&str]) {
     for text in texts {
         assert_eq!(redact_text(text), *text);
@@ -124,8 +122,7 @@ fn log_007_redaction_masks_secret_key_value_pairs() {
     ]);
 }
 
-/// Any key that names a secret by the JSON-key rules, with `=` or `:` and spaces or quotes
-/// around the separator, including embedded JSON (S2).
+/// The JSON-key rules also apply in text (S2).
 #[test]
 fn log_007_redaction_masks_values_of_text_keys_named_like_secrets() {
     masks(&[
@@ -174,8 +171,7 @@ fn log_007_redaction_masks_values_of_text_keys_named_like_secrets() {
     assert_eq!(redact_text(&long), "password=\"[redacted]\" next");
 }
 
-/// The processor time of this thread on Unix: a busy machine takes the processor away from the
-/// thread, and that wait is not counted, so the time of a long text does not grow with the load.
+/// Thread processor time, so the time of a long text does not grow with the machine's load.
 #[cfg(unix)]
 fn clock() -> std::time::Duration {
     let time = rustix::time::clock_gettime(rustix::time::ClockId::ThreadCPUTime);
@@ -185,15 +181,14 @@ fn clock() -> std::time::Duration {
     )
 }
 
-/// The time since a fixed instant on Windows. The test runs alone (`.config/nextest.toml`), so
-/// no other test takes the processor from it.
+/// Wall time on Windows; the test runs alone (`.config/nextest.toml`).
 #[cfg(not(unix))]
 fn clock() -> std::time::Duration {
     static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
     START.get_or_init(std::time::Instant::now).elapsed()
 }
 
-/// The fastest of three redactions of `text`: a loaded machine slows a run, never speeds it.
+/// The fastest of three runs: a loaded machine slows a run, never speeds it.
 fn fastest_redaction(text: &str) -> std::time::Duration {
     (0..3)
         .map(|_| {

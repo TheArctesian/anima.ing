@@ -1,5 +1,4 @@
-//! The SQL of method repairs: what a check and its history say, the locked re-check, and
-//! the two outcomes (CHK-013, R-064). The writes run in the caller's transaction, after
+//! Method repairs (CHK-013, R-064). The writes run in the caller's transaction, after
 //! [`lock_unchanged`].
 
 use chrono::{DateTime, Utc};
@@ -13,21 +12,16 @@ use crate::{
     status::Status,
 };
 
-/// What the repair rule judges about one check.
 #[derive(Clone, Debug, PartialEq)]
 pub(in crate::fleet::checks) struct Facts {
-    /// `None` when the stored configuration cannot be read.
     pub(in crate::fleet::checks) config: Option<CheckConfig>,
     pub(in crate::fleet::checks) settings: CheckSettings,
     pub(in crate::fleet::checks) status: Status,
     pub(in crate::fleet::checks) failures: u32,
     pub(in crate::fleet::checks) paused: bool,
     pub(in crate::fleet::checks) operator_edited: bool,
-    /// When the hub tried a repair, if it ever did.
     pub(in crate::fleet::checks) tried_at: Option<DateTime<Utc>>,
-    /// Whether the stored status, a heartbeat or an uptime bucket was ever Up or Degraded
-    /// (D-3); `None` when the history was not read because a stored column already rules
-    /// out a repair.
+    /// Ever Up or Degraded (D-3); `None` when a stored column already rules out a repair.
     pub(in crate::fleet::checks) answered: Option<bool>,
 }
 
@@ -58,10 +52,8 @@ struct FactsRow {
     answered: Option<bool>,
 }
 
-/// The history is read only when the cheap columns still allow a repair: CASE evaluates its
-/// branch only when the condition holds, so a check that was tried, edited, paused or
-/// inverted costs one row read on each Down beat. Buckets are kept up to 2 years and
-/// heartbeats 30 days; the heartbeats come last, as the widest scan.
+/// CASE reads the history only when the cheap columns still allow a repair, so a ruled-out
+/// check costs one row read per Down beat; the heartbeats come last, as the widest scan.
 const FACTS_SQL: &str = "SELECT type, config, name, status, failures, interval_seconds, retries, \
         retry_interval_seconds, degraded_threshold_ms, invert, paused, operator_edited, \
         repair_tried_at, \
@@ -79,7 +71,6 @@ const FACTS_SQL: &str = "SELECT type, config, name, status, failures, interval_s
         END AS answered \
      FROM checks.checks c WHERE c.id = $1";
 
-/// The check's repair facts, or `None` when it was deleted.
 pub(in crate::fleet::checks) async fn facts(
     db: &PgPool,
     id: CheckId,
@@ -114,9 +105,7 @@ pub(in crate::fleet::checks) async fn facts(
     }))
 }
 
-/// Locks the check's row and tells whether it is still the candidate that was read: ICMP
-/// with the same stored configuration and name, not edited, not tried, not paused, Down. A
-/// change committed meanwhile, such as an operator's edit, makes it false (D-8).
+/// A change committed meanwhile, such as an operator's edit, makes it false (D-8).
 pub(in crate::fleet::checks) async fn lock_unchanged(
     conn: &mut PgConnection,
     id: CheckId,
@@ -137,7 +126,6 @@ pub(in crate::fleet::checks) async fn lock_unchanged(
     Ok(locked.is_some())
 }
 
-/// The names of the device's other checks.
 pub(in crate::fleet::checks) async fn names_beside(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -152,8 +140,6 @@ pub(in crate::fleet::checks) async fn names_beside(
     )
 }
 
-/// Makes the check the TCP check `config` named `name`: Unknown with no failures, due at
-/// `at`, its interval and retries kept, and marked as tried.
 pub(in crate::fleet::checks) async fn switch_method(
     conn: &mut PgConnection,
     id: CheckId,
@@ -175,7 +161,6 @@ pub(in crate::fleet::checks) async fn switch_method(
     Ok(())
 }
 
-/// Marks the check as tried at `at` and changes nothing else.
 pub(in crate::fleet::checks) async fn mark_tried(
     conn: &mut PgConnection,
     id: CheckId,

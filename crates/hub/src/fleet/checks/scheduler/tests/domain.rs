@@ -1,8 +1,4 @@
-//! A domain expiry check through the attempt path against a local registry (D-29, P3-003):
-//! the stored status and expiry date, a probe of a domain the check no longer names, and the
-//! hour after the last query before the next, on every path that sets a due time (R-102). The
-//! expiry notices such a beat queues: none under maintenance (Section 6.5, NOT-006), and none
-//! for a domain the check no longer names.
+//! Domain expiry checks through the attempt path (D-29, P3-003, R-102, Section 6.5, NOT-006).
 
 use std::time::Duration;
 
@@ -36,7 +32,6 @@ use crate::{
     status::Status,
 };
 
-/// What the registry is asked for the check's domain.
 const QUERY: &str = "/rdap/domain/example.test";
 const HOUR: TimeDelta = TimeDelta::hours(1);
 
@@ -48,7 +43,6 @@ fn domain_expiry(domain: &str) -> Definition {
     })
 }
 
-/// A domain expiry check on `example.test` with no retries, at the hourly floor.
 async fn add_domain_check(pool: &PgPool) -> CheckId {
     let mut new = new_check(
         device(DOCKER_HOST),
@@ -63,7 +57,6 @@ async fn add_domain_check(pool: &PgPool) -> CheckId {
     add_check(pool, new).await
 }
 
-/// A scheduler whose domain expiry probes ask `server`.
 fn domain_scheduler(pool: &PgPool, server: &Server) -> Scheduler {
     let mut ctx = context(pool);
     ctx.rdap = rdap(server);
@@ -76,13 +69,11 @@ fn domain_scheduler(pool: &PgPool, server: &Server) -> Scheduler {
     )
 }
 
-/// One tick at `at`, then the attempts it started.
 async fn tick_at(scheduler: &mut Scheduler, at: DateTime<Utc>) {
     scheduler.tick(at, &mut rng()).await;
     scheduler.finish_running(at).await;
 }
 
-/// Records that the check's last beat, and so its last RDAP query, was at `at`.
 async fn beaten_at(pool: &PgPool, id: CheckId, at: DateTime<Utc>) {
     sqlx::query("UPDATE checks.checks SET last_beat_at = $2 WHERE id = $1")
         .bind(id)
@@ -92,7 +83,6 @@ async fn beaten_at(pool: &PgPool, id: CheckId, at: DateTime<Utc>) {
         .unwrap();
 }
 
-/// Makes every beat write fail after the probe ran.
 async fn refuse_beats(pool: &PgPool) {
     for sql in [
         "CREATE FUNCTION checks.refuse_beat() RETURNS trigger LANGUAGE plpgsql AS \
@@ -104,8 +94,6 @@ async fn refuse_beats(pool: &PgPool) {
     }
 }
 
-/// A domain expiry check last queried 10 minutes before `now`, its registry and a
-/// scheduler that has not ticked yet.
 struct Queried {
     now: DateTime<Utc>,
     id: CheckId,
@@ -127,8 +115,6 @@ async fn queried_10_minutes_ago(pool: &PgPool) -> Queried {
     }
 }
 
-/// The check asks nothing at `now` and is moved to the hour after its last query or later;
-/// it runs at that new due time.
 async fn assert_waits_for_the_hour(pool: &PgPool, mut queried: Queried) {
     let Queried { now, id, .. } = queried;
     tick_at(&mut queried.scheduler, now).await;
@@ -183,7 +169,6 @@ tick_test! {
         let mut ctx = context(&pool);
         ctx.rdap = rdap(&server);
 
-        // The attempt was due for the old domain and asks about it.
         attempt::run(&ctx, due, now).await;
 
         assert_eq!(server.requests_for("/rdap/domain/example.test"), 1);
@@ -237,7 +222,6 @@ tick_test! {
 
     async fn r_102_after_a_restart_a_check_waits_the_hour_after_its_last_query(pool: PgPool) {
         let queried = queried_10_minutes_ago(&pool).await;
-        // Due before this scheduler started, as after a hub restart.
         due_at(&pool, queried.id, queried.now - TimeDelta::seconds(1)).await;
 
         assert_waits_for_the_hour(&pool, queried).await;
@@ -264,8 +248,6 @@ tick_test! {
     }
 }
 
-/// An answered probe at `at` of `domain` whose certificate and registration both end at
-/// `ends`, recorded under maintenance or not.
 async fn expiring(
     pool: &PgPool,
     id: CheckId,
@@ -329,8 +311,7 @@ tick_test! {
 tick_test! {
     async fn not_006_a_domain_check_beat_queues_one_notice_for_each_threshold_it_crosses(pool: PgPool) {
         let now = database_now(&pool).await;
-        // 20 days and 12 hours left now, then 13 a week on (the delivery partitions reach 7 days
-        // ahead, so the beats cannot go further).
+        // The delivery partitions reach 7 days ahead, so the beats go no further.
         let ends = now + TimeDelta::days(20) + TimeDelta::hours(12);
         let server = registry(expiring_at(ends)).await;
         let id = add_domain_check(&pool).await;
@@ -359,7 +340,6 @@ tick_test! {
 
         tick_at(&mut scheduler, now).await;
 
-        // 6 days is under 21, 14 and 7: one notice.
         assert_eq!(queued(&pool, id).await, ["domain_expiry"]);
     }
 }

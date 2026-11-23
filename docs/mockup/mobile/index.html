@@ -290,6 +290,8 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .chips { display: flex; gap: 8px; margin: 6px -20px 6px; padding-inline: 20px; overflow: hidden; }
 .chips span { display: inline-flex; align-items: center; gap: 8px; flex: none; block-size: 44px; padding: 0 14px; border-radius: 4px; background: var(--surface-raised); color: var(--text-secondary); font-size: 15px; }
 .chips span.on { background: var(--accent-tint); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+.remote-sample { flex: 1; min-height: 0; padding: 40px 18px; background: var(--accent-tint); }
+.remote-sample .code-note { background: var(--surface-raised); }
 .code-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
 .code-row small { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
 .code-row time { color: var(--text-secondary); font-size: 11px; text-align: right; }
@@ -647,6 +649,18 @@ Failed with result 'exit-code'.
         <div class="kb flush" data-kb="qwerty"></div>
       </div></div></div>
         <figcaption><b>SSH with the keyboard open</b><span class="tag">dark, iOS</span><p>Ctrl and Alt latch for the next key; Ctrl is latched. More keys by scrolling. The bar is hidden; back keeps the session open in Sessions.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <section class="band">
+    <header><span class="n">8</span><h2>Remote desktop</h2><p>MOB-021, RA-050</p></header>
+    <div class="row">
+      <figure class="shot"><div class="phone gd ios"><div class="screen ssh"><div class="body">
+        <div class="sesbar"><button class="btn">Keys</button><button class="btn">Fit</button><div class="t"><b>Test desktop</b><small>RDP</small></div></div>
+        <input class="entry" aria-label="Type on remote computer" placeholder="Type on remote computer">
+        <div class="remote-sample"><div class="code-note"><b>Desktop files</b><p>Documents</p><p>Downloads</p></div></div>
+      </div></div></div>
+      <figcaption><b>Remote desktop with touch</b><span class="tag">dark, iOS</span><p>Move the pointer with one finger. Pinch on the display, or use Fit to return to the original view. Tap the text field to open the keyboard.</p></figcaption></figure>
     </div>
   </section>
 

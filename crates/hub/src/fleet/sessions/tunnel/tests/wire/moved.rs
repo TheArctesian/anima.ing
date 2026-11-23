@@ -1,9 +1,5 @@
-//! The tunnel after the device's host changed between the start and the opening (SEC-011):
-//! a password entered for another host ends the session `GATEWAY_ERROR` with one Warning event
-//! that says to enter it again, and guacd never hears from the hub, so the password goes
-//! nowhere. RDP is covered in the modes that pin no certificate, where nothing else would stop
-//! it. The host text decides, not what it resolves to: `localhost` and `127.0.0.1` reach the
-//! same address and are still two hosts.
+//! A password entered for another host never reaches guacd (SEC-011).
+//! The host text decides, not what it resolves to.
 
 use sqlx::PgPool;
 use tokio_tungstenite::tungstenite::http::StatusCode;
@@ -35,9 +31,6 @@ async fn serving(args: &'static [u8]) -> FakeGuacd {
     .await
 }
 
-/// The session's tunnel after `changes` to `docker-host` and its move to `host`: 503
-/// `GATEWAY_ERROR`, one Warning event that names neither host nor password, and guacd never
-/// reached.
 async fn refused_at(pool: &PgPool, protocol: Protocol, changes: &[&str], host: &str) {
     let mut guacd = serving(RDP_ARGS).await;
     let bench = super::bench(pool, &guacd.address, Setup::protocol(protocol)).await;
@@ -90,8 +83,7 @@ async fn sec_011_a_moved_rdp_password_reaches_no_gateway_with_the_certificate_ig
     refused_at(&pool, Protocol::Rdp, &[ignored], "localhost").await;
 }
 
-/// The password entered again for the new host text opens the session there, and an
-/// unchanged host opens whatever its letter case.
+/// An unchanged host opens whatever its letter case.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
@@ -109,7 +101,6 @@ async fn sec_011_a_password_entered_again_opens_at_the_new_host(pool: PgPool) {
     assert_eq!(client.close().await, Some(1000));
 }
 
-/// A refused password is kept: once the host is changed back, the next session opens with it.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))

@@ -1,5 +1,4 @@
-//! The change of a `docker run` command into a Compose file (HOST-022). It reads the words of
-//! the command with its own reader, which expands nothing, and it runs nothing.
+//! Converts a `docker run` command into a Compose file (HOST-022); it expands and runs nothing.
 
 #![expect(
     clippy::unused_async_trait_impl,

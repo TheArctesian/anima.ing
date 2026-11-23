@@ -1,6 +1,4 @@
-//! `anima-hub release record` (task U2; ROL-003 to ROL-005, ROL-010): the job that holds the key
-//! writes a record that the check of a machine accepts, and refuses a folder that is not a
-//! release of programs.
+//! `anima-hub release record` (task U2; ROL-003 to ROL-005, ROL-010).
 
 use std::{collections::BTreeMap, path::Path};
 
@@ -13,7 +11,6 @@ use crate::fleet::builds::release_command;
 const DAEMON: &[u8] = b"anima-daemon for linux";
 const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 
-/// The settings of the job `sign` with a throwaway key in `keys`, and its public key.
 fn settings(keys: &Path) -> (BTreeMap<String, String>, PublicKey) {
     let (file, public, _) = tauri_key(None);
     std::fs::write(keys.join("key"), file).unwrap();
