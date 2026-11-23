@@ -16,7 +16,7 @@ use serde_json::Value;
 use super::socket::Caller;
 use super::{Runner, login};
 
-pub(super) mod asking;
+use super::login::asking;
 use asking::{Fault, Heard};
 
 /// The list of a program, or why the ask gave none.

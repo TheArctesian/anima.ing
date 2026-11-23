@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use agent_threads::drive::{CodexInput, CommandLists, DriveEvent, Program, codex_skills};
 use serde_json::Value;
 
-use super::super::super::models::asking::{self, Heard};
+use super::super::super::login::asking::{self, Heard};
 
 /// How long a list stays fresh; after it, a call asks again and gets the old list meanwhile.
 const FRESH: Duration = Duration::from_secs(60);
