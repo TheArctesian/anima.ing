@@ -75,6 +75,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--border-focus);
+    max-block-size: calc(100dvh - var(--space-6) * 2);
+    overflow-y: auto;
   }
 
   .heading {
@@ -121,6 +123,7 @@
   @media (max-width: 1100.98px) {
     nav {
       position: static;
+      max-block-size: none;
       flex-direction: row;
       gap: var(--space-1);
       overflow-x: auto;
@@ -140,7 +143,7 @@
     }
 
     .heading,
-    .group {
+    nav:not(.stacked) .group {
       display: none;
     }
 

@@ -15,17 +15,20 @@
 
   interface Props {
     section: { id: string; title: string; icon: IconName; description: string };
+    onVisibility?: (shown: boolean) => void;
     clock?: { readonly current: Date };
     api?: LinkApi;
   }
 
   const hub = useHub();
-  const { section, clock = createClock(1000), api = linkApi(hub) }: Props = $props();
+  const { section, onVisibility = () => undefined, clock = createClock(1000), api = linkApi(hub) }: Props = $props();
   let devices = $state<readonly LinkDevice[]>([]);
   let answer = $state<{ ok: true } | { ok: false; error: HubError } | null>(null);
   let inviting = $state(false);
   let revoking = $state<LinkDevice | null>(null);
   const shown = $derived(devicesShown(answer));
+
+  $effect(() => onVisibility(shown === 'listed' || shown === 'failed'));
 
   async function load(): Promise<void> {
     const result = await api.devices();

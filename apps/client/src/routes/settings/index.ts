@@ -3,6 +3,9 @@ import type { IndexEntry } from '$lib/page/contents/PageIndex.svelte';
 /** What this platform can show: the Hub, Stay awake, Updates and MCP sections are desktop only (CLI-002, AWK-004, UPD-006, MCP-023). */
 export interface IndexShown {
   readonly keyStore: boolean;
+  readonly remoteAccess?: boolean;
+  readonly localHub?: boolean;
+  readonly linkDevices?: boolean;
   readonly stayAwake: boolean;
   readonly runnerReport?: boolean;
   readonly desktopRows: boolean;
@@ -18,7 +21,8 @@ export const SECTIONS = {
   hub: { id: 'settings-hub', title: 'Hub', icon: 'carbon:network-enterprise', description: 'The hub this app talks to.' },
   // Routes is a section of Hosting (HSE-010); the index opens it there.
   routes: { id: 'settings-routes', title: 'Routes in Hosting', icon: 'carbon:server-dns', href: '/hosting/routes', description: 'Names of yours that the hub sends to your applications.' },
-  // The next two show only when the shell or the hub says they apply, so the index leaves them out (FRN-006, FRN-009).
+  remoteAccess: { id: 'settings-remote-access', title: 'Remote access', icon: 'carbon:remote-connection', description: 'Connections to this computer from your other devices.' },
+  // Visibility follows the same shell/hub state as the content (FRN-006, FRN-009).
   localHub: { id: 'settings-local-hub', title: "This computer's hub", icon: 'carbon:bare-metal-server', description: 'The hub on this computer, its database and link.' },
   linkDevices: { id: 'settings-link-devices', title: 'Devices on the link', icon: 'carbon:remote-connection', description: 'Devices that reach this hub over the link.' },
   stayAwake: { id: 'settings-stay-awake', title: 'Stay awake', icon: 'carbon:power', description: 'Keeps this computer on for a hub or agent.' },
@@ -29,7 +33,7 @@ export const SECTIONS = {
   notifications: { id: 'settings-notifications', title: 'Notifications', icon: 'carbon:notification', description: 'Where the hub sends alerts.' },
   checkDefaults: { id: 'settings-check-defaults', title: 'Default check settings', icon: 'carbon:settings-adjust', description: 'New checks start with these settings.' },
   retention: { id: 'settings-retention', title: 'Data retention', icon: 'carbon:data-backup', description: 'How long the hub keeps records.' },
-  updates: { id: 'settings-updates', title: 'Updates', icon: 'carbon:update-now', description: "Version, command line tool, log and release builds." },
+  updates: { id: 'settings-updates', title: 'App and tools', icon: 'carbon:update-now', description: "Version, command line tool, log and release builds." },
   apiKeys: { id: 'settings-api-keys', title: 'API keys', icon: 'carbon:api-key', description: "Keys for programs that call the hub's GraphQL API." },
   // On a phone only: the way to the Extensions page, which a computer has in the bar (EXT-001, MOB-010).
   extensions: { id: 'settings-extensions', title: 'Extensions', icon: 'carbon:grid', description: 'Features beyond devices.' },
@@ -43,10 +47,10 @@ export const GROUPS = { hub: 'Hub and account', computer: 'This computer', code:
 
 /** WP-50 F-10, R-224. */
 export function indexOf(shown: IndexShown): readonly IndexEntry[] {
-  const { account, hub, routes, stayAwake, appearance, codeAppearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
+  const { account, hub, remoteAccess, localHub, linkDevices, routes, stayAwake, appearance, codeAppearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
   const groups: readonly (readonly [string, readonly (IndexEntry | false)[]])[] = [
-    [GROUPS.hub, [account, shown.keyStore && hub, routes, notifications, checkDefaults, retention]],
-    [GROUPS.computer, [shown.stayAwake && stayAwake, appearance, (shown.runnerReport ?? false) && runner, shown.desktopRows && updates, shown.mcpPermissions && mcp]],
+    [GROUPS.hub, [account, shown.keyStore && hub, shown.linkDevices === true && linkDevices, routes, notifications, checkDefaults, retention]],
+    [GROUPS.computer, [shown.remoteAccess === true && remoteAccess, shown.localHub === true && localHub, shown.stayAwake && stayAwake, appearance, (shown.runnerReport ?? false) && runner, shown.desktopRows && updates, shown.mcpPermissions && mcp]],
     [GROUPS.code, [codeAppearance]],
     [GROUPS.connections, [integrations, apiKeys, shown.vpn && vpn]],
   ];
