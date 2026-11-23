@@ -19,7 +19,7 @@ use tokio::task::JoinSet;
 use crate::forward::forward;
 use crate::headers::passed_on;
 use crate::secrets::{SECRET_LENGTH, Secrets};
-use crate::upstream::Upstreams;
+use crate::upstream::{Upstream, Upstreams};
 
 /// The most connections at one time; one thread uses a few.
 const MOST_CONNECTIONS: usize = 128;
@@ -92,6 +92,16 @@ async fn answer(
     let Ok(uri) = path.parse::<Uri>() else {
         return Ok(refusal(StatusCode::BAD_REQUEST, "not a path"));
     };
+    Ok(passed(&thread, upstream, request, uri).await)
+}
+
+/// The answer of the provider to one request of a thread, or 502 when it was not reached.
+async fn passed(
+    thread: &str,
+    upstream: &Upstream,
+    request: Request<Incoming>,
+    uri: Uri,
+) -> Response<Body> {
     let (mut parts, body) = request.into_parts();
     parts.uri = uri;
     parts.headers = passed_on(&parts.headers);
@@ -101,14 +111,14 @@ async fn answer(
             let (mut parts, body) = response.into_parts();
             parts.headers = passed_on(&parts.headers);
             tracing::info!(thread = %thread, %method, status = parts.status.as_u16(), "relay: passed");
-            Ok(Response::from_parts(parts, body.boxed()))
+            Response::from_parts(parts, body.boxed())
         }
         Err(error) => {
             tracing::warn!(thread = %thread, %method, %error, "relay: the provider was not reached");
-            Ok(refusal(
+            refusal(
                 StatusCode::BAD_GATEWAY,
                 "the relay did not reach the provider",
-            ))
+            )
         }
     }
 }
