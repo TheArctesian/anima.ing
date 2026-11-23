@@ -1,6 +1,7 @@
 import type { LiveThreads } from './live/live.svelte';
 import { listed, type Listing } from './listing/listing';
 import { mergedRows } from './live/rows';
+import type { SentPrompt } from './live/timeline';
 import { markSeen, needsYouCount, storedSeen, type Seen } from './state';
 import type { Thread, ThreadRow, ThreadsShell } from './thread';
 
@@ -16,6 +17,8 @@ export class ThreadsStore {
   /** The ID of the thread that is asked for or shown. */
   chosen = $state<string | null>(null);
   loadingThread = $state(false);
+  /** The first prompt of the thread that this page just started, shown until the runner shows it. */
+  sent = $state<SentPrompt | null>(null);
   /** When the person last opened each thread: a turn that ended needs the person until the thread is opened (THR-055). */
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each opening, never changed in place
   seen = $state<Seen>(new Map());
@@ -77,8 +80,9 @@ export class ThreadsStore {
    * `started` has no session file under its ID: its row is read from the runner instead, before the watch's first
    * update of it, and it shows as loading until one of the two comes.
    */
-  async open(id: string, started = false): Promise<void> {
+  async open(id: string, started = false, sent: Omit<SentPrompt, 'thread'> | null = null): Promise<void> {
     this.chosen = id;
+    if (sent !== null) this.sent = { thread: id, ...sent };
     this.markSeen(id);
     this.threadProblem = null;
     if (this.live?.threads.has(id) === true) return;
