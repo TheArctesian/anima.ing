@@ -5392,3 +5392,21 @@ with SSH on. The tests use a fake hub; nobody has seen the list with real device
    Expected: that device is no longer listed.
 
 Result: Open.
+
+### HT-NEW-hostingcontainers: the containers of all machines in one list (task H18; HOST-034)
+
+Built on the branch `hosted/h18-containers`: the choice List of Hosting > Applications, with the view Containers. The
+tests use a fake hub; nobody has seen it with real machines.
+
+1. In the desktop application of this build, signed in to a hub with at least two devices that have SSH on and Docker,
+   one of them with a Compose project of two services, open Hosting > Applications and choose List: Containers.
+   Expected: each container of each machine is its own row, under the header of its machine; a container of the project
+   says its image and "Container of" the project; each row has Details and Log.
+2. Press Log on a container of the second machine.
+   Expected: its log shows below the list.
+3. Stop Docker on one machine, or turn off its SSH credential in Anima, and press Refresh.
+   Expected: its group stays, with the words of the hub that say why; the containers of the other machines are listed.
+4. Choose List: Applications.
+   Expected: the project is one row again, as before.
+
+Result: Open.

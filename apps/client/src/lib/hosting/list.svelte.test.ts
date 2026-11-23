@@ -87,3 +87,13 @@ it('HOST-001 HOST-017: a container on any machine opens its log or its details b
   expect(document.querySelector('.log')).toBeNull();
   expect(document.querySelector('.detail h3')?.textContent).toBe('Details of samba');
 });
+
+it('HOST-034: the choice Containers lists each container of each machine, and a machine that did not answer stays with its reason', async () => {
+  calls.failing['m-nas'] = 'The device has no SSH credential.';
+  const store = await open();
+  store.view = 'containers';
+  flushSync();
+  expect(text('tbody th[scope="row"]')).toEqual(['immich-redis Not managed example/tracks:0.36 · Container of immich', 'immich-server Not managed example/tracks:0.36 · Container of immich', 'watchtower Not managed containrrr/watchtower']);
+  expect(text('tr.group th')).toContain('nas Up The device has no SSH credential.');
+  expect(document.querySelectorAll('button[aria-label^="Log of"]')).toHaveLength(3);
+});
