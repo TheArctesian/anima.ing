@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { askFrame, madeShell, rowFrame, saidFrame, stateFrame, THREAD } from './frames.fixture';
 import { LiveThreads, REPLAY_GAP_MS, REPLAY_MS } from '../live.svelte';
-import { TEXT_CHARS, waitingWords } from '../timeline';
+import { TEXT_CHARS, waitingWords, withSent } from '../timeline';
 import { OVER_LIMIT } from '../refusals';
 import { outcomeFrom, runRowFrom, type Outcome } from '../run';
 
@@ -235,5 +235,25 @@ describe('the words of the update of the daemon', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(live.daemon, 'words said once stay on the page').toContain('0.10.72');
+  });
+});
+
+describe('what the page shows before the runner answers', () => {
+  it('TH61: a settle moves the row before the runner answers, and goes back when the runner refuses', async () => {
+    const now = new Date('2026-11-22T21:00:00Z');
+    const live = new LiveThreads(madeShell(() => ({ outcome: 'refused', why: 'request_gone' })), () => AWAY, () => now);
+    const pending = live.changeListing(THREAD, { change: 'settle', on: true });
+    expect(live.listings.get(THREAD)?.marks.settledAt).toEqual(now);
+    expect((await pending).ok).toBe(false);
+    expect(live.listings.get(THREAD)).toBeUndefined();
+  });
+
+  it('TH97: the first prompt of a thread started here shows until the runner shows its own', () => {
+    const at = new Date('2026-11-22T21:00:00Z');
+    const sent = { thread: THREAD, text: 'Fix the gate', at };
+    expect(withSent([], sent)).toEqual([{ kind: 'prompt', at, text: 'Fix the gate', images: 0 }]);
+    const own = [{ kind: 'prompt', at, text: 'Fix the gate', images: 0 }] as const;
+    expect(withSent(own, sent)).toBe(own);
+    expect(withSent([], null)).toEqual([]);
   });
 });

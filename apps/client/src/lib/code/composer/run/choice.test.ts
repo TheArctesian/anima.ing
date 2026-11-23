@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RunRow } from '$lib/agent-threads/live/run';
-import { catalogueOf, changeOf, type EffortOfRow } from './choice';
+import { catalogueOf, changeOf, modelLabel, type EffortOfRow } from './choice';
 
 const row: RunRow & EffortOfRow = { id: 'r1', program: 'codex', folder: '/work/anima', mode: 'ask', model: 'gpt', state: 'idle', session: null, title: 'Fix the gate', started: new Date(0), ended: null, open: [], effort: 'medium' };
 const usable = (of: RunRow & EffortOfRow, changes: boolean): string[] => catalogueOf(of, changes).catalogue.modes.filter((mode) => mode.can.can).map((mode) => mode.id);
@@ -11,6 +11,19 @@ describe('the choice of a chat that the runner drives', () => {
     expect(choice).toMatchObject({ provider: 'codex', model: 'gpt', mode: 'approval-required', effort: 'medium' });
     expect(catalogue.models).toHaveLength(1);
     expect(catalogueOf({ ...row, model: null, effort: null }, true).choice).toMatchObject({ model: 'default', effort: null });
+  });
+
+  it("names the chat's model as the runner does, not by its id", () => {
+    const listed = [
+      { id: 'opus', label: 'Opus 5.5', efforts: [], defaultEffort: null },
+      { id: 'claude-opus-5', label: 'Opus 5', efforts: [], defaultEffort: null },
+    ];
+    expect(modelLabel('claude-opus-5-5', listed)).toBe('Opus 5.5');
+    expect(modelLabel('claude-opus-5', listed)).toBe('Opus 5');
+    expect(modelLabel('claude-sonnet-4-6', [])).toBe('Sonnet 4.6');
+    expect(modelLabel('claude-haiku-4-5-20251001', [])).toBe('Haiku 4.5');
+    expect(modelLabel('gpt', [])).toBe('gpt');
+    expect(catalogueOf({ ...row, program: 'claude_code', model: 'claude-opus-5-5' }, false, listed).catalogue.models[0]?.label).toBe('Opus 5.5');
   });
 
   it('offers each effort to Codex, and to Claude Code only the one it runs with', () => {

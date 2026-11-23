@@ -1,5 +1,5 @@
 import type { RunnerShell } from '$lib/desktop/agent-threads/runner';
-import type { Listing, ListingChange } from '../listing/listing';
+import { foreseen, type Listing, type ListingChange } from '../listing/listing';
 import { noticeFor, type Looking } from './notify';
 import type { FoundFile } from './files';
 import { REFUSAL_WORDS } from './refusals';
@@ -103,6 +103,15 @@ export class LiveThreads {
     this.threads = next;
   }
 
+  /** One thread's listing, set whole as the new state; `undefined` takes it out. */
+  #setListing(thread: string, listing: Listing | undefined): void {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a copy set whole as the new state
+    const next = new Map(this.listings);
+    if (listing === undefined) next.delete(thread);
+    else next.set(thread, listing);
+    this.listings = next;
+  }
+
   /** Reads how the person lists each thread again; the listings on the screen stay when the runner does not answer. */
   async readListings(): Promise<void> {
     const read = await this.shell.call({ call: 'listings' }).catch(() => null);
@@ -110,10 +119,19 @@ export class LiveThreads {
     if (read?.outcome === 'listings') this.listings = new Map(read.listings.map((listing) => [listing.thread, listing]));
   }
 
-  /** Changes how the person lists a thread (TH46). A thread that the runner forgot leaves the page too. */
+  /**
+   * Changes how the person lists a thread (TH46). The row moves at once, as the runner will keep it, and goes back when
+   * the runner refuses; the runner's answer then sets each listing. A thread that the runner forgot leaves the page too.
+   */
   async changeListing(thread: string, change: ListingChange): Promise<CallResult> {
+    const before = this.listings.get(thread);
+    const next = foreseen(before, thread, change, this.now());
+    if (next !== null) this.#setListing(thread, next);
     const result = await this.call({ call: 'change_listing', thread, change });
-    if (!result.ok || result.outcome.outcome !== 'listings') return result;
+    if (!result.ok || result.outcome.outcome !== 'listings') {
+      if (next !== null && this.listings.get(thread) === next) this.#setListing(thread, before);
+      return result;
+    }
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- built here, then set whole as the new state
     this.listings = new Map(result.outcome.listings.map((listing) => [listing.thread, listing]));
     if (change.change === 'remove' && this.threads.has(thread)) {

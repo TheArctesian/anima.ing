@@ -15,7 +15,8 @@
 
   /*
    * A hover tip (02 section 3.3): it opens after `duration.fast` on hover, at once on keyboard focus, 4 px from the
-   * trigger, and closes on Escape, leaving or blur (WCAG 1.4.13). The panel is opaque (glass is on hold).
+   * trigger, and closes on Escape, leaving, a press or blur (WCAG 1.4.13): a press acts, so its tip would only cover what
+   * the press opens (the band's tip lay over the runner's line). The panel is opaque (glass is on hold).
    */
   const { text, children, side = 'above' }: Props = $props();
   let open = $state(false);
@@ -83,6 +84,7 @@
     if (event.pointerType !== 'touch') later();
   }}
   onpointerleave={close}
+  onpointerdown={close}
   {onfocusin}
   onfocusout={close}
   {onkeydown}

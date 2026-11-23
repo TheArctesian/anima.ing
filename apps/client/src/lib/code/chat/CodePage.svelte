@@ -29,6 +29,7 @@
   import { applyReader, storedReader } from '../settings/reader';
   import ChatColumn from './ChatColumn.svelte';
   import ChatFoot from './ChatFoot.svelte';
+  import RunnerNotice from './notice/RunnerNotice.svelte';
   import { heldWidth, INBOX_WIDTH, InboxWidth, storeWidth } from '../shell/inbox-width.svelte';
   import { pageKey } from './page-keys';
   import { paletteHost } from './palette-host';
@@ -77,8 +78,8 @@
   );
   const open = $derived(store.chosen === null ? undefined : ((store.listedRows ?? []).find((row) => row.id === store.chosen) ?? (store.thread?.id === store.chosen ? store.thread : undefined)));
   /** The run of the open thread, when the card has something real of it to show: only then is there a details toggle. */
-  const detailed = $derived(detailedRun(draft === null ? store.liveThread?.row : undefined, store.chosen));
   const details = new DetailsShown();
+  const detailed = $derived(detailedRun(draft === null ? store.liveThread?.row : undefined, store.chosen, details.choices));
 
   /** Opens a new thread in the project of the open one, as T3's New thread does. */
   function newThread(): void {
@@ -88,13 +89,19 @@
   }
 
   /** Opens `id`; `started`: the draft's send started it, from the runner's `Started` answer alone. */
-  async function choose(id: string, started = false): Promise<void> {
+  async function choose(id: string, started = false, sent: { text: string; at: Date } | null = null): Promise<void> {
     if (narrow) sheetOpen = false;
     draft = null;
     visits.opened(id);
-    await store.open(id, started);
+    await store.open(id, started, sent);
     await tick();
     page?.querySelector<HTMLElement>(`[data-thread="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
+  }
+
+  /** Stops each thread whose program runs, so the holder of this build takes over (TH98). */
+  async function stopRunning(): Promise<void> {
+    const running = [...(live?.threads.values() ?? [])].map((thread) => thread.row).filter((row) => row.state !== 'stopped' && row.state !== 'unknown');
+    await Promise.all(running.map((row) => live?.call({ call: 'stop', thread: row.id })));
   }
 
   function openedTitle(id: string): string {
@@ -227,8 +234,8 @@
       />
     {/snippet}
     {#snippet aside()}{#if detailed !== undefined}<ThreadAside row={detailed} shown={details} />{/if}{/snippet}
-    {#snippet notice()}{#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}{/snippet}
-    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id, true)} />{:else}<ThreadBody {store} now={view.moment} />{/if}
+    {#snippet notice()}{#if linkWords !== null}<RunnerNotice words={linkWords} onStop={live?.linked === true ? stopRunning : undefined} />{/if}{/snippet}
+    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id, true, draft?.sent ?? null)} />{:else}<ThreadBody {store} now={view.moment} />{/if}
     {#snippet composer()}{#if draft === null && store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>
@@ -309,14 +316,6 @@
 
   .name {
     color: var(--code-quiet-text);
-  }
-
-  .link {
-    margin: 0;
-    padding: var(--space-2) var(--space-5);
-    border-block-end: var(--border-thin) solid var(--border-subtle);
-    color: var(--text);
-    font-size: var(--code-text-small);
   }
 
   /* Below 768 px the list is a sheet over the page, all but 12 px of its width, over a scrim (T3 Code's mobile sidebar). */
