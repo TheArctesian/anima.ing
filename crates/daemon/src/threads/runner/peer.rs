@@ -99,6 +99,13 @@ async fn started_the_runner(pid: u32, mark: Option<bool>, holder_dir: &Path) -> 
 /// runner does not have: the system writes such an ID in `uid_map` as 4294967295. A namespace of
 /// the runner, or one below it, holds only IDs of the runner's, so such a process is not of the
 /// holder. False when the map cannot be read, and where the system has no user namespaces.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        clippy::unused_async,
+        reason = "only Linux reads the map; the callers await it on every system"
+    )
+)]
 async fn above_the_runner(pid: u32) -> bool {
     #[cfg(target_os = "linux")]
     {
