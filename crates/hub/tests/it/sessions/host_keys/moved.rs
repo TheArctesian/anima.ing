@@ -1,6 +1,4 @@
-//! The SSH connection test after the device's host changed (SEC-006, SEC-011): on a device with
-//! no accepted key no password leaves the hub before the key is accepted, and after it is
-//! accepted a password entered for the earlier host still does not, until it is entered again.
+//! After a host change no password leaves the hub until the key is accepted and the password is entered again (SEC-006, SEC-011).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -25,7 +23,6 @@ async fn sec_011_a_never_pinned_device_moved_before_its_first_connection_gets_no
 ) {
     let host_key = ed25519(1);
     let server = SshServer::start(vec![host_key.clone()], None).await;
-    // Entered for the fixture's host; the device then moves before any key is accepted.
     store_credential(&pool, password(PASSWORD)).await;
     point_at(&pool, &server).await;
     let schema = schema(&pool, &loopback_live());

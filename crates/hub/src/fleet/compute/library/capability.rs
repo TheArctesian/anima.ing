@@ -1,5 +1,4 @@
-//! The capability tags of the catalogue (LIBM-008). A tag says what a model can do; it is not
-//! evidence that a runtime of Anima runs the model, and it selects no runtime (LIBM-009).
+//! The capability tags of the catalogue (LIBM-008); a tag selects no runtime (LIBM-009).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"
@@ -11,7 +10,6 @@ use async_graphql::Enum;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Enum)]
 #[graphql(name = "ModelCapability")]
 pub enum Capability {
-    // Text
     Chat,
     /// Calls tools that the request names (R-343).
     Tools,
@@ -22,28 +20,23 @@ pub enum Capability {
     TextClassification,
     StructuredExtraction,
     TokenClassification,
-    // Image
     ImageGeneration,
     ImageEditing,
     Upscaling,
     ImageClassification,
-    // Video
     VideoGeneration,
     VideoEditing,
     VideoUnderstanding,
     VideoClassification,
-    // Audio and music
     MusicGeneration,
     AudioGeneration,
     AudioUnderstanding,
     AudioClassification,
     AudioToAudio,
-    // Speech
     Transcription,
     SpokenTranslation,
     TextToSpeech,
     ConversationalVoice,
-    // Vision and documents
     ImageUnderstanding,
     Ocr,
     DocumentFieldExtraction,
@@ -53,15 +46,11 @@ pub enum Capability {
     ImageSegmentation,
     DepthEstimation,
     PoseDetection,
-    // Search
     Embeddings,
     Reranking,
-    // Tabular
     TabularClassification,
     TabularRegression,
-    // Reinforcement learning: a tag of the catalogue only
     Policy,
-    // Later: 3D object, mesh and scene generation
     ThreeDimensionalGeneration,
 }
 

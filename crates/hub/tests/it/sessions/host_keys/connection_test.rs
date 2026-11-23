@@ -1,5 +1,4 @@
-//! `testConnection` (DEV-013, D-5): a first-seen or changed key is shown and no credential
-//! leaves the hub; the accepted key signs in with a password or a private key.
+//! `testConnection` (DEV-013, D-5): no credential leaves the hub for a key not accepted.
 
 use anima_hub::fleet::{
     credentials::{Secret, SshSecret},

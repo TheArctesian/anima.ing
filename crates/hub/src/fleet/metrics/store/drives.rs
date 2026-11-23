@@ -1,5 +1,4 @@
-//! The drives of each device: replaced together when a collection or a batch brings a new
-//! list (MET-027).
+//! The drives of each device, replaced together when a new list arrives (MET-027).
 
 use std::collections::HashMap;
 
@@ -14,8 +13,6 @@ const ADD_DRIVE_SQL: &str = "\
     INSERT INTO metrics.drives (device_id, name, kind, size_bytes, mounts, found_at) \
     VALUES ($1, $2, $3, $4, $5, $6)";
 
-/// The stored drives of each of `devices`, by name, in one query; a device with none has no
-/// entry.
 pub(in crate::fleet::metrics) async fn drives(
     db: &PgPool,
     devices: &[DeviceId],
@@ -38,8 +35,7 @@ pub(in crate::fleet::metrics) async fn drives(
     Ok(by_device)
 }
 
-/// Replaces the stored drives of `device` with `drives`, found at `found_at`, in one
-/// transaction, so a reader sees the old list or the new one, never a mix.
+/// One transaction, so a reader sees the old list or the new one, never a mix.
 pub(in crate::fleet::metrics) async fn replace_drives(
     db: &PgPool,
     device: DeviceId,
@@ -52,7 +48,7 @@ pub(in crate::fleet::metrics) async fn replace_drives(
     Ok(())
 }
 
-/// [`replace_drives`] in the caller's transaction: at most 32 inserts, one per drive.
+/// [`replace_drives`] in the caller's transaction.
 pub(in crate::fleet::metrics) async fn write_drives(
     conn: &mut PgConnection,
     device: DeviceId,

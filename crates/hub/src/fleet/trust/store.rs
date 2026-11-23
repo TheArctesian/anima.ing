@@ -1,5 +1,3 @@
-//! All SQL on schema `trust`: I/O only. Ids and time come in as parameters.
-
 mod server_certificates;
 
 use std::collections::HashMap;
@@ -18,7 +16,6 @@ pub(super) use server_certificates::{
     AcceptedCertificate, lock_server_certificate, put_server_certificate, server_certificates,
 };
 
-/// The stored algorithm differs from the one inside the stored key.
 #[derive(Debug, thiserror::Error)]
 #[error("host key row names another algorithm than its key")]
 struct AlgorithmMismatch;
@@ -74,9 +71,7 @@ pub(super) async fn host_keys<'e>(
     Ok(keys)
 }
 
-/// Waits for, then holds until the transaction ends, this domain's advisory lock on the
-/// device's host key, so two accepts for one device run one after the other and each audit
-/// entry names the key it replaced.
+/// Accepts for one device run one after the other, so each audit entry names the key it replaced.
 pub(super) async fn lock_host_key(conn: &mut PgConnection, device: DeviceId) -> Result<(), Error> {
     sqlx::query(
         "select pg_advisory_xact_lock(hashtextextended('trust.host_keys:' || $1::text, 0))",
@@ -87,7 +82,6 @@ pub(super) async fn lock_host_key(conn: &mut PgConnection, device: DeviceId) -> 
     Ok(())
 }
 
-/// A host key the operator accepts for a device.
 pub(super) struct AcceptedKey<'a> {
     pub(super) device: DeviceId,
     pub(super) key: &'a HostKey,
@@ -95,8 +89,6 @@ pub(super) struct AcceptedKey<'a> {
     pub(super) at: DateTime<Utc>,
 }
 
-/// Stores the accepted key, replacing the device's previous one. The algorithm and the
-/// fingerprint are read from the key, so the row's checks always hold.
 pub(super) async fn put_host_key(
     conn: &mut PgConnection,
     accepted: &AcceptedKey<'_>,

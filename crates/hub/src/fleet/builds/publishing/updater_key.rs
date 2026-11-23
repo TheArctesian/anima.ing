@@ -1,8 +1,5 @@
-//! The updater key the hub signs releases with (R-117, BLD-045, SEC-004): the minisign secret
-//! key file `tauri signer generate` writes, sealed with scrypt, opened once at start from its
-//! Docker secret with the password in a second secret, and kept only if its public key is
-//! `ANIMA_UPDATER_PUBLIC_KEY`. The type has no `Debug`, `Display` or `Clone`; the seed is wiped
-//! when it drops, and an error names a file or a check, never a value (LOG-007).
+//! The updater key, kept only if its public key is `ANIMA_UPDATER_PUBLIC_KEY` (R-117, BLD-045, SEC-004).
+//! No `Debug`, `Display` or `Clone`; the seed is wiped on drop and an error never names a value (LOG-007).
 
 use std::{io::Read as _, path::Path};
 
@@ -11,13 +8,13 @@ use zeroize::Zeroizing;
 
 use crate::config::Releases;
 
-/// The largest key file the hub reads; a `tauri signer generate` file is about 470 bytes.
+/// A `tauri signer generate` key file is about 470 bytes.
 const MAX_KEY_FILE_BYTES: usize = 4096;
 
-/// The largest password file the hub reads; `updater-signature` takes at most 1024 bytes.
+/// `updater-signature` takes at most 1024 bytes.
 const MAX_PASSWORD_FILE_BYTES: usize = 1026;
 
-/// Why the hub does not sign: publishing is then off, and the hub still starts (R-117).
+/// Publishing is then off, and the hub still starts (R-117).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum UpdaterKeyError {
     #[error("ANIMA_UPDATER_PUBLIC_KEY is unset")]
@@ -34,7 +31,6 @@ pub enum UpdaterKeyError {
     Mismatch,
 }
 
-/// The opened updater key and its public key, which equals `ANIMA_UPDATER_PUBLIC_KEY`.
 pub struct UpdaterKey {
     secret: SecretKey,
     public: PublicKey,
@@ -53,12 +49,8 @@ fn read_secret(path: &Path, max: usize) -> std::io::Result<Zeroizing<Vec<u8>>> {
 }
 
 impl UpdaterKey {
-    /// Reads the key and password files named in `releases` and opens the key (I/O at the edge).
-    ///
     /// # Errors
-    ///
-    /// As [`UpdaterKey::from_parts`]; `KeyFile` or `PasswordFile` when a file cannot be read or
-    /// is too large.
+    /// As [`UpdaterKey::from_parts`]; `KeyFile` or `PasswordFile` when a file cannot be read or is too large.
     pub fn open(releases: &Releases) -> Result<Self, UpdaterKeyError> {
         let public = releases
             .updater_public_key
@@ -71,14 +63,10 @@ impl UpdaterKey {
         Self::from_parts(&key_file, &password, public)
     }
 
-    /// Opens `key_file` with the bytes of its `password` file and checks that its public key is
-    /// `public`, the `ANIMA_UPDATER_PUBLIC_KEY` text. The password file may be empty, for a key
-    /// sealed with no password, and one line break at its end is not part of the password.
+    /// An empty password file means no password; one line break at its end is not part of it.
     ///
     /// # Errors
-    ///
-    /// `PublicKey` when `public` is not a key, `PasswordFile` when the password is not UTF-8,
-    /// `Open` when the key file does not open with it, `Mismatch` when it opens to another key.
+    /// `PublicKey`, `PasswordFile` (not UTF-8), `Open` or `Mismatch` (another key).
     pub fn from_parts(
         key_file: &[u8],
         password: &[u8],
@@ -101,8 +89,7 @@ impl UpdaterKey {
         })
     }
 
-    /// The `.sig` text of the file whose BLAKE2b-512 hash is `digest`; the same digest and
-    /// `signed` always give the same text (BLD-046).
+    /// The same `digest` and `signed` always give the same text (BLD-046).
     pub(super) fn sign(
         &self,
         digest: &[u8; 64],
@@ -111,8 +98,7 @@ impl UpdaterKey {
         self.secret.sign(digest, signed)
     }
 
-    /// The bytes of `record` and their signature (ROL-004), checked with the public key before
-    /// they are given (ROL-010).
+    /// The signature is checked with the public key before it is given (ROL-004, ROL-010).
     pub(super) fn sign_record(
         &self,
         record: &release_record::Record,

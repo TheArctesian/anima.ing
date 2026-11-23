@@ -1,6 +1,5 @@
-//! Which extensions the operator has switched on (EXT-001, EXT-011, EXT-012). The registry
-//! lists the fifteen; the switches say which are on. Other domains ask [`on_keys`] or
-//! [`require_on`]; they never read the table.
+//! Which extensions the operator has switched on (EXT-001, EXT-011, EXT-012).
+//! Other domains ask [`on_keys`] or [`require_on`]; they never read the table.
 
 pub mod graphql;
 mod model;

@@ -1,5 +1,4 @@
-//! PRJ-039, PRJ-041, LOG-012: the attempt's API: a start, a replaced start, the one-time link,
-//! the refusal of a declared agent, a cancel, the audit entries and `githubConnectChanged`.
+//! The connect attempt's API (PRJ-039, PRJ-041, LOG-012).
 
 use std::{sync::Arc, time::Duration};
 

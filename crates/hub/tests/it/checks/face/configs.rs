@@ -1,6 +1,3 @@
-//! Every fixture configuration reads in the one stored form, keeps every value, and writes
-//! back the same (CHK-009).
-
 use anima_hub::{
     fleet::checks::{self, config::CheckConfig},
     ids::{CheckId, DeviceId},
@@ -8,7 +5,6 @@ use anima_hub::{
 use serde_json::{Map, Value};
 use sqlx::PgPool;
 
-/// The stored form of a configuration: its JSON without the type tag.
 fn stored(config: &CheckConfig) -> Map<String, Value> {
     let Value::Object(mut fields) = serde_json::to_value(config).unwrap() else {
         panic!("not an object")
@@ -35,7 +31,7 @@ async fn chk_009_every_fixture_config_reads_and_writes_back_its_values(pool: PgP
             panic!("{id}: not an object")
         };
         if kind == "http" {
-            // HTTP also writes its defaults; every fixture value is kept.
+            // HTTP also writes its defaults.
             for (key, value) in &fixture {
                 assert_eq!(written.get(key), Some(value), "{id}: {key}");
             }

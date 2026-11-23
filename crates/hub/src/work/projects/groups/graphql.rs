@@ -1,7 +1,5 @@
-//! The K1 part of project groups (PRO-059 to PRO-063): `projectGroups`, `createProjectGroup`,
-//! `renameProjectGroup`, `deleteProjectGroup` and `setProjectsGroup`. Each change writes its
-//! rows and one audit entry in one transaction; the words name projects by slug and a group by
-//! its id, never by its name, which the operator typed (LOG-007).
+//! The K1 part of project groups (PRO-059 to PRO-063). The words of an entry name projects by
+//! slug and a group by its id, never by its name, which the operator typed (LOG-007).
 
 use async_graphql::{Context, ID, Object, Result, SimpleObject};
 use chrono::{DateTime, Utc};

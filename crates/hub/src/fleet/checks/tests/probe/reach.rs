@@ -1,4 +1,4 @@
-//! The address policy and the probes that must obey it (CHK-001).
+//! CHK-001.
 
 use std::net::IpAddr;
 
@@ -148,7 +148,6 @@ fn extra_deny_list_refuses_more_including_mapped_forms() {
     for text in ["172.17.0.5", "172.19.0.1", "fd00:beef::1", "10.0.0.1"] {
         assert!(policy.permits(ip(text)), "{text}");
     }
-    // Even with loopback allowed, the deny list still applies.
     let both = AddressPolicy::new(vec!["127.0.0.0/8".parse().unwrap()]).allowing_loopback();
     assert!(!both.permits(ip("127.0.0.1")));
 }
@@ -268,8 +267,7 @@ async fn tcp_and_tls_and_icmp_refuse_refused_hosts_by_literal_and_by_name() {
     }
 }
 
-/// Q2-09, P3-003: the shared lookup keeps the checks reading of brackets, so an IP literal in
-/// any number of them is judged by the policy, not left unresolved.
+/// Q2-09, P3-003.
 #[tokio::test]
 async fn an_ip_literal_in_loose_brackets_is_judged_by_the_policy() {
     let tcp = CheckConfig::Tcp {

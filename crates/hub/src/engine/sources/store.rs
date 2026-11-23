@@ -1,5 +1,3 @@
-//! All SQL on schema `sources`: I/O only (K-E1 Section 5). Run rows are in `store/runs.rs`.
-
 pub(super) mod runs;
 
 use chrono::{DateTime, Utc};
@@ -16,7 +14,6 @@ const ACCOUNT: &str = "id, source, label, instance_key, credential_id, last_star
     last_sync_at, last_error_kind, last_error, failure_count, next_sync_at, paused_at, \
     run_generation, run_until, created_at";
 
-/// A new account, or the replacement of an existing one's key.
 pub(super) struct Connecting<'a> {
     pub id: SourceAccountId,
     pub source: &'a str,
@@ -25,7 +22,6 @@ pub(super) struct Connecting<'a> {
     pub now: DateTime<Utc>,
 }
 
-/// A claimed account with its sync state.
 #[derive(sqlx::FromRow)]
 pub(super) struct Claimed {
     #[sqlx(flatten)]
@@ -33,20 +29,15 @@ pub(super) struct Claimed {
     pub sync_state: Json<Value>,
 }
 
-/// How a run ends, as written to the account.
 pub(super) struct Ending {
     pub generation: i64,
     pub now: DateTime<Utc>,
-    /// `None` for success; the kind and fixed words for a failure.
     pub failure: Option<(ErrorKind, &'static str)>,
     /// False when the run stopped: the failure count and the last sync stay.
     pub counted: bool,
     pub next_sync_at: DateTime<Utc>,
 }
 
-/// Inserts the account of `connecting`, or, when its source already has an account with that
-/// instance key, locks it, takes the new label and clears its errors. Returns its id and
-/// whether it is new.
 pub(super) async fn connect(
     conn: &mut PgConnection,
     connecting: &Connecting<'_>,
@@ -79,7 +70,6 @@ pub(super) async fn connect(
     Ok((id, false))
 }
 
-/// Points the account at its sealed credential.
 pub(super) async fn set_credential(
     conn: &mut PgConnection,
     id: SourceAccountId,
@@ -105,7 +95,6 @@ pub(super) async fn account(
     .await
 }
 
-/// The account, locked until the transaction ends.
 pub(super) async fn lock(
     conn: &mut PgConnection,
     id: SourceAccountId,
@@ -118,7 +107,6 @@ pub(super) async fn lock(
     .await
 }
 
-/// Every account, or those of `source`, oldest first.
 pub(super) async fn accounts(
     db: impl PgExecutor<'_>,
     source: Option<&str>,
@@ -132,8 +120,7 @@ pub(super) async fn accounts(
     .await
 }
 
-/// Claims the account for a run at `now` until `until`, when it is not paused and no live
-/// claim holds it: the generation goes up by one, so an older claim can no longer write.
+/// The generation goes up by one, so an older claim can no longer write.
 pub(super) async fn claim(
     conn: &mut PgConnection,
     id: SourceAccountId,
@@ -152,8 +139,7 @@ pub(super) async fn claim(
     .await
 }
 
-/// Locks the account while `generation` is still its claim; `None` when another run has
-/// claimed it since or it is gone. Returns whether it is paused.
+/// `None` when another run claimed the account since or it is gone; else whether it is paused.
 pub(super) async fn lock_claim(
     conn: &mut PgConnection,
     id: SourceAccountId,
@@ -169,7 +155,6 @@ pub(super) async fn lock_claim(
     .await
 }
 
-/// Writes one intake's slice of the sync state, and extends the claim to `until`.
 pub(super) async fn write_slice(
     conn: &mut PgConnection,
     id: SourceAccountId,
@@ -190,7 +175,6 @@ pub(super) async fn write_slice(
     .map(drop)
 }
 
-/// Ends the claim of `ending.generation`; `None` when another run holds the account now.
 pub(super) async fn end(
     conn: &mut PgConnection,
     id: SourceAccountId,
@@ -219,8 +203,6 @@ pub(super) async fn end(
     .await
 }
 
-/// The accounts due at `now`: not paused, `next_sync_at` reached, no live claim. Oldest due
-/// first.
 pub(super) async fn due(
     db: impl PgExecutor<'_>,
     now: DateTime<Utc>,
@@ -239,7 +221,6 @@ pub(super) async fn due(
         .collect())
 }
 
-/// Sets or clears the pause; clearing it makes the account due at `now`.
 pub(super) async fn set_paused(
     conn: &mut PgConnection,
     id: SourceAccountId,
@@ -258,7 +239,6 @@ pub(super) async fn set_paused(
     .await
 }
 
-/// Makes the account due now, in the caller's transaction.
 pub(super) async fn request_sync(
     conn: &mut PgConnection,
     id: SourceAccountId,
@@ -272,7 +252,7 @@ pub(super) async fn request_sync(
     .map(|done| done.rows_affected() > 0)
 }
 
-/// Deletes the account; its runs go with it.
+/// Its runs go with it.
 pub(super) async fn delete(
     conn: &mut PgConnection,
     id: SourceAccountId,

@@ -21,17 +21,12 @@ use crate::{
     ids::SourceAccountId,
 };
 
-/// Reads `request` for `account`, once the account may be read (a paused or removed account
-/// serves nothing, held or not): the held answer while `keep` says it is fresh, otherwise a
-/// new `GET` with the account's installation token. A 2xx answer is held as `keep` says; any
-/// other answer the source gave is returned as it is and not held. When the read fails for a
-/// passing reason (a rate limit or the reserve, an unreachable source, a 5xx, a full queue), an
-/// answer held for at most an hour comes back stale instead.
+/// Reads `request` for `account`: nothing for a paused or removed account, held or not; the held
+/// answer while `keep` says it is fresh; otherwise a new `GET`, held when 2xx. A passing failure
+/// returns an answer held for at most an hour instead, marked with the failure.
 ///
 /// # Errors
-/// [`LiveFailure`]: `NotFound` or `Paused` for the account, `KeyRefused` on a 401 (the token is
-/// dropped and nothing is written), `Refused` for a path the hub does not send, and the
-/// passing failures when nothing is held.
+/// [`LiveFailure`]; a 401 drops the token (`KeyRefused`).
 pub async fn ask(
     s: &Scheduling,
     account: SourceAccountId,
@@ -40,7 +35,6 @@ pub async fn ask(
 ) -> Result<Reply, LiveFailure> {
     let key = Key::of(account, request);
     let live = s.transport.live();
-    // The account first: a paused or removed account serves nothing, not even a held answer.
     let sent = match reachable(s, account).await {
         Ok(reached) => {
             let now = s.clock.now();
@@ -63,13 +57,11 @@ pub async fn ask(
     }
 }
 
-/// An answer the source gave, usable by the provider: its status and its body.
 struct Answered {
     status: u16,
     body: Option<Arc<[u8]>>,
 }
 
-/// Sends the read of the reachable account when the budget and the pace allow it.
 async fn send(
     s: &Scheduling,
     (account, declaration): (Account, Declaration),
@@ -118,7 +110,6 @@ async fn send(
     })
 }
 
-/// Holds a 2xx answer as `keep` says and drops the older one otherwise; returns it as a reply.
 fn settle(s: &Scheduling, (key, keep): (Key, Keep), answer: Answered) -> Reply {
     let at = s.clock.now();
     let live = s.transport.live();

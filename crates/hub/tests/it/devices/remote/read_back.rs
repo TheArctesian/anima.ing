@@ -1,6 +1,4 @@
-//! The remote access fields of K1 `Device` read back through GraphQL, the access warnings
-//! (RA-020), the batched RDP and VNC `credentialStored` (API-005) and the RDP server
-//! certificate accepted for a device (SEC-007).
+//! Remote access fields of K1 `Device` through GraphQL (RA-020, API-005, SEC-007).
 
 use std::sync::{Arc, atomic::Ordering};
 
@@ -154,8 +152,7 @@ fixture_test! {
 
         assert_eq!(stored(&few), (vec!["pve-01"], vec!["docker-host"], 13));
         assert_eq!(stored(&many), (vec!["pve-01"], vec!["docker-host"], 163));
-        // The page, its count, one batch for RDP and one for VNC. One lookup per device costs
-        // at least 26 statements on this data.
+        // One batch per protocol; a per-device lookup costs at least 26 statements.
         assert!(
             few_statements <= 12 && many_statements <= 12,
             "{few_statements} statements for 13 devices, {many_statements} for 163"

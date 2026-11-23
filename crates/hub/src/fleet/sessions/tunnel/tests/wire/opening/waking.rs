@@ -1,6 +1,4 @@
-//! The opening of a ticket whose start sent a Wake-on-LAN packet (K4 Section 1, RA-031): it
-//! waits, past the usual limit, until the device's port answers before it asks guacd to
-//! connect, and gives up at the woken limit. The deny list holds on every try (R-030).
+//! K4 Section 1, RA-031, R-030: a woken opening waits for the device's port up to the woken limit.
 
 use std::time::{Duration, Instant};
 
@@ -25,14 +23,10 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// The usual limit of each opening step, shortened.
 const USUAL: Duration = Duration::from_millis(200);
-/// How long after the opening began the waking device answers: three usual limits, and far
-/// inside the woken limit of the answering tests.
+/// Past the usual limit and far inside the woken limit of the answering tests.
 const ANSWERS_AFTER: Duration = Duration::from_millis(600);
 
-/// A guacd that serves RDP, and a bench in front of it whose woken opening may wait `woken`
-/// for a device that is asleep until the returned sender wakes it.
 async fn waking(pool: &PgPool, woken: Duration) -> (FakeGuacd, Bench, oneshot::Sender<()>) {
     let guacd = fake_guacd(Script::Serve {
         args: RDP_ARGS,
@@ -50,8 +44,7 @@ async fn waking(pool: &PgPool, woken: Duration) -> (FakeGuacd, Bench, oneshot::S
     (guacd, bench, answer)
 }
 
-/// Points `docker-host`'s RDP port at `port`. The certificate is ignored: the waking device
-/// only accepts the connection, so the hub cannot read one from it.
+/// The certificate is ignored because the waking device only accepts the connection.
 async fn move_rdp_port(pool: &PgPool, port: u16) {
     sqlx::query(
         "update devices.rdp_settings set port = $2, ignore_certificate = true \
@@ -64,7 +57,6 @@ async fn move_rdp_port(pool: &PgPool, port: u16) {
     .unwrap();
 }
 
-/// The bench's ticket, redeemed and marked as woken.
 fn woken(bench: &Bench) -> Redeemed {
     let mut redeemed = bench.live.redeem(on_tunnel(&bench.token), now()).unwrap();
     redeemed.ticket.wake_sent = true;

@@ -1,6 +1,5 @@
-//! The Apprise channel: a notification through an Apprise API server, by URLs sent with each
-//! notification (stateless) or by the key of a configuration stored in Apprise (NOT-002,
-//! D-18, D-19). The URLs or the key are sealed; the server, mode and tags are shown.
+//! The Apprise channel (NOT-002, D-18, D-19). The URLs or the key are sealed; the server, mode
+//! and tags are shown.
 
 use serde::{Deserialize, Serialize};
 
@@ -22,23 +21,19 @@ const KEY_MAX: usize = 128;
 const TAGS_MAX: usize = 20;
 const TAG_MAX: usize = 64;
 
-/// What the API shows of an Apprise channel.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(in crate::fleet::notifications) struct AppriseSettings {
-    /// `https://host[:port]` of the Apprise API.
     pub(in crate::fleet::notifications) server: String,
     pub(in crate::fleet::notifications) mode: AppriseMode,
     pub(in crate::fleet::notifications) tags: Vec<String>,
 }
 
-/// The secret of the channel's mode.
 pub(in crate::fleet::notifications) enum AppriseSecrets {
     Urls(Vec<Secret>),
     Key(Secret),
 }
 
-/// An Apprise channel as the operator sent it.
 pub(in crate::fleet::notifications) struct AppriseDraft {
     pub(in crate::fleet::notifications) server: String,
     pub(in crate::fleet::notifications) mode: AppriseMode,
@@ -49,7 +44,7 @@ pub(in crate::fleet::notifications) struct AppriseDraft {
     pub(in crate::fleet::notifications) tags: Vec<String>,
 }
 
-/// Each URL passes N-4; at least one, at most 20.
+/// Each URL passes N-4.
 fn checked_urls(urls: &[Secret]) -> Result<(), FieldError> {
     if urls.is_empty() || urls.len() > URLS_MAX {
         return Err(FieldError::new(URLS, "Enter 1 to 20 Apprise URLs."));
@@ -61,8 +56,7 @@ fn checked_urls(urls: &[Secret]) -> Result<(), FieldError> {
     Ok(())
 }
 
-/// A key of letters, digits, `_` and `-`: it goes into the API path, so `/` and `.` never reach
-/// it.
+/// The key goes into the API path, so `/` and `.` never reach it.
 fn checked_key(key: &Secret) -> Result<(), FieldError> {
     let text = secret_text(KEY, key)?;
     let allowed = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
@@ -76,8 +70,7 @@ fn checked_key(key: &Secret) -> Result<(), FieldError> {
     }
 }
 
-/// Tags of letters, digits, `_`, `-` and `.`: Apprise reads a comma or a space in its tag
-/// field as "or" and "and".
+/// Apprise reads a comma or a space in its tag field as "or" and "and".
 fn checked_tags(tags: &[String]) -> Result<(), FieldError> {
     let allowed = |b: u8| b.is_ascii_alphanumeric() || b"_-.".contains(&b);
     let tag_ok = |tag: &String| (1..=TAG_MAX).contains(&tag.len()) && tag.bytes().all(allowed);
@@ -91,8 +84,6 @@ fn checked_tags(tags: &[String]) -> Result<(), FieldError> {
     }
 }
 
-/// The secret the draft sends for its mode, if any, checked (an empty one is refused, as the
-/// mode needs it); the other mode's field must be null or empty.
 fn sent_secret(draft: &mut AppriseDraft, problems: &mut Problems) -> Option<AppriseSecrets> {
     let (urls, key) = (draft.urls.take(), draft.key.take());
     match draft.mode {
@@ -115,8 +106,8 @@ fn sent_secret(draft: &mut AppriseDraft, problems: &mut Problems) -> Option<Appr
     }
 }
 
-/// The field and the sentence that ask for the mode's secret: on create, after a mode change
-/// (CR-14 item 2), or after a server change (item 1).
+/// Asks for the mode's secret on create, after a mode change (CR-14 item 2) or a server change
+/// (item 1).
 const fn missing(mode: AppriseMode, why: Why) -> (&'static str, &'static str) {
     match (mode, why) {
         (AppriseMode::StatelessUrls, Why::New) => (URLS, "Enter 1 to 20 Apprise URLs."),
@@ -137,7 +128,6 @@ const fn missing(mode: AppriseMode, why: Why) -> (&'static str, &'static str) {
     }
 }
 
-/// Why the mode's secret must be in the input.
 #[derive(Clone, Copy)]
 enum Why {
     New,
@@ -170,7 +160,6 @@ fn outcome(
     }
 }
 
-/// The rules for a new Apprise channel: the secret of its mode is required.
 pub(super) fn new(mut draft: AppriseDraft) -> Result<Outcome, Vec<FieldError>> {
     let mut problems = Problems::default();
     let server = problems.take(server_origin(SERVER, &draft.server));
@@ -189,9 +178,8 @@ pub(super) fn new(mut draft: AppriseDraft) -> Result<Outcome, Vec<FieldError>> {
     Ok(outcome(draft, server, secret, touched))
 }
 
-/// The rules for a changed Apprise channel (CR-14): a new mode drops the old mode's secret and
-/// needs the new one; a new server needs the secret again; otherwise a null secret keeps the
-/// stored one.
+/// A new mode drops the old mode's secret and needs the new one; a new server needs the secret
+/// again (CR-14).
 pub(super) fn change(
     before: &AppriseSettings,
     stored: Kept<AppriseSecrets>,

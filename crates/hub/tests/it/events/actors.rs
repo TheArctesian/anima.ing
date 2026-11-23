@@ -1,5 +1,4 @@
-//! Who did it: the actor kind, token kind and key name of each entry, decided from the request
-//! through the hub's router (LOG-012 to LOG-018, LOG-020).
+//! The actor of each audit entry, decided from the request (LOG-012 to LOG-018, LOG-020).
 
 use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -23,7 +22,6 @@ const AUDIT: &str = "query($kind: ActorKind) { audit(first: 50, actorKind: $kind
 
 const EVENTS: &str = "{ events(first: 50) { edges { node { message actorKind } } } }";
 
-/// Posts `query` with `token` and, when `declared`, the header `Anima-Actor: agent`.
 async fn post(
     hub: &Hub,
     token: &str,
@@ -42,8 +40,6 @@ async fn post(
     serde_json::from_str(&text).unwrap()
 }
 
-/// A change any token with the write scope may make: one site, named `name`, on a subnet of
-/// its own.
 async fn change(hub: &Hub, token: &str, name: &str, declared: Option<&str>) {
     static NEXT: AtomicU8 = AtomicU8::new(1);
     let subnet = format!("10.{}.0.0/24", NEXT.fetch_add(1, Ordering::Relaxed));
@@ -54,7 +50,6 @@ async fn change(hub: &Hub, token: &str, name: &str, declared: Option<&str>) {
     assert!(answer["data"]["createSite"]["id"].is_string(), "{answer}");
 }
 
-/// A WRITE key made for `made_for`, made with the login `token`; returns its secret.
 async fn key(hub: &Hub, token: &str, name: &str, made_for: &str) -> String {
     let input = json!({ "name": name, "scope": "WRITE", "madeFor": made_for,
                         "expiresAt": start() + TimeDelta::days(30) });
@@ -64,7 +59,6 @@ async fn key(hub: &Hub, token: &str, name: &str, made_for: &str) -> String {
     created["secret"].as_str().unwrap().to_owned()
 }
 
-/// The audit entries on sites (`kind` only, when given), oldest first.
 async fn site_entries(hub: &Hub, token: &str, kind: Option<&str>) -> Vec<Value> {
     let answer = post(hub, token, (AUDIT, json!({ "kind": kind })), None).await;
     let edges = answer["data"]["audit"]["edges"].as_array().unwrap().clone();
@@ -261,7 +255,6 @@ async fn log_015_made_for_cannot_change(pool: PgPool) {
     );
 }
 
-/// The actor kind a WebSocket's `connection_init` `payload` signs in as.
 async fn socket_kind(pool: &PgPool, payload: Value) -> ActorKind {
     let identity = access::identify_connection(pool, &payload, start())
         .await

@@ -1,5 +1,3 @@
-//! SQL on `devices.sites`: a site is made, listed, and read by id.
-
 use sqlx::{PgConnection, PgPool};
 
 use crate::{

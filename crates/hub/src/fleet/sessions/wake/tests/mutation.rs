@@ -1,6 +1,4 @@
-//! `wakeDevice` (K1, K7, LOG-005, LOG-013, API-003): the result, the audit entry `device.wake`
-//! for each attempt on a known device, sent or not, the actor kind of the request on the entry
-//! and the event, and each error code with its fixed message.
+//! `wakeDevice` (K1, K7, LOG-005, LOG-013, API-003).
 
 use std::sync::Arc;
 

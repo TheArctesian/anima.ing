@@ -1,10 +1,9 @@
-//! How long metrics are kept (DB-005, DB-009, HUB-005) and what a retention run removed.
+//! Metric retention (DB-005, DB-009, HUB-005).
 
 use chrono::{DateTime, DurationRound, NaiveDate, TimeDelta, Utc};
 
-/// The periods after which metrics go. The defaults are those of DB-009; a later setting can
-/// change them (HUB-005). The database refuses to drop a sample partition less than 1 day
-/// old, so a shorter `samples` period fails the run rather than dropping early.
+/// Defaults are DB-009's. A `samples` period under 1 day fails the run: the database refuses
+/// to drop a sample partition less than 1 day old.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Retention {
     pub samples: TimeDelta,
@@ -24,10 +23,8 @@ impl Default for Retention {
     }
 }
 
-/// The instants before which each kind of row goes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Cutoffs {
-    /// Sample partitions of the UTC days before this date are dropped.
     pub(super) samples: NaiveDate,
     pub(super) minute: DateTime<Utc>,
     pub(super) hour: DateTime<Utc>,
@@ -45,10 +42,8 @@ impl Retention {
     }
 }
 
-/// What a retention run removed.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Trimmed {
-    /// The names of the sample partitions dropped.
     pub partitions: Vec<String>,
     pub minute: u64,
     pub hour: u64,
@@ -59,8 +54,7 @@ pub struct Trimmed {
     pub idle_series: u64,
 }
 
-/// Midnight UTC of the day that holds `now`. Partitions are created from it, so the database's
-/// window (up to 7 days past its own clock) holds even when `now` is a little ahead of it.
+/// Partitions start here so the database's window (7 days past its clock) holds when `now` is ahead.
 pub(super) fn start_of_day(now: DateTime<Utc>) -> DateTime<Utc> {
     now.duration_trunc(TimeDelta::days(1)).unwrap_or(now)
 }

@@ -1,7 +1,5 @@
-//! K-E1 Section 13.2, OD-E14: a change leaves as the provider rendered it with the headers of
-//! decision 1 and the token in `Authorization` only; every reply reaches the provider's
-//! `settle`; a change whose answer was lost is `Unknown` and sent once; a source that makes no
-//! changes is refused before anything is sent.
+//! K-E1 Section 13.2, OD-E14: a change sends the token in `Authorization` only; a change whose
+//! answer was lost is `Unknown` and sent once.
 
 use std::sync::{
     Arc,
@@ -140,7 +138,6 @@ async fn od_e14_every_status_reaches_settle_and_a_401_drops_the_token(pool: PgPo
     );
 }
 
-/// A server that reads one whole request, counts it and closes the connection unanswered.
 async fn hang_up() -> (Url, Arc<AtomicUsize>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = Url::parse(&format!("http://{}", listener.local_addr().unwrap())).unwrap();

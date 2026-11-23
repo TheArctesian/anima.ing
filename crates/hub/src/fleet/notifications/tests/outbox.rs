@@ -28,7 +28,6 @@ async fn queue(pool: &PgPool, channel: ChannelId, at: DateTime<Utc>) -> OutboxId
     id
 }
 
-/// The claim that holds row `id` of `channel` now: its token is the row's `next_attempt_at`.
 async fn holding(pool: &PgPool, channel: ChannelId, id: OutboxId) -> Outbox {
     let lease_end: DateTime<Utc> =
         sqlx::query_scalar("SELECT next_attempt_at FROM notifications.outbox WHERE id = $1")

@@ -33,7 +33,6 @@ pub fn ssh_port() -> Value {
     json!({ "tcp": { "port": 22 } })
 }
 
-/// (`operator_edited`, `repair_tried_at` is set) of the check (CHK-013).
 async fn marker(pool: &PgPool, id: &str) -> (bool, bool) {
     sqlx::query_as(
         "SELECT operator_edited, repair_tried_at IS NOT NULL FROM checks.checks WHERE id = $1::uuid",
@@ -59,7 +58,6 @@ async fn audit(pool: &PgPool, target_type: &str, target_id: &str, action: &str) 
     .unwrap();
 }
 
-/// The `do $$ ... $$` block of migration 0302, which the test runs against seeded audit rows.
 fn backfill_block() -> String {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -149,7 +147,6 @@ fixture_test! {
         let parent = "query($id: ID!) { check(id: $id) { parent { id } } }";
         let before = data_with(&schema, parent, json!({ "id": child })).await;
         assert_eq!(before["check"]["parent"]["id"], group);
-        // Absent parentId keeps the group.
         data_with(&schema, UPDATE, json!({ "id": child, "input": { "retries": 1 } })).await;
         let kept = data_with(&schema, parent, json!({ "id": child })).await;
         assert_eq!(kept["check"]["parent"]["id"], group);
@@ -232,7 +229,6 @@ fixture_test! {
         let edited = create(&schema, input(PVE_01, "ssh", ssh_port())).await;
         let untouched = create(&schema, input(PVE_01, "other", ssh_port())).await;
         sqlx::query("UPDATE checks.checks SET operator_edited = false").execute(&pool).await.unwrap();
-        // Another target type with the same id, and a pause entry: neither counts.
         audit(&pool, "device", &untouched, "update").await;
         audit(&pool, "check", &untouched, "pause").await;
         audit(&pool, "check", &edited, "update").await;

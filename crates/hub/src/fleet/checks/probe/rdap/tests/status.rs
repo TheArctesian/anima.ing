@@ -1,5 +1,4 @@
-//! The status rule of a domain expiry check (D-29): Up at or above the warning days, Degraded
-//! below them, Down after expiry, Unknown without an expiry date.
+//! D-29.
 
 use chrono::{DateTime, TimeDelta, TimeZone as _, Utc};
 
@@ -18,7 +17,6 @@ fn now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 11, 8, 12, 0, 0).unwrap()
 }
 
-/// The status a check with no retries records for the expiry `offset` from now.
 fn status(offset: Option<TimeDelta>, warn_days: u32) -> Status {
     let settings = CheckSettings {
         retries: 0,

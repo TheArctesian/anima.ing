@@ -27,8 +27,7 @@ fn id(n: u128) -> String {
     session_id(n).to_string()
 }
 
-/// The node with its times rewritten as `…Z`, so the test checks the instant. The hub's
-/// `DateTime` scalar (async-graphql's, R-012) writes the offset as `+00:00`.
+/// The hub's `DateTime` scalar writes `+00:00` (R-012), so the test compares instants.
 fn instants_as_utc_z(node: &Value) -> Value {
     let mut node = node.clone();
     for field in ["startedAt", "endedAt"] {
@@ -158,7 +157,6 @@ async fn api_006_pages_are_newest_first_and_stable_under_new_sessions(pool: PgPo
     assert_eq!(first["pageInfo"]["hasNextPage"], true);
     assert_eq!(first["pageInfo"]["endCursor"], first["edges"][2]["cursor"]);
 
-    // A session that starts now goes before page one and does not shift page two.
     insert(&pool, &Row::live(8, DOCKER_HOST, 60)).await.unwrap();
     let cursor = first["pageInfo"]["endCursor"].as_str().unwrap();
     let second = page(&schema, 3, Some(cursor)).await;

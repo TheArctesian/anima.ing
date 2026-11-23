@@ -1,11 +1,7 @@
-//! The stale mark of a daemon (MET-018, R-098 a): once the hub has accepted no batch from an
-//! daemon for more than 30 seconds, the device's metrics are stale, and the hub writes one event;
-//! the next accepted batch clears the mark and writes one more (in `push`). A refused batch
-//! changes neither.
+//! The stale mark of a daemon (MET-018, R-098 a); the next accepted batch clears it (`push`).
 //!
-//! Stale says only that the daemon is not reaching the hub. It writes no heartbeat and changes
-//! no check, so a stale daemon is never a Down check. The round takes the time as a parameter
-//! (CQ-021); only [`spawn_stale_watch`] reads the clock.
+//! Stale writes no heartbeat and changes no check, so a stale daemon is never a Down check.
+//! Only [`spawn_stale_watch`] reads the clock (CQ-021).
 
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
@@ -23,16 +19,13 @@ use crate::{
     ids::DeviceId,
 };
 
-/// How long the hub waits for a batch before the daemon is stale: three push intervals.
+/// Three push intervals.
 const STALE_AFTER: TimeDelta = TimeDelta::seconds(30);
 
 /// The time between two rounds, so a daemon is marked 30 to 35 seconds after its last batch.
 const ROUND: Duration = Duration::from_secs(5);
 
-/// Starts the stale watch: a round every 5 seconds at the clock's time, skipping the ticks a
-/// slow round missed. It runs until the handle is aborted, which ends a round in flight and
-/// rolls back its open transaction. A failed round is logged by its fixed text and the next
-/// round tries again.
+/// Runs until the handle is aborted, which ends a round in flight and rolls back its transaction.
 #[must_use]
 pub fn spawn_stale_watch(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) -> JoinHandle<()> {
     tokio::spawn(async move {
@@ -47,14 +40,11 @@ pub fn spawn_stale_watch(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) -> JoinHan
     })
 }
 
-/// Marks every daemon with no batch accepted for more than 30 seconds before `now` stale, with
-/// one event for each whose device still takes its metrics from the daemon; how many it marked.
-/// A daemon that has never pushed is never marked: it never became stale. One device that
-/// cannot be marked is logged by its ID and does not keep the others from being marked.
+/// Marks every overdue daemon stale and returns how many it marked. A daemon that never pushed
+/// is never marked; one device that fails does not keep the others from being marked.
 ///
 /// # Errors
-/// `Database`, `Devices` or `Events` when the overdue daemons cannot be read, or the first
-/// device's failure once every other device was tried.
+/// The read's failure, or the first device's failure once every other device was tried.
 pub(in crate::fleet::metrics) async fn mark_stale(
     db: &PgPool,
     bus: &Bus,
@@ -76,8 +66,7 @@ pub(in crate::fleet::metrics) async fn mark_stale(
     failed.map_or(Ok(marked), Err)
 }
 
-/// Marks one daemon stale unless a batch came meanwhile; whether it did. The device row is taken
-/// first, as a batch takes it, so the mark and a batch never cross: the later one sees the other.
+/// The device row is taken first, as a batch takes it, so the mark and a batch never cross.
 async fn mark_one(
     db: &PgPool,
     bus: &Bus,
@@ -107,7 +96,6 @@ async fn mark_one(
     Ok(true)
 }
 
-/// The one event of a daemon that went stale (MET-018).
 fn went_stale(device: DeviceId, name: &str) -> NewEvent {
     NewEvent {
         severity: Severity::Warning,
@@ -118,8 +106,8 @@ fn went_stale(device: DeviceId, name: &str) -> NewEvent {
     }
 }
 
-/// Of `devices`, those with no fresh daemon: revoked, not yet pushed, or marked stale. The
-/// caller asks only for devices whose metrics source is `daemon` (MET-018, R-092 D-7).
+/// Of `devices`, those with no fresh daemon: revoked, not yet pushed, or marked stale (MET-018,
+/// R-092 D-7).
 ///
 /// # Errors
 /// The database error when the query fails.

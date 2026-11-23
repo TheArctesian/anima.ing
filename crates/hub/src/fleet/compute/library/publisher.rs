@@ -1,5 +1,4 @@
 //! How the publisher of a base model gets onto the approved list (LIBM-003, R-343).
-//! Pure rules: the hub setting and the actor come in as values.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

@@ -7,7 +7,7 @@ use crate::{api_errors::FieldError, ids::ProjectId};
 const CURSOR_PREFIX: &str = "p1.";
 const MAX_PAGE_SIZE: usize = 200;
 
-/// The place a cursor points after: the project's name in lower case and its id.
+/// The project's name in lower case and its id.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct After {
     pub name: String,
@@ -15,8 +15,6 @@ pub struct After {
     pub rank: Option<i64>,
 }
 
-/// The page size the operator asked for (`first`), 1 to 200.
-///
 /// # Errors
 /// A `first` error when it is outside that range.
 pub fn page_size(first: i32) -> Result<usize, FieldError> {
@@ -29,7 +27,6 @@ pub fn page_size(first: i32) -> Result<usize, FieldError> {
     }
 }
 
-/// The opaque cursor just after `after`.
 #[must_use]
 pub fn encode_cursor(after: &After) -> String {
     let mut cursor = String::from(CURSOR_PREFIX);
@@ -43,8 +40,6 @@ pub fn encode_cursor(after: &After) -> String {
     cursor
 }
 
-/// The place a cursor of [`encode_cursor`] points after.
-///
 /// # Errors
 /// An `after` error when the text is not such a cursor.
 pub fn decode_cursor(cursor: &str) -> Result<After, FieldError> {

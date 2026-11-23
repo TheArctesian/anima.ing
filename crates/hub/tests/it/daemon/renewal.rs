@@ -1,6 +1,4 @@
-//! MET-013, K8 Section 5: a renewed token sits beside the current one, which keeps working
-//! until the renewed one is first used; a second renewal before then replaces the unused one;
-//! every token works for 365 days.
+//! Daemon token renewal (MET-013, K8 Section 5).
 
 use axum::http::StatusCode;
 use chrono::{DateTime, TimeDelta, Utc};
@@ -18,14 +16,11 @@ fn refused() -> (StatusCode, String) {
     (StatusCode::UNAUTHORIZED, refusal("TOKEN_REFUSED"))
 }
 
-/// A well-formed daemon token the hub never issued.
 fn never_issued(seed: u8) -> String {
     DaemonToken::from_random([seed; 32]).expose().to_owned()
 }
 
-/// `token` is refused at the bearer, before the body is read, on push and renewal. The write
-/// checks the hash again under the row lock, so a lookup that let `token` through would show
-/// only here: its malformed bodies would be answered `MALFORMED`.
+/// The write checks the hash again, so only a malformed body shows a bearer that let `token` through.
 async fn refused_at_the_bearer(daemons: &Daemons, token: &str) {
     let bearer = format!("Bearer {token}");
     let pushed = daemons.push_raw(Some(&bearer), "{}", PERMITTED).await;
@@ -34,7 +29,6 @@ async fn refused_at_the_bearer(daemons: &Daemons, token: &str) {
     assert_eq!(renewal, refused());
 }
 
-/// pve-01's daemon row, every column, and how many samples it has.
 async fn daemon_rows(pool: &PgPool) -> (String, i64) {
     let row = sqlx::query_scalar(
         "SELECT row_to_json(a)::text FROM metrics.daemons a WHERE device_id = $1::uuid",
@@ -46,8 +40,7 @@ async fn daemon_rows(pool: &PgPool) -> (String, i64) {
     (row, samples_of(pool, PVE_01).await)
 }
 
-/// T8 S3: the hash of the presented token must match; any other well-formed token is refused,
-/// on push and renewal alike, and changes nothing.
+/// T8 S3.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
@@ -67,8 +60,7 @@ async fn met_013_a_token_never_issued_is_refused_while_the_device_is_enrolled(po
     assert_eq!(daemons.push(&token, &batch).await.0, StatusCode::NO_CONTENT);
 }
 
-/// T8 S3: while a renewed token waits for its first use, only it and the current token work; a
-/// third well-formed token promotes nothing and is refused.
+/// T8 S3.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
@@ -111,13 +103,10 @@ async fn met_013_the_old_token_works_until_the_new_one_is_first_used(pool: PgPoo
     let daemons = Daemons::new(&pool).await;
     let first = daemons.token_for(PVE_01).await;
     let unused = daemons.renewed(&first).await;
-    // The first token still works while the renewed one is unused (and replaces it).
     let second = daemons.renewed(&first).await;
     assert_eq!(daemons.renew(&unused).await, refused());
-    // The first use of the renewed token ends the one it replaced.
     let third = daemons.renewed(&second).await;
     assert_eq!(daemons.renew(&first).await, refused());
-    // The promoted token is now the current one, beside the newest renewal.
     let fourth = daemons.renewed(&second).await;
     assert_eq!(daemons.renew(&third).await, refused());
     assert_eq!(daemons.renew(&fourth).await.0, StatusCode::OK);
@@ -145,7 +134,6 @@ async fn met_013_a_token_works_for_365_days(pool: PgPool) {
 
     daemons.clock.advance(TimeDelta::seconds(1));
     assert_eq!(daemons.renew(&token).await, refused());
-    // The renewed token has its own 365 days.
     let newest = daemons.renewed(&next).await;
     daemons.clock.advance(TimeDelta::days(365));
     assert_eq!(daemons.renew(&newest).await, refused());
@@ -172,7 +160,6 @@ async fn k8_renewal_checks_the_bearer_then_the_body(pool: PgPool) {
         answer,
         (StatusCode::PAYLOAD_TOO_LARGE, refusal("TOO_LARGE"))
     );
-    // Without a valid bearer the body is never read: the answer is the token refusal.
     for authorization in [None, Some("Bearer junk"), Some(&*format!("Basic {token}"))] {
         let answer = daemons
             .renew_raw(authorization, large.clone(), PERMITTED)
@@ -194,8 +181,7 @@ async fn met_013_two_first_uses_of_a_renewed_token_at_once_are_neither_refused(p
     let first = daemons.token_for(PVE_01).await;
     let renewed = daemons.renewed(&first).await;
     let (one, other) = tokio::join!(daemons.renew(&renewed), daemons.renew(&renewed));
-    // Both find the token usable; the device's one turn (MET-017) may send the later one back
-    // as `UNAVAILABLE`, which the daemon tries again, but never as `TOKEN_REFUSED`.
+    // The device's one turn (MET-017) may answer the later one `UNAVAILABLE`, never `TOKEN_REFUSED`.
     let unavailable = (StatusCode::SERVICE_UNAVAILABLE, refusal("UNAVAILABLE"));
     for answer in [&one, &other] {
         assert!(

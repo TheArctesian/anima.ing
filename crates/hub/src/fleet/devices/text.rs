@@ -1,7 +1,5 @@
-//! Rules for operator-typed text: the characters it may hold, and host names (DEV-010).
-//!
-//! Names, kinds, tags and user names reach the event log and the audit log, which are kept for
-//! a year and cannot be edited (LOG-004).
+//! Rules for operator-typed text (DEV-010); it reaches the event and audit logs, which cannot
+//! be edited (LOG-004).
 
 use std::net::IpAddr;
 
@@ -12,8 +10,6 @@ const HOST_MAX: usize = 253;
 const LABEL_MAX: usize = 63;
 const USER_NAME_MAX: usize = 64;
 
-/// A sign-in name for `field`: trimmed, at most 64 characters, plain and without spaces. An
-/// empty name is allowed unless `required`. `noun` names it in the messages, such as "SSH user name".
 pub(super) fn user_name(
     text: &str,
     required: bool,
@@ -45,7 +41,7 @@ pub(super) fn user_name(
     Ok(name.to_owned())
 }
 
-/// An IP address or an RFC 1123 host name, without scheme, port or path (DEV-010).
+/// An IP address or an RFC 1123 host name (DEV-010).
 pub(super) fn host(text: &str) -> Result<String, FieldError> {
     let host = text.trim();
     let reject = |message: &str| Err(FieldError::new("host", message));

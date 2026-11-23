@@ -31,7 +31,6 @@ fn report(state: WorkState) -> WorkReport {
     }
 }
 
-/// The job after each state of `states` was reported in turn, 10 seconds apart.
 fn after(job: &Job, states: &[WorkState]) -> Job {
     let mut job = job.clone();
     for (step, state) in states.iter().enumerate() {

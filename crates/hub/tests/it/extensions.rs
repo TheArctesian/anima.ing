@@ -8,7 +8,6 @@ use sqlx::PgPool;
 
 use crate::hub::{Hub, set_operator, start};
 
-/// A hub at `start()` with the fixture operator and a login token.
 async fn signed_in(pool: &PgPool) -> (Hub, String) {
     set_operator(pool).await;
     let hub = Hub::new(pool, start());

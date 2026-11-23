@@ -1,5 +1,4 @@
-//! What a source account is made of: its stored row, the kinds of failure, and the words the
-//! API shows for its health and its runs (K-E1 Sections 5 and 9).
+//! A source account's stored row, its failure kinds and its API words (K-E1 Sections 5 and 9).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

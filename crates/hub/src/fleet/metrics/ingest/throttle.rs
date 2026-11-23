@@ -2,12 +2,8 @@
 //! refusal with no valid credential, so a flood of guesses cannot fill the log (K8 Sections 3
 //! and 6, CR-15), and at most one a minute per device for a refusal with a valid one (CR-21).
 //!
-//! Pure: the time is a parameter. The addresses are bounded by [`ADDRESSES_PER_SPAN`]; the
-//! devices by the devices that hold a token, each forgotten a minute after its refusal. Nothing
-//! ticks: the count of refusals left out is written with the first refusal recorded a minute or
-//! more after the first of them, so after the last refusal of a flood its count waits for the
-//! next one. Past the budget a new address's refusal is counted, not written, for the rest of
-//! the minute.
+//! Nothing ticks: the count of refusals left out is written with the first refusal recorded a
+//! minute or more after the first of them.
 
 use std::{collections::HashMap, net::IpAddr};
 
@@ -15,7 +11,6 @@ use chrono::{DateTime, TimeDelta, Utc};
 
 use crate::ids::DeviceId;
 
-/// An address's refusal is written at most once in this span.
 const SPAN: TimeDelta = TimeDelta::minutes(1);
 
 /// The most addresses remembered in one span. Past it a refusal is counted, not written, and
@@ -25,7 +20,6 @@ pub(super) const ADDRESSES_PER_SPAN: usize = 64;
 #[derive(Debug, Default)]
 pub(super) struct Throttle {
     written: HashMap<IpAddr, DateTime<Utc>>,
-    /// The devices whose refusal was written in the last span, and when.
     devices: HashMap<DeviceId, DateTime<Utc>>,
     /// Refusals left out because the budget was spent, not yet counted in an event.
     unrecorded: usize,
@@ -77,7 +71,6 @@ impl Throttle {
         Some(std::mem::take(&mut self.unrecorded))
     }
 
-    /// How many addresses are remembered.
     #[cfg(test)]
     pub(super) fn len(&self) -> usize {
         self.written.len()

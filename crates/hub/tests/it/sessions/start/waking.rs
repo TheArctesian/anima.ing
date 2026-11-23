@@ -1,7 +1,4 @@
-//! `startSession` on a Down device (K4 §1, RA-031): the resolver reads the device's status as
-//! `Device.status` does and tries the wake relay first. Here the relay has no accepted host
-//! key, so the wake fails: the start still succeeds with `wakeSent` false, and the wake's own
-//! Error event says why. A device that is not Down is not tried.
+//! `startSession` on a Down device tries the wake relay first (K4 §1, RA-031).
 
 use anima_hub::fleet::sessions::Live;
 use serde_json::Value;
@@ -14,12 +11,9 @@ use crate::sessions::{
     starting::{display, protocol_start_request},
 };
 
-/// The sentence the wake writes when its relay has no accepted host key.
 const NO_RELAY_KEY: &str = "No Wake-on-LAN packet was sent: no host key is accepted for the \
                             wake relay. Test its connection and accept its key.";
 
-/// PVE-01 with VNC on, a MAC address, one check in `status`, and DOCKER-HOST as its site's
-/// wake relay.
 async fn waking_pve_01(pool: &PgPool, status: &str) {
     add_operator(pool).await;
     for statement in [
@@ -53,7 +47,6 @@ async fn waking_pve_01(pool: &PgPool, status: &str) {
     .unwrap();
 }
 
-/// A VNC start on PVE-01: the ticket's `wakeSent`.
 async fn wake_sent(pool: &PgPool) -> Value {
     let schema = schema_at(pool, now(), &Live::default());
     let response = schema

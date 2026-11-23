@@ -1,5 +1,4 @@
-//! ICMP echo probe over unprivileged datagram sockets. No `ping` process is ever started
-//! (CHK-012).
+//! ICMP echo probe over unprivileged datagram sockets; no `ping` process starts (CHK-012).
 
 use std::{net::IpAddr, time::Duration};
 
@@ -14,8 +13,7 @@ use crate::fleet::checks::config::IpVersion;
 
 const PAYLOAD: [u8; 32] = [0x5a; 32];
 
-/// How much later than the check's limit the pinger gives up, so the probe's own limit is the
-/// one that ends an echo with no reply.
+/// The probe's own limit, not the pinger's, ends an echo with no reply.
 const PINGER_MARGIN: Duration = Duration::from_millis(500);
 
 pub(super) async fn probe(

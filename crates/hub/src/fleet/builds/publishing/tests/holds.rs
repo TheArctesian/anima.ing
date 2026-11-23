@@ -1,11 +1,4 @@
-//! A try that no longer holds its job leaves the job's row unlocked when `finish` returns, so
-//! the same sweep's next take (`FOR UPDATE SKIP LOCKED`) can take it again (D-25); so does a
-//! refused request for upload URLs (D-43).
-//!
-//! The lock is checked from another thread with its own runtime and connection while this
-//! test's thread is blocked. A transaction that was dropped instead of ended rolls back only
-//! once a task of this test's single-thread runtime runs, so it still holds the lock during the
-//! check: the result does not depend on load.
+//! D-25, D-43.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use reqwest::Client;
@@ -41,8 +34,6 @@ fn now() -> DateTime<Utc> {
     DateTime::from_timestamp(1_900_000_000, 0).unwrap()
 }
 
-/// A Linux job the publisher holds as try 1 until 10 minutes after `now()`, its tries at
-/// `attempts`.
 async fn publishing_job(pool: &PgPool, attempts: i32) {
     sqlx::query(
         "insert into access.operators (id, username, password_hash, created_at) \
@@ -101,7 +92,6 @@ fn bucket(tokens: &tempfile::TempDir) -> Bucket {
     .unwrap()
 }
 
-/// Ends try 1 of the job with `outcome`.
 async fn finish(pool: &PgPool, outcome: Outcome) {
     let tokens = tempfile::tempdir().unwrap();
     let bucket = bucket(&tokens);

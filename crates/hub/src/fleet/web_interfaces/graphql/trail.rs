@@ -1,9 +1,5 @@
-//! What a web interface mutation leaves behind: one audit entry and one event, written in the
-//! mutation's own transaction (LOG-004, LOG-005, LOG-007, WEB-009).
-//!
-//! The audit target is the device (D-3). A `change` holds the interface id, the URL's origin
-//! and a fingerprint, never the URL itself: a URL's path and query may carry a token. The
-//! event names the interface by its label and carries the device (CR-5).
+//! One audit entry and one event per web interface mutation, in its transaction (LOG-004, LOG-005).
+//! A `change` holds the URL's origin, never the URL: its path and query may carry a token (LOG-007).
 
 use reqwest::Url;
 use serde_json::{Value, json};
@@ -17,7 +13,7 @@ use crate::{
     ids::{CheckId, WebInterfaceId},
 };
 
-/// `scheme://host:port` of a URL: no user name, path or query. Empty when it does not parse.
+/// `scheme://host:port` only; empty when the URL does not parse.
 fn origin(url: &str) -> String {
     Url::parse(url).map_or_else(|_| String::new(), |u| u.origin().ascii_serialization())
 }
@@ -53,7 +49,7 @@ pub(super) fn added(interface: &WebInterface, device: &Device) -> TrailEntry {
     )
 }
 
-/// `previousOrigin` and `previousLabel` appear when they changed. `pinDropped` is set when the new origin removed the certificate the operator accepted.
+/// `pinDropped` is set when the new origin removed the certificate the operator accepted.
 pub(super) fn updated(before: &WebInterface, after: &WebInterface, device: &Device) -> TrailEntry {
     let mut change = fields(after);
     if before.pin.is_some() && after.pin.is_none() {
@@ -99,8 +95,7 @@ pub(super) fn suggestion_accepted(
     )
 }
 
-/// Hiding a suggestion changes what the device offers and removes nothing, so it is an
-/// `update` of the device.
+/// Hiding a suggestion removes nothing, so it is an `update` of the device.
 pub(super) fn suggestion_dismissed(check: CheckId, device: &Device) -> TrailEntry {
     entry(
         device,

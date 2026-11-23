@@ -1,5 +1,4 @@
-//! How long each kind of data is kept (HUB-005, DB-011, D-25). The operator sets the periods;
-//! the hub's daily upkeep reads them with [`periods`] and passes each to its domain's job.
+//! How long each kind of data is kept (HUB-005, DB-011, D-25).
 
 mod bounds;
 pub mod graphql;
@@ -22,14 +21,13 @@ pub enum Error {
     Validation(Vec<FieldError>),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// A stored period is missing or outside its bounds, so no period is guessed.
+    /// A stored period is missing or out of bounds; no period is guessed.
     #[error("the stored retention periods cannot be read")]
     Unreadable,
 }
 
 impl Error {
-    /// For the process log: what failed, as a fixed word, never the source text (LOG-007,
-    /// API-010).
+    /// For the process log: a fixed word, never the source text (LOG-007, API-010).
     #[must_use]
     pub const fn fault(&self) -> &'static str {
         match self {
@@ -45,7 +43,6 @@ impl Error {
 pub struct Periods([u16; Subject::ALL.len()]);
 
 impl Periods {
-    /// How long the data of `subject` is kept.
     #[must_use]
     pub fn keep(&self, subject: Subject) -> Days {
         Days::new(u64::from(self.days(subject)))
@@ -55,7 +52,6 @@ impl Periods {
         self.0[subject as usize]
     }
 
-    /// Every subject must have a row inside its bounds.
     fn from_rows(rows: &[(String, i32)]) -> Result<Self, Error> {
         let mut days = [None; Subject::ALL.len()];
         for (name, stored) in rows {
@@ -71,11 +67,8 @@ impl Periods {
     }
 }
 
-/// The period of every subject. Wiring only: `upkeep.rs` reads it once per daily run.
-///
 /// # Errors
-/// `Database` when the read fails; `Unreadable` when a subject has no row or a stored value is
-/// outside its bounds.
+/// `Database` when the read fails; `Unreadable` when a subject has no row or a value is out of bounds.
 pub async fn periods(db: &PgPool) -> Result<Periods, Error> {
     let rows = store::all(db).await?;
     Periods::from_rows(&rows)

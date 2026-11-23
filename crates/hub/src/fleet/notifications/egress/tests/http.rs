@@ -1,5 +1,4 @@
-//! HTTP egress: https only, checked address only, no second lookup, no redirect, and TLS
-//! verified for the host name (P3-003, D-17, CR-14). How the reply is read is in `replies`.
+//! Egress: https, checked address, no second lookup, no redirect, TLS for the host (P3-003, D-17, CR-14).
 
 use std::net::SocketAddr;
 
@@ -47,7 +46,6 @@ pub(super) async fn post(egress: &Egress, target: &str) -> Result<(), SendError>
     egress.send_http(request(Method::POST, url(target))).await
 }
 
-/// A TLS server for `name` that answers `reply`, and an egress that trusts its certificate.
 async fn tls_server(name: &str, reply: &[u8]) -> (Server, Egress) {
     let (der, acceptor) = certificate(name);
     let server = serve(Behaviour::Http(reply.to_vec(), Some(acceptor))).await;
@@ -157,8 +155,7 @@ async fn p3_003_the_pinned_client_resolves_no_name_of_its_own() {
         .pinned_client(Some("pinned.invalid"), &[pinned])
         .unwrap();
 
-    // `.invalid` never resolves (RFC 6761): the pinned name reaches the pinned address only
-    // because the client looked nothing up.
+    // `.invalid` never resolves (RFC 6761), so only a client that looks nothing up gets a reply.
     let pinned_reply = client
         .post(url(&format!("http://pinned.invalid:{}/", server.port)))
         .send()

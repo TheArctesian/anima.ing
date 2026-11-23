@@ -1,6 +1,5 @@
-//! The reader of YAML for the syntax check: a tree of the one document, each node with its
-//! line and column. It takes the events of the parser one at a time, so that a hostile file
-//! stops it at a fixed depth and a fixed count. An alias is one node: nothing is expanded.
+//! The YAML reader of the syntax check. It takes parser events one at a time, so a hostile file
+//! stops it at a fixed depth and count. An alias is one node: nothing is expanded.
 
 use yaml_rust2::{
     Event,
@@ -8,9 +7,7 @@ use yaml_rust2::{
     scanner::{Marker, TScalarStyle},
 };
 
-/// The deepest nesting of a file.
 pub(super) const DEEPEST: usize = 64;
-/// The most events of the parser for one file.
 pub(super) const MOST_EVENTS: usize = 100_000;
 
 /// A position in the text: both numbers start at 1.
@@ -32,15 +29,12 @@ impl Place {
     }
 }
 
-/// What a node is. A plain scalar that YAML reads as "no value" is `Null`.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Shape {
     Null,
     Text(String),
     List(Vec<Node>),
-    /// Each key with its value, in the order of the file. A key can be any node.
     Map(Vec<(Node, Node)>),
-    /// A reference to an anchor. The reader does not follow it.
     Alias,
 }
 
@@ -50,7 +44,6 @@ pub(super) struct Node {
     pub shape: Shape,
 }
 
-/// Why a text gave no tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Unread {
     NotYaml(Place),
@@ -59,7 +52,6 @@ pub(super) enum Unread {
     MoreThanOneDocument(Place),
 }
 
-/// What is open while the events come: a list, or a map with the key that waits for a value.
 enum Open {
     List(Vec<Node>),
     Map(Vec<(Node, Node)>, Option<Node>),
@@ -112,10 +104,6 @@ fn scalar(text: String, style: TScalarStyle) -> Shape {
 }
 
 /// The one document of `text` as a tree; `None` for a text with no document.
-///
-/// # Errors
-/// [`Unread`] for text that is not YAML, a second document, and a file that is deeper or
-/// longer than the limits.
 pub(super) fn read(text: &str) -> Result<Option<Node>, Unread> {
     let mut parser = Parser::new_from_str(text);
     let mut tree = Tree::default();

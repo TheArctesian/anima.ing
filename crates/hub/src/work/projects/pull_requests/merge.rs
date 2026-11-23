@@ -1,11 +1,6 @@
-//! The merge rule (K-E1 Section 13.3; PRJ-033, PRO-013): from a pull request as GitHub just
-//! gave it, the merge methods the repository allows and what the caller asked, either the merge
-//! to send or one refusal. Pure: no read, no clock, no log.
-//!
-//! The rule never guesses: a mergeability GitHub has not worked out, or merge methods the hub
-//! cannot see, refuse. A pull request from a fork is a trust decision by a person: it merges
-//! only alone, only when the caller typed its head repository, and never for a request that
-//! declares an AI agent.
+//! The merge rule (K-E1 Section 13.3; PRJ-033, PRO-013). Pure.
+//! A mergeability GitHub has not worked out, or merge methods the hub cannot see, refuse.
+//! A pull request from a fork is a trust decision by a person: it merges only alone, only when the caller typed its head repository, and never for an AI agent.
 
 use provider_github::live::pulls::{PullDetail, PullState};
 
@@ -15,55 +10,41 @@ use super::{
 };
 use crate::api_errors::ErrorCode;
 
-/// How the caller merges: one pull request with its own choices, or one of many.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Merging<'a> {
     Alone {
-        /// Also merge an UNSTABLE pull request.
         allow_failing_checks: bool,
-        /// What the caller typed for a pull request from a fork.
         fork_confirmed: Option<&'a str>,
     },
     InBulk,
 }
 
-/// What the caller asked.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Ask<'a> {
     pub method: MergeMethod,
-    /// The head commit the caller saw, 40 hexadecimal digits.
     pub expected_head: &'a str,
     /// The request declares an AI agent (LOG-016, LOG-017).
     pub agent: bool,
     pub merging: Merging<'a>,
 }
 
-/// What the hub does with the pull request.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Decision {
-    /// Send the merge, with the head the caller saw.
     Merge,
-    /// It was merged before: nothing to send.
     AlreadyMerged,
     Refused(Refusal),
 }
 
-/// Why the hub sends nothing. Each has fixed words, a K7 code and a bulk outcome.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Refusal {
     Closed,
     Draft,
     Conflict,
-    /// A required check or review is missing.
     Blocked,
-    /// The base branch moved and the repository requires an up-to-date branch.
     Behind,
-    /// UNSTABLE, without `allowFailingChecks`, or in bulk.
     ChecksFailing,
-    /// GitHub has not worked out whether it can merge.
     NotReady,
     HeadMoved,
-    /// GitHub gave no merge method: the App cannot see the repository's settings.
     NoMethods,
     MethodRefused,
     ForkInBulk,
@@ -71,7 +52,6 @@ pub enum Refusal {
     ForkByAgent,
 }
 
-/// The decision for `pull`, read just now, in a repository that allows `methods`.
 #[must_use]
 pub fn decide(pull: &PullDetail, methods: &[MergeMethod], asked: &Ask<'_>) -> Decision {
     if pull.pull.state == PullState::Merged {
@@ -80,8 +60,6 @@ pub fn decide(pull: &PullDetail, methods: &[MergeMethod], asked: &Ask<'_>) -> De
     refusal(pull, methods, asked).map_or(Decision::Merge, Decision::Refused)
 }
 
-/// The first rule `pull` breaks, in order: the fork rule, then its state, the head, the
-/// method and its mergeability.
 fn refusal(pull: &PullDetail, methods: &[MergeMethod], asked: &Ask<'_>) -> Option<Refusal> {
     let read = &pull.pull;
     if read.from_fork
@@ -107,8 +85,7 @@ fn refusal(pull: &PullDetail, methods: &[MergeMethod], asked: &Ask<'_>) -> Optio
     mergeability(pull, asked.merging)
 }
 
-/// The fork rule (PRO-013): never in bulk, never for an agent, and only when the caller typed
-/// the head repository exactly. A deleted head repository cannot be typed, so it never merges.
+/// A deleted head repository cannot be typed, so it never merges (PRO-013).
 fn fork(head_repository: Option<&str>, asked: &Ask<'_>) -> Option<Refusal> {
     match asked.merging {
         Merging::InBulk => Some(Refusal::ForkInBulk),
@@ -120,8 +97,8 @@ fn fork(head_repository: Option<&str>, asked: &Ask<'_>) -> Option<Refusal> {
     }
 }
 
-/// Whether GitHub's mergeability lets it merge. Only CLEAN merges in bulk; UNSTABLE merges
-/// alone with `allowFailingChecks`. BLOCKED never: the hub does not bypass a required check.
+/// Only CLEAN merges in bulk, and UNSTABLE only alone with `allowFailingChecks`; the hub never
+/// bypasses a required check, so BLOCKED does not merge.
 fn mergeability(pull: &PullDetail, merging: Merging<'_>) -> Option<Refusal> {
     let unstable_allowed = matches!(
         merging,
@@ -182,8 +159,6 @@ impl Refusal {
         }
     }
 
-    /// The K7 code of the refusal of one merge: the fork rule is `FORBIDDEN`, the rest
-    /// `CONFLICT`.
     #[must_use]
     pub const fn code(self) -> ErrorCode {
         match self {
@@ -192,7 +167,6 @@ impl Refusal {
         }
     }
 
-    /// Its outcome in a bulk merge.
     #[must_use]
     pub const fn outcome(self) -> MergeOutcome {
         match self {

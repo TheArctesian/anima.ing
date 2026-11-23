@@ -1,13 +1,11 @@
-//! What the operator may enter for an operational key (K-E5 Section 2). Pure. Each problem
-//! names its field and says what to give; it never quotes the input, which may be a value
-//! pasted in the wrong field (LOG-007).
+//! What the operator may enter for an operational key (K-E5 Section 2). A problem never quotes
+//! the input, which may be a value pasted in the wrong field (LOG-007).
 
 use daemon_core::wire::{MAX_VALUE_BYTES, is_key_name};
 
 use super::model::Metadata;
 use crate::text::is_plain;
 
-/// One field the operator must fix, and what to give.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Problem {
     pub field: &'static str,
@@ -39,13 +37,11 @@ pub fn is_name(text: &str) -> bool {
     is_key_name(text)
 }
 
-/// Whether a value of `length` bytes may be stored.
 #[must_use]
 pub const fn value_fits(length: usize) -> bool {
     length >= 1 && length <= MAX_VALUE_BYTES
 }
 
-/// The problem of a value of `length` bytes, if any.
 #[must_use]
 pub fn value_problem(length: usize) -> Option<Problem> {
     (!value_fits(length)).then_some(Problem {
@@ -54,7 +50,6 @@ pub fn value_problem(length: usize) -> Option<Problem> {
     })
 }
 
-/// Each problem of `metadata`, in field order; empty when it may be stored.
 #[must_use]
 pub fn problems(metadata: &Metadata) -> Vec<Problem> {
     let mut found = Vec::new();
@@ -91,13 +86,10 @@ fn is_line(text: &str) -> bool {
     (1..=LINE_CHARS).contains(&count) && is_plain(text) && !text.trim().is_empty()
 }
 
-/// A character instructions may not hold: a control character other than a line break or a
-/// tab, or one that hides or reorders text.
 fn is_hidden(c: char) -> bool {
     (c.is_control() && !matches!(c, '\n' | '\t')) || crate::text::is_invisible(c)
 }
 
-/// An `https` address with a host, no space and no control character.
 fn is_link(text: &str) -> bool {
     let host = text.strip_prefix("https://").unwrap_or_default();
     text.len() <= LINK_CHARS

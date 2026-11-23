@@ -1,5 +1,3 @@
-//! Stored rows and their mapping to the output types.
-
 use chrono::{DateTime, Utc};
 use daemon_core::{
     hardware::{
@@ -31,8 +29,7 @@ pub(super) struct ChartRow {
     max: f64,
 }
 
-/// The series of rows ordered by series then time: one `MetricSeries` per run of rows of the
-/// same series.
+/// Expects rows ordered by series then time.
 pub(super) fn chart_of(rows: Vec<ChartRow>) -> Result<Vec<MetricSeries>, Error> {
     let mut charts: Vec<(MetricSeriesId, MetricSeries)> = Vec::new();
     for row in rows {
@@ -187,8 +184,7 @@ pub(super) struct InventoryRow {
 impl TryFrom<InventoryRow> for Capabilities {
     type Error = Error;
 
-    /// The tools in name order; one of a name this version does not know is left out, and a
-    /// reason it does not know reads as `failed`.
+    /// An unknown tool name is left out; an unknown reason reads as `failed`.
     fn try_from(row: InventoryRow) -> Result<Self, Error> {
         let mut tools: Vec<Tool> = row
             .tool_names
@@ -243,8 +239,7 @@ pub(super) struct HardwareRow {
 }
 
 impl HardwareRow {
-    /// The device, its values and when they were stored. A backend of a name this version does
-    /// not know is left out; a source, state or reason it does not know reads as unknown.
+    /// An unknown backend name is left out; an unknown source, state or reason reads as unknown.
     pub(super) fn into_entry(self) -> Result<(DeviceId, (Hardware, DateTime<Utc>)), Error> {
         let bytes = |value: i64| u64::try_from(value).map_err(|_| Error::Unreadable);
         let optional = |value: Option<i64>| value.map(bytes).transpose();

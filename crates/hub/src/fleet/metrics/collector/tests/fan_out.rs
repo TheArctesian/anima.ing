@@ -1,5 +1,4 @@
-//! At most 8 collections at once and 20 seconds per device, on paused time: stalled devices
-//! fail with the deadline while the others finish (D-11).
+//! D-11.
 
 use std::{
     sync::{
@@ -20,14 +19,12 @@ use crate::fleet::{
     ssh::LinkError,
 };
 
-/// How many jobs run now, and the most that ever ran together.
 #[derive(Default)]
 struct Gauge {
     now: AtomicUsize,
     most: AtomicUsize,
 }
 
-/// A device that answers after `seconds`, within the collection deadline, as a collection does.
 async fn device(gauge: Arc<Gauge>, index: usize, seconds: u64) -> (usize, Result<usize, Failure>) {
     let running = gauge.now.fetch_add(1, Ordering::SeqCst) + 1;
     gauge.most.fetch_max(running, Ordering::SeqCst);
@@ -43,7 +40,6 @@ async fn device(gauge: Arc<Gauge>, index: usize, seconds: u64) -> (usize, Result
 #[tokio::test(start_paused = true)]
 async fn d11_eight_at_once_and_a_stalled_device_fails_at_20_seconds_while_the_rest_finish() {
     let gauge = Arc::new(Gauge::default());
-    // Devices 0 and 1 stall for a minute; the other ten answer after 19 seconds.
     let jobs: Vec<_> = (0..12)
         .map(|index| device(Arc::clone(&gauge), index, if index < 2 { 60 } else { 19 }))
         .collect();

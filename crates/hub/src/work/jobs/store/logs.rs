@@ -1,14 +1,11 @@
-//! The log of a job in schema `jobs`.
-
 use sqlx::PgConnection;
 
 use super::stored;
 use crate::{ids::JobId, work::jobs::Error};
 
-/// The most bytes of the log of one job that the hub keeps (K10 Section 7).
+/// K10 Section 7.
 const MAX_LOG_BYTES: i64 = 2 * 1024 * 1024;
 
-/// Adds one part to the log of the job and drops the oldest parts over 2 MiB.
 pub(in crate::work::jobs) async fn append_log(
     conn: &mut PgConnection,
     job: JobId,
@@ -35,7 +32,6 @@ pub(in crate::work::jobs) async fn append_log(
     Ok(())
 }
 
-/// The log of the job that the hub holds, oldest part first.
 pub(in crate::work::jobs) async fn log_of(
     conn: &mut PgConnection,
     job: JobId,

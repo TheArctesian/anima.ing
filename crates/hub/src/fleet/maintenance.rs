@@ -22,7 +22,6 @@ pub use model::{Target, TargetType, Weekday, Window, WindowKind, WindowRule};
 pub use rules::FieldError;
 pub use schedule::is_active;
 
-/// Why a maintenance operation failed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("maintenance window {0} not found")]
@@ -33,8 +32,7 @@ pub enum Error {
     Database(#[from] sqlx::Error),
 }
 
-/// What the windows in force at `now` apply to, from one query. Ask it about every device in
-/// a list instead of calling `active_for` once for each (API-005).
+/// One query: ask it about a list of devices instead of calling `active_for` for each (API-005).
 ///
 /// # Errors
 /// `Database` when the query fails.
@@ -43,8 +41,7 @@ pub async fn active_targets(db: &PgPool, now: DateTime<Utc>) -> Result<ActiveTar
     Ok(ActiveTargets::of(&windows, now))
 }
 
-/// Whether an active window applies to the device, to the check, or to any of the tags. The
-/// caller passes the device's tags; maintenance does not read devices.
+/// The caller passes the device's tags; maintenance does not read devices.
 ///
 /// # Errors
 /// `Database` when the query fails.

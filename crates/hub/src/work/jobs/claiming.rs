@@ -1,6 +1,3 @@
-//! The claim of a machine (K10 Section 4): what the machine said is recorded, the attempts
-//! whose answer was lost end, and the placement chooses the job.
-
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{Claim, Lease, Switch, WorkJob};
 use sqlx::PgConnection;
@@ -17,9 +14,7 @@ use crate::{
     ids::{DeviceId, JobId},
 };
 
-/// Answers the claim of `device` at `now` (K10 Section 4): records what the machine said, ends
-/// the attempts whose answer was lost, and gives the machine the job that the placement
-/// chooses. `claim.device` is already known to be `device`.
+/// Answers the claim of `device` (K10 Section 4); `claim.device` is already known to be `device`.
 ///
 /// # Errors
 /// `Database` or `Events` when a change cannot be written; nothing is changed then.
@@ -83,8 +78,6 @@ async fn claim_in(
     place(conn, (&offer, name), (client, now)).await
 }
 
-/// Decides each queued job for the machine of `offer`, records each decision, and gives the
-/// machine the job that the placement chooses, with the audit entry of the decision (ROU-005).
 async fn place(
     conn: &mut PgConnection,
     (offer, name): (&Offer, &str),
@@ -119,7 +112,6 @@ async fn place(
     Ok(Claimed::Job(Box::new(wire_job(&job))))
 }
 
-/// The job as the machine gets it.
 fn wire_job(job: &Job) -> WorkJob {
     WorkJob {
         id: job.id.into(),

@@ -1,5 +1,4 @@
-//! Each error of a read as the operator gets it: the K7 code and a fixed sentence that says
-//! what to do (API-010, HOST-001).
+//! Each read error is a K7 code and a fixed sentence that says what to do (API-010, HOST-001).
 
 use async_graphql::Value;
 

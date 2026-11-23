@@ -1,6 +1,5 @@
-//! A repository's pull requests, read live from GitHub (PRJ-031, PRJ-033): the list, one pull
-//! request, and its mergeability, checks and the repository's merge methods when selected.
-//! Merging one, or many one after another, by the merge rule (OD-E14, PRJ-033, PRO-013).
+//! Pull requests, read live from GitHub and merged by the merge rule
+//! (PRJ-031, PRJ-033, OD-E14, PRO-013).
 
 mod back;
 mod bulk;

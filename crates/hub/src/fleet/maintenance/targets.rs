@@ -1,7 +1,4 @@
-//! Validation of what a window applies to (MW-003), and the rule for plain text.
-//!
-//! Names and tags reach the event log and the audit log, which are kept for a year and cannot
-//! be edited (LOG-004).
+//! Names and tags reach the event and audit logs, which cannot be edited (LOG-004).
 
 use super::{
     model::{Target, TargetForm, TargetType},
@@ -15,11 +12,7 @@ use crate::{
 const TARGETS_MAX: usize = 100;
 const TAG_MAX: usize = 32;
 
-/// One to 100 targets, without repeats, in first-seen order (MW-003). A tag follows the same
-/// rules as a device tag.
-///
-/// # Errors
-/// `targets`, with a message that names the first target in error.
+/// One to 100 targets, without repeats, in first-seen order (MW-003).
 pub(super) fn validate(forms: &[TargetForm]) -> Result<Vec<Target>, Vec<FieldError>> {
     if forms.is_empty() {
         return Err(vec![FieldError::new(

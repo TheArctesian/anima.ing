@@ -1,5 +1,3 @@
-//! `Device.ip`: the host when it is an IP literal, else the address the last check resolved.
-
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -19,7 +17,6 @@ macro_rules! fixture_test {
     )+};
 }
 
-/// Records that the "Ping" check of the device resolved `address`, as its latest beat.
 async fn resolved(pool: &PgPool, device: &str, address: &str) {
     sqlx::query(
         "UPDATE checks.checks SET resolved_ip = $2::inet, last_beat_at = now() \

@@ -1,6 +1,4 @@
-//! When a write fails at commit, no ticket is lost or left behind (D-2, D-10): `start`
-//! withdraws the ticket it issued, and `endSession` and the sweep put back what they took, so
-//! a later sweep still ends the row `TIMEOUT`.
+//! A write that fails at commit loses no ticket and leaves none behind (D-2, D-10).
 
 use std::sync::Arc;
 
@@ -40,7 +38,6 @@ fn client() -> ClientAddr {
     ClientAddr("10.10.0.77".parse().unwrap())
 }
 
-/// The K6 operator and an accepted host key for PVE-01.
 async fn ready(pool: &PgPool) {
     sqlx::query(
         "insert into access.operators (id, username, password_hash, created_at) \
@@ -65,7 +62,6 @@ async fn ready(pool: &PgPool) {
     .unwrap();
 }
 
-/// Makes every later transaction that `event`s a session row fail at commit.
 async fn fail_commits_on(pool: &PgPool, event: &str) {
     sqlx::query(
         "create function public.refuse_commit() returns trigger language plpgsql \
@@ -124,8 +120,7 @@ async fn api_009_a_start_whose_commit_fails_keeps_a_spent_ticket_for_the_sweep(p
         start_on_pve_01(&pool, &live).await,
         Err(Error::Database(_))
     ));
-    // The commit may have landed before it failed, so the ticket stays, without its token,
-    // until it expires: the sweep then ends any row it left (no row: nothing to end).
+    // The commit may have landed before it failed, so the ticket stays until it expires.
     assert_eq!(live.take_expired(now()).len(), 0, "kept until it expires");
     assert_eq!(live.take_expired(later()).len(), 1);
 }

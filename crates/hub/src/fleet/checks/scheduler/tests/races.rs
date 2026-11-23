@@ -1,6 +1,4 @@
-//! Writes that land while a probe runs: the attempt is evaluated on the state they left, not
-//! on the state read at tick time (CHK-002, CHK-005), and HTTP secrets go only where the
-//! configuration read with them points (SEC-005).
+//! CHK-002, CHK-005; HTTP secrets go only where the configuration read with them points (SEC-005).
 
 use std::{
     sync::{Arc, Mutex},
@@ -37,7 +35,6 @@ use crate::{
 const OLD_TOKEN: &str = "tok-OLD-SECRET-1111";
 const NEW_TOKEN: &str = "tok-NEW-SECRET-2222";
 
-/// An HTTP origin on 127.0.0.1 that answers 200 and keeps the head of every request.
 struct Origin {
     port: u16,
     heads: Arc<Mutex<Vec<String>>>,
@@ -69,7 +66,6 @@ impl Origin {
     }
 }
 
-/// The request head, up to the blank line or 16 KiB.
 async fn read_head(tcp: &mut tokio::net::TcpStream) -> String {
     let mut head = Vec::new();
     let mut byte = [0u8; 1];
@@ -99,7 +95,6 @@ fn bearer_http(url: String, token: &str) -> Definition {
     })
 }
 
-/// The last heartbeat message of the check.
 async fn last_message(pool: &PgPool, id: CheckId) -> Option<String> {
     sqlx::query_scalar(
         "SELECT message FROM checks.heartbeats WHERE check_id = $1 ORDER BY at DESC LIMIT 1",
@@ -110,7 +105,6 @@ async fn last_message(pool: &PgPool, id: CheckId) -> Option<String> {
     .unwrap()
 }
 
-/// Records one failed attempt at `at` in its own transaction; returns whether it was written.
 async fn failed_attempt(pool: PgPool, id: CheckId, at: DateTime<Utc>) -> bool {
     let result = ProbeResult::failed(&Failure::NoPush);
     let owner = checks::get(&pool, id).await.unwrap().device;
@@ -254,8 +248,6 @@ tick_test! {
         checks::update_check(&mut conn, sealer(&vault()), id, change).await.unwrap();
         let finished = attempt::run(&context(&pool), due, now).await;
 
-        // The attempt probes the configuration stored with the secrets, so the old origin
-        // gets nothing and the new one gets its own token.
         let leaked = old.heads().iter().any(|head| head.contains(NEW_TOKEN));
         assert!(!leaked, "the new token reached the old origin");
         assert_eq!(old.heads().len(), 0);

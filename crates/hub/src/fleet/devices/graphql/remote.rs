@@ -1,6 +1,4 @@
-//! The remote access part of the devices GraphQL (K1): the RDP, VNC and transfer settings of a
-//! device, whether a password is stored for each protocol, the password mutations and the
-//! site's wake relay (RA-020, RA-030..033, DEV-011, SEC-005, D-7).
+//! K1; RA-020, RA-030..033, DEV-011, SEC-005, D-7.
 
 mod input;
 mod password;

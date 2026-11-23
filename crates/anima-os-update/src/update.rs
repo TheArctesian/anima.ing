@@ -17,6 +17,10 @@ pub async fn check() -> Result<Value> {
 }
 
 async fn download() -> Result<Value> {
+    download_checked(check().await?).await
+}
+
+pub async fn download_checked(checked: Value) -> Result<Value> {
     let previous = state::read()?;
     if matches!(previous["phase"].as_str(), Some("staged" | "booting")) {
         return Err(Error::Refused(
@@ -24,7 +28,7 @@ async fn download() -> Result<Value> {
         ));
     }
     state::progress("checking", None, None)?;
-    let result = stage().await;
+    let result = stage(checked).await;
     let cleanup = match std::fs::remove_file(download::ARCHIVE) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -37,8 +41,7 @@ async fn download() -> Result<Value> {
     result
 }
 
-async fn stage() -> Result<Value> {
-    let checked = check().await?;
+async fn stage(checked: Value) -> Result<Value> {
     let release: feed::Release = serde_json::from_value(checked["release"].clone())?;
     if checked["available"] == false {
         return Ok(json!({"phase":"current","version":release.version}));
@@ -110,6 +113,7 @@ async fn rollback() -> Result<Value> {
 pub async fn dispatch(action: &str) -> Result<Value> {
     match action {
         "check" => check().await,
+        "automatic" => crate::automatic::run().await,
         "download" => download().await,
         "health" => health().await,
         "rollback" => rollback().await,

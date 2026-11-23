@@ -1,6 +1,5 @@
-//! A reminder of the engine in the outbox (REM-008, REM-010; K-E6 Section 5): the same
-//! dispatcher, channels and egress rules as a device status notification. The engine words the
-//! title and the body; no template of a channel is read.
+//! A reminder of the engine in the outbox (REM-008, REM-010; K-E6 Section 5): the engine words
+//! the title and the body, and no template of a channel is read.
 
 use chrono::{DateTime, Utc};
 use serde_json::json;
@@ -14,11 +13,10 @@ use super::{
 };
 use crate::{fleet::credentials::Vault, ids::ChannelId};
 
-/// The shortest topic of an ntfy channel that gets a reminder: a topic is the only thing that
-/// keeps a stranger from reading it, so it must be random (REM-008).
+/// A topic is the only thing that keeps a stranger from reading a reminder, so it must be
+/// random (REM-008).
 pub const RANDOM_TOPIC_MIN: usize = 16;
 
-/// One reminder to send: the firing it is for, and the words for the lock screen.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Reminder {
     pub firing: Uuid,
@@ -26,17 +24,13 @@ pub struct Reminder {
     pub body: String,
 }
 
-/// What became of one reminder at the outbox.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Queued {
-    /// Rows queued, one for each channel.
     pub rows: u32,
-    /// ntfy channels that got no row because their topic is shorter than 16 characters.
     pub topic_not_random: u32,
 }
 
-/// Whether `channel` is an ntfy channel whose topic can be read and is too short. A channel
-/// whose settings or secrets cannot be read is queued: the dispatcher records why it failed.
+/// A channel whose settings or secrets cannot be read is queued: the dispatcher records why.
 fn topic_too_short(vault: &Vault, channel: &Channel) -> bool {
     let fields = &channel.fields;
     if fields.kind != ChannelKind::Ntfy {
@@ -55,8 +49,8 @@ fn topic_too_short(vault: &Vault, channel: &Channel) -> bool {
     }
 }
 
-/// Queues `reminder` to `channels`, or to each channel that is on by default when `channels`
-/// is empty, in the caller's transaction, due at `now`. A channel that is gone gets no row.
+/// An empty `channels` means each channel that is on by default; a channel that is gone gets no
+/// row.
 ///
 /// # Errors
 /// `Database` when a read or a write fails.
@@ -94,8 +88,6 @@ pub async fn queue_reminder(
     Ok(queued)
 }
 
-/// Whether each of `ids` is a channel of the hub.
-///
 /// # Errors
 /// `Database`.
 pub async fn channels_exist(db: &sqlx::PgPool, ids: &[ChannelId]) -> Result<bool, Error> {

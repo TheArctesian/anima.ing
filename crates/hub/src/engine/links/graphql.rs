@@ -1,5 +1,4 @@
-//! The links GraphQL part: `Query.recordLinks`, `Mutation.linkRecords` and
-//! `Mutation.unlinkRecords` (K1; RLK-001, RLK-002, RLK-004).
+//! The links GraphQL part (K1; RLK-001, RLK-002, RLK-004).
 //!
 //! Each change writes the link, its audit entry and its event in one transaction.
 

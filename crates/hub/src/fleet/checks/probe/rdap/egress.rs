@@ -1,17 +1,6 @@
-//! RDAP egress (P3-003, P-6): one GET over HTTPS, each hop pinned to the checked addresses of
-//! its host.
-//!
-//! Every hop, the first and each redirect, is a new target: its URL must be HTTPS with a host
-//! and no user name; its host is resolved once with `targets::resolve_checked`, which refuses
-//! the host when the target rule or the deny list refuses any address it names; and the client
-//! for that hop reaches the host only at those addresses and resolves no name itself. So
-//! neither a redirect nor a second DNS answer can lead to an address the policy refuses. TLS
-//! is always verified against the built-in roots for the host name. At most
-//! [`REDIRECTS_MAX`] redirects are followed. The body is read only up to the caller's cap, and
-//! a longer body is refused, never cut and read.
-//!
-//! No proxy, cookie or compression. A [`FetchError`] names no URL, host, address or reply
-//! (LOG-007).
+//! RDAP egress (P3-003, P-6): each hop, redirects included, is a new target pinned to its checked addresses,
+//! so neither a redirect nor a second DNS answer can reach an address the policy refuses.
+//! A body over the cap is refused, never cut. A [`FetchError`] names no URL, host, address or reply (LOG-007).
 
 use std::{error::Error, future, io, net::SocketAddr, sync::Arc};
 
@@ -27,26 +16,20 @@ use crate::fleet::targets::{AddressPolicy, TargetError, resolve_checked};
 /// The most redirects one fetch follows (D-29).
 pub(super) const REDIRECTS_MAX: usize = 3;
 
-/// Why a fetch gave no body. The text names nothing the server sent beyond a status.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub(super) enum FetchError {
-    /// A host does not resolve, or names an address the hub may not reach; no connection was
-    /// made to it.
     #[error("the RDAP address is not permitted")]
     Target(#[from] TargetError),
-    /// The URL of a hop is not HTTPS with a host and no user name.
     #[error("the RDAP address is not an HTTPS URL with a host")]
     Address,
     #[error("the RDAP server redirected more than {REDIRECTS_MAX} times")]
     Redirects,
-    /// An answer outside 2xx that is not a redirect, or a redirect with no usable `Location`.
     #[error("the RDAP server answered with HTTP status {0}")]
     Status(u16),
     #[error("the RDAP answer is longer than the hub reads")]
     TooLong,
     #[error("TLS failed: the certificate is not trusted for the host name, or the handshake broke")]
     Tls,
-    /// The hub could not prepare the client itself; no connection was made.
     #[error("the RDAP connection could not be prepared")]
     Setup,
     #[error("the connection failed or broke")]
@@ -55,22 +38,17 @@ pub(super) enum FetchError {
     Exchange,
 }
 
-/// The rules an RDAP connection obeys: the address policy every resolved address must pass.
-/// A test may also trust its own root certificate.
 #[derive(Clone, Debug)]
 pub(super) struct Egress {
     policy: AddressPolicy,
-    /// DER root certificates trusted besides the built-in roots. Only tests add one.
     extra_roots: Vec<Vec<u8>>,
 }
 
-/// What the client's resolver answers for every name: it looks up nothing, so a host is
-/// reached only at the addresses pinned for it.
 #[derive(Debug, thiserror::Error)]
 #[error("the RDAP client resolves no names")]
 struct LookupRefused;
 
-/// A resolver that refuses every name.
+/// The client looks up nothing, so a host is reached only at its pinned addresses.
 struct NoLookup;
 
 impl Resolve for NoLookup {
@@ -89,7 +67,6 @@ impl Egress {
         }
     }
 
-    /// Also trusts the DER root certificate `der`, for tests that reach a local TLS server.
     #[cfg(test)]
     #[must_use]
     pub(super) fn trusting(mut self, der: Vec<u8>) -> Self {
@@ -97,14 +74,7 @@ impl Egress {
         self
     }
 
-    /// The body of `url`, at most `cap` bytes, after at most [`REDIRECTS_MAX`] redirects. The
-    /// caller bounds the time.
-    ///
-    /// # Errors
-    /// [`FetchError::Address`] or [`FetchError::Target`] for a hop that may not be reached,
-    /// with no connection made to it; [`FetchError::Redirects`] past the limit;
-    /// [`FetchError::Status`] for any other answer outside 2xx; [`FetchError::TooLong`] for a
-    /// body over `cap`; otherwise the setup, connection or TLS failure.
+    /// The caller bounds the time.
     pub(super) async fn get(&self, url: &Url, cap: usize) -> Result<Vec<u8>, FetchError> {
         let mut hop = url.clone();
         for _ in 0..=REDIRECTS_MAX {
@@ -117,7 +87,6 @@ impl Egress {
         Err(FetchError::Redirects)
     }
 
-    /// Checks one hop as a new target, then sends the GET and waits for the answer's head.
     async fn request(&self, url: &Url) -> Result<Response, FetchError> {
         let plain =
             url.scheme() == "https" && url.username().is_empty() && url.password().is_none();
@@ -135,9 +104,7 @@ impl Egress {
             .map_err(|error| classify(&error))
     }
 
-    /// A client that reaches `domain` only at `addresses`, follows no redirect itself and
-    /// resolves no other name. An IP-literal host (`domain` is `None`) is reached at the
-    /// address it names, which `resolve_checked` has checked.
+    /// An IP-literal host (`domain` is `None`) is reached at the address it names, already checked.
     pub(super) fn pinned_client(
         &self,
         domain: Option<&str>,
@@ -166,10 +133,6 @@ impl Egress {
     }
 }
 
-/// The URL a redirect leads to, resolved against `current`; `None` for a 2xx answer.
-///
-/// # Errors
-/// [`FetchError::Status`] for any other answer, or a redirect without a readable `Location`.
 fn next_hop(response: &Response, current: &Url) -> Result<Option<Url>, FetchError> {
     let status = response.status();
     if status.is_success() {
@@ -192,8 +155,6 @@ fn next_hop(response: &Response, current: &Url) -> Result<Option<Url>, FetchErro
     current.join(location).map(Some).map_err(|_| refused)
 }
 
-/// The body, refused when it is or would grow longer than `cap` bytes: a declared length over
-/// the cap is refused before any byte is read, and the read stops at the first byte past it.
 async fn read_capped(mut response: Response, cap: usize) -> Result<Vec<u8>, FetchError> {
     let declared = response
         .content_length()
@@ -211,8 +172,7 @@ async fn read_capped(mut response: Response, cap: usize) -> Result<Vec<u8>, Fetc
     Ok(body)
 }
 
-/// The [`FetchError`] a reqwest error stands for, judged from its causes, never its text (the
-/// text holds the URL).
+/// Judged from the error's causes, never its text, which holds the URL.
 pub(super) fn classify(error: &reqwest::Error) -> FetchError {
     if causes(error).any(<dyn Error>::is::<LookupRefused>) {
         FetchError::Target(TargetError::Unresolved)
@@ -225,8 +185,7 @@ pub(super) fn classify(error: &reqwest::Error) -> FetchError {
     }
 }
 
-/// `error` and every error it wraps, outermost first. An I/O error leads to the error it
-/// carries, which its own `source` skips.
+/// An I/O error leads to the error it carries, which its own `source` skips.
 fn causes<'a>(error: &'a (dyn Error + 'static)) -> impl Iterator<Item = &'a (dyn Error + 'static)> {
     std::iter::successors(Some(error), |&cause| {
         match cause.downcast_ref::<io::Error>() {

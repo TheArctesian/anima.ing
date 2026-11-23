@@ -1,5 +1,4 @@
-//! The distribution in a device's os-release: quoted and bare values, the last `ID=` line,
-//! and junk from a hostile device left out (DEV-016).
+//! DEV-016.
 
 use proptest::prelude::*;
 
@@ -57,7 +56,6 @@ fn dev_016_junk_is_not_stored() {
     }
 }
 
-/// Whether `text` keeps the token rule: 1 to 32 of `a-z`, `0-9`, `.`, `_` and `-`.
 fn is_token(text: &str) -> bool {
     let allowed =
         |byte: u8| byte.is_ascii_lowercase() || byte.is_ascii_digit() || b"._-".contains(&byte);
@@ -71,8 +69,6 @@ fn has_id_line(bytes: &[u8]) -> bool {
 }
 
 proptest! {
-    /// Whatever value a hostile device puts after `ID=`, the result keeps the token rule or
-    /// is nothing.
     #[test]
     fn dev_016_any_value_gives_a_token_or_nothing(
         value in proptest::collection::vec(any::<u8>(), 0..64),
@@ -83,8 +79,6 @@ proptest! {
         }
     }
 
-    /// A valid `ID=` line is read whatever bytes come before it and whatever other lines come
-    /// after it.
     #[test]
     fn dev_016_a_valid_id_line_is_found_among_any_bytes(
         before in proptest::collection::vec(any::<u8>(), 0..256),

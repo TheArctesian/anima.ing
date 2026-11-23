@@ -1,5 +1,4 @@
-//! What the session tunnels serve with (K3): built once from the hub's dependencies and lent
-//! to each router.
+//! What the session tunnels serve with (K3), built once and lent to each router.
 
 use std::sync::Arc;
 
@@ -10,8 +9,6 @@ use crate::{
     fleet::{credentials::Vault, events::Bus, sessions::Live},
 };
 
-/// Everything the tunnels need, built once (replaces the long `tunnel_router` and
-/// `terminal_router` argument lists).
 #[derive(Clone)]
 pub struct Serving {
     pub db: PgPool,

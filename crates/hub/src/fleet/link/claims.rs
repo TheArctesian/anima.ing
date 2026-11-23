@@ -1,7 +1,5 @@
-//! The open claims of a hosted hub (hosted-mode.md HMD-037, R-129). The cloud gets one claim
-//! with each device invite it asks for; the device that joined with that invite trades the
-//! claim for its own token. The hub keeps only the hash of a claim, never the claim (LOG-007),
-//! and a claim works once, until its invite expires.
+//! Open claims of a hosted hub (HMD-037, R-129). The hub keeps only the hash of a claim, never
+//! the claim (LOG-007).
 
 use std::{
     collections::HashMap,
@@ -14,7 +12,6 @@ use sha2::{Digest, Sha256};
 /// Random bytes in a claim: 256 bits, so no throttle is needed to stop a guess.
 pub(crate) const CLAIM_BYTES: usize = 32;
 
-/// The hash of a claim, as the book keeps it.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct ClaimHash([u8; 32]);
 
@@ -24,36 +21,28 @@ impl ClaimHash {
     }
 }
 
-/// What a claim admits: the link device with this name, until the invite expires.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct OpenClaim {
     pub device_name: String,
     pub expires: DateTime<Utc>,
 }
 
-/// The open claims, by hash. A hub restart drops them: the cloud then asks again.
+/// A hub restart drops the claims: the cloud then asks again.
 #[derive(Default)]
 pub struct Claims(Mutex<HashMap<ClaimHash, OpenClaim>>);
 
 impl Claims {
-    /// Keeps a claim. The expired ones leave the book at the same time, and so does an open
-    /// claim of the same device: one device has one open claim, the newest.
     pub(crate) fn open(&self, hash: ClaimHash, claim: OpenClaim, now: DateTime<Utc>) {
         let mut book = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         book.retain(|_, open| now < open.expires && open.device_name != claim.device_name);
         book.insert(hash, claim);
     }
 
-    /// Ends the claim and returns what it admitted, or `None` for a claim that is used,
-    /// expired or wrong. Only the first call for a claim succeeds.
     pub(crate) fn use_claim(&self, hash: ClaimHash, now: DateTime<Utc>) -> Option<OpenClaim> {
         let mut book = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         book.remove(&hash).filter(|open| now < open.expires)
     }
 
-    /// Puts back a claim that [`Claims::use_claim`] gave to the right device but whose work then
-    /// failed, so that the device can try again. A claim that expired, or whose device got a
-    /// newer claim meanwhile, stays out.
     pub(crate) fn restore(&self, hash: ClaimHash, claim: OpenClaim, now: DateTime<Utc>) {
         let mut book = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         book.retain(|_, open| now < open.expires);
@@ -66,9 +55,7 @@ impl Claims {
     }
 }
 
-/// The open claims of computers with no application (HM-T33, R-240 c): the rules of [`Claims`]
-/// in a book of their own, so that a claim of one kind never works as the other. Such a claim
-/// gives a daemon enrolment code, never a token.
+/// A book of its own, so a claim of one kind never works as the other (HM-T33, R-240 c).
 #[derive(Default)]
 pub struct ComputerClaims(pub(crate) Claims);
 

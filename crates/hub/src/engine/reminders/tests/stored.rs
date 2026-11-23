@@ -12,7 +12,6 @@ async fn noticed(pool: &PgPool, new: &[Occurrence], now: &str) {
     tx.commit().await.unwrap();
 }
 
-/// `(subject, state, reason)` of each firing, oldest first.
 async fn firings(pool: &PgPool) -> Vec<(String, String, Option<String>)> {
     sqlx::query_as("select subject, state, reason from reminders.firing order by due_at, subject")
         .fetch_all(pool)
@@ -93,7 +92,6 @@ async fn rem_003_a_record_that_arrived_before_is_known_for_unless(pool: PgPool) 
     )
     .await;
     assert_eq!(firings(&pool).await, [], "a workout of today is known");
-    // The next day the workout of yesterday does not count.
     let next = Occurrence::Record {
         source: "calendar".to_owned(),
         kind: "evening".to_owned(),
@@ -130,7 +128,6 @@ async fn rem_005_a_firing_is_sent_only_when_its_rule_did_not_change(pool: PgPool
         "sent one time"
     );
 
-    // The operator changes the rule after the next firing is due and before it is sent.
     noticed(
         &pool,
         &[record("strava", "workout", "2", "Late run")],

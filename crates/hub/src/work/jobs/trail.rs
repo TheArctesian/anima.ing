@@ -1,6 +1,5 @@
-//! What the hub records of a job (K10 Section 10): an audit entry for each job, each attempt
-//! with its device, each stop and each final state, and the events of a machine. A log part is
-//! cleaned here before it is stored (K10 Section 7, LOG-007).
+//! What the hub records of a job (K10 Section 10). A log part is cleaned here before it is
+//! stored (K10 Section 7, LOG-007).
 
 use std::net::{IpAddr, Ipv4Addr};
 
@@ -23,10 +22,9 @@ use crate::{
     text,
 };
 
-/// The address of an entry that the hub writes with no request: the sweep of the leases.
+/// The address of an entry the hub writes with no request, such as the lease sweep.
 pub(super) const HUB_ADDRESS: ClientAddr = ClientAddr(IpAddr::V4(Ipv4Addr::LOCALHOST));
 
-/// The most bytes of one log line (K10 Section 7).
 const MAX_LINE_BYTES: usize = 4096;
 
 async fn audit(
@@ -57,7 +55,6 @@ fn described(job: &Job) -> serde_json::Value {
     })
 }
 
-/// A job came into the queue.
 pub(super) async fn queued(
     conn: &mut PgConnection,
     job: &Job,
@@ -73,10 +70,8 @@ pub(super) async fn queued(
     .await
 }
 
-/// A machine got the job: one attempt started. The entry is the record of the placement
-/// decision (ROU-005): what the job asked of a machine, the reason as one line, and each
-/// machine that was refused with its reason. It holds codes, numbers and names of machines;
-/// no secret and no parameter of the job.
+/// The record of the placement decision (ROU-005): codes, numbers and names of machines; no
+/// secret and no parameter of the job.
 pub(super) async fn attempt_started(
     conn: &mut PgConnection,
     job: &Job,
@@ -113,7 +108,6 @@ pub(super) async fn attempt_started(
     audit(conn, job, (AuditAction::Start, change), (asker, now)).await
 }
 
-/// An attempt ended: `how` is the state that the machine reported or the fixed word of the hub.
 pub(super) async fn attempt_ended(
     conn: &mut PgConnection,
     job: &Job,
@@ -132,8 +126,7 @@ pub(super) async fn attempt_ended(
     audit(conn, job, (AuditAction::End, change), (asker, now)).await
 }
 
-/// The operator pinned a machine for a project, removed the pin, or changed the exclusion of a
-/// machine (ROU-006).
+/// A pin or an exclusion of a machine changed (ROU-006).
 pub(super) async fn placement_set(
     conn: &mut PgConnection,
     (device, change): (DeviceId, serde_json::Value),
@@ -150,7 +143,6 @@ pub(super) async fn placement_set(
     Ok(())
 }
 
-/// A stop was asked for.
 pub(super) async fn stop_asked(
     conn: &mut PgConnection,
     job: &Job,
@@ -203,10 +195,9 @@ pub(super) async fn set_off(
     event(conn, bus, (Severity::Warning, None, message), now).await
 }
 
-/// A log part as the hub stores it: each line redacted again, without a control character but
-/// the tab, without a character that hides or reorders text, and cut at 4,096 bytes on a
-/// character boundary (K10 Section 7; BLD-049, LOG-007, SF-010). The text is data of a job,
-/// never an instruction.
+/// Each line is redacted again, loses control characters but the tab and characters that hide
+/// or reorder text, and is cut at 4,096 bytes (K10 Section 7; BLD-049, LOG-007, SF-010).
+/// The text is data of a job, never an instruction.
 pub(super) fn clean_log(part: &str) -> String {
     let mut cleaned = String::with_capacity(part.len());
     for line in part.split_inclusive('\n') {

@@ -1,5 +1,4 @@
-//! PRJ-039: a code or an installation id from a browser redirect reaches a path only when it
-//! is plain, and then the path stays one fixed shape below the API base, whatever the text.
+//! PRJ-039: a redirect's code or installation id reaches a path only when plain, in one fixed shape.
 
 use proptest::prelude::*;
 use reqwest::Url;
@@ -19,7 +18,6 @@ fn registration() -> Registration {
     app.registration.expect("GitHub can make its App")
 }
 
-/// The URL of `path` below the API base, or `None` when the request or the address refuses it.
 fn url_of(path: &str) -> Option<Url> {
     let request = Request::get(path, &[]).ok()?;
     address(&Url::parse(BASE).unwrap(), &request.path, &request.query).ok()

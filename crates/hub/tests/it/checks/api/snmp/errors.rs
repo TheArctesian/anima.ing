@@ -20,7 +20,6 @@ macro_rules! fixture_test {
     )+};
 }
 
-/// Sends the mutation with the log captured; returns the error and the response and log text.
 async fn refused(
     schema: &crate::checks::api::harness::TestSchema,
     query: &str,

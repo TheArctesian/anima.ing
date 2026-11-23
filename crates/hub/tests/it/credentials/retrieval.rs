@@ -1,6 +1,4 @@
-//! R-147, K-E5 Section 2.1: a daemon fetches the operational keys granted to its device with its
-//! token, reports what it holds with each push and hears the current versions; the three
-//! refusals of a fetch are one answer, and a removed device gets nothing.
+//! A daemon's fetch of its operational keys (R-147, K-E5 Section 2.1): its refusals are one answer.
 
 use axum::{
     body::Body,
@@ -47,7 +45,6 @@ async fn grant(daemons: &Daemons, name: &str, device: &str) {
     );
 }
 
-/// `POST /daemon/v1/keys/fetch` of `name` for `device` with `token`.
 async fn fetch(
     daemons: &Daemons,
     token: &str,

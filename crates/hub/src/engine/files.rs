@@ -1,7 +1,6 @@
 //! The file store and the extraction proposals (K-E4 Sections 9 and 10; FIL-001 to FIL-005,
-//! VIS-001 to VIS-004). A file is one piece, sealed with the data key of the extension that owns
-//! its record and kept by content hash; the database keeps what is known of it. An extraction is
-//! only a proposal until the operator confirms it.
+//! VIS-001 to VIS-004). A file is sealed with the data key of the extension that owns its record;
+//! an extraction is only a proposal until the operator confirms it.
 
 pub mod graphql;
 mod location;
@@ -42,22 +41,17 @@ use crate::{
     ids::ArchiveId,
 };
 
-/// The most attachments [`attachments`] gives for one record.
 pub const MAX_LIST: i64 = 200;
 
-/// The domain that derives records from an archive could not delete them now.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("the records cannot be deleted now")]
 pub struct Unavailable;
 
-/// A domain that makes records from an archive, given to the files domain at wiring, so that
-/// deleting the archive deletes its records too (FIL-004).
+/// Deleting an archive deletes the records a `Derived` domain made from it (FIL-004).
 #[async_trait]
 pub trait Derived: Send + Sync {
-    /// The domain, for the audit entry of the delete.
     fn name(&self) -> &'static str;
-    /// Deletes each record that came from `archive`, in the caller's transaction, and gives
-    /// their count.
+    /// Deletes each record that came from `archive`, in the caller's transaction.
     async fn delete_from_archive(
         &self,
         conn: &mut PgConnection,
@@ -65,8 +59,7 @@ pub trait Derived: Send + Sync {
     ) -> Result<u64, Unavailable>;
 }
 
-/// Why a files operation failed. Messages hold no byte of a file, no key and no plain value
-/// (LOG-007).
+/// Messages hold no byte of a file, no key and no plain value (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("database error")]
@@ -82,27 +75,22 @@ pub enum Error {
     Store(#[from] StoreError),
     #[error("the staging copy failed ({0})")]
     Staging(io::ErrorKind),
-    /// A stored piece that does not open with its key and hash.
     #[error("the stored piece does not open")]
     Damaged,
     #[error("the file is larger than 256 MB")]
     TooLarge,
-    /// The body of the upload ended with an error of its sender.
     #[error("the upload did not arrive whole")]
     Body,
     #[error("no such {0}")]
     NotFound(&'static str),
-    /// A proposal that the operator already decided.
     #[error("the proposal is decided and does not change")]
     Decided,
     #[error("{0} records cannot be deleted now")]
     Derived(&'static str),
-    /// Input the operator can fix: the field and what to give.
     #[error("{} is not valid", .0.iter().map(|bad| bad.field.as_str()).collect::<Vec<_>>().join(", "))]
     Invalid(Vec<Bad>),
 }
 
-/// One input field the operator must fix, with what to give.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bad {
     pub field: String,
@@ -119,8 +107,6 @@ impl Bad {
     }
 }
 
-/// The file store of the hub: the pieces, the data keys that seal them and the domains that
-/// derive records from archives. Without pieces or keys every upload is `Unavailable`.
 #[derive(Clone)]
 pub struct Store {
     pieces: Option<Arc<dyn Pieces>>,
@@ -130,7 +116,6 @@ pub struct Store {
 }
 
 impl Store {
-    /// No file store: `ANIMA_FILES_DIR` is not set.
     #[must_use]
     pub fn off() -> Self {
         Self {
@@ -141,8 +126,7 @@ impl Store {
         }
     }
 
-    /// The pieces in `folder` (`ANIMA_FILES_DIR`), sealed with `keys`; staging copies go to
-    /// `<folder>/.staging`, which no key name can be.
+    /// Staging copies go to `<folder>/.staging`, which no key name can be.
     #[must_use]
     pub fn in_folder(folder: Option<&Path>, keys: SealingKeys) -> Self {
         let Some(folder) = folder else {
@@ -159,7 +143,6 @@ impl Store {
         }
     }
 
-    /// The same store, with the domains that derive records from archives (FIL-004).
     #[must_use]
     pub fn deriving(self, derived: Vec<Arc<dyn Derived>>) -> Self {
         Self {
@@ -168,14 +151,12 @@ impl Store {
         }
     }
 
-    /// Whether uploads can work: the hub has pieces and data keys.
     #[must_use]
     pub fn available(&self) -> bool {
         self.pieces.is_some() && self.keys.available()
     }
 
-    /// The sealing keys of the hub, for wiring: each engine part that seals takes its own key
-    /// from them (VLT-003).
+    /// Each engine part that seals takes its own key from these (VLT-003).
     #[must_use]
     pub const fn sealing_keys(&self) -> &SealingKeys {
         &self.keys

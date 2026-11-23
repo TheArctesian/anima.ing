@@ -1,7 +1,4 @@
-//! The device's policy on the wire (K4 Sections 4 and 7, RA-021, RA-033): read when the
-//! tunnel opens, it keeps a refused paste from guacd and guacd's clipboard from the client
-//! with the session still up, closes on audio input or a drive upload the device refuses,
-//! and answers a refused download so guacd frees the stream.
+//! The device's policy on the wire (K4 Sections 4 and 7, RA-021, RA-033).
 
 use guac_protocol::{Instruction, encode};
 use sqlx::PgPool;
@@ -20,8 +17,6 @@ const DRIVE_ON: &str = "update devices.rdp_settings set shared_drive = true wher
 /// guacd's mimetype for a shared-drive folder listing.
 const LISTING: &str = "application/vnd.glyptodon.guacamole.stream-index+json";
 
-/// An RDP session opened after `changes` to the started session's device, past the open
-/// instruction.
 async fn session_after(pool: &PgPool, changes: &[&str]) -> (FakeGuacd, Bench, Socket) {
     let script = Script::Serve {
         args: RDP_ARGS,
@@ -41,7 +36,6 @@ async fn session_after(pool: &PgPool, changes: &[&str]) -> (FakeGuacd, Bench, So
     (guacd, bench, client)
 }
 
-/// The client sends `wire`; the hub closes 1002 and guacd hears only the hub leaving.
 async fn closes_unheard(guacd: &mut FakeGuacd, client: &mut Socket, wire: &str) {
     decoded(wire); // well formed, so only the policy can refuse it
     client.send(wire).await;

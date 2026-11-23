@@ -1,18 +1,6 @@
-//! The domain expiry probe (spec 6.4, CHK-009, D-29): the registration expiry of a domain,
-//! read over RDAP.
-//!
-//! The IANA bootstrap file names the RDAP service of each top-level domain; [`Rdap`] keeps the
-//! last one read for 24 hours. The probe asks that service for `domain/<name>` and reads the
-//! `expiration` event. Every connection leaves through [`egress`]: HTTPS only, each host
-//! resolved once through `targets::resolve_checked` and reached only at the checked
-//! addresses, TLS always verified, at most 3 redirects each checked again as a new target, and
-//! the body read only up to a cap (P3-003, P-6). The whole probe ends at the check's time
-//! limit.
-//!
-//! The hub could not test the domain when RDAP cannot be reached or read, so that result is
-//! Unknown with a fixed message, never Down. Down comes only from the registry: the domain
-//! has expired, or the registry has no record of it. No message holds a URL, an address or
-//! any of the reply (LOG-007).
+//! The domain expiry probe (spec 6.4, CHK-009, D-29); every connection leaves through [`egress`] (P3-003, P-6).
+//! An RDAP that cannot be reached or read is Unknown, never Down; Down comes only from the registry.
+//! No message holds a URL, an address or any of the reply (LOG-007).
 
 mod bootstrap;
 mod cache;
@@ -33,14 +21,11 @@ use bootstrap::Bootstrap;
 use cache::Cache;
 use egress::{Egress, FetchError};
 
-/// Where IANA publishes the RDAP bootstrap file for domain names (RFC 9224).
 const BOOTSTRAP_URL: &str = "https://data.iana.org/rdap/dns.json";
-/// The most bootstrap bytes read; the file is about 40 KiB.
+/// The file is about 40 KiB.
 const BOOTSTRAP_CAP: usize = 1024 * 1024;
-/// The most bytes of one RDAP reply read.
 const REPLY_CAP: usize = 256 * 1024;
 
-/// One domain expiry check's settings, as the probe needs them.
 #[derive(Clone, Copy, Debug)]
 pub(in crate::fleet::checks) struct Lookup<'a> {
     pub(in crate::fleet::checks) domain: &'a str,
@@ -48,7 +33,6 @@ pub(in crate::fleet::checks) struct Lookup<'a> {
     pub(in crate::fleet::checks) timeout: Duration,
 }
 
-/// What every domain expiry probe shares: the egress rules and the cached bootstrap file.
 /// One lives in the scheduler, so the cache outlives each attempt; it is never global.
 #[derive(Debug)]
 pub(in crate::fleet::checks) struct Rdap {
@@ -58,7 +42,6 @@ pub(in crate::fleet::checks) struct Rdap {
 }
 
 impl Rdap {
-    /// The probe state that reaches only addresses `policy` permits.
     pub(in crate::fleet::checks) fn new(policy: AddressPolicy) -> Self {
         Self {
             egress: Egress::new(policy),
@@ -67,8 +50,6 @@ impl Rdap {
         }
     }
 
-    /// A probe state for local test servers: the bootstrap file at `bootstrap_url`, and the
-    /// DER root certificate `root` trusted besides the built-in roots.
     #[cfg(test)]
     pub(in crate::fleet::checks) fn for_tests(
         policy: AddressPolicy,
@@ -82,8 +63,6 @@ impl Rdap {
         }
     }
 
-    /// Reads the domain's expiry and judges it at `now`, within the check's time limit
-    /// (D-29).
     pub(in crate::fleet::checks) async fn observe(
         &self,
         lookup: Lookup<'_>,
@@ -98,7 +77,6 @@ impl Rdap {
         }
     }
 
-    /// The expiry date the domain's RDAP service gives; `None` when it gives none.
     async fn expiry(
         &self,
         domain: &str,
@@ -113,7 +91,6 @@ impl Rdap {
         reply::expiration(&body).map_err(|_| Failure::RdapUnreadable)
     }
 
-    /// The bootstrap file kept since less than 24 hours before `now`, or a fresh read.
     async fn bootstrap(&self, now: DateTime<Utc>) -> Result<Arc<Bootstrap>, Failure> {
         if let Some(kept) = self.cache.fresh(now) {
             return Ok(kept);
@@ -129,7 +106,6 @@ impl Rdap {
     }
 }
 
-/// The probe failure a refused or failed connection stands for.
 fn failure(error: FetchError) -> Failure {
     match error {
         FetchError::Target(TargetError::Refused) => Failure::NotPermitted,

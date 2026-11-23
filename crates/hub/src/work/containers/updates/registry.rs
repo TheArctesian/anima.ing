@@ -1,10 +1,6 @@
-//! The name of an image as a place at a public registry (HOST-021): pure reading, no network.
-//!
-//! The name comes from the device. The hub reads only the four registries of [`Registry`],
-//! and a repository or a tag reaches a URL only when each character of it is one that a
-//! registry permits, so no text of a device can change the host or the path of a request.
+//! The name of an image as a place at a public registry (HOST-021). Pure.
+//! A repository or a tag reaches a URL only when each character is one a registry permits, so no text of a device can change the host or the path of a request.
 
-/// The public registries the hub reads. A different host has no answer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(in crate::work::containers) enum Registry {
     DockerHub,
@@ -14,7 +10,6 @@ pub(in crate::work::containers) enum Registry {
 }
 
 impl Registry {
-    /// The registry an image name means by this host.
     fn of(host: &str) -> Option<Self> {
         match host {
             "docker.io" | "index.docker.io" | "registry-1.docker.io" => Some(Self::DockerHub),
@@ -25,7 +20,6 @@ impl Registry {
         }
     }
 
-    /// The host that serves the manifests.
     pub(super) const fn host(self) -> &'static str {
         match self {
             Self::DockerHub => "registry-1.docker.io",
@@ -35,8 +29,6 @@ impl Registry {
         }
     }
 
-    /// Where the registry gives a token to a reader with no account, as `(host, path,
-    /// service)`; `None` when it asks for none.
     pub(super) const fn token(self) -> Option<(&'static str, &'static str, &'static str)> {
         match self {
             Self::DockerHub => Some(("auth.docker.io", "/token", "registry.docker.io")),
@@ -46,7 +38,6 @@ impl Registry {
     }
 }
 
-/// One tag of one repository at a registry the hub reads.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(in crate::work::containers) struct Reference {
     pub(in crate::work::containers) registry: Registry,
@@ -55,19 +46,15 @@ pub(in crate::work::containers) struct Reference {
     pub(in crate::work::containers) tag: String,
 }
 
-/// What the name of an image says of where its newer versions are.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::work::containers) enum Named {
     Tag(Reference),
     /// The name holds a digest: the container asked for that image and no newer one.
     Pinned,
-    /// A registry the hub does not read.
     OtherRegistry,
-    /// Not a name of an image a registry would accept, or an identifier.
     NoName,
 }
 
-/// The most characters of a repository and of a tag that the hub puts in a URL.
 const LONGEST_REPOSITORY: usize = 255;
 const LONGEST_TAG: usize = 128;
 
@@ -97,18 +84,14 @@ fn tag_ok(text: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || b"._-".contains(&byte))
 }
 
-/// True for what Docker shows when a container has no name for its image: `sha256:` and
-/// digits, or 12 or more hex digits alone.
+/// What Docker shows when a container has no name for its image.
 fn is_identifier(image: &str) -> bool {
     let digits = image.strip_prefix("sha256:");
     let hex = |text: &str| text.bytes().all(|byte| byte.is_ascii_hexdigit());
     digits.is_some() || (image.len() >= 12 && hex(image))
 }
 
-/// Reads an image name as Docker does: `[host[:port]/]repository[:tag][@digest]`. The first
-/// part is a host when it has a dot or a colon or is `localhost`; with no host the registry
-/// is Docker Hub, and a Docker Hub repository of one part is in `library/`. No tag is the
-/// tag `latest`.
+/// Reads an image name as Docker does: `[host[:port]/]repository[:tag][@digest]`.
 pub(in crate::work::containers) fn named(image: &str) -> Named {
     if image.contains('@') {
         return Named::Pinned;

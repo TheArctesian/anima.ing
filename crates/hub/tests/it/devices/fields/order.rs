@@ -24,7 +24,6 @@ fn page(sort: &str, first: usize, after: Option<&str>, filter: &str) -> String {
     )
 }
 
-/// Every page of the sort, following `endCursor`, as (names, totals, page sizes).
 async fn walk(pool: &PgPool, sort: &str, first: usize, filter: &str) -> (Vec<String>, Vec<usize>) {
     let schema = schema_for(pool);
     let (mut all, mut sizes, mut after) = (Vec::new(), Vec::new(), None::<String>);
@@ -167,7 +166,6 @@ fixture_test! {
     }
 }
 
-/// Whether the cursor continues the walk under its own sort, with the next page non-empty.
 async fn only_cursor_works(pool: &PgPool, sort: &str, cursor: &str) -> bool {
     let result = data(&schema_for(pool), &page(sort, 2, Some(cursor), "{}")).await;
     !names(&result["devices"]).is_empty()

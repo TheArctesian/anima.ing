@@ -1,5 +1,4 @@
-//! The host keys connection tests saw (D-5): kept 15 minutes per host and port from the
-//! injected time, bounded in number, and one spelling per endpoint.
+//! The host keys connection tests saw (D-5).
 
 use chrono::{DateTime, TimeDelta, Utc};
 
@@ -37,7 +36,6 @@ fn dev_013_an_observation_lasts_fifteen_minutes_from_when_the_key_was_last_seen(
         "boundary is gone"
     );
 
-    // Seeing the same key again keeps when it was first seen and extends its life.
     let again = at() + TimeDelta::minutes(10);
     let seen = sightings.observe(pve(), key(ED25519), again);
     assert_eq!((seen.first_seen_at, seen.last_seen_at), (at(), again));
@@ -126,7 +124,6 @@ fn dev_013_expired_observations_make_room_before_a_live_one_is_dropped() {
     let mut observations = Observations::default();
     for n in 0..MAX_OBSERVATIONS {
         let endpoint = Endpoint::new(&format!("host-{n}.lan"), 22);
-        // A middle entry is expired by the time the new one comes; the rest are fresh.
         let seen_at = if n == EXPIRED { at() - LIFETIME } else { at() };
         observations.record(endpoint, key(ED25519), seen_at);
     }

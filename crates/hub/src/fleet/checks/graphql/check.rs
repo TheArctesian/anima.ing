@@ -1,5 +1,4 @@
-//! `Check` as the GraphQL type K1 describes. Every field reads through the checks face, so the
-//! status and the uptime follow the same rules as the device's (CHK-004, CHK-011).
+//! Every field reads through the checks face, so status and uptime match the device's (CHK-004, CHK-011).
 
 use std::sync::Arc;
 

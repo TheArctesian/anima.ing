@@ -1,24 +1,17 @@
-//! What a device presented in a connection test and the operator has not accepted yet: an
-//! SSH host key or an RDP server certificate, kept 15 minutes per host and port, so test, save
-//! and `acceptHostKey` or `acceptServerCertificate` works for a new device (SEC-006, SEC-007).
-//! Pure; time comes in as a parameter (CQ-021).
+//! Host keys and certificates that connection tests saw and the operator has not accepted, kept
+//! so that test, save, then accept works for a new device (SEC-006, SEC-007).
 
 use std::{collections::HashMap, net::IpAddr};
 
 use chrono::{DateTime, TimeDelta, Utc};
 
-/// How long an observation stays after the hub last saw what was presented.
 pub(in crate::fleet::trust) const LIFETIME: TimeDelta = TimeDelta::minutes(15);
 
-/// Most observations held. Connection tests come only from signed-in operators, so this
-/// bounds memory even when one tests many hosts in a loop.
+/// Bounds memory even when a signed-in operator tests many hosts in a loop.
 pub(in crate::fleet::trust) const MAX_OBSERVATIONS: usize = 256;
 
-/// A host and a port, in one spelling: a name is trimmed and in lower case; an IP
-/// literal is in its canonical text. So a test of `PVE-01.lan` and a device saved as
-/// `pve-01.lan` share their observation. A final dot is kept: `pve-01.lan.` is absolute and
-/// `pve-01.lan` may resolve through a search domain, so they can name different hosts and
-/// never share an observation.
+/// A host and a port in one spelling. A final dot is kept: `pve-01.lan.` and `pve-01.lan` can
+/// name different hosts through a search domain.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct Endpoint {
     host: String,
@@ -35,8 +28,6 @@ impl Endpoint {
     }
 }
 
-/// What an endpoint presented (a host key or a certificate): when the hub first saw it there,
-/// and when last.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Observation<T> {
     pub(crate) presented: T,
@@ -45,13 +36,11 @@ pub(crate) struct Observation<T> {
 }
 
 impl<T> Observation<T> {
-    /// Gone at `now` once [`LIFETIME`] has passed since it was last seen.
     fn is_expired(&self, now: DateTime<Utc>) -> bool {
         now >= self.last_seen_at + LIFETIME
     }
 }
 
-/// The latest thing seen at each endpoint, at most [`MAX_OBSERVATIONS`].
 #[derive(Debug)]
 pub(in crate::fleet::trust) struct Observations<T>(HashMap<Endpoint, Observation<T>>);
 
@@ -62,9 +51,6 @@ impl<T> Default for Observations<T> {
 }
 
 impl<T: Clone + PartialEq> Observations<T> {
-    /// Records that `endpoint` presented `presented` at `now` and returns the observation.
-    /// The same thing again keeps its first-seen time; another replaces it. Expired
-    /// observations go first; when the map is still full, the one seen longest ago goes.
     pub(in crate::fleet::trust) fn record(
         &mut self,
         endpoint: Endpoint,
@@ -88,7 +74,6 @@ impl<T: Clone + PartialEq> Observations<T> {
         observation
     }
 
-    /// What was last seen at `endpoint`, unless it expired at `now`.
     pub(in crate::fleet::trust) fn find(
         &self,
         endpoint: &Endpoint,

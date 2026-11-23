@@ -1,6 +1,5 @@
-//! Reads one repository into the variants and the facts that the library keeps (LIBM-002 to
-//! LIBM-005). The source is approved before the first read, so a repository outside the list
-//! is never fetched.
+//! Reads one repository into the variants and facts the library keeps (LIBM-002 to LIBM-005).
+//! The source is approved before the first read; a repository off the list is never fetched.
 
 use std::collections::HashMap;
 
@@ -15,7 +14,6 @@ use super::{
     variants::{self, Planned},
 };
 
-/// What the hub read, ready to store.
 #[derive(Debug)]
 pub struct Read {
     pub name: String,
@@ -45,7 +43,7 @@ fn is_sha256(text: &str) -> bool {
             .all(|each| matches!(each, b'0'..=b'9' | b'a'..=b'f'))
 }
 
-/// Whether a path from the answer is safe to put in a URL path: no empty, `.` or `..` part.
+/// A path goes into a URL path, so it has no empty, `.` or `..` part.
 fn is_plain_path(path: &str) -> bool {
     path.split('/')
         .all(|part| !part.is_empty() && part != "." && part != "..")
@@ -65,8 +63,6 @@ async fn config(
         .map_err(|_| Error::Source(FetchError::Unavailable))
 }
 
-/// Each file of the variants with its SHA-256 value; a file outside LFS is read and hashed
-/// once, however many variants list it.
 async fn hashed(
     fetch: &impl Fetch,
     repository: &str,
@@ -110,12 +106,10 @@ async fn hashed(
     Ok(found)
 }
 
-/// Reads the repository for the model `name`.
-///
 /// # Errors
-/// `Refused` when the organisation is not approved (before any read), when the repository is
-/// closed or has no variant, or when a file has no SHA-256 value; `Source` when the source
-/// fails or answers in a form the hub does not read.
+/// `Refused` when the organisation is not approved, the repository is closed or has no
+/// variant, or a file has no SHA-256 value; `Source` when the source fails or answers in a
+/// form the hub does not read.
 pub async fn read(
     fetch: &impl Fetch,
     source: &Repository,
@@ -149,8 +143,7 @@ pub async fn read(
     {
         return Err(Error::Refused(Refusal::NoVariant));
     }
-    // The publisher is the organisation of the base model on the card. The source is in the
-    // approved list, so a repository outside the list never names one.
+    // The source is approved, so a repository outside the list never names the publisher.
     let publisher = listing
         .base_organisation()
         .filter(|organisation| naming::organisation("publisher", organisation).is_ok());

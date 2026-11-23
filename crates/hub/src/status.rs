@@ -1,4 +1,4 @@
-//! Health status of a check or device, and how statuses combine (CHK-004).
+//! How the statuses of checks combine (CHK-004).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

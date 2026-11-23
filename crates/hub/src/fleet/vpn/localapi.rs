@@ -1,8 +1,5 @@
-//! The hub's own VPN status, read through the `LocalAPI` proxy (VPN-008).
-//!
-//! The proxy is operator infrastructure, as for the Tailscale ping check
-//! (`checks/probe/tailscale.rs`). The reply is never logged or stored; errors hold fixed words
-//! only (LOG-007).
+//! The hub's own VPN status through the `LocalAPI` proxy, which is operator infrastructure (VPN-008).
+//! The reply is never logged or stored; errors hold fixed words only (LOG-007).
 
 use std::time::Duration;
 
@@ -13,16 +10,11 @@ use super::{
     peers::{Status, parse},
 };
 
-/// The most reply bytes read: the proxy's own cap (1 MiB).
+/// The proxy's own cap.
 const REPLY_CAP: usize = 1024 * 1024;
 /// No caller cuts this request off, so it has its own limit.
 const TIMEOUT: Duration = Duration::from_secs(10);
 
-/// The status of the hub's node and its peers.
-///
-/// # Errors
-/// `Request` when the proxy does not answer in time, `Refused` on 403, `Status` on another
-/// code, `TooLong` past 1 MiB, `Unreadable` on a reply of another shape.
 pub(super) async fn status(localapi: &str) -> Result<Status, Error> {
     let url = format!("http://{localapi}/localapi/v0/status?peers=true");
     let mut response = client()?
@@ -47,7 +39,6 @@ fn client() -> Result<Client, Error> {
         .map_err(|_| Error::Request)
 }
 
-/// Reads at most [`REPLY_CAP`] bytes; one more byte than that is `TooLong`.
 async fn read_capped(response: &mut Response) -> Result<Vec<u8>, Error> {
     let mut body = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|_| Error::Request)? {

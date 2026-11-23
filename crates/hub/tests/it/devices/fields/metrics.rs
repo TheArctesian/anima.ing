@@ -137,8 +137,7 @@ async fn api_005_readings_and_gpus_cost_a_constant_few_statements_for_13_or_163_
         assert_eq!(pve["node"]["readings"]["cpuPercent"], 55.0);
         assert_eq!(pve["node"]["gpus"][0]["name"], "RTX 4090");
     }
-    // The page, its count, one batch of readings, one batch of GPUs. A per-device read costs
-    // one statement per device and field.
+    // The page, its count, one batch of readings, one batch of GPUs.
     assert!(
         few_statements <= 12 && many_statements <= 12,
         "{few_statements} statements for 13 devices, {many_statements} for 163"

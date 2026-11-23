@@ -1,6 +1,4 @@
-//! The fields that join the checks domain into devices: `status`, `uptime`, `checks`, `ip`,
-//! the status filter, the STATUS and UPTIME orders and `addDefaultCheck` (CHK-004,
-//! CHK-011, API-005, API-006).
+//! Device fields from the checks domain (CHK-004, CHK-011, API-005, API-006).
 
 mod batching;
 mod byte_order;
@@ -26,7 +24,6 @@ pub const TRUENAS: &str = "0190a000-0000-7000-8002-000000000007";
 pub const BACKUP_02: &str = "0190a000-0000-7000-8002-000000000008";
 pub const PIHOLE: &str = "0190a000-0000-7000-8002-000000000005";
 
-/// Sets the stored status of every check of a device.
 pub async fn set_status(pool: &PgPool, device: &str, status: &str) {
     sqlx::query("UPDATE checks.checks SET status = $2 WHERE device_id = $1::text::uuid")
         .bind(device)
@@ -36,7 +33,6 @@ pub async fn set_status(pool: &PgPool, device: &str, status: &str) {
         .unwrap();
 }
 
-/// One aggregate row for the "Ping" check of a device, in a table, `ago` before the test clock.
 pub async fn ping_uptime(
     pool: &PgPool,
     device: &str,
@@ -57,11 +53,7 @@ pub async fn ping_uptime(
     .unwrap();
 }
 
-/// A mix of statuses over the 13 K6 devices, and day uptimes for four of them.
-///
-/// Status order: pve-01 and truenas Down, docker-host Degraded, six Unknown, jellyfin
-/// Maintenance (its manual flag is set), backup-02, ollama and pihole Up.
-/// Day uptime: truenas 0.25, pve-01 0.5, docker-host 0.75, ollama 1.
+/// The fixture sets jellyfin's manual flag, so it sorts as Maintenance whatever its status.
 pub async fn seed_standing(pool: &PgPool) {
     for (device, status) in [
         (PVE_01, "down"),
@@ -81,7 +73,6 @@ pub async fn seed_standing(pool: &PgPool) {
     ping_uptime(pool, OLLAMA, ("uptime_minute", hour), (1, 0)).await;
 }
 
-/// The device names of a connection, in order.
 pub fn names(connection: &Value) -> Vec<&str> {
     connection["edges"]
         .as_array()
@@ -91,7 +82,6 @@ pub fn names(connection: &Value) -> Vec<&str> {
         .collect()
 }
 
-/// Names in the STATUS order of `seed_standing`.
 pub const BY_STATUS: [&str; 13] = [
     "pve-01",
     "truenas",
@@ -108,7 +98,6 @@ pub const BY_STATUS: [&str; 13] = [
     "pihole",
 ];
 
-/// Names in the UPTIME order of `seed_standing`: lowest first, no figure last.
 pub const BY_UPTIME: [&str; 13] = [
     "truenas",
     "pve-01",

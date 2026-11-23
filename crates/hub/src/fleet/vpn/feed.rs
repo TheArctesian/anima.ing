@@ -6,8 +6,7 @@ use tokio::sync::watch;
 
 use super::model::Picture;
 
-/// The hub's one VPN picture: the reader publishes on it, the `vpn` query and `vpnChanged`
-/// read it. Clones share the same picture.
+/// Clones share the same picture.
 #[derive(Clone, Debug)]
 pub struct Feed {
     sender: Arc<watch::Sender<Option<Arc<Picture>>>>,
@@ -28,13 +27,11 @@ impl Feed {
         self.sender.borrow().clone()
     }
 
-    /// Stores `picture` as the latest and wakes every subscriber. `send_replace` stores it
-    /// also when no subscriber exists, which `send` would not.
+    /// `send_replace` stores the picture also when no subscriber exists, which `send` would not.
     pub(super) fn publish(&self, picture: Picture) {
         self.sender.send_replace(Some(Arc::new(picture)));
     }
 
-    /// A receiver that sees each picture published after this call.
     #[must_use]
     pub fn subscribe(&self) -> watch::Receiver<Option<Arc<Picture>>> {
         self.sender.subscribe()

@@ -1,5 +1,4 @@
-//! The pure rules of a job (K10 Sections 4, 5 and 7): what a claim, a report, a lease that
-//! ended, a stop and a time limit make of it. The time is a parameter (CQ-021).
+//! The pure rules of a job (K10 Sections 4, 5 and 7).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::wire::{MAX_LOG_PART_BYTES, StopReason, WorkReport, WorkState, WorkType};
@@ -13,29 +12,22 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The reason of a `build` whose lease ended three times (K10 Section 7).
 pub(super) const STOPPED_REASON: &str = "machine stopped 3 times";
 
-/// The reason of a `runner` whose lease ended: a JIT configuration is for one use.
+/// A JIT configuration is for one use.
 pub(super) const RUNNER_LOST_REASON: &str = "machine stopped; a runner job has one attempt";
 
-/// The reason of an attempt that the hub ended at its time limit.
 pub(super) const EXPIRED_REASON: &str = "expired";
 
 /// How long after `limits.seconds` the hub ends an attempt that is not final (SF-011).
 const OVERTIME: TimeDelta = TimeDelta::minutes(5);
 
-/// Why a report is refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Refusal {
-    /// Not the holder, a different attempt, a job that ended, a lease that ended, or a change
-    /// that the diagram does not permit: `NOT_HOLDER`.
     NotHolder,
-    /// A result with a state that is not final, or a final state with no result: `MALFORMED`.
     Malformed,
 }
 
-/// The job that `device` claimed at `now`: the next attempt, with its lease.
 pub(super) fn claimed(job: &Job, device: DeviceId, now: DateTime<Utc>) -> Job {
     Job {
         state: State::Claimed,
@@ -50,8 +42,7 @@ pub(super) fn claimed(job: &Job, device: DeviceId, now: DateTime<Utc>) -> Job {
     }
 }
 
-/// Whether the diagram of K10 Section 7 permits `from` to `to`. The same state is a report
-/// that only holds the lease.
+/// The diagram of K10 Section 7. The same state is a report that only holds the lease.
 const fn permitted(from: State, to: WorkState) -> bool {
     use State::{Claimed, Finishing, Preparing, Running};
     matches!(
@@ -69,8 +60,7 @@ const fn permitted(from: State, to: WorkState) -> bool {
     )
 }
 
-/// The job after the report of `device` at `now` (K10 Section 7). The log part is not applied
-/// here: see [`log_fits`].
+/// The log part is not applied here: see [`log_fits`].
 pub(super) fn reported(
     job: &Job,
     device: DeviceId,
@@ -111,15 +101,13 @@ pub(super) fn reported(
     Ok(next)
 }
 
-/// Takes the job from its holder.
 fn release(job: &mut Job) {
     job.holder = None;
     job.lease_ends_at = None;
     job.stop = None;
 }
 
-/// The job that `device` refused: back in the queue, and not for that machine again. A refusal
-/// is not an attempt that was lost (K10 Section 5).
+/// A refusal is not an attempt that was lost (K10 Section 5).
 fn refused(job: &Job, device: DeviceId, now: DateTime<Utc>) -> Job {
     let mut next = queued_again(job, now);
     if !next.refused_by.contains(&device) {
@@ -151,8 +139,7 @@ fn failed(job: &Job, reason: &str, now: DateTime<Utc>) -> Job {
     next
 }
 
-/// The job after its lease ended at `now` with no report (K10 Section 7). A `build` goes back
-/// to the queue and fails the third time; a `runner` has no second attempt.
+/// A `build` fails the third time; a `runner` has no second attempt (K10 Section 7).
 pub(super) fn lease_lost(job: &Job, now: DateTime<Utc>) -> Job {
     if job.asked.work_type == WorkType::Runner {
         return failed(job, RUNNER_LOST_REASON, now);
@@ -169,13 +156,11 @@ pub(super) fn lease_lost(job: &Job, now: DateTime<Utc>) -> Job {
     }
 }
 
-/// The job whose holder does not name it in a claim: the answer to its claim was lost. It goes
-/// back to the queue and no lease counts as lost (SF-011).
+/// The answer to its claim was lost, so no lease counts as lost (SF-011).
 pub(super) fn answer_lost(job: &Job, now: DateTime<Utc>) -> Job {
     queued_again(job, now)
 }
 
-/// Whether the attempt holds the job for longer than its limit and 5 minutes (SF-011).
 pub(super) fn overdue(job: &Job, now: DateTime<Utc>) -> bool {
     let limit = i64::try_from(job.asked.limits.seconds).unwrap_or(i64::MAX);
     let most = limit.saturating_add(OVERTIME.num_seconds());
@@ -185,7 +170,6 @@ pub(super) fn overdue(job: &Job, now: DateTime<Utc>) -> bool {
             .is_some_and(|since| now.signed_duration_since(since).num_seconds() >= most)
 }
 
-/// The job that the hub ended at its time limit.
 pub(super) fn expired(job: &Job, now: DateTime<Utc>) -> Job {
     let mut next = Job {
         state: State::Stopped,
@@ -198,8 +182,7 @@ pub(super) fn expired(job: &Job, now: DateTime<Utc>) -> Job {
     next
 }
 
-/// The job after a stop was asked for at `now`. A queued job stops at once. A held job gets
-/// the stop in the next answer to its holder; the first reason stays. A job that ended is `None`.
+/// A held job gets the stop in the next answer to its holder.
 pub(super) fn stop_asked(job: &Job, reason: StopReason, now: DateTime<Utc>) -> Option<Job> {
     match job.state {
         State::Queued => Some(Job {
@@ -217,8 +200,6 @@ pub(super) fn stop_asked(job: &Job, reason: StopReason, now: DateTime<Utc>) -> O
     }
 }
 
-/// Whether a log part that starts at `from` with `bytes` bytes is the next part of the log of
-/// the job. A part that is not is dropped, and the answer names the end that the hub holds.
 pub(super) fn log_fits(job: &Job, from: u64, bytes: usize) -> bool {
     from == job.log_end && bytes <= MAX_LOG_PART_BYTES
 }

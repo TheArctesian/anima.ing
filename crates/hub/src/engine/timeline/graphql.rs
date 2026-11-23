@@ -1,4 +1,4 @@
-//! The timeline GraphQL part: `Query.timeline` (K1; TML-001 to TML-007, API-006).
+//! The timeline GraphQL part (K1; TML-001 to TML-007, API-006).
 
 use async_graphql::{Context, Object, Result, SimpleObject};
 use chrono::{DateTime, Utc};

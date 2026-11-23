@@ -1,5 +1,4 @@
-//! Tokens at the edge: storage, expiry, logout, `me` and API-003 for every root field
-//! (SEC-002, API-003, LOG-007, D-7, D-9).
+//! Tokens at the edge (SEC-002, API-003, LOG-007, D-7, D-9).
 
 use anima_hub::fleet::access::{self, Password};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -117,7 +116,6 @@ async fn sec_002_operator_for_token_resolves_and_touches_once_a_minute(pool: PgP
     assert!(matches!(junk, Err(access::Error::Unauthenticated)));
 }
 
-/// The root field names of the hub schema, per operation type, by introspection.
 async fn root_fields(hub: &Hub, token: &str) -> Vec<(&'static str, String)> {
     let query = "{ __schema { queryType { fields { name } } mutationType { fields { name } } } }";
     let schema = &hub.post(Some(token), query, json!({})).await["data"]["__schema"];

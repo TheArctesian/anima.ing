@@ -1,5 +1,4 @@
-//! The live feed of session changes (RA-034): every client sees each start once its row is
-//! committed and each end with its reason, and the subscription needs a signed-in operator.
+//! The live feed of session changes (RA-034).
 
 use std::time::Duration;
 
@@ -67,7 +66,6 @@ async fn ra_034_a_start_is_published_once_committed_then_its_end_with_the_reason
     assert_eq!(ended.at, now() + TimeDelta::seconds(5));
     nothing_more(&mut changes);
 
-    // Ending it again changes nothing, so nothing is published.
     let response = later.execute(end_request(id)).await;
     assert!(response.errors.is_empty(), "{:?}", response.errors);
     nothing_more(&mut changes);
@@ -82,14 +80,12 @@ async fn ra_034_a_refused_start_publishes_nothing(pool: PgPool) {
     let schema = schema_at(&pool, now(), &live);
     let mut changes = live.changes();
 
-    // No accepted host key: CONFLICT. A display outside the bounds: validation.
     let no_key = schema.execute(start_request(PVE_01, &display())).await;
     assert_eq!(error_json(&no_key)["extensions"]["code"], "CONFLICT");
     ready(&pool, &[PVE_01]).await;
     let too_wide = json!({ "widthPx": 9000, "heightPx": 800 });
     let invalid = schema.execute(start_request(PVE_01, &too_wide)).await;
     assert_eq!(error_json(&invalid)["extensions"]["code"], "VALIDATION");
-    // The hub is shutting down: UNAVAILABLE, and the row rolls back.
     anima_hub::fleet::sessions::shut_down(&pool, &live, now())
         .await
         .unwrap();
@@ -197,7 +193,6 @@ async fn api_003_session_changed_refuses_a_request_without_an_operator(pool: PgP
     ready(&pool, &[PVE_01]).await;
     let live = Live::default();
     let schema = schema_at(&pool, now(), &live);
-    // No identity, and an identity that expired before the schema's clock.
     for request in [
         Request::new(SUBSCRIPTION),
         signed_in_until(SUBSCRIPTION, -1),

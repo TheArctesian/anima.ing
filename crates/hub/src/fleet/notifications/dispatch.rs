@@ -1,31 +1,11 @@
-//! The dispatcher: one task that sends the queued notifications and retries the failed ones
+//! The dispatcher: one task that sends queued notifications and retries failed ones
 //! (D-16, NOT-001, NOT-002, P3-003).
 //!
-//! Each tick it reads the installation's templates, claims up to [`BATCH`] due outbox rows and
-//! sends them at the same time, each through `Sender` and the one egress path, then waits for
-//! all of them before it claims again. The decisions are pure: the reason and permanence of a
-//! failure (`failure`), the retry schedule (`retry`) and the request for each kind
-//! (`outgoing`). The time comes from the clock once per tick, so a test drives the dispatcher
-//! with any instant it likes (CQ-021).
-//!
-//! ## Leases and duplicates
-//!
-//! A claim moves the row's `next_attempt_at` [`LEASE`] ahead in the same statement that takes
-//! it (`FOR UPDATE SKIP LOCKED`), so two dispatchers take disjoint rows, and no claimer takes a
-//! row again until its lease ends. A send takes at most the egress time limit (8 s), and every
-//! row of a batch is sent at once, so a batch ends far inside its lease; the delivery and the
-//! row's new state are then written in one transaction.
-//!
-//! Delivery is at least once. A row is sent again only when its lease ends before its outcome
-//! is written: the hub stopped or crashed between the send and the write, or that write kept
-//! failing for the whole lease. Within a lease no row is sent twice. Each claim counts a try,
-//! so those resends end with the row's tries, and a claimer whose lease ended changes nothing
-//! in the row: every outcome write matches the lease end its claim set. A send whose outcome the
-//! target decided is never retried for a late answer: the egress counts an answered 2xx and a
-//! mail accepted after DATA as sent (S-A, S-B).
-//!
-//! The task runs until its handle is aborted; aborting it also aborts the sends in flight,
-//! whose rows come back when their leases end.
+//! A claim moves `next_attempt_at` [`LEASE`] ahead with `FOR UPDATE SKIP LOCKED`, so dispatchers
+//! take disjoint rows. Delivery is at least once: a row is sent again only when its lease ends
+//! before its outcome is written. Every outcome write matches the lease end its claim set, so a
+//! claimer whose lease ended changes nothing. An answered 2xx or a mail accepted after DATA
+//! counts as sent and is never retried (S-A, S-B).
 
 mod claimed;
 mod failure;
@@ -56,22 +36,19 @@ use failure::Failure;
 pub(super) use failure::delivery;
 pub(super) use sender::Sender;
 
-/// The time between ticks.
 const TICK: Duration = Duration::from_secs(1);
-/// How long a claimed row is kept from every other claimer: far longer than a send (8 s) and
-/// its two database round trips.
+/// Far longer than a send (8 s) and its two database round trips.
 const LEASE: TimeDelta = TimeDelta::minutes(5);
-/// The most rows one tick claims and sends at the same time.
 const BATCH: i64 = 16;
 
-/// What the dispatcher sends with: the vault that opens channel secrets and the address
-/// policy every notification connection obeys (K3, P3-003).
+/// The vault that opens channel secrets, and the address policy every notification connection
+/// obeys (K3, P3-003).
 pub struct Sending {
     pub vault: Vault,
     pub policy: AddressPolicy,
 }
 
-/// Why a claimed row could not be finished. The row comes back when its lease ends.
+/// The row comes back when its lease ends.
 #[derive(Debug, thiserror::Error)]
 enum Fault {
     #[error("the notification store failed")]
@@ -90,9 +67,7 @@ impl Fault {
     }
 }
 
-/// Starts the dispatcher. It ticks about once a second at the clock's time and runs until the
-/// handle is aborted. It never panics on a failed read or write: it logs a fixed word and the
-/// row comes back after its lease.
+/// A failed read or write logs a fixed word, and the row comes back after its lease.
 #[must_use]
 pub fn spawn_dispatcher(
     db: PgPool,
@@ -112,7 +87,7 @@ pub fn spawn_dispatcher(
     })
 }
 
-/// The state of one dispatcher. Each row of a batch runs in its own task; none holds a lock.
+/// Each row of a batch runs in its own task; none holds a lock.
 struct Dispatcher {
     db: PgPool,
     bus: Bus,
@@ -120,8 +95,6 @@ struct Dispatcher {
 }
 
 impl Dispatcher {
-    /// One pass at `now`: claims the due rows, sends them at the same time and waits for every
-    /// one. Returns how many rows it claimed.
     async fn tick(self: &Arc<Self>, now: DateTime<Utc>) -> usize {
         let defaults = match store::installation_settings(&self.db).await {
             Ok(settings) => Arc::new(settings),
@@ -160,8 +133,7 @@ impl Dispatcher {
     }
 }
 
-/// The process log line of a finished row: the channel id, the reason word and the code only
-/// (LOG-007). A sent or ended row writes nothing.
+/// Logs the channel id, the reason word and the code only (LOG-007).
 fn log_finished(row: &Outbox, finished: &Result<Finished, Fault>) {
     match finished {
         Ok(Finished::Sent | Finished::Ended) => {}

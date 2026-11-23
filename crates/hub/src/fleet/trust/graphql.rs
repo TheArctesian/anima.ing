@@ -1,9 +1,5 @@
-//! The trust GraphQL part: the root `Mutation` with `acceptHostKey` and
-//! `acceptServerCertificate` (K1; D-6, SEC-006, SEC-007), and the loaders behind
-//! `SshSettings.hostKey` and `RdpSettings.serverCertificate` (API-005).
-//!
-//! The types live in the sub-modules; each `#[Object]` block there is the single resolver block
-//! for its type.
+//! Trust mutations and loaders (K1; D-6, SEC-006, SEC-007, API-005).
+//! Each `#[Object]` block in the sub-modules is the single resolver block for its type.
 
 mod error;
 mod host_key;

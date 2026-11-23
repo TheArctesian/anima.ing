@@ -1,5 +1,4 @@
-//! Docker and systemd checks: the commands, the pure readers of their output and the
-//! configuration (CHK-009, CHK-012, D-3).
+//! Docker and systemd checks (CHK-009, CHK-012, D-3).
 
 mod config;
 mod docker;
@@ -7,7 +6,6 @@ mod systemd;
 
 use crate::fleet::{checks::probe::ProbeResult, ssh::CommandOutput};
 
-/// Output that finished with exit status 0 and was read whole.
 pub fn finished(stdout: &str) -> CommandOutput {
     CommandOutput {
         exit_status: Some(0),
@@ -16,7 +14,6 @@ pub fn finished(stdout: &str) -> CommandOutput {
     }
 }
 
-/// What the reader answered, as a status word and the message: `up`, `starting`, `down`.
 pub fn verdict(result: &ProbeResult) -> (&'static str, Option<&str>) {
     use crate::fleet::checks::probe::Judgement::{Answered, Expiring, Starting, Unjudged};
     let word = match (result.ok, result.judgement) {
@@ -28,8 +25,6 @@ pub fn verdict(result: &ProbeResult) -> (&'static str, Option<&str>) {
     (word, result.message.as_deref())
 }
 
-/// The reasons no reader may read the output, shared by both readers. `read` is the reader
-/// with the configured name already given.
 pub fn assert_unreadable_outputs(read: impl Fn(&CommandOutput) -> ProbeResult, valid: &str) {
     let cut = CommandOutput {
         cut: true,

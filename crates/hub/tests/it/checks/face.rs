@@ -1,8 +1,5 @@
-//! The checks face against the database: heartbeats and aggregates, uptime, status,
-//! writes, sealed secrets and retention (CHK-002–006, CHK-011, DB-008, DB-009).
-//!
-//! Beat times come from the database clock, because the partition functions accept only
-//! instants near it.
+//! CHK-002–006, CHK-011, DB-008, DB-009.
+//! Beat times come from the database clock: the partition functions accept only instants near it.
 
 pub(super) mod batching;
 mod beats;
@@ -35,12 +32,10 @@ use chrono::{DateTime, DurationRound, TimeDelta, Utc};
 use sqlx::PgPool;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
-/// The host of `pve-01` in the fixtures.
 const PVE_01_HOST: &str = "pve-01.home.lan";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
 const JELLYFIN: &str = "0190a000-0000-7000-8002-000000000006";
 const TRUENAS: &str = "0190a000-0000-7000-8002-000000000007";
-/// The "Ping" and "SSH port" checks of `pve-01` in the fixtures.
 const PVE_01_PING: &str = "0190a000-0000-7000-8003-000000000001";
 const PVE_01_SSH: &str = "0190a000-0000-7000-8003-000000000002";
 
@@ -62,8 +57,7 @@ fn vault() -> Vault {
     vault_with(7)
 }
 
-/// Seals with `vault` for `pve-01`'s host. The host matters only for SNMP checks, which these
-/// tests put on `pve-01` (SEC-010).
+/// The host matters only for SNMP checks, which these tests put on `pve-01` (SEC-010).
 fn sealer(vault: &Vault) -> Sealer<'_> {
     Sealer {
         vault,
@@ -71,7 +65,7 @@ fn sealer(vault: &Vault) -> Sealer<'_> {
     }
 }
 
-/// The database clock, truncated to the second so stored and expected times compare equal.
+/// Truncated to the second so stored and expected times compare equal.
 async fn database_now(pool: &PgPool) -> DateTime<Utc> {
     let now: DateTime<Utc> = sqlx::query_scalar("select pg_catalog.now()")
         .fetch_one(pool)
@@ -97,7 +91,6 @@ fn new_check(device_text: &str, name: &str, definition: Definition) -> NewCheck 
     }
 }
 
-/// Adds a check and returns its id.
 async fn create(pool: &PgPool, new: NewCheck) -> CheckId {
     let mut conn = pool.acquire().await.unwrap();
     checks::create_check(&mut conn, sealer(&vault()), new)
@@ -106,7 +99,6 @@ async fn create(pool: &PgPool, new: NewCheck) -> CheckId {
         .id
 }
 
-/// A beat at `at` with the given heartbeat status, leaving the check in that status.
 fn beat(at: DateTime<Utc>, status: Status, response_time_ms: Option<u32>) -> Beat {
     Beat {
         at,
@@ -130,7 +122,6 @@ async fn record(pool: &PgPool, id: CheckId, beat: &Beat) {
     assert_eq!(recorded, Recorded::Written);
 }
 
-/// Sets the stored status of a check directly.
 async fn set_status(pool: &PgPool, id: &str, status: &str) {
     sqlx::query("UPDATE checks.checks SET status = $2 WHERE id = $1::text::uuid")
         .bind(id)

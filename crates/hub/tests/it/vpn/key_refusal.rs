@@ -1,5 +1,5 @@
-//! The VPN mutation resolvers check the token kind themselves, so an API key is refused even
-//! on a schema without the `SignInRequired` backstop (D-23, VP-7).
+//! The VPN resolvers refuse an API key themselves, without the `SignInRequired` backstop
+//! (D-23, VP-7).
 
 use std::sync::Arc;
 

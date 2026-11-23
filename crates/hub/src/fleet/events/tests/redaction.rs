@@ -6,8 +6,7 @@ use sqlx::PgPool;
 use super::{DEVICE, day, device_event, new_audit, stored_event};
 use crate::fleet::events::{Bus, NewEvent, Signal, audit, record};
 
-/// A URL password, an HTTP credential or a private key in the message or the device name never
-/// reaches the stored row or the bus (H-6).
+/// H-6: a URL password, an HTTP credential or a private key never reaches the row or the bus.
 #[sqlx::test(migrations = "./migrations")]
 async fn log_007_record_stores_and_publishes_message_and_device_name_redacted(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();

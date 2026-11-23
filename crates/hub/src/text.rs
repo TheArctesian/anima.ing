@@ -1,8 +1,7 @@
-//! What counts as plain text: no control character and nothing that hides, reorders or
-//! breaks text when it is shown (Q2-11). Each domain decides what to do with a bad character.
+//! Plain text has no control character and nothing that hides, reorders or breaks text when it
+//! is shown (Q2-11). Each domain decides what to do with a bad character.
 
-/// Format characters (Unicode Cf) and the line and paragraph separators (Zl, Zp): bidi
-/// controls, zero-width characters, the byte order mark, tag characters and the like.
+/// Format characters (Unicode Cf) and the line and paragraph separators (Zl, Zp).
 #[must_use]
 pub fn is_invisible(c: char) -> bool {
     matches!(c,
@@ -14,7 +13,6 @@ pub fn is_invisible(c: char) -> bool {
         | '\u{1d173}'..='\u{1d17a}' | '\u{e0000}'..='\u{e007f}')
 }
 
-/// Whether the text has no control character and no invisible character.
 #[must_use]
 pub fn is_plain(s: &str) -> bool {
     !s.chars().any(|c| c.is_control() || is_invisible(c))

@@ -1,13 +1,10 @@
-//! The start check refuses a hub login that could change the logs (K2 "Start check", R-016,
-//! R-023, LOG-006). Every case logs in as a real LOGIN role.
+//! K2 "Start check" (R-016, R-023, LOG-006): the hub refuses a login that could change the logs.
 
 use sqlx::{PgConnection, PgPool};
 
 use super::{login_pool, privileges::execute, test_role};
 use crate::fleet::events::{Refusal, RoleError, check_runtime_role};
 
-/// Runs `sql`, which may hold several statements, with `{role}` replaced by `role` and `{db}`
-/// by the test database's name.
 async fn run_for(conn: &mut PgConnection, sql: &str, role: &str) {
     let db: String = sqlx::query_scalar("select current_database()::text")
         .fetch_one(&mut *conn)
@@ -17,8 +14,7 @@ async fn run_for(conn: &mut PgConnection, sql: &str, role: &str) {
     sqlx::raw_sql(&sql).execute(conn).await.unwrap();
 }
 
-/// Creates both logs' partitions for 2030-05-05 and takes USAGE on schema `events` away from
-/// `anima_runtime`, so the check must work from the catalog alone.
+/// Without USAGE on `events`, the check must work from the catalog alone.
 async fn partitions_without_schema_usage(conn: &mut PgConnection) {
     for log in ["event_log", "audit_log"] {
         execute(
@@ -30,8 +26,6 @@ async fn partitions_without_schema_usage(conn: &mut PgConnection) {
     execute(conn, "revoke usage on schema events from anima_runtime").await;
 }
 
-/// The refusal for each `(setup, teardown)`: a new LOGIN role `{role}` in `anima_runtime` gets
-/// `setup`, logs in and runs the start check, then `teardown` and the role are removed.
 async fn outcomes(pool: &PgPool, cases: &[(&str, &str)]) -> Vec<Option<Refusal>> {
     let mut conn = pool.acquire().await.unwrap();
     partitions_without_schema_usage(&mut conn).await;
@@ -59,7 +53,6 @@ async fn outcomes(pool: &PgPool, cases: &[(&str, &str)]) -> Vec<Option<Refusal>>
     found
 }
 
-/// Asserts that every case is refused with `expected`.
 async fn assert_refused(pool: &PgPool, cases: &[(&str, &str)], expected: Refusal) {
     let found = outcomes(pool, cases).await;
     for ((setup, _), outcome) in cases.iter().zip(found) {
@@ -77,8 +70,6 @@ async fn r_016_start_check_refuses_a_superuser(pool: PgPool) {
     );
 }
 
-/// The login's rights count, not the session role's: a superuser login whose session runs as
-/// `anima_runtime` is refused as a superuser (R-023).
 #[sqlx::test(migrations = "./migrations")]
 async fn r_023_start_check_refuses_a_superuser_login_behind_a_session_role(pool: PgPool) {
     let session = super::pool_as(&pool, "anima_runtime").await;
@@ -101,8 +92,7 @@ async fn r_016_start_check_refuses_a_login_that_can_become_a_superuser(pool: PgP
     assert_refused(&pool, &cases, Refusal::Superuser).await;
 }
 
-/// A session role hides the login's own rights from `current_user`; `SET ROLE` or `RESET
-/// ROLE` brings them back (R-023).
+/// A session role hides the login's rights from `current_user`; `RESET ROLE` brings them back (R-023).
 #[sqlx::test(migrations = "./migrations")]
 async fn r_023_start_check_refuses_a_login_whose_session_runs_as_another_role(pool: PgPool) {
     let cases = [("alter role {role} set role = 'anima_runtime'", "")];
@@ -130,8 +120,6 @@ async fn r_023_start_check_refuses_a_login_whose_session_runs_as_another_role(po
     );
 }
 
-/// Owning the database, schema `events`, a log parent or a partition, or being a member of
-/// such an owner, is refused.
 #[sqlx::test(migrations = "./migrations")]
 async fn r_023_start_check_refuses_an_owner_of_the_database_schema_or_logs(pool: PgPool) {
     let mut cases = vec![
@@ -184,7 +172,6 @@ async fn r_023_start_check_refuses_members_of_server_file_program_and_maintain_r
     assert_refused(&pool, &cases, Refusal::ServerAccess).await;
 }
 
-/// Each case gives the login one right that could change, remove, lock or pin log entries.
 const CHANGE_RIGHTS: [(&str, &str); 16] = [
     ("grant update on events.audit_chain to {role}", ""),
     ("grant delete on events.audit_chain to {role}", ""),
@@ -233,8 +220,6 @@ async fn r_016_start_check_refuses_a_login_that_can_change_log_entries(pool: PgP
     assert_refused(&pool, &CHANGE_RIGHTS, Refusal::CanChangeLogs).await;
 }
 
-/// Default privileges that would give the login, a role it may become, or PUBLIC write rights
-/// on tables created later, globally or in schema `events` (R-023).
 const DEFAULT_RIGHTS: [(&str, &str); 5] = [
     (
         "alter default privileges grant update on tables to {role}",
@@ -266,9 +251,6 @@ async fn r_023_start_check_refuses_write_rights_through_default_privileges(pool:
     assert_refused(&pool, &DEFAULT_RIGHTS, Refusal::DefaultPrivileges).await;
 }
 
-/// A plain member passes, also with read-only and monitoring roles, without USAGE on `events`
-/// and beside 0001's own default privileges for `anima_runtime` and defaults outside `events`
-/// and for sequences.
 #[sqlx::test(migrations = "./migrations")]
 async fn r_023_start_check_passes_a_plain_member_of_anima_runtime(pool: PgPool) {
     let cases = [

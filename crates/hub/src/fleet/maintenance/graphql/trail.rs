@@ -1,8 +1,5 @@
-//! What a window mutation leaves behind: one audit entry and one event, written in the
-//! mutation's own transaction (LOG-004, LOG-005, LOG-007).
-//!
-//! The event source is `Hub`: a window belongs to no single device. The `change` objects are
-//! built by pure functions from the stored windows.
+//! The audit entry and event of a window mutation, written in its own transaction (LOG-004,
+//! LOG-005, LOG-007). The source is `Hub`: a window belongs to no single device.
 
 use serde_json::{Map, Value, json};
 

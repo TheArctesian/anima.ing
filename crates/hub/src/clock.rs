@@ -8,7 +8,6 @@ pub trait Clock: Send + Sync {
     fn now(&self) -> DateTime<Utc>;
 }
 
-/// The wall clock. The only place in the hub that reads the system time.
 pub struct SystemClock;
 
 impl Clock for SystemClock {
@@ -17,7 +16,6 @@ impl Clock for SystemClock {
     }
 }
 
-/// A clock that always reports the same instant, for tests.
 pub struct FixedClock(pub DateTime<Utc>);
 
 impl Clock for FixedClock {

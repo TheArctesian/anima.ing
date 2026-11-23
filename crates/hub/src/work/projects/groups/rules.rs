@@ -1,12 +1,8 @@
 //! What a group name and a list of projects must be (PRO-059, PRO-060). Pure.
 
-/// The longest group name, in characters.
 pub const NAME_CHARS: usize = 60;
-/// The most projects that one change names.
 pub const MOST_PROJECTS: usize = 200;
 
-/// The name as it is stored: the text without the spaces at its two ends. `None` when it is
-/// empty, longer than [`NAME_CHARS`] or holds a control character.
 #[must_use]
 pub fn name(text: &str) -> Option<String> {
     let name = text.trim();
@@ -15,8 +11,6 @@ pub fn name(text: &str) -> Option<String> {
         .then(|| name.to_owned())
 }
 
-/// The ids of `given` without the second of two that are the same, in their order. `None` when
-/// there are more than [`MOST_PROJECTS`] of them.
 #[must_use]
 pub fn distinct<T: PartialEq + Copy>(given: &[T]) -> Option<Vec<T>> {
     let mut kept: Vec<T> = Vec::new();

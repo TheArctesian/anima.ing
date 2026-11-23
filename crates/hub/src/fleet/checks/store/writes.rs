@@ -1,5 +1,4 @@
-//! Check writes, each in the caller's transaction in a savepoint, and the sealed HTTP and
-//! SNMP secrets (SEC-003).
+//! Each write runs in a savepoint of the caller's transaction; secrets are stored sealed (SEC-003).
 
 use chrono::{DateTime, Utc};
 use serde_json::Value;
@@ -27,7 +26,7 @@ pub(super) fn small(value: u32) -> i32 {
     i32::try_from(value).unwrap_or(i32::MAX)
 }
 
-/// A check row to insert, already validated and with its secrets sealed.
+/// Already validated, with its secrets sealed.
 pub(in crate::fleet::checks) struct Insert<'a> {
     pub(in crate::fleet::checks) device: DeviceId,
     pub(in crate::fleet::checks) parent: Option<CheckId>,
@@ -72,10 +71,8 @@ pub(in crate::fleet::checks) async fn insert(
     Ok(check)
 }
 
-/// The type, configuration, sealed secrets and legacy SNMP host of a check row.
 type CurrentRow = (String, Value, Option<Vec<u8>>, Option<String>);
 
-/// The stored type, configuration and sealed secrets of a check, locked for the change.
 pub(in crate::fleet::checks) struct Current {
     pub(in crate::fleet::checks) kind: String,
     config: Value,
@@ -85,7 +82,6 @@ pub(in crate::fleet::checks) struct Current {
 }
 
 impl Current {
-    /// The stored HTTP setup with its secrets opened, for the empty-secret rule.
     pub(in crate::fleet::checks) fn http(
         self,
         vault: &Vault,
@@ -101,8 +97,6 @@ impl Current {
         Ok(Some((config, secrets)))
     }
 
-    /// The stored SNMP configuration with its secrets opened for the device `host`, for the
-    /// empty-secret rule. `None` when the check is not an SNMP check or holds no secrets.
     pub(in crate::fleet::checks) fn snmp(
         self,
         vault: &Vault,
@@ -142,16 +136,16 @@ pub(in crate::fleet::checks) async fn lock(
     })
 }
 
-/// A validated change: the name is checked, a new configuration is prepared and sealed.
+/// Already validated, with a new configuration sealed.
 pub(in crate::fleet::checks) struct Change<'a> {
     pub(in crate::fleet::checks) fields: &'a CheckChange,
     pub(in crate::fleet::checks) name: Option<&'a str>,
-    /// The new configuration and its sealed secrets (`None` removes them).
+    /// A `None` secret removes the stored secrets.
     pub(in crate::fleet::checks) config: Option<(&'a CheckConfig, Option<Vec<u8>>)>,
     pub(in crate::fleet::checks) push_token: Option<&'a PushToken>,
 }
 
-/// Changes only the fields present, in the transaction that `lock` started.
+/// Runs in the transaction that `lock` started.
 pub(in crate::fleet::checks) async fn update(
     conn: &mut PgConnection,
     id: CheckId,
@@ -200,8 +194,7 @@ pub(in crate::fleet::checks) async fn update(
     super::fetch(conn, id).await
 }
 
-/// Deletes the check; its children leave the group through the foreign key. Returns the
-/// check as it was.
+/// Children leave the group through the foreign key.
 pub(in crate::fleet::checks) async fn delete(
     conn: &mut PgConnection,
     id: CheckId,
@@ -220,8 +213,7 @@ pub(in crate::fleet::checks) async fn delete(
     Check::try_from(row)
 }
 
-/// Pauses or resumes the check (CHK-005). Either way its state starts over: pausing makes it
-/// Unknown with no failures, and the next probe is due at once.
+/// Either way the check's state starts over (CHK-005).
 pub(in crate::fleet::checks) async fn set_paused(
     conn: &mut PgConnection,
     id: CheckId,
@@ -243,9 +235,8 @@ pub(in crate::fleet::checks) async fn set_paused(
     Check::try_from(row)
 }
 
-/// The stored HTTP setup of the check, its configuration and opened secrets read in one
-/// statement, so a probe never sends the secrets where an older read pointed (SEC-005).
-/// `None` when the check is not an HTTP check and holds no secrets.
+/// Configuration and secrets come from one statement, so a probe never sends the secrets
+/// where an older read pointed (SEC-005).
 pub(in crate::fleet::checks) async fn load_http_secrets<'e>(
     db: impl PgExecutor<'e>,
     vault: &Vault,
@@ -268,8 +259,7 @@ pub(in crate::fleet::checks) async fn load_http_secrets<'e>(
     Ok(Some(HttpSetup { config, secrets }))
 }
 
-/// Moves the check's due time from `expected` to `at`; returns whether it moved. A check
-/// whose time changed meanwhile, by a beat or the push route, keeps it (CHK-001).
+/// A check whose due time changed meanwhile, by a beat or the push route, keeps it (CHK-001).
 pub(in crate::fleet::checks) async fn set_next_due<'e>(
     db: impl PgExecutor<'e>,
     id: CheckId,

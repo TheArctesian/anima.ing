@@ -1,5 +1,4 @@
-//! What the process log may say about why a request failed: the hidden cause chain of a
-//! GraphQL error, described without SQL text, values or tokens (H-5, API-010, LOG-007).
+//! Why a request failed, for the process log, without SQL text, values or tokens (H-5, API-010, LOG-007).
 
 use std::{error::Error as StdError, sync::Arc};
 

@@ -1,8 +1,5 @@
 //! Merging pull requests through GraphQL against the loopback GitHub (OD-E14, PRJ-028, PRJ-033,
-//! PRO-013; K-E1 Section 13.3): what the stub hears, the K1 result, the record each sent merge
-//! leaves, the refusals of the merge rule that send nothing, every answer of GitHub, the fork
-//! rule, the bulk merge in order with its deadline, the token kinds, and the text that never
-//! reaches a log, an error or a record.
+//! PRO-013; K-E1 Section 13.3), and the text that never reaches a log, an error or a record.
 
 mod bulk;
 mod forks;
@@ -31,16 +28,12 @@ pub const MERGE_MANY: &str = "mutation($pullRequests: [PullRequestTargetInput!]!
 pub const LIST: &str =
     "query($repository: ID!) { pullRequests(repository: $repository) { edges { cursor } } }";
 
-/// The head repository of a pull request from a fork.
 pub const FORK: &str = "stranger/widgets";
 
-/// The commit GitHub merges a pull request as.
 pub fn merge_sha() -> String {
     sha(0xbeef)
 }
 
-/// Pull request `number` as GitHub's single read gives it: open, with `mergeable_state` and
-/// `mergeable`.
 pub fn open(number: u64, state: &str, mergeable: Value) -> Value {
     let mut one = pull(number, "open");
     one["mergeable_state"] = json!(state);
@@ -49,19 +42,16 @@ pub fn open(number: u64, state: &str, mergeable: Value) -> Value {
     one
 }
 
-/// Pull request `number`, open, clean and mergeable.
 pub fn clean(number: u64) -> Value {
     open(number, "clean", json!(true))
 }
 
-/// Pull request `number` from the fork `stranger/widgets`, open and clean.
 pub fn forked(number: u64) -> Value {
     let mut one = clean(number);
     one["head"]["repo"] = json!({ "id": 2, "full_name": FORK });
     one
 }
 
-/// Pull request `number` once GitHub merged it.
 pub fn merged(number: u64) -> Value {
     let mut one = pull(number, "closed");
     one["merged"] = json!(true);
@@ -70,7 +60,6 @@ pub fn merged(number: u64) -> Value {
     one
 }
 
-/// The repository allows a merge commit and a squash, not a rebase.
 pub fn methods(forge: &Forge) {
     forge.ok(
         "",
@@ -79,7 +68,6 @@ pub fn methods(forge: &Forge) {
     );
 }
 
-/// GitHub reads pull request `number` as `before` once, then as `after`.
 pub fn reads(forge: &Forge, number: u64, before: &Value, after: &Value) {
     let path = format!("{BASE}/pulls/{number}");
     forge
@@ -89,7 +77,6 @@ pub fn reads(forge: &Forge, number: u64, before: &Value, after: &Value) {
     forge.ok(&format!("/pulls/{number}"), after);
 }
 
-/// GitHub merges pull request `number`, as `merge_sha()`.
 pub fn merges(forge: &Forge, number: u64) {
     let made = json!({ "sha": merge_sha(), "merged": true, "message": "Pull Request merged" });
     super::changes::answer(
@@ -100,14 +87,12 @@ pub fn merges(forge: &Forge, number: u64) {
     );
 }
 
-/// A clean pull request `number` that GitHub merges.
 pub fn script(forge: &Forge, number: u64) {
     methods(forge);
     reads(forge, number, &clean(number), &merged(number));
     merges(forge, number);
 }
 
-/// The input of `mergePullRequest` for pull request `number` seen at `sha(number)`.
 pub fn input(forge: &Forge, number: u64, extra: &Value) -> Value {
     let mut input = json!({ "repository": forge.repository, "number": number,
         "expectedHeadSha": sha(number), "method": "SQUASH" });
@@ -117,17 +102,14 @@ pub fn input(forge: &Forge, number: u64, extra: &Value) -> Value {
     json!({ "input": input })
 }
 
-/// Merges pull request `number` as the signed-in operator, with `extra` in the input.
 pub async fn merge(forge: &Forge, number: u64, extra: &Value) -> Value {
     forge.kit.post(MERGE, input(forge, number, extra)).await
 }
 
-/// The merge requests GitHub heard for pull request `number`.
 pub fn sent(forge: &Forge, number: u64) -> Vec<Heard> {
     super::changes::sent(forge, "PUT", &format!("/pulls/{number}/merge"))
 }
 
-/// Every request below the repository that would change something.
 pub fn changes_sent(forge: &Forge) -> usize {
     forge.kit.stub.with(|s| {
         s.heard

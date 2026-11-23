@@ -1,7 +1,4 @@
-//! The hub on the PostgreSQL that the application carries (one-click plan S3, OR-6). The hub
-//! is given two file names and nothing else: it cannot tell this database from the one in
-//! Docker (DB-002). `migrate` runs with the owner's URL file and the hub serves with its own,
-//! as on the VPS (R-016).
+//! The hub on the bundled PostgreSQL, given only two file names (OR-6, DB-002, R-016).
 
 use std::{
     io::{BufRead as _, BufReader, Read as _, Write as _},
@@ -27,8 +24,7 @@ const LIMITS: Limits = Limits {
     stop: Duration::from_secs(30),
 };
 
-/// A folder closed to the group whatever the umask (0002 on Ubuntu): a backup refuses a
-/// folder that others can write to.
+/// Closed to the group whatever the umask: a backup refuses a folder others can write to.
 fn private_folder() -> tempfile::TempDir {
     let folder = tempfile::tempdir().unwrap();
     #[cfg(unix)]
@@ -40,7 +36,6 @@ fn private_folder() -> tempfile::TempDir {
     folder
 }
 
-/// The PostgreSQL 17 the gates already need (`quality/bin/with-postgres.ts`); never skipped.
 fn tree() -> Tree {
     let named = std::env::var_os("ANIMA_POSTGRES_TREE").map(PathBuf::from);
     let known = [
@@ -60,7 +55,6 @@ fn text(path: &Path) -> &str {
     path.to_str().unwrap()
 }
 
-/// Starts the hub and returns it with the address it serves on.
 fn serve(envs: &[(&str, &str)]) -> (Running, SocketAddr) {
     let mut hub = spawn(&[], envs);
     let stdout = hub.0.stdout.take().unwrap();
@@ -86,7 +80,6 @@ fn serve(envs: &[(&str, &str)]) -> (Running, SocketAddr) {
     }
 }
 
-/// The one-shot migration, as the owner.
 fn migrate(owner_url: &Path, key: &Path) {
     let (migrated, stderr) = finished(spawn(
         &["migrate"],
@@ -98,9 +91,7 @@ fn migrate(owner_url: &Path, key: &Path) {
     assert!(migrated, "{stderr}");
 }
 
-/// Serves the hub with the hub login's URL file and asks its own health check. A hub that
-/// starts has passed its start-up checks on this database: it is not a superuser and has no
-/// right to change the audit log (R-016, LOG-006).
+/// A hub that starts has passed its role checks on this database (R-016, LOG-006).
 fn serves_and_is_healthy(hub_url: &Path, key: &Path) {
     let (hub, address) = serve(&[
         ("ANIMA_DATABASE_URL_FILE", text(hub_url)),
@@ -145,8 +136,7 @@ fn db_002_r_016_the_hub_migrates_and_serves_on_the_bundled_database() {
     set_operator(&layout.url_file(Role::Hub), &key);
     serves_and_is_healthy(&layout.url_file(Role::Hub), &key);
 
-    // DB-007: a backup of this database, restored into a new bundled database, is a
-    // database the hub serves on, with its migration records current.
+    // DB-007: a restored backup is a database the hub serves on.
     let backup = folder.path().join("anima.backup");
     anima_database::backup::write(&tree(), &layout, &backup).unwrap();
     assert_eq!(

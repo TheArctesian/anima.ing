@@ -14,7 +14,6 @@ pub const SECRETS: [&str; 3] = [COMMUNITY, AUTH, PRIVACY];
 pub const READ: &str = "query($id: ID!) { check(id: $id) { type config { __typename \
     ... on SnmpConfig { port version oid expected username timeoutMs } } } }";
 
-/// A v3 configuration input with both passwords.
 pub fn v3(username: &str) -> Value {
     json!({ "snmp": {
         "version": "V3",

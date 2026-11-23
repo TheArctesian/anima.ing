@@ -1,7 +1,6 @@
-//! The root queries of the containers of a device (K1; HOST-001, R-149; HOST-017 to
-//! HOST-021, R-150). `containerLog` and `containerDetail` are closed to every API key: a log,
-//! a command or a label can hold a secret (D-23, MCP-004). `composeFileCheck` and
-//! `composeFromDockerRun` (HOST-022) reach no device: they read only the text of the caller.
+//! The root queries of the containers of a device (K1; HOST-001, HOST-017 to HOST-022).
+//! `containerLog` and `containerDetail` are closed to every API key: a log, a command or a label
+//! can hold a secret (D-23, MCP-004).
 
 mod compose_file;
 mod disk;

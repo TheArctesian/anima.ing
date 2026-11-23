@@ -1,7 +1,4 @@
-//! Validation of a window typed in the form (MW-001, MW-004).
-//!
-//! Every function is pure. The validator reports all field errors at once so the form can show
-//! them together.
+//! Window form validation (MW-001, MW-004); every field error is reported at once so the form shows them together.
 
 use std::{collections::HashSet, hash::Hash, str::FromStr};
 
@@ -19,12 +16,10 @@ pub use crate::api_errors::FieldError;
 const NAME_MAX: usize = 100;
 /// Seven days; the database constraint on a stored rule says the same.
 pub(super) const DURATION_MAX_MINUTES: u32 = 7 * 24 * 60;
-/// Days 1 to 31 and -1: no list of distinct days is longer. Lengths are checked before any
-/// scan of the list, so an oversized input costs nothing (API-005).
+/// Days 1 to 31 and -1; lengths are checked before any scan of the list (API-005).
 const DAYS_OF_MONTH_MAX: usize = 32;
 const WEEKDAYS_MAX: usize = 7;
 
-/// Collects field errors while the remaining fields are still checked.
 #[derive(Default)]
 pub(super) struct Problems(pub(super) Vec<FieldError>);
 
@@ -45,10 +40,6 @@ impl Problems {
     }
 }
 
-/// Checks a window to create or to replace one with.
-///
-/// # Errors
-/// Every invalid field, all at once.
 pub(super) fn validate(form: &WindowForm) -> Result<NewWindow, Vec<FieldError>> {
     let mut problems = Problems::default();
     let name = problems.field(name(&form.name));
@@ -84,7 +75,6 @@ fn name(text: &str) -> Result<String, FieldError> {
     }
 }
 
-/// An IANA time zone name such as `Pacific/Auckland` (MW-001).
 fn timezone(text: &str) -> Result<Tz, FieldError> {
     Tz::from_str(text.trim()).map_err(|_| {
         FieldError::new(
@@ -94,7 +84,6 @@ fn timezone(text: &str) -> Result<Tz, FieldError> {
     })
 }
 
-/// The rule fields each kind uses; every other rule field must be absent.
 const fn used_fields(kind: WindowKind) -> &'static [&'static str] {
     match kind {
         WindowKind::Manual => &[],
@@ -105,7 +94,6 @@ const fn used_fields(kind: WindowKind) -> &'static [&'static str] {
     }
 }
 
-/// Which rule fields the form filled in.
 fn filled_fields(form: &WindowForm) -> [(&'static str, bool); 8] {
     [
         ("startsAt", form.starts_at.is_some()),
@@ -119,7 +107,6 @@ fn filled_fields(form: &WindowForm) -> [(&'static str, bool); 8] {
     ]
 }
 
-/// A field the kind needs but lacks, or a field another kind owns.
 fn field_mismatches(form: &WindowForm) -> Vec<FieldError> {
     let used = used_fields(form.kind);
     let kind = form.kind.as_str();
@@ -235,7 +222,6 @@ fn duration(minutes: i32) -> Result<u32, FieldError> {
         })
 }
 
-/// `HH:MM`, 24-hour, with two digits each.
 fn start_time(text: &str) -> Result<NaiveTime, FieldError> {
     let bytes = text.as_bytes();
     let shaped = bytes.len() == 5

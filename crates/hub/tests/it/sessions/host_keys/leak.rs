@@ -1,6 +1,4 @@
-//! What `testConnection` lets out (LOG-007, API-010, WP-06 H-4): an input that does not parse
-//! is refused without quoting its credential, in the response or in the process log, and a
-//! test that signs in logs no secret.
+//! `testConnection` quotes no credential in its response or the process log (LOG-007, API-010, WP-06 H-4).
 
 use std::{
     io,
@@ -142,8 +140,7 @@ fn malformed() -> Vec<(Request, &'static str, Refusal)> {
             Refusal::Static,
         ),
         (signed_in(&partial_ssh), VARIABLE, Refusal::Static),
-        // Arguments are parsed before the guard runs, so a caller without an operator reaches
-        // the parser too.
+        // Arguments are parsed before the guard runs, so a signed-out caller reaches the parser too.
         (
             with_input(
                 Request::new(TEST),

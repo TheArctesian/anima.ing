@@ -1,6 +1,5 @@
-//! `connect` values for RDP and VNC from the device, the password, the accepted certificate
-//! and the drive root, answered to guacd 1.6.0's recorded `args` (K4 Section 3, GW-012,
-//! GW-013, RA-021, RA-033, SEC-007).
+//! `connect` values answered to guacd 1.6.0's recorded `args` (K4 Section 3, GW-012, GW-013,
+//! RA-021, RA-033, SEC-007).
 
 mod drive;
 mod switches;
@@ -22,7 +21,6 @@ use crate::fleet::{
     trust::ServerCertificate,
 };
 
-/// guacd 1.6.0's replies to `select,rdp` and `select,vnc`.
 const RDP_ARGS: &[u8] = include_bytes!("fixtures/guacd-1.6.0-rdp-args.guac");
 const VNC_ARGS: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-args.guac");
 
@@ -47,7 +45,6 @@ fn certificate() -> ServerCertificate {
     }
 }
 
-/// The `connect` values for `device` over `desktop` with the password and certificate.
 fn values_for(desktop: Desktop, device: &Device) -> guac_protocol::ArgValues {
     let password = Secret::from(PASSWORD.to_owned());
     let certificate = certificate();
@@ -72,7 +69,6 @@ fn params(desktop: Desktop, device: &Device, zone: Option<&str>) -> ConnectParam
     }
 }
 
-/// The fixture for `desktop`.
 const fn fixture(desktop: Desktop) -> &'static [u8] {
     match desktop {
         Desktop::Rdp => RDP_ARGS,
@@ -80,7 +76,6 @@ const fn fixture(desktop: Desktop) -> &'static [u8] {
     }
 }
 
-/// What the handshake sends after the fixture's `args`, and the `args` names.
 fn reply(desktop: Desktop, params: ConnectParams) -> (Vec<String>, Vec<Instruction>) {
     let args = Decoder::new().feed(fixture(desktop)).unwrap().remove(0);
     let names = args.args[1..].to_vec();
@@ -92,7 +87,6 @@ fn reply(desktop: Desktop, params: ConnectParams) -> (Vec<String>, Vec<Instructi
     }
 }
 
-/// The `connect` value of each name: one value per name, each at its name's index.
 fn connect_by_name(names: &[String], sent: &[Instruction]) -> HashMap<String, String> {
     let connect = sent.last().unwrap();
     assert_eq!(connect.opcode, "connect");
@@ -105,7 +99,6 @@ fn connect_by_name(names: &[String], sent: &[Instruction]) -> HashMap<String, St
         .collect()
 }
 
-/// The values the handshake sends for `device` over `desktop`.
 fn connect_for(desktop: Desktop, device: &Device) -> HashMap<String, String> {
     let (names, sent) = reply(desktop, params(desktop, device, Some("Europe/Berlin")));
     connect_by_name(&names, &sent)
@@ -182,7 +175,6 @@ fn gw_013_paths_recordings_sftp_wake_and_trust_on_first_use_stay_empty() {
     }
 }
 
-/// The `connect` values the handshake sends for `values` over `desktop`.
 fn connect_by_name_of(
     desktop: Desktop,
     device: &Device,
@@ -246,7 +238,6 @@ fn k4_time_zone_is_the_clients_when_zone_shaped_else_utc() {
     assert_eq!(time_zone(None), "UTC");
 }
 
-/// Hostile and random zone text, including argument names and wire syntax.
 fn client_zone(inputs: &mut Inputs) -> String {
     const HOSTILE: [&str; 8] = [
         "hostname",

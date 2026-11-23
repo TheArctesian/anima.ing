@@ -1,6 +1,4 @@
-//! What the relay hears and what a wake leaves (RA-031, D-4, CHK-012, LOG-005): one `exec` of
-//! `wakeonlan` with the device's MAC address, exit status 0 as the only success, and one
-//! event; and no MAC address or relay output in the process log (LOG-007).
+//! RA-031, D-4, CHK-012, LOG-005: one `wakeonlan` exec per wake; no MAC address or relay output in the process log (LOG-007).
 
 use sqlx::PgPool;
 
@@ -113,16 +111,13 @@ async fn log_007_sec_009_no_mac_address_or_relay_output_reaches_the_process_log(
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in the Guacamole tunnel's test: a second registered dispatcher makes every callsite
-    // registration ask all of them, so another test thread cannot disable these callsites.
+    // A second registered dispatcher stops another test thread from disabling these callsites.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();
     tracing::info!("log_007 capture marker");
 
-    // A failed packet with relay output on both streams, then a sent one through a relay that
-    // echoes its command line, MAC address included. No event may hold a MAC address (LOG-005
-    // names the relay only), so no log line may either.
+    // No event holds a MAC address (LOG-005 names the relay only), so no log line may either.
     let bench = relay(&pool, exiting(1)).await;
     assert!(matches!(refused(&bench).await, WakeError::NotSent));
     let echoing = serve(SEED, Answer::Echo).await;

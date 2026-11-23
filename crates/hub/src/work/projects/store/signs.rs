@@ -1,4 +1,4 @@
-//! The signs of a repository and the resources of a project (PRO-003, PRO-004): I/O only.
+//! The signs of a repository and the resources of a project (PRO-003, PRO-004).
 
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;
@@ -9,11 +9,10 @@ use crate::{
     work::projects::model::{Held, ResourceKind, ResourceState, Sign},
 };
 
-/// One stored sign: what it is and where (`None` for a deployment record).
+/// The path is `None` for a deployment record.
 pub(in crate::work::projects) type Found = (Sign, Option<String>);
 
-/// The signs of `repository` from `origin`, in a fixed order. A row with a sign this version
-/// does not know is skipped.
+/// A row with a sign this version does not know is skipped.
 pub(in crate::work::projects) async fn of_origin(
     conn: &mut PgConnection,
     repository: RepositoryId,
@@ -33,7 +32,7 @@ pub(in crate::work::projects) async fn of_origin(
         .collect())
 }
 
-/// Replaces the signs of `repository` from `origin` with `signs`, which hold no repeat.
+/// `signs` holds no repeat.
 pub(in crate::work::projects) async fn replace(
     conn: &mut PgConnection,
     (repository, origin): (RepositoryId, &str),
@@ -59,7 +58,6 @@ pub(in crate::work::projects) async fn replace(
     .map(drop)
 }
 
-/// The kinds of sign that the repositories of `project` that are not left out show.
 pub(in crate::work::projects) async fn of_project(
     conn: &mut PgConnection,
     project: ProjectId,
@@ -75,7 +73,6 @@ pub(in crate::work::projects) async fn of_project(
     Ok(rows.iter().filter_map(|sign| Sign::parse(sign)).collect())
 }
 
-/// The resources of `project`, locked until the transaction ends.
 pub(in crate::work::projects) async fn held(
     conn: &mut PgConnection,
     project: ProjectId,
@@ -98,7 +95,6 @@ pub(in crate::work::projects) async fn held(
         .collect())
 }
 
-/// Proposes `kinds` for `project` as found in the repository.
 pub(in crate::work::projects) async fn propose(
     conn: &mut PgConnection,
     project: ProjectId,
@@ -120,7 +116,6 @@ pub(in crate::work::projects) async fn propose(
     Ok(())
 }
 
-/// Removes the found resources among `ids`; a confirmed one stays.
 pub(in crate::work::projects) async fn withdraw(
     conn: &mut PgConnection,
     ids: &[ResourceId],

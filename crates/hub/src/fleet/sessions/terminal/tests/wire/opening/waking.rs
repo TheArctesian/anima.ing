@@ -1,7 +1,4 @@
-//! The opening of a ticket whose start sent a Wake-on-LAN packet (K4 Section 1, RA-031): it
-//! waits past the usual limit, trying the device again until it answers, and ends at the
-//! woken limit when it never does; without the packet the opening does not wait for a device
-//! that does not answer. The deny list holds on every try (R-030).
+//! K4 Section 1, RA-031, R-030.
 
 use std::time::{Duration, Instant};
 
@@ -25,18 +22,12 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// The woken limit of these tests: far longer than any refusal takes, so only a bug can end
-/// a woken opening of a device that answers.
+/// Far longer than any refusal, so only a fault ends a woken opening of an answering device.
 const WOKEN: Duration = Duration::from_secs(10);
 
-/// The usual opening limit, shortened.
 const USUAL: Duration = Duration::from_millis(200);
-/// How long after the opening began the waking device answers: three usual limits, and far
-/// inside [`WOKEN`].
 const ANSWERS_AFTER: Duration = Duration::from_millis(600);
 
-/// A bench whose opening limit is [`USUAL`], or [`WOKEN`] after a wake, and whose device is
-/// asleep until the returned sender wakes it, forwarding to the fake SSH server.
 async fn waking(pool: &PgPool) -> (Bench, oneshot::Sender<()>) {
     let setup = Setup::terminal(|terminal| {
         terminal.timing.opening = USUAL;
@@ -49,7 +40,6 @@ async fn waking(pool: &PgPool) -> (Bench, oneshot::Sender<()>) {
     (bench, answer)
 }
 
-/// The bench's ticket, redeemed, marked as woken or not.
 fn redeemed(bench: &Bench, wake_sent: bool) -> Redeemed {
     let mut redeemed = bench
         .live

@@ -1,6 +1,4 @@
-//! An in-process RDP server on loopback, as the opening's certificate read meets it: it reads
-//! the X.224 Connection Request, chooses NLA and presents a throwaway rcgen certificate in a
-//! TLS handshake, or chooses standard RDP security. It reports every connection it took.
+//! An in-process RDP server on loopback, as the opening's certificate read meets it.
 
 use std::{sync::Arc, time::Duration};
 
@@ -20,31 +18,26 @@ use tokio::{
 };
 use tokio_rustls::TlsAcceptor;
 
-/// How the server answers the Connection Request.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Answer {
-    /// Chooses NLA (`HYBRID`), then a TLS handshake with its certificate.
+    /// `HYBRID`.
     Nla,
-    /// Chooses NLA with the early authorisation result (`HYBRID_EX`), then a TLS handshake
-    /// with its certificate.
+    /// `HYBRID_EX`.
     NlaExt,
-    /// Chooses TLS (`SSL`) only, then a TLS handshake with its certificate.
+    /// `SSL` only.
     Tls,
-    /// Chooses standard RDP security: no TLS, so no certificate.
     Standard,
 }
 
-/// A running RDP server; dropping it stops it.
 pub(in super::super) struct FakeRdp {
     pub(in super::super) port: u16,
-    /// SHA-256 of the certificate it presents, computed here, not by the hub.
+    /// Computed here, not by the hub.
     pub(in super::super) fingerprint: String,
     visits: mpsc::UnboundedReceiver<()>,
     task: JoinHandle<()>,
 }
 
 impl FakeRdp {
-    /// Whether any connection reached the server, waiting a moment for one.
     pub(in super::super) async fn was_visited(&mut self) -> bool {
         timeout(Duration::from_millis(300), self.visits.recv())
             .await
@@ -58,7 +51,6 @@ impl Drop for FakeRdp {
     }
 }
 
-/// The SHA-256 of `der` as 32 lower-case hex pairs joined by colons.
 fn fingerprint_of(der: &[u8]) -> String {
     let pairs: Vec<String> = Sha256::digest(der)
         .iter()
@@ -67,7 +59,6 @@ fn fingerprint_of(der: &[u8]) -> String {
     pairs.join(":")
 }
 
-/// A throwaway self-signed certificate's DER and the TLS server presenting it.
 fn throwaway() -> (Vec<u8>, TlsAcceptor) {
     let key = KeyPair::generate().unwrap();
     let mut params = CertificateParams::new(vec!["desk.lan".to_owned()]).unwrap();
@@ -90,8 +81,6 @@ fn confirm(protocol: u32) -> Vec<u8> {
     bytes
 }
 
-/// One connection: the request, the answer and, for NLA, the handshake, then whatever the
-/// hub sends until it closes.
 async fn visit(mut stream: TcpStream, answer: Answer, acceptor: TlsAcceptor) {
     let mut request = [0; 19];
     if stream.read_exact(&mut request).await.is_err() {
@@ -112,7 +101,6 @@ async fn visit(mut stream: TcpStream, answer: Answer, acceptor: TlsAcceptor) {
     }
 }
 
-/// An RDP server on a free loopback port that answers `answer`.
 pub(super) async fn fake_rdp(answer: Answer) -> FakeRdp {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();

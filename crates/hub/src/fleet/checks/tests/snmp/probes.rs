@@ -62,7 +62,6 @@ async fn run(config: &SnmpConfig, secrets: &SnmpSecrets) -> ProbeResult {
     snmp::observe(&target("127.0.0.1"), (config, secrets), &env(), draws()).await
 }
 
-/// The message as stored, which must name none of the planted secrets.
 fn message(result: &ProbeResult) -> String {
     let text = result.message.clone().unwrap_or_default();
     let setup = Setup::new();
@@ -221,7 +220,6 @@ async fn d_5_an_invalid_configuration_sends_nothing() {
 
 #[tokio::test]
 async fn d_5_given_draws_are_used_for_the_request() {
-    // The core takes its randomness as a parameter: a fixed salt and fixed ids still work.
     let agent = spawn(Setup::new()).await;
     let draws = Draws {
         discovery: Ids {
@@ -253,7 +251,6 @@ fn d_5_fresh_draws_differ_in_every_id_and_the_salt() {
 
 #[test]
 fn cq_021_draws_come_from_the_given_bytes() {
-    // Each id is a big-endian word shifted right once, so it is never negative.
     let draws = draws();
     assert_eq!(draws.discovery.message, 0x0102_0304 >> 1);
     assert_eq!(draws.discovery.request, 0x0506_0708 >> 1);

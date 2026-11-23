@@ -1,9 +1,7 @@
-//! One device's operating system detection: a link opened for it, `uname -s` run, and an exact
-//! `Linux` or `Darwin` stored while the device is still at Other (DEV-025, MET-002). I/O edge.
-//!
-//! A detection that fails leaves the device as it was: it never fails the round, never raises
-//! a device event and is tried again next round. Its log lines hold only the device id and
-//! fixed texts, never a host, an address or the device's answer (LOG-007).
+//! Operating system detection, stored while the device is still at Other (DEV-025, MET-002).
+//! A failed detection leaves the device as it was and is tried again next round.
+//! Log lines hold only the device id and fixed texts, never a host, an address or an answer
+//! (LOG-007).
 
 use std::sync::Arc;
 
@@ -21,7 +19,6 @@ use crate::{
     ids::DeviceId,
 };
 
-/// Asks `device` for its operating system and stores it when it is one the hub collects.
 pub(super) async fn detect(ctx: Arc<Context>, device: Device) {
     match within_deadline(ask(&ctx, &device)).await {
         Ok(Some(os)) => store(&ctx, device.id, os).await,
@@ -30,7 +27,6 @@ pub(super) async fn detect(ctx: Arc<Context>, device: Device) {
     }
 }
 
-/// Opens a link to `device`, runs `uname -s` and reads its answer; the link is dropped after.
 async fn ask(ctx: &Context, device: &Device) -> Result<Option<OperatingSystem>, LinkError> {
     let Context { db, collecting, .. } = ctx;
     let now = ctx.clock.now();
@@ -40,7 +36,6 @@ async fn ask(ctx: &Context, device: &Device) -> Result<Option<OperatingSystem>, 
     Ok(outputs::usable(&output).and_then(uname::operating_system))
 }
 
-/// Stores `os` on the device while it is at Other. A failed write leaves it as it was.
 async fn store(ctx: &Context, device: DeviceId, os: OperatingSystem) {
     match devices::record_detected_os(&ctx.db, device, os).await {
         Ok(true) => detected(device, os),

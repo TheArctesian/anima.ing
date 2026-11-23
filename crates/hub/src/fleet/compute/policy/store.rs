@@ -1,5 +1,3 @@
-//! All SQL on schema `compute`: I/O only. Ids and time come in as parameters.
-
 use std::collections::HashMap;
 
 use chrono::{DateTime, NaiveTime, Utc};
@@ -9,15 +7,12 @@ use sqlx::{PgConnection, PgPool};
 use super::rules::{DevicePolicy, QuietHours};
 use crate::ids::DeviceId;
 
-/// Why a policy cannot be read or written.
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// A stored row is not in a form this version reads.
     #[error("a stored device policy cannot be read")]
     Unreadable,
-    /// The device was deleted before the write.
     #[error("no such device")]
     NoDevice,
 }
@@ -33,7 +28,6 @@ type PolicyRow = (
     bool,
 );
 
-/// The policy of each device that has one of its own.
 pub(super) async fn policies(db: &PgPool) -> Result<HashMap<DeviceId, DevicePolicy>, StoreError> {
     let rows: Vec<PolicyRow> = sqlx::query_as(
         "SELECT device_id, memory_share, disk_share, quiet_start, quiet_end, quiet_zone, \
@@ -66,7 +60,6 @@ fn read_row(row: PolicyRow) -> Result<(DeviceId, DevicePolicy), StoreError> {
     Ok((device, policy))
 }
 
-/// Writes the policy of `device` at `now` in the caller's transaction.
 pub(super) async fn write(
     conn: &mut PgConnection,
     device: DeviceId,

@@ -1,6 +1,4 @@
-//! `GET /metrics` against the database: the K7 series and values, the labels, the ten-second
-//! cache and the fixed statement count (INT-001, INT-002, D-24). The router does no
-//! authentication; the mount behind the bearer layer is tested with the wiring.
+//! The `/metrics` router alone, which does no authentication (INT-001, INT-002, D-24).
 
 mod cache;
 mod cost;
@@ -42,7 +40,6 @@ const HA_WEB: &str = "0190a000-0000-7000-8003-000000000019";
 const JELLYFIN_PING: &str = "0190a000-0000-7000-8003-00000000000a";
 const HOME_SITE: &str = "0190a000-0000-7000-8001-000000000001";
 
-/// A clock the test sets.
 struct SetClock(Mutex<DateTime<Utc>>);
 
 impl SetClock {
@@ -71,14 +68,12 @@ async fn database_now(pool: &PgPool) -> DateTime<Utc> {
     now.duration_trunc(TimeDelta::seconds(1)).unwrap()
 }
 
-/// The router on `pool` with a clock the test moves.
 fn rig(pool: &PgPool, now: DateTime<Utc>) -> (Router, Arc<SetClock>) {
     let clock = SetClock::at(now);
     let shared: Arc<dyn Clock> = clock.clone();
     (exposition_router(pool.clone(), shared), clock)
 }
 
-/// One answer of the route.
 struct Scrape {
     status: StatusCode,
     content_type: Option<String>,
@@ -101,14 +96,12 @@ async fn scrape(router: &Router) -> Scrape {
     }
 }
 
-/// The body of a successful scrape.
 async fn body(router: &Router) -> String {
     let scraped = scrape(router).await;
     assert_eq!(scraped.status, StatusCode::OK, "{}", scraped.body);
     scraped.body
 }
 
-/// The value of the one sample of `family` whose labels hold `label="value"`, or `None`.
 fn value(text: &str, family: &str, labels: &[(&str, &str)]) -> Option<String> {
     let found: Vec<&str> = text
         .lines()
@@ -125,12 +118,10 @@ fn value(text: &str, family: &str, labels: &[(&str, &str)]) -> Option<String> {
         .map(|line| line.rsplit_once(' ').unwrap().1.to_owned())
 }
 
-/// The value of the check's sample in `family`.
 fn of_check(text: &str, family: &str, check: &str) -> Option<String> {
     value(text, family, &[("check_id", check)])
 }
 
-/// Sets the stored status of every check, then of the listed ones.
 async fn set_statuses(pool: &PgPool, all: &str, each: &[(&str, &str)]) {
     sqlx::query("UPDATE checks.checks SET status = $1")
         .bind(all)
@@ -147,7 +138,6 @@ async fn set_statuses(pool: &PgPool, all: &str, each: &[(&str, &str)]) {
     }
 }
 
-/// Records a heartbeat for the check at `at`.
 async fn record(pool: &PgPool, check: &str, at: DateTime<Utc>, response_time_ms: Option<u32>) {
     sqlx::query("select checks.ensure_day_partition($1)")
         .bind(at)

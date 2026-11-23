@@ -14,10 +14,8 @@ use crate::fleet::events::chain::{Hash, Link, StoredEntry, Walk};
 pub(in crate::fleet::events) const ENTRY_COLUMNS: &str = "id, at, operator_id, operator_name, \
      action, target_type, target_id, client_addr, change, actor_kind, token_kind, api_key_name";
 
-/// The links that one statement of [`link_existing`] reads and writes.
 const PAGE: i64 = 1000;
 
-/// A stored `audit_log` row with each column the hash covers.
 #[derive(sqlx::FromRow)]
 pub(in crate::fleet::events) struct EntryRow {
     id: Uuid,
@@ -121,7 +119,6 @@ pub(in crate::fleet::events) async fn lock(conn: &mut PgConnection) -> Result<()
     Ok(())
 }
 
-/// The sequence number and hash of the newest link, or `None` for an empty chain.
 pub(in crate::fleet::events) async fn head(
     conn: &mut PgConnection,
 ) -> Result<Option<(i64, Hash)>, sqlx::Error> {
@@ -132,7 +129,6 @@ pub(in crate::fleet::events) async fn head(
     row.map(|(seq, hash)| Ok((seq, hash_of(hash)?))).transpose()
 }
 
-/// Inserts `links` in one statement.
 pub(in crate::fleet::events) async fn insert_links(
     conn: &mut PgConnection,
     links: &[Link],
@@ -175,9 +171,7 @@ pub(in crate::fleet::events) async fn entries_after(
     Ok(rows.into_iter().map(StoredEntry::from).collect())
 }
 
-/// Feeds each link and its entry to `walk`, in the order of the sequence number, until the
-/// walk stops; then returns the oldest entry that has no link. One read-only transaction at
-/// the level REPEATABLE READ, so both reads see the same entries and links.
+/// Returns the oldest unlinked entry; REPEATABLE READ makes both reads see the same rows.
 pub(in crate::fleet::events) async fn walk(
     db: &PgPool,
     walk: &mut Walk,

@@ -1,6 +1,4 @@
-//! A certificate's SHA-256 fingerprint (SEC-007, WEB-008, D-5): one value, read from 64 hex
-//! digits or from 32 hex pairs joined by colons, in either case, and written in the form each
-//! store keeps. Pure.
+//! A certificate's SHA-256 fingerprint (SEC-007, WEB-008, D-5).
 
 use std::str::FromStr;
 
@@ -8,20 +6,17 @@ use sha2::{Digest, Sha256};
 
 const BYTES: usize = 32;
 
-/// The SHA-256 of a certificate's DER. Two texts that name the same digest, in either form
-/// or case, are one value.
+/// Two texts that name the same digest, in either form or case, are one value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CertificateFingerprint([u8; BYTES]);
 
 impl CertificateFingerprint {
-    /// The fingerprint of a certificate's DER.
     #[must_use]
     pub fn of(der: &[u8]) -> Self {
         Self(Sha256::digest(der).into())
     }
 
-    /// 32 lower-case hex pairs joined by colons, as `FreeRDP` writes it and `trust` stores it
-    /// (`server_certificates_fingerprint_check`).
+    /// The form `FreeRDP` writes and `trust` stores (`server_certificates_fingerprint_check`).
     #[must_use]
     pub fn colon_pairs(&self) -> String {
         self.rendered(":")
@@ -33,7 +28,6 @@ impl CertificateFingerprint {
         self.rendered("")
     }
 
-    /// The bytes as lower-case hex pairs with `separator` between them.
     fn rendered(&self, separator: &str) -> String {
         const DIGITS: &[u8; 16] = b"0123456789abcdef";
         let mut text = String::with_capacity(BYTES * (2 + separator.len()));
@@ -48,8 +42,7 @@ impl CertificateFingerprint {
     }
 }
 
-/// The text is neither 64 hex digits nor 32 hex pairs joined by colons. It holds no part of
-/// the text (LOG-007).
+/// Holds no part of the text (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("not a SHA-256 certificate fingerprint")]
 pub struct BadCertificateFingerprint;
@@ -57,8 +50,7 @@ pub struct BadCertificateFingerprint;
 impl FromStr for CertificateFingerprint {
     type Err = BadCertificateFingerprint;
 
-    /// Either form, any case. Nothing else is allowed, not even surrounding space: a caller
-    /// that allows it trims first.
+    /// Not even surrounding space is allowed: a caller that allows it trims first.
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         let text = text.as_bytes();
         let pairs: Vec<&[u8]> = if text.contains(&b':') {
@@ -80,7 +72,6 @@ impl FromStr for CertificateFingerprint {
     }
 }
 
-/// The value of one ASCII hex digit.
 fn nibble(digit: u8) -> Result<u8, BadCertificateFingerprint> {
     match digit {
         b'0'..=b'9' => Ok(digit - b'0'),

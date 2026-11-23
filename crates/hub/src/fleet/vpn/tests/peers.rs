@@ -144,7 +144,6 @@ fn vpn_008_a_reply_of_another_shape_is_unreadable() {
 #[test]
 fn vpn_008_any_bytes_give_a_status_or_unreadable() {
     let base = fixture("status-mixed.json").into_bytes();
-    // Cut and flip the reply at many places: the parser never panics.
     for at in (0..base.len()).step_by(97) {
         let _ = parse(&base[..at]);
         let mut flipped = base.clone();

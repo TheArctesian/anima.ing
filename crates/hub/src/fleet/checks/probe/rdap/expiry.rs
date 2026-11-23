@@ -1,9 +1,4 @@
-//! The status rule of a domain expiry check (D-29). Pure: `now` comes in as a parameter.
-//!
-//! Up while the days left are at least the warning days; Degraded below them; Down once the
-//! registration has expired; Unknown when RDAP gives no expiry date. The evaluation applies
-//! invert to the result as for every check, but never retries: a domain expiry check has no
-//! retries, so a failure settles at once (R-102).
+//! The status rule of a domain expiry check (D-29).
 
 use chrono::{DateTime, Utc};
 
@@ -12,9 +7,7 @@ use crate::fleet::checks::{
     probe::outcome::{Failure, Judgement, ProbeResult, clean_message},
 };
 
-/// The probe result for the expiry date `not_after` at `now`. The result carries the date, so
-/// the check shows its days left; it has no response time, because the RDAP server's speed
-/// says nothing about the domain.
+/// No response time: the RDAP server's speed says nothing about the domain.
 pub(super) fn judge(
     not_after: Option<DateTime<Utc>>,
     warn_days: u32,

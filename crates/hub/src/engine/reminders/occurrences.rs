@@ -1,6 +1,4 @@
-//! The occurrences that the engine gives with no extension, and the interface of an extension
-//! that gives its own (K-E6 Section 1; ENG-001). Pure, apart from the trait that an extension
-//! implements.
+//! The occurrences the engine gives with no extension, and the interface of an extension that gives its own (K-E6 Section 1; ENG-001).
 
 use std::sync::Arc;
 
@@ -18,22 +16,17 @@ use crate::{
     ids::SourceAccountId,
 };
 
-/// The first words of the event of a firing. An event that starts with them gives no
-/// occurrence, so that a rule about the events of the hub does not fire on its own reminders.
+/// An event that starts with these gives no occurrence, so a rule about the hub's events does not fire on its own reminders.
 pub(super) const OWN_EVENTS: [&str; 2] = ["The reminder ", "A reminder was sent."];
-/// The subject of an operational key that ends at a time.
 const KEY_EXPIRY: &str = "keys.expiry";
-/// The subject of an operational key whose rotation is due at a time.
 const KEY_ROTATION: &str = "keys.rotation";
 const TITLE_MAX: usize = 200;
 
-/// An extension could not give its occurrences now.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("the {0} extension could not give its occurrences")]
 pub struct Unavailable(pub &'static str);
 
-/// What an extension gives on the sweep, for what has no moment of storage. It is given to the
-/// engine at wiring; an extension that is off is not read.
+/// What an extension gives on the sweep, for what has no moment of storage; an extension that is off is not read.
 #[async_trait]
 pub trait Triggers: Send + Sync {
     /// The key of the extension (K-E7).
@@ -54,7 +47,6 @@ pub trait Triggers: Send + Sync {
     ) -> Result<Vec<Occurrence>, Unavailable>;
 }
 
-/// Every [`Triggers`] of the hub, built once in wiring.
 pub type Extensions = Vec<Arc<dyn Triggers>>;
 
 fn one_line(text: &str) -> String {
@@ -64,9 +56,6 @@ fn one_line(text: &str) -> String {
         .collect()
 }
 
-/// The occurrence of one event of the event log: a `Record` with the source of the event, its
-/// severity as the kind, and its sentence as the title (Class C). `None` for the event of a
-/// firing.
 pub(super) fn of_event(event: &EventSummary) -> Option<Occurrence> {
     if OWN_EVENTS.iter().any(|own| event.message.starts_with(own)) {
         return None;
@@ -81,9 +70,6 @@ pub(super) fn of_event(event: &EventSummary) -> Option<Occurrence> {
     })
 }
 
-/// The expiries of the operational keys: the time that a key ends at its provider
-/// (`keys.expiry`), and the time that the rotation of its active version is due
-/// (`keys.rotation`).
 pub(super) fn of_keys(keys: &[OperationalKey]) -> Vec<Occurrence> {
     let mut found = Vec::new();
     for key in keys {
@@ -116,8 +102,7 @@ pub(super) fn of_keys(keys: &[OperationalKey]) -> Vec<Occurrence> {
     found
 }
 
-/// The word of a health that a rule can wait for (K-E6 Section 2); every other health is
-/// `other`, which no rule waits for.
+/// Every other health is `other`, which no rule waits for (K-E6 Section 2).
 const fn state_word(health: Health) -> &'static str {
     match health {
         Health::Ok => "connected",
@@ -127,14 +112,12 @@ const fn state_word(health: Health) -> &'static str {
     }
 }
 
-/// The health of one source account at a sweep.
 pub(super) struct Seen {
     pub account: String,
     pub label: String,
     pub state: &'static str,
 }
 
-/// What the sweep sees of each account: its ID as text, its label and the word of its health.
 pub(super) fn seen(healths: Vec<(SourceAccountId, String, Health)>) -> Vec<Seen> {
     healths
         .into_iter()
@@ -146,9 +129,7 @@ pub(super) fn seen(healths: Vec<(SourceAccountId, String, Health)>) -> Vec<Seen>
         .collect()
 }
 
-/// One `Record` for each account whose health changed since the last sweep: the source is
-/// `sources`, the kind is the new state and the record is the account. An account that the
-/// sweep sees for the first time gives none.
+/// An account that the sweep sees for the first time gives no occurrence.
 pub(super) fn of_health(
     before: &[(String, String)],
     now_seen: &[Seen],

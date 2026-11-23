@@ -1,5 +1,4 @@
-//! The `vpn` event source: stored, read back by a source filter and named `VPN` in GraphQL
-//! (VPN-010, VPN-011, K1 `EventSource`).
+//! VPN-010, VPN-011, K1 `EventSource`.
 
 use async_graphql::{InputType as _, Name, Value};
 use chrono::{TimeZone as _, Utc};

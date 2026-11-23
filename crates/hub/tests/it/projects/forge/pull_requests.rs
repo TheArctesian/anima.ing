@@ -1,5 +1,4 @@
-//! PRJ-031, PRJ-033: a repository's pull requests in K1's shape, paged forward to the end, with
-//! each mergeability state, the checks of the head commit and the merge methods.
+//! A repository's pull requests in K1's shape (PRJ-031, PRJ-033).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

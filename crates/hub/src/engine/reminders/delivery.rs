@@ -1,6 +1,5 @@
-//! The sender of the firings (K-E6 Section 5; REM-005, REM-008, REM-009, REM-010): the check at
-//! send time, the words for a lock screen, and the outbox of `notifications`. The engine builds
-//! no second transport. The task of each minute runs the sweep and then the sender.
+//! The sender of the firings (K-E6 Section 5; REM-005, REM-008, REM-009, REM-010).
+//! Firings leave through the outbox of `notifications`; the engine builds no second transport.
 
 use std::{sync::Arc, time::Duration};
 
@@ -27,16 +26,11 @@ use crate::{
 
 /// How often the sweep and the sender run (REM-002).
 const MINUTE: Duration = Duration::from_secs(60);
-/// The most firings one pass sends; the next pass sends on.
 const BATCH: i64 = 100;
-/// The reason of a firing whose channels are ntfy channels with a topic that is not random.
 pub const TOPIC_NOT_RANDOM: &str = "topic_not_random";
-/// The reason of a firing whose rule has no channel and no channel is on by default.
 pub const NO_CHANNEL: &str = "no_channel";
 
-/// The title and the body that leave the hub (REM-009). For Class C: the name of the rule and
-/// the text of the firing. For Class A or B: fixed words, so that no name, title or value of
-/// the operator's private records is on a lock screen or at a notification server.
+/// Class A and B get fixed words, so no private record is on a lock screen or at a notification server (REM-009).
 #[must_use]
 pub fn lock_screen(class: Class, rule_name: &str, text: &str) -> (String, String) {
     match class {
@@ -45,17 +39,16 @@ pub fn lock_screen(class: Class, rule_name: &str, text: &str) -> (String, String
     }
 }
 
-/// What the sender needs.
 #[derive(Clone)]
 pub struct Sending {
     pub db: PgPool,
     pub bus: Bus,
     pub vault: Vault,
-    /// The open applications: the same value as the schema has.
+    /// The same value as the schema has.
     pub live: Live,
 }
 
-/// The event of a firing that was queued: the name of the rule for Class C, no name else.
+/// The event names the rule only for Class C (REM-009).
 fn fired(sendable: &Sendable) -> NewEvent {
     let message = match sendable.class {
         Class::C => format!("The reminder {} was sent.", sendable.rule_name),
@@ -70,10 +63,6 @@ fn fired(sendable: &Sendable) -> NewEvent {
     }
 }
 
-/// Sends one waiting firing in one transaction: the check at send time, then the firing to the
-/// open applications or, when none is open, one outbox row for each channel. A firing that no
-/// application and no channel takes becomes `suppressed` with its reason. `true` when it was
-/// sent.
 async fn send_one(
     sending: &Sending,
     firing: crate::ids::FiringId,
@@ -121,9 +110,7 @@ async fn send_one(
     Ok(queued.rows > 0)
 }
 
-/// Sends each firing that waits at `now`, oldest first, at most 100, and gives how many were
-/// sent: to the open applications or, when none is open, to a channel. One firing that fails does not stop the others: the first error is the
-/// result after all were tried.
+/// One firing that fails does not stop the others; the first error is returned after all were tried.
 ///
 /// # Errors
 /// `Database`, `Notifications`, `Events`.
@@ -141,9 +128,7 @@ pub async fn send_waiting(sending: &Sending, now: DateTime<Utc>) -> Result<u64, 
     failed.map_or(Ok(sent), Err)
 }
 
-/// Runs the sweep and then the sender each minute until the handle is aborted. A pass that
-/// fails is logged by its fixed words, which hold no text of a rule, and the next pass tries
-/// again.
+/// A failed pass logs only its fixed words, never text of a rule, and the next pass tries again.
 #[must_use]
 pub fn spawn_minute(
     sending: Sending,

@@ -11,7 +11,6 @@ use crate::hub::{Hub, set_operator, start};
 
 const FIELDS: &str = "id source target kind label sourceTitle targetTitle createdAt";
 
-/// A hub at `start()` with the fixture operator and a login token.
 async fn signed_in(pool: &PgPool) -> (Hub, String) {
     set_operator(pool).await;
     let hub = Hub::new(pool, start());
@@ -19,7 +18,6 @@ async fn signed_in(pool: &PgPool) -> (Hub, String) {
     (hub, token)
 }
 
-/// `linkRecords` from `source` to `target` with `kind` and `label`.
 async fn link(
     hub: &Hub,
     token: &str,

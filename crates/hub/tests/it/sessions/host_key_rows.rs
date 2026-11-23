@@ -15,7 +15,6 @@ use super::{
 /// The 8190-byte blob cap of `trust::public_key::MAX_BLOB`.
 const MAX_BLOB: usize = 8190;
 
-/// An `ssh-rsa` key blob of `len` bytes in base64, with its fingerprint.
 fn rsa_key(len: usize) -> (String, String) {
     let mut blob = 7_u32.to_be_bytes().to_vec();
     blob.extend_from_slice(b"ssh-rsa");

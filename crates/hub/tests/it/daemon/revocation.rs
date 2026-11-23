@@ -1,7 +1,4 @@
-//! MET-013, R-092 D-7: revoking ends the device's token and unused codes at once and leaves the
-//! metrics source `DAEMON`; deleting the device removes its daemon rows (MET-011, R-092 D-1). A
-//! push that waited for the device row while its token was replaced or the source switched
-//! away is refused (CR-18).
+//! Revoking a daemon and deleting its device (MET-011, MET-013, R-092 D-1, D-7, CR-18).
 
 use axum::http::StatusCode;
 use serde_json::json;
@@ -43,7 +40,6 @@ async fn met_013_a_revoked_token_is_refused_and_the_source_stays_daemon(pool: Pg
         (StatusCode::UNAUTHORIZED, refusal("ENROLMENT_REFUSED"))
     );
     assert_eq!(source(&pool, PVE_01).await, "daemon");
-    // Another device's daemon is untouched.
     assert_eq!(daemons.renew(&other).await.0, StatusCode::OK);
 
     let audit: Vec<(String, String, serde_json::Value)> = sqlx::query_as(
@@ -141,7 +137,6 @@ async fn met_011_r_092_d_7_the_operator_cannot_choose_the_daemon_source(pool: Pg
     assert_eq!(daemons.renew(&token).await.0, StatusCode::UNAUTHORIZED);
 }
 
-/// Waits until a statement of this test's database waits for a lock.
 async fn until_a_push_waits(pool: &PgPool) {
     for _ in 0..1000 {
         let waiting: i64 = sqlx::query_scalar(
@@ -159,8 +154,7 @@ async fn until_a_push_waits(pool: &PgPool) {
     panic!("no push waited for the device row");
 }
 
-/// A push checked before `change` commits, held on the device row until it has: refused
-/// `TOKEN_REFUSED` with nothing stored, since the batch checks again under the lock.
+/// The batch checks the token again under the device row lock.
 async fn push_across(pool: &PgPool, change: &str) {
     let now = pushing_now(pool).await;
     let daemons = Daemons::at(pool, now).await;

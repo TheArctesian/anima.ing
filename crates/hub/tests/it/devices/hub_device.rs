@@ -1,5 +1,4 @@
-//! No session reaches the container of the hub: its own device takes no SSH, RDP or VNC, no
-//! secret for them and keeps its kind, and no other device takes the kind `hub` (HMD-045).
+//! No session reaches the hub's container, and no other device takes the kind `hub` (HMD-045).
 
 use anima_hub::fleet::devices::ensure_hub_device;
 use sqlx::PgPool;

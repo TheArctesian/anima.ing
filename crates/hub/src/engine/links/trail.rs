@@ -1,5 +1,5 @@
-//! The audit entry and event of each link change (LOG-004, LOG-005). Pure. The event names
-//! the two references and never the label, which may be a person's name.
+//! The audit entry and event of each link change (LOG-004, LOG-005). The event never names
+//! the label, which may be a person's name.
 
 use serde_json::json;
 
@@ -28,7 +28,6 @@ fn entry(link: &Link, action: AuditAction, verb: &str) -> TrailEntry {
     }
 }
 
-/// The entry of a `connect`; `None` when it wrote nothing.
 pub(super) fn connected(link: &Link, outcome: Outcome) -> Option<TrailEntry> {
     match outcome {
         Outcome::Made => Some(entry(link, AuditAction::Create, "added")),

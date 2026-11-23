@@ -1,5 +1,4 @@
-//! Certificate pins against PostgreSQL: kept on a path change, dropped by an origin change,
-//! replaced on a new accept, and never left on an `http` interface by a race (WEB-008).
+//! Certificate pins against PostgreSQL (WEB-008).
 
 use super::*;
 

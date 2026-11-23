@@ -1,7 +1,4 @@
-//! Refusals before the upgrade (K4 Section 2): 403 for every ticket problem, an SSH ticket
-//! included, 400 without the subprotocol, 503 when the sweep cannot run, the gateway cannot
-//! be reached or the device's host is refused; and the token never reaches the process log
-//! (LOG-007).
+//! Refusals before the upgrade (K4 Section 2); the token never reaches the process log (LOG-007).
 
 use std::time::Duration;
 
@@ -34,7 +31,6 @@ use crate::{
     ids::SessionId,
 };
 
-/// The session row as it stands.
 async fn row(pool: &PgPool, bench: &super::Bench) -> Session {
     crate::fleet::sessions::store::get(pool, bench.session)
         .await
@@ -140,7 +136,6 @@ async fn k4_2_no_guacamole_subprotocol_is_400_and_spends_the_ticket(pool: PgPool
     );
 }
 
-/// An address where nothing listens.
 async fn closed_port() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     listener.local_addr().unwrap().to_string()
@@ -223,10 +218,8 @@ async fn log_007_gw_014_the_token_password_and_connection_id_never_reach_the_log
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // While exactly one dispatcher is registered, tracing-core builds a callsite's interest
-    // from the registering thread's own default, so another test thread with no subscriber
-    // would cache the tunnel's callsites as disabled for this one too. A second registered
-    // dispatcher makes every registration ask all of them.
+    // With one dispatcher, tracing-core caches callsite interest from the registering thread's
+    // default; a second dispatcher makes every registration ask all of them.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();
@@ -266,7 +259,7 @@ async fn log_007_gw_014_the_token_password_and_connection_id_never_reach_the_log
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn k4_1_k4_2_an_ssh_ticket_on_the_tunnel_is_403_and_spent(pool: PgPool) {
-    // SSH tickets are for `/terminal` (R-062): this route refuses them like any other path's.
+    // SSH tickets are for `/terminal` (R-062).
     let guacd = fake_guacd(Script::Serve {
         args: RDP_ARGS,
         with_ready: "",
@@ -291,7 +284,6 @@ async fn k4_1_k4_2_an_ssh_ticket_on_the_tunnel_is_403_and_spent(pool: PgPool) {
     );
 }
 
-/// A ticket for `protocol` on `docker-host`, for another session numbered `n`.
 fn pending(protocol: Protocol, n: u128) -> PendingTicket {
     PendingTicket {
         operator: operator(),

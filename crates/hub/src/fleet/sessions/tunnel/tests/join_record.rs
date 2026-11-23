@@ -1,7 +1,5 @@
-//! guacd 1.6.0's answers to a join of a live VNC connection (`select,$<id>`), recorded from
-//! `guacamole/guacd:1.6.0` against a fake RFB server: the join's `args`, the `ready` id, the
-//! joiner's opening, an unknown id, the `read-only` effect, the owner's join notices, a
-//! silent joiner's drop and the owner leaving (K4 Sections 3 and 10, GW-014, RA-035).
+//! guacd's answers to a join of a live VNC connection, recorded from `guacamole/guacd:1.6.0`
+//! against a fake RFB server (K4 Sections 3 and 10, GW-014, RA-035).
 
 use guac_protocol::{
     ArgValues, ConnectParams, Decoder, Display, Handshake, HandshakeError, HandshakeStep,
@@ -10,44 +8,32 @@ use guac_protocol::{
 use serde_json::Value;
 use uuid::Uuid;
 
-/// guacd's reply to `select,vnc` (the owner).
 const VNC_ARGS: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-args.guac");
-/// guacd's reply to `select,$<id>` (a joiner of that owner's connection).
 const JOIN_ARGS: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-join-args.guac");
-/// guacd's `ready` to the owner.
 const READY: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-ready.guac");
 /// What a read-only joiner received from its `ready` through its first `sync`.
 const OPENING: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-join-opening.guac");
-/// What that joiner received after the owner's `disconnect`, before its own.
+/// What the joiner received after the owner's `disconnect`, before its own.
 const OWNER_LEFT: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-join-owner-left.guac");
-/// guacd's reply to `select` with a well-formed id no connection has.
 const UNKNOWN: &[u8] = include_bytes!("fixtures/guacd-1.6.0-join-unknown.guac");
-/// The `msg` notices guacd sent the owner, one per joiner, in join order.
 const NOTICES: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-join-notices.guac");
-/// What a joiner got when guacd dropped it for 15 seconds of silence (a run with no `sync`
-/// answers).
+/// A run with no `sync` answers, so guacd dropped the joiner after 15 seconds of silence.
 const SILENT_DROP: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-join-silent-drop.guac");
-/// What the fake RFB server and the recording client observed, in both runs.
 const OBSERVED: &str = include_str!("fixtures/guacd-1.6.0-vnc-join-observed.json");
 
-/// The id the recording sent for the unknown-id case.
 const UNKNOWN_ID: &str = "$00000000-0000-4000-8000-000000000000";
-/// The recorded joiner's display; the owner's remote screen was 64 x 48.
+/// The owner's remote screen was 64 x 48.
 const JOINER_DISPLAY: Display = Display {
     width: 800,
     height: 600,
     dpi: 96,
 };
-/// The gateway opcodes the viewer relay drops with their streams (WP-47 S-10, D-9).
+/// The opcodes the viewer relay drops with their streams (WP-47 S-10, D-9).
 const DROPPED: [&str; 6] = ["clipboard", "file", "audio", "argv", "pipe", "required"];
-/// guacd's status for an id it does not know: `RESOURCE_NOT_FOUND`.
 const RESOURCE_NOT_FOUND: u16 = 0x0204;
-/// guacd's status for a user that sent nothing for 15 seconds: `CLIENT_TIMEOUT`.
 const CLIENT_TIMEOUT: u16 = 0x0308;
-/// The names the recorded joiners sent, in join order.
 const JOINER_NAMES: [&str; 3] = ["viewer", "second", "third"];
 
-/// Every instruction in `fixture`; the fixture is whole instructions with nothing after them.
 fn instructions(fixture: &[u8]) -> Vec<Instruction> {
     let instructions = Decoder::new().feed(fixture).unwrap();
     let encoded: String = instructions.iter().map(encode).collect();
@@ -55,14 +41,12 @@ fn instructions(fixture: &[u8]) -> Vec<Instruction> {
     instructions
 }
 
-/// The fixture's one instruction.
 fn single(fixture: &[u8]) -> Instruction {
     let mut instructions = instructions(fixture);
     assert_eq!(instructions.len(), 1, "one instruction per fixture");
     instructions.remove(0)
 }
 
-/// The connection id from the owner's `ready`.
 fn owner_id() -> String {
     let ready = single(READY);
     assert_eq!(ready.opcode, "ready");
@@ -70,8 +54,6 @@ fn owner_id() -> String {
     ready.args[0].clone()
 }
 
-/// What the recorded joiner sent after `args` (K4 Section 3, Phase 3 join): `read-only` set
-/// to `read_only`, every other value empty.
 fn join_params(read_only: &str) -> ConnectParams {
     let mut values = ArgValues::new();
     values.set("read-only", read_only);
@@ -88,8 +70,6 @@ fn observed() -> Value {
     serde_json::from_str(OBSERVED).unwrap()
 }
 
-/// True when the RFB `event` is the sender's own: a pointer event at its position or a key
-/// event with its keysym.
 fn is_senders_own(event: &Value, sender: &Value) -> bool {
     match event["event"].as_str() {
         Some("PointerEvent") => serde_json::json!([event["x"], event["y"]]) == sender["pointer"],
@@ -98,7 +78,6 @@ fn is_senders_own(event: &Value, sender: &Value) -> bool {
     }
 }
 
-/// The stream indexes `img` opens in `instructions` (its first argument).
 fn image_streams(instructions: &[Instruction]) -> Vec<&str> {
     instructions
         .iter()
@@ -107,8 +86,6 @@ fn image_streams(instructions: &[Instruction]) -> Vec<&str> {
         .collect()
 }
 
-/// A join is asked the owner's own VNC arguments, version first, so the joiner's `connect`
-/// answers by the same positions and can set `read-only`.
 #[test]
 fn ra_035_a_join_is_asked_the_owners_vnc_arguments() {
     let join = single(JOIN_ARGS);
@@ -118,7 +95,6 @@ fn ra_035_a_join_is_asked_the_owners_vnc_arguments() {
     assert!(join.args[1..].iter().any(|name| name == "read-only"));
 }
 
-/// The id is `$` and a lowercase hyphenated UUID: 37 characters the hub keeps (GW-014).
 #[test]
 fn gw_014_ready_names_the_connection_as_a_dollar_and_a_uuid() {
     let id = owner_id();
@@ -132,8 +108,6 @@ fn gw_014_ready_names_the_connection_as_a_dollar_and_a_uuid() {
     assert_eq!(id.chars().count(), 37);
 }
 
-/// The hub's `Handshake` with the `$id` as its select value sends what the recorded joiner
-/// sent, and guacd's answer to that is `ready` with the owner's id.
 #[test]
 fn gw_014_the_handshake_joins_with_the_owners_id_and_is_ready_on_it() {
     let id = owner_id();
@@ -169,8 +143,6 @@ fn gw_014_the_handshake_joins_with_the_owners_id_and_is_ready_on_it() {
     );
 }
 
-/// After `ready` the joiner gets the owner's current screen at the remote's size (not its
-/// own `size`), then its first `sync`: a viewer has a picture without waiting for a change.
 #[test]
 fn ra_035_a_join_opens_on_the_owners_screen_and_ends_at_its_first_sync() {
     let opening = instructions(OPENING);
@@ -185,8 +157,7 @@ fn ra_035_a_join_opens_on_the_owners_screen_and_ends_at_its_first_sync() {
     assert!(before.iter().any(|i| i.opcode == "img" && i.args[2] == "0"));
 }
 
-/// Nothing a joiner received is an opcode the viewer relay drops, and every `blob` and `end`
-/// belongs to an `img` stream: the relay must pass image streams whole (S-10).
+/// The relay passes image streams whole (S-10).
 #[test]
 fn ra_035_a_joiner_gets_only_image_streams_and_no_dropped_opcode() {
     for fixture in [OPENING, OWNER_LEFT] {
@@ -206,8 +177,6 @@ fn ra_035_a_joiner_gets_only_image_streams_and_no_dropped_opcode() {
     }
 }
 
-/// guacd refuses an unknown id with `error` `RESOURCE_NOT_FOUND` and closes the socket; the
-/// hub's handshake reports it as a gateway refusal.
 #[test]
 fn gw_014_an_unknown_id_is_refused_as_resource_not_found() {
     let (mut handshake, _) = Handshake::new(UNKNOWN_ID, join_params("true"));
@@ -223,9 +192,6 @@ fn gw_014_an_unknown_id_is_refused_as_resource_not_found() {
     assert_eq!(unknown["tcp_closed_after_reply"], true);
 }
 
-/// `read-only` `true` (VIEW) keeps a joiner's `mouse` and `key` from the VNC server; empty
-/// (CONTROL), `false` and the owner's input reach it. Joins share the owner's one RFB
-/// connection.
 #[test]
 fn ra_035_read_only_true_keeps_a_joiners_input_from_the_vnc_server() {
     let observed = observed();
@@ -245,9 +211,8 @@ fn ra_035_read_only_true_keeps_a_joiners_input_from_the_vnc_server() {
     }
 }
 
-/// guacd does not end a join when the owner leaves: joiners keep getting frames, the id
-/// still admits new joins, and the owner's socket stays open until the last joiner goes.
-/// The hub itself must end the viewers and forget the id (RA-035, CR-16).
+/// guacd does not end a join when the owner leaves, so the hub ends the viewers and forgets
+/// the id (RA-035, CR-16).
 #[test]
 fn ra_035_guacd_keeps_joiners_after_the_owner_leaves() {
     let after = instructions(OWNER_LEFT);
@@ -263,8 +228,6 @@ fn ra_035_guacd_keeps_joiners_after_the_owner_leaves() {
     assert_eq!(leaves["owner_tcp_held_until_last_joiner_left"], true);
 }
 
-/// guacd tells only the owner of each join, with `msg` `1`, the joiner's guacd user id (`@`
-/// and a UUID, never the connection id) and the name the joiner sent.
 #[test]
 fn ra_035_guacd_tells_only_the_owner_of_each_join() {
     let connection_id = owner_id();
@@ -286,8 +249,7 @@ fn ra_035_guacd_tells_only_the_owner_of_each_join() {
     assert_eq!(recipients, &serde_json::json!(["owner"]));
 }
 
-/// A joiner that sends nothing for 15 seconds gets `error` `CLIENT_TIMEOUT` and `disconnect`,
-/// and guacd leaves its socket open: the viewer relay must close it itself (RA-035).
+/// guacd leaves a dropped joiner's socket open, so the viewer relay closes it itself (RA-035).
 #[test]
 fn ra_035_guacd_drops_a_silent_joiner_and_leaves_its_socket_open() {
     let dropped = instructions(SILENT_DROP);

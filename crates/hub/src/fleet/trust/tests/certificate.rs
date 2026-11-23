@@ -1,6 +1,4 @@
-//! What the hub keeps of a server certificate (SEC-007): the fingerprint in the stored format,
-//! the subject cleaned for display, and the expiry. The fingerprint's forms are tested in the
-//! `fingerprint` leaf.
+//! What the hub keeps of a server certificate (SEC-007).
 
 use chrono::{DateTime, Utc};
 use proptest::prelude::*;

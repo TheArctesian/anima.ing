@@ -16,14 +16,12 @@ pub fn point(at: DateTime<Utc>, mean: Value) -> Value {
     point
 }
 
-/// A point ending at `at` with `mean` and `max`.
 pub fn point_with_max(at: DateTime<Utc>, mean: Value, max: Value) -> Value {
     let mut point = point(at, mean);
     point["max"] = max;
     point
 }
 
-/// A batch of `device` with `series` and `points`.
 pub fn batch(device: &str, series: Value, points: Vec<Value>) -> Value {
     let mut batch = json!({ "device": device });
     batch["series"] = series;
@@ -31,7 +29,6 @@ pub fn batch(device: &str, series: Value, points: Vec<Value>) -> Value {
     batch
 }
 
-/// A batch of `device` with one CPU point at `at`.
 pub fn cpu_batch(device: &str, at: DateTime<Utc>, cpu: f64) -> Value {
     batch(
         device,
@@ -40,7 +37,6 @@ pub fn cpu_batch(device: &str, at: DateTime<Utc>, cpu: f64) -> Value {
     )
 }
 
-/// How many samples the device's series hold.
 pub async fn samples_of(pool: &PgPool, device: &str) -> i64 {
     sqlx::query_scalar(
         "SELECT count(*) FROM metrics.samples m JOIN metrics.series s ON s.id = m.series_id \
@@ -52,7 +48,6 @@ pub async fn samples_of(pool: &PgPool, device: &str) -> i64 {
     .unwrap()
 }
 
-/// The device's series as (kind, label, GPU index), in that order.
 pub async fn series_of(pool: &PgPool, device: &str) -> Vec<(String, String, Option<i32>)> {
     sqlx::query_as(
         "SELECT kind, label, gpu_index FROM metrics.series WHERE device_id = $1::uuid \
@@ -64,7 +59,6 @@ pub async fn series_of(pool: &PgPool, device: &str) -> Vec<(String, String, Opti
     .unwrap()
 }
 
-/// The (avg, min, max, count) rows of `table` for the device's series of `kind`, by bucket.
 pub async fn aggregates(
     pool: &PgPool,
     table: &str,
@@ -84,7 +78,6 @@ pub async fn aggregates(
         .unwrap()
 }
 
-/// The indexes of the device's stored GPUs.
 pub async fn gpus_of(pool: &PgPool, device: &str) -> Vec<i32> {
     sqlx::query_scalar("SELECT index FROM metrics.gpus WHERE device_id = $1::uuid ORDER BY index")
         .bind(device)
@@ -93,7 +86,6 @@ pub async fn gpus_of(pool: &PgPool, device: &str) -> Vec<i32> {
         .unwrap()
 }
 
-/// The device name and message of each warning from metrics, oldest first.
 pub async fn warnings(pool: &PgPool) -> Vec<(Option<String>, String)> {
     sqlx::query_as(
         "SELECT device_name, message FROM events.event_log \

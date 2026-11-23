@@ -1,6 +1,4 @@
-//! The import: every repository becomes a project (PRO-001), a rerun writes nothing (SRC-012),
-//! a rename is the same project (PRJ-016), a repository the listing lost is gone but kept, and
-//! slugs never clash.
+//! The import of repositories as projects (PRO-001, SRC-012, PRJ-016).
 
 use anima_hub::engine::sources::Outcome;
 use sqlx::PgPool;
@@ -9,7 +7,6 @@ use super::github::{Repo, files, list};
 use super::{by_slug, kit, slugs};
 use crate::sources::last_run;
 
-/// `(id, updated_at)` of every repository row, by id.
 async fn writes(pool: &PgPool) -> Vec<(String, chrono::DateTime<chrono::Utc>)> {
     sqlx::query_as("SELECT id::text, updated_at FROM projects.repositories ORDER BY id")
         .fetch_all(pool)
@@ -158,8 +155,7 @@ async fn pro_001_a_clashing_slug_takes_the_owner_then_a_number(pool: PgPool) {
     assert_eq!(pairs, want);
 }
 
-/// PostgreSQL refuses U+0000 in text and JSON: one description that holds it must not stop the
-/// listing page, so both repositories are imported, the bad one without the NUL.
+/// PostgreSQL refuses U+0000 in text and JSON.
 #[sqlx::test(migrations = "./migrations")]
 async fn pro_001_a_repository_whose_text_holds_nul_does_not_stop_the_others(pool: PgPool) {
     let kit = kit(&pool).await;

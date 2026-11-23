@@ -1,5 +1,4 @@
-//! The device's policy on guacd's streams (K4 Section 4, RA-021, RA-033): which the hub keeps
-//! from the client, and which it answers with a refusing `ack`.
+//! K4 Section 4, RA-021, RA-033.
 
 use guac_protocol::{Instruction, encode};
 
@@ -18,7 +17,6 @@ fn gateway(relay: &mut Relay, wire: &str) -> GatewayStep {
     relay.on_gateway(decoded(wire))
 }
 
-/// The `ack` that tells guacd the hub withholds download stream `stream`.
 fn refused(stream: &str) -> GatewayStep {
     let text = "Download is turned off for this device.";
     GatewayStep::Refuse(Instruction::new("ack", [stream, text, "771"]))
@@ -120,7 +118,6 @@ fn ra_021_vnc_never_sends_a_download_to_the_client() {
     );
 }
 
-/// guacd's `body` for `get` of `/` on stream `stream` with `mimetype`.
 fn encode_body(stream: &str, mimetype: &str) -> String {
     encode(&Instruction::new("body", ["0", stream, mimetype, "/"]))
 }

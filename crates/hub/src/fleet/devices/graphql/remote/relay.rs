@@ -51,7 +51,6 @@ pub(in crate::fleet::devices::graphql) async fn set_wake_relay(
         .map_err(|error| invalid(&[error]))?;
     let relay_id = relay.map(|relay| relay.id);
     if current.wake_relay == relay_id {
-        // Nothing to write: the transaction rolls back when it is dropped.
         return Ok(current);
     }
     let changed = store::set_wake_relay(&mut tx, site, relay_id)

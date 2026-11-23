@@ -1,10 +1,4 @@
-//! Notification channels of each kind with their secrets: create, update, a refused input, and a
-//! "Send test" to a receiver on 127.0.0.1 that the hub's address policy refuses, so each send
-//! stops before egress (NOT-002, NOT-004, P3-003, K7, LOG-007). No send here gets past the
-//! policy; the egress path, a send that succeeds or fails at its target, is covered by
-//! `src/notifications/dispatch/tests/secrets.rs`
-//! (`log_007_no_secret_is_logged_by_a_send_that_succeeds`,
-//! `log_007_no_secret_is_logged_recorded_or_delivered_by_a_failing_send`).
+//! Channel secrets; each send stops at the address policy (NOT-002, NOT-004, P3-003, K7, LOG-007).
 
 use std::sync::{
     Arc,
@@ -25,7 +19,6 @@ const UPDATE: &str = "mutation($id: ID!, $input: NotificationChannelInput!) { \
     updateNotificationChannel(id: $id, input: $input) { id } }";
 const SEND_TEST: &str = "mutation($id: ID!) { sendTestNotification(id: $id) { ok reason code } }";
 
-/// A listener on 127.0.0.1 that counts the connections it is offered.
 async fn receiver() -> (u16, Arc<AtomicUsize>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -40,7 +33,6 @@ async fn receiver() -> (u16, Arc<AtomicUsize>) {
     (port, offered)
 }
 
-/// The settings of one channel of each kind at `server`, each holding canaries.
 fn settings(server: &str, secrets: &mut Secrets) -> [Value; 5] {
     let (path, query) = (
         secrets.plant("webhook-path"),
@@ -70,8 +62,6 @@ fn port_of(server: &str) -> u16 {
     server.rsplit(':').next().unwrap().parse().unwrap()
 }
 
-/// Makes one channel of each kind with the operator's `token`, sends each a test, updates the
-/// webhook's header, and sends an input the hub refuses.
 pub async fn send_tests(hub: &WholeHub, token: &str, secrets: &mut Secrets) {
     let (port, offered) = receiver().await;
     let server = format!("https://127.0.0.1:{port}");

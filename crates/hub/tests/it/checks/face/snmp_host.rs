@@ -1,7 +1,4 @@
-//! SNMP check secrets are bound to the device host they were entered for (SEC-010, security
-//! review 2026-11-13): they open only for a probe of that host text, an update after a host
-//! change asks for them again, and migration 0324 binds secrets sealed before it to the host
-//! their device had then.
+//! SNMP check secrets open only for the device host they were entered for (SEC-010).
 
 use anima_hub::{
     fleet::{
@@ -61,7 +58,6 @@ async fn move_device(pool: &PgPool, host: &str) {
         .unwrap();
 }
 
-/// The community that opens for a probe of `host`.
 async fn community_for(pool: &PgPool, id: CheckId, host: &str) -> Result<String, Error> {
     let setup = checks::load_snmp_secrets(pool, &vault(), id, host).await?;
     match setup.and_then(|setup| setup.secrets) {
@@ -72,7 +68,6 @@ async fn community_for(pool: &PgPool, id: CheckId, host: &str) -> Result<String,
     }
 }
 
-/// Changes the definition as an operator would, for the device's host `host`.
 async fn update(
     pool: &PgPool,
     id: CheckId,
@@ -93,7 +88,7 @@ async fn update(
         .map(|_| ())
 }
 
-/// The secrets sealed as the hub sealed them before SEC-010: a binding with no host.
+/// The sealed form before SEC-010: a binding with no host.
 fn sealed_without_host(id: CheckId) -> Vec<u8> {
     let binding = br#"{"version":"V2C","username":null}"#;
     let mut plain = u32::try_from(binding.len()).unwrap().to_be_bytes().to_vec();
@@ -108,7 +103,6 @@ fn sealed_without_host(id: CheckId) -> Vec<u8> {
         .to_bytes()
 }
 
-/// The statement of migration 0324 that binds existing rows.
 fn binding_statement() -> String {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -132,8 +126,7 @@ devices_test! {
     async fn sec_010_snmp_secrets_open_only_for_the_host_they_were_entered_for(pool: PgPool) {
         let id = snmp_check(&pool).await;
         assert_eq!(community_for(&pool, id, PVE_01_HOST).await.unwrap(), COMMUNITY);
-        // Host names compare without letter case; the binding never looks at an address, so a
-        // name whose address changes keeps its secrets.
+        // Host names compare without letter case; the binding never looks at an address.
         assert_eq!(community_for(&pool, id, "PVE-01.Home.LAN").await.unwrap(), COMMUNITY);
         move_device(&pool, CHOSEN).await;
         let moved = checks::load_snmp_secrets(&pool, &vault(), id, CHOSEN).await;
@@ -150,7 +143,6 @@ devices_test! {
         let Err(Error::Validation(errors)) = kept else { panic!("the secrets were kept") };
         assert_eq!(errors.iter().map(|e| e.field).collect::<Vec<_>>(), ["community"]);
         assert!(!errors[0].message.contains("SECRET"));
-        // Nothing changed: the secrets still open only for the host they were entered for.
         assert_eq!(community_for(&pool, id, PVE_01_HOST).await.unwrap(), COMMUNITY);
         update(&pool, id, CHOSEN, Some("entered-again-SECRET")).await.unwrap();
         assert_eq!(community_for(&pool, id, CHOSEN).await.unwrap(), "entered-again-SECRET");
@@ -167,7 +159,6 @@ devices_test! {
             .execute(&pool)
             .await
             .unwrap();
-        // With no host in the binding and none recorded, the secrets are sent nowhere.
         let unbound = checks::load_snmp_secrets(&pool, &vault(), id, PVE_01_HOST).await;
         assert!(matches!(unbound, Err(Error::SecretsUnbound)));
 
@@ -179,7 +170,6 @@ devices_test! {
         move_device(&pool, CHOSEN).await;
         let moved = checks::load_snmp_secrets(&pool, &vault(), id, CHOSEN).await;
         assert!(matches!(moved, Err(Error::SecretsForOtherHost)));
-        // Entering the community again seals it with its host and clears the recorded one.
         update(&pool, id, CHOSEN, Some(COMMUNITY)).await.unwrap();
         assert_eq!(legacy_host(&pool, id).await, None);
         assert_eq!(community_for(&pool, id, CHOSEN).await.unwrap(), COMMUNITY);

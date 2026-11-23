@@ -9,7 +9,6 @@ use uuid::Uuid;
 
 use super::canonical::canonical;
 
-/// A SHA-256 hash.
 pub(in crate::fleet::events) type Hash = [u8; 32];
 
 /// The previous hash of link 1 (LOG-023).
@@ -32,7 +31,7 @@ pub(in crate::fleet::events) struct StoredEntry {
     pub api_key_name: Option<String>,
 }
 
-/// One stored link: its place, its entry and its two hashes (LOG-021, LOG-025).
+/// One stored link (LOG-021, LOG-025).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::events) struct Link {
     pub seq: i64,
@@ -43,7 +42,6 @@ pub(in crate::fleet::events) struct Link {
 }
 
 impl Link {
-    /// The link of `entry` at `seq`, after the link whose hash is `previous`.
     pub(in crate::fleet::events) fn new(seq: i64, previous: Hash, entry: &StoredEntry) -> Self {
         Self {
             seq,
@@ -76,7 +74,6 @@ pub(in crate::fleet::events) fn hash(seq: i64, previous: &Hash, entry: &StoredEn
     Sha256::digest(canonical(&object).as_bytes()).into()
 }
 
-/// `hash` as 64 lower-case hexadecimal characters.
 pub(in crate::fleet::events) fn hex(hash: &Hash) -> String {
     hash.iter()
         .fold(String::with_capacity(64), |mut text, byte| {

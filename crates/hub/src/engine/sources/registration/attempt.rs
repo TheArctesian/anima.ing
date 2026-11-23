@@ -1,10 +1,5 @@
-//! One attempt to connect GitHub: its phases, and every step and refusal between them (K-E1
-//! Section 7a, PRJ-039). Pure: the time is a parameter, and the values come in already minted.
-//!
-//! The App's private key lives only in the `AppCreated` and `Finishing` stages, so every step
-//! out of them (cancel, failure, expiry, success) drops it. `Finishing` is bounded in time, so
-//! a store that never reports back cannot hold the attempt. The attempt has no `Debug` and no
-//! `Clone`; what may be shown leaves as a [`Snapshot`].
+//! One attempt to connect GitHub (K-E1 Section 7a, PRJ-039).
+//! The App's private key lives only in `AppCreated` and `Finishing`, so each step out drops it.
 
 mod shown;
 mod steps;
@@ -20,14 +15,11 @@ pub use self::{
 use super::binding::Hash;
 use crate::ids::SourceAccountId;
 
-/// How long an attempt lives from its start, in every phase (GitHub's code lives one hour).
+/// Under the one hour that GitHub's code lives.
 pub const LIFETIME: TimeDelta = TimeDelta::minutes(55);
-/// How long a ticket works after it is issued.
 pub const TICKET_LIFETIME: TimeDelta = TimeDelta::minutes(5);
-/// How long an ended attempt stays readable.
 pub const READABLE_FOR: TimeDelta = TimeDelta::minutes(10);
-/// How long the store at the end may hold `Finishing` before the attempt goes back to
-/// `APP_CREATED`: a last defence, far past any store that runs.
+/// A last defence, far past any store that runs.
 pub const FINISHING_LIMIT: TimeDelta = TimeDelta::minutes(2);
 
 enum Stage {
@@ -56,7 +48,7 @@ struct Ticket {
     issued_at: DateTime<Utc>,
 }
 
-/// One attempt. No `Debug` and no `Clone`: it holds the key between Create and Install.
+/// No `Debug` and no `Clone`: it holds the key; what may be shown leaves as a [`Snapshot`].
 pub struct Attempt {
     id: Uuid,
     request: Request,
@@ -68,13 +60,11 @@ pub struct Attempt {
     /// S1 once spent: a replayed return from "Create" that presents it is sent to Install again.
     spent: Option<Hash>,
     app: Option<App>,
-    /// How many stores have been taken; each store's outcome counts only for its own round.
     rounds: u32,
     ended_at: Option<DateTime<Utc>>,
 }
 
 impl Attempt {
-    /// A new attempt `id`, waiting for the browser.
     #[must_use]
     pub const fn start(id: Uuid, request: Request, now: DateTime<Utc>) -> Self {
         Self {
@@ -116,13 +106,11 @@ impl Attempt {
         )
     }
 
-    /// Whether the attempt has ended: connected, failed or cancelled.
     #[must_use]
     pub const fn ended(&self) -> bool {
         self.ended_at.is_some()
     }
 
-    /// Whether the API may still show it at `now`: open, or ended under 10 minutes ago.
     #[must_use]
     pub fn readable(&self, now: DateTime<Utc>) -> bool {
         self.ended_at.is_none_or(|ended| now < ended + READABLE_FOR)
@@ -136,10 +124,7 @@ impl Attempt {
         self.spent = None;
     }
 
-    /// Fails the attempt with `EXPIRED` when its 55 minutes are over at `now`, in any open
-    /// phase but the short store at the end, whose outcome decides. A store that has held
-    /// `Finishing` for [`FINISHING_LIMIT`] goes back to `APP_CREATED` first, so expiry applies
-    /// to it again. Returns whether the attempt expired.
+    /// `Finishing` does not expire at `now`: the store's outcome decides.
     pub fn expire(&mut self, now: DateTime<Utc>) -> bool {
         if matches!(self.stage, Stage::Finishing { since, .. } if now >= since + FINISHING_LIMIT) {
             self.back_to_app_created();
@@ -179,12 +164,10 @@ impl Attempt {
         Ok(now + TICKET_LIFETIME)
     }
 
-    /// Binds the browser that presented the ticket `presented` to the attempt with the cookie
-    /// hash `binding`, and spends the ticket.
+    /// Binds the browser that presented the ticket `presented`, and spends the ticket.
     ///
     /// # Errors
-    /// `Ticket` for a wrong, used or old ticket; `Conflict` outside the phases that wait for
-    /// a browser.
+    /// `Ticket` for a wrong, used or old ticket; `Conflict` outside the browser phases.
     pub fn claim_ticket(
         &mut self,
         presented: &str,
@@ -200,8 +183,7 @@ impl Attempt {
         self.claim(binding)
     }
 
-    /// Binds a browser signed in to Anima.ing to the attempt with the cookie hash `binding`. Any
-    /// ticket stops working: one browser holds the attempt.
+    /// Binds a signed-in browser with the cookie hash `binding`; one browser holds the attempt.
     ///
     /// # Errors
     /// `Conflict` outside the phases that wait for a browser.
@@ -216,14 +198,12 @@ impl Attempt {
         Ok(())
     }
 
-    /// Whether `cookie` is the bound browser's.
     #[must_use]
     pub fn bound(&self, cookie: Option<&str>) -> bool {
         cookie.is_some_and(|cookie| self.binding.is_some_and(|hash| hash.matches(cookie)))
     }
 
-    /// Sets the state `s1` the form to GitHub carries. The routes derive it from the cookie, so
-    /// it is the same on every form for one browser.
+    /// Sets the state `s1` the form to GitHub carries.
     ///
     /// # Errors
     /// `Unbound` for another browser; `Conflict` outside `AT_GITHUB` or during an exchange.
@@ -238,14 +218,10 @@ impl Attempt {
         Ok(())
     }
 
-    /// A browser is back from "Create GitHub App" with `state`. A fresh match spends the state
-    /// before the code is converted, so a replay converts nothing. Once the App is made the
-    /// attempt is never changed here: the spent state is sent to Install again, anything else
-    /// gets the waiting page.
+    /// A fresh match spends the state before the code is converted, so a replay converts nothing.
     ///
     /// # Errors
-    /// `Unbound` for another browser; `State` for a state that does not match; `Conflict` in
-    /// any other phase. Each leaves the attempt as it was.
+    /// `Unbound`, `State` or `Conflict`; each leaves the attempt as it was.
     pub fn begin_exchange(
         &mut self,
         cookie: Option<&str>,
@@ -275,9 +251,7 @@ impl Attempt {
         }
     }
 
-    /// The exchange made `app` with `key`: `APP_CREATED`, with `s2` for the install page.
-    /// After a cancel or an expiry meanwhile, the App's facts are kept so the operator can
-    /// delete it, and the key is dropped.
+    /// After a cancel or an expiry meanwhile, the App's facts stay so the operator can delete it.
     ///
     /// # Errors
     /// `Conflict` when the attempt no longer waits for this exchange.
@@ -294,7 +268,6 @@ impl Attempt {
         Ok(())
     }
 
-    /// The exchange failed with `failure`; `app` when GitHub's reply named it.
     pub fn exchange_failed(&mut self, failure: Failure, app: Option<App>, now: DateTime<Utc>) {
         if matches!(self.stage, Stage::AtGithub { exchanging: true }) {
             self.app = app;
@@ -302,9 +275,7 @@ impl Attempt {
         }
     }
 
-    /// Whether a hit on `/installed` comes from the bound browser: its cookie, and the state
-    /// `s2` whenever the attempt has one. The install link carries `s2` and GitHub returns it
-    /// on the Setup URL, so a hit without it is not taken as the browser back from Install.
+    /// GitHub returns `s2` on the Setup URL; a hit without it is not back from Install.
     #[must_use]
     pub fn back_from_install(&self, cookie: Option<&str>, state: Option<&str>) -> bool {
         let state_ok = match self.state {
@@ -314,7 +285,6 @@ impl Attempt {
         self.bound(cookie) && state_ok
     }
 
-    /// The App and a copy of its key, while it waits for Install.
     #[must_use]
     pub fn waiting_app(&self) -> Option<(App, Zeroizing<String>)> {
         match (&self.stage, &self.app) {
@@ -323,8 +293,7 @@ impl Attempt {
         }
     }
 
-    /// Takes the store at the end at `now`: `APP_CREATED` becomes `Finishing`, so only one
-    /// caller stores. The store's outcome counts for its own round only.
+    /// `APP_CREATED` becomes `Finishing`, so only one caller stores.
     ///
     /// # Errors
     /// `Conflict` outside `APP_CREATED`, including while another caller stores.
@@ -351,7 +320,6 @@ impl Attempt {
         Ok(finish)
     }
 
-    /// `Finishing` goes back to `APP_CREATED` with its key, for the next poll.
     fn back_to_app_created(&mut self) {
         let stage = std::mem::replace(&mut self.stage, Stage::Cancelled);
         if let Stage::Finishing { key, .. } = stage {
@@ -359,9 +327,6 @@ impl Attempt {
         }
     }
 
-    /// Ends the store of `round` taken with [`Attempt::begin_finish`]. The outcome of an older
-    /// round (one that outlived [`FINISHING_LIMIT`]) counts only when it connected and the App
-    /// still waits.
     pub fn finished(&mut self, round: u32, outcome: Finished, now: DateTime<Utc>) {
         let current = matches!(self.stage, Stage::Finishing { round: held, .. } if held == round);
         let late_success = matches!(outcome, Finished::Connected { .. }) && self.holds_app();
@@ -387,8 +352,7 @@ impl Attempt {
         }
     }
 
-    /// Cancels the attempt and drops any key it holds. An attempt that already failed or was
-    /// cancelled stays as it is.
+    /// Cancels the attempt and drops any key it holds.
     ///
     /// # Errors
     /// `Conflict` once connected, or while the connection is being stored.

@@ -1,5 +1,4 @@
-//! BER encodings against X.690 by hand, round trips, and decoders that never panic on any
-//! input (D-5).
+//! BER encodings against X.690 by hand (D-5).
 
 use proptest::prelude::*;
 
@@ -58,7 +57,6 @@ fn d_5_an_oid_encodes_its_first_two_arcs_in_one_byte() {
     let arcs = oid_arcs("1.3.6.1.2.1.1.3.0").unwrap();
     let encoded = ber::oid(&arcs).unwrap();
     assert_eq!(encoded.as_slice(), [6, 8, 0x2b, 6, 1, 2, 1, 1, 3, 0]);
-    // A large arc takes several base-128 groups.
     let encoded = ber::oid(&[1, 3, 6, 1, 4, 1, 2021, 4_294_967_295]).unwrap();
     assert_eq!(
         encoded.as_slice(),
@@ -84,8 +82,7 @@ fn bytes(hex: &str) -> Vec<u8> {
         .collect()
 }
 
-/// Requests captured from net-snmp 5.6.2.1 `snmpget` on a local UDP listener; the ids are the
-/// ones it drew.
+/// Captured from net-snmp 5.6.2.1 `snmpget`; the ids are the ones it drew.
 const SNMPGET_V2C: &str = "302902010104067075626c6963a01c0204505b88dc020100020100300e300c\
                            06082b060102010103000500";
 const SNMPGET_DISCOVERY: &str = "303e0201033011020408a23569020300ffe304010402010304\
@@ -223,8 +220,7 @@ proptest! {
     fn d_5_no_decoder_panics_on_a_mutated_reply(
         at in 0_usize..64, byte in any::<u8>(), cut in 0_usize..64,
     ) {
-        // A well-formed Response with one byte changed and its end cut, so the fuzzing
-        // reaches past the outer layers.
+        // A well-formed Response, so the fuzzing reaches past the outer layers.
         let mut reply = response_bytes();
         let at = at % reply.len();
         reply[at] = byte;
@@ -233,7 +229,6 @@ proptest! {
     }
 }
 
-/// A v2c Response with request-id 7 and one OCTET STRING binding.
 fn response_bytes() -> Vec<u8> {
     let name = ber::oid(&[1, 3, 6, 1, 2, 1, 1, 5, 0]).unwrap();
     let value = ber::octets(b"nas-01");

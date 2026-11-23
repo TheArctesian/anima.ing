@@ -1,4 +1,3 @@
-//! The K1 shapes of issues and their comments, from the provider's types. Pure.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

@@ -1,8 +1,5 @@
-//! A hub serving only `/tunnel` on a loopback port, with a started RDP or VNC session on
-//! `docker-host`. The session starts while the device's host is `10.10.0.21` (a K6 device),
-//! then the device moves to loopback, which the tests' target rule lets the tunnel reach.
-//! Its RDP port is a fake RDP server's, whose certificate is the accepted one unless the
-//! setup says otherwise.
+//! The session starts on a K6 device host, then the device moves to loopback, which the
+//! tests' target rule lets the tunnel reach.
 
 mod fake_rdp;
 
@@ -31,12 +28,10 @@ pub(super) use crate::fleet::sessions::tests::fixture::{
     LOOPBACK, PASSWORD, address, docker_host, now, operator,
 };
 
-/// `docker-host`'s VNC password; [`PASSWORD`] is its RDP password.
 pub(super) const VNC_PASSWORD: &str = "vnc tr0ub4dor";
 /// An accepted fingerprint that no fake RDP server presents.
 pub(super) const FINGERPRINT: &str = "0a:1b:2c:3d:4e:5f:60:71:82:93:a4:b5:c6:d7:e8:f9:\
                                       0a:1b:2c:3d:4e:5f:60:71:82:93:a4:b5:c6:d7:e8:f9";
-/// Where the route tells guacd to keep shared drives.
 pub(super) const DRIVE_ROOT: &str = "/drives";
 
 /// Waits long enough that only the test's own action ends a session.
@@ -51,14 +46,10 @@ pub(super) fn patient() -> Timing {
     }
 }
 
-/// How long the tests' `endSession` waits for a tunnel to end its row (D-10): long enough
-/// that a loaded machine still finishes, far short of the waits in [`patient`], so only the
-/// end signal ends a session within it. These tests run on real sockets and PostgreSQL, so
-/// paused tokio time cannot stand in: auto-advance would fire the hub's waits while real I/O
-/// is still pending.
+/// Long enough for a loaded machine, far short of [`patient`]'s waits (D-10). Real sockets
+/// and PostgreSQL rule out paused tokio time: auto-advance would fire the hub's waits early.
 pub(super) const END_WAIT: Duration = Duration::from_secs(10);
 
-/// The default setup with `endSession` waiting up to [`END_WAIT`].
 pub(super) fn ending_within_end_wait() -> Setup {
     Setup {
         live: Live::with_tunnel_end_wait(END_WAIT).reaching_loopback_for_tests(),
@@ -66,24 +57,15 @@ pub(super) fn ending_within_end_wait() -> Setup {
     }
 }
 
-/// What the device's RDP server presents when the opening reads its certificate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Presents {
-    /// The accepted certificate, over NLA.
     Accepted,
-    /// The accepted certificate, over TLS without NLA.
     AcceptedOverTls,
-    /// The accepted certificate, over NLA with the early authorisation result.
     AcceptedOverNlaExt,
-    /// Another certificate than the accepted one.
     Changed,
-    /// No certificate: it offers standard RDP security only.
     StandardOnly,
 }
 
-/// How the bench differs from the default: the route's waits and clock, the live state and
-/// its target rule, the address the ticket is bound to, the session's protocol and what the
-/// device's RDP server presents.
 pub(super) struct Setup {
     pub(super) route: Box<dyn FnOnce(&mut Route) + Send>,
     pub(super) ticket_client: ClientAddr,
@@ -127,25 +109,18 @@ impl Setup {
     }
 }
 
-/// A served tunnel route and one started session's ticket.
 pub(super) struct Bench {
     pub(super) live: Live,
-    /// The route as served, for tests that drive the session task's parts directly.
     pub(super) route: Route,
     pub(super) session: SessionId,
     pub(super) token: String,
     pub(super) url: String,
-    /// Where the route listens.
     pub(super) served: SocketAddr,
-    /// The device's RDP server.
     pub(super) rdp: FakeRdp,
-    /// The fingerprint of the device's accepted RDP server certificate.
     pub(super) accepted: String,
 }
 
-/// Turns RDP (NLA on `rdp_port`, user `ops` in `LAB`) and VNC (user `viewer`) on for
-/// `docker-host`, accepts the RDP server certificate whose fingerprint is `accepted` and
-/// stores both passwords, bound to loopback, where the bench moves the device (SEC-011).
+/// Binds both passwords to loopback, where the bench moves the device (SEC-011).
 pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault, rdp_port: u16, accepted: &str) {
     add_operator(pool).await;
     sqlx::query(
@@ -188,8 +163,7 @@ pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault, rdp_port: u16, a
     }
 }
 
-/// Stores `docker-host`'s password of `kind` again, the same text, bound to `host`, as the
-/// operator does after changing the device's host (SEC-011).
+/// Stores the same password bound to `host`, as the operator does after a host change (SEC-011).
 pub(super) async fn enter_again(pool: &PgPool, bench: &Bench, kind: PasswordKind, host: &str) {
     let text = match kind {
         PasswordKind::Rdp => PASSWORD,
@@ -207,7 +181,6 @@ pub(super) async fn enter_again(pool: &PgPool, bench: &Bench, kind: PasswordKind
     .unwrap();
 }
 
-/// The session a client asks for on `docker-host` over `protocol`.
 pub(super) fn request(protocol: Protocol) -> StartRequest {
     StartRequest {
         device: docker_host(),
@@ -222,7 +195,6 @@ pub(super) fn request(protocol: Protocol) -> StartRequest {
     }
 }
 
-/// Points `docker-host` at `host`, as an operator's edit would.
 pub(super) async fn move_host(pool: &PgPool, host: &str) {
     sqlx::query("update devices.devices set host = $2 where id = $1::text::uuid")
         .bind(DOCKER_HOST)
@@ -232,8 +204,6 @@ pub(super) async fn move_host(pool: &PgPool, host: &str) {
         .unwrap();
 }
 
-/// Starts a fake RDP server and a session on `docker-host` at `now()`, moves the device to
-/// loopback, and serves the tunnel route to `guacd`.
 pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
     let vault = vault();
     let answer = match setup.presents {
@@ -293,7 +263,7 @@ pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
     }
 }
 
-/// `token` from the test client on `/tunnel`, as guacamole-common-js presents it.
+/// As guacamole-common-js presents the token.
 pub(super) fn on_tunnel(token: &str) -> Presented<'_> {
     Presented {
         path: "/tunnel",
@@ -301,7 +271,6 @@ pub(super) fn on_tunnel(token: &str) -> Presented<'_> {
     }
 }
 
-/// A route clock `seconds` after the ticket was issued.
 pub(super) fn clock_at(seconds: i64) -> Arc<dyn Clock> {
     Arc::new(FixedClock(now() + TimeDelta::seconds(seconds)))
 }

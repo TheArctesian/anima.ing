@@ -1,5 +1,4 @@
-//! K2 "Roles", "Partitions": the runtime role writes and reads notifications and manages
-//! partitions only through the owner's functions.
+//! K2 "Roles", "Partitions": the runtime role reaches notifications only through owner functions.
 
 use chrono::TimeDelta;
 use sqlx::PgPool;

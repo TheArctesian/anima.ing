@@ -1,12 +1,9 @@
-//! The read of a follower of the event log: the events after an instant, oldest first.
-
 use chrono::{DateTime, Utc};
 use sqlx::PgExecutor;
 
 use super::EventRow;
 use crate::fleet::events::EventSummary;
 
-/// The events after `after` and not after `until`, oldest first, at most `limit`.
 pub(in crate::fleet::events) async fn events_after(
     db: impl PgExecutor<'_>,
     (after, until): (DateTime<Utc>, DateTime<Utc>),

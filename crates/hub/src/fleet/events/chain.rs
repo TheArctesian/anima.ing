@@ -1,6 +1,4 @@
-//! The hash chain of the audit log (LOG-021 to LOG-028): each entry gets one link that holds
-//! the hash of the link before it, so a change to an old entry, or its removal, shows. The
-//! hashing and the check are pure (`link`, `check`); `store::chain` does the SQL.
+//! The audit log's hash chain (LOG-021 to LOG-028).
 
 mod canonical;
 mod check;
@@ -19,8 +17,7 @@ use super::{
     store::chain as store,
 };
 
-/// Links `entry`, which the caller's transaction has just stored, after the newest link
-/// (LOG-021, LOG-024). The lock of the chain stays until the caller commits or rolls back.
+/// The chain's lock stays until the caller's transaction commits or rolls back (LOG-021, LOG-024).
 pub(super) async fn append(
     conn: &mut PgConnection,
     entry: &StoredEntry,
@@ -30,19 +27,13 @@ pub(super) async fn append(
     store::insert_links(conn, &[Link::new(seq, previous, entry)]).await
 }
 
-/// The sequence number and previous hash of the link after `head`.
 fn next(head: Option<(i64, Hash)>) -> (i64, Hash) {
     head.map_or((1, link::FIRST_PREVIOUS), |(seq, hash)| (seq + 1, hash))
 }
 
-/// Links each stored entry, oldest first, when the chain is empty, and returns how many it
-/// linked (LOG-026). Call it once at start, before the hub serves or starts a task: after
-/// that, the hub links only the entries it writes. With a chain that has links, it links
-/// nothing, so an entry that the hub did not write stays without a link and the check finds
-/// it.
+/// Links every stored entry only when the chain is empty (LOG-026); call once at start, before the hub serves.
 ///
 /// # Errors
-///
 /// `Error::Database` if an entry cannot be read or a link cannot be written; nothing is linked.
 pub async fn link_existing(db: &PgPool) -> Result<u64, Error> {
     let mut tx = db.begin().await?;
@@ -73,12 +64,7 @@ pub async fn link_existing(db: &PgPool) -> Result<u64, Error> {
     Ok(linked)
 }
 
-/// Checks the chain at `now` (LOG-027). It changes nothing. A link without its entry is a
-/// fault only when the entry's UTC day is inside the retention of the audit log at `now`.
-///
-/// # Errors
-///
-/// `Error::Database` if the links or the entries cannot be read.
+/// A link without its entry is a fault only inside the audit log's retention at `now` (LOG-027).
 pub(super) async fn check_chain(db: &PgPool, now: DateTime<Utc>) -> Result<ChainCheck, Error> {
     // The audit log keeps one year whatever the event period is (DB-005).
     let mut walk = Walk::new(Log::Audit.first_kept_day(now, Days::new(0)));
@@ -86,11 +72,9 @@ pub(super) async fn check_chain(db: &PgPool, now: DateTime<Utc>) -> Result<Chain
     Ok(walk.finish(unlinked))
 }
 
-/// The daily check (LOG-028): when the chain has a fault, writes an Error event of the source
-/// Hub. It never repairs the chain.
+/// Writes a Hub Error event when the chain has a fault, and never repairs it (LOG-028).
 ///
 /// # Errors
-///
 /// `Error::Database` if the check cannot run or the event cannot be written.
 pub async fn check_chain_daily(db: &PgPool, bus: &Bus, now: DateTime<Utc>) -> Result<(), Error> {
     let Some(fault) = check_chain(db, now).await?.fault else {
@@ -107,7 +91,6 @@ pub async fn check_chain_daily(db: &PgPool, bus: &Bus, now: DateTime<Utc>) -> Re
     record(&mut conn, bus, now, event).await.map(drop)
 }
 
-/// The sentence of the daily event for `fault`.
 fn fault_message(fault: &Fault) -> String {
     let what = match fault.kind {
         FaultKind::Changed => "an entry was changed",

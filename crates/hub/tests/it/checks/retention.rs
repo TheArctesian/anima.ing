@@ -1,12 +1,11 @@
-//! Heartbeat retention drops whole day partitions, and the database refuses to drop one
-//! younger than its 1-day floor (DB-005, DB-009, CR-6).
+//! Heartbeat retention and its 1-day floor (DB-005, DB-009, CR-6).
 
 use chrono::{DateTime, Days, NaiveDate, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
 
 use super::{as_runtime, code_of, create_day_as_owner, ensure, execute, table_exists};
 
-/// The test database's clock: the drop function bounds its cutoff by it.
+/// The drop function bounds its cutoff by the database clock.
 async fn database_now(pool: &PgPool) -> DateTime<Utc> {
     sqlx::query_scalar("select pg_catalog.now()")
         .fetch_one(pool)
@@ -78,8 +77,6 @@ async fn db_005_drop_removes_only_heartbeat_days_before_the_cutoff(pool: PgPool)
             .await
             .unwrap();
     }
-    // Tables the function must leave alone: a partition whose name is not a day; a partition
-    // with a day name in another schema; and a plain table of that name in `checks`.
     let (stray, stray_day) = (name(50), ago(50));
     for sql in [
         "create table checks.heartbeats_archive partition of checks.heartbeats \

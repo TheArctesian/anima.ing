@@ -49,8 +49,7 @@ async fn fil_001_the_same_bytes_are_stored_once_for_each_key(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn fil_005_a_body_over_256_mb_is_refused_while_it_streams_and_leaves_no_piece(pool: PgPool) {
     let hub = FileHub::new(&pool).await;
-    // 4 097 parts of 64 KiB, made one at a time: one byte more than the limit after the
-    // 4 096th, and never the whole body in memory. No length is declared.
+    // Over the limit after the 4 096th part, streamed with no declared length.
     let part = Bytes::from(vec![7_u8; 64 * 1024]);
     let parts = MAX_FILE / (64 * 1024) + 1;
     let body = stream::iter((0..parts).map(move |_| Ok::<_, std::io::Error>(part.clone())));
@@ -266,7 +265,6 @@ async fn fil_002_a_stored_piece_that_is_cut_short_or_reordered_is_not_sent(pool:
     let piece = hub.stored_files().pop().unwrap();
     let sealed = std::fs::read(&piece).unwrap();
     let stride = sealed.len() / 3;
-    // Two parts change places: the same sealed bytes, in a different order.
     let mut reordered = sealed[..64].to_vec();
     reordered.extend_from_slice(&sealed[64 + stride..64 + 2 * stride]);
     reordered.extend_from_slice(&sealed[64..64 + stride]);

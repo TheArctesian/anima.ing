@@ -1,5 +1,4 @@
-//! K-E1 Section 13.1: the live path leaves the sync alone. A live read, a live 401 and a change
-//! leave every row of `sources.accounts` and `sources.sync_runs` as it was.
+//! The live path leaves the sync tables alone (K-E1 Section 13.1).
 
 use anima_hub::engine::sources::{Keep, LiveFailure, Outcome, Reserve, ask, change, standing};
 use sqlx::PgPool;
@@ -7,7 +6,6 @@ use sqlx::PgPool;
 use super::{COMMENT_PATH, PULLS, comment, get, live_kit, ok, reply, striding};
 use crate::{hub::start, sources::set_projects};
 
-/// Every row of the two tables the sync owns, as text.
 async fn sync_rows(pool: &PgPool) -> (Vec<String>, Vec<String>) {
     let accounts = sqlx::query_scalar("SELECT a::text FROM sources.accounts a ORDER BY id")
         .fetch_all(pool)

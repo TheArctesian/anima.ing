@@ -1,6 +1,4 @@
-//! The `sftp` subsystem on a link (RA-032, K4 Section 9): one session channel with one
-//! `subsystem` request and no other, turned into a byte stream for the SFTP client. I/O edge;
-//! nothing here logs.
+//! The `sftp` subsystem on a link (RA-032, K4 Section 9). Nothing here logs.
 
 use std::time::Duration;
 
@@ -9,17 +7,11 @@ use tokio::time::timeout;
 
 use super::{Error, SshLink};
 
-/// The SSH name of the only subsystem the hub asks a device for.
 const SFTP: &str = "sftp";
 
 impl SshLink {
-    /// Opens a session channel, asks for the `sftp` subsystem on it and waits up to `limit`
-    /// for the device's answer. No PTY, shell, `exec`, environment, agent or forwarding
-    /// request is sent. The stream ends when the channel closes; the link must outlive it.
-    ///
-    /// # Errors
-    /// [`Error::TimeLimit`] when `limit` passes first, [`Error::CommandRefused`] when the
-    /// device refuses the channel or the subsystem, [`Error::Lost`] when the connection fails.
+    /// No PTY, shell, `exec`, environment, agent or forwarding request is sent.
+    /// The link must outlive the stream.
     pub(crate) async fn sftp(&self, limit: Duration) -> Result<ChannelStream<Msg>, Error> {
         timeout(limit, async {
             let mut channel =
@@ -40,7 +32,6 @@ impl SshLink {
                     Some(ChannelMsg::Failure | ChannelMsg::Close | ChannelMsg::Eof) => {
                         return Err(Error::CommandRefused);
                     }
-                    // Window adjustments and anything else before the answer.
                     Some(_) => {}
                     None => return Err(Error::Lost),
                 }

@@ -1,8 +1,4 @@
-//! Docker container check: the command and the pure reading of its output (D-3, CHK-012).
-//!
-//! The hub runs `docker ps -a --no-trunc --format '{{json .}}'` through the SSH link and looks
-//! for the configured name among the `Names` of the lines. Nothing of the output is kept: the
-//! result holds only fixed words (LOG-007).
+//! Docker container check (D-3, CHK-012); the result holds only fixed words, never output (LOG-007).
 
 use serde::Deserialize;
 
@@ -12,7 +8,7 @@ use super::{
 };
 use crate::fleet::ssh::{CommandOutput, FixedCommand};
 
-/// The command, from static text only: the container name is never part of it.
+/// Static text only: the container name is never part of the command.
 pub(in crate::fleet::checks) fn command() -> FixedCommand {
     FixedCommand::new("docker")
         .arg("ps")
@@ -22,7 +18,6 @@ pub(in crate::fleet::checks) fn command() -> FixedCommand {
         .arg("'{{json .}}'")
 }
 
-/// The fields of one `docker ps` JSON line the check reads.
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct Line {
@@ -34,7 +29,6 @@ struct Line {
     status: String,
 }
 
-/// What the container's line says about it.
 fn judge(line: &Line) -> ProbeResult {
     if line.state != "running" {
         let class = match line.state.as_str() {
@@ -57,9 +51,7 @@ fn judge(line: &Line) -> ProbeResult {
     }
 }
 
-/// The result for the container `name`: the line whose comma-separated `Names` hold it, or
-/// not found. A line that is not JSON is skipped, and makes the output unreadable only when
-/// no line matched.
+/// A line that is not JSON is skipped, and makes the output unreadable only when no line matched.
 pub(in crate::fleet::checks) fn read(output: &CommandOutput, name: &str) -> ProbeResult {
     let text = match readable(output) {
         Ok(text) => text,

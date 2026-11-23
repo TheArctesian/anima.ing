@@ -1,6 +1,4 @@
-//! MET-017, K8 Section 6: many requests at once. One node's requests beyond two wait for no
-//! lookup, so its junk keeps no daemon out; a request waits in order for a database turn; and a
-//! body that never ends holds no database turn.
+//! MET-017, K8 Section 6: a flood of requests keeps no daemon out and holds no database turn.
 
 use std::time::Duration;
 
@@ -23,9 +21,6 @@ use crate::fleet::metrics::ingest::{
     turns::{ADDRESS_REQUESTS, DAEMON_REQUESTS},
 };
 
-/// T8a review probe P1, held still: while two requests of node 66 wait for the database, its
-/// next ones, junk bearer, junk code or a valid token, are `UNAVAILABLE` at once with no lookup,
-/// and node 7 is served.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
@@ -78,8 +73,6 @@ async fn met_017_a_node_whose_two_turns_are_taken_is_refused_at_once_and_others_
     }
 }
 
-/// While every request turn is taken, a request waits for one instead of being sent back, and
-/// is served once a turn ends.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
@@ -114,7 +107,6 @@ async fn met_017_a_request_waits_for_a_turn_while_all_are_taken(pool: PgPool) {
     }
 }
 
-/// Pushes from devices 1 to 4 at addresses 30 to 33 whose bodies never end.
 fn endless_pushes(
     router: &axum::Router,
     tokens: &[DaemonToken],
@@ -136,8 +128,6 @@ fn endless_pushes(
         .collect()
 }
 
-/// T8a review probe P2: four daemons whose bodies never end hold only their own device's turn,
-/// so a fifth is served at once, long before their body deadline.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
@@ -166,7 +156,6 @@ async fn met_017_bodies_that_never_end_hold_no_request_turn(pool: PgPool) {
     }
 }
 
-/// A body that has not arrived by its deadline is `UNAVAILABLE`, well before the answer's.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
@@ -185,9 +174,6 @@ async fn met_017_a_body_that_never_ends_is_unavailable_at_its_deadline(pool: PgP
     }
 }
 
-/// T8a review probe R3 N1 held still: while the event log is locked, four enrolments with junk
-/// codes from four nodes wait to write their refusal events. They hold no database turn while
-/// they wait, so an honest push from a fifth node is stored at once.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))

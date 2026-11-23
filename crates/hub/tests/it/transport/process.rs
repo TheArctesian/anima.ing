@@ -4,8 +4,7 @@ use std::process::Command;
 pub(crate) fn hub() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_anima-hub"));
     command.env_clear();
-    // Winsock and Windows runtime services need their OS environment. Never
-    // inherit application settings, database URLs, release keys or proxy variables.
+    // Winsock and the Windows runtime need these OS variables; nothing else is inherited.
     #[cfg(windows)]
     for name in ["SystemRoot", "WINDIR", "TEMP", "TMP"] {
         if let Some(value) = std::env::var_os(name) {

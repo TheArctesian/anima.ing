@@ -78,7 +78,6 @@ async fn web_001_and_002_a_device_reads_its_interfaces_in_creation_order_and_its
         ["http://a.home.lan/", "http://b.home.lan/"]
     );
     assert_eq!(urls(&pve["webInterfaceSuggestions"]), [PVE_SUGGESTED_URL]);
-    // Home Assistant already has its HTTP check's address as an interface: nothing to suggest.
     let home = node(&result, "home-assistant");
     assert_eq!(urls(&home["webInterfaces"]), ["http://ha.home.lan:8123/"]);
     assert_eq!(urls(&home["webInterfaceSuggestions"]), Vec::<&str>::new());
@@ -130,8 +129,7 @@ async fn api_005_interfaces_and_suggestions_cost_a_constant_few_statements_for_1
             [PVE_SUGGESTED_URL]
         );
     }
-    // The page, its count, then one batch of each field (the suggestions read interfaces and
-    // checks too). A per-device read costs one statement per device and field, at least 26.
+    // One batch per field; a per-device read costs at least 26 statements.
     assert!(
         few_statements <= 12 && many_statements <= 12,
         "{few_statements} statements for 13 devices, {many_statements} for 163"

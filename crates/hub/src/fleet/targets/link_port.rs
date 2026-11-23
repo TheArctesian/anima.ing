@@ -1,13 +1,8 @@
-//! A port on the loopback address of the hub that carries to one port of a computer on the
-//! link (HMD-048): for a program beside the hub that connects by TCP only, as guacd does for
-//! VNC and RDP. guacd cannot reach a link address, because no packet goes to one; the hub
-//! gives it this port in its place and carries each connection through the link with
-//! [`connect`], so the computer still decides which of its ports are open (HMD-049).
+//! A hub loopback port that carries to one port of a computer on the link, for guacd, which
+//! cannot reach a link address (HMD-048); the computer still decides which ports are open (HMD-049).
 //!
-//! The port lives as long as its [`LinkPort`]. While it lives, each program on the server of
-//! the hub can connect to it; a hub with a link is the only user of its server (`anima-local-hub`),
-//! and what the port leads to has its own sign-in (the VNC password, the RDP sign-in). I/O
-//! edge; nothing here logs.
+//! Any program on the hub's server can connect while the port lives: a hub with a link is its
+//! server's only user (`anima-local-hub`), and the far end has its own sign-in.
 
 use std::{
     io,
@@ -22,7 +17,6 @@ use tokio::{
 
 use super::{AddressPolicy, connect, on_link};
 
-/// One loopback port of the hub and the task that carries its connections.
 #[derive(Debug)]
 pub struct LinkPort {
     local: SocketAddr,
@@ -30,8 +24,7 @@ pub struct LinkPort {
 }
 
 impl LinkPort {
-    /// Opens a loopback port that carries to `target`, when `target` is a link address and
-    /// the hub has a link; `None` for each other address, which a program reaches by itself.
+    /// `None` when `target` is not a link address or the hub has no link.
     ///
     /// # Errors
     /// When no loopback port can be taken.
@@ -45,7 +38,6 @@ impl LinkPort {
         Ok(Some(Self { local, carrying }))
     }
 
-    /// The address that the program beside the hub connects to.
     #[must_use]
     pub const fn local(&self) -> SocketAddr {
         self.local
@@ -59,8 +51,6 @@ impl Drop for LinkPort {
     }
 }
 
-/// Takes each connection from this server and carries it to `target`. The connections are
-/// tasks of this one, so they end with it.
 async fn carry_all(listener: TcpListener, policy: AddressPolicy, target: SocketAddr) {
     let mut carried = JoinSet::new();
     loop {
@@ -76,8 +66,6 @@ async fn carry_all(listener: TcpListener, policy: AddressPolicy, target: SocketA
     }
 }
 
-/// One connection: its bytes go to `target` through the link and back, until one side ends.
-/// When the computer does not give the port, the connection is closed with no byte.
 async fn carry(mut local: TcpStream, policy: AddressPolicy, target: SocketAddr) {
     if let Ok(mut far) = connect(&policy, target).await {
         let _ended = copy_bidirectional(&mut local, &mut far).await;

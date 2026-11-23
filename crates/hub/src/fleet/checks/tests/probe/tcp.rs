@@ -1,4 +1,4 @@
-//! TCP probe against local listeners (CHK-001).
+//! CHK-001.
 
 use std::time::Duration;
 
@@ -136,8 +136,7 @@ fn chk_012_no_check_source_starts_a_process() {
     }
 }
 
-/// A TCP check on a computer of the link goes through the link: the hub has no route to a
-/// link address, and loopback is not permitted here, so only the link can answer.
+/// Loopback is not permitted here, so only the link can answer.
 #[tokio::test]
 async fn hmd_048_a_tcp_check_reaches_an_open_port_of_a_computer_on_the_link() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();

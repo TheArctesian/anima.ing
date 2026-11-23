@@ -1,6 +1,5 @@
-//! The three channel mutations. Each checks the input, seals the secrets and writes the change,
-//! one audit entry and one event in one transaction: if any step fails, nothing is stored
-//! (API-003, LOG-005, NOT-002, SEC-003).
+//! The channel mutations seal the secrets and write the change, audit entry and event in one
+//! transaction, so a failed step stores nothing (API-003, LOG-005, NOT-002, SEC-003).
 
 use async_graphql::{Context, ID, Result};
 use chrono::{DateTime, DurationRound, TimeDelta, Utc};

@@ -1,5 +1,4 @@
-//! The reveal of a sealed record asks the second factor again (K-E5 Section 3; VLT-004,
-//! VLT-005): the code of the sign-in counts for 5 minutes, then the call takes a new code.
+//! A sealed record's reveal asks the second factor again after 5 minutes (K-E5 Section 3; VLT-004, VLT-005).
 
 use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 
@@ -47,13 +46,11 @@ fn reason(response: &Value) -> &Value {
     &response["errors"][0]["extensions"]["reason"]
 }
 
-/// A code of `secret` at `at` that is not the right one.
 fn wrong_code(secret: &[u8], at: DateTime<Utc>) -> String {
     let right: u32 = code(secret, at).parse().unwrap();
     format!("{:06}", (right + 1) % 1_000_000)
 }
 
-/// Signs in with the code of `secret` at `start()`; returns the hub and the token.
 async fn signed_in_with_code(pool: &PgPool, secret: &[u8]) -> (Hub, String) {
     let hub = Hub::new(pool, start());
     let signed = login(&hub, PASSWORD, Some(&code(secret, start()))).await;
@@ -79,8 +76,6 @@ async fn vlt_005_a_reveal_takes_the_code_of_the_sign_in_for_5_minutes_then_a_new
     assert_eq!(reason(&refused), "TOTP_REQUIRED");
     let fresh = code(&secret, later);
     assert!(revealed(&reveal(&late, &token, Some(&fresh)).await));
-    // The new code counts for the next 5 minutes, and it is used: a second call with it needs
-    // none.
     assert!(revealed(&reveal(&late, &token, None).await));
 
     let entries: Vec<Value> = sqlx::query_scalar(

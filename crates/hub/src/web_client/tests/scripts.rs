@@ -70,7 +70,6 @@ fn d_2_non_ascii_text_around_and_in_a_script_is_hashed_as_utf_8() {
     assert_eq!(hashes.len(), 2);
 }
 
-/// The CSP source of `text`, hashed here as the browser hashes the parsed script.
 fn hash_of(text: &str) -> String {
     use base64::{Engine as _, engine::general_purpose::STANDARD};
     use sha2::{Digest as _, Sha256};
@@ -96,7 +95,6 @@ fn plain() -> impl Strategy<Value = String> {
     "[a-zA-Z0-9 ;(){}=.\"'ü]{0,40}"
 }
 
-/// Text built from the pieces the reader looks for, in any order, plus any characters.
 fn tag_soup() -> impl Strategy<Value = String> {
     let piece = prop::sample::select(vec![
         "<script", "<SCRIPT", "</script", ">", "/", "src", "=", "\"", "'", " ", "\t", "x", "ü", "<",
@@ -106,7 +104,6 @@ fn tag_soup() -> impl Strategy<Value = String> {
 }
 
 proptest! {
-    /// Any text: no panic, and never more hashes than script openings.
     #[test]
     fn d_2_any_page_reads_without_panic(html in tag_soup()) {
         let hashes = inline_script_hashes(&html);
@@ -117,7 +114,6 @@ proptest! {
         }
     }
 
-    /// Every inline script among plain text and `src` scripts gets exactly one hash.
     #[test]
     fn d_2_one_hash_per_inline_script(
         parts in prop::collection::vec((plain(), plain(), any::<bool>()), 0..8),

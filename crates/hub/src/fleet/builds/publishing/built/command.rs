@@ -1,8 +1,5 @@
-//! The `anima-hub release` commands of the release workflow (R-179): sign, check and publish
-//! the files of one target that the jobs of `.github/workflows/release.yml` built. The
-//! settings have the names the hub reads (K7). A key comes from a file, never from an
-//! argument, and no key, password or token is in a result or an error (LOG-007). The binary
-//! prints the result.
+//! The `anima-hub release` commands of the release workflow (R-179), with the hub's setting names (K7).
+//! A key comes from a file, never an argument; no key, password or token is in a result or error (LOG-007).
 
 use std::{collections::BTreeMap, path::Path};
 
@@ -28,11 +25,10 @@ const KEY_FILE: &str = "ANIMA_UPDATER_KEY_FILE";
 const KEY_PASSWORD_FILE: &str = "ANIMA_UPDATER_KEY_PASSWORD_FILE";
 const PUBLIC_BASE: &str = "ANIMA_RELEASES_PUBLIC_BASE";
 const ENDPOINT: &str = "ANIMA_RELEASES_ENDPOINT";
-/// The time in the signature's trusted comment, in seconds since 1970: the commit time, so a
-/// second run signs the same text.
+/// The commit time, so a second run signs the same text.
 const SIGNED_AT: &str = "SOURCE_DATE_EPOCH";
 
-/// Why a release command stopped. Names a setting, a file kind or a check, never a value.
+/// Names a setting, a file kind or a check, never a value.
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseError {
     #[error(
@@ -66,8 +62,7 @@ pub(super) fn setting<'a>(
         .ok_or(ReleaseError::Setting(name))
 }
 
-/// Each regular file of `folder` with its bytes. A folder, a link or a name that is not
-/// Unicode in it is refused: a release folder holds only the files of one target.
+/// A folder, a link or a non-Unicode name is refused: a release folder holds only one target's files.
 pub(super) fn files_of(folder: &Path) -> Result<Vec<BuiltFile>, ReleaseError> {
     let fault = |error: std::io::Error| ReleaseError::Folder(error.kind());
     let mut files = Vec::new();
@@ -87,8 +82,6 @@ pub(super) fn files_of(folder: &Path) -> Result<Vec<BuiltFile>, ReleaseError> {
     Ok(files)
 }
 
-/// The updater key of `ANIMA_UPDATER_KEY_FILE`, which must have the public key of
-/// `ANIMA_UPDATER_PUBLIC_KEY`, and the time for the trusted comment.
 pub(super) fn open_key(env: &BTreeMap<String, String>) -> Result<(UpdaterKey, u64), ReleaseError> {
     let secret = |name: &'static str| {
         std::fs::read(setting(env, name)?)
@@ -107,8 +100,6 @@ pub(super) fn open_key(env: &BTreeMap<String, String>) -> Result<(UpdaterKey, u6
     Ok((key, signed_at))
 }
 
-/// Signs the updater file in `folder` with the key of `ANIMA_UPDATER_KEY_FILE` and writes its
-/// `.sig` beside it.
 fn sign(
     env: &BTreeMap<String, String>,
     built: &Built,
@@ -120,7 +111,6 @@ fn sign(
     Ok(format!("Signed: {name} is written."))
 }
 
-/// Runs each check of a publish that needs no bucket.
 fn check(env: &BTreeMap<String, String>, built: &Built) -> Result<String, ReleaseError> {
     let base = env
         .get(PUBLIC_BASE)
@@ -134,7 +124,6 @@ fn check(env: &BTreeMap<String, String>, built: &Built) -> Result<String, Releas
     ))
 }
 
-/// Publishes to the bucket of `ANIMA_RELEASES_ENDPOINT`, the feed last.
 async fn publish(
     env: &BTreeMap<String, String>,
     built: &Built,
@@ -161,11 +150,9 @@ async fn publish(
     ))
 }
 
-/// Runs `anima-hub release <verb> <target> <version> <folder>` with the settings in `env`;
-/// `http` reaches the bucket for `publish`. Returns the line to print.
+/// Runs `anima-hub release <verb> <target> <version> <folder>`; returns the line to print.
 ///
 /// # Errors
-///
 /// The usage, a setting or file that cannot be used, or the check that refused the release.
 pub async fn release_command(
     env: &BTreeMap<String, String>,

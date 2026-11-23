@@ -9,7 +9,6 @@ use crate::fleet::notifications::{
     model::{NewOutbox, Outbox},
 };
 
-/// Queues a notification, due at once, in the caller's transaction.
 pub(in crate::fleet::notifications) async fn insert_outbox(
     conn: &mut PgConnection,
     row: &NewOutbox,
@@ -31,12 +30,7 @@ pub(in crate::fleet::notifications) async fn insert_outbox(
     Ok(())
 }
 
-/// Claims up to `limit` unfinished rows due at `now`, oldest due first. Each claimed row is
-/// pushed `lease` into the future, so no other claimer takes it while it is being sent, and
-/// it comes back by itself if the claimer dies; that lease end is the claim's token
-/// (`Outbox::lease_end`). The claim counts the try, so a row whose outcome is never written
-/// still runs out of tries. `FOR UPDATE SKIP LOCKED` makes concurrent claimers take disjoint
-/// rows.
+/// The lease end is the claim's token (`Outbox::lease_end`); the claim counts the try, so a lost outcome still runs out of tries.
 pub(in crate::fleet::notifications) async fn claim_due(
     db: impl PgExecutor<'_>,
     now: DateTime<Utc>,
@@ -65,14 +59,9 @@ pub(in crate::fleet::notifications) async fn claim_due(
     Ok(claimed)
 }
 
-// A claimed row is finished only under its own claim: each statement below matches the row's
-// id and the lease end its claim set (`Outbox::lease_end`). A claim whose lease ended, and was
-// followed by another claim, finds a different `next_attempt_at` and changes nothing (D-16).
-// Every claim moves `next_attempt_at` past the one before it (a row is claimed only once
-// `next_attempt_at <= now`, and the claim sets `now + lease`), so no two claims share a token.
+// A claimed row is finished only under its own claim: each statement below matches its lease end (D-16).
+// Every claim moves `next_attempt_at` past the one before it, so no two claims share a token.
 
-/// Marks the row of `claim` sent at `at`; false when the claim no longer holds the row (its
-/// lease ended and another claimer took it) or the row is gone or finished.
 pub(in crate::fleet::notifications) async fn mark_sent(
     db: impl PgExecutor<'_>,
     claim: &Outbox,
@@ -90,8 +79,6 @@ pub(in crate::fleet::notifications) async fn mark_sent(
     Ok(done.rows_affected() == 1)
 }
 
-/// Tries the row of `claim` again at `next_attempt_at` after a failed try; false
-/// when the claim no longer holds the row or the row is gone or finished.
 pub(in crate::fleet::notifications) async fn reschedule(
     db: impl PgExecutor<'_>,
     claim: &Outbox,
@@ -109,8 +96,6 @@ pub(in crate::fleet::notifications) async fn reschedule(
     Ok(done.rows_affected() == 1)
 }
 
-/// Stops trying the row of `claim` at `at`; false when the claim no longer holds the row or
-/// the row is gone or finished.
 pub(in crate::fleet::notifications) async fn give_up(
     db: impl PgExecutor<'_>,
     claim: &Outbox,
@@ -128,7 +113,6 @@ pub(in crate::fleet::notifications) async fn give_up(
     Ok(done.rows_affected() == 1)
 }
 
-/// Deletes the rows sent or given up before `cutoff`; returns how many.
 pub(in crate::fleet::notifications) async fn delete_finished_before(
     db: impl PgExecutor<'_>,
     cutoff: DateTime<Utc>,

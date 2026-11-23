@@ -1,5 +1,4 @@
-//! The pure job rules (BLD-009): which state changes are permitted, the lease and its end, what
-//! a builder may claim, and the job each change leaves. Time comes in as a parameter (CQ-021).
+//! The pure job rules (BLD-009); time comes in as a parameter (CQ-021).
 
 use chrono::{DateTime, TimeDelta, Utc};
 
@@ -12,25 +11,24 @@ use crate::{
     ids::BuilderId,
 };
 
-/// A builder that reported within this time is online (BLD-007).
 pub(super) const ONLINE_WITHIN: TimeDelta = TimeDelta::seconds(60);
 
-/// The reason of a job whose lease ended three times (BLD-006, [`lease::MAX_LOST`]).
+/// The reason of a job whose lease ended [`lease::MAX_LOST`] times (BLD-006).
 pub(super) const STOPPED_REASON: &str = "builder stopped 3 times";
 
-/// Why a change of a job is refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Refusal {
-    /// The builder does not hold the job's lease (BLD-010).
     NotHolder,
-    /// The lease ended before this report; the job goes back to the queue (BLD-006).
+    /// The job goes back to the queue (BLD-006).
     LeaseEnded,
-    /// The diagram does not permit this change (BLD-010), or the operator may not cancel a job
-    /// that left the queue (BLD-008).
-    Change { from: JobState, to: JobState },
+    /// The diagram does not permit this change (BLD-010), or the job left the queue before a cancel (BLD-008).
+    Change {
+        from: JobState,
+        to: JobState,
+    },
 }
 
-/// Whether the diagram of Section 3.10.1 permits `from` to `to`.
+/// The diagram of Section 3.10.1.
 pub(super) const fn permitted(from: JobState, to: JobState) -> bool {
     use JobState::{Building, Cancelled, Claimed, Failed, Published, Queued, Uploading};
     matches!(
@@ -42,17 +40,14 @@ pub(super) const fn permitted(from: JobState, to: JobState) -> bool {
     )
 }
 
-/// The lease end of a claim or report at `now` (BLD-005).
 pub(super) fn lease_end(now: DateTime<Utc>) -> DateTime<Utc> {
     lease::end(now)
 }
 
-/// Whether the job's lease has ended at `now`. A job without a lease has none to end.
 pub(super) fn lease_ended(job: &BuildJob, now: DateTime<Utc>) -> bool {
     job.state.is_leased() && lease::ended(job.lease_ends_at, now)
 }
 
-/// Whether a builder on `platform` can build `target` (BLD-003).
 pub(super) const fn can_build(platform: Platform, target: Target) -> bool {
     matches!(
         (target, platform.os, platform.arch),
@@ -62,7 +57,6 @@ pub(super) const fn can_build(platform: Platform, target: Target) -> bool {
     )
 }
 
-/// The targets a builder on `platform` may claim.
 pub(super) fn buildable(platform: Platform) -> Vec<Target> {
     Target::ALL
         .into_iter()
@@ -70,12 +64,10 @@ pub(super) fn buildable(platform: Platform) -> Vec<Target> {
         .collect()
 }
 
-/// Whether a builder seen last at `last_seen` is online at `now` (BLD-007).
 pub(super) fn online(last_seen: Option<DateTime<Utc>>, now: DateTime<Utc>) -> bool {
     last_seen.is_some_and(|seen| now - seen <= ONLINE_WITHIN)
 }
 
-/// The job in state `to` at `now`, with the time of that state recorded.
 fn entered(job: &BuildJob, to: JobState, now: DateTime<Utc>) -> BuildJob {
     let mut next = job.clone();
     next.state = to;
@@ -96,7 +88,6 @@ fn entered(job: &BuildJob, to: JobState, now: DateTime<Utc>) -> BuildJob {
     next
 }
 
-/// The queued job claimed by `builder` at `now`, with a fresh lease (BLD-004, BLD-005).
 pub(super) fn claim(job: &BuildJob, builder: &Builder, now: DateTime<Utc>) -> BuildJob {
     let mut next = entered(job, JobState::Claimed, now);
     next.builder = Some(builder.id);
@@ -105,10 +96,7 @@ pub(super) fn claim(job: &BuildJob, builder: &Builder, now: DateTime<Utc>) -> Bu
     next
 }
 
-/// The job after its holder's report at `now`: in the reported state when given (a report of
-/// the current state only extends the lease), with the lease extended, or ended for `failed`
-/// with the cleaned reason (BLD-005, BLD-010). A builder may report only `building`, `uploading` and
-/// `failed`; publishing is the hub's (BLD-066).
+/// A report of the current state only extends the lease; publishing is the hub's, never a builder's (BLD-005, BLD-010, BLD-066).
 pub(super) fn report(
     job: &BuildJob,
     holder: BuilderId,
@@ -145,8 +133,6 @@ pub(super) fn report(
     Ok(next)
 }
 
-/// The job after its lease ended at `now`: back in the queue with one more attempt, or
-/// `failed` with [`STOPPED_REASON`] on the third (BLD-006). The builder is released.
 pub(super) fn expire(job: &BuildJob, now: DateTime<Utc>) -> BuildJob {
     let (mut next, attempts) = match lease::lost(job.attempts) {
         Lost::Failed(attempts) => {
@@ -162,7 +148,6 @@ pub(super) fn expire(job: &BuildJob, now: DateTime<Utc>) -> BuildJob {
     next
 }
 
-/// The job cancelled by the operator at `now`; only a queued job can be (BLD-008).
 pub(super) fn cancel(job: &BuildJob, now: DateTime<Utc>) -> Result<BuildJob, Refusal> {
     if job.state == JobState::Queued {
         Ok(entered(job, JobState::Cancelled, now))
@@ -174,14 +159,12 @@ pub(super) fn cancel(job: &BuildJob, now: DateTime<Utc>) -> Result<BuildJob, Ref
     }
 }
 
-/// The `uploading` job the hub published at `now` (BLD-066).
 pub(super) fn published(job: &BuildJob, now: DateTime<Utc>) -> BuildJob {
     let mut next = entered(job, JobState::Published, now);
     next.lease_ends_at = None;
     next
 }
 
-/// The `uploading` job the hub refused to publish at `now`, with the reason (BLD-070).
 pub(super) fn publish_failed(job: &BuildJob, reason: &str, now: DateTime<Utc>) -> BuildJob {
     let mut next = entered(job, JobState::Failed, now);
     next.lease_ends_at = None;

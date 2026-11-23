@@ -16,7 +16,6 @@ fn entry(tag: u16, kind: u16, count: u32, value: [u8; 4]) -> Vec<u8> {
     .concat()
 }
 
-/// A little-endian TIFF block whose GPS IFD says 52°30′ N, 4°15′ W.
 fn tiff() -> Vec<u8> {
     let mut block = b"II".to_vec();
     block.extend(42_u16.to_le_bytes());

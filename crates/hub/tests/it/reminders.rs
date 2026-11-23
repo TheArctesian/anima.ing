@@ -1,5 +1,4 @@
-//! The reminder rules and their firings through the hub API (K-E6 Section 6; REM-004, REM-005,
-//! REM-007).
+//! Reminder rules and firings through the hub API (K-E6 Section 6; REM-004, REM-005, REM-007).
 
 mod firings;
 mod live;

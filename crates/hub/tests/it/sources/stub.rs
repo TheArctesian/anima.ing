@@ -1,5 +1,4 @@
-//! A loopback HTTP server standing in for GitHub: it mints installation tokens, serves numbered
-//! pages, and records every request it gets. Never the real GitHub (LOG-007, PRJ-018).
+//! A loopback stand-in for GitHub; tests never reach the real GitHub (LOG-007, PRJ-018).
 
 use std::{
     collections::{HashMap, HashSet, VecDeque},
@@ -21,7 +20,6 @@ use sqlx::PgPool;
 use tokio::sync::Semaphore;
 use uuid::Uuid;
 
-/// A canned reply for one path.
 #[derive(Clone)]
 pub struct Reply {
     pub status: u16,
@@ -29,19 +27,16 @@ pub struct Reply {
     pub body: String,
 }
 
-/// One request as the stub heard it: every header and the body.
 #[derive(Clone)]
 pub struct Heard {
     pub method: String,
     pub path: String,
     pub headers: Vec<(String, Vec<u8>)>,
     pub body: Vec<u8>,
-    /// When the stub heard it.
     pub at: Instant,
 }
 
 impl Heard {
-    /// The values of header `name`.
     pub fn header(&self, name: &str) -> Vec<&[u8]> {
         self.headers
             .iter()
@@ -51,34 +46,23 @@ impl Heard {
     }
 }
 
-/// What the stub does and what it saw.
 pub struct Script {
     /// `(method, path with query, sent a bearer token)` of each request, in order.
     pub seen: Vec<(String, String, bool)>,
-    /// Each request in full, in order.
     pub heard: Vec<Heard>,
-    /// The App token (JWT) each mint request was signed in with, so a test can search for it.
     pub app_tokens: Vec<String>,
     pub mint_status: u16,
     pub token: String,
-    /// Page n (from 1) holds `pages[n - 1]`, a list of `{ "id", "value" }`.
     pub pages: Vec<Value>,
-    /// Replies that win over the rules above, by path, or by `METHOD path` (which wins over
-    /// the path alone).
     pub replies: HashMap<String, Reply>,
     /// SQL run once when its path is first requested, as another writer would.
     pub hooks: HashMap<String, String>,
-    /// Paths answered with 200 and a body that never ends, sent in chunks with no length.
     pub endless: HashSet<String>,
-    /// Paths whose answer waits for one permit of the gate, so a test can hold requests open.
     pub gates: HashMap<String, Arc<Semaphore>>,
-    /// Paths answered with a status line and then a dropped connection: no whole answer.
     pub dropped: HashSet<String>,
-    /// Replies used once each, in order, by `METHOD path`; they win over `replies`.
     pub queued: HashMap<String, VecDeque<Reply>>,
 }
 
-/// The running stub. Clones share it.
 #[derive(Clone)]
 pub struct Stub {
     pub script: Arc<Mutex<Script>>,
@@ -87,7 +71,6 @@ pub struct Stub {
 }
 
 impl Stub {
-    /// Starts the stub on a free loopback port; `pool` runs its hooks.
     pub async fn start(pool: &PgPool) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address: SocketAddr = listener.local_addr().unwrap();
@@ -96,7 +79,7 @@ impl Stub {
             heard: Vec::new(),
             app_tokens: Vec::new(),
             mint_status: 201,
-            // A token shape of the test's own: never assume a length or a prefix.
+            // A shape of its own, so the hub cannot rely on a GitHub token length or prefix.
             token: format!("stubtoken-{}", Uuid::now_v7().simple()),
             pages: Vec::new(),
             replies: HashMap::new(),
@@ -120,12 +103,10 @@ impl Stub {
         f(&mut self.script.lock().unwrap())
     }
 
-    /// The paths of every request so far.
     pub fn paths(&self) -> Vec<String> {
         self.with(|s| s.seen.iter().map(|(_, path, _)| path.clone()).collect())
     }
 
-    /// The paths of the GET requests so far: the provider's requests, not the mints.
     pub fn gets(&self) -> Vec<String> {
         self.with(|s| {
             s.seen
@@ -140,7 +121,6 @@ impl Stub {
         self.with(|s| s.token.clone())
     }
 
-    /// Sets the pages, each a list of `(id, value)`.
     pub fn set_pages(&self, pages: &[&[(&str, &str)]]) {
         let pages = pages
             .iter()
@@ -160,13 +140,10 @@ impl Stub {
         self.with(|s| s.replies.insert(path.to_owned(), reply));
     }
 
-    /// Answers `method` requests for `path` with `reply`; other methods keep their answer.
     pub fn reply_to(&self, method: &str, path: &str, reply: Reply) {
         self.with(|s| s.replies.insert(format!("{method} {path}"), reply));
     }
 
-    /// Answers the next `method` request for `path` with `reply`, once, after the replies
-    /// queued before it.
     pub fn reply_once(&self, method: &str, path: &str, reply: Reply) {
         self.with(|s| {
             let queue = s.queued.entry(format!("{method} {path}")).or_default();
@@ -174,17 +151,15 @@ impl Stub {
         });
     }
 
-    /// Answers `path` with a status line, then drops the connection before the body ends.
     pub fn drop_answer(&self, path: &str) {
         self.with(|s| s.dropped.insert(path.to_owned()));
     }
 
-    /// Answers `path` with a body that never ends: only a reader that stops at its cap returns.
+    /// Only a reader that stops at its cap returns.
     pub fn endless(&self, path: &str) {
         self.with(|s| s.endless.insert(path.to_owned()));
     }
 
-    /// Holds each answer to `path` until `gate` gives it a permit.
     pub fn gate(&self, path: &str, gate: &Arc<Semaphore>) {
         self.with(|s| s.gates.insert(path.to_owned(), gate.clone()));
     }
@@ -205,7 +180,6 @@ fn respond(status: u16, headers: &[(&'static str, String)], body: String) -> Res
         .unwrap()
 }
 
-/// 200 with 64 KiB chunks of spaces, forever: generated as it is sent, never held.
 fn endless() -> Response {
     let chunk = Bytes::from(vec![b' '; 64 * 1024]);
     let chunks = futures_util::stream::repeat_with(move || Ok::<_, std::io::Error>(chunk.clone()));
@@ -216,7 +190,6 @@ fn endless() -> Response {
         .unwrap()
 }
 
-/// 201 and a body that fails after its first bytes: the connection drops mid-answer.
 fn dropped() -> Response {
     let chunks = futures_util::stream::iter([
         Ok::<_, std::io::Error>(Bytes::from_static(b"{\"partial\":")),
@@ -229,7 +202,6 @@ fn dropped() -> Response {
         .unwrap()
 }
 
-/// Records a request; returns the SQL hook of its path, once.
 fn hear(
     stub: &Stub,
     (method, uri, headers): (&Method, &Uri, &HeaderMap),

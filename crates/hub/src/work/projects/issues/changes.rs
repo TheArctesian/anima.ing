@@ -1,10 +1,7 @@
-//! The issue changes (K1; OD-E14, PRJ-027, PRJ-028): make an issue, comment on an issue or a
-//! pull request, close or open an issue.
+//! The issue changes (K1; OD-E14, PRJ-027, PRJ-028).
 //!
-//! Each one checks its input into the parts of a [`Change`] first, then the repository; a
-//! refusal there sends nothing and records nothing. The change is sent once and recorded by
-//! [`forge::make`]; the result is read back from GitHub. None takes a confirmation (K-E1
-//! Section 13.4) and each takes a write key (Section 13.5).
+//! A refused input or repository sends and records nothing. None takes a confirmation (K-E1
+//! Section 13.4); each takes a write key (Section 13.5).
 
 use async_graphql::{Context, ID, InputObject, Object, Result};
 use provider_github::live::issues::{CloseReason as Read, Issue};

@@ -1,5 +1,4 @@
-//! The audit entry and event of each place change (LOG-004, LOG-005). Pure. Neither holds a
-//! position: a place's centre is where the operator lives or works.
+//! No entry holds a position: a place's centre is where the operator lives or works (LOG-004, LOG-005).
 
 use serde_json::{Value, json};
 
@@ -90,7 +89,6 @@ pub(super) fn removed(removal: &Removal) -> TrailEntry {
     }
 }
 
-/// The entry of a site change; `None` when the site already had this place.
 pub(super) fn sited(siting: &Siting) -> Option<TrailEntry> {
     let target = siting.after.or(siting.before)?;
     (siting.before != siting.after).then(|| {

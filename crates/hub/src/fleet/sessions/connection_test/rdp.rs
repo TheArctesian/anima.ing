@@ -1,11 +1,6 @@
-//! Reading an RDP server's certificate (SEC-007, K4 §3): the X.224 exchange asking for TLS or
-//! NLA, then a TLS handshake that takes whatever certificate the server presents, and the
-//! connection closes. No credential is ever sent: the hub never starts `CredSSP`. I/O edge;
-//! nothing here logs, and no error holds a remote text or a host name (LOG-007).
-//!
-//! The verifier accepts any certificate, because the operator decides by its fingerprint;
-//! it still checks the handshake signatures, so a server that replays another server's
-//! certificate without its private key fails the handshake.
+//! Reading an RDP server's certificate (SEC-007, K4 §3). No credential is sent: the hub never starts `CredSSP`.
+//! Nothing here logs, and no error holds a remote text or a host name (LOG-007).
+//! The verifier accepts any certificate, since the operator decides by fingerprint, but checks the handshake signatures.
 
 use std::{net::IpAddr, sync::Arc, time::Duration};
 
@@ -26,25 +21,14 @@ use crate::fleet::{
     devices::RdpSecurity, ssh::Target, targets::Reached, trust::PresentedCertificate,
 };
 
-/// What the server answered.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::sessions) enum Reply {
-    /// The leaf certificate of the TLS handshake, and the security the server chose: TLS,
-    /// NLA or NLA with the early authorisation result.
     Certificate(PresentedCertificate, RdpSecurity),
-    /// The server offers standard RDP security only: there is no certificate.
     Standard,
-    /// The server sent an RDP Negotiation Failure: it refuses what the hub asked for.
     Refused,
 }
 
-/// Asks `target` for `requested` (a set of `x224::PROTOCOL_*` flags) and, when it picks a TLS
-/// protocol, reads its certificate; all within `limit`.
-///
-/// # Errors
-/// [`ReadError`] when the host does not resolve, resolves to a refused address (before any
-/// connection), cannot be reached, does not finish within `limit`, does not answer as an RDP
-/// server ([`ReadError::Unexpected`]) or fails the TLS handshake ([`ReadError::Tls`]).
+/// `requested` is a set of `x224::PROTOCOL_*` flags.
 pub(in crate::fleet::sessions) async fn read_server_certificate(
     target: Target<'_>,
     requested: u32,
@@ -64,8 +48,6 @@ pub(in crate::fleet::sessions) async fn read_server_certificate(
     .await
 }
 
-/// The security setting for the TLS protocol the server chose (`x224::TLS_PROTOCOLS` flags);
-/// none of them is standard RDP security.
 const fn chosen_security(chosen: u32) -> RdpSecurity {
     if chosen & PROTOCOL_HYBRID_EX != 0 {
         RdpSecurity::NlaExt
@@ -76,8 +58,6 @@ const fn chosen_security(chosen: u32) -> RdpSecurity {
     }
 }
 
-/// Sends the Connection Request and reads the Connection Confirm, at most
-/// [`x224::MAX_CONFIRM`] bytes.
 async fn confirm(stream: &mut Reached, requested: u32) -> Result<Negotiated, ReadError> {
     let unexpected = |_| ReadError::Unexpected;
     stream
@@ -91,10 +71,8 @@ async fn confirm(stream: &mut Reached, requested: u32) -> Result<Negotiated, Rea
     x224::negotiated(&body, requested).map_err(|_| ReadError::Unexpected)
 }
 
-/// The TLS handshake on `stream` and the leaf certificate it presented. The connection is
-/// dropped right after, so the server receives nothing beyond the handshake.
 async fn leaf(stream: Reached) -> Result<PresentedCertificate, ReadError> {
-    // A computer of the link has no network address to name: RDP through the link is HM-T14.
+    // A link computer has no network address to name: RDP through the link is HM-T14.
     let peer = stream.network_peer().ok_or(ReadError::Unreachable)?;
     let tls = connector()?
         .connect(server_name(peer), stream)
@@ -108,13 +86,11 @@ async fn leaf(stream: Reached) -> Result<PresentedCertificate, ReadError> {
     Ok(PresentedCertificate::from_der(der))
 }
 
-/// The connected address as the server name: rustls sends no SNI for an IP address, and the
-/// verifier does not judge the name.
+/// rustls sends no SNI for an IP address, and the verifier does not judge the name.
 fn server_name(peer: IpAddr) -> ServerName<'static> {
     ServerName::IpAddress(peer.into())
 }
 
-/// TLS 1.2 and 1.3 with ring, the verifier below, no client certificate and no SNI.
 fn connector() -> Result<TlsConnector, ReadError> {
     let provider = Arc::new(ring::default_provider());
     let verifier = Arc::new(AnyCertificate(provider.clone()));
@@ -128,8 +104,6 @@ fn connector() -> Result<TlsConnector, ReadError> {
     Ok(TlsConnector::from(Arc::new(config)))
 }
 
-/// Accepts any certificate and checks the handshake signatures against it: see the module
-/// comment.
 #[derive(Debug)]
 struct AnyCertificate(Arc<CryptoProvider>);
 

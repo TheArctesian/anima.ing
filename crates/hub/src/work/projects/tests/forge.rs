@@ -1,5 +1,4 @@
-//! The pure rules of a live read: a repository's access from its account and the operator's
-//! choices (PRJ-032), the cut of GitHub's text, and the count of a run's jobs (PRJ-031).
+//! The pure rules of a live read (PRJ-031, PRJ-032).
 
 use provider_github::live::runs::{Conclusion, Job, Jobs, RunStatus};
 

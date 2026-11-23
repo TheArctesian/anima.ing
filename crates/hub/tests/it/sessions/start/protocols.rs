@@ -1,6 +1,4 @@
-//! `startSession` for RDP and VNC (K4 §1): each needs its protocol on; RDP also needs an
-//! accepted server certificate unless its security is `RDP` or the certificate is ignored;
-//! neither needs an SSH host key. A refusal writes nothing.
+//! `startSession` for RDP and VNC (K4 §1).
 
 use anima_hub::fleet::sessions::Live;
 use serde_json::Value;
@@ -13,7 +11,6 @@ use crate::sessions::{
     starting::{display, protocol_start_request, ready, session_audits, session_count},
 };
 
-/// Sets `columns` (an SQL `set` list) on PVE-01's settings `table`.
 async fn set(pool: &PgPool, table: &str, columns: &str) {
     sqlx::query(&format!(
         "update devices.{table} set {columns} where device_id = $1::text::uuid"
@@ -24,7 +21,6 @@ async fn set(pool: &PgPool, table: &str, columns: &str) {
     .unwrap();
 }
 
-/// Accepts a server certificate for PVE-01.
 async fn accept_certificate(pool: &PgPool) {
     sqlx::query(
         "insert into trust.server_certificates (device_id, fingerprint_sha256, \
@@ -40,7 +36,6 @@ async fn accept_certificate(pool: &PgPool) {
     .unwrap();
 }
 
-/// The refusal of a `protocol` start on PVE-01: its code and message.
 async fn refusal(schema: &TestSchema, protocol: &str) -> (Value, Value) {
     let response = schema
         .execute(protocol_start_request(PVE_01, protocol, &display()))
@@ -52,7 +47,6 @@ async fn refusal(schema: &TestSchema, protocol: &str) -> (Value, Value) {
     )
 }
 
-/// The ticket of a `protocol` start on PVE-01, as K1 shapes it.
 async fn ticket(schema: &TestSchema, protocol: &str) -> Value {
     let response = schema
         .execute(protocol_start_request(PVE_01, protocol, &display()))

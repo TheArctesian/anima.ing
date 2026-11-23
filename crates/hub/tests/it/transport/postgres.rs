@@ -16,7 +16,6 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
-/// Splits the client's byte stream into PostgreSQL frontend messages and counts statements.
 #[derive(Default)]
 struct Frames {
     pending: Vec<u8>,
@@ -24,7 +23,6 @@ struct Frames {
 }
 
 impl Frames {
-    /// Feeds bytes; returns how many statements (Bind or Query messages) they completed.
     fn feed(&mut self, bytes: &[u8]) -> usize {
         self.pending.extend_from_slice(bytes);
         let mut statements = 0;
@@ -69,7 +67,6 @@ async fn forward_and_count(client: TcpStream, upstream: Upstream, count: Arc<Ato
     tokio::select! { () = up => {}, _ = down => {} }
 }
 
-/// Where the real database listens: a TCP port or a Unix socket.
 #[derive(Clone)]
 enum Upstream {
     Tcp(String, u16),
@@ -88,7 +85,6 @@ impl Upstream {
     }
 }
 
-/// A pool on the same database whose statements are counted.
 pub(crate) async fn counting_pool(
     hub: &PgPool,
     max_connections: u32,
@@ -111,8 +107,7 @@ pub(crate) async fn counting_pool(
             ));
         }
     });
-    // Preserve password authentication for TCP databases. A Unix socket must be
-    // discarded so the counted connection goes through our TCP proxy instead.
+    // Keep TCP password auth; drop a Unix socket so the connection goes through the TCP proxy.
     let options = if real.get_socket().is_some() {
         PgConnectOptions::new()
     } else {

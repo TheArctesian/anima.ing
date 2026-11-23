@@ -1,8 +1,5 @@
-//! The context of a transfer event (K-E4 Section 12): the roles that the hub stores at the
-//! event, and the evidence for the position of the operator, which is not stored. It is the
-//! result of a pure function of the time of the event and the samples near it, so a sample
-//! that arrives late gives the same answer as one that arrived in time, and a newer position
-//! never replaces it (R-145).
+//! The context of a transfer event (K-E4 Section 12); the evidence for the operator's position is not stored.
+//! The evidence is a pure function of the event time and the samples near it, so a late sample gives the same answer and a newer position never replaces it (R-145).
 
 use std::time::Duration;
 
@@ -15,7 +12,6 @@ use crate::{
     ids::{DeviceId, EventId, PlaceId, SampleId, SiteId},
 };
 
-/// Which way the bytes went, seen from the device.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
     /// From the computer of the client to the device.
@@ -40,15 +36,12 @@ impl Direction {
     }
 }
 
-/// Who started a transfer, from the token of the call. That a device is of the operator is
-/// not evidence that the operator used it.
+/// From the token of the call: that a device is of the operator is not evidence that the operator used it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ActorKind {
-    /// A login of the operator.
     Human,
     /// An AI agent or an API key that declared one.
     Agent,
-    /// The code of Anima.
     System,
 }
 
@@ -79,7 +72,6 @@ impl From<events::ActorKind> for ActorKind {
     }
 }
 
-/// Who started the transfer and from which device of the hub, when the hub knows it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Actor {
     pub kind: ActorKind,
@@ -87,8 +79,7 @@ pub struct Actor {
     pub client_device: Option<DeviceId>,
 }
 
-/// One side of a transfer: a device, its site and the place of that site, as they were at the
-/// event. Each is `None` when the hub did not know it: unknown, not the hub.
+/// Each is `None` when the hub did not know it: unknown, not the hub.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct End {
     pub device: Option<DeviceId>,
@@ -96,7 +87,6 @@ pub struct End {
     pub place: Option<PlaceId>,
 }
 
-/// One row of `locations.transfer_context`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Stored {
     pub event: EventId,
@@ -107,18 +97,15 @@ pub struct Stored {
     pub actor: Actor,
 }
 
-/// How good the evidence for the position of the operator is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Basis {
     /// A sample not more than [`MatchRule::at_the_time`] from the event.
     AtTheTime,
     /// No such sample; the nearest one not more than [`MatchRule::nearest`] from the event.
     NearestInferred,
-    /// No sample near the event.
     Unknown,
 }
 
-/// The evidence for where the operator was at an event.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OperatorEvidence {
     pub basis: Basis,
@@ -149,17 +136,15 @@ pub struct MatchRule {
     pub worst_accuracy_m: f64,
 }
 
-/// The rule of R-145: 2 minutes, 10 minutes, 200 m.
 pub const RULE: MatchRule = MatchRule {
     at_the_time: Duration::from_secs(120),
     nearest: Duration::from_secs(600),
     worst_accuracy_m: 200.0,
 };
 
-/// The radius of the Earth that the distance of two points uses, in metres.
 const EARTH_RADIUS_M: f64 = 6_371_008.8;
 
-/// The distance of two points on the surface, in metres (haversine).
+/// Haversine distance in metres.
 fn distance_m((lat_a, lon_a): (f64, f64), (lat_b, lon_b): (f64, f64)) -> f64 {
     let (phi_a, phi_b) = (lat_a.to_radians(), lat_b.to_radians());
     let half_lat = ((lat_b - lat_a).to_radians() / 2.0).sin();
@@ -168,14 +153,12 @@ fn distance_m((lat_a, lon_a): (f64, f64), (lat_b, lon_b): (f64, f64)) -> f64 {
     2.0 * EARTH_RADIUS_M * h.sqrt().min(1.0).asin()
 }
 
-/// Whether `point` (latitude, longitude) is inside the radius of `centre`.
 #[must_use]
 pub fn inside(centre: &Centre, point: (f64, f64)) -> bool {
     distance_m(point, (centre.latitude, centre.longitude)) <= f64::from(centre.radius_m)
 }
 
-/// The top-level place whose radius contains `point`: the nearest centre when more than one
-/// does.
+/// The nearest centre wins when more than one top-level place contains `point`.
 fn place_at(point: (f64, f64), places: &[Place]) -> Option<PlaceId> {
     places
         .iter()
@@ -189,9 +172,7 @@ fn place_at(point: (f64, f64), places: &[Place]) -> Option<PlaceId> {
         .map(|(_, id)| id)
 }
 
-/// The evidence for where the operator was at `event_at`, from the samples `near` it. The
-/// nearest sample decides; of two at the same distance, the earlier one. A sample with no time
-/// never matches. An inferred or uncertain sample is never a confirmed place.
+/// The nearest sample decides, the earlier on a tie; a sample with no time never matches, and an inferred or uncertain one is never a confirmed place.
 #[must_use]
 pub fn operator_evidence(
     event_at: DateTime<Utc>,

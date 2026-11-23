@@ -1,5 +1,4 @@
-//! `HostKey` as the GraphQL type K1 describes, and the loader behind `SshSettings.hostKey`
-//! (SEC-006, API-005). The key blob is never exposed.
+//! The `HostKey` GraphQL type and its loader (SEC-006, API-005); the key blob is never exposed.
 
 use std::{collections::HashMap, sync::Arc};
 

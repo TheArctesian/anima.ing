@@ -58,7 +58,7 @@ pub enum Source {
     Access,
     Hub,
     Metrics,
-    // The notification dispatcher (NOT-004). K1 names it `NOTIFICATION`.
+    // The notification dispatcher (NOT-004).
     #[graphql(name = "NOTIFICATION")]
     Notifications,
     // The VPN reader's key and node warnings (VPN-010, VPN-011).

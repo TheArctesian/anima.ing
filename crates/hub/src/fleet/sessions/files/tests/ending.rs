@@ -1,6 +1,4 @@
-//! How the files tunnel ends (K4 Sections 8.5 and 9): with its SSH session, at shutdown, on a
-//! client message outside Section 9, on client silence, and when the device stalls; and what
-//! an upload cut short leaves behind.
+//! How the files tunnel ends (K4 Sections 8.5 and 9).
 
 use std::{sync::atomic::Ordering, time::Duration};
 
@@ -74,15 +72,13 @@ async fn ra_032_shutdown_ends_the_files_tunnel_with_1001(pool: PgPool) {
 )]
 async fn log_005_shutdown_returns_only_once_a_transfer_in_flight_is_audited(pool: PgPool) {
     let mut bench = bench(&pool).await;
-    // The device answers the upload's open 500 ms late, so the cut-short transfer is still
-    // being left when the session's own tunnel has long deregistered.
+    // The open is answered 500 ms late, so the transfer outlives the session's own tunnel.
     bench.server.quirks.slow_opens.store(true, Ordering::SeqCst);
     let mut client = bench.open().await;
     client
         .send(r#"{"type":"upload","path":"/late","size":10}"#)
         .await;
     tokio::time::sleep(Duration::from_millis(100)).await;
-    // A stand-in for the terminal tunnel: it deregisters as soon as it is told to end.
     let mut terminal = bench.terminal.take().unwrap();
     let stand_in = tokio::spawn(async move {
         terminal.tunnel.ended().await;

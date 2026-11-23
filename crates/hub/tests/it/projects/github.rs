@@ -1,11 +1,9 @@
-//! GitHub's replies, in GitHub's own shapes, scripted on the loopback stub: the listing, the
-//! file tree and the deployments of each repository.
+//! GitHub's replies in GitHub's own shapes, for the loopback stub.
 
 use serde_json::{Value, json};
 
 use crate::sources::stub::{Reply, Stub};
 
-/// One repository as the installation listing gives it.
 #[derive(Clone)]
 pub struct Repo {
     pub id: u64,
@@ -16,7 +14,7 @@ pub struct Repo {
     pub stars: i32,
     pub language: Option<&'static str>,
     pub size_kib: i32,
-    /// Changes on every listing in GitHub; the hub must not count it as a change.
+    /// GitHub changes it on every listing; the hub does not count it as a change.
     pub updated_at: String,
     /// Text of the repository's owner: hostile by default.
     pub description: String,
@@ -68,15 +66,12 @@ fn ok(body: &Value) -> Reply {
     }
 }
 
-/// The listing holds exactly `repos`.
 pub fn list(stub: &Stub, repos: &[Repo]) {
     let repositories: Vec<Value> = repos.iter().map(Repo::json).collect();
     let body = json!({ "total_count": repos.len(), "repositories": repositories });
     stub.reply("/installation/repositories", ok(&body));
 }
 
-/// The default branch of `full_name` holds the files `paths`, and its deployments are made
-/// by `creators`.
 pub fn files(stub: &Stub, full_name: &str, paths: &[&str], creators: &[&str]) {
     let tree: Vec<Value> = paths
         .iter()
@@ -96,7 +91,6 @@ pub fn files(stub: &Stub, full_name: &str, paths: &[&str], creators: &[&str]) {
     );
 }
 
-/// As [`files`], but GitHub cut the tree short: it says `truncated` and holds only `paths`.
 pub fn truncated_files(stub: &Stub, full_name: &str, paths: &[&str]) {
     files(stub, full_name, &[], &[]);
     let tree: Vec<Value> = paths
@@ -109,7 +103,6 @@ pub fn truncated_files(stub: &Stub, full_name: &str, paths: &[&str]) {
     );
 }
 
-/// The GET requests for the files of `full_name` (its tree or its deployments) so far.
 pub fn reads_of(stub: &Stub, full_name: &str) -> usize {
     let prefix = format!("/repos/{full_name}/");
     stub.gets()
@@ -118,7 +111,6 @@ pub fn reads_of(stub: &Stub, full_name: &str) -> usize {
         .count()
 }
 
-/// The GET requests for the tree of `full_name` so far.
 pub fn tree_reads(stub: &Stub, full_name: &str) -> usize {
     let prefix = format!("/repos/{full_name}/git/trees/");
     stub.gets()

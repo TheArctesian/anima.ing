@@ -1,5 +1,4 @@
-//! The K1 shapes of a project, its repositories and its resources, built from the stored rows
-//! of a set of projects and the standing of their accounts. Pure.
+//! The K1 shapes of a project from its stored rows. Pure.
 
 use std::collections::HashMap;
 

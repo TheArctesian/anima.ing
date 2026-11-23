@@ -1,6 +1,5 @@
-//! The device policy of a compute node through the hub's routes (CMP-002, CAP-010 to CAP-012;
-//! compute plan task L1-5): `devicePolicies` reads the switch "takes work" of the work route and
-//! the last hardware values; `setDevicePolicy` changes the policy and never the switch.
+//! A compute node's device policy (CMP-002, CAP-010 to CAP-012; compute plan task L1-5):
+//! `setDevicePolicy` never changes the switch.
 
 use axum::{
     body::Body,
@@ -21,7 +20,6 @@ const POLICIES: &str = "{ devicePolicies { device { id } memorySharePercent disk
 const SET: &str = "mutation($deviceId: ID!, $input: DevicePolicyInput!) {
     setDevicePolicy(deviceId: $deviceId, input: $input) { takesModelWork stopReason isDefault } }";
 
-/// A claim of `device` on the work route with `switch`; the hub stores the switch.
 async fn claim(daemons: &Daemons, token: &str, device: &str, switch: &str) {
     let body = json!({
         "device": device, "switch": switch, "types": ["build"], "kinds": ["container"],

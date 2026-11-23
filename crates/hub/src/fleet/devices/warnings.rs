@@ -1,4 +1,4 @@
-//! Access warnings: the weak settings the client marks with a badge (RA-020).
+//! RA-020.
 
 #![expect(
     clippy::unused_async_trait_impl,

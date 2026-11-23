@@ -1,6 +1,5 @@
-//! `acceptHostKey` (D-6, SEC-006, LOG-005): the operator confirms the fingerprint of the key a
-//! connection test saw for the device's host and port, and the hub stores that key with an
-//! audit entry, in one transaction.
+//! `acceptHostKey` (D-6, SEC-006, LOG-005): the key and its audit entry are stored in one
+//! transaction.
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -18,22 +17,13 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The key the operator accepts: the device and the fingerprint they compared.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::trust) struct Acceptance {
     pub(in crate::fleet::trust) device: DeviceId,
     pub(in crate::fleet::trust) fingerprint: Fingerprint,
 }
 
-/// Accepts the key a connection test saw at the device's host and port within the last
-/// 15 minutes before `by.at`, when its fingerprint is the one given. The stored key, its
-/// algorithm and fingerprint come from that observation, never from the request. Replacing
-/// a key writes the audit entry `host_key.accept` with the old and new fingerprints; accepting
-/// the key already stored changes nothing and writes nothing.
-///
-/// # Errors
-/// `NotFound` for an unknown device; `Conflict` when no key was seen or it has another
-/// fingerprint; `Database`, `Devices` or `Events` when a dependency fails.
+/// The stored key comes from the connection test's observation, never from the request.
 pub(in crate::fleet::trust) async fn accept_host_key(
     db: &PgPool,
     sightings: &Sightings,

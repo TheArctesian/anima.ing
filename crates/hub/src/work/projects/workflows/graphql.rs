@@ -1,5 +1,4 @@
-//! The workflow roots (K1): a repository's workflows, a page of its runs and one run, with the
-//! jobs of a run when they are selected.
+//! The workflow roots (K1).
 
 use async_graphql::{ComplexObject, Context, ID, Object, Result};
 use provider_github::live::{

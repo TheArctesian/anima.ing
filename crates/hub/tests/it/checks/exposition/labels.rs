@@ -29,7 +29,6 @@ const CHECK_LABELS: [&str; 6] = [
     "site",
 ];
 
-/// The label block of every sample line, without the value.
 fn label_sets(text: &str) -> BTreeSet<String> {
     text.lines()
         .filter(|line| !line.starts_with('#'))

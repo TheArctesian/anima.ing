@@ -1,6 +1,4 @@
-//! PRJ-041, LOG-007: the ticket and the cookie are 32 random bytes as base64url, the states are
-//! derived from the cookie, each is kept only as a hash; and the words the operator reads name
-//! no value.
+//! PRJ-041, LOG-007: each value is kept only as a hash, and the words the operator reads name none.
 
 use proptest::prelude::*;
 

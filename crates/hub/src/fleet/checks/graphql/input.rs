@@ -1,15 +1,6 @@
-//! The inputs of the check mutations as K1 declares them (`CreateCheckInput`,
-//! `UpdateCheckInput` and the configuration inputs below them). They only describe the
-//! shape; `form` turns them into domain values and checks the numbers.
-//!
-//! Input types that never quote what they could not read (LOG-007).
-//!
-//! async-graphql's derived parse errors quote the whole value they could not parse, and the
-//! process log keeps the message of an error without a code. A check input can carry an HTTP
-//! password, a bearer token, a header value, an SNMP community or a v3 password, so every
-//! input that can hold one parses through
-//! [`Opaque`], which replaces any parse error with a fixed `VALIDATION` error. A secret string
-//! moves into a [`Secret`] at parse time ([`SecretText`]), without a copy.
+//! Check mutation inputs (K1); `form` turns them into domain values.
+//! Every input that can hold a secret parses through [`Opaque`], whose error quotes nothing:
+//! async-graphql's derived parse errors quote the whole value (LOG-007).
 
 use std::borrow::Cow;
 
@@ -46,7 +37,6 @@ impl<T: InputType> InputType for Opaque<T> {
     }
 
     fn parse(value: Option<Value>) -> InputValueResult<Self> {
-        // The derived error is dropped unread: its message quotes the input.
         T::parse(value).map(Self).map_err(|_| unreadable())
     }
 

@@ -1,6 +1,4 @@
-//! SNMP secrets whose device host changed after they were entered (SEC-010): the attempt sends
-//! nothing, and the hub removes the secrets and writes one Warning event that tells the
-//! operator to enter them again.
+//! SNMP secrets whose device host changed after they were entered are removed, never sent (SEC-010).
 
 use chrono::{DateTime, Utc};
 
@@ -15,10 +13,7 @@ use crate::fleet::{
     events::{self, ActorKind, NewEvent, Severity, Source},
 };
 
-/// Removes the check's SNMP secrets when they were entered for another host than `host`, the
-/// device's host now, with the event in the same transaction. Nothing is written when the
-/// secrets were entered again for `host` meanwhile. A failed write is logged; the next attempt
-/// tries again, and sends nothing either way.
+/// A failed write is logged; the next attempt tries again, and sends nothing either way.
 pub(super) async fn forget_secrets(
     ctx: &Context,
     (due, device): (&Due, &Device),

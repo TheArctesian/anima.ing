@@ -1,6 +1,4 @@
-//! OD-E14, PRJ-028: each issue change leaves exactly as K-E1 Section 13.3 says, returns K1's
-//! shape read back from GitHub, leaves one audit entry and one event, and drops the held issue
-//! answers so the next list read asks GitHub again.
+//! OD-E14, PRJ-028: each issue change leaves as K-E1 Section 13.3 says.
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -8,14 +6,12 @@ use sqlx::PgPool;
 use super::{COMMENT, CREATE, LIST, SET_OPEN, answer, audits, body, closed, comment, events, sent};
 use crate::projects::forge::{Forge, forge, issue};
 
-/// Reads the issue list once, so a held answer is there to drop.
 async fn listed(forge: &Forge) {
     forge.ok("/issues", &json!([issue(1)]));
     let response = forge.ask(LIST, json!({})).await;
     assert!(response["errors"].is_null(), "{response}");
 }
 
-/// The one audit entry, as stored, after a done change.
 async fn one_entry(forge: &Forge) -> Value {
     let entries = audits(&forge.kit.pool).await;
     assert_eq!(entries.len(), 1, "{entries:?}");
@@ -29,7 +25,6 @@ async fn one_entry(forge: &Forge) -> Value {
     entry
 }
 
-/// The list read after the change asks GitHub again: its held answer was dropped.
 async fn asked_again(forge: &Forge) {
     let response = forge.ask(LIST, json!({})).await;
     assert!(response["errors"].is_null(), "{response}");

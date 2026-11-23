@@ -1,5 +1,4 @@
-//! Failed attempts over several ticks: retries, missed pushes, unreadable secrets,
-//! maintenance and how soon a stopped device shows Down (CHK-002, CHK-006, SEC-003).
+//! Retries, missed pushes, unreadable secrets and maintenance over ticks (CHK-002, CHK-006, SEC-003).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -28,7 +27,6 @@ async fn tick_at(scheduler: &mut Scheduler, at: DateTime<Utc>) {
     scheduler.finish_running(at).await;
 }
 
-/// An active manual window on one target.
 async fn window_on(pool: &PgPool, target_type: &str, target: String) {
     let window = uuid::Uuid::now_v7();
     sqlx::query(
@@ -61,7 +59,6 @@ async fn last_message(pool: &PgPool, id: CheckId) -> Option<String> {
     .unwrap()
 }
 
-/// An HTTP check to a closed local port, its password sealed with another key.
 fn http_with_password() -> Definition {
     Definition::Http(HttpInput {
         url: format!("http://127.0.0.1:{}/", closed_port()),
@@ -82,7 +79,6 @@ fn http_with_password() -> Definition {
     })
 }
 
-/// A closed-port check on the device in the group, with no retries.
 async fn child_of(pool: &PgPool, text: &str) -> (CheckId, CheckId) {
     let device = on_loopback(pool, text).await;
     let group = Definition::Config(CheckConfig::Group);
@@ -92,7 +88,6 @@ async fn child_of(pool: &PgPool, text: &str) -> (CheckId, CheckId) {
     (group, add_check(pool, child).await)
 }
 
-/// A service port on 127.0.0.1 that accepts until the device stops.
 struct Host {
     port: u16,
     accepting: JoinHandle<()>,
@@ -110,15 +105,13 @@ impl Host {
         Self { port, accepting }
     }
 
-    /// Stops the device: the listener closes, so every connect is refused.
     async fn stop(self) {
         self.accepting.abort();
         assert!(self.accepting.await.unwrap_err().is_cancelled());
     }
 }
 
-/// What one tick showed: seconds after the last Up beat, the beat recorded, the check's
-/// status, the device's status (the card, CHK-004) and the device statuses published.
+/// One tick: seconds after the last Up beat, the beat, check status, card status (CHK-004), published statuses.
 type Step = (i64, String, Status, Status, Vec<Status>);
 
 fn published(receiver: &mut Receiver<Signal>) -> Vec<Status> {
@@ -130,8 +123,6 @@ fn published(receiver: &mut Receiver<Signal>) -> Vec<Status> {
         .collect()
 }
 
-/// Ticks the scheduler at each due time it stored, never earlier, until the check is Down.
-/// A tick one second before each due time must do nothing.
 async fn follow_until_down(
     pool: &PgPool,
     scheduler: &mut Scheduler,
@@ -173,10 +164,7 @@ async fn follow_until_down(
 }
 
 tick_test! {
-    // CHK-002 with the default settings (spec 6.4): the card stays
-    // Up through the retries and changes to Down on the tick 2 intervals after the last Up
-    // beat, through the signal the `deviceStatusChanged` subscription reads (CHK-001,
-    // CHK-002, CHK-004, LOG-004, LOG-010, DEV-002).
+    // Spec 6.4 defaults, read through `deviceStatusChanged` (CHK-001, CHK-004, LOG-004, LOG-010, DEV-002).
     async fn chk_002_a_stopped_device_shows_down_within_2_intervals_with_the_defaults(pool: PgPool) {
         let host = Host::start().await;
         let device = on_loopback(&pool, DOCKER_HOST).await;

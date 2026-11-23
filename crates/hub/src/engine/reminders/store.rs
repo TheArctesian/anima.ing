@@ -1,5 +1,3 @@
-//! All SQL on schema `reminders`: I/O only.
-
 use std::collections::HashSet;
 
 use chrono::{DateTime, Utc};
@@ -113,7 +111,6 @@ pub(super) async fn insert_rule(
     .map(drop)
 }
 
-/// Each rule that is enabled, oldest first.
 pub(super) async fn enabled_rules(conn: &mut PgConnection) -> Result<Vec<StoredRule>, sqlx::Error> {
     let rows: Vec<RuleRow> = sqlx::query_as(&format!(
         "SELECT {RULE} FROM reminders.rule WHERE enabled ORDER BY created_at, id"
@@ -123,8 +120,6 @@ pub(super) async fn enabled_rules(conn: &mut PgConnection) -> Result<Vec<StoredR
     rows.into_iter().map(TryInto::try_into).collect()
 }
 
-/// What `rule` sent before: the last firing that was not suppressed, the count of them since
-/// `day_start`, and each subject that fired.
 pub(super) async fn history(
     conn: &mut PgConnection,
     rule: ReminderRuleId,
@@ -150,8 +145,7 @@ pub(super) async fn history(
     })
 }
 
-/// Stores one firing: `pending`, or `suppressed` with its reason. `false` when the rule has a
-/// firing for this subject, which then stays as it is.
+/// `false` when the rule has a firing for this subject, which then stays as it is.
 pub(super) async fn insert_firing(
     conn: &mut PgConnection,
     due: &Due,
@@ -201,7 +195,6 @@ pub(super) async fn known(
     .await
 }
 
-/// Keeps `at` (and `value`) for `(sort, name)` when it is newer than what is stored.
 pub(super) async fn remember(
     conn: &mut PgConnection,
     (sort, name): (&str, &str),
@@ -222,7 +215,6 @@ pub(super) async fn remember(
     .map(drop)
 }
 
-/// The class whose stored text is `text`.
 fn class(text: &str) -> Option<Class> {
     match text {
         "A" => Some(Class::A),
@@ -232,7 +224,6 @@ fn class(text: &str) -> Option<Class> {
     }
 }
 
-/// A firing with the state of its rule, locked for the send.
 #[derive(sqlx::FromRow)]
 pub(super) struct FiringRow {
     pub id: FiringId,
@@ -263,8 +254,6 @@ pub(super) async fn firing_for_send(
     .await
 }
 
-/// Sets the state of a firing: `sent` with its time, or `suppressed` with its reason and no
-/// time of a send.
 pub(super) async fn decide(
     conn: &mut PgConnection,
     id: FiringId,
@@ -285,7 +274,6 @@ pub(super) async fn decide(
     .map(drop)
 }
 
-/// The firings that wait for a send at `now`: pending, or snoozed until a time that passed.
 pub(super) async fn waiting(
     conn: &mut PgConnection,
     now: DateTime<Utc>,

@@ -1,10 +1,6 @@
-//! What a change the hub sent to GitHub leaves behind: one audit entry and one event, whatever
-//! came of it (PRJ-028; K-E1 Section 13.6). A change that was not sent leaves nothing. Pure.
-//!
-//! The entry names the function, the repository's checked `owner/name`, the target by its
-//! number, the outcome and the numbers, commit, method, branch or context that fit. Never a
-//! title, a body, a label, an input value or GitHub's reply (LOG-007). The event's words name
-//! the project by its slug, which the hub made.
+//! One audit entry and one event for each change sent to GitHub, whatever came of it (PRJ-028;
+//! K-E1 Section 13.6). Never a title, a body, a label, an input value or GitHub's reply
+//! (LOG-007); the event names the project by its slug, which the hub made.
 
 use serde_json::{Map, Value, json};
 use source_exchange::{
@@ -16,7 +12,6 @@ use crate::{
     ids::RepositoryId,
 };
 
-/// The entry of `change`, sent to `repository` of the project `slug`, that came to `settled`.
 #[must_use]
 pub fn entry(
     change: &Change,
@@ -66,7 +61,6 @@ pub fn entry(
     }
 }
 
-/// The audit action of each function (K-E1 Section 13.6).
 #[must_use]
 pub const fn action(change: &Change) -> AuditAction {
     match change {
@@ -82,7 +76,6 @@ pub const fn action(change: &Change) -> AuditAction {
     }
 }
 
-/// `done`, `refused`, `limited` or `unknown`.
 #[must_use]
 pub const fn outcome(settled: &Settled) -> &'static str {
     match settled {
@@ -93,7 +86,6 @@ pub const fn outcome(settled: &Settled) -> &'static str {
     }
 }
 
-/// The event's words for the outcome.
 const fn said(settled: &Settled) -> &'static str {
     match settled {
         Settled::Done(_) => "done",
@@ -117,8 +109,6 @@ const fn refusal_kind(refusal: Refusal) -> &'static str {
     }
 }
 
-/// What the change was made to, by number: `issue#3`, `pull_request#12`, `run#…`,
-/// `workflow#…` or `commit#…`. A new issue is `issue#new` until GitHub gave its number.
 #[must_use]
 pub fn target(change: &Change, settled: &Settled) -> String {
     match change {
@@ -138,8 +128,8 @@ pub fn target(change: &Change, settled: &Settled) -> String {
     }
 }
 
-/// The checked parts that fit the function. No text the operator wrote but a branch name and
-/// a status context, which the parts bound; of a start's inputs only their count.
+/// No text the operator wrote but a branch name and a status context, which the parts bound;
+/// of a start's inputs only their count.
 fn details(change: &Change, record: &mut Map<String, Value>) {
     let fields = match change {
         Change::CreateIssue { labels, .. } => json!({ "labels": labels.as_slice().len() }),

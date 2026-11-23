@@ -1,6 +1,5 @@
-//! The cookie on the `GET /graphql` WebSocket upgrade: a socket from the public origin may sign
-//! in with an empty `connection_init`, any other origin is refused with 4403, and the payload's
-//! bearer still signs the desktop app in (D-3, K7, A-3).
+//! The `GET /graphql` WebSocket upgrade signs in by cookie only from the public origin; any other
+//! origin is refused with 4403 (D-3, K7, A-3).
 
 use std::{
     net::SocketAddr,

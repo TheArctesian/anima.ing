@@ -1,5 +1,4 @@
-//! Sites on the tailnet's own range are reached directly and are not router sites; nor are sites
-//! over the hub's own container networks (VP-13).
+//! Tailnet-range and hub container-network sites are not router sites (VP-13).
 
 use super::{now, site, status};
 use crate::fleet::vpn::Picture;

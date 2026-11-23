@@ -1,7 +1,4 @@
-//! PRJ-039, PRJ-018, SRC-008: the whole flow through the hub's pages and GitHub's redirects
-//! ends with one account, one sealed key and a first run; the poll finds an installation when
-//! the browser never comes back; a replayed `/created` converts once; a forged installation is
-//! ignored.
+//! The GitHub App registration flow (PRJ-039, PRJ-018, SRC-008).
 
 use std::time::Duration;
 
@@ -31,7 +28,6 @@ async fn stored(pool: &PgPool) -> (i64, i64, i64) {
     .unwrap()
 }
 
-/// Waits until `githubConnect` shows `phase`.
 async fn until_phase(served: &Served, phase: &str) -> Value {
     for _ in 0..200 {
         let attempt = shown(&served.kit).await;
@@ -46,7 +42,6 @@ async fn until_phase(served: &Served, phase: &str) -> Value {
     );
 }
 
-/// Waits until the first run has ended.
 async fn first_run_ended(pool: &PgPool) {
     for _ in 0..200 {
         let ended: i64 = sqlx::query_scalar(
@@ -63,7 +58,6 @@ async fn first_run_ended(pool: &PgPool) {
     panic!("the first run did not end");
 }
 
-/// A browser bound by a fresh link, at GitHub with S1.
 pub async fn at_github(served: &Served) -> (Browser, String) {
     let id = started(&served.kit).await;
     let link = link(&served.kit, &id).await;

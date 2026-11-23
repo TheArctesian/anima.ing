@@ -1,6 +1,5 @@
-//! The places GraphQL part: `Query.places`, `Query.place` and the six place mutations (K1;
-//! PLC-001 to PLC-006). Each change writes its row, its audit entry and its event in one
-//! transaction.
+//! The places GraphQL part (K1; PLC-001 to PLC-006). Each change writes its row, its audit
+//! entry and its event in one transaction.
 
 use async_graphql::{
     Context, Error as GraphQlError, ErrorExtensions, ID, Object, Result, SimpleObject, Value, value,

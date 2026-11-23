@@ -1,9 +1,4 @@
-//! The device's SSH server on loopback, a `russh` server in the test (K4 Section 7): it
-//! presents its host key, accepts one password (by `password` or, when told, by
-//! `keyboard-interactive` only), grants or refuses the PTY and the shell, can hold the
-//! sign-in, the PTY answer or the client's input until released, and tells the test
-//! everything the hub asked of it (`device`). The test drives the shell's side through
-//! `FakeSsh`.
+//! The device's SSH server on loopback, a `russh` server in the test (K4 Section 7).
 
 mod device;
 mod rounds;
@@ -29,14 +24,11 @@ use crate::fleet::{sessions::tests::fixture::PASSWORD, trust::PublicKey};
 
 /// The user `docker-host`'s SSH settings name in the devices fixture.
 const USER: &str = "operator";
-/// The channel window the server grants when it holds the client's input: the hub can send
-/// this much before its write waits.
+/// The hub can send this much before its write waits on held input.
 const INPUT_WINDOW: u32 = 4096;
 
-/// What the hub asked of the server, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum Heard {
-    /// An authentication request by this method (`password`, `keyboard-interactive`, ...).
     Auth(&'static str),
     Pty {
         term: String,
@@ -56,7 +48,6 @@ pub(super) enum Heard {
     Forbidden(&'static str),
 }
 
-/// The server's keyboard-interactive rounds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Prompts {
     /// One round of this many prompts.
@@ -67,20 +58,15 @@ pub(super) enum Prompts {
     Rounds(usize),
 }
 
-/// What the server holds until the test calls [`FakeSsh::release`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Hold {
     Nothing,
-    /// The answer to the password.
     SignIn,
-    /// The answer to the PTY request.
     Pty,
-    /// Its reading of the client's input, after the first packet; its window is small, so
-    /// the hub's write waits on it.
+    /// The client's input after the first packet; the small window makes the hub's write wait.
     Input,
 }
 
-/// The channels the hub opened, the channel of each request, and the channels it closed.
 #[derive(Debug, Default)]
 pub(super) struct Ledger {
     pub(super) opened: Vec<(&'static str, ChannelId)>,
@@ -88,16 +74,13 @@ pub(super) struct Ledger {
     pub(super) closed: Vec<ChannelId>,
 }
 
-/// How the server behaves.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Script {
-    /// The one password it accepts.
     pub(super) password: &'static str,
     /// It offers `keyboard-interactive` only, and takes the password as the prompt's answer.
     pub(super) prompts_only: bool,
     pub(super) refuse_pty: bool,
     pub(super) refuse_shell: bool,
-    /// Its keyboard-interactive rounds.
     pub(super) prompts: Prompts,
     pub(super) hold: Hold,
 }
@@ -115,7 +98,6 @@ impl Default for Script {
     }
 }
 
-/// The server's port and host key, what the hub asked of it, and its open shell.
 pub(super) struct FakeSsh {
     pub(super) port: u16,
     pub(super) key: PublicKey,
@@ -126,7 +108,6 @@ pub(super) struct FakeSsh {
     gate: watch::Sender<bool>,
 }
 
-/// Starts a server presenting the ed25519 key made from `seed`, behaving as `script`.
 pub(super) async fn fake_ssh(seed: u8, script: Script) -> FakeSsh {
     let host_key = PrivateKey::from(Ed25519Keypair::from_seed(&[seed; 32]));
     let key = PublicKey::from_blob(host_key.public_key().to_bytes().unwrap()).unwrap();
@@ -197,20 +178,17 @@ impl FakeSsh {
             .expect("the shell is open")
     }
 
-    /// The shell writes `bytes` to its standard output.
     pub(super) async fn say(&self, bytes: &[u8]) {
         self.try_say(bytes)
             .await
             .expect("the shell's output is read");
     }
 
-    /// The shell writes `bytes` to its standard output; `Err` once the connection is gone.
     pub(super) async fn try_say(&self, bytes: &[u8]) -> Result<(), ()> {
         let (handle, channel) = self.shell();
         handle.data(channel, bytes.to_vec()).await.map_err(|_| ())
     }
 
-    /// The shell writes `bytes` to its standard error.
     pub(super) async fn complain(&self, bytes: &[u8]) {
         let (handle, channel) = self.shell();
         handle
@@ -219,7 +197,6 @@ impl FakeSsh {
             .unwrap();
     }
 
-    /// The shell exits with status 0, as `exit` does: exit status, EOF, channel close.
     pub(super) async fn exit(&self) {
         let (handle, channel) = self.shell();
         handle.exit_status_request(channel, 0).await.unwrap();
@@ -233,14 +210,10 @@ impl FakeSsh {
         socket.shutdown(Shutdown::Both).unwrap();
     }
 
-    /// Lets go of what the script holds.
     pub(super) fn release(&self) {
         self.gate.send_replace(true);
     }
 
-    /// The shell opens a channel of each kind towards the hub; each answer, in order:
-    /// session, X11, agent, direct TCP/IP, forwarded TCP/IP, direct and forwarded
-    /// stream-local.
     pub(super) async fn open_channels(&self) -> Vec<Result<Channel<Msg>, russh::Error>> {
         let (handle, _) = self.shell();
         vec![
@@ -260,13 +233,11 @@ impl FakeSsh {
         ]
     }
 
-    /// The shell opens an X11 channel towards the hub; `true` when the hub accepted it.
     pub(super) async fn open_x11(&self) -> bool {
         let (handle, _) = self.shell();
         handle.channel_open_x11("127.0.0.1", 6010).await.is_ok()
     }
 
-    /// The next thing the hub asked of the server.
     pub(super) async fn next(&mut self) -> Heard {
         tokio::time::timeout(super::WAIT, self.heard.recv())
             .await
@@ -274,7 +245,6 @@ impl FakeSsh {
             .expect("the server is running")
     }
 
-    /// The next thing the hub asked that is not an authentication request.
     pub(super) async fn next_after_sign_in(&mut self) -> Heard {
         loop {
             match self.next().await {
@@ -284,7 +254,6 @@ impl FakeSsh {
         }
     }
 
-    /// What the server heard so far, without waiting.
     pub(super) fn heard_so_far(&mut self) -> Vec<Heard> {
         std::iter::from_fn(|| self.heard.try_recv().ok()).collect()
     }
