@@ -107,7 +107,7 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
     const newer = place.updates.length === 0 ? null : group.rows.filter((row) => row.update?.newer === true).length;
     if (group.project !== NO_PROJECT && view === 'applications') {
       const needsYou = group.tone !== 'up';
-      const started = place.containers.find((container) => container.composeProject === group.project && (container.composeWorkingDir != null || container.composeFiles.length > 0));
+      const members = place.containers.filter((container) => container.composeProject === group.project);
       return [
         {
           key: `${place.id}/project/${group.project}`,
@@ -119,8 +119,8 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
           managed: false,
           newer,
           containers: group.rows,
-          folder: started?.composeWorkingDir ?? null,
-          files: started?.composeFiles ?? [],
+          folder: members.find((container) => container.composeWorkingDir != null)?.composeWorkingDir ?? null,
+          files: members.find((container) => container.composeFiles.length > 0)?.composeFiles ?? [],
         },
       ];
     }
