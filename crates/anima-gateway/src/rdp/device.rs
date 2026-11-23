@@ -1,8 +1,4 @@
-//! One signed-in RDP device: its messages into the screen copy, and the client's input
-//! and clipboard as messages for it. `IronRDP` decodes and encodes; this file joins it to
-//! the gateway's screen, keys, pointer and clipboard.
-//!
-//! No I/O: the session reads the device's messages and writes what this gives back.
+//! One signed-in RDP device, joined to the gateway's screen, keys, pointer and clipboard; no I/O.
 
 use ironrdp_cliprdr::CliprdrClient;
 use ironrdp_cliprdr::pdu::{ClipboardFormat, FormatDataResponse};
@@ -33,15 +29,11 @@ pub struct Malformed;
 pub enum Event {
     /// Write these bytes to the device.
     Send(Vec<u8>),
-    /// The screen copy has a new size.
     Resized,
-    /// The device said this on the clipboard channel.
     Clipboard(Said),
-    /// The device ended the session.
     Ended,
 }
 
-/// The device's session, after the opening.
 pub struct Device {
     pub(super) stage: ActiveStage,
     /// `IronRDP`'s picture of the screen, which it decodes into.
@@ -51,14 +43,12 @@ pub struct Device {
     pub(super) reactivating: Option<ConnectionActivationSequence>,
     keyboard: Keyboard,
     pointer: Pointer,
-    /// Where the pointer is on the device's screen.
     pointer_at: (u16, u16),
     guard: ChannelGuard,
 }
 
 impl Device {
-    /// The device from the result of its opening. The caller has checked the size of its
-    /// screen.
+    /// The device from the result of its opening, whose screen size the caller has checked.
     #[must_use]
     pub fn new(opened: ConnectionResult) -> Self {
         let size = opened.desktop_size;
@@ -121,7 +111,6 @@ impl Device {
         self.follow(outputs, screen)
     }
 
-    /// What `IronRDP` made of a message or of the client's input.
     fn follow(
         &mut self,
         outputs: Vec<ActiveStageOutput>,
@@ -134,8 +123,7 @@ impl Device {
                 ActiveStageOutput::GraphicsUpdate(area) => {
                     drawing::draw(&self.image, &area, screen)?;
                 }
-                // A device that sends the session to another host: the hub checked this one
-                // only, so the session ends.
+                // The hub checked this host only, so a redirection ends the session.
                 ActiveStageOutput::Terminate(_) | ActiveStageOutput::ServerRedirection(_) => {
                     events.push(Event::Ended);
                 }
@@ -152,9 +140,7 @@ impl Device {
         Ok(events)
     }
 
-    /// Releases the keys and buttons that are down. The device does not listen while
-    /// it exchanges capabilities, so a release in that time is lost: after the exchange
-    /// nothing is left down on the device.
+    /// Releases held keys and buttons, as a release sent while the device exchanges capabilities is lost.
     fn release_held(&mut self, screen: &mut Screen) -> Result<Vec<Event>, Malformed> {
         let keys = self.keyboard.release_all().into_iter().map(input::key);
         let at = self.pointer_at;
@@ -176,7 +162,6 @@ impl Device {
         events: &[FastPathInputEvent],
         screen: &mut Screen,
     ) -> Result<Vec<Event>, Malformed> {
-        // The device is not listening while it exchanges capabilities again.
         if self.reactivating.is_some() {
             return Ok(Vec::new());
         }
@@ -235,16 +220,13 @@ impl Device {
         self.send_input(&events, screen)
     }
 
-    /// Asks the device for a screen of this size (see `screen_for`). `None` when the
-    /// device cannot be asked now: it has no channel for it yet, or is changing its
-    /// screen.
+    /// Asks the device for a screen of this size; `None` while it has no channel or changes its screen.
     pub fn resize(&mut self, (width, height): (u16, u16)) -> Option<Vec<u8>> {
         if self.reactivating.is_some() {
             return None;
         }
         let (width, height) = (u32::from(width), u32::from(height));
-        // xrdp 0.10 stops when a request has no physical size: always send one, in
-        // millimetres at 96 pixels for an inch.
+        // xrdp 0.10 stops on a request with no physical size; millimetres at 96 pixels an inch.
         let millimetres = |pixels: u32| pixels * 254 / 960;
         let physical = Some((millimetres(width), millimetres(height)));
         self.stage
@@ -252,8 +234,7 @@ impl Device {
             .ok()
     }
 
-    /// Tells the device whether the client's clipboard holds text. `None` when the
-    /// channel is not open.
+    /// Tells the device whether the client's clipboard holds text; `None` when the channel is not open.
     pub fn offer_text(&mut self, has_text: bool) -> Option<Vec<u8>> {
         let formats: Vec<_> = has_text
             .then(|| ClipboardFormat::new(TEXT))
@@ -264,15 +245,13 @@ impl Device {
         self.stage.process_svc_processor_messages(messages).ok()
     }
 
-    /// Asks the device for the text that was copied on it.
     pub fn ask_for_text(&mut self) -> Option<Vec<u8>> {
         let channel = self.stage.get_svc_processor_mut::<CliprdrClient>()?;
         let messages = channel.initiate_paste(TEXT).ok()?;
         self.stage.process_svc_processor_messages(messages).ok()
     }
 
-    /// Answers the device's request for the client's text; with `None` there is none
-    /// for it.
+    /// Answers the device's request for the client's text; `None` gives it none.
     pub fn give_text(&mut self, text: Option<&str>) -> Option<Vec<u8>> {
         let response = text.map_or_else(
             FormatDataResponse::new_error,

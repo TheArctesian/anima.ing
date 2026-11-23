@@ -1,4 +1,4 @@
-//! The rights of the services of a recipe (SF-224): each fault gives its own reason.
+//! SF-224.
 
 use super::{codes, sound, with_compose};
 use crate::{Code, Privilege, Recipe, check};
@@ -7,12 +7,10 @@ const VARIABLE: &str = "      SECRET: ${NOTES_SECRET}";
 const DROP_ALL: &str = "    cap_drop:\n      - ALL\n";
 const EXCEPTION_DROP: &str = "    cap_drop:\n      - AUDIT_WRITE\n      - FSETID\n      - KILL\n      - MKNOD\n      - NET_BIND_SERVICE\n      - NET_RAW\n      - SETFCAP\n      - SETPCAP\n      - SYS_CHROOT\n";
 
-/// [`sound`] with one more variable in the environment of its service.
 fn with_variable(line: &str) -> Recipe {
     with_compose(VARIABLE, &format!("{VARIABLE}\n      {line}"))
 }
 
-/// [`sound`] whose entry names the exception of an init as root.
 fn with_exception(recipe: Recipe) -> Recipe {
     Recipe {
         entry: recipe.entry.map(|text| {

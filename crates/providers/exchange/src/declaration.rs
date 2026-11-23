@@ -37,7 +37,7 @@ impl Declaration {
     }
 }
 
-/// How the hub gets a token for the source. More variants arrive by contract change.
+/// How the hub gets a token for the source.
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum Acquisition {
@@ -68,7 +68,6 @@ pub enum Minting {
 pub struct AppKey {
     /// The path to `POST` for an installation, below `api_base`.
     pub mint_path: fn(installation: &str) -> String,
-    /// Reads the mint reply.
     pub parse_minted: fn(body: &[u8]) -> Result<Minted, Problem>,
     /// `Some`: the hub can make the App for the operator (PRJ-039).
     pub registration: Option<Registration>,

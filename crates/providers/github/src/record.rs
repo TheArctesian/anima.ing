@@ -20,14 +20,13 @@ pub struct Repository {
     pub original: Value,
 }
 
-/// Where a sign was found.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Origin {
     Tree,
     Deployments,
 }
 
-/// What a repository shows about where it runs. The order is the order of the output.
+/// The order is the order of the output.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SignKind {
     WranglerConfig,
@@ -38,7 +37,7 @@ pub enum SignKind {
     TauriConf,
 }
 
-/// One sign. `path` is `None` for a deployment record.
+/// `path` is `None` for a deployment record.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sign {
     pub kind: SignKind,

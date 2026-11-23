@@ -1,13 +1,12 @@
-//! What the recipe of one image holds: the decisions of the form, before any text is written.
+//! The decisions of one image's recipe, before any text is written.
 
 use compose_rules::forms::{is_name, is_target};
 
 use super::{Config, Image, Unfit};
 use crate::{ANIMA_PORTS, entry::Protocol, example::is_secret_name};
 
-/// The images that are a shell (Section 15.7 of the proposal), each with the variables of the
-/// credential that the install makes. The class comes from this fixed list, never from the data
-/// of the publisher. An image with no such variable cannot be installed from the hub.
+/// The shell images (Section 15.7 of the proposal) with their credential variables. The class
+/// comes from this fixed list, never from the data of the publisher.
 const SHELL: [(&str, &[&str]); 7] = [
     ("code-server", &["PASSWORD"]),
     ("openvscode-server", &["CONNECTION_TOKEN"]),
@@ -19,21 +18,16 @@ const SHELL: [(&str, &[&str]); 7] = [
 ];
 /// The images whose hardware decoding needs `/dev/dri`, which their data gives only in text.
 pub(super) const HARDWARE_DECODING: [&str; 2] = ["jellyfin", "plex"];
-/// The device of hardware decoding.
 const RENDER_DEVICE: &str = "/dev/dri";
 /// `PUID` and `PGID`: the user of the init after the start, never root.
 const NON_ROOT: &str = "1000";
-/// The time zone when the person gives none.
 const ZONE: &str = "Etc/UTC";
-/// The lowest port of the machine that the rules permit, and the step of a port below it.
 const LOWEST_PORT: u16 = 1024;
 const PORT_STEP: u16 = 8000;
 /// The variables of the init that get or install code at the start.
 const MODS: [&str; 3] = ["DOCKER_MODS", "INSTALL_PACKAGES", "INSTALL_PIP_PACKAGES"];
-/// The start of a placeholder path of the machine in the data of the publisher.
 const PLACEHOLDER: &str = "/path/to/";
 
-/// The value of one variable.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum Value {
     /// Written in the Compose file: `PUID`, `PGID`, `VERSION`.
@@ -44,23 +38,19 @@ pub(super) enum Value {
     Generated,
 }
 
-/// One variable of the service.
 #[derive(Clone, Debug)]
 pub(super) struct Setting {
     pub name: String,
     pub value: Value,
 }
 
-/// One published port.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Published {
     pub target: u16,
-    /// The port on the machine.
     pub on_machine: u16,
     pub protocol: Protocol,
 }
 
-/// The recipe of one image as decisions.
 #[derive(Clone, Debug)]
 pub(super) struct Plan {
     /// The name of the service, which is also the identifier of the entry.
@@ -74,7 +64,6 @@ pub(super) struct Plan {
     pub shell: bool,
 }
 
-/// The reason of the first need of `config` that no setting of the form can meet.
 fn refusal(config: &Config) -> Option<Unfit> {
     let required = |optional: bool| !optional;
     if config.privileged {
@@ -138,8 +127,6 @@ fn is_placeholder(host_path: &str) -> bool {
     host_path.is_empty() || host_path.starts_with(PLACEHOLDER)
 }
 
-/// A name of the rules from a name of the publisher: small letters, and `-` for each other
-/// character.
 fn named(text: &str) -> String {
     text.chars()
         .map(|character| match character.to_ascii_lowercase() {
@@ -149,7 +136,6 @@ fn named(text: &str) -> String {
         .collect()
 }
 
-/// A name of a variable that an environment file can hold.
 fn is_variable(name: &str) -> bool {
     name.bytes()
         .next()
@@ -166,8 +152,6 @@ fn setting(name: &str, value: Value) -> Setting {
     }
 }
 
-/// `PUID`, `PGID` and `TZ` first, then each variable that is not optional, then each variable of
-/// the credential of a shell.
 fn settings(config: &Config, credential: &[&str]) -> Result<Vec<Setting>, Unfit> {
     let mut found = vec![
         setting("PUID", Value::Fixed(NON_ROOT)),
@@ -201,7 +185,6 @@ fn settings(config: &Config, credential: &[&str]) -> Result<Vec<Setting>, Unfit>
     Ok(found)
 }
 
-/// Each volume of a placeholder path, as a named volume.
 fn volumes(config: &Config) -> Result<Vec<(String, String)>, Unfit> {
     let mut found: Vec<(String, String)> = Vec::new();
     for volume in config
@@ -219,8 +202,7 @@ fn volumes(config: &Config) -> Result<Vec<(String, String)>, Unfit> {
     Ok(found)
 }
 
-/// The port of the machine for the port `external` of the publisher: below 1024 it moves up by
-/// 8000, and a port of Anima (SF-252) or a port in `taken` moves to the next free port.
+/// A port of Anima (SF-252) or of `taken` moves to the next free port.
 fn on_machine(external: u16, taken: &[u16]) -> Option<u16> {
     let mut moved = if external < LOWEST_PORT {
         external + PORT_STEP
@@ -233,8 +215,7 @@ fn on_machine(external: u16, taken: &[u16]) -> Option<u16> {
     Some(moved)
 }
 
-/// True when the name of the image has only lower-case letters, digits and '-': the name
-/// reaches the `image:` line and a comment of the Compose file (SF-252).
+/// The name reaches the `image:` line and a comment of the Compose file (SF-252).
 fn is_image_name(name: &str) -> bool {
     !name.is_empty()
         && name
@@ -242,8 +223,6 @@ fn is_image_name(name: &str) -> bool {
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
 }
 
-/// Each port that is not optional; a port of the machine below 1024 moves up by 8000, and a
-/// port of Anima or of `taken` moves to the next free port.
 fn ports(config: &Config, taken: &[u16]) -> Result<Vec<Published>, Unfit> {
     let mut found: Vec<Published> = Vec::new();
     for port in config.ports.iter().filter(|port| !port.optional) {
@@ -273,7 +252,6 @@ fn ports(config: &Config, taken: &[u16]) -> Result<Vec<Published>, Unfit> {
     Ok(found)
 }
 
-/// The recipe of `image` as decisions, or the reason that it cannot fit.
 pub(super) fn plan(image: &Image, taken: &[u16]) -> Result<Plan, Unfit> {
     let config = &image.config;
     if config.env_vars.is_empty() && config.volumes.is_empty() && config.ports.is_empty() {

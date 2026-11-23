@@ -1,29 +1,20 @@
-//! Pixels as numbers into a short list of colours. Text and window content have few
-//! colours, and a PNG that stores one to eight bits for a pixel, not twenty-four, is
-//! several times smaller.
+//! Text and window content have few colours, so a palette PNG of 1 to 8 bits a pixel is smaller.
 
 use std::collections::HashMap;
 
 use crate::screen::BYTES_PER_PIXEL;
 
-/// The most colours a PNG palette holds.
 const MOST_COLOURS: usize = 256;
 
 type Colour = [u8; BYTES_PER_PIXEL];
 
-/// An area's pixels by palette number.
 pub(super) struct Indexed {
-    /// The palette: each colour's red, green and blue, in number order.
     pub(super) colours: Vec<u8>,
-    /// The bits for one pixel: 1, 2, 4 or 8.
     pub(super) depth: u8,
-    /// The rows, each packed from the highest bit and filled up to a whole byte.
     pub(super) rows: Vec<u8>,
 }
 
 impl Indexed {
-    /// The pixels of `rgb`, in rows of `width`, by palette number; `None` when they have
-    /// more colours than a palette holds.
     pub(super) fn of(rgb: &[u8], width: usize) -> Option<Self> {
         let (pixels, _) = rgb.as_chunks::<BYTES_PER_PIXEL>();
         let mut numbers: HashMap<Colour, u8> = HashMap::new();
@@ -59,7 +50,6 @@ impl Indexed {
     }
 }
 
-/// One row of palette numbers, `depth` bits each, from the highest bit of each byte.
 fn packed(row: &[u8], depth: u8) -> Vec<u8> {
     let in_a_byte = usize::from(8 / depth);
     row.chunks(in_a_byte)

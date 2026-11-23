@@ -1,5 +1,3 @@
-//! Each test makes its own cluster and runs a real server from this computer's PostgreSQL 17.
-
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -67,7 +65,6 @@ fn db_003_the_superuser_has_no_password_and_a_login_with_one_needs_it() {
         refusal.contains("password authentication failed"),
         "{refusal}"
     );
-    // A password does not make anybody the superuser: that login is this user's alone.
     database.sql("alter role probe superuser").unwrap();
     assert_eq!(
         database

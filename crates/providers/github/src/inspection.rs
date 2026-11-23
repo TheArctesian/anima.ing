@@ -1,5 +1,3 @@
-//! Reads the queued repository’s signs and default branch history.
-
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use source_exchange::{Body, Normalised, Request, Response};
@@ -10,7 +8,7 @@ use crate::record::{Origin, Record, Sign};
 use crate::signs;
 use crate::state::{Pending, Slice, Step};
 
-/// The request for the step the repository is at. The name was checked when it was queued.
+/// The name was checked when it was queued.
 pub(crate) fn request(pending: &Pending) -> Option<Request> {
     match pending.step {
         Step::Tree => Request::get(
@@ -56,7 +54,6 @@ struct Creator {
     login: String,
 }
 
-/// Reads the reply for the first queued repository and moves it to its next step.
 pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Record> {
     let Some(pending) = slice.pending.first() else {
         return refuse(slice, "nothing_queued", "signs", "no repository is waiting");
@@ -68,8 +65,7 @@ pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Re
     }
 }
 
-/// The slice with `pending`, the first queued repository, read for its `pushed_at`, so the
-/// next listing queues it again only after a new push.
+/// Records `pushed_at` so the next listing queues the repository again only after a new push.
 fn finished(slice: &Slice, pending: &Pending) -> Slice {
     let mut next = slice.clone();
     next.pending.remove(0);
@@ -81,7 +77,6 @@ fn finished(slice: &Slice, pending: &Pending) -> Slice {
     next
 }
 
-/// A large sign reply skips the remaining signs. Default branch history still gets a turn.
 fn too_large(
     slice: &Slice,
     pending: &Pending,

@@ -1,5 +1,4 @@
-//! The settings of the proxy: the timeouts and the caps before the name have defaults, and 0 is
-//! refused (SF-327).
+//! SF-327.
 
 use std::{collections::BTreeMap, time::Duration};
 

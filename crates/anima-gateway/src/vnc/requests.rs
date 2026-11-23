@@ -2,8 +2,7 @@
 
 use super::messages::ENCODINGS;
 
-/// X11 keysym and button mask are what Guacamole's `key` and `mouse` carry, so input
-/// passes through with the same numbers.
+/// Guacamole's `key` and `mouse` carry X11 keysyms and button masks, so input passes as is.
 #[must_use]
 pub fn key(keysym: u32, pressed: bool) -> Vec<u8> {
     let mut message = vec![4, u8::from(pressed), 0, 0];
@@ -19,8 +18,7 @@ pub fn pointer(buttons: u8, x: u16, y: u16) -> Vec<u8> {
     message
 }
 
-/// 32 bits for a pixel, depth 24, little-endian, true colour, red at bit 16, green at 8,
-/// blue at 0: a pixel arrives as blue, green, red and one unused byte.
+/// Little-endian true colour, red at bit 16: a pixel arrives as blue, green, red, unused.
 pub(super) fn pixel_format() -> Vec<u8> {
     let mut message = vec![0, 0, 0, 0];
     message.extend_from_slice(&[32, 24, 0, 1, 0, 255, 0, 255, 0, 255, 16, 8, 0, 0, 0, 0]);
@@ -44,8 +42,7 @@ pub fn update(incremental: bool, width: u16, height: u16) -> Vec<u8> {
     message
 }
 
-/// Sets the device's clipboard. The protocol carries Latin-1: a character outside it goes
-/// as a question mark.
+/// The protocol carries Latin-1: a character outside it goes as a question mark.
 #[must_use]
 pub fn cut_text(text: &str) -> Vec<u8> {
     let latin1: Vec<u8> = text

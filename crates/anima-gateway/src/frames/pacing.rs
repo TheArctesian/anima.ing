@@ -1,12 +1,6 @@
-//! When the next frame may go to the client.
+//! When the next frame may go to the client: while the client is behind, a frame waits, so the next one holds only the newest pixels.
 //!
-//! The client sends back the timestamp of each `sync` when it has drawn that frame. While
-//! it has not answered the latest frames, it is behind: the link is slow or the browser is
-//! busy. A frame sent then would only wait in a queue and arrive old. So the gateway holds
-//! the frame back; the screen copy goes on collecting changes, and the frame that goes out
-//! next holds only the newest pixels.
-//!
-//! Pure: the caller gives the time, counted from the start of the session.
+//! The caller gives the time, counted from the start of the session.
 
 use std::collections::VecDeque;
 use std::time::Duration;
@@ -21,8 +15,7 @@ pub struct Pace {
 }
 
 impl Default for Pace {
-    /// At most 30 frames each second, and two frames on their way: one that the client
-    /// draws and one behind it, so a fast client never waits for the gateway.
+    /// Two frames on their way, one drawn and one behind it, so a fast client never waits for the gateway.
     fn default() -> Self {
         Self {
             least_interval: Duration::from_millis(33),
@@ -31,12 +24,9 @@ impl Default for Pace {
     }
 }
 
-/// When a frame may be sent.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Next {
-    /// Now.
     Now,
-    /// Not before this time.
     At(Duration),
     /// When the client answers a frame it has.
     AfterAnswer,
@@ -67,7 +57,6 @@ impl Pacing {
         }
     }
 
-    /// When the next frame may be sent, at time `now`.
     #[must_use]
     pub fn next(&self, now: Duration) -> Next {
         if self.unanswered.len() >= self.pace.most_unanswered {
@@ -82,11 +71,9 @@ impl Pacing {
         }
     }
 
-    /// Notes a frame sent at `now` and gives the timestamp for its `sync`; `None`, and
-    /// nothing noted, when no frame may be sent now ([`Pacing::next`]). The timestamp is the
-    /// time in milliseconds, at least 1 and always more than the one before it: the client
-    /// starts at 0 and answers only a timestamp that differs from its own
-    /// (guacamole-common-js `Guacamole.Client`, the `sync` handler).
+    /// Notes a frame sent at `now` and gives the timestamp for its `sync`; `None` when no frame may be sent now.
+    /// Each timestamp is above 0 and the one before: the client starts at 0 and answers only a
+    /// timestamp that differs from its own (guacamole-common-js `Guacamole.Client`).
     pub fn send(&mut self, now: Duration) -> Option<u64> {
         if self.next(now) != Next::Now {
             return None;

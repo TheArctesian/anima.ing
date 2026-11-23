@@ -1,18 +1,9 @@
-//! Keys for an RDP device. Guacamole's `key` carries an X11 keysym; RDP wants the scancode
-//! of a key on the device's keyboard, or a Unicode key event for a character.
+//! Keys for an RDP device: an X11 keysym becomes a scancode or a Unicode key event.
 //!
-//! The table is the US keyboard: the layout guacd uses when the hub sets no
-//! `server-layout`, which it never does. A character goes as its key when the table has it
-//! and Shift is as that key needs it; any other character goes as a Unicode event, so text
-//! is right for every layout of the client. With Control, Alt or the logo key down a
-//! character always goes as its key, so shortcuts reach the device.
-//!
-//! Caps Lock and Num Lock are not sent: the client's keysym already says which character
-//! is meant, and the session sets the device's locks once at its start.
-//!
-//! Pure: no I/O.
+//! The table is the US keyboard, the layout guacd uses when no `server-layout` is set; a
+//! character it cannot type with the current Shift goes as a Unicode event, so text is right for every layout.
+//! Caps Lock and Num Lock are not sent: the keysym already says which character is meant.
 
-/// One key event for the device.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyEvent {
     /// A key by its scancode (set 1); `extended` keys have the E0 prefix.
@@ -46,7 +37,6 @@ const SHORTCUT_KEYS: [u32; 8] = [
 /// Keysyms above this are Unicode code points plus this.
 const UNICODE_KEYSYMS: u32 = 0x0100_0000;
 
-/// The keys that are down, as the device knows them.
 #[derive(Default)]
 pub struct Keyboard {
     held: Vec<(u32, Sent)>,
@@ -84,7 +74,6 @@ impl Keyboard {
         self.held.iter().any(|(held, _)| keysyms.contains(held))
     }
 
-    /// How `keysym` goes to the device with the keys that are down now.
     fn how(&self, keysym: u32) -> Sent {
         if let Some((code, extended)) = named(keysym) {
             return Sent::Scancode { code, extended };
@@ -156,7 +145,6 @@ fn us_key(character: char) -> Option<(u8, bool)> {
 
 /// The scancode of a key that is not a character, and whether it is an extended key.
 fn named(keysym: u32) -> Option<(u8, bool)> {
-    /// Keys with one scancode byte.
     const PLAIN: [(u32, u8); 23] = [
         (0xff08, 0x0e), // BackSpace
         (0xff09, 0x0f), // Tab

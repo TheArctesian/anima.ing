@@ -1,5 +1,4 @@
-//! Why a machine or the hub refuses a release: the causes of K8 Section 8.1 that a check of the
-//! record and its file gives. Each has a fixed code and holds no text of the record.
+//! Why a machine or the hub refuses a release (K8 Section 8.1); no refusal holds text of the record.
 
 /// A refusal, with the code that a daemon reports in `last.cause`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]

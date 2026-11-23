@@ -1,5 +1,4 @@
-//! The copy of the programs that the unit runs (DBL-013). The application bundle is replaced
-//! by an update while the hub runs; this copy is replaced only while nothing runs.
+//! The copy of the programs that the unit runs (DBL-013); it is replaced only while nothing runs.
 //!
 //! ```text
 //! <root>/programs/next/      `copy` writes here; never run
@@ -54,12 +53,10 @@ fn io_error<'a>(step: &'static str, path: &'a Path) -> impl FnOnce(io::Error) ->
     }
 }
 
-/// Copies the five programs and the PostgreSQL tree of `source` to `programs/next`, in place
-/// of a copy that an earlier try left there. Nothing that runs is touched.
+/// Copies the five programs and the PostgreSQL tree of `source` to `programs/next`.
 ///
 /// # Errors
-/// When a program is missing, the tree holds something that is not a file, a folder or a
-/// link that stays inside it, or a file cannot be read or written.
+/// When a program is missing, the tree holds something other than a file, folder or inner link, or I/O fails.
 pub fn copy(source: &Carried, folders: &Folders) -> Result<(), CopyError> {
     let next = folders.programs_being_copied();
     owner_only::folder(&folders.all_programs())
@@ -84,8 +81,7 @@ pub fn copy(source: &Carried, folders: &Folders) -> Result<(), CopyError> {
     digest::write(&next, &digest::of(&copied)?)
 }
 
-/// Makes the copy in `programs/next` the one the unit runs. The caller knows that nothing
-/// runs from `programs/current`.
+/// Makes the copy in `programs/next` the one the unit runs; nothing may run from `programs/current`.
 ///
 /// # Errors
 /// When a folder cannot be moved or removed.
@@ -101,7 +97,6 @@ pub fn put_in_place(folders: &Folders) -> Result<(), CopyError> {
         fs::rename(&current, &previous).map_err(io_error("move", &current))?;
     }
     if let Err(error) = fs::rename(&next, &current) {
-        // The unit must not be left with no programs: the ones before go back.
         if had_current {
             fs::rename(&previous, &current).map_err(io_error("move", &previous))?;
         }
@@ -110,9 +105,8 @@ pub fn put_in_place(folders: &Folders) -> Result<(), CopyError> {
     remove_folder(&previous)
 }
 
-/// Puts `programs/previous` back as `programs/current` when a stop of the computer or a kill
-/// came between the two moves of [`put_in_place`] and left no `current`. The caller holds the
-/// lock of the change.
+/// Puts `programs/previous` back when a stop between the moves of [`put_in_place`] left no `current`.
+/// The caller holds the lock of the change.
 ///
 /// # Errors
 /// When the folder cannot be moved.
@@ -132,7 +126,6 @@ pub fn remove(folders: &Folders) -> Result<(), CopyError> {
     remove_folder(&folders.all_programs())
 }
 
-/// Whether the copy the unit runs is there.
 #[must_use]
 pub fn are_in_place(folders: &Folders) -> bool {
     Carried::installed_in(&folders.programs())
@@ -148,7 +141,6 @@ fn remove_folder(folder: &Path) -> Result<(), CopyError> {
     }
 }
 
-/// What a copy may still take.
 struct Budget {
     entries: usize,
     bytes: u64,
@@ -181,8 +173,7 @@ fn copy_folder(from: &Path, to: &Path, depth: usize, budget: &mut Budget) -> Res
     Ok(())
 }
 
-/// A library's short name is a link to the file beside it. A link that names a path outside
-/// its own folder could make the copy run a file that is not in the copy.
+/// A link that names a path outside its own folder could make the copy run a file outside it.
 fn copy_link(from: &Path, to: &Path) -> Result<(), CopyError> {
     #[cfg(unix)]
     {
@@ -196,7 +187,6 @@ fn copy_link(from: &Path, to: &Path) -> Result<(), CopyError> {
     }
 }
 
-/// The target of the link at `from`, when it names a file beside the link.
 fn link_target(from: &Path) -> Result<PathBuf, CopyError> {
     let target = fs::read_link(from).map_err(io_error("read", from))?;
     let stays_beside = matches!(

@@ -1,5 +1,3 @@
-//! The final form of a project (K10 Section 6.4.4, step 5, and "What the program adds").
-
 use compose_rules::{Rule, check};
 use serde_json::{Value, json};
 
@@ -24,7 +22,6 @@ fn own() -> OwnLimits {
     })
 }
 
-/// The text of the final form of `file`, with "Open to the network" as `open`.
 fn text_of(file: &str, own: &OwnLimits, open: bool) -> Result<String, Refusal> {
     let settings = compose_rules::Settings {
         open_to_network: open,
@@ -146,7 +143,6 @@ fn k10_6_4_4_each_limit_is_the_lower_of_the_file_and_the_own_limit() {
     assert_eq!(app["cpus"], 0.5);
     // The own limit is lower: 90 seconds in the file, 30 seconds at the machine.
     assert_eq!(app["stop_grace_period"], "30s");
-    // The file has none: the own limit.
     assert_eq!(app["pids_limit"], 512);
     let db = &form["services"]["db"];
     assert_eq!(db["mem_limit"], 2_u64 << 30);

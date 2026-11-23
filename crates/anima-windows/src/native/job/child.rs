@@ -1,4 +1,4 @@
-//! A held process handle, admitted only through membership of our private job.
+//! A held process handle, admitted only while the process is a member of the owning job.
 use super::Handle;
 use std::{io, os::windows::process::ExitStatusExt, process::ExitStatus};
 use windows::Win32::{
@@ -46,7 +46,7 @@ impl Child {
         self.pid
     }
 
-    /// Inspect the held process, without trusting a PID that could have been reused.
+    /// Inspects the held process without trusting a PID that could be reused.
     /// # Errors
     /// Windows cannot wait on or read the owned process.
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {

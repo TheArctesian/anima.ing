@@ -1,4 +1,4 @@
-//! The read of the recipe folders from the disk: the one part of the crate with I/O.
+//! The one part of the crate with I/O.
 
 use std::{fs, io, path::Path};
 
@@ -7,10 +7,8 @@ use crate::{
     fields::{COMPOSE, ENVIRONMENT},
 };
 
-/// The name of the entry file in a recipe folder.
 const ENTRY: &str = "entry.json";
 
-/// Why the folder of the catalogue could not be read.
 #[derive(Debug, thiserror::Error)]
 pub enum ReadError {
     #[error("the folder of the catalogue cannot be read")]
@@ -19,7 +17,6 @@ pub enum ReadError {
     File(#[source] io::Error),
 }
 
-/// The text of `path`; `None` when there is no such file.
 fn text(path: &Path) -> Result<Option<String>, ReadError> {
     match fs::read_to_string(path) {
         Ok(text) => Ok(Some(text)),

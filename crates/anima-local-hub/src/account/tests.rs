@@ -10,8 +10,6 @@ use crate::Folders;
 use crate::run::{Lock, lock};
 use crate::state::{self, State};
 
-/// The installed hub: it writes its arguments, its environment and its input beside itself,
-/// and answers one JSON line.
 const HUB: &str = r#"#!/bin/sh
 here=$(dirname "$0")
 printf '%s\n' "$*" > "$here/args"
@@ -51,7 +49,6 @@ impl Rig {
         self.folders.programs().join("bin").join(file)
     }
 
-    /// A `run` holds the root and its state is `ready`.
     fn ready(&self) -> Lock {
         let held = lock(&self.folders).unwrap();
         let ready = State::Ready {
@@ -63,7 +60,6 @@ impl Rig {
         held
     }
 
-    /// Runs `action` with `input` on standard input; returns the exit code and the output.
     fn run(&self, action: &Action, input: &str) -> Result<(i32, String), AccountError> {
         let given = self.folder.path().join("given");
         let taken = self.folder.path().join("taken");
@@ -188,7 +184,6 @@ fn sec_005_the_secrets_never_go_to_a_program_that_another_user_could_have_put_th
         );
         fs::set_permissions(&path, restore.clone()).unwrap();
     }
-    // A program that is a link to another file is refused too.
     fs::rename(&program, bin.join("real")).unwrap();
     std::os::unix::fs::symlink(bin.join("real"), &program).unwrap();
     assert!(matches!(
@@ -203,13 +198,11 @@ fn sec_005_the_secrets_never_go_to_a_program_that_another_user_could_have_put_th
 #[test]
 fn frn_007_nothing_runs_while_the_hub_is_not_ready() {
     let rig = rig();
-    // No run holds the root, and no state.
     assert!(matches!(
         rig.run(&Action::Status, ""),
         Err(AccountError::NotReady)
     ));
 
-    // A run holds it, and it is still starting.
     let _held = lock(&rig.folders).unwrap();
     state::write(&rig.folders.state_file(), &State::Starting).unwrap();
     assert!(matches!(

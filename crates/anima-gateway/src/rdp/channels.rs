@@ -1,9 +1,5 @@
-//! A limit on what a device may send in parts: a message on a virtual channel (the
-//! clipboard, the channel for the screen size) and a drawing update. `IronRDP` joins the
-//! parts with no limit of its own, so a hostile device could fill the worker's memory
-//! before the gateway sees the whole. The guard counts the parts first.
-//!
-//! Pure: no I/O.
+//! A limit on what a device may send in parts: `IronRDP` joins the parts with no limit of its own,
+//! so a hostile device could fill the worker's memory before the gateway sees the whole.
 
 use ironrdp_pdu::mcs::decode_send_data_indication;
 use ironrdp_pdu::rdp::vc::ChannelControlFlags;
@@ -19,11 +15,9 @@ const MOST_UPDATE_BYTES: usize = 8 << 20;
 /// The channel header: the length of the whole message, then the flags.
 const HEADER_BYTES: usize = 8;
 
-/// The channel messages that are arriving in parts.
 pub(super) struct ChannelGuard {
     /// The virtual channels of the session, each with the bytes of its message so far.
     channels: Vec<(u16, usize)>,
-    /// The bytes of the drawing update that is arriving in parts.
     update: usize,
 }
 
@@ -38,8 +32,7 @@ impl ChannelGuard {
     /// Checks one X.224 message of the device before `IronRDP` gets it.
     ///
     /// # Errors
-    /// [`Malformed`] for a channel message that is packed, though no packing was agreed,
-    /// or longer than the limit.
+    /// [`Malformed`] for a channel message that is packed, though no packing was agreed, or too long.
     pub(super) fn check(&mut self, message: &[u8]) -> Result<(), Malformed> {
         let Ok(data) = decode_send_data_indication(message) else {
             return Ok(());
@@ -81,8 +74,7 @@ impl ChannelGuard {
     /// `IronRDP` gets it. A message this cannot read is left to `IronRDP` to refuse.
     ///
     /// # Errors
-    /// [`Malformed`] for an update that is packed, though no packing was agreed, or whose
-    /// parts are longer than the limit.
+    /// [`Malformed`] for an update that is packed, though no packing was agreed, or too long.
     pub(super) fn check_updates(&mut self, message: &[u8]) -> Result<(), Malformed> {
         // The header byte, then the length in one byte or, with the top bit, in two.
         let long = message.get(1).is_some_and(|length| length & 0x80 != 0);

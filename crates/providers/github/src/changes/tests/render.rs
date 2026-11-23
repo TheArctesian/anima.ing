@@ -1,4 +1,4 @@
-//! Each change is the verb, path and JSON body GitHub documents for it (OD-E14).
+//! OD-E14.
 
 use serde_json::{Value, json};
 use source_exchange::{

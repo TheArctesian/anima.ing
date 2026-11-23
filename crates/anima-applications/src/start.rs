@@ -1,14 +1,10 @@
-//! The checks at the start of the program (contract K10 Section 6.4.1), as one decision over
-//! facts that the caller reads from the operating system and from the engine. Nothing here
-//! reads a file, a socket or a version.
+//! The checks at the start of the program, over facts the caller reads (contract K10 Section 6.4.1).
 
 use crate::{EngineKind, Settings};
 
-/// The lowest version of the engine that the program starts with. From this version a port
-/// that is published on `127.0.0.1` is closed to a different host of the local network.
+/// From this engine version, a port published on `127.0.0.1` is closed to other hosts of the network.
 pub const LOWEST_ENGINE: Version = Version(28, 0, 0);
-/// The lowest version of the Compose program that the program starts with: the first that
-/// reads each key of Section 6.4.4, also the `content` of a config.
+/// The first Compose version that reads each key of Section 6.4.4, also the `content` of a config.
 pub const LOWEST_COMPOSE: Version = Version(2, 23, 1);
 
 /// A version of three numbers. A version that the caller cannot read is never given: the
@@ -20,9 +16,7 @@ pub struct Version(pub u64, pub u64, pub u64);
 /// following a link.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {
-    /// The identifier of the owner.
     pub owner: u32,
-    /// The mode bits.
     pub mode: u32,
     /// Each user of the group of the entry, also each user whose first group it is.
     pub group_members: Vec<u32>,
@@ -32,7 +26,6 @@ pub struct Entry {
     pub listed_for_all: bool,
 }
 
-/// The facts of the start.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StartFacts {
     /// The identifier of the user that the program runs as.
@@ -94,9 +87,7 @@ pub enum StartRefusal {
     ComposeTooOld,
 }
 
-/// True when a user who is not in `permitted` can write `entry`: by the owner, by the mode
-/// bits or by the access list. The owner counts with each mode, because the owner can change
-/// the mode. A group write bit counts unless each member of the group is permitted.
+/// The owner counts with each mode, because the owner can change the mode.
 fn can_be_written(entry: &Entry, permitted: &[u32]) -> bool {
     let all_permitted = |users: &[u32]| users.iter().all(|user| permitted.contains(user));
     !permitted.contains(&entry.owner)
@@ -107,7 +98,6 @@ fn can_be_written(entry: &Entry, permitted: &[u32]) -> bool {
 }
 
 fn configuration(settings: &Settings, facts: &StartFacts) -> Result<(), StartRefusal> {
-    // Only the user that the program runs as can write the configuration folder.
     if can_be_written(&facts.configuration, &[facts.running_as]) {
         return Err(StartRefusal::ConfigurationWritable);
     }
@@ -147,7 +137,6 @@ pub fn decided(settings: &Settings, facts: &StartFacts) -> Result<EngineKind, St
         return Err(StartRefusal::KindDifferent);
     }
     match kind {
-        // On an engine of a user the accepted user is the owner of the socket of the engine.
         EngineKind::User if managed.accepted_user != facts.socket_owner => {
             return Err(StartRefusal::AcceptedUserDifferent);
         }

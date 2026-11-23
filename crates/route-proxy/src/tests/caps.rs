@@ -1,7 +1,4 @@
-//! The caps that keep slow clients from holding each stream of a link (SF-327):
-//! a TCP stream and a WebSocket after its `101` hold a place of their route until they end, a
-//! write to a client that does not read ends at its time, and a UDP stream opens only so many new
-//! flows each second and from each source network.
+//! The caps that keep slow clients from holding each stream of a link (SF-327).
 
 use std::{
     collections::BTreeMap,
@@ -29,8 +26,6 @@ use crate::{
 
 const NAME: &str = "ws.example.com";
 
-/// A hub with one name, whose machine answers `101` to the head of a request and then echoes;
-/// the machine of each stream only echoes.
 #[derive(Default)]
 struct UpgradeHub {
     dials: Mutex<Vec<Dial>>,
@@ -73,7 +68,6 @@ impl Hub for UpgradeHub {
     }
 }
 
-/// A machine that, for an upgrade, answers `101` to the head of the request; then it echoes.
 async fn machine_of(mut machine: DuplexStream, upgrade: bool) {
     let mut buffer = [0_u8; 1024];
     if upgrade {
@@ -111,7 +105,6 @@ fn settings(pairs: &[(&str, &str)]) -> Settings {
     settings::from_env(&env).unwrap().unwrap()
 }
 
-/// A proxy whose streams listen on the loopback address, with `pairs` as its settings.
 fn proxy(pairs: &[(&str, &str)]) -> Arc<Proxy<UpgradeHub>> {
     Arc::new(Proxy::new(UpgradeHub::default(), &settings(pairs)).unwrap())
 }
@@ -132,7 +125,6 @@ fn stream(transport: Transport, listen_port: u16) -> StreamRoute {
     }
 }
 
-/// Whether a line through `client` comes back.
 async fn echoes(client: &mut TcpStream) -> bool {
     if client.write_all(b"a1 NOOP\r\n").await.is_err() {
         return false;

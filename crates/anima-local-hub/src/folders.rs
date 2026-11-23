@@ -1,20 +1,4 @@
-//! Where the hub on this computer keeps its files. Pure: paths in, paths out.
-//!
-//! ```text
-//! <root>/database/           the bundled PostgreSQL (S3)
-//! <root>/programs/current/   the programs the unit runs
-//! <root>/programs/next/      a copy in progress; never run
-//! <root>/vault.key           the hub's ANIMA_KEY_FILE
-//! <root>/data-keys/          the hub's ANIMA_DATA_KEY_DIR: one data key for each extension
-//! <root>/files/              the hub's ANIMA_FILES_DIR: the sealed pieces of the files
-//! <root>/log/                one log for each member of the group
-//! <root>/link/               the state of `anima-link hub`: its key, devices, control socket
-//! <root>/lock                held by the one `run` of this root
-//! <root>/state               what `run` last reported
-//! <root>/change.lock         held while `install`, `update`, `remove`, `start` or `stop` runs
-//! <root>/listen              the address that `install --listen` gave
-//! <root>/stopped-by-operator the operator asked for a stop; no update starts the hub
-//! ```
+//! Where the hub on this computer keeps its files.
 
 use std::path::{Path, PathBuf};
 

@@ -11,8 +11,7 @@ use super::{CopyError, are_in_place, copy, put_in_place, remove};
 use crate::members::PROGRAMS;
 use crate::{Carried, Folders};
 
-/// A folder that only this user can change, whatever the umask (0002 on Ubuntu): the hub
-/// refuses a folder below one that the group can write to.
+/// Mode 0700 whatever the umask: the hub refuses a folder below a group-writable one.
 pub(crate) fn private_folder() -> TempDir {
     tempfile::Builder::new()
         .permissions(fs::Permissions::from_mode(0o700))
@@ -20,12 +19,10 @@ pub(crate) fn private_folder() -> TempDir {
         .unwrap()
 }
 
-/// What the application carries: the programs in one folder and a PostgreSQL tree.
 pub(crate) fn carried(folder: &Path, mark: &str) -> Carried {
     carried_in(&folder.join(format!("bundle {mark}")), mark)
 }
 
-/// The same, in the folder `bundle`.
 pub(crate) fn carried_in(bundle: &Path, mark: &str) -> Carried {
     let (programs, tree) = (bundle.join("MacOS"), bundle.join("database"));
     fs::create_dir_all(&programs).unwrap();

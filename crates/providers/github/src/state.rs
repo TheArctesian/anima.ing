@@ -1,4 +1,4 @@
-//! The provider's slice of the sync state (SRC-004): where a run is and what it has seen.
+//! The provider's slice of the sync state (SRC-004).
 
 use std::collections::BTreeMap;
 
@@ -23,7 +23,6 @@ pub(crate) enum Step {
     History,
 }
 
-/// A repository whose signs are still to be read.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Pending {
     pub id: String,
@@ -33,8 +32,7 @@ pub(crate) struct Pending {
     pub step: Step,
 }
 
-/// `{"v":1,"phase","page","listed","pending","seen"}`. `seen` maps a repository id to the
-/// `pushed_at` its signs were last read at.
+/// `seen` maps a repository id to the `pushed_at` its signs were last read at.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Slice {
     pub v: u8,
@@ -60,7 +58,6 @@ impl Slice {
         }
     }
 
-    /// The slice in `state`; a fresh one when it is empty, unreadable or of another version.
     pub fn read(state: &Value) -> Self {
         serde_json::from_value::<Self>(state.clone())
             .ok()
@@ -72,7 +69,6 @@ impl Slice {
         serde_json::to_value(self).unwrap_or(Value::Null)
     }
 
-    /// Moves to `Done` when no repository is left to read.
     pub fn settle(&mut self) {
         if self.phase == Phase::Signs && self.pending.is_empty() {
             self.phase = Phase::Done;

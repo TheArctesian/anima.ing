@@ -1,4 +1,4 @@
-//! The limits of a name (Section 12.7).
+//! Section 12.7.
 
 use std::net::IpAddr;
 
