@@ -130,8 +130,8 @@ shell, with the trust hook that `pinning` proves. The job `macos` runs them on `
 `dev` that needs each job (`--dev-push`: a tree that no run proved; after a train, `dev` holds the tree that the
 train proved, so the train's run is the one that runs it). A run that a different workflow calls does not run
 either job: the release runs its own. A run that proved a tree before this job existed did not run it, so the
-first train after this change is the first proof. The push of a different branch does not run it (operator ruling,
-2026-11-22: the release failed on a test that only a Mac runs and that no run of `dev` had run). So a change of
+first train after this change is the first proof. The push of a different branch does not run it (R-NEW-macgates: the release failed on a test that only a Mac
+runs and that no run of `dev` had run). So a change of
 that code still needs `bun run gates:fast` on a Mac before the push, or a run started by hand.
 
 Measured on the job `gates-macos` of the release, which runs the same file with no cache: 34 minutes
@@ -211,6 +211,17 @@ settles the same conflicts the same way (`bun quality/bin/register.ts --settle`)
 the side of the branch before they are written again; any other conflict still fails the run. One hot document is still a single file: `docs/proposals/hosted-mode.md` (each
 task of the hosted work changes the version line, the header and the row of its task); it needs one file for
 each task. Not built: the document has an owner.
+
+### A merge by hand while other sessions push to `dev`
+
+Claims land on `dev` every few minutes (`docs/claims/`, PLN-022), so a push of a merge made by hand is often
+refused because `dev` moved. Merge one branch at a time and push it before the next, and merge again on the new
+`dev` when the push is refused. `bun quality/bin/merge-each.ts <branch>...` does that, in a clean worktree that is
+on `dev`: for each branch that origin has and `dev` does not hold, it runs `bin/merge.ts <branch> --push`, which
+refuses a branch whose gates did not pass on GitHub. When that fails while `dev` moved, it runs it again on the
+new `dev`, three times at most (`src/merge/each.ts`); a failure on a `dev` that did not move is the answer for
+that branch. Its last lines name each branch and what happened. It never forces a push and never pushes to
+`main`. The merge train stays the normal way into `dev`.
 
 What works from where. GitHub takes `merge-to-dev.yml` from the default branch, `main`; the checkout is
 `dev`, so the conductor and `merge-to-dev.sh` are those of `dev`. With the old file on `main` the train works,
