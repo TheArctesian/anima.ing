@@ -1,5 +1,4 @@
-//! A shortened answer of the server: stored first, marked, whole after a fault, and read back
-//! in parts by the tool (SHA-004, SHA-006, SHA-016, SHA-017).
+//! SHA-004, SHA-006, SHA-016, SHA-017.
 
 use std::time::SystemTime;
 

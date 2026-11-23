@@ -1,5 +1,3 @@
-//! `anima site create`: a site is a network the hub reaches through the VPN.
-
 use super::documents::{SiteCreate, site_create};
 use super::shown::Shown;
 use crate::failure::Failure;

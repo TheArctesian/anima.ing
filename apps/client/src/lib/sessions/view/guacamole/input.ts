@@ -76,11 +76,11 @@ export function followPaneFocus(pane: HTMLElement, change: (inside: boolean) => 
  * Show the client's display in the host element; nothing animates it (MAT-008), and its scale is the caller's.
  * Pointer and touch input are forwarded while it is shown.
  */
-export function showDisplay(client: Client): Attachment<HTMLElement> {
+export function showDisplay(client: Client, directTouch = true): Attachment<HTMLElement> {
   return (host) => {
     const element = client.getDisplay().getElement();
     host.append(element);
-    const stop = forwardPointer(client);
+    const stop = forwardPointer(client, directTouch);
     return () => {
       stop();
       element.remove();

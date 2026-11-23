@@ -9,7 +9,6 @@ const TOKEN: &str = "login-token-for-agent-usage-tests";
 const MAC: &str = "0190a000-0000-7000-8002-00000000000a";
 const LINUX: &str = "0190a000-0000-7000-8002-000000000009";
 
-/// One K1 `AgentUsageRow` of `device` and `source`; `cost` null for no known price.
 fn row(device: Option<(&str, &str)>, source: Option<&str>, cost: Option<f64>) -> Value {
     json!({
         "device": device.map(|(id, name)| json!({ "id": id, "name": name })),
@@ -20,8 +19,6 @@ fn row(device: Option<(&str, &str)>, source: Option<&str>, cost: Option<f64>) ->
     })
 }
 
-/// The K1 `agentUsage` answer: a Mac with Claude Code and Codex, and a Linux PC whose daemon is
-/// the system unit.
 pub fn usage() -> Value {
     json!({ "agentUsage": {
         "firstDay": "2026-10-19", "lastDay": "2026-11-17", "rowsLeftOut": 0,
@@ -165,8 +162,6 @@ async fn ais_020_agents_usage_refuses_days_with_since_or_a_bad_until() {
     assert!(hub.seen().is_empty(), "nothing was asked of the hub");
 }
 
-/// The K1 `agentSessions` answer: a recent Claude Code session and an older Codex one with no
-/// known price, and two more left out.
 fn sessions() -> Value {
     let session = |source: &str, last: &str, recent: bool, cost: Option<f64>| {
         json!({

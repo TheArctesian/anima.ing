@@ -218,10 +218,15 @@
     box-shadow: none;
   }
 
+  /* Reduced motion follows the Settings choice (MOT-043): On reduces whatever the OS says, Off keeps full motion. */
   @media (prefers-reduced-motion: reduce) {
-    .fold {
+    :global(:root:not([data-motion='full'])) .fold {
       transition: none;
     }
+  }
+
+  :global(:root[data-motion='reduce']) .fold {
+    transition: none;
   }
 
   /* On a phone the actions take their own row under the name, and leave while the bar is pinned. */

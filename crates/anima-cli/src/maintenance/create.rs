@@ -1,5 +1,3 @@
-//! `anima maintenance create`: a window that silences the checks of its targets while it is on.
-
 use super::documents::{MaintenanceCreate, maintenance_create};
 use super::fields::{WindowFields, into_input, require};
 use super::targets;

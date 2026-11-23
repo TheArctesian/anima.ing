@@ -1,5 +1,3 @@
-//! `anima device create`: a device at a site, with its access settings as flags.
-
 use serde_json::json;
 
 use super::documents::{DeviceCreate, device_create};

@@ -1,5 +1,4 @@
-//! The documents that read checks, typed from K1 at build time (CMD-004). `CheckGet` has no
-//! `Debug`: its answer can hold a push check's token path.
+//! `CheckGet` has no `Debug`: its answer can hold a push check's token path.
 
 use graphql_client::GraphQLQuery;
 

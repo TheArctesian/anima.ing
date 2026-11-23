@@ -1,5 +1,3 @@
-//! The read tools of the `devices` set.
-
 use graphql_client::GraphQLQuery;
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

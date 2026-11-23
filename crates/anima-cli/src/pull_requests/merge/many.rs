@@ -1,5 +1,4 @@
-//! Merging several pull requests one after another: read them all, show them, confirm once,
-//! then one outcome for each. Never one from a fork (PRO-013).
+//! Several pull requests merge after one confirmation, none from a fork (PRO-013).
 
 use serde_json::Value;
 
@@ -14,7 +13,6 @@ use crate::pull_requests::documents::{PullRequestMergeMany, pull_request_merge_m
 
 type Merged = pull_request_merge_many::PullRequestMergeManyMergePullRequests;
 
-/// Merges `numbers` of the repository `name` in that order.
 pub async fn merge(
     invocation: &Invocation,
     name: &str,
@@ -73,8 +71,7 @@ pub async fn merge(
     Ok(())
 }
 
-/// The pull request as the operator sees it before the question: which, at which head, and its
-/// title. One line, cleaned whole: a title with a line break could add a line (CMD-020).
+/// Cleaned whole: a title with a line break could add a line (CMD-020).
 fn head_line(name: &str, number: i64, pull: &Value) -> String {
     clean(&format!(
         "{name}#{number} at {}: {}",
@@ -83,7 +80,6 @@ fn head_line(name: &str, number: i64, pull: &Value) -> String {
     ))
 }
 
-/// Whether the pull request is merged now, by this request or before it.
 const fn merged(result: &Merged) -> bool {
     matches!(
         result.outcome,

@@ -1,5 +1,4 @@
-//! `anima device get` against the scripted hub: by ID or exact name, and the exit codes of a
-//! device that is not there or not one (CMD-020, CMD-021).
+//! `anima device get` (CMD-020, CMD-021).
 
 use serde_json::json;
 

@@ -1,5 +1,3 @@
-//! `anima retention set <subject> <days>`.
-
 use super::documents::{RetentionSet, retention_set};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

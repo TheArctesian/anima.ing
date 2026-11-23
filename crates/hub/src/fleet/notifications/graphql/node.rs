@@ -69,6 +69,11 @@ impl From<&Settings> for SettingsView {
                 origin,
                 method,
                 header_names,
+            })
+            | Settings::Mobile(WebhookSettings {
+                origin,
+                method,
+                header_names,
             }) => Self::Webhook(WebhookView {
                 origin,
                 method: method.into(),

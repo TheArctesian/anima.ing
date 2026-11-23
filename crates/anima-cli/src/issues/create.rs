@@ -1,5 +1,4 @@
-//! `anima issue create <repository>`: makes an issue on GitHub through the hub (OD-E14,
-//! PRJ-028).
+//! `anima issue create` (OD-E14, PRJ-028).
 
 use std::path::PathBuf;
 

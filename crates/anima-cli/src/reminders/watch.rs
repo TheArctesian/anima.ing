@@ -1,6 +1,4 @@
-//! `anima reminder watch`: one line for each reminder when the hub sends it (K-E6 Section 5; K1
-//! `Subscription.reminderFirings`). While it runs, the hub counts it as an open application and
-//! queues no reminder to a channel.
+//! `anima reminder watch` (K-E6 Section 5; K1 `Subscription.reminderFirings`).
 
 use super::documents::{ReminderWatch, reminder_watch};
 use crate::failure::Failure;
@@ -8,8 +6,7 @@ use crate::hub::subscription::Subscription;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
 
-/// Prints each firing as a line (the time of the send, the firing ID, the text) or, with
-/// `--json`, as one K1 `ReminderFiring` object per line.
+/// Prints each firing as a line, or with `--json` as one K1 `ReminderFiring` object per line.
 ///
 /// # Errors
 /// [`Failure`] when the hub refuses the token or the connection is lost.

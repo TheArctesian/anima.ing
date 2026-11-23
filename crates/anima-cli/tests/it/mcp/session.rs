@@ -1,5 +1,4 @@
-//! One `anima mcp` process and the client side of its JSON-RPC session. Every line it prints
-//! on standard output is kept, so a test can check that all of them are JSON-RPC.
+//! One `anima mcp` process and the client side of its JSON-RPC session.
 
 use std::process::Stdio;
 use std::time::Duration;
@@ -25,7 +24,7 @@ pub struct Session {
     child: Child,
     stdin: ChildStdin,
     stdout: Lines<BufReader<ChildStdout>>,
-    /// Every line read from standard output.
+    /// Every line read from standard output, so a test can check that each is JSON-RPC.
     pub printed: Vec<String>,
     next_id: u64,
     /// The result sent back for each `elicitation/create` request; `None` answers with a
@@ -61,12 +60,10 @@ impl Desk {
         }
     }
 
-    /// The command line of this computer.
     pub const fn anima(&self) -> &Anima {
         &self.anima
     }
 
-    /// A desk whose MCP client can ask the person (form elicitation, MCP-013).
     pub fn asking() -> Self {
         Self::new().with_elicitation()
     }
@@ -79,10 +76,8 @@ impl Desk {
         }
     }
 
-    /// Writes `saved` as the MCP permissions of `origin` in the configuration file, as the
-    /// operator could by hand. The tests use it for permissions that widen access:
-    /// `anima mcp permissions set` makes those only at a terminal (MCP-014), and the tests run
-    /// it without one. Process-level tests keep the command for showing, narrowing and refusal.
+    /// Writes `saved` as the MCP permissions of `origin`; the command widens access only at a
+    /// terminal (MCP-014).
     pub fn save_permissions(&self, origin: &str, saved: &Value) {
         let dir = self.anima.config_dir();
         std::fs::create_dir_all(&dir).expect("the configuration folder");
@@ -122,7 +117,6 @@ impl Desk {
         self.start_at(&hub.origin, token, args).await
     }
 
-    /// Starts `anima mcp <args> --hub <origin>` and initialises the session.
     pub async fn start_at(&self, origin: &str, token: &str, args: &[&str]) -> (Session, Value) {
         let mut all = vec!["mcp"];
         all.extend_from_slice(args);
@@ -183,7 +177,6 @@ impl Session {
         }
     }
 
-    /// Answers the server's `elicitation/create` request with [`Session::approval`].
     async fn answer_elicitation(&mut self, request: &Value) {
         self.asked.push(request["params"].clone());
         let reply = match &self.approval {
@@ -194,7 +187,6 @@ impl Session {
         self.send(&reply).await;
     }
 
-    /// The names of the tools offered.
     pub async fn tool_names(&mut self) -> Vec<String> {
         let listed = self.request("tools/list", json!({})).await;
         listed["tools"]
@@ -205,7 +197,6 @@ impl Session {
             .collect()
     }
 
-    /// Calls `name` with `arguments` and returns the tool result.
     pub async fn call(&mut self, name: &str, arguments: Value) -> Value {
         self.request(
             "tools/call",

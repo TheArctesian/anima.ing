@@ -1,5 +1,4 @@
-//! The parts every tool shares: reading its arguments, a page (`limit`, `after`), the
-//! `confirm` of a delete (MCP-007) and the short form of a result (MCP-009).
+//! What every tool shares (MCP-007, MCP-009).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

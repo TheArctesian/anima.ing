@@ -1,9 +1,8 @@
-//! Aligned columns for a person (CMD-020). Cells are cleaned of control characters; colour is
-//! added after the padding, so escape codes never shift a column (CMD-027).
+//! Cells are cleaned of control characters, and colour goes on after the padding, so escape codes
+//! never shift a column (CMD-020, CMD-027).
 
 use super::text::clean;
 
-/// How a cell is coloured when colour is on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tone {
     Plain,
@@ -19,7 +18,6 @@ pub struct Cell {
     tone: Tone,
 }
 
-/// Rows under a header (a list), or label and value pairs with no header (one record).
 #[derive(Debug, Default)]
 pub struct Table {
     header: Vec<&'static str>,
@@ -42,7 +40,6 @@ impl Cell {
         }
     }
 
-    /// A K1 `Status` (`UP`, `DOWN`, ...) in its colour.
     #[must_use]
     pub fn status(name: &str) -> Self {
         let tone = match name {
@@ -72,7 +69,6 @@ impl From<String> for Cell {
 }
 
 impl Table {
-    /// A list with these column names.
     #[must_use]
     pub fn new(header: Vec<&'static str>) -> Self {
         Self {
@@ -81,7 +77,6 @@ impl Table {
         }
     }
 
-    /// One record: each row is a label and its value.
     #[must_use]
     pub fn record() -> Self {
         Self::default()
@@ -91,13 +86,11 @@ impl Table {
         self.rows.push(cells);
     }
 
-    /// A row of a record: `label` then `value`.
     pub fn pair(&mut self, label: &str, value: impl Into<Cell>) {
         self.rows
             .push(vec![Cell::toned(label, Tone::Muted), value.into()]);
     }
 
-    /// The table as lines, each ending in a line break.
     #[must_use]
     pub fn render(&self, colour: bool) -> String {
         let header: Vec<Cell> = self.header.iter().map(|name| Cell::new(name)).collect();

@@ -1,6 +1,4 @@
-//! `anima device credential` and `anima device trust` against the scripted hub. A credential
-//! comes from a file or standard input and never shows in anything the program prints
-//! (CMD-014, CMD-025).
+//! `anima device credential` and `anima device trust` (CMD-014, CMD-025).
 
 use std::path::PathBuf;
 
@@ -20,7 +18,6 @@ fn signed_in() -> Anima {
     Anima::new().with("ANIMA_TOKEN", TOKEN)
 }
 
-/// A file in a new folder with `mode`.
 fn secret_file(contents: &str, mode: u32) -> (TempDir, PathBuf) {
     let dir = tempfile::tempdir().expect("a folder");
     let path = dir.path().join("secret");

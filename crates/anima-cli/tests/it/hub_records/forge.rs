@@ -1,5 +1,4 @@
-//! `anima pr`, `anima issue` and `anima workflow` against the scripted hub (PRJ-030 to PRJ-035,
-//! CMD-026, CMD-031).
+//! PRJ-030 to PRJ-035, CMD-026, CMD-031.
 
 mod history;
 mod issue_changes;
@@ -20,7 +19,6 @@ fn signed_in() -> Anima {
     Anima::new().with("ANIMA_TOKEN", "login-token-for-forge-tests")
 }
 
-/// Runs `anima <args> --hub <origin>`.
 async fn ask(hub: &FakeHub, args: &[&str]) -> crate::kit::Outcome {
     let mut all = args.to_vec();
     all.extend(["--hub", &hub.origin]);

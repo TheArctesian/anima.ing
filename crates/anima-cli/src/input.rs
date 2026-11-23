@@ -1,7 +1,5 @@
-//! A document the operator gives as a file or as standard input (`-`): read up to a size cap,
-//! and parsed as JSON with one failure for every command that takes one (CMD-025, CMD-022).
-//! Documents can hold secrets, so the bytes are wiped when they drop and a failure says where
-//! the document is wrong, never what it holds (CMD-014, LOG-007).
+//! Operator documents from a file or standard input (CMD-014, CMD-022, CMD-025, LOG-007).
+//! A failure says where a document is wrong, never what it holds.
 
 use std::fs::File;
 use std::io::Read as _;
@@ -13,16 +11,10 @@ use zeroize::Zeroizing;
 use crate::failure::{Failure, Hint};
 use crate::prompt::Prompter;
 
-/// The largest JSON document read.
 pub const MAX_DOCUMENT: usize = 1024 * 1024;
 
-/// The bytes of `from` (`-` for standard input), up to `limit`. `what` names the document in
-/// failures. Standard input at a terminal is announced, or refused under `--no-input`, so the
-/// command never waits in silence.
-///
 /// # Errors
-/// [`Failure::Input`] when it cannot be read or is larger than `limit`; [`Failure::Usage`] for
-/// a terminal under `--no-input`.
+/// [`Failure::Input`] when unreadable or over `limit`; [`Failure::Usage`] under `--no-input`.
 pub fn read(
     prompter: Prompter,
     from: &Path,
@@ -51,10 +43,6 @@ pub fn read(
     Ok(bytes)
 }
 
-/// `bytes` as JSON of type `T`. The failure is a usage failure (exit 2) naming the line and
-/// column, not the serde message, which can quote a value; `help` is the command that shows
-/// the document's shape.
-///
 /// # Errors
 /// [`Failure::Usage`] when `bytes` is not JSON or does not fit `T`.
 pub fn json<T: DeserializeOwned>(bytes: &[u8], what: &str, help: &str) -> Result<T, Failure> {

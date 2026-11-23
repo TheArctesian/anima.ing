@@ -24,6 +24,8 @@ async fn th109_each_call_of_the_queue_is_read_and_answered_through_the_socket() 
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
     let Outcome::Started { thread, .. } = client.done(start).await else {

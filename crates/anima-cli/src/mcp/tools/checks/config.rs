@@ -1,7 +1,4 @@
-//! A check's settings from an agent (MCP-004): the K1 `CheckConfigInput`, one key for the
-//! kind, with only the fields that never hold a secret. An HTTP header value, body or
-//! authentication and an SNMP community or password are refused: they go through
-//! `anima check create --from-file`, which reads them from a file, never from an agent.
+//! An agent gives only the check fields that never hold a secret (MCP-004).
 
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
@@ -9,8 +6,7 @@ use serde_json::{Map, Value};
 use crate::checks::read::documents::check_get::CheckGetCheckConfig;
 use crate::mcp::outcome::ToolError;
 
-/// The fields an agent may give, by kind. Anything else is refused, so a secret field that
-/// K1 gains later is refused too.
+/// An allowlist, so a secret field that K1 gains later is refused too.
 const ALLOWED: [(&str, &[&str]); 12] = [
     ("icmp", &["timeoutMs", "ipVersion"]),
     ("tcp", &["port", "timeoutMs"]),
@@ -49,11 +45,8 @@ const ALLOWED: [(&str, &[&str]); 12] = [
     ("domainExpiry", &["domain", "warnDays", "timeoutMs"]),
 ];
 
-/// `config` as the generated `CheckConfigInput` of one document.
-///
 /// # Errors
-/// [`ToolError::Refused`] for a shape that is not one kind, an unknown kind, a field that can
-/// hold a secret, or a value K1 would not take.
+/// [`ToolError::Refused`] for a shape of not one kind, an unknown kind, a secret field or a bad value.
 pub fn typed<T: DeserializeOwned>(config: &Value) -> Result<T, ToolError> {
     check(config)?;
     serde_json::from_value(config.clone()).map_err(|error| {
@@ -112,11 +105,8 @@ fn check(config: &Value) -> Result<(), ToolError> {
     )))
 }
 
-/// Whether the check's current settings can hold a secret that a new config from an agent
-/// would drop: any HTTP check or any SNMP check. The hub's check read does not say whether an
-/// HTTP request body is stored (the `CheckGet` document does not select `body`, which can hold a
-/// token), and the SNMP community and v3 passwords are never read back, so their presence cannot
-/// be seen. Every kind is named, so a kind added to K1 does not compile until it is classed here.
+/// Any HTTP or SNMP check: the check read shows neither an HTTP body nor the SNMP passwords.
+/// Every kind is named, so a kind added to K1 does not compile until it is classed here.
 #[must_use]
 pub fn holds_secret(current: &CheckGetCheckConfig) -> bool {
     match current {
@@ -186,7 +176,6 @@ mod tests {
 
     #[test]
     fn mcp_004_f3_every_http_check_and_every_snmp_check_hold_a_secret() {
-        // A body is not in the check read, so a plain HTTP check (no auth, no headers) may still hold one.
         let http = |auth: &str, headers: Value| {
             config(
                 json!({ "__typename": "HttpConfig", "url": "https://a.example",

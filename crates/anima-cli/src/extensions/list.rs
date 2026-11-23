@@ -1,5 +1,3 @@
-//! `anima extension list`.
-
 use super::documents::{ExtensionList, extension_list};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

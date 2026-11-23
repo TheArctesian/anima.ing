@@ -1,4 +1,4 @@
-//! `check list`, `check get` and `check heartbeats` (CMD-020, CMD-026).
+//! CMD-020, CMD-026.
 
 use serde_json::{Value, json};
 

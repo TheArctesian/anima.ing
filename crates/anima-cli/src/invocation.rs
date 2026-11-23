@@ -1,6 +1,3 @@
-//! One run of `anima`: its environment, its global flags, and from them the hub, the token
-//! and the output. Commands take an [`Invocation`] and ask it for what they need.
-
 use std::path::Path;
 
 use serde::Serialize;

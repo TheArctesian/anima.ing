@@ -1,7 +1,5 @@
-//! The person's approval of one call of a tool in state `ask` (MCP-013): an MCP elicitation
-//! request in form mode with one yes-or-no field. Anything but a clear yes refuses the call
-//! before the hub is asked: a client without elicitation, a decline, a cancel, an error, or no
-//! answer within [`ASK_TIMEOUT`].
+//! The person's approval of one call of a tool in state `ask` (MCP-013).
+//! Anything but a clear yes refuses the call before the hub is asked.
 
 use std::time::Duration;
 

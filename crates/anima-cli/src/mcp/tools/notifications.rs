@@ -1,6 +1,4 @@
-//! The `notifications` tool set: channels by name and kind only, test messages, and which
-//! channels a check tells. No tool makes or changes a channel: its address can hold a secret
-//! (MCP-004).
+//! No tool makes or changes a channel: its address can hold a secret (MCP-004).
 
 use graphql_client::GraphQLQuery;
 use rmcp::model::JsonObject;

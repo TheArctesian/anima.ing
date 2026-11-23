@@ -1,5 +1,4 @@
-//! `anima daemon status`: whether the metrics daemon of a device is reporting, and its version
-//! (MET-018, R-122), and what it waits for from a person (R-364).
+//! `anima daemon status` (MET-018, R-122, R-364).
 
 use super::documents::{DaemonStatus, daemon_status};
 use crate::devices::get::resolve;

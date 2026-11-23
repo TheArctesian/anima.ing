@@ -1,6 +1,4 @@
-//! `anima containers projects <device>`: the Compose projects of a device, each with its one
-//! state and where Compose found it (HOST-019, R-211). Anima reads the paths and changes no
-//! file.
+//! `anima containers projects` (HOST-019, R-211).
 
 use std::collections::BTreeMap;
 

@@ -1,5 +1,4 @@
-//! `anima mcp shortening`: the switch, the measure and the originals of shortened answers
-//! (SHA-015, SHA-017, SHA-018).
+//! SHA-015, SHA-017, SHA-018.
 
 use std::path::PathBuf;
 use std::time::SystemTime;

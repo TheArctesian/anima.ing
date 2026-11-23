@@ -75,6 +75,23 @@ function sentInput(): unknown {
   return (last?.variables as { input?: unknown } | undefined)?.input;
 }
 
+it('adds the Mobile channel with relay credentials and clears them after saving', async () => {
+  const saved = { ...MADE, name: 'My phone', kind: 'MOBILE' } as const;
+  await open(loaded({ CreateNotificationChannel: ok({ createNotificationChannel: saved }) }));
+  button('Add channel').click();
+  flushSync();
+  pick(choice('Mobile'));
+  typeInto(field('Name') as HTMLInputElement, saved.name);
+  typeInto(field('Push relay URL') as HTMLInputElement, FAKE_WEBHOOK_URL);
+  typeInto(field('Relay token') as HTMLInputElement, FAKE_SECRET);
+  inDialog('Save').click();
+  await settled();
+
+  expect(sentInput()).toMatchObject({ settings: { mobile: { url: FAKE_WEBHOOK_URL, token: FAKE_SECRET } } });
+  expect(places(FAKE_SECRET)).toEqual(NOWHERE);
+  expect(button('Edit My phone')).toBeDefined();
+});
+
 it('F-8: an edited channel shows no stored secret: each secret field is empty and says what is stored', async () => {
   await open(loaded());
   button('Edit phone-ntfy').click();

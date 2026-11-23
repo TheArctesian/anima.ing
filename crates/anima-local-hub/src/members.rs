@@ -181,6 +181,9 @@ pub fn hosted(mut spec: Spec, pool: &Pool) -> Spec {
     if let Some(root) = &pool.web_root {
         spec.env.push(("ANIMA_WEB_ROOT", root.into()));
     }
+    if let Some(networks) = &pool.probe_deny {
+        spec.env.push(("ANIMA_PROBE_DENY", networks.into()));
+    }
     spec
 }
 
@@ -193,6 +196,9 @@ pub struct Pool {
     pub public_origin: Option<String>,
     /// The folder of the web client that the hub serves (HMD-059).
     pub web_root: Option<PathBuf>,
+    /// The networks that the hub never reaches (R-030): the other hubs of the pool's bridge and
+    /// its host. The hub reads and checks them; the program passes them as they are.
+    pub probe_deny: Option<String>,
 }
 
 /// A setting that is not here has the hub's default (K7).

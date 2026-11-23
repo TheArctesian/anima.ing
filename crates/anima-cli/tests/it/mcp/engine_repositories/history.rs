@@ -1,5 +1,4 @@
-//! The commit, branch, release and directory tools of the `repositories` set against the
-//! scripted hub (MCP-002, MCP-004, MCP-008, MCP-017). No tool returns the content of a file.
+//! The history tools of the `repositories` set (MCP-002, MCP-004, MCP-008, MCP-017).
 
 use serde_json::json;
 
@@ -18,8 +17,7 @@ const TOOLS: [&str; 4] = [
     "anima_code_directory_list",
 ];
 
-/// The tools of the file store name files and carry no bytes of one (CMD-030; the test
-/// `cmd_030_no_tool_uploads_or_downloads_the_bytes_of_a_file` holds that).
+/// The tools of the file store name files and carry no bytes of one (CMD-030).
 fn of_file_store(name: &str) -> bool {
     name == "anima_files_list" || name.starts_with("anima_file_")
 }

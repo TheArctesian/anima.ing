@@ -1,6 +1,5 @@
-//! The originals of shortened answers (SHA-010 to SHA-014): one private file for each, in a
-//! private folder of the user, with a limit of size and a limit of age. Nothing here talks to
-//! a network. Only this file reads, writes or removes an original.
+//! The originals of shortened answers (SHA-010 to SHA-014); only this file reads, writes or
+//! removes one.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -37,18 +36,14 @@ pub enum OriginalError {
     Folder(#[from] std::io::Error),
 }
 
-/// One original, as it was stored.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Original {
-    /// The tool that gave the answer.
     pub tool: String,
     /// The whole answer, after MCP-008.
     pub answer: Value,
-    /// The lists that lost rows in the shortened answer, as its mark names them.
     pub lists: Vec<String>,
 }
 
-/// One file of the store.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Kept {
     pub handle: String,
@@ -56,13 +51,12 @@ pub struct Kept {
     pub written: SystemTime,
 }
 
-/// The folder of the originals.
 #[derive(Debug, Clone)]
 pub struct Store {
     dir: PathBuf,
 }
 
-/// Whether `text` has the form of a handle; each other text is refused before the disk is read.
+/// Other text is refused before the disk is read.
 #[must_use]
 pub fn is_handle(text: &str) -> bool {
     text.len() == HANDLE_LENGTH
@@ -95,8 +89,7 @@ impl Store {
         &self.dir
     }
 
-    /// Stores `original`, a whole answer of a tool, and gives its handle. Old originals, and
-    /// the oldest when there is no room, are removed first.
+    /// Old originals, and the oldest when there is no room, are removed first.
     ///
     /// # Errors
     /// [`OriginalError`] when the original is too large or the file cannot be written.
@@ -116,8 +109,6 @@ impl Store {
         Ok(handle)
     }
 
-    /// The original with this handle.
-    ///
     /// # Errors
     /// [`OriginalError::NotAHandle`], [`OriginalError::Gone`], or the fault of the file.
     pub fn get(&self, handle: &str, now: SystemTime) -> Result<Original, OriginalError> {
@@ -150,7 +141,7 @@ impl Store {
         })
     }
 
-    /// The originals, the oldest first. A folder that is not there holds none.
+    /// The oldest first; a missing folder holds none.
     ///
     /// # Errors
     /// [`OriginalError::Folder`] when the folder cannot be read.
@@ -168,8 +159,7 @@ impl Store {
             let Some(handle) = handle.filter(|handle| is_handle(handle)) else {
                 continue;
             };
-            // `DirEntry::metadata` does not follow a link. A second server can remove the file
-            // between the two reads; then it is not an original any more.
+            // `DirEntry::metadata` does not follow a link; a file removed meanwhile is skipped.
             let Ok(file) = entry.metadata() else {
                 continue;
             };
@@ -188,8 +178,6 @@ impl Store {
         Ok(kept)
     }
 
-    /// Removes each original, and says how many.
-    ///
     /// # Errors
     /// [`OriginalError`] when the folder cannot be read or a file cannot be removed.
     pub fn clear(&self) -> Result<usize, OriginalError> {
@@ -200,15 +188,12 @@ impl Store {
         Ok(kept.len())
     }
 
-    /// Removes the originals that are too old, in this folder.
-    ///
     /// # Errors
     /// [`OriginalError`] when the folder cannot be read or a file cannot be removed.
     pub fn remove_old(&self, now: SystemTime) -> Result<(), OriginalError> {
         self.make_room(0, now)
     }
 
-    /// Removes the originals that are too old, then the oldest until `incoming` more bytes fit.
     fn make_room(&self, incoming: u64, now: SystemTime) -> Result<(), OriginalError> {
         let mut total = incoming;
         let mut fresh = Vec::new();

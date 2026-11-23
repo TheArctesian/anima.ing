@@ -1,4 +1,4 @@
-//! `anima session end <id>`: ends a live session; an ended one comes back unchanged (K1).
+//! `anima session end`: an ended session comes back unchanged (K1).
 
 use super::documents::{SessionEnd, session_end};
 use crate::failure::{Failure, Hint};

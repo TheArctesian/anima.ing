@@ -1,6 +1,5 @@
 //! `anima workflow rerun` and `anima workflow cancel` against the scripted hub (PRJ-029,
-//! PRJ-034, CMD-021, CMD-024): each reads the run fresh, names its commit in the question and
-//! sends that commit.
+//! PRJ-034, CMD-021, CMD-024).
 
 use serde_json::{Value, json};
 
@@ -29,7 +28,6 @@ fn read_as(hub: &FakeHub, found: &Value) {
     hub.answer("WorkflowRunGet", data(json!({ "workflowRun": found })));
 }
 
-/// Scripts each change to answer with `answer`.
 fn changes_answer(hub: &FakeHub, answer: &Value) {
     let roots = [
         "rerunWorkflowRun",

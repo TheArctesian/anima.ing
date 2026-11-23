@@ -1,5 +1,4 @@
-//! `anima containers list`, `anima containers logs` and the MCP tool `anima_container_list`
-//! against the scripted hub (HOST-001, HOST-019, CMD-020, CMD-030, MCP-004).
+//! `anima containers` and `anima_container_list` (HOST-001, HOST-019, CMD-020, CMD-030, MCP-004).
 
 mod compose_file;
 mod details;
@@ -14,7 +13,6 @@ const TOKEN: &str = "login-token-for-container-tests";
 const DEVICE: &str = "0190a000-0000-7000-8002-000000000002";
 const APP: &str = "4f5c1d2e3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a";
 
-/// The K1 `containers` answer: one container of a Compose project, and one stopped with none.
 fn containers() -> Value {
     json!({ "containers": [
         { "id": APP, "name": "dawarich_app", "image": "freikin/dawarich:latest",
@@ -240,7 +238,6 @@ async fn r_211_containers_projects_shows_each_project_with_its_state_and_where_c
     assert_eq!(run.code, 0, "{run:?}");
     let lines: Vec<&str> = run.stdout.lines().collect();
     assert!(lines[0].starts_with("PROJECT"), "{}", run.stdout);
-    // One project: the container with no project is in none.
     assert_eq!(lines.len(), 2, "{}", run.stdout);
     assert!(
         lines[1].starts_with("dawarich")

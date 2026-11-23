@@ -1,4 +1,4 @@
-//! Merging one pull request: read it, show it, confirm, then send the head the operator saw.
+//! A merge sends the head the operator saw.
 
 use super::consent::{expected_head, fork, short, summary};
 use super::{MethodArg, outcomes, read};
@@ -8,9 +8,7 @@ use crate::invocation::Invocation;
 use crate::projects::repository::resolve;
 use crate::pull_requests::documents::{PullRequestMergeOne, pull_request_merge_one};
 
-/// What the operator asked for one pull request.
 pub struct Asked<'a> {
-    /// The repository as the operator named it.
     pub name: &'a str,
     pub number: i64,
     pub method: MethodArg,
@@ -19,7 +17,6 @@ pub struct Asked<'a> {
     pub fork: Option<&'a str>,
 }
 
-/// Merges the pull request, or says it was merged before without sending anything.
 pub async fn merge(invocation: &Invocation, asked: &Asked<'_>) -> Result<(), Failure> {
     let hub = invocation.hub()?;
     let repository = resolve(&hub, asked.name).await?;

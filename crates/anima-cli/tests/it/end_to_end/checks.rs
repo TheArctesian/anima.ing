@@ -1,5 +1,4 @@
-//! `anima check` and `anima maintenance` against the real hub: a TCP and an HTTP check from
-//! files, pause and resume, delete, and a maintenance window, each read back (CMD-020).
+//! `anima check` and `anima maintenance` against the real hub (CMD-020).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -8,7 +7,6 @@ use super::words;
 use crate::kit::Anima;
 use crate::kit::real_hub::RealHub;
 
-/// The device's checks on the hub, as `(name, type, paused)`, by name.
 async fn checks_on(hub: &RealHub, reader: &str, device: &str) -> Vec<(String, String, bool)> {
     let query = "query($id: ID!) { device(id: $id) { checks { name type paused } } }";
     let data = hub.data(reader, query, json!({ "id": device })).await;
@@ -25,7 +23,6 @@ async fn checks_on(hub: &RealHub, reader: &str, device: &str) -> Vec<(String, St
     checks
 }
 
-/// A device `web` with no checks, made through the command line; its ID.
 async fn bare_device(anima: &Anima) -> String {
     let site = anima
         .run(&words("site create lab --subnet 10.20.0.0/24"))
@@ -37,7 +34,6 @@ async fn bare_device(anima: &Anima) -> String {
     device.json()["id"].as_str().expect("an id").to_owned()
 }
 
-/// Creates a check named `name` on `web` from `config`, written to a file.
 async fn create_check(anima: &Anima, name: &str, config: &Value) -> String {
     let file = tempfile::NamedTempFile::new().expect("a file");
     std::fs::write(file.path(), config.to_string()).expect("the config written");

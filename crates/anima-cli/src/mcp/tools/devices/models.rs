@@ -1,7 +1,6 @@
-//! The `models` tool set: the model library (SEL-005) and the copies on the machines
-//! (PULL-001, PULL-007, PULL-009; CMD-030). Names and tags come from Hugging Face
-//! repositories: the server cleans and caps each string (MCP-008). A pull and a removal are
-//! open to an API key and to an agent: the hub records the actor (R-326).
+//! SEL-005, PULL-001, PULL-007, PULL-009, CMD-030; the server cleans and caps each string from
+//! Hugging Face (MCP-008). A pull and a removal are open to an API key; the hub records the
+//! actor (R-326).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

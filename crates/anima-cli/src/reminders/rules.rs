@@ -1,6 +1,4 @@
-//! `anima reminder list|show|add|set|remove|enable|disable`. `--trigger` and `--unless` are
-//! JSON in the form of K-E6 Section 2, for example
-//! `{"type":"time","at":"09:00","zone":"Europe/Amsterdam"}`.
+//! `--trigger` and `--unless` are JSON in the form of K-E6 Section 2.
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;

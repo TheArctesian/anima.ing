@@ -1,5 +1,4 @@
-//! `anima device`: the devices of the hub (CMD-002). The worked example for every other noun;
-//! see the crate README.
+//! `anima device`: the devices of the hub (CMD-002).
 
 pub mod create;
 pub mod credentials;

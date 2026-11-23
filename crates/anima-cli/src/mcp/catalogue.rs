@@ -1,5 +1,4 @@
-//! The words of the tool catalogue: the tool sets, what a tool needs from the token, and its
-//! kind (MCP-002, MCP-003).
+//! MCP-002, MCP-003.
 
 use serde::{Deserialize, Serialize};
 

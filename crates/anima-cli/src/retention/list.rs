@@ -1,5 +1,3 @@
-//! `anima retention list`: the days kept for each kind of record.
-
 use super::documents::{RetentionList, retention_list};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

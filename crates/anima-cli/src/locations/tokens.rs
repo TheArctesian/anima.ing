@@ -1,5 +1,4 @@
-//! `anima location token add|list|revoke`: the ingest tokens of the OwnTracks app. A token is
-//! a secret: `add` shows it one time, and no MCP tool makes or returns one (CMD-014).
+//! A location ingest token is a secret: `add` shows it one time and no MCP tool makes or returns one (CMD-014).
 
 use serde_json::json;
 use zeroize::Zeroizing;

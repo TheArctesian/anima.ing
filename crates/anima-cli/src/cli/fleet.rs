@@ -1,5 +1,3 @@
-//! The nouns an operator works on: the machines and how they are reached.
-
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{

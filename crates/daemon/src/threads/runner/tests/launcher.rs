@@ -8,21 +8,43 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use agent_threads::drive::Mode;
+use agent_threads::drive::{Mode, Program};
 use uuid::Uuid;
 
 use crate::threads::git::run::hooks::{Ended, Kind, ThreadRun};
-use crate::threads::runner::launcher::{Rights, SharedRights, start};
+use crate::threads::runner::launcher::read::Confinement;
+use crate::threads::runner::launcher::{Rights, Seat, SharedRights, start};
+
+mod reads;
 
 fn rights(mode: Mode, folder: &Path) -> (SharedRights, Uuid) {
+    of(Program::ClaudeCode, mode, folder)
+}
+
+/// The rights of one thread of `program` in `mode` in `folder`, with `/usr/bin/git` as the git
+/// of the engine.
+fn of(program: Program, mode: Mode, folder: &Path) -> (SharedRights, Uuid) {
     let thread = Uuid::now_v7();
+    let confinement = Confinement {
+        mode,
+        program,
+        codex: None,
+        kept: None,
+    };
+    let seat = Seat {
+        folder: folder.to_owned(),
+        confinement,
+    };
     let rights = Rights {
         env: vec![
             ("PATH".to_owned(), "/usr/bin:/bin".to_owned()),
             ("ANIMA_SECRET".to_owned(), "s3cret".to_owned()),
             ("GIT_INDEX_FILE".to_owned(), "/the/login/index".to_owned()),
         ],
-        threads: [(thread, (mode, folder.to_owned()))].into(),
+        threads: [(thread, seat)].into(),
+        git: Some(PathBuf::from("/usr/bin/git")),
+        records: Some(folder.join(".records")),
+        ..Rights::default()
     };
     (Arc::new(Mutex::new(rights)), thread)
 }

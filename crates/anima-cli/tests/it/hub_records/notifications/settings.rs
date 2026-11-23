@@ -1,5 +1,3 @@
-//! `anima notify settings` and `deliveries` against the scripted hub.
-
 use serde_json::{Value, json};
 
 use super::{channels, fixtures, signed_in};
