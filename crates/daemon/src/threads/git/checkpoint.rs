@@ -7,9 +7,11 @@
 use agent_threads::git::Checkpoint;
 use uuid::Uuid;
 
-use super::place::{self, Worktree, own, shared};
+use super::place::{Worktree, own, shared};
 use super::run::{Git, GitError, Run};
-use super::worktree::files;
+mod staged;
+
+use staged::{Lists, Staging, fitted};
 
 /// Who a checkpoint commit says it is from: never the person.
 const WHO: [(&str, &str); 4] = [
@@ -91,6 +93,7 @@ pub async fn tree_now(
         new: &new,
         rules: &rules,
         nested: &nested,
+        whole: git.removing(),
     };
     let staged = fitted(git, worktree, (&held.0, &lists), left).await?;
     if !staged.is_empty() {
@@ -102,101 +105,6 @@ pub async fn tree_now(
     }
     drop(held);
     git.text(Run::new(dir, ["write-tree"])).await
-}
-
-/// The copies of the listed files in `staging`, and the names to stage. When the files are
-/// larger than the `left` bytes, what no checkpoint needs goes first and the copies are made
-/// one more time.
-async fn fitted(
-    git: &Git,
-    worktree: &Worktree,
-    (staging, lists): (&std::path::Path, &Lists<'_>),
-    mut left: u64,
-) -> Result<Vec<u8>, GitError> {
-    let dir = worktree.folder();
-    let mut staged = copied(dir, staging, lists, &mut left);
-    if matches!(&staged, Err(full) if full.kind() == std::io::ErrorKind::FileTooLarge) {
-        own::small(git, worktree).await?;
-        left = own::within(git, worktree).await?;
-        staged = copied(dir, staging, lists, &mut left);
-    }
-    staged.map_err(|failed| match failed.kind() {
-        std::io::ErrorKind::FileTooLarge => GitError::Failed {
-            code: None,
-            said: if shared::free_for(&worktree.record().own) == 0 {
-                "the disk of Anima's records is nearly full: no checkpoint and no list of \
-                 changes can be made until there is room on it"
-                    .to_owned()
-            } else {
-                failed.to_string()
-            },
-        },
-        _ => GitError::Files(failed),
-    })
-}
-
-/// What `git` listed for one snapshot.
-struct Lists<'a> {
-    /// The files of the last commit that differ or are gone.
-    changed: &'a [u8],
-    /// The files that the last commit does not have.
-    new: &'a [u8],
-    /// The files of rules, which are only there for `git` to read.
-    rules: &'a [u8],
-    /// The nested repositories that the last commit names.
-    nested: &'a [String],
-}
-
-/// Copies each listed file of the worktree at `dir` into the new folder `staging`, with no
-/// link followed and at most `left` bytes in all, and gives the names to stage. A changed
-/// file that is gone is staged too, as a removal.
-fn copied(
-    dir: &std::path::Path,
-    staging: &std::path::Path,
-    lists: &Lists<'_>,
-    left: &mut u64,
-) -> std::io::Result<Vec<u8>> {
-    let _ = std::fs::remove_dir_all(staging);
-    place::private_folder(staging)?;
-    let root = files::Root::open(dir)?;
-    let ours = |name: &&[u8]| {
-        let below = |nested: &String| {
-            name.strip_prefix(nested.as_bytes())
-                .is_some_and(|rest| rest.is_empty() || rest.starts_with(b"/"))
-        };
-        // A name that ends with `/` is a repository inside the worktree that nothing names.
-        // The folder of a copy of the history that was cancelled is no file of the thread.
-        let of_a_copy = name.starts_with(shared::pack::PREFIX.as_bytes());
-        !name.is_empty() && !name.ends_with(b"/") && !of_a_copy && !lists.nested.iter().any(below)
-    };
-    let mut staged = Vec::new();
-    for (list, tracked, stage) in [
-        (lists.changed, true, true),
-        (lists.new, false, true),
-        (lists.rules, false, false),
-    ] {
-        for name in list.split(|byte| *byte == 0).filter(ours) {
-            let path = files::path(name);
-            if !files::inside(&path) {
-                continue;
-            }
-            let there = root.take(&path, staging, left)?;
-            if stage && (there || tracked) {
-                staged.extend_from_slice(name);
-                staged.push(0);
-            }
-        }
-    }
-    Ok(staged)
-}
-
-/// The folder of the copies of one snapshot; it is removed when the value is dropped.
-struct Staging(std::path::PathBuf);
-
-impl Drop for Staging {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
 }
 
 /// Lists the files of the last commit that differ in the worktree or are gone.

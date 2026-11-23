@@ -185,6 +185,13 @@ impl Git {
         self
     }
 
+    /// This `git` saves the work of a worktree that is removed: no size holds it back, and
+    /// each file of the worktree is taken, also in a repository inside it.
+    #[must_use]
+    pub const fn removing(&self) -> bool {
+        self.own_room == u64::MAX
+    }
+
     /// The bytes that the checkpoints of one thread can use.
     #[must_use]
     pub const fn own_room(&self) -> u64 {

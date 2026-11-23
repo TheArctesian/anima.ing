@@ -44,8 +44,15 @@ async fn a_removal_that_stops_in_the_middle_keeps_the_whole_work_at_the_next_try
         assert_eq!(bench.git_in(&bench.project, &saved).await, text, "{file}");
     }
     if edited {
-        let rest = ["show", &format!("{kept}-rest:late.txt")];
-        assert_eq!(bench.git_in(&bench.project, &rest).await, "late");
+        let listed = [
+            "for-each-ref",
+            "--format=%(refname)",
+            "refs/anima/kept-rest",
+        ];
+        let rest = bench.git_in(&bench.project, &listed).await;
+        assert_eq!(rest.lines().count(), 1, "{rest}");
+        let late = ["show", &format!("{rest}:late.txt")];
+        assert_eq!(bench.git_in(&bench.project, &late).await, "late");
     }
     assert_eq!(bench.engine.disk()[0].worktrees, 0);
 }
@@ -106,4 +113,53 @@ async fn the_work_of_an_earlier_removal_stays_when_the_thread_is_removed_again()
         bench.git_in(&bench.project, &["show", &before]).await,
         "first"
     );
+}
+
+#[tokio::test]
+async fn a_repository_inside_the_worktree_is_saved_before_the_worktree_goes() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    // What an agent does in normal work: a clone or a `git init` in a folder of its worktree.
+    let inside = folder.join("sub");
+    std::fs::create_dir_all(inside.join("deep")).expect("a folder");
+    let init = ["init", "--quiet", "--initial-branch=main"];
+    bench.git_in(&inside, &init).await;
+    std::fs::write(inside.join("work.txt"), "inner work\n").expect("a file");
+    std::fs::write(inside.join("deep/more.txt"), "more\n").expect("a file");
+    // A checkpoint leaves it alone, as before.
+    bench.turn_ended(1).await;
+    let GitOutcome::Removed { kept: Some(kept) } = bench.call(PERSON, GitAction::Remove).await
+    else {
+        panic!("not removed");
+    };
+    assert!(!folder.exists());
+    for (file, text) in [
+        ("sub/work.txt", "inner work"),
+        ("sub/deep/more.txt", "more"),
+    ] {
+        let saved = ["show", &format!("{kept}:{file}")];
+        assert_eq!(bench.git_in(&bench.project, &saved).await, text, "{file}");
+    }
+    let names = ["ls-tree", "-r", "--name-only", kept.as_str()];
+    let names = bench.git_in(&bench.project, &names).await;
+    assert!(!names.contains(".git/"), "a Git folder was saved: {names}");
+}
+
+#[tokio::test]
+async fn what_a_thread_puts_at_the_names_of_the_saved_work_does_not_stop_a_removal() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join("work.txt"), "work\n").expect("a file");
+    // Each thread of the project can write the refs of the repository: a lock that stays, and
+    // a folder where the ref of the saved work must be.
+    let kept_at = bench.project.join(".git/refs/anima/kept");
+    let name = super::super::THREAD.to_string();
+    std::fs::create_dir_all(kept_at.join(&name).join("in the way")).expect("a folder");
+    std::fs::write(kept_at.join(format!("{name}.lock")), "").expect("a lock");
+    let removed = bench.call(PERSON, GitAction::Remove).await;
+    let GitOutcome::Removed { kept: Some(kept) } = removed else {
+        panic!("not removed: {removed:?}");
+    };
+    let saved = ["show", &format!("{kept}:work.txt")];
+    assert_eq!(bench.git_in(&bench.project, &saved).await, "work");
 }

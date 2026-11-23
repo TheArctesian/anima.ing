@@ -62,6 +62,40 @@ fn link(_to: &std::ffi::OsStr, _at: &Path) -> std::io::Result<()> {
     Err(std::io::ErrorKind::Unsupported.into())
 }
 
+/// The most entries and the most folders in folders that [`Root::files_below`] looks at.
+const MOST_BELOW: usize = 200_000;
+const DEEPEST: usize = 64;
+
+/// Adds to `found` each file and each link of the open folder `folder`, which is at `at`.
+fn listed(folder: &Dir, at: &Path, left: usize, found: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    let too_many = || {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "a folder of a repository in the worktree holds too much to save",
+        )
+    };
+    for name in folder.names()? {
+        if name.eq_ignore_ascii_case(".git") {
+            continue;
+        }
+        let path = at.join(&name);
+        if folder.link(&name).is_some() || folder.file(&name)?.is_some() {
+            found.push(path);
+        } else if let Some(inside) = folder.below(Path::new(&name), Make::No)? {
+            listed(
+                &inside,
+                &path,
+                left.checked_sub(1).ok_or_else(too_many)?,
+                found,
+            )?;
+        }
+        if found.len() > MOST_BELOW {
+            return Err(too_many());
+        }
+    }
+    Ok(())
+}
+
 /// The least bytes that one file of a snapshot costs: a block of the disk.
 const BLOCK: u64 = 4096;
 
@@ -87,11 +121,19 @@ impl Root {
     /// The error of the system when the copy cannot be written, or the file is larger than
     /// `left`.
     pub fn take(&self, path: &Path, into: &Path, left: &mut u64) -> std::io::Result<bool> {
+        self.take_to(path, &into.join(path), left)
+    }
+
+    /// As [`Root::take`], with the place of the copy named: `copy`, a path in a folder of the
+    /// runner.
+    ///
+    /// # Errors
+    /// As [`Root::take`].
+    pub fn take_to(&self, path: &Path, copy: &Path, left: &mut u64) -> std::io::Result<bool> {
         use std::io::Read as _;
         let Some((above, name)) = self.0.above(path, Make::No)? else {
             return Ok(false);
         };
-        let copy = into.join(path);
         if let Some(folder) = copy.parent() {
             std::fs::create_dir_all(folder)?;
         }
@@ -109,7 +151,7 @@ impl Root {
         };
         if let Some(to) = above.link(name) {
             pay(left, u64::try_from(to.len()).unwrap_or(u64::MAX))?;
-            return link(&to, &copy).map(|()| true);
+            return link(&to, copy).map(|()| true);
         }
         let Some(found) = above.file(name)? else {
             return Ok(false);
@@ -120,7 +162,7 @@ impl Root {
         if about.len() > *left {
             return Err(too_large());
         }
-        let mut written = std::fs::File::create(&copy)?;
+        let mut written = std::fs::File::create(copy)?;
         // One byte more than what is left shows a file that grew while it was read.
         let taken = std::io::copy(&mut found.take(left.saturating_add(1)), &mut written)?;
         pay(left, taken)?;
@@ -131,6 +173,20 @@ impl Root {
             written.set_permissions(can)?;
         }
         Ok(true)
+    }
+
+    /// Each file and each link below the folder `path` of the worktree, as paths from the top
+    /// of the worktree. A Git folder (`.git`) in it is not gone into, and no link is
+    /// followed. At most [`MOST_BELOW`] entries and [`DEEPEST`] folders in folders.
+    ///
+    /// # Errors
+    /// The error of the system; `InvalidData` for a folder with more than that.
+    pub fn files_below(&self, path: &Path) -> std::io::Result<Vec<PathBuf>> {
+        let mut found = Vec::new();
+        if let Some(folder) = self.0.below(path, Make::No)? {
+            listed(&folder, path, DEEPEST, &mut found)?;
+        }
+        Ok(found)
     }
 
     /// Writes the file or the link at `path` below `from`, a folder of the runner, to the

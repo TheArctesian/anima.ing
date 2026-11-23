@@ -295,21 +295,27 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<Strin
     // A last commit that cannot be brought (the copy of the project is full, or the branch
     // names a commit that is not there) does not keep the worktree: the saved commit then
     // holds each file and has no parent.
-    let tip = own::tip(held, worktree).await.ok();
-    let tip = tip.and_then(|head| head.commit);
+    let tip = match own::tip(held, worktree).await {
+        Ok(at) => at.commit,
+        // The place of the worktree cannot be read: the branch that the runner made for the
+        // thread says what the last commit is, when the thread can bring it.
+        Err(_) => made_branch(held, worktree).await,
+    };
     let commit = checkpoint::snapshot_on(held, worktree, tip.clone()).await?;
     own::give(held, worktree, &commit, tip.as_deref()).await?;
     if started {
         // A removal that stopped in the middle saved the whole work. What is left of the
         // files now, with what changed since, is saved beside it and never over it.
-        refs::put(common, &format!("{kept}-rest"), &commit, Was::Any)?;
+        let rest = format!("refs/anima/kept-rest/{}/{commit}", worktree.thread());
+        refs::own_put(common, &rest, &commit)?;
     } else {
         // The work that an earlier removal of this thread saved stays under a name of its own.
-        if let Some(earlier) = refs::resolve(common, &kept)? {
+        // A ref there that is no ref of the runner (an agent can write it) names no work.
+        if let Ok(Some(earlier)) = refs::resolve(common, &kept) {
             let aside = format!("refs/anima/kept-before/{}/{earlier}", worktree.thread());
-            refs::put(common, &aside, &earlier, Was::Any)?;
+            refs::own_put(common, &aside, &earlier)?;
         }
-        refs::put(common, &kept, &commit, Was::Any)?;
+        refs::own_put(common, &kept, &commit)?;
         std::fs::write(record.own.join(own::SAVED), &commit).map_err(|failed| gone(&failed))?;
     }
     // The folder is still the one that the runner made, not one put in its place (P12).
@@ -319,6 +325,16 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<Strin
     std::fs::remove_dir_all(&record.folder).map_err(|failed| gone(&failed))?;
     cleared(home, worktree.thread(), record)?;
     Ok(kept)
+}
+
+/// The last commit of the branch that the runner made for the thread, when the thread can
+/// bring it into the copy of the project.
+async fn made_branch(git: &Git, worktree: &Worktree) -> Option<String> {
+    let record = worktree.record();
+    let branch = format!("refs/heads/{}", record.branches.first()?);
+    let commit = refs::resolve(&record.common_dir, &branch).ok()??;
+    let known = shared::learn(git, worktree, &[&commit]).await;
+    known.is_ok().then_some(commit)
 }
 
 fn gone(failed: &std::io::Error) -> GitRefusal {
@@ -367,10 +383,10 @@ pub async fn remove_broken(
     (thread, repository): (Uuid, &str),
 ) -> Result<Option<String>, GitRefusal> {
     let record = home.recorded(thread, repository)?;
-    if let Some(worktree) = home.for_removal(thread, repository)
-        && let Ok(kept) = remove(git, home, &worktree).await
-    {
-        return Ok(Some(kept));
+    // A folder that is still the one of the runner is saved as in each removal. When that
+    // fails, nothing goes: the failure is the answer, and the next try saves again.
+    if let Some(worktree) = home.for_removal(thread, repository) {
+        return remove(git, home, &worktree).await.map(Some);
     }
     let saved = record.own.join(own::SAVED).exists();
     // What is left of a folder whose work is saved goes too, when it is still the folder

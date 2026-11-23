@@ -234,6 +234,32 @@ pub fn put(common: &Path, wanted: &str, to: &str, was: Was<'_>) -> Result<(), Pr
     })
 }
 
+/// Points a ref of the runner at `to`, whatever is at its place. The refs below `refs/anima`
+/// in the repository of the person are the runner's, but each thread of the project can
+/// write there: a lock that was left, a folder at the name of the ref, or a file where a
+/// folder of the ref must be would keep the runner from saving work for good. Each of them
+/// goes first; no link is followed.
+///
+/// # Errors
+/// A [`ProjectError`] for a name that is not safe, or the error of the file system.
+pub fn own_put(common: &Path, wanted: &str, to: &str) -> Result<(), ProjectError> {
+    let wanted = name(wanted)
+        .filter(|wanted| wanted.starts_with("refs/anima/"))
+        .ok_or(ProjectError::Escapes)?;
+    let to = id(to).ok_or(ProjectError::Odd("an ID"))?;
+    let common = open(common)?;
+    let (above, last) = common
+        .above(Path::new(wanted), Make::Over)?
+        .ok_or(ProjectError::Escapes)?;
+    let mut lock = last.to_owned();
+    lock.push(".lock");
+    above.remove(&lock, false)?;
+    if above.remove(last, false).is_err() {
+        above.remove_all(last)?;
+    }
+    replace(&above, last, &format!("{to}\n"), || Ok(()))
+}
+
 /// Removes the loose file of the ref `wanted` when it points at `at`: the undo of a [`put`]
 /// of a new branch that holds no work.
 ///
