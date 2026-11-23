@@ -12,7 +12,14 @@ sudo ln -sf /usr/share/OVMF/OVMF_VARS_4M.fd /usr/share/edk2/x64/OVMF_VARS.4m.fd
 sudo chmod a+rw /dev/kvm
 # Ubuntu ships ImageMagick 6; the harness uses the v7 entry point.
 if ! command -v magick >/dev/null; then
-  printf '#!/bin/sh\ncommand="$1"; shift; exec "$command" "$@"\n' | sudo tee /usr/local/bin/magick >/dev/null
+  sudo tee /usr/local/bin/magick >/dev/null <<'SH'
+#!/bin/sh
+if [ "$1" = identify ]; then
+  shift
+  exec identify "$@"
+fi
+exec convert "$@"
+SH
   sudo chmod +x /usr/local/bin/magick
 fi
 python3 - <<'PY'
