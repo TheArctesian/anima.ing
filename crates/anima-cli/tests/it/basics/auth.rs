@@ -185,3 +185,62 @@ fn cmd_014_debug_formatting_of_a_hub_client_hides_the_token() {
     );
     assert!(shown.contains("hub.example"));
 }
+
+#[tokio::test]
+async fn sgn_adopt_takes_the_app_token_on_standard_input_and_makes_its_hub_current() {
+    let hub = FakeHub::start().await;
+    hub.answer("Me", me()).answer("Me", me());
+    let anima = Anima::new();
+    let run = anima
+        .run_with_input(
+            &["auth", "adopt", "--hub", &hub.origin, "-"],
+            &format!("{LOGIN_TOKEN}\n"),
+        )
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert!(
+        run.stderr
+            .contains("with the sign-in of the Anima.ing application"),
+        "{}",
+        run.stderr
+    );
+    assert!(!run.stderr.contains(LOGIN_TOKEN) && !run.stdout.contains(LOGIN_TOKEN));
+    assert_eq!(
+        hub.seen()[0].authorization,
+        Some(format!("Bearer {LOGIN_TOKEN}"))
+    );
+
+    let listed = anima.run(&["context", "list", "--json"]).await.json();
+    assert_eq!(
+        listed,
+        json!([{ "name": "app", "hub": hub.origin, "current": true }])
+    );
+    let run = anima.run(&["auth", "status"]).await;
+    assert_eq!(run.code, 0, "the current context is the app's hub: {run:?}");
+}
+
+#[tokio::test]
+async fn sgn_adopt_refuses_an_api_key_and_a_refused_token_and_keeps_nothing() {
+    let hub = FakeHub::start().await;
+    let anima = Anima::new();
+    let run = anima
+        .run_with_input(
+            &["auth", "adopt", "--hub", &hub.origin, "-"],
+            &format!("{KEY}\n"),
+        )
+        .await;
+    assert_eq!(run.code, 2, "{run:?}");
+    assert!(hub.seen().is_empty());
+
+    hub.answer("Me", refusal("UNAUTHENTICATED", "Sign in to continue."));
+    let run = anima
+        .run_with_input(
+            &["auth", "adopt", "--hub", &hub.origin, "-"],
+            &format!("{LOGIN_TOKEN}\n"),
+        )
+        .await;
+    assert_ne!(run.code, 0, "{run:?}");
+    assert!(!anima.config_dir().join("tokens.json").exists());
+    let listed = anima.run(&["context", "list", "--json"]).await.json();
+    assert_eq!(listed, json!([]));
+}

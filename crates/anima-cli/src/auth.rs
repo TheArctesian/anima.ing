@@ -1,6 +1,7 @@
-//! `anima auth`: sign in, sign out and show who is signed in (CMD-010..014). No command here
-//! prints a token.
+//! `anima auth`: sign in, sign out and show who is signed in (CMD-010..014), and take the
+//! token that the Anima app gives (R-383). No command here prints a token.
 
+pub mod adopt;
 pub mod documents;
 pub mod login;
 pub mod token_file;
@@ -24,6 +25,13 @@ pub enum AuthCommand {
         /// The user name, so it is not asked for.
         #[arg(long)]
         username: Option<String>,
+    },
+    /// Take the token that the Anima.ing application gives on standard input, for the hub of --hub, and
+    /// make that hub the current context. The app runs it; a person runs `anima auth login`.
+    Adopt {
+        /// `-`: the token is on standard input, and only there.
+        #[arg(value_parser = ["-"])]
+        input: String,
     },
     /// End the stored login token at the hub and delete it here.
     Logout,
@@ -52,6 +60,7 @@ impl AuthCommand {
                 with_token,
                 username,
             } => sign_in(invocation, with_token, username).await,
+            Self::Adopt { input: _ } => take_from_app(invocation).await,
             Self::Logout => sign_out(invocation).await,
             Self::Status => status(invocation).await,
         }
@@ -81,6 +90,17 @@ async fn sign_in(
             .output
             .note("ANIMA_TOKEN is set, and commands use it before the stored token.");
     }
+    Ok(())
+}
+
+async fn take_from_app(invocation: &Invocation) -> Result<(), Failure> {
+    let adopted = adopt::adopt(invocation).await?;
+    let origin = invocation.origin()?;
+    invocation.output.note(&format!(
+        "Signed in to {origin} as {} with the sign-in of the Anima.ing application. The current context is {}.",
+        adopted.username,
+        adopt::APP_CONTEXT
+    ));
     Ok(())
 }
 
