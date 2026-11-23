@@ -7,7 +7,7 @@ experiments/anima-os/prepare-runtime.sh
 rm -rf target
 nix --extra-experimental-features 'nix-command flakes' build path:./experiments/anima-os#iso --out-link "$out/iso" -L
 nix --extra-experimental-features 'nix-command flakes' build path:./experiments/anima-os#nixosConfigurations.appliance.config.system.build.toplevel --out-link "$out/system" -L
-cp "$out/iso/iso/anima-os-preview-x86_64.iso" "$out/anima-os-x86_64.iso"
+cp "$out/iso/iso/anima-os-x86_64.iso" "$out/anima-os-x86_64.iso"
 python3 experiments/anima-os/updates/package.py "$out/system" "$out/package" --key "$OS_SIGNING_KEY"
 CGO_ENABLED=0 go -C link test -c -o "$out/private-access.test" ./devicelink
 python3 experiments/anima-os/release/receipt.py "$out"
