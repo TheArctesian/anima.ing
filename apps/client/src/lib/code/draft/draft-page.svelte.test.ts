@@ -3,6 +3,7 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
 import { outcomeFrom, type Action } from '$lib/agent-threads/live/run';
+import { draftCatalogue, FIRST_CHOICE } from './choice';
 import DraftThread from './DraftThread.svelte';
 import { ThreadDraft } from './thread-draft.svelte';
 // The runner's answer to `models` on a Mac with Claude Code and Codex: `anima agents models --json` (daemon 0.10.72),
@@ -78,4 +79,13 @@ it('counts the seconds while the runner does not answer', async () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+it('offers Ultra for a Codex model that lists it, and only there (the runner takes "ultra" since threads/codex-rollout-items)', () => {
+  const answer = outcomeFrom(REAL_MODELS_ANSWER);
+  if (answer?.outcome !== 'models') throw new Error('the capture did not read');
+  const { catalogue } = draftCatalogue(FIRST_CHOICE, { state: 'listed', lists: answer.models });
+  const levels = (id: string) => catalogue.models.find((model) => model.id === id)?.efforts.map((effort) => effort.label);
+  expect(levels('gpt-6.2-sol')).toEqual(['Low', 'Medium', 'High', 'Extra High', 'Max', 'Ultra']);
+  expect(catalogue.models.filter((model) => model.provider === 'claude_code').flatMap((model) => model.efforts.map((effort) => effort.id))).not.toContain('ultra');
 });

@@ -1,11 +1,13 @@
 //! The unpack of a runtime archive (Section 6, F10): a `.tar.gz` ([`tar_gz`]) or a `.zip`
 //! ([`zip`]), into a new empty folder of this user, opened with `O_NOFOLLOW`, each file and folder made relative to an open handle of
-//! its folder with `O_NOFOLLOW`. Only regular files and folders; no link, device or FIFO, no
+//! its folder with `O_NOFOLLOW`. Only regular files, folders and the symbolic links that
+//! [`links`] turns into copies of a file of the archive; no hard link, device or FIFO, no
 //! absolute path, no `..`, no two names that are equal in lower case at any part of their
 //! paths. Folders and program files get 0755, other files 0644, with no setuid, setgid or
 //! sticky bit. At most 8 GiB of unpacked bytes and 50,000 entries, and never below the disk
 //! reserve. Blocking work: the caller runs it on a blocking thread.
 
+mod links;
 mod tar_gz;
 mod zip;
 
@@ -101,6 +103,10 @@ struct Writer<F: Fn() -> bool> {
     root: OwnedFd,
     /// Each path seen, and each of its parents, by its name in lower case.
     seen: HashMap<String, String>,
+    /// Each regular file written, by its path, with the mode bits of the archive.
+    files: HashMap<String, u32>,
+    /// Each link, by its names, with its target, in the order of the archive.
+    links: Vec<(Vec<String>, String)>,
     left: u64,
     entries: usize,
     max_entries: usize,
@@ -119,6 +125,8 @@ impl<F: Fn() -> bool> Writer<F> {
         Ok(Self {
             root,
             seen: HashMap::new(),
+            files: HashMap::new(),
+            links: Vec::new(),
             left: limits.bytes,
             entries: 0,
             max_entries: limits.entries,
@@ -155,10 +163,21 @@ impl<F: Fn() -> bool> Writer<F> {
 
     /// Writes one entry at `path`.
     fn write(&mut self, path: &str, kind: Kind, bytes: &mut dyn Read) -> Result<(), Cause> {
+        let names = self.claim(path, matches!(kind, Kind::Folder))?;
+        self.place(&names, kind, bytes)
+    }
+
+    /// The names of `path`, when they are plain and no entry seen before has them.
+    fn claim(&mut self, path: &str, folder: bool) -> Result<Vec<String>, Cause> {
         let names = names(path).ok_or(BAD_ARCHIVE)?;
-        if !self.first_seen(&names, matches!(kind, Kind::Folder)) {
+        if !self.first_seen(&names, folder) {
             return Err(BAD_ARCHIVE);
         }
+        Ok(names)
+    }
+
+    /// Writes the folder or the file at `names`, and makes each missing parent folder.
+    fn place(&mut self, names: &[String], kind: Kind, bytes: &mut dyn Read) -> Result<(), Cause> {
         let (last, parents) = names.split_last().ok_or(BAD_ARCHIVE)?;
         let mut dir = rustix::fs::openat(&self.root, ".", DIR_FLAGS, Mode::empty())
             .map_err(|_| Cause::LimitDisk)?;
@@ -167,7 +186,10 @@ impl<F: Fn() -> bool> Writer<F> {
         }
         match kind {
             Kind::Folder => drop(open_dir(&dir, last, true).map_err(|_| BAD_ARCHIVE)?),
-            Kind::File(mode) => self.write_file(&dir, (last, mode), bytes)?,
+            Kind::File(mode) => {
+                self.write_file(&dir, (last, mode), bytes)?;
+                self.files.insert(names.join("/"), mode);
+            }
         }
         Ok(())
     }
@@ -239,7 +261,8 @@ pub fn unpack(
 /// [`unpack`] with the limits `limits` (a test gives small ones).
 ///
 /// # Errors
-/// `archive_rejected` for an entry that breaks a rule; `limit_disk` past a limit, below the
+/// `archive_rejected` for an entry that breaks a rule, also a link that names no file of the
+/// archive; `limit_disk` past a limit, below the
 /// reserve, or for a write that fails.
 pub fn unpack_within(
     archive: File,
@@ -251,5 +274,6 @@ pub fn unpack_within(
     match format {
         ArchiveFormat::TarGz => tar_gz::unpack(archive, &mut writer),
         ArchiveFormat::Zip => zip::unpack(archive, &mut writer),
-    }
+    }?;
+    writer.finish_links()
 }

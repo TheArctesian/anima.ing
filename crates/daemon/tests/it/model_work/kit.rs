@@ -69,7 +69,9 @@ pub fn contained() -> Option<std::fs::File> {
             anima_daemon::model::tree::linux::end_cgroup(&path);
             Some(lock)
         } else {
-            eprintln!("skipped: no delegated cgroup v2 here; HT-119 covers pop-os");
+            eprintln!(
+                "skipped: no cgroup v2 delegated by systemd here (run in `systemd-run --user --scope -p Delegate=yes`); HT-119 covers pop-os"
+            );
             None
         }
     }
@@ -104,28 +106,38 @@ pub fn containment_lock() -> std::fs::File {
 
 pub const PROGRAM: &str = "bin/llama-server";
 
-/// A `.tar.gz` of `entries`: (path, mode, bytes), or a link when the bytes are `None`.
-/// One entry of a test archive: its path, its mode, and its bytes (`None` for a link).
+/// One entry of a test archive: its path, its mode, and its bytes (`None` for a link to
+/// `/etc/passwd`).
 pub type Entry<'a> = (&'a str, u32, Option<&'a [u8]>);
 
+/// A `.tar.gz` of `entries`.
 pub fn archive(entries: &[Entry<'_>]) -> std::fs::File {
+    linked_archive(&[], entries)
+}
+
+/// A `.tar.gz` of the links `links` (path, target), then of `entries`.
+pub fn linked_archive(links: &[(&str, &str)], entries: &[Entry<'_>]) -> std::fs::File {
+    let links = links.iter().map(|(path, to)| (*path, 0o777, None, *to));
+    let entries = entries
+        .iter()
+        .map(|(path, mode, bytes)| (*path, *mode, *bytes, "/etc/passwd"));
     let mut file = tempfile::tempfile().expect("a file");
     {
         let gz = flate2::write::GzEncoder::new(&mut file, flate2::Compression::fast());
         let mut tar = tar::Builder::new(gz);
-        for (path, mode, bytes) in entries {
-            // The name is written as raw bytes, so a test can make a name that the builder
+        for (path, mode, bytes, to) in links.chain(entries) {
+            // The name and the link name are written as raw bytes, so a test can make a name that the builder
             // of the `tar` crate would refuse.
             let mut header = tar::Header::new_old();
             header.as_old_mut().name[..path.len()].copy_from_slice(path.as_bytes());
-            header.set_mode(*mode);
+            header.set_mode(mode);
             let data = bytes.unwrap_or_default();
             header.set_size(data.len() as u64);
             if bytes.is_some() {
                 header.set_entry_type(tar::EntryType::Regular);
             } else {
                 header.set_entry_type(tar::EntryType::Symlink);
-                header.set_link_name("/etc/passwd").expect("a link name");
+                header.as_old_mut().linkname[..to.len()].copy_from_slice(to.as_bytes());
             }
             header.set_cksum();
             tar.append(&header, data).expect("an entry");
