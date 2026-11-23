@@ -348,7 +348,9 @@ server cannot stand in for the source.
 Built: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`, `tree/walk.rs`, and the launcher mode `__model-launch`
 of `crates/daemon/src/main.rs` (task L1-6; R-331; SF-258). The Linux code was not compiled or
 run on the Mac of the build: no Linux target is installed there. The tests that start a server skip on a Linux
-computer with no delegated cgroup v2, with the message "skipped: no delegated cgroup v2 here".
+computer where systemd does not delegate the cgroup v2 of the test process, with a message that starts with
+"skipped: no cgroup v2 delegated by systemd here". The daemon asks systemd for the property `Delegate` of the unit
+that holds its cgroup (DEF-013).
 
 1. On `pop-os`, run `cargo nextest run -p anima-daemon model_work` in a worktree of this branch, from a shell in a
    systemd user scope with delegation: `systemd-run --user --scope -p Delegate=yes bash`. Expected: each test passes;
@@ -358,8 +360,8 @@ computer with no delegated cgroup v2, with the message "skipped: no delegated cg
 3. With a test daemon in a user unit with `Delegate=yes`, give a `server_start` item. Expected: a folder
    `anima-model-<server>` below the cgroup of the unit; `cat cgroup.procs` there names `llama-server`. Give
    `server_stop`. Expected: the folder is gone and no process is left.
-4. Without `Delegate=yes`, give a `server_start` item. Expected: `failed` with `containment_failed`, and no
-   process is started.
+4. Without `Delegate=yes`, give a `server_start` item. Expected: `failed` with `containment_failed` and the
+   detail `no_delegation`, and no process is started.
 5. Start a server, then end the test daemon with `kill -9`. Start it again and call the sweep (`Node::sweep`).
    Expected: the `llama-server` of the first run and its cgroup are gone.
 6. Install the user unit of this build (`anima-daemon install` from the test folder). Expected:

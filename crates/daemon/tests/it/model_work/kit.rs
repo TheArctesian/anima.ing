@@ -69,7 +69,9 @@ pub fn contained() -> Option<std::fs::File> {
             anima_daemon::model::tree::linux::end_cgroup(&path);
             Some(lock)
         } else {
-            eprintln!("skipped: no delegated cgroup v2 here; HT-119 covers pop-os");
+            eprintln!(
+                "skipped: no cgroup v2 delegated by systemd here (run in `systemd-run --user --scope -p Delegate=yes`); HT-119 covers pop-os"
+            );
             None
         }
     }
