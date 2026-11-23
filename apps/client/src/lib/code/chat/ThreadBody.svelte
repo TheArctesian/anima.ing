@@ -26,11 +26,10 @@
   }
 </script>
 
-<!-- The open thread: the timeline of the copy (stage 3) for a thread the runner drives, today's view for a stored one. -->
+<!-- The open thread: the timeline of the copy (stage 3) for a thread the runner drives, which wins over an earlier
+     failed read of a file; today's view for a stored one. -->
 <div class="body" aria-busy={store.loadingThread}>
-  {#if store.threadProblem !== null}
-    <ErrorState message={store.threadProblem} onRetry={() => (store.chosen === null ? undefined : void store.open(store.chosen))} />
-  {:else if store.liveThread !== null && live !== null}
+  {#if store.liveThread !== null && live !== null}
     {@const thread = store.liveThread}
     {#key thread.row.id}
       <Timeline
@@ -44,6 +43,8 @@
         }}
       />
     {/key}
+  {:else if store.threadProblem !== null}
+    <ErrorState message={store.threadProblem} onRetry={() => (store.chosen === null ? undefined : void store.open(store.chosen))} />
   {:else if store.thread !== null && store.thread.id === store.chosen}
     <ThreadView thread={store.thread} {toolsOpen} state={threadState(store.thread, now, store.seen)} />
   {:else if store.chosen !== null}
