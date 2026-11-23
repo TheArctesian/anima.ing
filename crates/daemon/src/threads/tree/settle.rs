@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 use std::time::Duration;
 
-use super::{alive, ps_output};
+use super::{Ended, alive, ps_output};
 
 /// The longest wait for processes that got `SIGKILL` to be gone. On a busy computer (a load
 /// above 100) a killed process can take longer than a tenth of a second to end and be reaped,
@@ -13,17 +13,66 @@ const SETTLE: Duration = Duration::from_secs(5);
 /// How often the wait asks `ps` which of the processes left are zombies.
 const ASK_ZOMBIES: Duration = Duration::from_millis(500);
 
-/// How many of `pids` still run after they got `SIGKILL`: each is looked at every 50 ms until
-/// none runs or [`SETTLE`] passed. Every [`ASK_ZOMBIES`] and at the end, one that the system
-/// still lists is asked its state, so that a zombie (it ended; its parent has not reaped it yet)
+/// What an end of processes signalled, before the wait for them to be gone. The ends of one
+/// stop, or of each thread at the end of the holder, add up ([`Killed::and`]) and wait one time.
+#[derive(Debug)]
+pub struct Killed {
+    /// How many processes got a signal to end.
+    pub count: u32,
+    /// Whether the end looked at everything it had to: false when a table or an environment
+    /// could not be read.
+    pub sure: bool,
+    /// The processes that got `SIGKILL`.
+    pub pids: BTreeSet<u32>,
+}
+
+impl Killed {
+    /// Nothing to end: the start of a sum.
+    #[must_use]
+    pub const fn nothing() -> Self {
+        Self {
+            count: 0,
+            sure: true,
+            pids: BTreeSet::new(),
+        }
+    }
+
+    /// This end and `other` as one.
+    #[must_use]
+    pub fn and(mut self, other: Self) -> Self {
+        self.count = self.count.saturating_add(other.count);
+        self.sure = self.sure && other.sure;
+        self.pids.extend(other.pids);
+        self
+    }
+
+    /// The end, when `left` are the processes that still run after the wait.
+    #[must_use]
+    pub fn proved(&self, left: &BTreeSet<u32>) -> Ended {
+        Ended {
+            count: self.count,
+            all: self.sure && self.pids.is_disjoint(left),
+        }
+    }
+
+    /// The end after its own wait ([`left_running`]).
+    pub async fn settled(self) -> Ended {
+        let left = left_running(&self.pids).await;
+        self.proved(&left)
+    }
+}
+
+/// Which of `pids` still run after they got `SIGKILL`: each is looked at every 50 ms until none
+/// runs or [`SETTLE`] passed. Every [`ASK_ZOMBIES`] and at the end, one that the system still
+/// lists is asked its state, so that a zombie (it ended; its parent has not reaped it yet)
 /// counts as ended on a Mac too, and does not hold the stop for the whole wait.
-pub async fn left_running(pids: &BTreeSet<u32>) -> usize {
+pub async fn left_running(pids: &BTreeSet<u32>) -> BTreeSet<u32> {
     let start = tokio::time::Instant::now();
     let mut asked = start;
     loop {
         let left: Vec<u32> = pids.iter().copied().filter(|pid| alive(*pid)).collect();
         if left.is_empty() {
-            return 0;
+            return BTreeSet::new();
         }
         let now = tokio::time::Instant::now();
         if now >= start + SETTLE {
@@ -31,17 +80,17 @@ pub async fn left_running(pids: &BTreeSet<u32>) -> usize {
         }
         if now >= asked + ASK_ZOMBIES {
             asked = now;
-            if not_zombies(&left, start + SETTLE - now).await == 0 {
-                return 0;
+            if not_zombies(&left, start + SETTLE - now).await.is_empty() {
+                return BTreeSet::new();
             }
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
 }
 
-/// How many of `pids` are not zombies, as `ps` says it within `budget`; each one counts when
-/// `ps` cannot say, so that a slow `ps` never stretches the wait far past [`SETTLE`].
-async fn not_zombies(pids: &[u32], budget: Duration) -> usize {
+/// Which of `pids` are not zombies, as `ps` says it within `budget`; each one counts when `ps`
+/// cannot say, so that a slow `ps` never stretches the wait far past [`SETTLE`].
+async fn not_zombies(pids: &[u32], budget: Duration) -> BTreeSet<u32> {
     let list = pids
         .iter()
         .map(u32::to_string)
@@ -55,8 +104,9 @@ async fn not_zombies(pids: &[u32], budget: Duration) -> usize {
             zombies_in(&String::from_utf8_lossy(&output))
         });
     pids.iter()
-        .filter(|pid| alive(**pid) && !zombies.contains(pid))
-        .count()
+        .copied()
+        .filter(|pid| alive(*pid) && !zombies.contains(pid))
+        .collect()
 }
 
 /// The processes of `ps -o pid=,stat=` whose state is `Z`.
@@ -87,7 +137,7 @@ mod tests {
         let begun = std::time::Instant::now();
         assert_eq!(
             left_running(&BTreeSet::from([pid])).await,
-            0,
+            BTreeSet::new(),
             "a zombie ended"
         );
         assert!(
