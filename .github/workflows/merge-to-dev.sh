@@ -23,6 +23,9 @@ git config user.email "merge@anima.invalid"
 until=$(($(date +%s) + ${TRAIN_WATCH_SECONDS:-600}))
 while :; do
   bun quality/bin/train.ts
+  if [ -f experiments/anima-os/release/queue.sh ]; then
+    sh experiments/anima-os/release/queue.sh
+  fi
   if ! git ls-remote --heads origin 'refs/heads/train/*' | grep -q .; then
     exit 0
   fi
