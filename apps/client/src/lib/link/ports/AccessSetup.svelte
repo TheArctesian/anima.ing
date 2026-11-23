@@ -18,6 +18,7 @@
   let opened = $state(false);
   let busy = $state(false);
   let active = $state<number>();
+  let closing = $state(false);
   let problem = $state('');
   let messages = $state<Record<number, string>>({});
   let waitingSettings = $state(false);
@@ -66,6 +67,7 @@
     if (busy || loading) return;
     busy = true;
     active = target;
+    closing = !turnOn;
     problem = '';
     if (target !== undefined) {
       if (turnOn) selected = [...new Set([...selected, target])];
@@ -82,6 +84,7 @@
       else messages = { ...messages, [target]: message };
     } finally {
       busy = false;
+      closing = false;
       active = undefined;
     }
   }
@@ -163,9 +166,9 @@
             </div>
             <div class="detail">
               <p class="status" role="status">
-                {#if busy && (active === undefined ? row.on : active === row.port)}Preparing… Check for a system permission prompt.
-                {:else if messages[row.port]}{messages[row.port]}
+                {#if busy && (active === undefined ? row.on : active === row.port)}{closing ? 'Turning off…' : 'Preparing… Check for a system permission prompt.'}
                 {:else if pendingOff.includes(row.port)}Off on this computer · update in Anima pending
+                {:else if messages[row.port]}{messages[row.port]}
                 {:else if unavailable}No graphical desktop detected.
                 {:else if enabled}Ready in Anima
                 {:else if needsSync}Ready locally · not enabled in Anima
@@ -195,7 +198,8 @@
               {/if}
               </div>
             </div>
-            {#if row.port === 22 && !enabled}<p class="hint">Anima prepares private SSH access. Your system may ask for administrator approval.</p>{/if}
+            {#if pendingOff.includes(row.port) && messages[row.port]}<p class="hint" role="alert">{messages[row.port]}</p>{/if}
+            {#if row.port === 22 && !enabled && !pendingOff.includes(row.port)}<p class="hint">Anima prepares private SSH access. Your system may ask for administrator approval.</p>{/if}
             {#if unverified}<p class="hint">Anima could not verify a supported sign-in method. Review the server’s sharing permissions, then check again.</p>
             {:else if macSharing}<p class="hint">macOS requires you to turn on Screen Sharing in System Settings.</p>{/if}
             {#if system === 'windows' && row.port === 5900 && !enabled}<p class="hint">Needs an existing authenticated VNC server.</p>{/if}
