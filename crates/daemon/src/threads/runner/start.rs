@@ -59,41 +59,33 @@ impl Runner {
         }
         let copies = login::copies(new.program, &self.env, login::executable, login::trusted);
         let path = login::chosen_copy(new.program_path.as_deref(), &copies)?;
-        match self.silence.kept(&path) {
-            Some(true) => {
-                let asking = Asking {
-                    new,
-                    back,
-                    path,
-                    copies,
-                };
-                self.start_checked(asking).await
+        let asking = Asking {
+            new,
+            back,
+            path,
+            copies,
+        };
+        match self.silence.kept(&asking.path) {
+            Some(true) => self.start_checked(asking).await,
+            Some(false) => {
+                Err(self
+                    .silence
+                    .refusal(asking.new.program, &asking.path, &asking.copies))
             }
-            Some(false) => Err(self.silence.refusal(new.program, &path, &copies)),
             None => {
                 // The ask runs away from the loop; the start goes on when it answers (TH97).
                 // One ask for each copy at a time: a later start waits for the same answer.
-                let asked = self.asks.open.values().any(|open| open.path == path);
-                let env = login::with_folder_of(self.env.clone(), &path);
-                let ask = {
-                    let (path, copies) = (path.clone(), copies.clone());
-                    async move {
-                        let load = super::silence::load().await;
-                        super::silence::ask(path, copies, env, load).await
-                    }
+                let asked = self.asks.open.values().any(|open| open.path == asking.path);
+                let env = login::with_folder_of(self.env.clone(), &asking.path);
+                let (path, copies) = (asking.path.clone(), asking.copies.clone());
+                let ask = async move {
+                    let load = super::silence::load().await;
+                    super::silence::ask(path, copies, env, load).await
                 };
                 let sender = self.asks.sender.clone();
                 let id = self.asks.next;
                 self.asks.next += 1;
-                self.asks.open.insert(
-                    id,
-                    Asking {
-                        new,
-                        back,
-                        path,
-                        copies,
-                    },
-                );
+                self.asks.open.insert(id, asking);
                 if !asked {
                     tokio::spawn(async move {
                         // A runner that ended does not need the answer.
