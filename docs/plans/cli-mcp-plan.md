@@ -8,6 +8,10 @@ evidence: The command line and the MCP server are on `main`. The test against a 
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
+Version 0.5 (2026-11-22): MCP-033 to MCP-035 count a group that can write a part only when the
+group has a member other than the person and root, and check each link of a chain and the
+interpreter of a script (R-NEW-exactgroup, 12.8).
+
 Version 0.4 (2026-11-19): Section 12 adds `anima mcp install`, which puts the entry `anima` into the
 configuration of each coding agent on this computer, and its control in the Settings section "MCP"
 (MCP-027 to MCP-040, tasks MI1 to MI6). The operator asked for it (R-257).
@@ -1050,17 +1054,28 @@ library (CMD-030: the command line first).
 - **MCP-033.** The entry starts `anima` by an absolute path with the one argument `mcp`. The path is
   the program that runs the command, or the value of `--command`. The command refuses a path that is
   not absolute, that is not a regular file that can be run, or whose file or folder a different user
-  can write. The entry holds no environment variable, no token, no key and no hub address: `anima mcp`
+  can write. It checks each symbolic link on the way to the file, the file, and each folder above
+  them. A different user can write a part when a user other than the person and root owns it, when
+  each user can write it, or when its group can write it and that group has a member other than the
+  person and root: a name in the list of members of the group, or an account whose own (primary)
+  group it is. A group whose members cannot be read counts. A part of root that root's group or, on
+  macOS, the group `admin` can write counts as root's (R-NEW-exactgroup). The entry holds no environment variable, no token, no key and no hub address: `anima mcp`
   uses the context and the sign-in that the `anima` command already holds (MCP-002).
 - **MCP-034.** The command must refuse a configuration file, and change nothing of it, when: the file
   or a folder of its path below the home folder is a symbolic link; the file is not a regular file; a
-  different user owns it or can write it or its folder; it is larger than 1 MiB; or it cannot be read
+  different user owns it or can write it or its folder (a group counts as MCP-033 says); it is larger than 1 MiB; or it cannot be read
   as its format (MCP-030). It says which agent and why, goes on with the other agents, and ends with a
-  failure. It never follows a path that the file itself names.
+  failure. It never follows a path that the file itself names. When a different user can write the
+  file or its folder, it also names who and gives the member that the person can add themselves.
 - **MCP-035.** Where an agent has its own command to add and remove a server at user scope (12.2), the
   command runs that program with a fixed list of arguments and no shell. It runs the program that
   `PATH` gives, by its absolute path, and prints that path in the list of MCP-029. It passes no
-  secret. It does not read or parse the agent's file.
+  secret. It does not read or parse the agent's file. The program gets the check of MCP-033, and so
+  does the interpreter that a script names on its first line; for `env`, each folder of `PATH` that
+  `env` looks in until it finds the program; an option of `env` or a `PATH=` that changes which
+  program `env` finds fails the check. The program runs with that `PATH`. A program that fails
+  the check is not run: the list names who can change it and gives the command that the person can
+  run themselves.
 - **MCP-036.** `uninstall` removes only an entry that is `set_up`: one that starts the `anima` of
   MCP-033. An entry `anima` that is `different` was not made by this program, or was changed by a
   person: `uninstall` leaves it and says so, unless `--force` is given. The objects that held the
@@ -1120,7 +1135,8 @@ The command writes the configuration of other programs, and its entry makes thos
    MCP-034: a size limit, a depth limit, no path taken from the file.)
 2. Symbolic links: a file or a folder of the path that points elsewhere (MCP-034), and the window
    between the check and the rename (MCP-031: the rename replaces the name and follows no link).
-3. A configuration in a shared folder: a folder or a file that a different user can write (MCP-034).
+3. A configuration in a shared folder: a folder or a file that a different user can write (MCP-034;
+   who counts as a different user: 12.8).
 4. The `anima` of the entry: a fixed absolute path that no different user can replace (MCP-033); what
    an agent starts when that file is later removed or replaced by an update.
 5. The own command of an agent (MCP-035): which program runs, with which arguments, and what a
@@ -1146,7 +1162,7 @@ decides differently.
 | MI2 | The agents of 12.2, their states (MCP-027) and `anima mcp agents`, `install`, `uninstall` with `--agent`, `--dry-run`, `--command`, `--force` (MCP-028, MCP-029, MCP-033, MCP-035, MCP-036), with tests against a temporary home folder (MCP-040) | In progress | `37d557ea` and `5b10f6a6` on the branch `mcp/install`: built and tested against a temporary home folder; not tried with a real agent (HT-062); reviewed (12.6) |
 | MI3 | The mockup of the part "Coding agents" in [docs/mockup](../mockup/README.md) and on the screens canvas (PLN-019) | In progress | The mockup [mcp-agents/index.html](../mockup/mcp-agents/index.html) is drawn and is on the screens canvas; the operator did not see it |
 | MI4 | The shell commands of the desktop application and the part "Coding agents" of the Settings section (MCP-039) | In progress | `3ed276d2` on the branch `mcp/install`: built, with tests of the client part and of the answer of the shell. Not seen: the part is in the desktop application only, and no desktop build was made. The shell commands were not in the review of 12.6 |
-| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The review of the Settings part (MI4) is done (12.7); its corrections are on the branch `mcp/settings-review`. Two findings are open (12.7, rows 2 and 5) |
+| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The review of the Settings part (MI4) is done (12.7); its corrections are on the branch `mcp/settings-review`. Two findings are open (12.7, rows 2 and 5). The exact group check (R-NEW-exactgroup) is on the branch `cli/mcp-install-exact-group`, with its own review (12.8) |
 | MI6 | The entry HT-062: each agent of 12.2 on a real Mac and a real Linux computer | Not started | |
 
 ### 12.6 The security review of the command line part (2026-11-19)
@@ -1193,3 +1209,35 @@ done (branch `mcp/settings-review`):
 | 5 | Low. The shell did not enforce the list that the page showed: no agent named meant each agent, and the page could ask to force | Partly: the command of the shell now refuses a change that names no agent or asks to force. Open: the shell does not compare the state that the page showed with the state at the change |
 | 6 | Low. Two changes at the same time could race on the own program of an agent | Corrected: one read or change at a time |
 
+### 12.8 The exact group check (2026-11-22)
+
+`anima mcp agents` on the operator's Mac said of Claude Code and Codex "not changed: its program is
+in a folder that a different user can change". Both are installed with Homebrew: `/opt/homebrew/bin`
+and `/opt/homebrew/Caskroom` belong to him, with the group `admin` and mode 0775, and the group
+`admin` of that Mac has only root and him. The check counted each group write bit as a different
+user unless the group was the private group of the person (the number of the group is the number
+of the user). R-NEW-exactgroup changes that rule for the program of an agent, for `anima` and for
+the configuration files.
+
+What the check reads, before and after:
+
+| Part | Before | After |
+| --- | --- | --- |
+| A group that can write a part | Counts, unless the group's number is the person's number, or the group is root's | Counts only when the group has a member other than the person and root: a name in its list of members (`getgrgid`), or an account whose own group it is (`getent passwd` on Linux, `dscl /Search -list /Users PrimaryGroupID` on macOS). A name with no account counts. Each group is read once for each listing |
+| A group whose members cannot be read | Not read | Counts: no group entry, a failed or slow (10 s) program, more than 16 MiB, a line that cannot be read, and on macOS a group whose members the system calculates (`everyone`, `localaccounts` and five others), a record with no list of members or with a different group number, a group with nested groups or with more members by identifier than by name |
+| A part of root that root's group, or on macOS the group `admin`, can write | Fixed | Fixed, as before (12.7, row 1) |
+| A different owner (not the person or root), a write bit for each user | Counts | Counts, as before |
+| The program on `PATH` and what it links to | The path and the folders above it, and the real file and the folders above it | Each link of the chain, also a link inside a link, the real file, and the folders above each of them |
+| A script | Not read | The interpreter of its first line, and for `env` each folder of `PATH` that `env` looks in until it finds the program, and that program; up to four scripts that start one another. An option of `env` other than `-i` and `-S`, or a `PATH=` before the program, counts as not known. The program runs with the `PATH` that was checked |
+| The programs that read the members | | `/usr/bin/dscl` and `getent` from a fixed path, only when no user but root can change them, with no environment but `LC_ALL=C` |
+
+When the check refuses, the row says which part, who can change it (the owner, each user, the group
+and its other member, or a group whose members could not be read) and what the person can do
+themselves: the command of the agent's own program, or the member to add to the file.
+
+What it does not cover: an account of a directory service that does not list each account (for
+example SSSD without enumeration) is not seen as an account whose own group it is. Only the
+administrator of that directory can give such an account a local group as its own group, and that
+administrator can also give an account the number of the person. A library or a
+module that a program loads when it runs is not checked; access lists are not read on Linux and
+macOS.

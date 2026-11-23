@@ -19,7 +19,7 @@ fn mcp_035_an_agent_with_its_own_command_is_set_up_by_that_program_with_fixed_ar
         &bin,
         "codex",
         &format!(
-            "echo \"$@\" >> {log}\ncase \"$2\" in add) echo \"$5\" > {state};; remove) rm -f {state};; get) cat {state} 2>/dev/null || exit 1;; esac",
+            "echo \"$@\" >> {log}\ncase \"$2\" in add) echo \"$5\" > {state};; remove) /bin/rm -f {state};; get) /bin/cat {state} 2>/dev/null || exit 1;; esac",
             log = log.display(),
             state = here.home.join("codex.state").display()
         ),
@@ -91,15 +91,16 @@ fn mcp_033_the_program_of_the_entry_is_absolute_runnable_plain_and_not_replaceab
         Err(CommandError::NotAProgram)
     );
     mode(&anima, 0o777);
-    assert_eq!(
+    assert!(matches!(
         check_command(&anima, here.user),
-        Err(CommandError::Replaceable)
-    );
+        Err(CommandError::Replaceable(others))
+            if fs::canonicalize(&others.path).ok() == fs::canonicalize(&anima).ok()
+    ));
     mode(&anima, 0o755);
-    assert_eq!(
+    assert!(matches!(
         check_command(&anima, here.user + 1),
-        Err(CommandError::Replaceable)
-    );
+        Err(CommandError::Replaceable(_))
+    ));
     // A folder above the program that all can write, and the folder of what a link points at.
     let shared = here.home.join("shared");
     fs::create_dir_all(shared.join("mine")).expect("folders");
@@ -108,14 +109,14 @@ fn mcp_033_the_program_of_the_entry_is_absolute_runnable_plain_and_not_replaceab
     std::os::unix::fs::symlink(&inside, &link).expect("link");
     assert!(check_command(&inside, here.user).is_ok() && check_command(&link, here.user).is_ok());
     mode(&shared, 0o777);
-    assert_eq!(
+    assert!(matches!(
         check_command(&inside, here.user),
-        Err(CommandError::Replaceable)
-    );
-    assert_eq!(
+        Err(CommandError::Replaceable(_))
+    ));
+    assert!(matches!(
         check_command(&link, here.user),
-        Err(CommandError::Replaceable)
-    );
+        Err(CommandError::Replaceable(_))
+    ));
     // A path that an agent would read as a variable.
     let odd = here.home.join("${workspaceFolder}");
     fs::create_dir(&odd).expect("folder");
@@ -136,7 +137,7 @@ fn mcp_029_035_036_a_different_entry_of_an_own_command_is_shown_before_it_is_rep
         &here.path[0],
         "claude",
         &format!(
-            "echo \"$PWD $@\" >> {log}\ncase \"$2\" in add) echo \"$9\" > {state};; remove) rm -f {state};; get) cat {state} 2>/dev/null || exit 1;; esac",
+            "echo \"$PWD $@\" >> {log}\ncase \"$2\" in add) echo \"$9\" > {state};; remove) /bin/rm -f {state};; get) /bin/cat {state} 2>/dev/null || exit 1;; esac",
             log = log.display(),
             state = state.display()
         ),
