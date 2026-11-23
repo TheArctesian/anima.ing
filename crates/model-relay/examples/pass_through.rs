@@ -1,6 +1,7 @@
 //! A person starts the relay by hand, for the first forward with a real sign-in (task SA6).
 //! It is not a part of the product: nothing starts it, and it refuses to start when its input
-//! or its output is not a terminal.
+//! or its output is not a terminal. A program that makes a terminal of its own (`script`,
+//! `tmux`) can still start it: the check keeps out a pipe and a file, no more.
 //!
 //! `cargo run -p model-relay --example pass_through -- claude` (or `codex`). It prints the
 //! base address, which holds the secret, on the terminal only, and stops with Ctrl-C.
@@ -18,7 +19,7 @@ const FIRST_LINE: &str = "The sign-in of the program that you point at this addr
 async fn main() -> ExitCode {
     if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
         eprintln!(
-            "Not started: a person must run this in a terminal. The address holds a secret and is not written to a file or a pipe."
+            "Not started: the input and the output must be a terminal, not a pipe or a file. The address holds a secret and is not written to a file or a pipe."
         );
         return ExitCode::from(2);
     }
@@ -54,7 +55,12 @@ async fn main() -> ExitCode {
     );
     match program {
         Program::ClaudeCode => println!("  ANTHROPIC_BASE_URL={address} claude"),
-        Program::Codex => println!("  codex -c 'openai_base_url=\"{address}\"'"),
+        Program::Codex => {
+            println!("  codex -c 'openai_base_url=\"{address}\"'");
+            println!(
+                "While codex runs, a different user of this computer can see this argument with `ps`."
+            );
+        }
     }
     println!("Stop with Ctrl-C. The address is dead after that.");
     if tokio::signal::ctrl_c().await.is_err() {

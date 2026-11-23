@@ -9,7 +9,7 @@ use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt as _, Full};
 use hyper::body::Incoming;
-use hyper::header::{ORIGIN, UPGRADE};
+use hyper::header::{CONNECTION, HeaderValue, ORIGIN, UPGRADE};
 use hyper::service::service_fn;
 use hyper::{Request, Response, StatusCode, Uri};
 use hyper_util::rt::{TokioIo, TokioTimer};
@@ -17,13 +17,15 @@ use tokio::net::TcpListener;
 use tokio::task::JoinSet;
 
 use crate::forward::forward;
-use crate::headers::{passed, passed_on};
+use crate::headers::passed_on;
 use crate::secrets::{SECRET_LENGTH, Secrets};
 use crate::upstream::Upstreams;
 
 /// The most connections at one time; one thread uses a few.
 const MOST_CONNECTIONS: usize = 128;
-/// The longest wait for the head of a request, so that an idle connection does not stay.
+/// The longest wait for the head of a request, so that an idle connection does not stay. It
+/// also closes a connection that a program keeps open with no request for this time; the
+/// program then opens a new one.
 const HEAD_WAIT: Duration = Duration::from_secs(30);
 /// The wait after a fault of the listener.
 const ACCEPT_PAUSE: Duration = Duration::from_millis(50);
@@ -97,7 +99,7 @@ async fn answer(
     match forward(upstream, Request::from_parts(parts, body)).await {
         Ok(response) => {
             let (mut parts, body) = response.into_parts();
-            parts.headers = passed(&parts.headers);
+            parts.headers = passed_on(&parts.headers);
             tracing::info!(thread = %thread, %method, status = parts.status.as_u16(), "relay: passed");
             Ok(Response::from_parts(parts, body.boxed()))
         }
@@ -128,5 +130,8 @@ fn refusal(status: StatusCode, sentence: &'static str) -> Response<Body> {
         .boxed();
     let mut response = Response::new(body);
     *response.status_mut() = status;
+    // A caller that was refused does not keep its connection, and so no place of the limit.
+    let close = HeaderValue::from_static("close");
+    response.headers_mut().insert(CONNECTION, close);
     response
 }

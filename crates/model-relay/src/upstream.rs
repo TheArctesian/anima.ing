@@ -99,10 +99,10 @@ impl Upstreams {
             }
         };
         let path = rest.split('?').next().unwrap_or(rest);
-        // A `..` could leave the part of the host that the prefix names.
-        let stays = !path
-            .split('/')
-            .any(|part| part == ".." || part.eq_ignore_ascii_case("%2e%2e"));
+        // A `..` could leave the part of the host that the prefix names. A host can read
+        // `%2e` as a dot and `\\` as `/`, so both are looked at.
+        let leaves = |part: &str| part.replace("%2e", ".").replace("%2E", ".") == "..";
+        let stays = !path.contains('\\') && !path.split('/').any(leaves);
         let starts = rest.starts_with('/') || rest.is_empty() || rest.starts_with('?');
         (stays && starts).then(|| (upstream, format!("{}{rest}", upstream.prefix)))
     }

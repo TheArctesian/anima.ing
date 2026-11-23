@@ -142,6 +142,7 @@ fn seen(seen: &Seen) -> Vec<Got> {
     seen.lock().expect("the list").clone()
 }
 
+mod limits;
 mod log;
 mod passing;
 mod refusals;

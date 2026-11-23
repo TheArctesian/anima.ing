@@ -17,7 +17,7 @@ use super::{call, relay, seen, send};
 use crate::Relay;
 use crate::upstream::{Program, Trust, Upstream, Upstreams};
 
-const WAIT: Duration = Duration::from_secs(10);
+pub(super) const WAIT: Duration = Duration::from_secs(10);
 
 /// A listener with a certificate for `localhost` that only this test knows.
 async fn tls_listener() -> (TcpListener, TlsAcceptor, Vec<u8>) {
@@ -42,7 +42,7 @@ async fn tls_listener() -> (TcpListener, TlsAcceptor, Vec<u8>) {
 }
 
 /// A relay whose provider for Claude Code is `localhost` at `port`, known as `trust` says.
-async fn relay_to(port: u16, trust: Trust) -> Relay {
+pub(super) async fn relay_to(port: u16, trust: Trust) -> Relay {
     let host = Upstream {
         host: "localhost".to_owned(),
         port,
@@ -58,7 +58,7 @@ async fn relay_to(port: u16, trust: Trust) -> Relay {
 }
 
 /// Reads the head of a request from `stream`.
-async fn read_head(stream: &mut (impl AsyncRead + Unpin)) {
+pub(super) async fn read_head(stream: &mut (impl AsyncRead + Unpin)) {
     let mut head = Vec::new();
     let mut byte = [0_u8; 1];
     while !head.ends_with(b"\r\n\r\n") {
@@ -166,7 +166,7 @@ async fn sa6_a_provider_that_stops_in_the_middle_of_a_body_is_a_fault_for_the_pr
 }
 
 /// Writes `request` by hand to the relay at `base` and reads the answer to its end.
-async fn by_hand(base: &str, request: String) -> String {
+pub(super) async fn by_hand(base: &str, request: String) -> String {
     let mut answer = Vec::new();
     let mut stream = written(base, &request).await;
     tokio::time::timeout(WAIT, stream.read_to_end(&mut answer))
@@ -216,9 +216,8 @@ async fn sa6_an_upload_in_parts_passes_whole() {
     assert!(answer.contains("answer to hello world"), "{answer}");
     let got = seen(&provider);
     assert_eq!(got[0].body, "hello world");
-    assert!(
-        !got[0].headers.contains_key("content-length") || got[0].headers["content-length"] == "11"
-    );
+    let in_parts = !got[0].headers.contains_key("content-length");
+    assert!(in_parts, "the body went on in parts");
 }
 
 #[tokio::test]

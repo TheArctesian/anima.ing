@@ -107,7 +107,15 @@ async fn sa6_a_request_cannot_name_a_different_host_and_no_redirect_is_followed(
 async fn sa6_a_path_that_leaves_its_prefix_and_a_name_that_is_not_a_name_are_refused() {
     let (relay, provider) = relay().await;
     let base = relay.open("thread-9", Program::Codex).expect("open");
-    for path in ["/../../x", "/a/../../x", "/%2e%2e/x", "/%2E%2E/x?y=1"] {
+    for path in [
+        "/../../x",
+        "/a/../../x",
+        "/%2e%2e/x",
+        "/%2E%2E/x?y=1",
+        "/.%2e/x",
+        "/%2E./x",
+        "/a\\..\\x",
+    ] {
         let answer = call(Method::GET, &format!("{base}{path}"), &[], "").await;
         assert_eq!(answer.status, StatusCode::NOT_FOUND, "{path}");
     }

@@ -17,9 +17,9 @@ const ONE_CONNECTION: [HeaderName; 7] = [
     UPGRADE,
 ];
 
-/// The headers of a request for the provider: as [`passed`], and without `content-length`
-/// when the request named a `transfer-encoding`. The body is then sent in parts, and a length
-/// that the program also sent would not agree with it.
+/// The headers of a request or of an answer for the other side: as [`passed`], and without
+/// `content-length` when a `transfer-encoding` was named. The body is then sent in parts, and
+/// a length that was also sent would not agree with it.
 #[must_use]
 pub fn passed_on(headers: &HeaderMap) -> HeaderMap {
     let mut passed = passed(headers);
@@ -31,8 +31,7 @@ pub fn passed_on(headers: &HeaderMap) -> HeaderMap {
 
 /// `headers` for the other side: without the headers of one connection, without the headers
 /// that `connection` names, without `keep-alive` and without `host`.
-#[must_use]
-pub fn passed(headers: &HeaderMap) -> HeaderMap {
+fn passed(headers: &HeaderMap) -> HeaderMap {
     let named: Vec<String> = headers
         .get_all(CONNECTION)
         .iter()
