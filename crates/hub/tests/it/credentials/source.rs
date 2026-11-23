@@ -1,5 +1,4 @@
-//! `credentials.source_secrets` through the public source-secret functions (SRC-008, PRJ-018,
-//! SEC-003).
+//! `credentials.source_secrets` through the public functions (SRC-008, PRJ-018, SEC-003).
 
 use std::fmt::Write as _;
 

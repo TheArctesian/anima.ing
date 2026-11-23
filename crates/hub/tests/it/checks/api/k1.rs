@@ -1,10 +1,8 @@
-//! The checks part of the hub declares exactly the K1 root fields it owns (CON-002; the exact
-//! schema comparison is `contract`).
+//! The K1 root fields of the checks part (CON-002).
 
 use super::harness::schema_for;
 use crate::contract::{k1, schema};
 
-/// The K1 root fields the checks part builds; the others belong to other packages.
 const OWNED_ROOT: [&str; 9] = [
     "check",
     "checkDefaults",

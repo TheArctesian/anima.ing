@@ -1,5 +1,4 @@
-//! `Check.status`, `lastHeartbeat` and `uptime` cost a bounded number of statements however
-//! many checks a query selects (API-005).
+//! `Check.status`, `lastHeartbeat` and `uptime` cost a bounded number of statements (API-005).
 
 use std::sync::{
     Arc,
@@ -17,7 +16,6 @@ use super::harness::{
     signed_in,
 };
 
-/// Counts the statements sqlx runs on this thread.
 struct Statements(Arc<AtomicUsize>);
 
 impl<S: Subscriber> Layer<S> for Statements {
@@ -38,8 +36,7 @@ const DEVICES: [&str; 5] = [
 
 const FIELDS: &str = "status lastHeartbeat { status } uptime(window: DAY)";
 
-/// The statements the query needs, less the two each group takes to be read and to list its
-/// children.
+/// Leaves out the two statements each group takes to be read and to list its children.
 async fn loader_statements(schema: &TestSchema, groups: &[String], selection: &str) -> usize {
     let fields: Vec<String> = groups
         .iter()
@@ -89,8 +86,7 @@ async fn api_005_status_last_heartbeat_and_uptime_cost_a_bounded_number_of_state
     }
     let one = loader_statements(&schema, &groups[..1], FIELDS).await;
     let many = loader_statements(&schema, &groups, FIELDS).await;
-    // Per check the three fields would take about three statements each: 12 for 4 checks and
-    // 60 for 20. Batched, the cost is a few statements per batch, whatever the number of checks.
+    // Per check the three fields take about three statements each; batched, a few per batch.
     assert!(one <= 8, "4 checks took {one} statements");
     assert!(many <= 20, "20 checks on 5 devices took {many} statements");
 }
@@ -160,8 +156,7 @@ async fn api_005_heartbeat_pages_of_many_checks_on_many_devices_take_a_bounded_n
     }
     let pages = "heartbeats(first: 50) { edges { node { status } } pageInfo { hasNextPage } }";
     let many = loader_statements(&schema, &groups, pages).await;
-    // One statement per batch, not one per check: the 39 checks would take 39 by themselves.
-    // Fewer statements than devices, so no per-device read hides inside the batch either.
+    // Fewer statements than devices: no per-check or per-device read hides inside the batch.
     assert!(
         many < devices.len(),
         "39 checks on 13 devices took {many} statements"

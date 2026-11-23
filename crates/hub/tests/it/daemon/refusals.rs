@@ -1,8 +1,4 @@
-//! K8 Sections 3 and 6, CR-15, CR-21, NET-002: every enrol refusal and every token refusal on
-//! renew reaches the event log as a warning with its code and address, never the code or token;
-//! one with no valid credential at most once a minute per address, one with a valid credential
-//! at most once a minute per device. An address outside the permitted networks reaches neither
-//! route.
+//! Daemon refusals reach the event log, rate-limited, never with the code or token (K8 3, 6; CR-15, CR-21, NET-002).
 
 use axum::http::StatusCode;
 use chrono::TimeDelta;
@@ -57,7 +53,7 @@ async fn cr_21_refusals_with_a_valid_token_are_written_once_a_minute_per_device(
     let daemons = Daemons::at(&pool, now).await;
     let token = daemons.token_for(PVE_01).await;
     let bearer = format!("Bearer {token}");
-    // From any address and on either route: the device decides, and every answer stays.
+    // The device decides the limit, whatever the address or route; every answer stays.
     for from in [PERMITTED, NEIGHBOUR, PERMITTED] {
         let answer = daemons.renew_raw(Some(&bearer), "[]", from).await;
         assert_eq!(answer, (StatusCode::BAD_REQUEST, refusal("MALFORMED")));
@@ -157,7 +153,6 @@ async fn cr_18_a_token_of_a_device_switched_away_cannot_renew(pool: PgPool) {
     assert_eq!(device_warnings(&pool).await, [refused]);
 }
 
-/// The device name and message of each metrics warning that names a device, oldest first.
 async fn device_warnings(pool: &PgPool) -> Vec<(Option<String>, String)> {
     sqlx::query_as(
         "SELECT device_name, message FROM events.event_log \
@@ -185,7 +180,6 @@ async fn net_002_an_address_outside_the_permitted_networks_reaches_no_daemon_rou
     let bearer = format!("Bearer {token}");
     let renewal = daemons.renew_raw(Some(&bearer), "{}", OUTSIDE).await;
     assert_eq!(renewal.0, StatusCode::FORBIDDEN);
-    // Neither request reached the route: the code and the token are untouched.
     assert_eq!(daemons.enrol(&code).await.0, StatusCode::OK);
     assert_eq!(daemons.renew(&token).await.0, StatusCode::OK);
     let refusals: Vec<String> =

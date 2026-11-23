@@ -1,5 +1,4 @@
-//! A client that goes away while the broker works: the broker's change (here, a new pre-auth
-//! key) still gets its hub audit entry and event, without the key (LOG-005, LOG-007, R-055).
+//! A broker change gets its audit entry and event, without the key, after its client goes away (LOG-005, LOG-007, R-055).
 
 use std::time::Duration;
 
@@ -20,7 +19,6 @@ const MADE: &str = "Made a one-hour";
 /// How long the hub may take to write what the broker made; only a broken hub reaches it.
 const BOUND: Duration = Duration::from_secs(20);
 
-/// Waits until the bus carries the event of the key the broker made.
 async fn until_made(signals: &mut Receiver<Signal>) {
     loop {
         match signals.recv().await {
@@ -31,7 +29,7 @@ async fn until_made(signals: &mut Receiver<Signal>) {
     }
 }
 
-/// The audit entries of new VPN keys, once there is one; the hub commits them after the event.
+/// Polls, because the hub commits the audit entries after the event.
 async fn audited(pool: &PgPool) -> Vec<String> {
     loop {
         let audited: Vec<String> = sqlx::query_scalar(
@@ -65,8 +63,7 @@ async fn log_005_a_dropped_request_still_audits_the_key_the_broker_made(pool: Pg
 
     let mut signals = hub.bus.subscribe();
 
-    // The browser tab closes once the broker has the request and works on it: the request
-    // future is dropped.
+    // The request future is dropped once the broker has the request, as when a browser tab closes.
     tokio::select! {
         biased;
         () = fake.until_received(|line| line.contains("personal-key")) => {}

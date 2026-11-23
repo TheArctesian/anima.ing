@@ -1,5 +1,4 @@
-//! Removing the source account keeps its projects or deletes them, as the operator chose
-//! (ITG-004); a kept project is adopted by the account that lists its repository next.
+//! Removing a source account keeps or deletes its projects, as the operator chose (ITG-004).
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -33,8 +32,7 @@ async fn itg_004_remove_with_records_kept_keeps_every_project(pool: PgPool) {
     assert_eq!(rows(&pool).await, (2, 2));
     assert_eq!(slugs(&kit.projects(false).await), ["blog", "site"]);
 
-    // Connected again, the same repositories are the same projects, not new ones. Projects
-    // is off while it connects, so only the test's run reads them.
+    // Projects is off while it connects, so only the test's run reads the repositories.
     set_projects(&pool, false).await;
     let again = kit.connect().await;
     kit.run(again).await;
@@ -60,10 +58,6 @@ async fn itg_004_remove_with_records_deleted_deletes_its_projects(pool: PgPool) 
 
 const CONFIRM: &str = "mutation($id: ID!) { confirmProjectResource(id: $id) { id state } }";
 
-/// PRO-002 outlives the account: account A imported `me/site` and `me/app` first, B lists them
-/// too. The operator leaves `me/site` out and confirms a resource of `me/app`, then removes A
-/// with its records. B keeps both decisions: `me/site` stays out and is never read again, and
-/// the confirmed resource stays.
 #[sqlx::test(migrations = "./migrations")]
 async fn pro_002_removing_one_account_with_records_keeps_what_another_still_lists(pool: PgPool) {
     let kit = kit(&pool).await;

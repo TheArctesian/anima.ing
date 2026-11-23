@@ -1,6 +1,4 @@
-//! A job whose files are in ends `published` or `failed`, in the order BLD-064 to BLD-066 set,
-//! signed by the hub (R-117), and a publisher that stops is taken over (BLD-063 to BLD-070, D-25,
-//! R-108).
+//! Publishing a job whose files are in, signed by the hub (BLD-063 to BLD-070, D-25, R-108, R-117).
 
 use std::time::Duration;
 
@@ -80,7 +78,6 @@ async fn bld_066_a_linux_job_publishes_its_sig_the_stable_name_then_latest_json_
     assert_eq!(publishing.sweep(ready()).await, 0);
 }
 
-/// The files of a macOS job: the updater archive, the DMG and the sums.
 fn mac_files(publishing: &Publishing) -> (Vec<File>, Value) {
     // The builder proposes no signature; the hub signs (R-117).
     let archive = File::new("Anima.app.tar.gz", "app archive ".repeat(300));
@@ -102,8 +99,7 @@ fn mac_files(publishing: &Publishing) -> (Vec<File>, Value) {
     (vec![archive, dmg, File::new("SHA256SUMS", sums)], feed)
 }
 
-/// BLD-068 (R-116, R-117): a macOS job publishes its versioned files, the DMG's stable name, the
-/// `.sig` the hub made over the checked archive, and the signed feed in both Mac folders.
+/// R-116, R-117: the hub makes the `.sig` over the checked archive.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_068_a_macos_job_publishes_its_hub_signed_feed_for_both_mac_architectures(
     pool: PgPool,
@@ -146,8 +142,6 @@ async fn bld_068_a_macos_job_publishes_its_hub_signed_feed_for_both_mac_architec
     );
 }
 
-/// D-25: a hub that stops after the stable copy, before it sends `latest.json`, leaves the job
-/// held; once the hold ends, the next sweep runs every step again and publishes.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_publisher_stopped_between_copy_and_feed_is_taken_over(pool: PgPool) {
     let publishing = std::sync::Arc::new(Publishing::start(&pool).await);
@@ -177,8 +171,6 @@ async fn d_25_a_publisher_stopped_between_copy_and_feed_is_taken_over(pool: PgPo
     assert!(publishing.fake.object(LINUX_FEED).is_some());
 }
 
-/// D-25: a try that a later try took over while it read the files writes nothing and changes
-/// nothing; only the job's latest try ends it.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_try_that_was_taken_over_does_not_end_the_job(pool: PgPool) {
     let publishing = std::sync::Arc::new(Publishing::start(&pool).await);
@@ -190,7 +182,7 @@ async fn d_25_a_try_that_was_taken_over_does_not_end_the_job(pool: PgPool) {
         tokio::spawn(async move { publishing.sweep(ready()).await })
     };
     until_waiting(&publishing).await;
-    // A later try takes the job over while the first one waits on the bucket.
+    // A later try takes the job over.
     sqlx::query("UPDATE builds.jobs SET publish_attempts = 2 WHERE id = $1::uuid")
         .bind(&held.job)
         .execute(&pool)
@@ -210,8 +202,6 @@ async fn d_25_a_try_that_was_taken_over_does_not_end_the_job(pool: PgPool) {
     assert_eq!(feed, None);
 }
 
-/// D-25, BLD-070: an unreachable bucket is tried 3 times, then the job fails, and the
-/// `latest.json` already there stays as it was.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_070_an_unreachable_bucket_fails_the_job_after_3_tries(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -234,8 +224,6 @@ async fn bld_070_an_unreachable_bucket_fails_the_job_after_3_tries(pool: PgPool)
     assert_eq!(publishing.fake.object(LINUX_FEED).unwrap().bytes, old.bytes);
 }
 
-/// D-25: once the files are in, the builder's lease is over; it can neither report nor get new
-/// upload URLs while the hub publishes.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_the_builder_is_refused_once_the_hub_publishes(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;

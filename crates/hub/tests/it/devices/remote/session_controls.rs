@@ -1,5 +1,4 @@
-//! The session limit of a device through GraphQL: create, update, read back and the refused
-//! values (RA-036). Sessions are not recorded, so a device has no recording flag (R-113).
+//! The session limit of a device through GraphQL (RA-036); a device has no recording flag (R-113).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

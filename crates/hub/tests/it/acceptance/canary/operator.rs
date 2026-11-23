@@ -1,6 +1,4 @@
-//! The operator's secrets: a password typed right and wrong, a browser sign-in and its cookie
-//! (G-14), a password in a URL, and a TOTP secret, code and replayed code (SEC-002, D-3, D-8,
-//! LOG-007).
+//! The operator's secrets: password, browser cookie, password in a URL, TOTP (G-14, SEC-002, D-3, D-8, LOG-007).
 
 use anima_hub::fleet::access::{self, Password};
 use axum::{body::Body, http::Request};
@@ -26,8 +24,6 @@ fn input(password: &str, totp_code: Option<&str>) -> Value {
     json!({ "input": { "username": USERNAME, "password": password, "totpCode": totp_code } })
 }
 
-/// Makes the operator with a canary password, signs a browser in by cookie, enrols TOTP and
-/// signs in with a code; returns the login token.
 pub async fn sign_in(
     hub: &WholeHub,
     pool: &PgPool,
@@ -74,7 +70,6 @@ pub async fn sign_in(
     token
 }
 
-/// Signs a browser in from the public origin and reads `me` by its cookie.
 async fn browser(hub: &WholeHub, password: &str, secrets: &mut Secrets) {
     let origin = [("origin", PUBLIC)];
     let answer = (hub.graphql_answer(&origin, SIGN_IN_BROWSER, input(password, None))).await;
@@ -94,7 +89,6 @@ async fn browser(hub: &WholeHub, password: &str, secrets: &mut Secrets) {
         .graphql(&headers, "{ me { username } }", json!({}))
         .await;
     assert_eq!(me["data"]["me"]["username"], USERNAME);
-    // The cookie from another origin is refused: the error path of the same value.
     let elsewhere = [("origin", "https://elsewhere.example"), ("cookie", &cookie)];
     let refused = hub
         .graphql(&elsewhere, "{ me { username } }", json!({}))
@@ -102,8 +96,7 @@ async fn browser(hub: &WholeHub, password: &str, secrets: &mut Secrets) {
     assert_eq!(code(&refused), "UNAUTHENTICATED");
 }
 
-/// A password in the query string of `GET /graphql`, as a client that sends GraphQL over GET
-/// would put it: the hub refuses the request and logs its route, never its query.
+/// The hub refuses a password in a `GET /graphql` URL and logs its route, never its query.
 async fn password_in_url(hub: &WholeHub, secrets: &mut Secrets) {
     let password = secrets.plant("url-password");
     let variables = format!("%7B%22password%22%3A%22{password}%22%7D");

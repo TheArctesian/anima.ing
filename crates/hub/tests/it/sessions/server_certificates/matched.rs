@@ -1,6 +1,5 @@
-//! `certificateMatched` through the schema (SEC-007): true only when the hub read the RDP
-//! server certificate and it equals the accepted pin. A null `serverCertificate` is not proof
-//! of a match, so a device that answers without TLS after a pin is accepted is no match.
+//! `certificateMatched` (SEC-007): true only when the RDP certificate the hub read equals the
+//! accepted pin; a null `serverCertificate` is no match.
 
 use serde_json::json;
 use sqlx::PgPool;

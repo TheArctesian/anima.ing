@@ -7,7 +7,6 @@ use uuid::Uuid;
 
 use super::{beat, code_of, database_now, ensure, execute, partition, refusal, table_exists};
 
-/// The database clock moved by `days` (negative is earlier).
 async fn days_from_now(pool: &PgPool, days: i64) -> DateTime<Utc> {
     database_now(&mut pool.acquire().await.unwrap()).await + TimeDelta::days(days)
 }
@@ -39,7 +38,6 @@ async fn db_004_ensure_partition_succeeds_after_a_racing_creator_commits(pool: P
         .unwrap();
     let racing = tokio::spawn(async move { ensure(&mut second, instant).await });
 
-    // Wait until the second call is blocked behind the first one's uncommitted partition.
     let mut observer = pool.acquire().await.unwrap();
     let mut waiting = false;
     for _ in 0..500 {

@@ -1,5 +1,4 @@
-//! How the hub stores the `agentUsage` of a batch (K8 Section 4; AIS-020, AIS-023, AIS-024):
-//! an idempotent upsert of each session day, the state, and nothing of a device once deleted.
+//! Storage of a batch's `agentUsage` (K8 Section 4; AIS-020, AIS-023, AIS-024).
 
 use axum::http::StatusCode;
 use chrono::{Days, NaiveDate};
@@ -83,7 +82,6 @@ async fn ais_020_a_session_takes_its_start_end_and_repository_from_the_entry_sto
     let mut later = entry(SESSION, today, (1, 2), json!([]));
     later["startedAt"] = earlier["startedAt"].clone();
     later["endedAt"] = json!(format!("{today}T01:00:00Z"));
-    // Both days in one batch: the last entry of the session sets its repository (none).
     pusher.reading(json!([earlier, later])).await;
 
     let by_repository = usage(&daemons, json!({}), &["REPOSITORY"]).await;

@@ -1,7 +1,4 @@
-//! The hub's updater key at start and its `.sig` on a retry (R-117, SEC-004, LOG-007, D-25): a
-//! key that does not open with its password, or opens to another public key, turns publishing
-//! off with a fixed warning that names no key text, and the hub still has its other parts; a
-//! `.sig` write whose answer was lost, and that a stop then left cut short, is put again whole.
+//! Updater key and `.sig` retry (R-117, SEC-004, D-25); logs name no key text (LOG-007).
 
 use std::{
     io::{self, Cursor},
@@ -36,8 +33,6 @@ impl io::Write for Capture {
     }
 }
 
-/// Opens the bucket of `releases` with this thread's log in a buffer; whether it opened, and
-/// the log.
 fn opened_with_log(releases: &anima_hub::config::Releases) -> (bool, String) {
     let capture = Capture::default();
     let writer = capture.clone();
@@ -103,10 +98,7 @@ async fn r_117_a_wrong_password_or_another_public_key_turns_publishing_off_and_l
     }
 }
 
-/// D-44, CR-26: a key made with no password, which `tauri signer generate` still seals with
-/// scrypt, opens with an empty password file. A missing key or password file, or an empty
-/// password for a key made with one, turns publishing off with a fixed reason; the bucket is not
-/// opened, and the hub goes on.
+/// `tauri signer generate` scrypt-seals a key made with no password, so it opens with an empty password file.
 #[tokio::test]
 async fn d_44_cr_26_an_empty_password_opens_only_a_key_made_without_one() {
     let fake = FakeR2::start().await;
@@ -159,9 +151,6 @@ async fn d_44_cr_26_an_empty_password_opens_only_a_key_made_without_one() {
     }
 }
 
-/// D-25: the `.sig` write lands but its answer is lost, so the try waits; before the next try
-/// the object is cut short, as a stop mid-write would leave it. The next try signs the same
-/// bytes again, puts the `.sig` whole and publishes a feed whose signature is that `.sig`.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_r_117_a_retry_after_a_partial_sig_write_puts_the_same_sig_whole(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -182,9 +171,7 @@ async fn d_25_r_117_a_retry_after_a_partial_sig_write_puts_the_same_sig_whole(po
     publishing.assert_signed("0.1.12", &files[0]);
 }
 
-/// D-39, C-1: a sent feed is confirmed only with a `.sig` by the hub's key. A `.sig` and a
-/// `latest.json` that agree but are signed by another key, as a bucket writer could leave them,
-/// fail the job instead of publishing it.
+/// C-1: a sent feed is confirmed only with a `.sig` by the hub's key.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_39_a_sent_feed_signed_by_another_key_is_not_confirmed(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;

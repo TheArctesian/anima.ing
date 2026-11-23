@@ -1,5 +1,4 @@
-//! Failed runs: the next sync backs off, waits out a rate limit, and a refused token asks the
-//! operator to connect again with one warning (SRC-006, SRC-009, SRC-021).
+//! Failed runs: back-off, rate limits and a refused token (SRC-006, SRC-009, SRC-021).
 
 use anima_hub::{engine::sources::Outcome, ids::SourceAccountId};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -9,7 +8,6 @@ use sqlx::PgPool;
 use super::{kit, set_projects, stub::Reply};
 use crate::hub::start;
 
-/// `(last_error_kind, failure_count, next_sync_at)` of `account`.
 async fn after(pool: &PgPool, account: SourceAccountId) -> (Option<String>, i32, DateTime<Utc>) {
     sqlx::query_as(
         "SELECT last_error_kind, failure_count, next_sync_at FROM sources.accounts WHERE id = $1",

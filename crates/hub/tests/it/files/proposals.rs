@@ -1,5 +1,4 @@
-//! Extraction proposals (VIS-001 to VIS-004), and what the audit log and the event log keep of
-//! files and proposals (LOG-007).
+//! Extraction proposals (VIS-001 to VIS-004) and what the logs keep of files (LOG-007).
 
 use anima_hub::engine::{files, records::Reference};
 use serde_json::{Value, json};

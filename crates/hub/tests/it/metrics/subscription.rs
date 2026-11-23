@@ -1,5 +1,4 @@
 //! `metricsAdded` reads the feed, guarded and filtered by device (API-003, MET-005, D-9).
-//! No database is involved: the subscription reads only the feed.
 
 use std::{sync::Arc, time::Duration};
 

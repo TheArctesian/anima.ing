@@ -1,5 +1,4 @@
-//! Every channel field needs a signed-in operator, and a read token may list channels but
-//! never change one (API-003).
+//! Channel fields need a signed-in operator; a read token may only list (API-003).
 
 use async_graphql::{Request, Variables};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};

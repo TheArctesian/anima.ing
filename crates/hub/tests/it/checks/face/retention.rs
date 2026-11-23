@@ -33,7 +33,6 @@ async fn buckets(pool: &PgPool, table: &str) -> Vec<DateTime<Utc>> {
 
 const KEEP_30: Days = Days::new(30);
 
-/// As the owner, creates the heartbeat partition of the day `days` days before `now`.
 async fn old_partition(pool: &PgPool, now: DateTime<Utc>, days: i64) -> DateTime<Utc> {
     let old = now - TimeDelta::days(days);
     let day = old.date_naive();

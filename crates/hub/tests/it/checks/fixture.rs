@@ -4,14 +4,12 @@ use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-/// One check as (id, device id, name, type, config).
 type Row = (Uuid, Uuid, String, String, Value);
 
 fn text(value: &Value) -> &str {
     value.as_str().unwrap()
 }
 
-/// The K6 checks, with each GraphQL type in its stored form and the config variant unwrapped.
 fn k6_checks() -> Vec<Row> {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),

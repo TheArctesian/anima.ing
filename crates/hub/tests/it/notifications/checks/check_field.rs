@@ -1,6 +1,4 @@
-//! `createCheck` turns on the channels marked "on by default" in its own transaction, and
-//! `Check.notifications` answers through the hub's schema from a loader that reads a batch of
-//! checks in three statements (NOT-003, API-005).
+//! A new check's default channels and `Check.notifications` (NOT-003, API-005).
 
 use std::sync::atomic::Ordering;
 
@@ -15,7 +13,6 @@ const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 
 const NOTIFICATIONS: &str = "notifications { resendEveryBeats channels { id name } }";
 
-/// The names of the channels a `CheckNotifications` lists.
 fn names(notifications: &Value) -> Vec<&str> {
     notifications["channels"]
         .as_array()
@@ -97,7 +94,6 @@ async fn not_003_check_notifications_answers_the_choices_set_for_the_check(pool:
 
 const CREATE: &str = "mutation($input: CreateCheckInput!) { createCheck(input: $input) { id } }";
 
-/// Makes every insert into `table` fail with an SQL error.
 async fn refuse_inserts(pool: &PgPool, table: &str) {
     for statement in [
         "CREATE FUNCTION public.refuse_insert() RETURNS trigger LANGUAGE plpgsql AS \
@@ -112,8 +108,6 @@ async fn refuse_inserts(pool: &PgPool, table: &str) {
     }
 }
 
-/// Creates the check `SSH` on pve-01, which must fail; returns how many checks and channel
-/// links are stored afterwards.
 async fn failed_create(rig: &Rig) -> (i64, i64) {
     let input = json!({ "deviceId": PVE_01, "name": "SSH", "config": { "tcp": { "port": 22 } } });
     let response = rig.run(CREATE, json!({ "input": input })).await;
@@ -153,7 +147,6 @@ async fn not_003_a_create_whose_channel_links_cannot_be_written_keeps_no_check(p
     assert_eq!(failed_create(&rig).await, (0, 0));
 }
 
-/// Twelve TCP checks on pve-01, created while `Pager` is on by default.
 async fn twelve_checks(rig: &Rig) -> Vec<String> {
     let mut checks = Vec::new();
     for port in 0..12 {
@@ -185,8 +178,7 @@ async fn api_005_the_loader_reads_1_or_12_checks_in_the_same_3_statements(pool: 
     let all = loader.load_many(checks.iter().copied()).await.unwrap();
     let for_twelve = statements.load(Ordering::SeqCst);
 
-    // `for_checks` reads the links, the settings and the channels once per batch. Read per
-    // check, twelve checks would take 36.
+    // A batch reads links, settings and channels once; per check, twelve would take 36.
     assert_eq!((for_one, for_twelve), (3, 3));
     assert_eq!(one.channels.len(), 1);
     assert_eq!(all.len(), 12);

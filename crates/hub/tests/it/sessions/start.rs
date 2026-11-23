@@ -1,6 +1,4 @@
-//! `startSession`: the row, the audit entry and the ticket, and each refusal (K4 §1, §6,
-//! RA-008, LOG-005, API-009); `hosts` covers the device's host, `protocols` RDP and VNC,
-//! `waking` a Down device first, and `limit` the device's session limit (RA-036).
+//! `startSession` and its refusals (K4 §1, §6, RA-008, LOG-005, API-009, RA-036).
 
 mod hosts;
 mod limit;
@@ -86,14 +84,12 @@ async fn api_009_start_session_writes_a_live_row_and_audit_and_returns_a_ticket(
     assert_eq!(pending.expires_at, expires_at);
 }
 
-/// The only error of `startSession` for `device` with `display`.
 async fn refusal(pool: &PgPool, device: &str, display: Value) -> Value {
     let schema = schema_at(pool, now(), &Live::default());
     let response = schema.execute(start_request(device, &display)).await;
     error_json(&response)
 }
 
-/// Asserts the refusal left no row and no audit entry.
 async fn nothing_written(pool: &PgPool) {
     assert_eq!(session_count(pool).await, 0);
     assert_eq!(session_audits(pool).await.len(), 0);
@@ -184,7 +180,6 @@ async fn gw_012_start_session_refuses_a_display_out_of_bounds(pool: PgPool) {
     }
     nothing_written(&pool).await;
 
-    // The bounds themselves are accepted.
     let schema = schema_at(&pool, now(), &Live::default());
     for display in [
         json!({ "widthPx": 1, "heightPx": 1, "dpi": 48 }),
@@ -205,7 +200,6 @@ async fn r_032_e_6_a_time_zone_that_is_not_a_short_zone_name_starts_without_one(
     let live = Live::default();
     let schema = schema_at(&pool, now(), &live);
     let at_cap = format!("America/{}", "A".repeat(56));
-    // 65 bytes of zone-name characters: only the length is wrong.
     let over_cap = format!("{at_cap}A");
     for (zone, held) in [
         (json!(over_cap), None),

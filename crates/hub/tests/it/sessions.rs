@@ -1,6 +1,4 @@
-//! The sessions domain: its tables, its face and its GraphQL part (WP-10 T1), starting and
-//! ending sessions with tunnel tickets (WP-10 T2), and the connection test and host keys
-//! (WP-10 T3).
+//! The sessions domain (WP-10 T1, T2, T3).
 
 mod changes;
 mod end;
@@ -28,29 +26,24 @@ const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
 const OLLAMA: &str = "0190a000-0000-7000-8002-000000000003";
 
-/// Two real OpenSSH public keys (throwaway, made with `ssh-keygen`; the private halves were
-/// deleted) and the fingerprints `ssh-keygen -l` printed for them.
+/// Throwaway OpenSSH public keys (private halves deleted) and their `ssh-keygen -l` fingerprints.
 const ED25519: &str = "AAAAC3NzaC1lZDI1NTE5AAAAIPTJnBUBJyxtaF5R3VPI+WZbUsZP0DeocOVAgFsBtx/m";
 const ED25519_FINGERPRINT: &str = "SHA256:4eECQSeWmB0ww/ND7ZkydOxBUAgciI4AwfhKt8R8Nbk";
 const ECDSA: &str = "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBN6Al4EgiR+faDnuIVjWmW1yCwStnaO+iRCpsRc7Py09CTCdHczEiAwuagxLahrlBz/ZDfvgKxIt9rS8Rv3xTDM=";
 const ECDSA_FINGERPRINT: &str = "SHA256:5B0BaMRWDnvpdw0F6yEj4v4XY3LfY9f26fSNr+SrSgQ";
 
-/// The instant the tests start sessions at.
 fn now() -> DateTime<Utc> {
     "2026-11-04T09:00:00Z".parse().unwrap()
 }
 
-/// The session id for a small number, so tests can name rows.
 fn session_id(n: u128) -> Uuid {
     Uuid::from_u128(0x0190_a000_0000_7000_8010_0000_0000_0000 + n)
 }
 
-/// A session row as the hub would write it.
 struct Row {
     id: u128,
     device: &'static str,
     started_minutes: i64,
-    /// Minutes after `now()` and the stored reason, or `None` for a live session.
     end: Option<(i64, &'static str)>,
 }
 
@@ -111,7 +104,6 @@ async fn add_operator(pool: &PgPool) {
     .unwrap();
 }
 
-/// Stores an accepted host key: `(algorithm, base64 key, fingerprint)`.
 async fn put_host_key(
     pool: &PgPool,
     device: &str,

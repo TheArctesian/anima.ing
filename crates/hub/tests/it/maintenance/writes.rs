@@ -120,7 +120,6 @@ fixture_test! {
         assert_eq!(window["weekdays"], json!(["SAT", "SUN"]));
         assert_eq!(window["durationMinutes"], 120);
         assert_eq!(window["targets"], json!([{ "type": "DEVICE", "target": "0190a000-0000-7000-8002-000000000001" }]));
-        // The other window and its target are untouched.
         assert_eq!((window_count(&pool).await, target_count(&pool).await), (2, 2));
     }
 

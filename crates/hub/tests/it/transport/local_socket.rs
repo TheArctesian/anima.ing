@@ -1,4 +1,3 @@
-//! Local transport used by fake links and brokers on each host.
 #[cfg(windows)]
 pub use anima_windows::socket::{Listener, Stream};
 #[cfg(unix)]

@@ -36,8 +36,6 @@ pub const PROJECT: &str = "id slug name subjectKey syncedAt \
     repositories { id fullName url defaultBranch private archived fork description pushedAt leftOut gone } \
     resources { id kind state evidence { sign path } foundAt confirmedAt } group { id name }";
 
-/// A signed-in hub whose sources reach the stub only, with the Projects intake wired in as
-/// `main.rs` wires it.
 pub struct Kit {
     pub pool: PgPool,
     pub hub: Hub,
@@ -47,7 +45,6 @@ pub struct Kit {
 }
 
 impl Kit {
-    /// Runs one sync of `id` now, as "Sync now" would, and waits for its end.
     pub async fn run(&self, id: SourceAccountId) -> Option<Outcome> {
         let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
         let scheduling = Scheduling::new(
@@ -60,14 +57,12 @@ impl Kit {
             .unwrap()
     }
 
-    /// Connects the test App with Projects off, so no run starts on its own; then sets
-    /// Projects on. Returns the account id.
+    /// Connects the test App with Projects off, so no run starts on its own, then sets Projects on.
     pub async fn connect(&self) -> SourceAccountId {
         self.connect_installation("77").await
     }
 
-    /// As [`Kit::connect`], for the installation `installation` of the test App: a second
-    /// installation is a second account that lists the same repositories from the stub.
+    /// As [`Kit::connect`]; a second installation is a second account with the same repositories.
     pub async fn connect_installation(&self, installation: &str) -> SourceAccountId {
         let mut variables = input(&TEST_KEY);
         variables["input"]["installationId"] = json!(installation);
@@ -81,12 +76,10 @@ impl Kit {
         id
     }
 
-    /// Posts `query` as the signed-in operator.
     pub async fn post(&self, query: &str, variables: Value) -> Value {
         self.hub.post(Some(&self.token), query, variables).await
     }
 
-    /// `projects(leftOut: left_out)`: every node of the first page.
     pub async fn projects(&self, left_out: bool) -> Vec<Value> {
         let query = format!(
             "query($leftOut: Boolean) {{ projects(leftOut: $leftOut, first: 200) \
@@ -99,7 +92,6 @@ impl Kit {
         edges.iter().map(|edge| edge["node"].clone()).collect()
     }
 
-    /// The project with this slug, or null.
     pub async fn project(&self, slug: &str) -> Value {
         let query = format!("query($slug: String!) {{ project(slug: $slug) {{ {PROJECT} }} }}");
         let response = self.post(&query, json!({ "slug": slug })).await;
@@ -107,7 +99,6 @@ impl Kit {
         response["data"]["project"].clone()
     }
 
-    /// Leaves out (`true`) or restores the repository with this id; the whole response.
     pub async fn leave_out(&self, repository: &str, left_out: bool) -> Value {
         let field = if left_out {
             "leaveOutRepository"
@@ -119,12 +110,11 @@ impl Kit {
     }
 }
 
-/// A signed-in hub with Projects off; its sources reach a new stub.
 pub async fn kit(pool: &PgPool) -> Kit {
     kit_at(pool, Arc::new(FixedClock(start()))).await
 }
 
-/// As [`kit`], with the hub reading `clock` (a sync the test runs still reads `start()`).
+/// As [`kit`], with the hub reading `clock`; a sync the test runs still reads `start()`.
 pub async fn kit_at(pool: &PgPool, clock: Arc<dyn Clock>) -> Kit {
     let stub = Stub::start(pool).await;
     let transport = Transport::to_stub(
@@ -150,7 +140,6 @@ pub async fn kit_at(pool: &PgPool, clock: Arc<dyn Clock>) -> Kit {
     }
 }
 
-/// The node with this slug among `projects`.
 pub fn by_slug<'a>(projects: &'a [Value], slug: &str) -> &'a Value {
     projects
         .iter()
@@ -158,7 +147,6 @@ pub fn by_slug<'a>(projects: &'a [Value], slug: &str) -> &'a Value {
         .unwrap_or_else(|| panic!("no project {slug}: {projects:?}"))
 }
 
-/// The slugs of `projects`, in their order.
 pub fn slugs(projects: &[Value]) -> Vec<String> {
     projects
         .iter()

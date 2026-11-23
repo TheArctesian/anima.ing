@@ -1,5 +1,4 @@
-//! `acceptHostKey` (D-6, SEC-006, LOG-005): only the key a test saw in the last 15 minutes,
-//! by its fingerprint; stored with an audit entry in the same transaction.
+//! `acceptHostKey` (D-6, SEC-006, LOG-005): only a key a test saw in the last 15 minutes is stored.
 
 use std::sync::Arc;
 
@@ -116,7 +115,6 @@ async fn sec_006_log_005_accepting_the_seen_key_stores_it_with_an_audit_entry(po
     let schema = schema(&pool, &live);
     tested(&schema, &json!({ "deviceId": PVE_01 })).await;
 
-    // Accepted a minute after the test: first seen stays the test's time.
     let later = schema_at(&pool, now() + TimeDelta::minutes(1), &live);
     let response = later
         .execute(accept_request(PVE_01, &fingerprint(&host_key)))
@@ -141,7 +139,6 @@ async fn sec_006_log_005_accepting_the_seen_key_stores_it_with_an_audit_entry(po
     let change = json!({ "deviceName": "pve-01", "algorithm": "ssh-ed25519",
         "oldFingerprint": null, "newFingerprint": fingerprint(&host_key) });
     assert_eq!(host_key_audits(&pool).await, [accept_entry(change)]);
-    // The key is now the accepted one, so the next test signs in.
     let result = tested(&schema, &json!({ "deviceId": PVE_01 })).await;
     assert_eq!(result["authenticated"], true);
 }
@@ -195,7 +192,6 @@ async fn dev_013_a_key_seen_for_unsaved_values_is_accepted_once_the_device_has_t
     let form = json!({ "host": "127.0.0.1", "ssh": { "enabled": true, "port": server.port,
         "username": "operator", "auth": "PASSWORD" } });
     tested(&schema, &form).await;
-    // The operator saves the device with the tested values, then accepts.
     point_at(&pool, &server).await;
 
     let response = schema
@@ -226,8 +222,7 @@ async fn sec_006_accept_for_an_unknown_device_is_not_found(pool: PgPool) {
     fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn d_31_the_hub_schema_accepts_the_key_its_connection_test_saw(pool: PgPool) {
-    // `build_schema` as `main.rs` calls it: `testConnection` records into the `Live`'s
-    // sightings and `acceptHostKey` reads the trust domain's copy of them (WP-41 T6).
+    // `acceptHostKey` reads the trust domain's copy of the `Live`'s sightings (WP-41 T6).
     add_operator(&pool).await;
     let host_key = ed25519(1);
     let server = SshServer::start(vec![host_key.clone()], None).await;
@@ -289,7 +284,6 @@ async fn log_005_two_accepts_at_once_audit_one_replacement_naming_the_key_it_rep
         );
         assert!(first.errors.is_empty(), "{:?}", first.errors);
         assert!(second.errors.is_empty(), "{:?}", second.errors);
-        // One replacement per round: the second accept finds the new key and writes nothing.
         let audits = host_key_audits(&pool).await;
         assert_eq!(audits.len(), round, "round {round}");
         for (_, _, change) in &audits {

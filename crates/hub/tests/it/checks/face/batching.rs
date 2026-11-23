@@ -1,8 +1,5 @@
-//! API-005: `statuses`, `uptimes` and `resolved_ips` cost the same few statements for 13
-//! devices as for 163.
-//!
-//! A TCP proxy between the pool and PostgreSQL counts the client's Bind and simple Query
-//! messages, as in the devices batching test.
+//! API-005: a TCP proxy between the pool and PostgreSQL counts the client's Bind and simple Query
+//! messages.
 
 use std::sync::{
     Arc,
@@ -16,12 +13,10 @@ use anima_hub::{
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
-/// A pool on the same database whose statements are counted.
 pub(in crate::checks) async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
     crate::transport::postgres::counting_pool(hub, 1).await
 }
 
-/// 150 more devices on the home site, each with SSH settings and two checks.
 pub(in crate::checks) async fn add_bulk(pool: &PgPool) {
     for sql in [
         "INSERT INTO devices.devices (id, site_id, name, host, kind, os, created_at, updated_at) \
@@ -45,7 +40,6 @@ async fn all_devices(pool: &PgPool) -> Vec<DeviceId> {
         .unwrap()
 }
 
-/// The statements that `statuses`, `uptimes` and `resolved_ips` cost for the devices.
 async fn costs(pool: &PgPool, count: &AtomicUsize, devices: &[DeviceId]) -> [usize; 3] {
     let now: DateTime<Utc> = "2026-11-04T09:00:00Z".parse().unwrap();
     count.store(0, Ordering::SeqCst);

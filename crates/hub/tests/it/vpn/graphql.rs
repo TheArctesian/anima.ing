@@ -1,5 +1,4 @@
-//! The VPN picture through the hub: the `vpn` query, the `vpnChanged` subscription, and what
-//! reaches the process log (VPN-005, VPN-008, VPN-009, VPN-011, LOG-007, K1).
+//! The VPN picture through the hub (VPN-005, VPN-008, VPN-009, VPN-011, LOG-007, K1).
 
 use std::{
     sync::{
@@ -245,7 +244,7 @@ async fn vpn_005_vpn_changed_sends_the_next_picture(pool: PgPool) {
         Request::new("subscription { vpnChanged { fresh nodes { name path } } }"),
     );
     let mut stream = schema.execute_stream(request);
-    // Polled once, the stream subscribes to the feed; nothing is published yet.
+    // The first poll subscribes the stream to the feed.
     let first = tokio::time::timeout(Duration::from_millis(100), stream.next()).await;
     assert!(first.is_err(), "nothing was published yet");
 

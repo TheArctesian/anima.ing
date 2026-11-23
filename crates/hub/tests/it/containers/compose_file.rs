@@ -1,6 +1,4 @@
-//! `composeFileCheck` and `composeFromDockerRun` through the hub's router (HOST-022, R-150):
-//! a signed-in caller and an API key get an answer, a caller who is not signed in gets none,
-//! and the text of the caller reaches no log line, no event and no audit entry (LOG-007).
+//! Compose queries (HOST-022, R-150); the caller's text reaches no log, event or audit entry (LOG-007).
 
 use std::{
     io,
@@ -22,11 +20,8 @@ const FROM_RUN: &str = "query($command: String!) { composeFromDockerRun(command:
 const CREATE_KEY: &str =
     "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
 
-/// A value that the operator must not find in a log, an event or a problem.
 const SECRET: &str = "s3cr3t-composeValue-41";
 
-/// A Compose file with errors and warnings, with [`SECRET`] as a value, as the name of a
-/// service and as a key.
 fn file_with_secret() -> String {
     format!(
         "version: '3'\nservices:\n  {SECRET}:\n    environment:\n      PASSWORD: {SECRET}\n    \
@@ -41,7 +36,6 @@ async fn signed_in(pool: &PgPool) -> (Hub, String) {
     (hub, token)
 }
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 struct Capture(Arc<Mutex<Vec<u8>>>);
 
@@ -59,7 +53,6 @@ impl io::Write for Capture {
     }
 }
 
-/// How many rows of `table` hold `text` anywhere.
 async fn rows_with(pool: &PgPool, table: &str, text: &str) -> i64 {
     let query = format!("select count(*) from {table} row where row::text like $1");
     sqlx::query_scalar(&query)
@@ -181,14 +174,13 @@ async fn log_007_the_text_of_the_caller_reaches_no_log_event_or_audit_entry(pool
             FROM_RUN,
             json!({ "command": format!("{command} ; {SECRET}") }),
         ),
-        // A variable of the wrong type: the hub's error must not quote it.
+        // The error for a variable of the wrong type does not quote it.
         (CHECK, json!({ "file": [SECRET] })),
         (inline.as_str(), json!({})),
     ] {
         let answer = hub.post(Some(&token), document, variables).await;
         assert!(!answer.to_string().contains(SECRET), "{answer}");
     }
-    // The converted file gives the value back to the caller who sent it, and to no one else.
     let answer = hub
         .post(Some(&token), FROM_RUN, json!({ "command": command }))
         .await;
@@ -208,7 +200,6 @@ async fn log_007_the_text_of_the_caller_reaches_no_log_event_or_audit_entry(pool
     }
 }
 
-/// `count` copies of one field under aliases, each with its own variable.
 fn copies(field: &str, argument: &str, selection: &str, count: usize) -> (String, Value) {
     let mut variables = serde_json::Map::new();
     let mut header = Vec::new();

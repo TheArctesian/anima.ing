@@ -36,7 +36,6 @@ fn tags(names: &[&str]) -> Vec<String> {
     names.iter().map(|name| (*name).to_owned()).collect()
 }
 
-/// A manual window applying to one target.
 async fn manual_on(pool: &PgPool, name: &str, target_type: &str, target: &str) -> String {
     let schema = schema_for(pool);
     let mut input = manual_input(name);

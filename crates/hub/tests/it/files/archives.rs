@@ -1,5 +1,4 @@
-//! Archives are the unit of deletion (FIL-004), and a file's piece goes with its last
-//! attachment (FIL-001).
+//! Archives are the unit of deletion (FIL-004); a piece goes with its last attachment (FIL-001).
 
 use std::sync::{Arc, Mutex};
 
@@ -13,7 +12,6 @@ use sqlx::{PgConnection, PgPool};
 
 use super::{BOOK, FileHub, count};
 
-/// A domain that made two records from each archive, and notes each archive it was asked about.
 #[derive(Default)]
 struct Notes {
     asked: Mutex<Vec<ArchiveId>>,

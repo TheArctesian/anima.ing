@@ -1,5 +1,5 @@
-//! WP-09 handoff 3: `/push/{token}` as `main.rs` mounts it, inside the request log and behind
-//! the permitted-networks layer (NET-002, LOG-007, R-028).
+//! `/push/{token}` as `main.rs` mounts it: inside the request log, behind the permitted-networks
+//! layer (NET-002, LOG-007, R-028).
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -32,7 +32,6 @@ const TOKEN: &str = "WIREDpushTOKENwiredPUSHtokenWIREDpushTOKENw";
 const PERMITTED: &str = "10.10.0.5:40000";
 const OUTSIDE: &str = "192.0.2.9:40000";
 
-/// The hub's routes as `main.rs` composes them, at `now`.
 fn app(pool: &PgPool, now: DateTime<Utc>) -> Router {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
     let bus = Bus::new(16);
@@ -86,8 +85,7 @@ async fn h_3_a_push_is_answered_inside_the_permitted_networks_and_logged_without
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in uri_log: a second dispatcher keeps another test thread from caching this test's
-    // callsites as disabled.
+    // A second dispatcher keeps another test thread from caching these callsites as disabled.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();

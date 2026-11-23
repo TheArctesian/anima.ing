@@ -1,7 +1,4 @@
-//! The deny list on `testConnection` (R-030, R-032, security): a host the operator
-//! types or a saved device's host that is, or resolves into, an `ANIMA_PROBE_DENY` network is
-//! the `Validation` error on `host`, and no connection reaches it; a host outside the list is
-//! still tested.
+//! A host in an `ANIMA_PROBE_DENY` network fails `testConnection` and is never reached (R-030, R-032).
 
 use std::time::Duration;
 
@@ -17,7 +14,6 @@ use super::{
 };
 use crate::sessions::{PVE_01, harness::error_json};
 
-/// The tests' loopback rule, with `cidr` denied.
 fn denying(cidr: &str) -> Live {
     loopback_live().denying(AddressPolicy::new(vec![cidr.parse().unwrap()]))
 }

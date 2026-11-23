@@ -1,10 +1,4 @@
-//! What the hub keeps of a daemon's last batch. MET-018, R-098 a: the stale watch the hub
-//! spawns marks a daemon stale once no batch came for more than 30 seconds, with one warning;
-//! the next batch clears it with one note. `Device.metricsStale` serves the mark, and a stale
-//! daemon never makes the device Down. The time of the last batch never moves back. R-122: the
-//! version of the newest batch is kept and served as `Device.daemonVersion`, only while the
-//! device's source is the daemon. R-364: the need the desktop app reports is served
-//! as `Device.daemonNeed` until the app clears it or the next batch is accepted.
+//! What the hub keeps of a daemon's last batch (MET-018, R-098 a, R-122, R-364).
 
 use std::time::Duration;
 
@@ -26,7 +20,6 @@ use crate::hub::error;
 const STALE: &str = "The daemon on pve-01 sent no metrics for 30 seconds; they are stale.";
 const FRESH: &str = "The daemon on pve-01 sends metrics again.";
 
-/// The device's `metricsStale` and `status` as the operator reads them.
 async fn standing(daemons: &Daemons) -> (bool, String) {
     let query = "query($id: ID!) { device(id: $id) { metricsStale status } }";
     let answer: Value = daemons.operate(query, json!({ "id": PVE_01 })).await;
@@ -37,7 +30,6 @@ async fn standing(daemons: &Daemons) -> (bool, String) {
     (stale, device["status"].as_str().unwrap().to_owned())
 }
 
-/// Waits up to 10 seconds for the metrics events of `severity` to number `count`.
 async fn events_reach(pool: &PgPool, severity: &str, count: usize) -> Vec<String> {
     for _ in 0..100 {
         let written = metrics_events(pool, severity).await;
@@ -72,7 +64,6 @@ async fn met_018_the_spawned_watch_marks_a_silent_daemon_stale_and_a_batch_clear
     assert_eq!(written, [STALE]);
     assert_eq!(standing(&daemons).await, (true, status.clone()));
     assert_ne!(status, "DOWN", "a stale daemon is never a Down check");
-    // Later rounds write nothing more while the daemon stays silent.
     tokio::time::sleep(Duration::from_secs(6)).await;
     assert_eq!(metrics_events(&pool, "warning").await, [STALE]);
 
@@ -115,7 +106,6 @@ async fn met_018_the_time_of_the_last_batch_never_moves_back(pool: PgPool) {
     assert_eq!(last, now);
 }
 
-/// The device's `daemonVersion` as the operator reads it.
 async fn daemon_version(daemons: &Daemons) -> Value {
     let query = "query($id: ID!) { device(id: $id) { daemonVersion } }";
     let answer: Value = daemons.operate(query, json!({ "id": PVE_01 })).await;
@@ -123,7 +113,6 @@ async fn daemon_version(daemons: &Daemons) -> Value {
     answer["data"]["device"]["daemonVersion"].clone()
 }
 
-/// A CPU batch of PVE-01 at `at`, signed with `version` when there is one.
 fn signed(at: chrono::DateTime<chrono::Utc>, version: Option<&str>) -> Value {
     let mut batch = cpu_batch(PVE_01, at, 5.0);
     if let Some(version) = version {
@@ -154,7 +143,6 @@ async fn r_122_the_version_of_the_newest_batch_is_served_and_an_older_daemon_has
     assert_eq!(pushed.0, StatusCode::NO_CONTENT);
     assert_eq!(daemon_version(&daemons).await, json!("0.4.0"));
 
-    // A batch that started earlier and commits later leaves the newer version.
     daemons.clock.advance(TimeDelta::seconds(-20));
     let pushed = daemons.push(&token, &signed(now, Some("0.3.1"))).await;
     assert_eq!(pushed.0, StatusCode::NO_CONTENT);
@@ -244,7 +232,6 @@ const SET_NEED: &str = "mutation($id: ID!, $need: DaemonNeed) { \
 const WAITS: &str = "The daemon on pve-01 waits for a person to allow it in the Keychain.";
 const GONE: &str = "The daemon on pve-01 no longer waits for a person.";
 
-/// The device's `daemonNeed` as the operator reads it.
 async fn daemon_need(daemons: &Daemons) -> Value {
     let query = "query($id: ID!) { device(id: $id) { daemonNeed } }";
     let answer: Value = daemons.operate(query, json!({ "id": PVE_01 })).await;
@@ -252,14 +239,12 @@ async fn daemon_need(daemons: &Daemons) -> Value {
     answer["data"]["device"]["daemonNeed"].clone()
 }
 
-/// Sets the need of `device`'s daemon as the operator; the answer.
 async fn set_need(daemons: &Daemons, device: &str, need: Value) -> Value {
     daemons
         .operate(SET_NEED, json!({ "id": device, "need": need }))
         .await
 }
 
-/// How many info events of the metrics say `text`.
 async fn said(pool: &PgPool, text: &str) -> usize {
     let written = metrics_events(pool, "info").await;
     written.iter().filter(|line| *line == text).count()

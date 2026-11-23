@@ -34,7 +34,6 @@ async fn pause(pool: &PgPool, check: &str) {
         .unwrap();
 }
 
-/// The K7 value of a status (0 Down, 1 Up, 2 Degraded, 3 Maintenance, 4 Unknown).
 const fn k7(status: Status) -> &'static str {
     match status {
         Status::Down => "0",
@@ -237,7 +236,6 @@ fixture_test! {
         assert_eq!(count("anima_check_status"), 28);
         assert_eq!(count("anima_check_up"), 28);
         assert_eq!(count("anima_device_status"), 13);
-        // A check with no result yet is Unknown.
         assert_eq!(of_check(&text, "anima_check_status", PVE_01_PING).as_deref(), Some("4"));
     }
 

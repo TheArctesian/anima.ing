@@ -1,8 +1,4 @@
-//! Migration 0920 (D-31, DB-010): the accepted host keys and server certificates are in schema
-//! `trust` and no longer in `sessions`, and the runtime role's rights moved with them: it may
-//! read, insert and upsert, never delete, truncate or move a row to another device (R-016,
-//! R-040). What those rights let the runtime role do is tested in `sessions::privileges` and
-//! `sessions::tables::server_certificates`.
+//! Migration 0920 (D-31, DB-010): the runtime role may read, insert and upsert in `trust`, never delete (R-016, R-040).
 
 use sqlx::PgPool;
 

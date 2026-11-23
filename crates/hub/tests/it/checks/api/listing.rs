@@ -1,6 +1,4 @@
-//! Docker, systemd and Tailscale ping checks through the API: create, read, update and the
-//! field errors (CHK-009, CHK-012, D-4, K1 `DockerConfig`, `SystemdConfig` and
-//! `TailscalePingConfig`).
+//! Docker, systemd and Tailscale ping checks through the API (CHK-009, CHK-012, D-4, K1).
 
 use serde_json::json;
 use sqlx::PgPool;

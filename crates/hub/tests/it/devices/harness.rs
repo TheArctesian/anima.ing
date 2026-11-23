@@ -1,5 +1,3 @@
-//! The test schema as `schema.rs` builds it, and requests from a signed-in operator.
-
 use std::{
     io::Write as _,
     sync::{

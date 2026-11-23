@@ -1,5 +1,4 @@
-//! `statuses`, `device_status` and `resolved_ips` against stored state, the manual flag and
-//! maintenance windows (CHK-004, CHK-006).
+//! Statuses against the manual flag and maintenance windows (CHK-004, CHK-006).
 
 use std::collections::HashMap;
 
@@ -27,12 +26,10 @@ macro_rules! fixture_test {
     )+};
 }
 
-/// The "Ping" check of `jellyfin` and of `truenas` in the fixtures.
 const JELLYFIN_PING: &str = "0190a000-0000-7000-8003-00000000000a";
 const TRUENAS_PING: &str = "0190a000-0000-7000-8003-00000000000c";
 const TRUENAS_SSH: &str = "0190a000-0000-7000-8003-00000000000d";
 
-/// 22:00 NZDT on 4 November: no fixture window runs.
 fn quiet() -> DateTime<Utc> {
     "2026-11-04T09:00:00Z".parse().unwrap()
 }
@@ -47,7 +44,6 @@ async fn status_of(pool: &PgPool, text: &str, now: DateTime<Utc>) -> Status {
     checks::statuses(pool, &[id], now).await.unwrap()[&id]
 }
 
-/// A manual window, switched on, with one target.
 async fn manual_window(pool: &PgPool, target_type: &str, target: &str) {
     let id = Uuid::now_v7();
     sqlx::query(
@@ -71,7 +67,6 @@ async fn manual_window(pool: &PgPool, target_type: &str, target: &str) {
     .unwrap();
 }
 
-/// Every fixture check Up, so one changed check decides its device.
 async fn all_up(pool: &PgPool) {
     sqlx::query("UPDATE checks.checks SET status = 'up'")
         .execute(pool)
@@ -193,7 +188,6 @@ fixture_test! {
         let mut ssh = beat(at + TimeDelta::seconds(5), Status::Up, Some(3));
         ssh.resolved_ip = Some("10.10.0.3".parse().unwrap());
         record(&pool, check(PVE_01_SSH), &ssh).await;
-        // A later beat with no address does not hide the addresses before it.
         record(&pool, check(TRUENAS_PING), &beat(at, Status::Down, None)).await;
 
         let requested = [device(PVE_01), device(TRUENAS)];

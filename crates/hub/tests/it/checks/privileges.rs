@@ -1,5 +1,4 @@
-//! The runtime role writes heartbeats and aggregates and manages partitions only through the
-//! owner's functions (K2 "Roles", DB-009: a retained day cannot be dropped early).
+//! The runtime role manages partitions only through the owner's functions (K2 "Roles", DB-009).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
@@ -9,8 +8,7 @@ use super::{
     execute, id, partition, refusal,
 };
 
-/// Statements the runtime role must not be able to run. `existing` is a partition that
-/// exists, and the day after it has none.
+/// `existing` names a partition that exists; the day after it has none.
 fn owner_only(existing: DateTime<Utc>) -> [String; 6] {
     let next = (existing + TimeDelta::days(1)).date_naive();
     let after = next.succ_opt().unwrap();
@@ -29,8 +27,7 @@ fn owner_only(existing: DateTime<Utc>) -> [String; 6] {
     ]
 }
 
-/// Temporary objects that shadow every type name the partition functions could resolve
-/// through `pg_temp`; each domain's CHECK records that it ran as the function owner.
+/// Every type name the partition functions could resolve through `pg_temp`.
 const SHADOWED_TYPES: [&str; 9] = [
     "date",
     "text",
@@ -48,8 +45,6 @@ const FUNCTIONS: [&str; 2] = [
     "checks.ensure_day_partition(timestamp with time zone)",
 ];
 
-/// Creates a partition, writes a heartbeat and upserts every aggregate twice, then reads
-/// them back; returns the heartbeat count and each aggregate's up count.
 async fn runtime_writes(
     conn: &mut PgConnection,
     instant: DateTime<Utc>,
@@ -133,8 +128,7 @@ async fn db_009_only_the_runtime_role_may_execute_the_partition_functions(pool: 
     }
 }
 
-/// The bodies are also schema-qualified, so the attack below needs both defences removed;
-/// this pins the search path on its own.
+/// The bodies are schema-qualified too, so this pins the search path defence on its own.
 #[sqlx::test(migrations = "./migrations")]
 async fn db_009_partition_functions_run_as_owner_with_pg_temp_searched_last(pool: PgPool) {
     let functions: Vec<(String, bool, Vec<String>)> = sqlx::query_as(

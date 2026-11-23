@@ -1,6 +1,4 @@
-//! The `checks` schema: checks, partitioned heartbeats, uptime aggregates and the partition
-//! functions (CHK-009, DB-004, DB-005, DB-008, DB-009, DB-011), the domain expiry check (D-29), and
-//! `GET /metrics` (INT-001).
+//! CHK-009, DB-004, DB-005, DB-008, DB-009, DB-011, D-29, INT-001.
 
 mod api;
 mod cascade;
@@ -21,7 +19,6 @@ use uuid::Uuid;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
-/// The "Ping" check of `pve-01` in the K6 fixtures.
 const PVE_01_PING: &str = "0190a000-0000-7000-8003-000000000001";
 const UPTIME_TABLES: [&str; 3] = ["uptime_minute", "uptime_hour", "uptime_day"];
 
@@ -29,7 +26,6 @@ fn id(text: &str) -> Uuid {
     text.parse().unwrap()
 }
 
-/// An RFC 3339 instant.
 fn at(text: &str) -> DateTime<Utc> {
     text.parse().unwrap()
 }
@@ -42,13 +38,11 @@ async fn database_now(conn: &mut PgConnection) -> DateTime<Utc> {
         .unwrap()
 }
 
-/// The heartbeat partition that holds `instant`.
 fn partition(instant: DateTime<Utc>) -> String {
     format!("checks.heartbeats_{}", instant.format("%Y%m%d"))
 }
 
-/// Creates the partition for `day` directly as the owner, for days outside the window that
-/// `checks.ensure_day_partition` accepts.
+/// For days outside the window that `checks.ensure_day_partition` accepts.
 async fn create_day_as_owner(conn: &mut PgConnection, day: NaiveDate) {
     let next = day.succ_opt().unwrap();
     let sql = format!(
@@ -59,7 +53,6 @@ async fn create_day_as_owner(conn: &mut PgConnection, day: NaiveDate) {
     execute(conn, &sql).await;
 }
 
-/// The SQLSTATE of a database error, or the error text for any other error.
 fn code_of(error: &sqlx::Error) -> String {
     let code = error
         .as_database_error()
@@ -75,14 +68,12 @@ async fn execute(conn: &mut PgConnection, sql: &str) {
     sqlx::query(sql).execute(conn).await.unwrap();
 }
 
-/// Runs `sql` and returns its SQLSTATE, or `None` if it succeeded.
 async fn refusal(conn: &mut PgConnection, sql: &str) -> Option<String> {
     let error = sqlx::query(sql).execute(conn).await.err()?;
     Some(code_of(&error))
 }
 
-/// Runs `body` on `conn` as `anima_runtime`. `conn` must be detached from the pool, so
-/// the role dies with the connection.
+/// `conn` must be detached from the pool, so the role dies with the connection.
 async fn as_runtime<T>(
     conn: &mut PgConnection,
     body: impl AsyncFnOnce(&mut PgConnection) -> T,
@@ -107,7 +98,6 @@ async fn ensure(conn: &mut PgConnection, instant: DateTime<Utc>) -> Result<(), s
         .map(|_| ())
 }
 
-/// Inserts an Up heartbeat and returns the partition that holds it.
 async fn beat(
     conn: &mut PgConnection,
     check: Uuid,
@@ -123,7 +113,6 @@ async fn beat(
     .await
 }
 
-/// Inserts a check with only the columns that have no default, plus an optional push token.
 async fn insert_check(
     pool: &PgPool,
     (check, device): (Uuid, &str),

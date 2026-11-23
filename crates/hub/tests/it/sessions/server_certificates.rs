@@ -1,7 +1,5 @@
 //! The RDP and VNC connection test and accepting an RDP server certificate (DEV-013, SEC-007,
-//! LOG-005), against in-process servers on the loopback interface. As for host keys, these
-//! schemas share a `Live` with the test-only loopback rule; the refusal itself is tested with
-//! `Live::default()`.
+//! LOG-005), against in-process servers on the loopback interface.
 
 mod accept;
 mod connection_test;

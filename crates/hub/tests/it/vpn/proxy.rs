@@ -1,7 +1,4 @@
-//! A fake `LocalAPI` proxy for GET requests: records each request head, answers as told.
-//!
-//! A copy of `crates/hub/src/fleet/vpn/tests/proxy.rs`: `tests/it` is another crate and cannot import
-//! the hub's `#[cfg(test)]` code.
+//! A copy of `crates/hub/src/fleet/vpn/tests/proxy.rs`: `tests/it` cannot import `#[cfg(test)]` code.
 
 use std::sync::{Arc, Mutex};
 
@@ -10,7 +7,6 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
-/// The status and body the proxy answers with.
 #[derive(Clone, Debug)]
 pub struct Reply {
     status: u16,
@@ -36,7 +32,6 @@ impl Proxy {
         format!("127.0.0.1:{}", self.port)
     }
 
-    /// The request heads seen so far.
     pub fn seen(&self) -> Vec<String> {
         self.seen.lock().unwrap().clone()
     }
@@ -63,7 +58,6 @@ async fn serve_one(mut stream: TcpStream, reply: Reply, seen: Arc<Mutex<Vec<Stri
     let _ = stream.shutdown().await;
 }
 
-/// A proxy that answers each request with `answer()`; the closure may count calls.
 pub async fn start(answer: impl Fn() -> Reply + Send + Sync + 'static) -> Proxy {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let proxy = Proxy {

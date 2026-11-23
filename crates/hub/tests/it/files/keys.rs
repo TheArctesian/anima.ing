@@ -7,7 +7,7 @@ use crate::hub::test_vault;
 
 #[test]
 fn vlt_003_start_refuses_a_data_key_file_that_holds_the_credential_key() {
-    // `test_vault` is the key of 32 bytes 7; a data key file with the same bytes is refused.
+    // `test_vault` is the key of 32 bytes 7.
     let vault = test_vault();
     let folder = tempfile::tempdir().unwrap();
     std::fs::write(

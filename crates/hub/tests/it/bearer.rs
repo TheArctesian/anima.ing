@@ -1,5 +1,4 @@
-//! `GET /metrics` behind the bearer layer as `main.rs` serves it, and the daemon secrets the
-//! access guard refuses (WP-43 A-9, R-092, INT-001, INT-003, D-24, NET-002).
+//! The bearer layer on `/metrics` and daemon secrets (WP-43 A-9, R-092, INT-001, INT-003, D-24, NET-002).
 
 mod daemon;
 mod lookup;
@@ -31,25 +30,17 @@ use tower::ServiceExt as _;
 
 use crate::hub::{dependencies, set_operator};
 
-/// The public origin the test hub serves.
 const PUBLIC: &str = "https://hub.anima.ing";
-/// A client inside the permitted networks.
 const PERMITTED: &str = "10.10.0.5:40000";
 
-/// The body of the web client's `index.html`.
 const INDEX_HTML: &str = "<!doctype html><title>Anima</title>";
 
-/// The hub's routes at `now` with a web root holding only `index.html`, kept while the
-/// returned folder lives: see [`app_at`].
 async fn app(pool: &PgPool, now: DateTime<Utc>) -> (Router, TempDir) {
     let web = tempfile::tempdir().unwrap();
     std::fs::write(web.path().join("index.html"), INDEX_HTML).unwrap();
     (app_at(pool, now, Some(web.path())).await, web)
 }
 
-/// The hub's routes at `now` as `main.rs` serves them, [`all_routes`]: GraphQL at the public
-/// origin, the tunnels, `/push`, `/metrics` and the web client at `root` when there is one,
-/// all behind the permitted networks `10.10.0.0/16`.
 async fn app_at(pool: &PgPool, now: DateTime<Utc>, root: Option<&Path>) -> Router {
     let networks: Vec<IpNet> = vec!["10.10.0.0/16".parse().unwrap()];
     access::permit_networks(pool, &networks).await.unwrap();
@@ -77,13 +68,10 @@ async fn database_now(pool: &PgPool) -> DateTime<Utc> {
     now.duration_trunc(TimeDelta::seconds(1)).unwrap()
 }
 
-/// A stored token of `kind` and `scope` made of 32 bytes of `fill`, valid until `expires_at`;
-/// returns the text a client presents. Creates the operator first.
 async fn stored(pool: &PgPool, token: Token, expires_at: DateTime<Utc>) -> String {
     stored_bytes(pool, token, [token.fill; 32], expires_at).await
 }
 
-/// As [`stored`], with the token's 32 bytes given.
 async fn stored_bytes(
     pool: &PgPool,
     token: Token,
@@ -129,8 +117,6 @@ async fn stored_bytes(
     presented
 }
 
-/// What [`stored`] makes: the kind and scope as `access.api_tokens` holds them, and the byte
-/// the token is made of.
 #[derive(Clone, Copy)]
 struct Token {
     kind: &'static str,
@@ -164,7 +150,6 @@ const BUILDER: Token = Token {
     fill: 5,
 };
 
-/// What the hub answered.
 #[derive(Debug)]
 struct Answer {
     status: StatusCode,
@@ -173,7 +158,6 @@ struct Answer {
     body: String,
 }
 
-/// Sends `method uri` with `headers` from `peer`.
 async fn send(app: &Router, peer: &str, request: Request<Body>) -> Answer {
     let mut request = request;
     let peer: SocketAddr = peer.parse().unwrap();
@@ -192,7 +176,6 @@ async fn send(app: &Router, peer: &str, request: Request<Body>) -> Answer {
     }
 }
 
-/// `GET /metrics` with `headers`, from a permitted client.
 async fn scrape(app: &Router, headers: &[(&str, &str)]) -> Answer {
     let mut request = Request::get("/metrics");
     for (name, value) in headers {
@@ -201,12 +184,11 @@ async fn scrape(app: &Router, headers: &[(&str, &str)]) -> Answer {
     send(app, PERMITTED, request.body(Body::empty()).unwrap()).await
 }
 
-/// `GET /metrics` with `Authorization: Bearer <token>`.
 async fn scrape_with(app: &Router, token: &str) -> Answer {
     scrape(app, &[("authorization", &format!("Bearer {token}"))]).await
 }
 
-/// Asserts the K3 refusal: 401, no body, no `WWW-Authenticate`.
+/// The K3 refusal.
 fn assert_refused(answer: &Answer, case: &str) {
     assert_eq!(
         answer.status,

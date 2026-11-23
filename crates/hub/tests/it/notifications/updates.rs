@@ -1,5 +1,4 @@
-//! The CR-14 update rules through the API: null keeps, a new target needs the secrets again,
-//! the kind never changes, and stored secrets that do not open are asked for again.
+//! The CR-14 update rules: a new target needs the secrets again.
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

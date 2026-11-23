@@ -120,7 +120,6 @@ async fn sec_007_log_005_accepting_the_seen_certificate_stores_it_with_an_audit_
     let tested = schema.execute(test_request(&saved())).await;
     assert!(tested.errors.is_empty(), "{:?}", tested.errors);
 
-    // Accepted a minute after the test, typed in upper case: first seen stays the test's time.
     let later = schema_at(&pool, now() + TimeDelta::minutes(1), &live);
     let typed = certificate.fingerprint().to_ascii_uppercase();
     let response = later.execute(accept_request(PVE_01, &typed)).await;

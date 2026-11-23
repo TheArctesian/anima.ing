@@ -1,7 +1,5 @@
-//! The guards of a route that stay after R-384: no builder token and no API key changes or
-//! checks a route; a hosted hub asks for no second factor (R-430), and a route that
-//! an agent adds there still does not serve before the consent at the machine (OD-HOST-43).
-//! A hub that is not on Unix refuses each add and check before it asks who calls (R-366).
+//! Route guards after R-384: no builder token or API key changes or checks a route.
+//! A hosted hub asks for no second factor (R-430); an agent's route waits for machine consent (OD-HOST-43).
 
 use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 
@@ -28,13 +26,11 @@ const APPLICATION: &str = "0190a000-0000-7000-8009-000000000001";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
 const ROUTE: &str = "0190a000-0000-7000-8030-000000000001";
 
-/// A private web route of `APPLICATION` to port 3000 of the docker host.
 fn private_route() -> Value {
     json!({ "input": { "name": "photos.example.com", "port": 3000, "access": "PRIVATE",
         "applicationId": APPLICATION, "deviceId": DOCKER_HOST } })
 }
 
-/// The router of a hub started with `ANIMA_HOSTED_CLOUD_KEY_FILE`, the clock stopped at start.
 fn hosted_hub(pool: &PgPool) -> Router {
     let mut hosted = config::from_env(&BTreeMap::new()).unwrap();
     hosted.hosted_cloud_key_file = Some(PathBuf::from("/nonexistent/cloud_key"));
@@ -51,7 +47,6 @@ fn hosted_hub(pool: &PgPool) -> Router {
     )
 }
 
-/// The code of the first error of `answer`, with no data.
 fn refused(answer: &Value) -> String {
     assert_eq!(answer["data"], Value::Null, "{answer}");
     answer["errors"][0]["extensions"]["code"]
@@ -75,7 +70,6 @@ async fn sf_newhostedroutes_an_agent_adds_a_public_route_on_a_hosted_hub_that_wa
     pool: PgPool,
 ) {
     set_operator(&pool).await;
-    // The account has no second factor, as each account of a hosted hub.
     let token = Hub::new(&pool, start()).token().await;
     let bearer = format!("Bearer {token}");
     let agent = [("authorization", bearer.as_str()), ("anima-actor", "agent")];
@@ -88,7 +82,6 @@ async fn sf_newhostedroutes_an_agent_adds_a_public_route_on_a_hosted_hub_that_wa
     assert_eq!(route["waitsFor"], "PROOF", "{added}");
     let id = route["id"].as_str().unwrap().to_owned();
 
-    // Proven and recorded, the public route still waits for the consent at the machine.
     sqlx::query("UPDATE routes.route SET proof = 'proven', application_recorded = true")
         .execute(&pool)
         .await
@@ -98,8 +91,6 @@ async fn sf_newhostedroutes_an_agent_adds_a_public_route_on_a_hosted_hub_that_wa
         waits["data"]["applicationRoute"]["waitsFor"], "MACHINE_CONSENT",
         "{waits}"
     );
-    // The consent is the one thing it waits for here: with it, the route waits only for its
-    // certificate.
     sqlx::query("UPDATE routes.route SET machine_consent = true")
         .execute(&pool)
         .await

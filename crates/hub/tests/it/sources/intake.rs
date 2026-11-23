@@ -1,6 +1,4 @@
-//! A stub intake in the place of Projects: it reads the stub's numbered pages and keeps each
-//! item in a test table, comparing before it writes (SRC-012). It can fail after it stored a
-//! page, or ask for a request of the test's choice.
+//! A stub intake in place of Projects that compares before it writes (SRC-012).
 
 use std::sync::{Arc, Mutex};
 
@@ -16,7 +14,7 @@ use serde_json::{Value, json};
 use source_exchange::{Body, Method, Problem, Request};
 use sqlx::{PgConnection, PgPool};
 
-/// The table the stub intake writes; `writes` counts every insert or update of a row.
+/// `writes` counts every insert or update of a row.
 pub async fn make_table(pool: &PgPool) {
     sqlx::query(
         "CREATE TABLE public.stub_records (account_id uuid NOT NULL, id text NOT NULL, \
@@ -27,12 +25,10 @@ pub async fn make_table(pool: &PgPool) {
     .unwrap();
 }
 
-/// What the stub intake does beyond reading pages.
 #[derive(Default)]
 pub struct Quirks {
     /// Fail once on this page, after its records are written.
     pub fail_after_storing: Option<u64>,
-    /// Ask for this instead of the next page.
     pub request: Option<Request>,
 }
 
@@ -45,7 +41,6 @@ fn page_of(slice: &Value) -> u64 {
     slice["page"].as_u64().unwrap_or(1)
 }
 
-/// Writes one item; returns which count it adds to.
 async fn keep(
     conn: &mut PgConnection,
     account: SourceAccountId,

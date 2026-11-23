@@ -1,5 +1,4 @@
-//! Creating, changing, deleting and pausing checks, in the caller's transaction, with each
-//! refused constraint named as the field to fix (CHK-005, DB-011).
+//! Check writes: each refused constraint names the field to fix (CHK-005, DB-011).
 
 use anima_hub::{
     fleet::checks::{
@@ -36,7 +35,6 @@ fn group() -> Definition {
     Definition::Config(CheckConfig::Group)
 }
 
-/// The fields of a validation error, or the error itself.
 fn fields(error: Error) -> Vec<&'static str> {
     match error {
         Error::Validation(errors) => errors.into_iter().map(|e| e.field).collect(),

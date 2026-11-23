@@ -1,7 +1,5 @@
-//! OD-E14, PRJ-035, PRO-010, PRJ-028: a workflow started by hand and a commit status each send
-//! exactly the request of K-E1 Section 13.3 once, answer K1's shape, and leave one audit entry
-//! and one event. A start drops the held run list; GitHub gives no run for it on API version
-//! 2022-11-28, so the answer names none.
+//! OD-E14, PRJ-035, PRO-010, PRJ-028: a workflow start and a commit status (K-E1 Section 13.3).
+//! GitHub gives no run for a start on API version 2022-11-28, so the answer names none.
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -23,7 +21,6 @@ pub const STATUS: &str = "mutation($repository: ID!, $sha: String!, $state: Comm
     $description, targetUrl: $targetUrl }) { repository sha context state description \
     targetUrl createdAt } }";
 
-/// The repository's workflows: `ci.yml` (31) active, `nightly.yml` (32) disabled.
 pub fn workflows(forge: &Forge) {
     forge.ok(
         "/actions/workflows",
@@ -37,7 +34,6 @@ pub fn workflows(forge: &Forge) {
     );
 }
 
-/// GitHub accepts a start of workflow 31 as on API version 2022-11-28: 204, no body.
 pub fn accepted(forge: &Forge) {
     let path = format!("{BASE}/actions/workflows/31/dispatches");
     (forge.kit.stub).reply_to("POST", &path, reply(204, &[], ""));

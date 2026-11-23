@@ -1,5 +1,5 @@
-//! The checks and maintenance parts of the hub schema, with every loader they read, answer
-//! through `build_schema` (API-005, CHK-005, MW-001).
+//! The checks and maintenance parts of the hub schema through `build_schema` (API-005, CHK-005,
+//! MW-001).
 
 use std::sync::atomic::Ordering;
 
@@ -10,10 +10,8 @@ use sqlx::PgPool;
 use super::{PVE_01, add_operator, data, hub_schema, wired};
 use crate::devices::{batching::counting_pool, graphql_read::add_bulk};
 
-/// pve-01's seeded ICMP check.
 const PVE_01_PING: &str = "0190a000-0000-7000-8003-000000000001";
 
-/// Every field a checks loader serves, on one check.
 const CHECK_FIELDS: &str = "name status lastHeartbeat { at } uptime(window: DAY) \
     heartbeats(first: 5) { edges { node { status } } pageInfo { hasNextPage } }";
 
@@ -130,15 +128,12 @@ async fn h_4_the_hub_schema_declares_the_checks_subscriptions() {
     }
 }
 
-/// Every devices and checks loader a devices page reads, in one selection.
 const DEVICE_PAGE: &str = "{ devices(first: 200) { edges { node { status uptime(window: DAY) \
     ip checks { status lastHeartbeat { at } uptime(window: DAY) \
     heartbeats(first: 50) { edges { node { status } } } } } } } }";
 
-/// Batched, a page costs about 15 statements whatever its size. A debug build can still split
-/// batches on the large set (29 to 67 statements were seen with the hub's 10 ms window, more on
-/// a loaded machine), so the bounds leave room for that. Loading per key costs at least one
-/// statement per check field, over 1300 on 163 devices.
+/// Batched, a page costs about 15 statements, and a debug build can split batches on the large
+/// set; per-key loading costs over 1300 statements on 163 devices.
 const FEW_AT_MOST: usize = 30;
 const MANY_AT_MOST: usize = 200;
 

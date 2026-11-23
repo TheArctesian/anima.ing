@@ -1,6 +1,4 @@
-//! K7, PRJ-041: the pages of the flow: every answer carries the required headers, the start
-//! page's script is the one its policy hashes, the confirm page is the same with or without an
-//! attempt, and no value from a query string is ever written into a page.
+//! K7, PRJ-041: the pages of the flow; no value from a query string is written into a page.
 
 use std::time::Duration;
 

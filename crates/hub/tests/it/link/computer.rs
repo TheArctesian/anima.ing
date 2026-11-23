@@ -1,8 +1,5 @@
-//! The installation of a computer with no application through the hub and a fake link
-//! (hosted-mode.md HM-T33, R-240 c): a signed-in operator makes an invite and a claim, and only
-//! the computer that joined with that invite trades the claim, once, through its link, for a
-//! daemon enrolment code of its own device, which the hub adds in the site `Link`. No invite,
-//! claim or code reaches an entry or a log line (LOG-007).
+//! Computer installation (HM-T33, R-240 c): only the computer that joined with the invite trades
+//! its claim, once. No invite, claim or code reaches an entry or a log line (LOG-007).
 
 use std::sync::{
     Arc,
@@ -24,9 +21,7 @@ const CLAIM: &str = "mutation($c: String!, $os: OperatingSystem!) { \
 const DEVICES: &str =
     "{ devices(first: 50) { edges { node { name host kind os site { name subnet } } } } }";
 
-/// A link that lists the computer `build-1` at `COMPUTER` once an invite for it was made, and
-/// the devices of `others` from the start. It has one open invite of `build-1` from before,
-/// until it is cancelled.
+/// Lists `build-1` once an invite is made, and holds an older `build-1` invite until it is cancelled.
 fn computer_link(others: &'static [(&'static str, &'static str)]) -> FakeLink {
     let joined = Arc::new(AtomicBool::new(false));
     let cancelled = Arc::new(AtomicBool::new(false));

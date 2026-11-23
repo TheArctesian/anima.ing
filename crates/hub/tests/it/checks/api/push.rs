@@ -146,7 +146,6 @@ fixture_test! {
         let (id, path) = rig.push_check("backup").await;
         let (status, _) = rig.get(&format!("{path}?status=down&msg=disk%20full&ping=5")).await;
         assert_eq!(status, StatusCode::OK);
-        // A failure has no response time (the beat keeps it only when answered).
         assert_eq!(rig.beats(&id).await, [("down".to_owned(), None, Some("disk full".to_owned()))]);
     }
 

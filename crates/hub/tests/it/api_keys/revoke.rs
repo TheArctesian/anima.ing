@@ -1,6 +1,4 @@
-//! `revokeApiKey`: the row goes, the key stops at once on HTTP and at the next re-check on a
-//! socket; create and revoke are audited; the secret never reaches a log (D-23, LOG-005,
-//! LOG-007).
+//! `revokeApiKey` (D-23, LOG-005); the secret never reaches a log (LOG-007).
 
 use std::{
     io,
@@ -88,7 +86,6 @@ async fn d_23_a_socket_signed_in_with_a_revoked_key_closes_at_the_recheck(pool: 
     assert_eq!(receive(&mut socket).await, FORBIDDEN);
 }
 
-/// The audit rows on API keys, oldest first, as JSON.
 async fn key_audits(pool: &PgPool) -> Vec<Value> {
     sqlx::query_scalar(
         "select to_jsonb(a) from events.audit_log a where target_type = 'api_key' order by at, id",
@@ -138,7 +135,6 @@ async fn log_005_create_and_revoke_each_leave_an_audit_entry_and_an_event(pool: 
     );
 }
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 struct Capture(Arc<Mutex<Vec<u8>>>);
 
@@ -176,8 +172,7 @@ async fn log_007_an_api_key_secret_never_reaches_the_process_log(pool: PgPool) {
     let id = listed["data"]["apiKeys"][0]["id"].clone();
     hub.post(Some(&token), REVOKE, json!({ "id": id })).await;
     hub.post(Some(&secret), ME, json!({})).await;
-    // A line written after the requests proves this thread's log reached the buffer, so an
-    // empty log is not a capture that silently failed.
+    // A control line proves the capture works, so an empty log is not a silent failure.
     tracing::error!("capture control line");
     drop(guard);
 
