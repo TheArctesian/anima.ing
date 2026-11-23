@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: The command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built; tasks T11 to T13 build it (R-156), all Not started. Section 11 (2026-11-18) is the direction for `anima tui`, a read-only terminal screen. R-168 (operator, 2026-11-18, first-hand) decided OD-TUI1 to OD-TUI5 and OD-TUI8 and names task TU1. No TUI requirement is approved and no TU task is built.
+evidence: R-440 (operator, first-hand, 2026-11-23) approves ROU-001 to ROU-016; the MCP-006 exception for a routed session or command line still has no effect before RT7. The command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built; tasks T11 to T13 build it (R-156), all Not started. Section 11 (2026-11-18) is the direction for `anima tui`, a read-only terminal screen. R-168 (operator, 2026-11-18, first-hand) decided OD-TUI1 to OD-TUI5 and OD-TUI8 and names task TU1. No TUI requirement is approved and no TU task is built.
 ---
 
 # Anima command line and MCP plan
@@ -253,7 +253,11 @@ Not in the command line, with the reason:
   (R-243, "Multiplexer Q2: automatic for all work."): a tool may start work of a fixed type, or an
   agent run, on the machine that routing picks (ROU-001 to ROU-014 of
   [jobs.md](../proposals/jobs.md)). R-244 (OD-ROU1) adds routed sessions and command lines
-  (ROU-015, ROU-016). Not approved; no effect before the security review RT7.
+  (ROU-015, ROU-016). R-440 approves ROU-001 to ROU-016. The exception still has no
+  effect before the security review RT7. The mechanism is the draft
+  [routed-command-lines.md](../proposals/routed-command-lines.md); no requirement of
+  that document is approved. The texts of K1 and K10 change only with task RT2 and
+  its own acceptance (CON-001).
   Exception (R-435, OD-AXT42, AXT-096 of
   [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 6.12): a
   grant of the operator may let a named agent start a file transfer on a device the grant

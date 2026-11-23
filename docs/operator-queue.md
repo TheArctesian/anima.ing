@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (233)
+## 2. Open decisions (230)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -221,9 +221,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the fir… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D20 | Which address does the web client of a hosted hub give for the download of the application, and are the words of its two new texts right? | A link to the download page of the account site, when the operator names its address; the words as built until he changes them. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| OD-ROU7 | After how long is queued work refused? (one choice: 1 hour; 24 hours; never, until cancelled) | Open. Recommendation: 24 hours, then refused with the reasons and one notification. Strength: no work starts days late; a nightly window still fits. Weakness: a… | [proposals/jobs.md](proposals/jobs.md) |
-| OD-ROU8 | Where are queued items seen and cancelled? (one choice: the list of what runs (PRO-052) with the state Queued, plus `anima work list --queued` and an MCP read;… | Open. Recommendation: the list of what runs, the command and MCP, with Cancel for the operator and the caller that queued it. Strength: CMD-030 order; one list.… | [proposals/jobs.md](proposals/jobs.md) |
-| OD-ROU9 | Does the audit entry of a routed command line keep the command text? (yes/no) | Open. Recommendation: no; the entry keeps the caller, the machine, the times and the exit state (LOG-007). Strength: no secret in the log. Weakness: the log can… | [proposals/jobs.md](proposals/jobs.md) |
+| OD-ROU10 | Does LOG-007 get a written, narrow exception for the redacted command text of a routed command line? (yes/no) | Open. Recommendation: yes. LOG-007 stays in force for a password, a private key, an access token, and the content of a session (output and prompt stay out of th… | [proposals/jobs.md](proposals/jobs.md) |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
 | Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). | [proposals/power-health.md](proposals/power-health.md) |
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
@@ -231,7 +229,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. | [proposals/power-health.md](proposals/power-health.md) |
 | OD-RCL1 | The setting "Command lines for agents" at a machine: on or off after the install, and in which form? The review (SF-094): one switch covers two mechanisms; it h… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-RCL2 | As which user does a command line run: the isolation of a job (RCL-008), or the user of the daemon (ROU-015 as written)? The review (SF-092): the user of the da… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
-| OD-RCL3 | Is the command line kept in the audit entry (redacted)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-RCL4 | A session keeps no record of what was done (R-113). Is that accepted for a session that an agent opens? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-RCL5 | Does a command line or a session from the Chat page need the click (CHAT-041), or none (R-244, OD-ROU6)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-RCL6 | Does Anima get a tool with which an agent drives a terminal (RCL-020)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
