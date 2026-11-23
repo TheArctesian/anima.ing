@@ -133,7 +133,7 @@ export const PERMISSION_MODES: readonly PermissionMode[] = [
   { id: 'approval-required', label: 'Supervised', description: 'Ask before commands and file changes.', icon: 'shield', can: CAN },
   { id: 'auto-accept-edits', label: 'Auto-accept edits', description: 'Auto-approve edits, ask before other actions.', icon: 'pencil', can: CAN },
   { id: 'auto', label: 'Auto', description: 'Supported providers approve routine actions; others still ask.', icon: 'shield-check', can: CAN },
-  { id: 'full-access', label: 'Full access', description: 'Allow commands and edits without prompts.', icon: 'shield-off', can: CAN },
+  { id: 'full-access', label: 'Full access', description: "Allow commands and edits without prompts. The agent can also change Anima's checkpoints, so a revert may not bring back what was there.", icon: 'shield-off', can: CAN },
 ];
 
 /** The mode a chat really runs in: the asked one when it is offered, else the first offered (03 A.4.1). */
