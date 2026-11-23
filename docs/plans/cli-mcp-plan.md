@@ -1245,8 +1245,9 @@ root can read and set, and a member of the private group of the person that a di
 gives and `getent` does not list; a library or a module that a program loads when it runs, and an
 entry of a folder of `PATH` that passes the check other than the program that `env` runs (as a link
 to a program of a different user that the agent starts by name); on
-Linux, a program whose loader is not there, after which `env` goes on to the next entry of the
-name without its interpreter being read; access lists on Linux and macOS; a part that changes
+Linux, a program that does not start although the person can run it (its loader is not there, or
+a network file system fails), after which `env` goes on to the next entry of the name, which is not
+read; access lists on Linux and macOS; a part that changes
 between the check and the run. The account database is read with no time limit of its own
 (`getgrgid`, `getpwuid`); a program that a stopped agent's program started (as the native program
 that the `codex` of npm starts) is not stopped.
