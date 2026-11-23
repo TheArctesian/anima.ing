@@ -35,6 +35,31 @@ pub enum PlacementError {
     Source,
     #[error("a folder could not be made, or the daemon could not be written or renamed")]
     Write,
+    #[error("the new copy of the daemon did not pass its check")]
+    Refused,
+}
+
+/// Whether `file` is a regular file, not a link, that only `by` (or root) can change: a file the
+/// update may move aside and run again.
+pub fn file_trusted(file: &Path, by: User) -> bool {
+    fs::symlink_metadata(file).is_ok_and(|metadata| {
+        let stat = Stat {
+            mode: metadata.mode(),
+            owner: metadata.uid(),
+            group: metadata.gid(),
+            acl: has_acl(file).unwrap_or(true),
+        };
+        metadata.is_file() && trust::folder_trusted(stat, by)
+    })
+}
+
+/// The real path of the folder `dir` after the checks of each folder above it, made when it is
+/// missing ([`place`] makes it the same way).
+///
+/// # Errors
+/// [`PlacementError::Untrusted`] or [`PlacementError::Write`].
+pub fn trusted_folder(dir: &Path, by: User) -> Result<PathBuf, PlacementError> {
+    make_folder(dir, by)
 }
 
 /// `~/.local/bin/anima-daemon` under `home`.
@@ -55,20 +80,38 @@ pub fn bundled_beside(executable: &Path) -> Option<PathBuf> {
 /// # Errors
 /// [`PlacementError`] for the first step that fails; nothing is left at the destination then.
 pub fn place(source: &Path, destination: &Path, by: User) -> Result<PathBuf, PlacementError> {
+    place_checked(source, destination, by, &|_| true)
+}
+
+/// As [`place`], but the new file is renamed into place only when `check` accepts it under its
+/// fresh name: the check is on the bytes that will run, not on the source, which can change
+/// after it was read.
+///
+/// # Errors
+/// As [`place`]; [`PlacementError::Refused`] when `check` refused the new file.
+pub fn place_checked(
+    source: &Path,
+    destination: &Path,
+    by: User,
+    check: &dyn Fn(&Path) -> bool,
+) -> Result<PathBuf, PlacementError> {
     let folder = make_folder(destination.parent().ok_or(PlacementError::Write)?, by)?;
     let mut input = open_source(source)?;
     let name = destination.file_name().ok_or(PlacementError::Write)?;
     let part = folder.join(part_name()?);
     let installed = folder.join(name);
-    let copied = copy_to(&mut input, &part).and_then(|()| {
-        fs::rename(&part, &installed)?;
-        File::open(&folder)?.sync_all()
-    });
-    copied.map_err(|_| {
+    let refused = |error: PlacementError| {
         // The part file may not exist (the create failed); the error that matters is the copy's.
         let _ = fs::remove_file(&part);
-        PlacementError::Write
-    })?;
+        error
+    };
+    copy_to(&mut input, &part).map_err(|_| refused(PlacementError::Write))?;
+    if !check(&part) {
+        return Err(refused(PlacementError::Refused));
+    }
+    fs::rename(&part, &installed)
+        .and_then(|()| File::open(&folder)?.sync_all())
+        .map_err(|_| refused(PlacementError::Write))?;
     Ok(installed)
 }
 
