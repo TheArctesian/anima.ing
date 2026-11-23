@@ -1,4 +1,4 @@
-//! `anima session list` and `anima session end` (CMD-020, CMD-026).
+//! CMD-020, CMD-026.
 
 use serde_json::json;
 

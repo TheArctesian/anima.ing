@@ -1,11 +1,10 @@
-//! The repository an operator names: by `owner/name` (PRJ-016) or by ID.
+//! A repository by `owner/name` (PRJ-016) or by ID.
 
 use super::documents::{ProjectList, project_list};
 use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::paging::{MAX_PAGE, fetch};
 
-/// One repository that holds the name: its ID and what the hub says of it.
 struct Match {
     id: String,
     left_out: bool,
@@ -13,7 +12,6 @@ struct Match {
 }
 
 impl Match {
-    /// `id (state)`, the state in fixed words.
     fn shown(&self) -> String {
         let state = match (self.left_out, self.gone) {
             (true, true) => "left out, gone",
@@ -25,8 +23,6 @@ impl Match {
     }
 }
 
-/// Every repository named `name` in the projects, those with repositories left out too, once
-/// each.
 async fn matches(hub: &Hub, name: &str) -> Result<Vec<Match>, Failure> {
     let mut found: Vec<Match> = Vec::new();
     for left_out in [false, true] {
@@ -58,15 +54,10 @@ async fn matches(hub: &Hub, name: &str) -> Result<Vec<Match>, Failure> {
     Ok(found)
 }
 
-/// The ID of the repository `name` is the full name or the ID of. A name with a `/` is looked
-/// up in the projects, those with repositories left out too; anything else is taken as an ID.
-/// A left-out or gone repository keeps its old name, which another can take, so a name more
-/// than one repository holds is refused rather than guessed.
+/// A left-out or gone repository keeps its old name, so a shared name is refused, not guessed.
 ///
 /// # Errors
-/// [`Failure::NotFound`] when no project holds a repository with that full name;
-/// [`Failure::Usage`], listing their IDs and states, when more than one does; the hub's
-/// refusal.
+/// [`Failure::NotFound`] when no project holds the name; [`Failure::Usage`] when several do.
 pub async fn resolve(hub: &Hub, name: &str) -> Result<String, Failure> {
     if !name.contains('/') {
         return Ok(name.to_owned());

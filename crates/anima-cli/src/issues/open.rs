@@ -1,5 +1,4 @@
-//! `anima issue close` and `anima issue reopen`: close or open an issue on GitHub through the
-//! hub (OD-E14, PRJ-028). Nothing changes when it is already so.
+//! `anima issue close` and `anima issue reopen` (OD-E14, PRJ-028).
 
 use super::documents::{IssueSetOpen, issue_set_open};
 use super::render;

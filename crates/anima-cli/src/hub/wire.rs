@@ -1,6 +1,5 @@
-//! The byte stream both WebSocket clients run over (CMD-003): TCP to the origin's host, and TLS
-//! over it for `https`, by rustls with ring and the web PKI roots. No proxy is used, and the
-//! origin is `https`, or `http` on loopback only (CMD-013).
+//! The byte stream under both WebSocket clients (CMD-003): no proxy, and `http` only on
+//! loopback (CMD-013).
 
 use std::sync::Arc;
 
@@ -9,12 +8,9 @@ use rustls::pki_types::ServerName;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 
-/// A byte stream a socket runs over: TCP, or TLS over TCP.
 pub trait Wire: AsyncRead + AsyncWrite + Unpin + Send {}
 impl<T: AsyncRead + AsyncWrite + Unpin + Send> Wire for T {}
 
-/// Connects to the host of `url`, with TLS when its scheme is `https`.
-///
 /// # Errors
 /// The reason the connection or the handshake failed, without the URL.
 pub async fn connect(url: &Url) -> Result<Box<dyn Wire>, String> {
@@ -35,7 +31,7 @@ pub async fn connect(url: &Url) -> Result<Box<dyn Wire>, String> {
     Ok(Box::new(tls))
 }
 
-/// rustls with ring and the web PKI roots, HTTP/1.1 only (the upgrade needs it).
+/// HTTP/1.1 only: the WebSocket upgrade needs it.
 fn tls_config() -> Result<Arc<rustls::ClientConfig>, String> {
     let roots = rustls::RootCertStore {
         roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),

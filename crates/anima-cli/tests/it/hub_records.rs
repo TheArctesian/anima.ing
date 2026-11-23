@@ -1,5 +1,3 @@
-//! The nouns for what the hub keeps and decides: its records and settings.
-
 mod audit;
 mod builders;
 mod events;

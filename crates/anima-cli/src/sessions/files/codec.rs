@@ -1,10 +1,6 @@
-//! The files tunnel's text messages (K4 Section 9). Pure.
-//!
-//! Requests the hub would refuse are never sent: a path that is empty, holds NUL or is over
-//! 4096 bytes, or a message over 4 KiB. The hub's messages are a closed set read strictly; a
-//! message outside it is a protocol error and the transfer stops (fail closed: a misread files
-//! message could save the wrong bytes). Entry names are device text: callers print them only
-//! through the table or JSON, which clean or escape control characters.
+//! The files tunnel's text messages (K4 Section 9).
+//! A hub message outside the closed set fails closed: a misread one could save the wrong bytes.
+//! Entry names are device text: callers print them only through the table or JSON, which escape them.
 
 use serde::{Deserialize, Serialize};
 
@@ -16,10 +12,8 @@ pub const MAX_TEXT: usize = 4096;
 pub const MAX_ENTRIES: usize = 10_000;
 /// The upload frame size; the hub takes up to 64 KiB (K4 Section 9).
 pub const UPLOAD_FRAME: usize = 32 * 1024;
-/// The client's `ping`.
 pub const PING: &str = r#"{"type":"ping"}"#;
 
-/// A request this program sends.
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum Request<'a> {
@@ -28,7 +22,6 @@ pub enum Request<'a> {
     Upload { path: &'a str, size: u64 },
 }
 
-/// The request's text, or `None` when the hub would refuse it.
 #[must_use]
 pub fn encode(request: &Request<'_>) -> Option<String> {
     let path = match request {
@@ -58,7 +51,6 @@ pub enum Refusal {
     Exists,
 }
 
-/// What a directory entry is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Kind {
@@ -77,14 +69,12 @@ pub struct Entry {
     pub modified_at: Option<String>,
 }
 
-/// A directory as the device resolved it, and its entries.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Listing {
     pub path: String,
     pub entries: Vec<Entry>,
 }
 
-/// A text message from the hub's closed set.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HubMessage {
     Entries(Listing),
@@ -104,7 +94,6 @@ enum Wire {
     Ping {},
 }
 
-/// The hub message `text` holds, or `None` for anything outside the closed set.
 #[must_use]
 pub fn decode(text: &str) -> Option<HubMessage> {
     if !text.trim_start().starts_with('{') {

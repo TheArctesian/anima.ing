@@ -1,7 +1,5 @@
 //! The `extensions`, `sources` and `projects` tool sets against the scripted hub (MCP-002,
-//! MCP-004, MCP-007, MCP-008, MCP-017): the extension tools and the rules that hold for all
-//! three sets. The tools of sources and projects are in `engine_sources` and
-//! `engine_projects`.
+//! MCP-004, MCP-007, MCP-008, MCP-017).
 
 mod connect;
 
@@ -114,8 +112,7 @@ async fn mcp_004_no_tool_of_the_three_sets_takes_a_key_and_the_github_app_has_no
     }
     for tool in tools {
         let name = tool["name"].as_str().unwrap_or_default();
-        // The App-key route has no tool; the three-press flow has exactly the tools of
-        // PRJ-041, none for the one-time link (`open`) or a subscription (`watch`).
+        // The App-key route has no tool; the connect flow has exactly the tools of PRJ-041.
         let connect_flow = [
             "anima_github_connect_start",
             "anima_github_connect_state",

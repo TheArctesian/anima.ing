@@ -1,5 +1,3 @@
-//! `anima check defaults get`: the values a new check starts with.
-
 use super::documents::{CheckDefaultsGet, check_defaults_get};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

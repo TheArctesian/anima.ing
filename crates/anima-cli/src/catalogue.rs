@@ -1,7 +1,4 @@
-//! `anima catalogue`: the catalogue of applications that ships with Anima (HOST-047, task
-//! H38, CMD-030). `list` and `show` read the entries that the hub lists; `install` asks for
-//! the install of one entry on a device, which the hub refuses with a fixed reason until task
-//! H6 exists. No command reaches a machine.
+//! `anima catalogue`: the catalogue of applications that ships with Anima (HOST-047, CMD-030).
 
 pub mod documents;
 pub mod install;

@@ -1,5 +1,3 @@
-//! `anima device credential set rdp|vnc`: the password the hub signs in to the display with.
-
 use std::path::PathBuf;
 
 use zeroize::Zeroize as _;

@@ -1,5 +1,4 @@
-//! A check given as an ID or as an exact name. A name is only unique on its device, so a name
-//! needs `--device`.
+//! A check name is unique only on its device, so a name needs `--device`.
 
 use graphql_client::GraphQLQuery;
 

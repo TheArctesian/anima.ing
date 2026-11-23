@@ -1,5 +1,4 @@
-//! `anima daemon enrol`: a one-time code that turns on the metrics daemon of a device (MET-012).
-//! Printing the code is the command's purpose; nothing else ever prints it.
+//! `anima daemon enrol` (MET-012) is the one command that prints an enrolment code.
 
 use serde_json::json;
 

@@ -1,6 +1,4 @@
-//! The device's SFTP: a `russh-sftp` server handler over a temporary directory, as a device's
-//! `sftp-server` would answer. Paths are absolute inside the directory (`/` is its root); `..`
-//! is refused; an exclusive open of an existing file fails as POSIX `O_EXCL` does.
+//! A `russh-sftp` server over a temporary directory, as a device's `sftp-server` would answer.
 
 use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
@@ -14,14 +12,11 @@ use russh_sftp::protocol::{
     Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode,
 };
 
-/// One open handle.
 enum Opened {
     File(fs::File),
-    /// A directory's entries, read once.
     Dir(Option<Vec<File>>),
 }
 
-/// The SFTP server's side of one channel: the directory and the open handles.
 #[derive(Clone)]
 pub struct Disk {
     root: PathBuf,
@@ -56,7 +51,6 @@ impl Disk {
         }
     }
 
-    /// The real path of `path`, refusing `..`.
     fn real(&self, path: &str) -> Result<PathBuf, StatusCode> {
         let mut real = self.root.clone();
         for component in Path::new(path).components() {

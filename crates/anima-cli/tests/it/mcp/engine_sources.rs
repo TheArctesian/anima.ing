@@ -1,4 +1,4 @@
-//! The tools of the `sources` set against the scripted hub (MCP-007, MCP-017).
+//! MCP-007, MCP-017.
 
 use serde_json::{Value, json};
 

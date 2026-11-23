@@ -1,6 +1,4 @@
-//! Files that only the running user may read: the folder is `0700`, the file `0600` from the
-//! moment it exists, and it is replaced by rename so a reader never sees half of it (CMD-012,
-//! as the agent does for MET-013).
+//! Files only the running user may read: folder `0700`, file `0600`, replaced by rename (CMD-012).
 
 use std::fs;
 #[cfg(unix)]
@@ -31,8 +29,7 @@ pub enum PrivateFileError {
     TooLarge,
 }
 
-/// Reads `path`, or `None` when it does not exist. A file others can read, or that another user
-/// owns, is refused: a token in it could already be taken or replaced.
+/// A file others can read, or that another user owns, is refused: its token could be taken.
 ///
 /// # Errors
 /// [`PrivateFileError`] when it is exposed, too large or cannot be read.
@@ -60,9 +57,6 @@ pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError>
     Ok(Some(bytes))
 }
 
-/// Writes `bytes` as `dir/name`: the folder is made `0700` when missing; the bytes go into a
-/// `0600` temporary file in it, which is flushed and renamed over `name`.
-///
 /// # Errors
 /// [`PrivateFileError::Io`] when a step fails; the old file is then left as it was.
 pub fn write(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), PrivateFileError> {
@@ -77,7 +71,6 @@ pub fn write_new(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), PrivateFile
     save(dir, name, bytes, Replace::No)
 }
 
-/// Whether a file already at the destination is replaced.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Replace {
     Yes,
@@ -106,7 +99,7 @@ fn save(dir: &Path, name: &str, bytes: &[u8], replace: Replace) -> Result<(), Pr
     Ok(())
 }
 
-/// Deletes `path`; a missing file is already deleted.
+/// A missing file counts as deleted.
 ///
 /// # Errors
 /// [`PrivateFileError::Io`] when it cannot be deleted.
@@ -117,7 +110,7 @@ pub fn remove(path: &Path) -> Result<(), PrivateFileError> {
     }
 }
 
-/// The user ID of this process: the owner of a file it creates.
+/// The owner of a file this process creates.
 #[cfg(unix)]
 fn running_user() -> io::Result<u32> {
     Ok(tempfile::tempfile()?.metadata()?.uid())

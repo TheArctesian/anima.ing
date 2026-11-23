@@ -1,21 +1,15 @@
-//! The source account an operator names: by ID or by exact label.
-
 use super::documents::{SourceAccounts, source_accounts};
 use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 
-/// The two things a command needs of an account it only acts on.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Named {
     pub id: String,
     pub label: String,
 }
 
-/// The account `name` is the ID or the exact label of.
-///
 /// # Errors
-/// [`Failure::NotFound`] when none has it; [`Failure::Usage`] when more than one has the label;
-/// the hub's refusal.
+/// [`Failure::NotFound`] when none matches; [`Failure::Usage`] when more than one has the label.
 pub async fn resolve(hub: &Hub, name: &str) -> Result<Named, Failure> {
     let variables = source_accounts::Variables {
         source_key: None,

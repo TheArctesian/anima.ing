@@ -1,9 +1,5 @@
-//! The three presses from the command line (PRJ-039, PRJ-041): start the attempt, give the
-//! operator the way into the browser, and print each phase until the attempt ends.
-//!
-//! The change subscription opens before the attempt starts, so no phase is missed. At a
-//! terminal the command asks for the one-time link and shows it; elsewhere it never asks and
-//! shows the page that holds no value.
+//! The GitHub connect flow (PRJ-039, PRJ-041). The subscription opens before the attempt starts,
+//! so no phase is missed; only a terminal gets the one-time link.
 
 use serde_json::Value;
 
@@ -20,7 +16,6 @@ use crate::failure::{Failure, exit};
 use crate::hub::Hub;
 use crate::hub::subscription::Subscription;
 
-/// What the operator asked for.
 #[derive(Debug, Default)]
 pub struct Request {
     pub label: Option<String>,
@@ -29,12 +24,9 @@ pub struct Request {
 
 type Changes = Subscription<github_connect_changed::ResponseData>;
 
-/// Runs the flow to its end and returns the final attempt as the hub's JSON.
-///
 /// # Errors
-/// The hub's refusal (`CONFLICT` at start, `FORBIDDEN` for an API key); [`Failure::Ended`] for
-/// an attempt that failed or was cancelled (exit 1, or 7 for `GITHUB_UNREACHABLE`) and for
-/// Ctrl-C (exit 130).
+/// The hub's refusal; [`Failure::Ended`] for a failed or cancelled attempt (exit 1, or 7 for
+/// `GITHUB_UNREACHABLE`) and for Ctrl-C (exit 130).
 pub async fn connect(
     hub: &Hub,
     request: Request,
@@ -76,7 +68,6 @@ async fn open(hub: &Hub, id: &str) -> Result<OneTimeLink, Failure> {
     Ok(OneTimeLink::new(answer.open_github_connect.url))
 }
 
-/// Prints each new phase of `started` until it ends.
 async fn follow(
     mut changes: Changes,
     hub: &Hub,
@@ -101,7 +92,6 @@ async fn follow(
     after_the_stream(hub, started, report).await
 }
 
-/// The subscription ended with the attempt not seen to end: ask the hub what became of it.
 async fn after_the_stream(
     hub: &Hub,
     started: &Attempt,

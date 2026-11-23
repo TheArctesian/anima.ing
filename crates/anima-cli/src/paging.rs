@@ -1,6 +1,5 @@
-//! Pages of a hub connection and `--all` joining them into one (CMD-026). The one pager: the
-//! hub's answers are not trusted, so a cursor that comes back or a list that never ends stops
-//! the command with a failure instead of running forever (S4).
+//! The one pager for hub connections (CMD-026): the hub's answers are not trusted, so a cursor that
+//! comes back or a list that never ends stops the command with a failure (S4).
 
 use std::collections::HashSet;
 use std::fmt::Display;

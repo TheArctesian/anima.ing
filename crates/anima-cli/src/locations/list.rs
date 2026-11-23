@@ -1,6 +1,3 @@
-//! `anima location list [--from <time>] [--to <time>] [--first <n>]`. The hub writes one audit
-//! entry for each read.
-
 use chrono::Utc;
 
 use super::documents::{LocationList, location_list};

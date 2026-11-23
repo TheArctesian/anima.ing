@@ -1,5 +1,4 @@
-//! The device documents, typed from K1 at build time (CMD-004). `Debug, Serialize` on the
-//! answers lets `--json` print them with the K1 field names.
+//! The device documents, typed from K1 at build time (CMD-004).
 
 use graphql_client::GraphQLQuery;
 
@@ -41,8 +40,6 @@ pub struct DeviceCurrent;
 )]
 pub struct SiteNames;
 
-// The change documents take their input as JSON built from the flags (`settings.rs`), so
-// their input types derive `Deserialize` too.
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",

@@ -1,23 +1,16 @@
-//! Which hub a command talks to (CMD-013, CMD-015). The first that is given wins: `--hub`,
-//! `--context`, `ANIMA_HUB`, the current context, then the default hub.
+//! Which hub a command talks to (CMD-013, CMD-015).
 
 use super::config::Config;
 use crate::failure::{Failure, Hint};
 use crate::hub::Origin;
 
-/// What the operator gave to choose a hub.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Selection<'a> {
-    /// `--hub`.
     pub hub: Option<&'a str>,
-    /// `--context`.
     pub context: Option<&'a str>,
-    /// `ANIMA_HUB`.
     pub hub_variable: Option<&'a str>,
 }
 
-/// The hub `selection` and `config` choose.
-///
 /// # Errors
 /// [`Failure::Usage`] for a hub address that is not an `https` origin; [`Failure::NotFound`]
 /// for a context that does not exist.

@@ -1,7 +1,4 @@
-//! `anima_daemon_set_need`: says what a device's daemon waits for from a person at the device,
-//! or clears it (R-364). It takes no secret and makes no trust decision: it only
-//! changes what the device page says. The device name comes from the hub; the server cleans and
-//! caps each string (MCP-008).
+//! `anima_daemon_set_need` (R-364): it takes no secret and makes no trust decision.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

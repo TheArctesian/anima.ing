@@ -1,5 +1,3 @@
-//! `anima web create`: a web page of a device, such as its admin console.
-
 use super::documents::{WebCreate, web_create};
 use super::fields::WebFields;
 use super::shown::Shown;

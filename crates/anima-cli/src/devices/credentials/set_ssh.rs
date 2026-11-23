@@ -1,6 +1,3 @@
-//! `anima device credential set ssh`: a password or a private key for the hub to sign in with.
-//! The hub keeps it and never returns it (K1).
-
 use std::path::PathBuf;
 
 use zeroize::Zeroize as _;

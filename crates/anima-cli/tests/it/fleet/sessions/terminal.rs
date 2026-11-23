@@ -1,5 +1,4 @@
-//! `anima ssh <device>` with standard input from a pipe (K4 Section 8): no raw mode, the
-//! input goes to the device as it is, and the device's output comes back unchanged.
+//! `anima ssh <device>` with standard input from a pipe (K4 Section 8).
 
 use super::{DEVICE, LOGIN_TOKEN, ended, started};
 use crate::kit::Anima;

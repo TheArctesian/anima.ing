@@ -1,16 +1,11 @@
-//! Whether a change to the saved permissions gives an agent more than it had (MCP-014): a
-//! tool, or a kind's default, that moves toward `allow` (`off` to `ask` or `allow`, `ask` to
-//! `allow`). Only a person makes such a change: at a terminal, or in the desktop app's
-//! Settings. A change toward `off` is made anywhere. An agent's shell has no terminal on
-//! standard input, so it cannot widen its own access through `anima mcp permissions`.
+//! Only a person widens an agent's permissions; a change toward `off` is made anywhere (MCP-014).
 
 use super::catalogue::Kind;
 use super::permissions::{Permissions, State};
 use super::tools::Entry;
 use crate::failure::Failure;
 
-/// Whether `after` allows more than `before`: a tool of `catalogue` or a kind's default (which
-/// tools added later take) has a state nearer to `allow`.
+/// A kind's default counts too, because tools added later take it.
 #[must_use]
 pub fn widens(before: &Permissions, after: &Permissions, catalogue: &[Entry]) -> bool {
     let tool = catalogue.iter().any(|entry| {
@@ -23,8 +18,7 @@ pub fn widens(before: &Permissions, after: &Permissions, catalogue: &[Entry]) ->
     tool || default
 }
 
-/// Lets the change from `before` to `after` go on when it does not widen, or when standard
-/// input is a terminal. `--yes` has no say here.
+/// `--yes` has no say here.
 ///
 /// # Errors
 /// [`Failure::Usage`] (exit 2) for a widening without a terminal on standard input.
@@ -47,7 +41,6 @@ pub fn by_a_person(
     })
 }
 
-/// The state a kind's tools without their own choice take.
 fn default(permissions: &Permissions, kind: Kind) -> State {
     let saved = match kind {
         Kind::Read => permissions.read,

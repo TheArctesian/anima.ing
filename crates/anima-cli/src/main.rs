@@ -1,5 +1,3 @@
-//! `anima`: reads the process's arguments and environment once and runs the command.
-
 use std::process::ExitCode;
 
 use anima_cli::environment::Environment;

@@ -1,5 +1,4 @@
-//! `anima agents queue`: the prompts that wait for the turn of a thread to end, then go one by
-//! one as the next turns (TH109). Only the person changes the queue.
+//! `anima agents queue` (TH109). Only the person changes the queue.
 
 use agent_threads::control::Action;
 use uuid::Uuid;

@@ -1,6 +1,3 @@
-//! `anima source watch [<id-or-label>]`: one line for each change of a source account (K1
-//! `sourceAccountChanged`).
-
 use super::account::resolve;
 use super::documents::{SourceAccountChanged, source_account_changed};
 use super::render;

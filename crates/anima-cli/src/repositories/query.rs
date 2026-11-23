@@ -1,6 +1,3 @@
-//! One page of commits, branches or releases, asked the same way by the command and by the
-//! MCP tool.
-
 use super::documents::{
     BranchList, CommitList, CommitListChecked, RepositoryReleaseList, branch_list, commit_list,
     commit_list_checked, repository_release_list,
@@ -8,7 +5,6 @@ use super::documents::{
 use crate::forge::rows::Rows;
 use crate::hub::{Hub, HubError};
 
-/// Which part of a repository's history is read.
 #[derive(Debug)]
 pub enum History {
     /// `commits` from `reference` (a branch or a commit; none is the default branch); `checked`
@@ -21,7 +17,6 @@ pub enum History {
     Releases,
 }
 
-/// What a history root is asked.
 #[derive(Debug)]
 pub struct Query {
     pub repository: String,

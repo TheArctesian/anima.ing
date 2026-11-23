@@ -1,5 +1,3 @@
-//! `anima code ls <repository> [path]`: one directory, names only.
-
 use super::documents::{CodeDirectoryRead, code_directory_read};
 use super::render;
 use crate::failure::Failure;

@@ -1,7 +1,4 @@
-//! The real hub on a loopback port: the router, the permitted-networks check, the resolvers and
-//! the stores that `anima-hub` serves, wired as its `main.rs` wires them, over the test's own
-//! migrated database. Plain HTTP on loopback is the hub's own rule (NET-003); the permitted
-//! networks are `127.0.0.0/8`, so the check runs on every request (NET-002).
+//! The real hub on loopback, wired as `main.rs` wires it (NET-003); permitted networks `127.0.0.0/8` (NET-002).
 
 use std::collections::BTreeMap;
 use std::io::Write as _;
@@ -40,7 +37,6 @@ use crate::kit::Anima;
 pub const USERNAME: &str = "operator";
 pub const PASSWORD: &str = "correct horse battery staple";
 
-/// A served hub; it stops when dropped.
 pub struct RealHub {
     pub origin: String,
     pub pool: PgPool,
@@ -56,15 +52,13 @@ impl Drop for RealHub {
     }
 }
 
-/// A key file with a throwaway key (SEC-004); never a real key.
+/// A throwaway key (SEC-004); never a real key.
 fn vault_key() -> NamedTempFile {
     let mut file = NamedTempFile::new().expect("a key file");
     writeln!(file, "{}", STANDARD.encode([7_u8; 32])).expect("the key written");
     file
 }
 
-/// What `main.rs` builds before it serves, with the permitted networks `127.0.0.0/8` stored,
-/// the system clock, the operator set, and the sources of `sources` (none reachable without).
 async fn dependencies(pool: &PgPool, vault: Vault, sources: Option<Reach>) -> Dependencies {
     let mut env = BTreeMap::new();
     let networks = (
@@ -82,8 +76,8 @@ async fn dependencies(pool: &PgPool, vault: Vault, sources: Option<Reach>) -> De
     access::permit_networks(pool, &config.permitted_networks)
         .await
         .expect("the permitted networks");
-    // The SSH test device listens on loopback, which the hub otherwise refuses (R-030);
-    // these are the hub's own test switches (`test-support`), never a served hub's.
+    // The SSH test device listens on loopback, which the hub otherwise refuses (R-030); these are
+    // the hub's own test switches, never a served hub's.
     let policy = AddressPolicy::new(config.probe_deny.clone()).allowing_loopback();
     let (live, _) = sessions::open(pool, now).await.expect("the sessions");
     Dependencies {
@@ -109,18 +103,14 @@ async fn dependencies(pool: &PgPool, vault: Vault, sources: Option<Reach>) -> De
 }
 
 impl RealHub {
-    /// Serves the hub over `pool` (migrated by `sqlx::test`) with the operator set.
     pub async fn start(pool: PgPool) -> Self {
         Self::serve(pool, None).await
     }
 
-    /// Serves the hub with the Projects intake wired in as `main.rs` wires it, its GitHub
-    /// requests sent to a new loopback stub instead of GitHub.
     pub async fn with_github(pool: PgPool) -> (Self, Stub) {
         Self::with_github_polling(pool, INSTALLATION_POLL).await
     }
 
-    /// As [`RealHub::with_github`], with the Connect GitHub installation poll asking every `every`.
     pub async fn with_github_polling(pool: PgPool, every: Duration) -> (Self, Stub) {
         let stub = Stub::start(&pool).await;
         let loopback = AddressPolicy::default().allowing_loopback();
@@ -168,7 +158,6 @@ impl RealHub {
         }
     }
 
-    /// Gives the operator `password` instead of [`PASSWORD`].
     pub async fn set_password(&self, password: &str) {
         let now = SystemClock.now();
         access::set_operator(
@@ -181,7 +170,7 @@ impl RealHub {
         .expect("the new password");
     }
 
-    /// Turns on TOTP for the operator; returns the seed the authenticator app would hold.
+    /// Returns the TOTP seed the authenticator app would hold.
     pub async fn enrol_totp(&self) -> Vec<u8> {
         let vault = Vault::from_key_file(self.vault_key.path()).expect("the vault");
         let enrolment = access::enrol_totp(&self.pool, &vault, USERNAME)
@@ -190,12 +179,10 @@ impl RealHub {
         totp::secret_of(enrolment.uri())
     }
 
-    /// An `anima` for this hub: its own home folder, `ANIMA_HUB` set to this hub.
     pub fn anima(&self) -> Anima {
         Anima::new().with("ANIMA_HUB", &self.origin)
     }
 
-    /// Posts `query` with `variables` as the hub's own client would; the whole answer.
     pub async fn graphql(&self, token: Option<&str>, query: &str, variables: Value) -> Value {
         let mut request = reqwest::Client::new()
             .post(format!("{}/graphql", self.origin))
@@ -209,14 +196,12 @@ impl RealHub {
         serde_json::from_str(&text).unwrap_or_else(|_| panic!("not JSON: {text}"))
     }
 
-    /// `data` of an answer that must have no errors.
     pub async fn data(&self, token: &str, query: &str, variables: Value) -> Value {
         let answer = self.graphql(Some(token), query, variables).await;
         assert!(answer.get("errors").is_none(), "{answer}");
         answer["data"].clone()
     }
 
-    /// A login token for the operator without TOTP, for reading the hub's state back.
     pub async fn login_token(&self) -> String {
         let query = "mutation($input: LoginInput!) { login(input: $input) { token } }";
         let input = json!({ "input": { "username": USERNAME, "password": PASSWORD } });

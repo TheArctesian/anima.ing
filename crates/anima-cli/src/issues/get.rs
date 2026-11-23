@@ -1,5 +1,3 @@
-//! `anima issue get <repository> <number>`.
-
 use super::documents::{IssueGet, issue_get};
 use super::render;
 use crate::failure::{Failure, Hint};

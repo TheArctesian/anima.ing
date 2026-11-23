@@ -6,7 +6,7 @@ import type { ChannelKind, ChannelSettings } from '../api';
 /** Shown in place of a target the client cannot reduce to an origin or host. */
 export const TARGET_HIDDEN = 'Not shown';
 
-const KIND_LABELS: Record<ChannelKind, string> = { WEBHOOK: 'Webhook', NTFY: 'ntfy', EMAIL: 'Email', APPRISE: 'Apprise' };
+const KIND_LABELS: Record<ChannelKind, string> = { WEBHOOK: 'Webhook', NTFY: 'ntfy', EMAIL: 'Email', APPRISE: 'Apprise', MOBILE: 'Mobile' };
 
 export function kindLabel(kind: ChannelKind): string {
   return KIND_LABELS[kind];

@@ -1,5 +1,4 @@
-//! The reminder documents, typed from K1 at build time (CMD-004). A trigger and `unless` are
-//! JSON in the stored form of K-E6 Section 2.
+//! The reminder documents, typed from K1 at build time (CMD-004).
 
 use graphql_client::GraphQLQuery;
 

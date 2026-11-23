@@ -1,5 +1,3 @@
-//! `anima device credential clear ssh|rdp|vnc`: the hub forgets the stored credential.
-
 use super::documents::{
     RdpCredentialClear, SshCredentialClear, VncCredentialClear, rdp_credential_clear,
     ssh_credential_clear, vnc_credential_clear,

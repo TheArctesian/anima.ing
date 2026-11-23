@@ -1,19 +1,17 @@
-//! `anima agents start`, `send`, `queue`, `set`, `approve`, `interrupt`, `stop`, `running`,
-//! `watch` and `raise-limit`: the person drives the agent threads of this computer through the runner of
-//! the daemon (TH13, THR-030, THR-049, THR-114). No MCP tool starts a thread or answers a
-//! request: an answer is a trust decision, and a start waits for the count of THR-114
-//! (Section 7 of cli-mcp-plan.md).
+//! The agent threads of this computer, through the daemon's runner (TH13, THR-030, THR-049).
+//! No MCP tool starts a thread or answers a request: an answer is a trust decision (THR-114).
 
 use std::path::PathBuf;
 
 use agent_threads::control::{
     Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow, WorkspaceKind,
 };
-use agent_threads::drive::{Answer, Effort, Mode, Program};
+use agent_threads::drive::{Effort, Mode, Program};
 use uuid::Uuid;
 
 use super::runner::{RunnerLink, refusal};
 
+mod approve;
 mod queue;
 mod send;
 mod set;
@@ -21,6 +19,7 @@ use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
 use crate::output::{Cell, Table, Tone};
+pub use approve::ApproveArgs;
 pub use queue::QueueArgs;
 pub use send::SendArgs;
 pub use set::SetArgs;
@@ -71,24 +70,15 @@ pub struct StartArgs {
     /// copy of an application. The runner takes only a copy that it finds itself.
     #[arg(long)]
     program_path: Option<PathBuf>,
+    /// Run the thread in a new worktree of its own of the repository at `--folder`, on a new
+    /// branch; your checkout does not change (TH116).
+    #[arg(long)]
+    worktree: bool,
+    /// The branch or commit that the worktree starts from (the current one when not named).
+    #[arg(long, requires = "worktree")]
+    base: Option<String>,
     /// The first prompt.
     prompt: String,
-}
-
-#[derive(Debug, clap::Args)]
-pub struct ApproveArgs {
-    thread: Uuid,
-    /// The ID of the request, as `anima agents watch` shows it.
-    request: Uuid,
-    /// Deny, with this message to the agent.
-    #[arg(long, conflicts_with_all = ["for_session", "choose"])]
-    deny: Option<String>,
-    /// Allow, and send back the session rule at this place of the request (0 is the first).
-    #[arg(long, conflicts_with = "choose")]
-    for_session: Option<usize>,
-    /// The answer to a question, as KEY=CHOICE; once for each choice.
-    #[arg(long, value_parser = parse_choice)]
-    choose: Vec<(String, String)>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -105,12 +95,6 @@ pub struct WatchArgs {
 fn parse_effort(text: &str) -> Result<Effort, String> {
     serde_json::from_value(serde_json::Value::from(text))
         .map_err(|_| "low, medium, high, xhigh or max".to_owned())
-}
-
-fn parse_choice(text: &str) -> Result<(String, String), String> {
-    text.split_once('=')
-        .map(|(key, choice)| (key.to_owned(), choice.to_owned()))
-        .ok_or_else(|| "KEY=CHOICE".to_owned())
 }
 
 /// Gives a result that is not a refusal.
@@ -132,9 +116,7 @@ impl StartArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let mut link = RunnerLink::connect().await?;
         let folder = std::path::absolute(&self.folder).unwrap_or(self.folder);
-        // What the files of the folder make the program do by itself, before the prompt goes
-        // (THR-046, OD-THR21: honoured, with a notice). A check that fails is said and does
-        // not stop the start.
+        // A failed folder check is said and does not stop the start (THR-046, OD-THR21).
         let checked = link
             .call(Action::Folder {
                 folder: folder.clone(),
@@ -160,6 +142,8 @@ impl StartArgs {
                 .map(|path| std::path::absolute(&path).unwrap_or(path)),
             draft: None,
             attachments: Vec::new(),
+            worktree: self.worktree,
+            base: self.base,
         };
         loop {
             match link.call(action.clone()).await? {
@@ -200,27 +184,6 @@ async fn simple(invocation: &Invocation, action: Action, done: &str) -> Result<(
         invocation.output.message(done);
     }
     Ok(())
-}
-
-impl ApproveArgs {
-    /// # Errors
-    /// [`Failure`] for a refusal of the runner.
-    pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let answer = match (self.deny, self.for_session, self.choose.is_empty()) {
-            (Some(message), _, _) => Answer::Deny { message },
-            (None, Some(rule), _) => Answer::AllowForSession { rule },
-            (None, None, false) => Answer::Choose {
-                answers: self.choose,
-            },
-            (None, None, true) => Answer::Allow,
-        };
-        let action = Action::Answer {
-            thread: self.thread,
-            request: self.request,
-            answer,
-        };
-        simple(invocation, action, "Answered.").await
-    }
 }
 
 /// `anima agents interrupt`: the running turn stops; the program stays.
@@ -279,8 +242,7 @@ pub async fn running(invocation: &Invocation) -> Result<(), Failure> {
         return Ok(());
     };
     invocation.output.data(&threads, |threads| table(threads))?;
-    // Why a recent thread stopped, and an older holder (TH97, TH98): words the table has no
-    // room for.
+    // Stop reasons and the holder go below the table (TH97, TH98).
     let day_ago = chrono::Utc::now() - chrono::Duration::days(1);
     for row in threads.iter().filter(|row| row.started > day_ago) {
         if let (RunState::Stopped, Some(ended)) = (row.state, &row.ended) {

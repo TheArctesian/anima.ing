@@ -1,11 +1,7 @@
-//! The event and audit documents, typed from K1 at build time (CMD-004). `Debug, Serialize` on
-//! the answers lets `--json` print them with the K1 field names.
-
 use graphql_client::GraphQLQuery;
 
 use crate::hub::scalars::{DateTime, IpAddr};
 
-/// K1 `JSON`: an audit change record, printed as the hub wrote it.
 #[expect(
     clippy::upper_case_acronyms,
     reason = "graphql_client looks a scalar up by its K1 name"

@@ -16,7 +16,6 @@ const CHANGE_TOOLS: [&str; 3] = [
     "anima_issue_set_open",
 ];
 
-/// The K1 roots with no tool, the documents the command line sends them with, and why.
 const NO_TOOL: [(&str, &str, &str); 7] = [
     (
         "mergePullRequest",
@@ -55,7 +54,6 @@ const NO_TOOL: [(&str, &str, &str); 7] = [
     ),
 ];
 
-/// Every file under `dir` with this extension.
 fn files(dir: &Path, extension: &str) -> Vec<PathBuf> {
     let mut found = Vec::new();
     for entry in std::fs::read_dir(dir).expect("a source folder") {

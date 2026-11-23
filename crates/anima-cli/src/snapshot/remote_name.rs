@@ -1,14 +1,8 @@
-//! The remote name an operator gives with `--remote`, checked before git sees it. Pure.
-
 use super::SnapshotError;
 
-/// `name` when git can only read it as a plain remote name; it must still be one that
-/// `git remote` lists.
-///
 /// # Errors
-/// [`SnapshotError::BadRemote`] for an empty name, one that starts with `-` (git would read it
-/// as an option), one with a space or control character, or one with a glob character (in
-/// `--remotes=<name>` it would match the refs of other remotes too).
+/// [`SnapshotError::BadRemote`] for an empty name, a leading `-`, a space, a control character
+/// or a glob character, which `--remotes=<name>` would match against other remotes.
 pub fn checked(name: &str) -> Result<&str, SnapshotError> {
     let plain = !name.is_empty()
         && !name.starts_with('-')
