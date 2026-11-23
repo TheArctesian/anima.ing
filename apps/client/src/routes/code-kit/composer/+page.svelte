@@ -87,6 +87,7 @@
     <div class="lane" data-kit="real-idle"><Composer row={{ ...row, id: 'r-idle' }} onSend={never} onInterrupt={never} onStop={never} /></div>
     <div class="lane" data-kit="real-running"><Composer row={{ ...row, id: 'r-running', state: 'working' }} onSend={never} onInterrupt={never} onStop={never} /></div>
     <div class="lane" data-kit="real-ended"><Composer row={{ ...row, id: 'r-ended', state: 'stopped', ended: 'The program was closed.' }} onSend={never} onInterrupt={never} onStop={never} /></div>
+    <div class="lane" data-kit="real-set"><Composer row={{ ...row, id: 'r-set' }} onSend={never} onInterrupt={never} onStop={never} onSet={never} /></div>
     <div class="lane" data-kit="real-read"><Composer row={null} onSend={never} onInterrupt={never} onStop={never} /></div>
   </Section>
 </div>

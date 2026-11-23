@@ -95,9 +95,7 @@
     </div>
   {/if}
   {@render destination(DEVICES)}
-  <!-- The phone bar has four destinations (MOB-010), so the page is not in it. -->
-  <!-- Only the desktop application reads the session files of its computer (THR-017). -->
-  {#if !phoneLayout() && capabilities().agentThreads}{@render destination(THREADS)}{/if}
+  {#if !phoneLayout() && (capabilities().agentThreads || capabilities().runnerReport)}{@render destination(THREADS)}{/if}
   {#if !phoneLayout()}{@render destination(AGENT_USAGE)}{/if}
   {#each optionalDestinations(projectsOn, capabilities().builds && buildsOn) as item (item.href)}
     {@render destination(item)}
@@ -117,11 +115,11 @@
   <hr />
   {#if running !== undefined}<Running>{@render running()}</Running>{/if}
   <!-- What is live sits at the foot, directly above the hub it runs through (NAV-001; operator, 2026-11-19). -->
-  <LiveSessions {hub} {iconOnly} />
+  {#if phoneLayout()}{@render destination(THREADS)}{:else}<LiveSessions {hub} {iconOnly} />{/if}
   <HubStatus {iconOnly} />
   <!-- In the phone layout the logs are a page of the bar, not a panel (MOB-013). -->
   {#if phoneLayout()}{@render destination(LOGS)}{/if}
-  <!-- The phone bar has four destinations (MOB-010): a phone reaches Extensions from the Settings page. -->
+  <!-- A phone reaches Extensions from the Settings page. -->
   {#if !phoneLayout()}{@render destination(EXTENSIONS)}{/if}
   {@render destination(SETTINGS)}
   {#if canCollapse && oncollapse}
