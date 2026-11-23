@@ -89,10 +89,16 @@
     outline-offset: var(--border-focus);
   }
 
+  /* Reduced motion follows the Settings choice (MOT-043): On reduces whatever the OS says, Off keeps full motion. */
   @media (prefers-reduced-motion: reduce) {
-    button,
-    button::after {
+    :global(:root:not([data-motion='full'])) button,
+    :global(:root:not([data-motion='full'])) button::after {
       transition: none;
     }
+  }
+
+  :global(:root[data-motion='reduce']) button,
+  :global(:root[data-motion='reduce']) button::after {
+    transition: none;
   }
 </style>
