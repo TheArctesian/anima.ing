@@ -1,9 +1,4 @@
-/**
- * The records of the mockups at a merge into `dev` (PLN-019). A record that both sides changed
- * keeps the newer comparison; a side whose index still has the table of before the records
- * gives each row that it changed as a record. Then `bun run quality:register` writes the table,
- * and the document gates on the merge commit check the comparison that was kept.
- */
+/** PLN-019: the document gates on the merge commit check the comparison that a merge keeps. */
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,11 +10,7 @@ function comparedAt(record: string): string | undefined {
   return COMMIT.exec(recordCells(record)?.Compared ?? "")?.[1];
 }
 
-/**
- * The record with the newer comparison. `older(a, b)` says if commit `a` is an ancestor of
- * commit `b`. When neither is older, or the commits are the same, `incoming` wins: the gates on
- * the merge commit then say if its screen changed after it.
- */
+/** When neither commit is older, `incoming` wins: the gates on the merge commit then say if its screen changed after it. */
 export function newerRecord(current: string, incoming: string, older: (a: string, b: string) => boolean): string {
   const now = comparedAt(current);
   const next = comparedAt(incoming);
@@ -28,7 +19,6 @@ export function newerRecord(current: string, incoming: string, older: (a: string
   return older(next, now) ? current : incoming;
 }
 
-/** The record of each row that `index` (the table of before the records) changed or added after `base`. */
 export function recordsFromTable(index: string, base: string): Map<string, string> {
   const before = new Set(tableRows(base).map((cells) => JSON.stringify(cells)));
   const records = new Map<string, string>();
@@ -44,15 +34,10 @@ function git(root: string, args: string[]): { ok: boolean; out: string } {
   return { ok: done.exitCode === 0, out: done.stdout.toString() };
 }
 
-/** The index with its generated table empty: the part that a person writes. Pure. */
 export function handWritten(index: string): string {
   return withMockupTable(index, mockupTable([])) ?? index;
 }
 
-/**
- * The three-way merge of the parts of the index that a person writes, with an empty table that
- * `bun run quality:register` fills; undefined when those parts have a conflict. I/O: `git merge-file`.
- */
 export function mergeIndex(base: string, ours: string, theirs: string): string | undefined {
   const folder = mkdtempSync(join(tmpdir(), "anima-index-"));
   try {
@@ -67,7 +52,6 @@ export function mergeIndex(base: string, ours: string, theirs: string): string |
   }
 }
 
-/** The index of a merge: both sides' hand-written parts when both have the generated form, else the side that has it. */
 function settledIndex(base: string | undefined, sides: (string | undefined)[]): string | undefined | "conflict" {
   const [ours, theirs] = sides;
   if (ours !== undefined && theirs !== undefined && isGenerated(ours) && isGenerated(theirs)) {
@@ -77,18 +61,12 @@ function settledIndex(base: string | undefined, sides: (string | undefined)[]): 
   return sides.find((each) => each !== undefined && isGenerated(each));
 }
 
-/** The paths that a settle step wrote, and the reason when a person must solve the index. */
 export interface Settled {
   written: string[];
   conflict?: string;
 }
 
-/**
- * Settles the mockups of the merge that is in progress in `root`: the conflicted records, the
- * rows of a side whose index has the old table, and the index: its generated table is written
- * again later from the records, and the parts that a person writes merge three ways. A conflict in
- * those parts is the one thing that it does not settle. I/O: git and the files of the worktree.
- */
+/** A conflict in the parts of the index that a person writes is the one thing that it does not settle. */
 export function settleMockups(root: string): Settled {
   const show = (spec: string): string | undefined => {
     const done = git(root, ["show", spec]);
@@ -117,13 +95,11 @@ export function settleMockups(root: string): Settled {
   return { written: [...written.keys()], conflict: `a conflict in the part of ${MOCKUPS} that a person writes` };
 }
 
-/** The record of a conflict that is kept: the one side that has it, or the newer comparison. */
 function keptRecord(ours: string | undefined, theirs: string | undefined, older: (a: string, b: string) => boolean): string | undefined {
   if (ours === undefined || theirs === undefined) return ours ?? theirs;
   return newerRecord(ours, theirs, older);
 }
 
-/** Writes each file and adds it to the merge. */
 function writeAll(root: string, written: Map<string, string>): void {
   for (const [path, text] of written) {
     writeFileSync(join(root, path), text);

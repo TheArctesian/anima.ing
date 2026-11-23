@@ -6,7 +6,6 @@ import { checkQueue } from "./queue.ts";
 import { checkRegister } from "./register.ts";
 import { repeatedRulings } from "./rulings.ts";
 
-/** One Markdown file of the repository. */
 export interface Document {
   path: string;
   text: string;
@@ -41,7 +40,6 @@ const LINK = /\]\(([^)\s]+)\)/g;
 /** `**DEV-001.**` or `**DEV-001. A title.**`, at the start of a line, a list item or a numbered item. */
 const DEFINITION = /^\s*(?:[-*]\s+|\d+\.\s+)?\*\*([A-Z][A-Z0-9]+(?:-[A-Z])?-\d{1,3}[a-z]?)\.(?:\*\*|\s)/;
 
-/** The repository paths that the relative links of a document point to. */
 export function linkTargets(document: Document): string[] {
   const targets: string[] = [];
   for (const match of document.text.matchAll(LINK)) {
@@ -53,7 +51,6 @@ export function linkTargets(document: Document): string[] {
   return targets;
 }
 
-/** The requirement identifiers that a document defines: a bold identifier that starts a line. */
 export function definedIdentifiers(text: string): string[] {
   const found: string[] = [];
   for (const line of text.split("\n")) {
@@ -96,24 +93,17 @@ function repeatedDefinitions(documents: Document[], known: ReadonlySet<string>):
       }
     }
   }
-  // The list can only get shorter: an identifier that has one owner now must leave it.
+  // The list only shrinks: an identifier with one owner leaves it.
   const single = [...known].filter((identifier) => !repeated.has(identifier));
   return [...violations, ...single.map((identifier) => ({ path: KNOWN, signal: "known-duplicate-has-one-owner", detail: identifier }))];
 }
 
-/** The identifiers of the known-duplicates file: one for each line, `#` starts a comment. */
 export function parseKnown(text: string): Set<string> {
   const lines = text.split("\n").map((line) => (line.split("#")[0] ?? "").trim());
   return new Set(lines.filter((line) => line !== ""));
 }
 
-/**
- * PLN-017: the links resolve, each plan, each work item and each mockup is in its list, a plan
- * gives its kind and its state in its header, the register agrees with the headers (PLN-020),
- * a number of the rulings log names one ruling (PLN-021), a claim is complete and one claim
- * holds a task (PLN-022), no screen changed after its mockup was compared (PLN-019), and one
- * document defines each requirement identifier.
- */
+/** PLN-017. */
 export function checkDocuments(
   all: Document[],
   exists: (path: string) => boolean,

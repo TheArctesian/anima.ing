@@ -26,12 +26,10 @@ function commit(root: string, path: string, text: string): string {
 
 const RECORD = "docs/mockup/records/containers.md";
 
-/** The record of the containers mockup, compared at `compared`. */
 function record(compared: string): string {
   return recordText({ Mockup: "[containers/index.html](containers/index.html)", Owner: "plan", Screens: `[containers](../../${SCREEN})`, State: "Built", Compared: `\`${compared}\``, Differences: "none" });
 }
 
-/** A repository on `dev`, with a branch that changed the screen and then recorded that commit as compared. */
 function repository(): string {
   const root = mkdtempSync(join(tmpdir(), "anima-merge-"));
   git(root, "init", "--quiet", "--initial-branch=dev");
@@ -46,7 +44,6 @@ function repository(): string {
   return root;
 }
 
-/** The mockup check of the documents gate, on the files of the worktree and the commits of `root`. */
 function mockupCheck(root: string): string | undefined {
   const records = [{ path: RECORD, text: readFileSync(join(root, RECORD), "utf8") }];
   const index = { path: MOCKUPS, text: `# Mockups\n\n${mockupTable(records)}\n` };

@@ -1,6 +1,4 @@
-// `bun quality/bin/numbers.ts --check`: fails when a placeholder of a number is in the repository
-// (the rule for `dev` and `main`). `--assign`: gives each placeholder its number, in the files of
-// the working tree; the merge script runs it (PLN-021).
+// `--check` fails on a number placeholder; `--assign` numbers each one in the working tree (PLN-021).
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { assign, placeholders, type TextFile } from "../src/merge/numbers.ts";
