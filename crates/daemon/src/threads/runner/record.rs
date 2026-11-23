@@ -5,7 +5,7 @@
 use std::io::Write as _;
 use std::path::Path;
 
-use agent_threads::control::{Change, Limits, Listing, Project, Workspace};
+use agent_threads::control::{Change, Limits, Listing, Project, RunState, Workspace};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -171,5 +171,34 @@ impl Runner {
             row: Box::new(thread.row.clone()),
         };
         self.publish(id, change);
+    }
+}
+
+impl Runner {
+    /// Writes the record, after it lets go of the oldest stopped threads.
+    pub(super) fn save(&mut self) {
+        let mut stopped: Vec<(chrono::DateTime<chrono::Utc>, Uuid)> = self
+            .threads
+            .values()
+            .filter(|thread| thread.row.state == RunState::Stopped)
+            .map(|thread| (thread.row.started, thread.row.id))
+            .collect();
+        stopped.sort();
+        let over = stopped.len().saturating_sub(super::STOPPED_KEPT);
+        for (_, id) in stopped.into_iter().take(over) {
+            self.threads.remove(&id);
+            self.read_up_to.remove(&id);
+            // No prompt can go to it again: its files go with it (TH111).
+            self.attached.forget(id);
+        }
+        let record = Record {
+            limits: self.limits,
+            threads: self.threads.values().map(Thread::saved).collect(),
+            listings: self.listings.values().cloned().collect(),
+            projects: self.projects.clone(),
+        };
+        if let Err(error) = write(&self.dir, &record) {
+            tracing::warn!(%error, "the record of the runner was not written");
+        }
     }
 }

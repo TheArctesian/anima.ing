@@ -84,6 +84,7 @@ const CLAUDE_DELTA: &str = r#"{"type":"stream_event","event":{"type":"content_bl
 
 mod accounts;
 mod kept;
+mod profile;
 mod queue;
 mod restart;
 mod settings;
