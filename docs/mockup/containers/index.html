@@ -108,7 +108,7 @@ td.act { text-align: end; }
 .sub { display: block; color: var(--text-secondary); font-weight: var(--weight-regular, 400); }
 tr.inner th { padding-inline-start: var(--space-6); }
 .nm { margin-inline-start: var(--space-2); padding: 0 var(--space-2); border: var(--border-thin) solid var(--border-subtle); border-radius: 999px; color: var(--text-secondary); font-weight: 400; }
-.views { display: flex; justify-content: space-between; align-items: center; } .views a { color: var(--accent); }
+.views { display: flex; justify-content: space-between; align-items: center; } .views a { color: var(--accent); } .views .links { display: flex; gap: 16px; }
 .wash { background: rgba(235, 203, 139, 0.08); }
 
 /* The error state and the empty state replace the table and nothing else (UI-030). */
@@ -125,7 +125,7 @@ tr.inner th { padding-inline-start: var(--space-6); }
 <figure>
   <div class="frame gd">
     <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
-    <div class="views"><span class="seg"><span class="on">Containers</span><span>Images</span><span>Volumes</span><span>Networks</span></span><a>View in Hosting</a></div>
+    <div class="views"><span class="seg"><span class="on">Containers</span><span>Images</span><span>Networks</span></span><span class="links"><a>Volumes in Hosting</a> <a>View in Hosting</a></span></div>
     <div class="bar"><span class="field">Find on all machines</span><span class="seg"><span class="on">All 2</span><span>Needs you 2</span><span>Not managed 2</span></span><span class="grow"></span><span class="btn ghost">Look for newer images</span><span class="btn">Refresh</span></div>
     <p class="secondary">The applications are the Compose projects that Anima reads on each machine. Anima installs nothing yet, so each row is read only.</p>
     <table>
@@ -148,13 +148,13 @@ tr.inner th { padding-inline-start: var(--space-6); }
       <li><time>18:00:09</time><span>WARN GET /api/points 200 1241ms</span></li>
     </ol>
   </div>
-  <figcaption>Frame 1, dark. The first row selects the list: containers, images, volumes or networks. The containers are the one list of Hosting narrowed to this device (HSE-008): the header gives the machine, its status and its running count; a Compose project is one row with the one state that the hub makes (HOST-019), open to its containers; a container with no project is its own row. Each row is Not managed: Anima installs nothing in stage 1. "View in Hosting" opens the list of all machines. The button "Log" of a container reads the last lines of that container; the operator selects 100, 200, 500 or 1000 lines. The tools of the log work on the lines that were read: a search, a filter by the level word of a line, a switch for line wrap, a switch for timestamps, and a download of the lines that are shown (HOST-015). The hub and the client keep no line.</figcaption>
+  <figcaption>Frame 1, dark. The first row selects the list: containers, images or networks. The volumes are in the section Storage of Hosting (HSE-015), and the link Volumes in Hosting opens it. The containers are the one list of Hosting narrowed to this device (HSE-008): the header gives the machine, its status and its running count; a Compose project is one row with the one state that the hub makes (HOST-019), open to its containers; a container with no project is its own row. Each row is Not managed: Anima installs nothing in stage 1. "View in Hosting" opens the list of all machines. The button "Log" of a container reads the last lines of that container; the operator selects 100, 200, 500 or 1000 lines. The tools of the log work on the lines that were read: a search, a filter by the level word of a line, a switch for line wrap, a switch for timestamps, and a download of the lines that are shown (HOST-015). The hub and the client keep no line.</figcaption>
 </figure>
 
 <figure>
   <div class="frame gl">
     <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
-    <div class="views"><span class="seg"><span class="on">Containers</span><span>Images</span><span>Volumes</span><span>Networks</span></span><a>View in Hosting</a></div>
+    <div class="views"><span class="seg"><span class="on">Containers</span><span>Images</span><span>Networks</span></span><span class="links"><a>Volumes in Hosting</a> <a>View in Hosting</a></span></div>
     <div class="bar"><span class="field">Find on all machines</span><span class="grow"></span><span class="btn ghost">Look for newer images</span><span class="btn">Refresh</span></div>
     <table>
       <colgroup><col class="name"><col class="state"><col class="status"><col class="act"></colgroup>
@@ -168,7 +168,7 @@ tr.inner th { padding-inline-start: var(--space-6); }
 <figure>
   <div class="frame gd">
     <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
-    <div class="views"><span class="seg"><span class="on">Containers</span><span>Images</span><span>Volumes</span><span>Networks</span></span><a>View in Hosting</a></div>
+    <div class="views"><span class="seg"><span class="on">Containers</span><span>Images</span><span>Networks</span></span><span class="links"><a>Volumes in Hosting</a> <a>View in Hosting</a></span></div>
     <table>
       <colgroup><col class="name"><col class="state"><col class="status"><col class="act"></colgroup>
       <thead><tr><th>Application or container</th><th>State</th><th>Updates</th><th></th></tr></thead>
@@ -181,7 +181,7 @@ tr.inner th { padding-inline-start: var(--space-6); }
 <figure>
   <div class="frame gd">
     <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
-    <div class="views"><span class="seg"><span class="on">Containers</span><span>Images</span><span>Volumes</span><span>Networks</span></span><a>View in Hosting</a></div>
+    <div class="views"><span class="seg"><span class="on">Containers</span><span>Images</span><span>Networks</span></span><span class="links"><a>Volumes in Hosting</a> <a>View in Hosting</a></span></div>
     <div class="bar"><span class="field">Find on all machines</span><span class="seg"><span class="on">All 1</span><span>Needs you 0</span><span>Not managed 1</span></span><span class="grow"></span><span class="btn ghost">Look for newer images</span><span class="btn">Refresh</span></div>
     <p class="secondary">The applications are the Compose projects that Anima reads on each machine. Anima installs nothing yet, so each row is read only.</p>
     <table>
@@ -212,7 +212,7 @@ tr.inner th { padding-inline-start: var(--space-6); }
 <figure>
   <div class="frame gl">
     <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
-    <div class="views"><span class="seg"><span>Containers</span><span class="on">Images</span><span>Volumes</span><span>Networks</span></span><a>View in Hosting</a></div>
+    <div class="views"><span class="seg"><span>Containers</span><span class="on">Images</span><span>Networks</span></span><span class="links"><a>Volumes in Hosting</a> <a>View in Hosting</a></span></div>
     <div class="bar"><span class="grow">3 images. 921.6MB in use, 13.6MB (1%) can be freed by a clean-up</span><span class="btn">Refresh</span></div>
     <table>
       <colgroup><col class="first"><col><col><col></colgroup>

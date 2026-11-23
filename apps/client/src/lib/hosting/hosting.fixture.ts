@@ -1,5 +1,5 @@
 import { container, fakeCalls, type FakeCalls } from '$lib/containers/containers.fixture';
-import type { Container, ImageUpdate } from '$lib/containers/api';
+import type { Container, ContainerStorage, ContainerVolume, ImageUpdate } from '$lib/containers/api';
 import type { HubResult } from '$lib/hub/hub';
 import type { HostingCalls, Machine } from './api';
 
@@ -21,18 +21,28 @@ export const CONTAINERS: Readonly<Record<string, readonly Container[]>> = {
   'm-mini': [],
 };
 
+const volume = (name: string, size: string, containers: string[]): ContainerVolume => ({ name, driver: 'local', size, containerCount: containers.length, containers });
+
+/** HSE-015: the volumes of each machine; one of pop-os and the one of nas are used by no container. */
+export const VOLUMES: Readonly<Record<string, ContainerVolume[]>> = {
+  'm-pop': [volume('immich_pgdata', '1.2GB', ['immich-server', 'immich-redis']), { ...volume('watchtower-cache', '12kB', ['watchtower']), driver: 'nfs' }, volume('old-photos', '38.4GB', [])],
+  'm-nas': [volume('samba-shares', '0B', [])],
+  'm-mini': [],
+};
+
 /** The machine of a device page (HSE-008). */
 export const DEVICE: Machine = { id: 'device-1', name: 'nas', state: 'UP' };
 
 /** The calls of the device tab over the fake calls of one device: its containers, newer images, log and details. */
 export function deviceHosting(calls: FakeCalls): HostingCalls {
-  return { machines: () => Promise.resolve(ok([])), containers: () => calls.list(), updates: () => calls.updates(), machine: () => calls };
+  return { machines: () => Promise.resolve(ok([])), containers: () => calls.list(), updates: () => calls.updates(), machine: () => calls, storage: () => calls.storage() };
 }
 
 export interface FakeHosting extends HostingCalls {
   readonly containersAsked: string[];
   readonly updatesAsked: string[];
-  /** A machine whose containers answer with this error. */
+  readonly storageAsked: string[];
+  /** A machine whose containers and storage answer with this error. */
   failing: Record<string, string>;
   /** The log and the details of each machine, and the machines they were asked of. */
   readonly logs: FakeCalls;
@@ -45,6 +55,7 @@ export function fakeHosting(updates: readonly ImageUpdate[] = []): FakeHosting {
   const fake: FakeHosting = {
     containersAsked: [],
     updatesAsked: [],
+    storageAsked: [],
     failing: {},
     logs: fakeCalls(),
     logMachines: [],
@@ -62,6 +73,12 @@ export function fakeHosting(updates: readonly ImageUpdate[] = []): FakeHosting {
     updates: (id) => {
       fake.updatesAsked.push(id);
       return Promise.resolve(ok(updates));
+    },
+    storage: (id) => {
+      fake.storageAsked.push(id);
+      const problem = fake.failing[id];
+      const result: HubResult<ContainerStorage> = problem === undefined ? ok({ images: [], volumes: VOLUMES[id] ?? [], usage: id === 'm-pop' ? [{ type: 'Local Volumes', totalCount: 3, activeCount: 2, size: '39.6GB', reclaimable: '38.4GB (96%)' }] : [] }) : { ok: false, error: { code: 'CONFLICT', message: problem } };
+      return Promise.resolve(result);
     },
   };
   return fake;

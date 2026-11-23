@@ -91,7 +91,7 @@
   });
 
   // HSE-008: the tab shows the one list of Hosting narrowed to this machine. The hub reads the containers when the tab
-  // opens, and again only when the operator asks; the images, the volumes and the networks when one is first opened.
+  // opens, and again only when the operator asks; the images and the networks when one is first opened.
   // svelte-ignore state_referenced_locally
   const storage = new StorageStore(containersApi(hub, id));
   const containers = new HostingStore(hostingApi(hub));

@@ -159,17 +159,18 @@ it('HOST-020: a refresh that fails keeps the last list and says why, and an empt
   expect(button('Refresh')).toBeDefined();
 });
 
-it('HOST-020: the images and the volumes are read once, when the operator first opens one of them', async () => {
+it('HOST-020: the images are read once, when the operator first opens them, and again on Refresh', async () => {
   expect(calls.storageAsked).toBe(0);
   view('images')?.click();
   await settle();
   expect(calls.storageAsked).toBe(1);
   expect(rowTexts()[0]).toEqual(['example/tracks:0.36', '470MB', '49.49MB', 'tracks-app-1 and 2 more']);
   expect(document.querySelector('.count')?.textContent).toBe('2 images. 483.6MB in use, 13.6MB (2%) can be freed by a clean-up');
-  view('volumes')?.click();
+  view('networks')?.click();
+  await settle();
+  view('images')?.click();
   await settle();
   expect(calls.storageAsked).toBe(1);
-  expect(rowTexts()[1]).toEqual(['old-data', '1.2GB', 'local', 'Not used']);
   button('Refresh')?.click();
   await settle();
   expect(calls.storageAsked).toBe(2);
