@@ -4368,6 +4368,96 @@ The correction: Task L1-10 must bind the counter to the real requests in progres
 
 State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`.
 
+## The security reviews of the Git stage (task TC7, 2026-11-22 and 2026-11-23)
+
+Separate reviewers read the Git engine of the runner (`crates/daemon/src/threads/git/`) in more than ten passes; [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md) has each pass, each High and each Medium with its correction. No High is open. These Lows stay. The engine is not connected to the runner, the command or the page, so no person can reach them yet.
+
+### SF-388: A push through Anima sends no large-file (LFS) contents. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/push.rs`.
+
+What it is: With Git LFS set for all repositories of the person, a snapshot and a commit of the runner hold pointers. A push through Anima sends the pointers and not the contents.
+
+Effect, and who can cause it: No attacker. A person who pushes through Anima gets a branch on the remote whose large files are missing, with no word.
+
+Mitigation now: None. The design record of the question to the remote plans a line that says so.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-386: Large-file (LFS) contents are outside the budget of a thread. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/place/own.rs`.
+
+What it is: The budget of the folder of a thread counts the objects of Git. The contents that Git LFS keeps beside them are not counted.
+
+Effect, and who can cause it: An agent with LFS set for the person can fill the disk of the records with large files. The limit of the free disk (1 GiB kept free) still holds.
+
+Mitigation now: The check of the free disk.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-389: The locks of the engine are in one process only. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git.rs`; also `worktree::make`, which does not hold the lock of the worktree.
+
+What it is: The engine keeps its locks in memory. Two processes that run an engine on the same records (two daemons of one user) do not see the lock of the other.
+
+Effect, and who can cause it: No attacker. Two daemons of one user at the same time can damage a checkpoint or refuse an action.
+
+Mitigation now: One daemon for each user is the rule of the runner.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-390: The history of a repository inside a worktree is not saved. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/checkpoint/staged.rs`, `checkpoint.rs`.
+
+What it is: A removal saves the files of a repository that an agent made inside the worktree, as plain files. Its own commits (its Git folder) are not saved. A repository whose name is not text, or more than 512 of them, stops each snapshot until the person commits its removal.
+
+Effect, and who can cause it: The agent of the thread. Effect: commits made only in such a repository are lost at the removal of the worktree; the files are kept.
+
+Mitigation now: The files are saved, and the refusal names the way out.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-387: A planted entry in the large-file store of the person stops a removal with an error that names nothing. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/place/own.rs`, `worktree/files.rs`.
+
+What it is: A removal copies large-file contents into `.git/lfs/objects` of the person. A folder or a file that cannot be read at the name of a content makes the removal fail, and the error names no path. Also: two different files with the same content whose names differ only in the case of a letter are saved under one name on a disk that does not tell the case apart.
+
+Effect, and who can cause it: A Full access agent, which can write the `.git` of the person. Effect: the removal of the worktree fails until the person removes the entry; no work is lost.
+
+Mitigation now: No link is followed and a good content is never changed.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-385: Some failures of a snapshot or a removal name the wrong cause, or no file. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/checkpoint/staged.rs`, `place/walk.rs`, `project/linked.rs`.
+
+What it is: Seven cases that the last reviews left, each in [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md), "Lows open after the twelfth review". Examples: a full disk of the records is said as a failure of a file of the worktree, with "delete or move it"; a folder that cannot be read is not removed by the runner; on Linux a network disk that answers "not supported" for a real file has that file staged as gone (not reproduced).
+
+Effect, and who can cause it: The agent of the thread for most cases; the disk for the others. Effect: a checkpoint or a removal fails until the person acts, and the text does not always say what to do. No case was found that loses saved work.
+
+Mitigation now: The words of the system are in each text.
+
+Three more from the reviews of step W1 (branch `threads/git-wired`): the copy of the packs of a thread looks at only the first 16 names, so an agent can push its own pack out; a pack run that fails early can leave its folder in the worktree; a repository whose path has `:` cannot make a pack (the refusal says so).
+
+State: Open. Found by separate reviewers on 2026-11-23 in the branch `threads/git-copy-limit` (commits `d44e975e4` to `13bd13b09`) and `threads/git-wired` (`188a196e0`).
+
 ## Closed
 
 | Entry | Subject | Area | State |
