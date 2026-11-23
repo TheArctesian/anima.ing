@@ -184,6 +184,7 @@ pub fn refusal(why: &Refusal) -> Failure {
         | Refusal::CannotChange { said }
         | Refusal::TooLarge { said }
         | Refusal::CannotAttach { said }
+        | Refusal::ProviderAddress { said }
         | Refusal::FolderShared { said } => {
             return Failure::Forbidden {
                 message: said.clone(),

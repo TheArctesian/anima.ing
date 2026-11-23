@@ -18,6 +18,7 @@ fn reads() -> Vec<Action> {
         Action::List,
         Action::Watch,
         Action::Start {
+            provider_address: None,
             program: Program::Codex,
             folder: PathBuf::from("/work"),
             mode: Mode::Ask,

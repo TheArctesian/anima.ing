@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-relayhook | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
@@ -132,6 +133,56 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
+
+### HT-NEW-relayhook: the runner relay with real agent programs (TH118)
+
+State: Open. Built on `t3/implement-th118-runner-relay-hook`; not verified with a real sign-in.
+Owner: [agent-threads.md](proposals/agent-threads.md), TH118; R-400.
+
+The synthetic tests cover the holder's relay lifetime and its refusal paths. They do not
+prove that a vendor accepts a real forwarded request, token renewal, tool search, streamed
+answers with the installed agents, or the agents' behavior after a daemon update. A separate
+review of the final diff with no High and the operator's explicit word come before step 1.
+Do not use a subscription sign-in for this check until the operator decides OD-SHA8.
+
+1. Build the reviewed daemon. In a terminal, configure the vendor program for an API key using
+   its own instructions. Do not paste the key in a runner call, log, or this record. Start the
+   reviewed daemon as the same user. Use a new empty work folder with no Claude settings.
+2. In that folder on the Mac, send the experimental call below. This is a manual check, not
+   a setting offered by the product. For Linux change the socket path to
+   `~/.config/anima-daemon/threads/runner.sock`; for a custom daemon home use its `threads/runner.sock`.
+
+   ```sh
+   python3 - "$HOME/Library/Application Support/anima-daemon/threads/runner.sock" "$PWD" <<'PYCODE'
+   import json, socket, sys
+   connection = socket.socket(socket.AF_UNIX)
+   connection.settimeout(120)
+   connection.connect(sys.argv[1])
+   call = {"id": 1, "call": "start", "program": "claude_code",
+           "folder": sys.argv[2], "mode": "ask", "provider_address": "relay",
+           "model": None, "effort": None, "prompt": "Reply with the word ready."}
+   connection.sendall((json.dumps(call) + "\n").encode())
+   for line in connection.makefile():
+       reply = json.loads(line)
+       if reply.get("frame") == "done" and reply.get("id") == 1:
+           print(json.dumps(reply["result"]))
+           break
+   PYCODE
+   ```
+
+   Expect a started thread. Open Code and that thread: the notice says pass-through, and the
+   answer arrives. No shortening is claimed. Repeat with `"program": "codex"`; expect the
+   same, including fallback from its WebSocket request to POST.
+3. While each thread is live, restart only the daemon, keeping the holder alive. Send another
+   prompt in Code. Expect the same thread to answer. Stop it in Code. Expect Stopped.
+4. Start an ordinary thread through Code. Expect no relay notice and normal replies. No
+   personal vendor configuration file should have changed because of a relay start.
+5. In the throwaway work folder, put `{"env":{"ANTHROPIC_BASE_URL":"http://127.0.0.1:1"}}`
+   in `.claude/settings.json`. Repeat step 2 for Claude Code. Expect a refusal naming the
+   conflicting setting, with no agent started. Remove that synthetic setting afterward.
+6. Inspect `runner.log` and the thread list. Expect only the route selection and fixed relay
+   lifecycle words, never a relay secret URL, a provider credential, or a request body.
+   Record the program versions, outcomes, and whether renewal and tool search were tested.
 
 ### HT-171-touch: VNC and RDP with touch on iPadOS and Android
 

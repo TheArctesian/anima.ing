@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// The version of the protocol. A holder and a daemon of different versions say so and do not
 /// guess: the holder then takes no new start (THR-113).
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
 /// The build of the program file at `path` now: its size, its time of change and its inode, so
 /// that a holder of an older file says so after an update of the daemon (TH98).
@@ -51,6 +51,9 @@ pub enum Action {
     Hello { version: u32 },
     /// Start a program for a thread: an absolute path, no shell, this environment and folder.
     Start {
+        /// Holder-owned relay: no address or secret crosses this wire.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        relay: Option<agent_threads::drive::Program>,
         thread: ThreadKey,
         program: String,
         args: Vec<String>,
@@ -147,6 +150,10 @@ pub enum Refusal {
     BadStart,
     /// The program could not be started; the reason is the kind of the system error.
     StartFailed,
+    /// The local relay could not open; no provider request was sent.
+    RelayFailed,
+    /// Project settings could replace the relay address.
+    ProviderConflict,
     /// The input of the program is closed, or the program ended.
     InputClosed,
     /// The program does not read its input: the queue in front of it is full.

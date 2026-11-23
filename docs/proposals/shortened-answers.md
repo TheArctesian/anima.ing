@@ -454,6 +454,35 @@ the relay never shortens a result with that mark, so the model is never in a loo
    THR-046 already names such a folder): the thread must not start with the relay then.
 6. The port and the secrets of live threads kept over a start of the daemon (7.8).
 
+TH118 implementation record (2026-11-23): the six answers of the runner were recovered from
+`shortened-answers.md` of the shortener side-session handover, dated 2026-11-22. The shared
+selection is `provider_address: "relay"` on a local start call; absent means no relay. The
+selection, not the secret address, is in the thread row. No GUI, command-line option or MCP
+tool offers it. Local-model routing is not part of TH118 (R-385).
+
+The earlier answer put open and close in the runner and proposed an opaque holder value in
+Hello; it left the survival of the listening port open. TH118 instead gives the holder the
+listener and its per-thread leases. A daemon restart replaces neither the listener nor the
+secret. No secret travels in Hello or goes to disk. The holder revokes the secret when it
+reaps the agent, including while the daemon is absent. Failed starts release their lease.
+The wire version changes so an old holder cannot silently start a thread without its relay.
+Claude Code gets its child environment value; Codex gets the measured `-c openai_base_url`
+argument. Settings that set `ANTHROPIC_BASE_URL`, or cannot be checked, refuse a Claude start;
+the check includes the folder's ancestors and home settings. These checks do not lock the
+settings against a later change by the same user. The holder removes the secret from agent
+output before it reaches the outbox. Relay log entries use fixed lifecycle words.
+
+Review risk, not operator acceptance: the measured Codex `-c` form puts the relay URL in
+process arguments, which another local user may be able to read. The relay keeps no vendor
+credential of its own, but the exposed secret can permit traffic attributed to that thread
+or use of its resources. The final review must assess this separately from the same-user,
+Full access threat. No unmeasured environment-variable substitute is used here.
+
+R-400 still holds: pass-through only, off by default, no offer in a setting, a separate final
+security review before merge or real forwarding, and the first real forward only on the
+operator's word. The real-program check is HT-NEW-relayhook in
+[need-human-testing.md](../need-human-testing.md). No real forward was made by this session.
+
 ### 7.11 Threats
 
 | Number | Threat | Answer |

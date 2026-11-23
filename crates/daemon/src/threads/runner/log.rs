@@ -20,6 +20,8 @@ pub const LIMIT: u64 = 1024 * 1024;
 #[serde(rename_all = "snake_case")]
 pub enum Kind {
     Start,
+    /// Fixed pass-through lifecycle words only; no address or credential (TH118).
+    Relay,
     Prompt,
     Answer,
     Stop,

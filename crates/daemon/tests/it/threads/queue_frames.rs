@@ -15,6 +15,7 @@ async fn th109_each_call_of_the_queue_is_read_and_answered_through_the_socket() 
     let mut client = kit.client().await;
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: kit.path("work"),
             mode: Mode::FullAccess,

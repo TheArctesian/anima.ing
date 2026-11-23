@@ -6,9 +6,9 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::OwnedMutexGuard;
 
 use super::holder::{Shared, locked};
-use super::program::{self, Start};
+mod start;
 use super::tree;
-use super::wire::{self, Action, Command, Event, Outcome, Refusal, Stream, ThreadKey};
+use super::wire::{self, Action, Command, Event, Outcome, Refusal, ThreadKey};
 
 /// Does `command` and gives its answer to the daemon. `turn` lets one command run at a time; a
 /// stop lets it go while it waits for the killed processes to be gone ([`super::stop::end`]).
@@ -55,22 +55,7 @@ async fn act(
 ) -> Outcome {
     match action {
         Action::Hello { version } => hello(shared, version),
-        Action::Start {
-            thread,
-            program,
-            args,
-            env,
-            folder,
-        } => {
-            let env = marked(env, &thread);
-            let start = Start {
-                program: &program,
-                args: &args,
-                env: &env,
-                folder: &folder,
-            };
-            start_thread(shared, thread, &start).await
-        }
+        action @ Action::Start { .. } => start::run(shared, action).await,
         Action::Write { thread, line } => write(shared, &thread, line),
         Action::CloseInput { thread } => {
             if close_input(shared, &thread) {
@@ -160,59 +145,6 @@ fn hello(shared: &Arc<Mutex<Shared>>, version: u32) -> Outcome {
         }
     }
     Outcome::Ok
-}
-
-async fn start_thread(
-    shared: &Arc<Mutex<Shared>>,
-    thread: ThreadKey,
-    start: &Start<'_>,
-) -> Outcome {
-    {
-        let Ok(state) = shared.lock() else {
-            return refused(Refusal::StartFailed);
-        };
-        if state.draining || state.closing {
-            return refused(Refusal::Version);
-        }
-        if state.threads.contains_key(&thread) {
-            return refused(Refusal::ThreadExists);
-        }
-    }
-    if !start.fits() {
-        return refused(Refusal::BadStart);
-    }
-    let Ok(mut child) = start.spawn() else {
-        return refused(Refusal::StartFailed);
-    };
-    let Some(pid) = child.id() else {
-        return refused(Refusal::StartFailed);
-    };
-    let started = tree::started(pid).await;
-    let input = child.stdin.take().map(program::input);
-    let (Some(out), Some(err)) = (child.stdout.take(), child.stderr.take()) else {
-        return refused(Refusal::StartFailed);
-    };
-    if let Ok(mut state) = shared.lock() {
-        let slot = state.new_slot(pid, started, input);
-        state.threads.insert(thread.clone(), slot);
-        state.write_record();
-    }
-    let readers = [
-        tokio::spawn(program::read(
-            Arc::clone(shared),
-            thread.clone(),
-            Stream::Out,
-            out,
-        )),
-        tokio::spawn(program::read(
-            Arc::clone(shared),
-            thread.clone(),
-            Stream::Err,
-            err,
-        )),
-    ];
-    tokio::spawn(program::wait(Arc::clone(shared), thread, child, readers));
-    Outcome::Started { pid }
 }
 
 /// Closes the input of the program of `thread`; false when the holder does not know it.

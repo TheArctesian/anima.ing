@@ -80,6 +80,7 @@ hyper-util.workspace = true
 http-body-util.workspace = true
 
 [target.'cfg(unix)'.dependencies]
+model-relay = { path = "../model-relay" }
 redaction = { path = "../redaction" }
 rustix = { version = "1.1", features = ["fs", "process", "thread"] }
 # The holder marks each descriptor it inherited close-on-exec (THR-040): `fcntl` on a raw
