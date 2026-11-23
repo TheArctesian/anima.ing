@@ -25,16 +25,21 @@
   let added = $state<string | null>(null);
   const known = $derived(draftProjects(projects, added));
   const heading = $derived(headingOf(draft.folder, known));
-  const engine = $derived(draft.engine((action) => live.call(action), onStarted, models));
+  const engine = $derived(draft.engine((action) => live.call(action), onStarted, models, loadModels));
   const notice = $derived(draft.notice !== null && draft.notice.folder === draft.folder && draft.notice.lines.length > 0 ? draft.notice.lines : null);
 
-  // The models of each program (TH104), for the composer's picker; until they come, it says why it has only the default.
-  $effect(() => {
+  /** Asks the runner for the models of each program (TH104); until they come, the picker says why it has only the default. */
+  function loadModels(): void {
+    models = MODELS_WAITING;
     void live.call({ call: 'models' }).then((answer) => {
       if (!answer.ok) models = { state: 'failed', words: answer.words };
       else if (answer.outcome.outcome === 'models') models = { state: 'listed', lists: answer.outcome.models };
       else models = { state: 'failed', words: 'the runner gave no list' };
     });
+  }
+
+  $effect(() => {
+    loadModels();
   });
 
   function choose(folder: string): void {

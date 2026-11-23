@@ -2,7 +2,7 @@
   import '../picker.css';
   import CodeIcon from '../../../icons/CodeIcon.svelte';
   import Tooltip from '../../../kit/Tooltip.svelte';
-  import { nextIndex, type Choice, type EffortLevel, type Model } from '../catalogue';
+  import { nextIndex, shortName, type Choice, type EffortLevel, type Model } from '../catalogue';
 
   interface Props {
     /** The model in use; undefined when the choice names none of the catalogue. */
@@ -76,7 +76,7 @@
   <div class="head">
     <div class="line">
       <span>{heading}</span>
-      <span class="of">{model?.label ?? ''}</span>
+      <span class="of" title={model?.label}>{model === undefined ? '' : shortName(model.label)}</span>
     </div>
   </div>
   <div class="body" bind:this={body}>
