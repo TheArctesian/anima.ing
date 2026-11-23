@@ -50,7 +50,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
-| HT-129 | The one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c) | A hub of the branch `hosted/hm-t33-one-line-install` with a link, `anima` signed in to it, and a Linux computer with no application | Open (not run) |
+| HT-129 | The one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c) | A hub with the merged HM-T33 calls, `anima` signed in to it, and a Linux computer with no application; the lingering amendment needs its matching installer | Open (not run) |
 | HT-004 | No window of Apple on a Mac without the developer tools | A Mac with no Xcode and no Command Line Tools | Open |
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
@@ -1678,7 +1678,8 @@ On this Mac:
 
 ### HT-129: the one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c)
 
-Built: on the branch `hosted/hm-t33-one-line-install`. The design is Section 8.1 of
+Built: the earlier installer is merged (`d689ef6fe`, `d2c46760d`). The explicit Linux lingering offer
+(R-NEW-vpslinger) is built locally on `t3/linux-lingering-consent`, pending review and merge. The design is Section 8.1 of
 [hosted-mode.md](proposals/hosted-mode.md). The hub has two new calls
 (`crates/hub/src/fleet/link/graphql/computer.rs`): `createComputerInstall(name)`, which a signed-in
 operator makes, gives a link invite and a one-time claim; `claimComputerEnrolment(claim, os)`, which only
@@ -1698,14 +1699,21 @@ the claim through the socket of the daemon, a wrong SHA-256 of each program, a s
 a line for a different computer, the unit of the application also when its state folder only starts like
 this one, an answer of `unit show` that is not a plain path, a daemon that the script did not enrol, the
 removal, and no secret in an argument or the output). Not covered: the prompt at a real terminal, the real link,
-the real daemon, `systemd` and `launchd`, a real hub, the release (it does not publish `anima-link`
-alone or the script yet) and the page of the web client (not built).
+the real daemon, `systemd` and `launchd`, a real hub, matching published release artifacts
+(the publication code is present but availability is not checked here) and the page of the web client (not built).
 
 It needs: a hub of this branch with a link (a hub of one's own in the link mode, or a hub of the pool
 with an image of this branch); `anima` of this branch signed in to that hub with a login token; a Linux
 x86_64 computer (a VM is good) with no application of Anima, a user that is not root, and `curl`; the
 AppImage of a trial build of this branch. Do not use a Mac that has the application: the script stops
 there, and it must not touch the units of the application.
+
+The amendment has fixture coverage for exact terminal consent, refusal, EOF, interruption, piped
+input, explicit `--enable-linger`, an already enabled user, unreadable status, command failure,
+a failed verification, the current numeric user, root refusal and the macOS exclusion. The terminal
+fixture uses Python 3 and a pseudo-terminal. All service commands are stand-ins; this is no proof
+of real permissions, systemd behavior, a logout or a reboot. Use an authorized disposable Linux
+VM for those checks. Do not use the disabled Dawarich server.
 
 1. On the Linux computer, as the normal user, make a release folder from the AppImage:
    `./Anima_<version>_amd64.AppImage --appimage-extract usr/bin/anima-link usr/bin/anima-daemon`, then
@@ -1718,8 +1726,8 @@ there, and it must not touch the units of the application.
    `sh ~/anima-install --version 0.0.1 --target linux-x86_64 --link-sha256 <hex> --daemon-sha256 <hex> --from ~/rel`,
    and paste the code at the prompt "Paste the install code". Expected: the code is not shown while you
    paste it, and it is not in `history`; no password is asked; the last lines say that the computer is a
-   device of the hub and how to remove it; on a computer where lingering is off, a line names
-   `loginctl enable-linger`.
+   device of the hub and how to remove it. With lingering off, the prompt explains its effect on
+   all user units. Answer `no`: enrollment stays installed and lingering stays off.
 4. Run `systemctl --user status anima-link.service anima-daemon.service`. Expected: both are active.
    `ps -eo args | grep -c anima-install` shows no code in any process.
 5. Open Devices of the hub. Expected: within one minute a device `build-1`, kind server, Linux, in the site
@@ -1732,10 +1740,22 @@ there, and it must not touch the units of the application.
 8. Change one letter of `--link-sha256` and run step 3 with a new code. Expected: "its SHA-256 differs.
    Nothing was installed." and the two units still run.
 9. Log out of the Linux computer and wait 2 minutes. Expected, when lingering is off: the device goes
-   stale (the units stop at the logout, R-362). Log in again: the metrics come back.
+   stale (the units stop at the logout). Log in again: the metrics come back.
+   Make a new code, repeat step 3 and answer `yes` at the lingering prompt. Expected: no password
+   prompt or sudo; `loginctl show-user "$(id -u)" -p Linger --value` says `yes` before the installer
+   reports enabled. If local policy denies the command, enrollment stays installed, the command
+   exits unsuccessfully and names a separate command to ask an administrator to authorize.
+   With lingering enabled, log out and watch from another computer for 2 minutes. Expected:
+   fresh metrics continue. Reboot the VM without logging in. Expected: fresh metrics resume
+   after the network returns. Record logout and reboot separately; neither is proved by `Linger=yes`.
+   Repeat with a new code on standard input: without `--enable-linger`, it never prompts or changes
+   lingering. With an explicit `--enable-linger`, it attempts the same authorized change and checks
+   its state. A piped code followed by `yes` must not grant consent.
 10. Run `sh "${XDG_DATA_HOME:-$HOME/.local/share}/anima-link/anima-install.sh" --remove`. Expected: no
     unit of Anima in `systemctl --user list-units 'anima-*'`, no `~/.local/bin/anima-daemon`, no folder
     `anima-link` or `anima-daemon`, and the sentence that the hub still lists the computer.
+    Lingering stays as it was: removal must not disable other user units. Restore the VM snapshot
+    after the check if you need to undo this system setting.
 11. Optional, on a Mac with a second user account that has never run the application: steps 1 to 5 and 10
     with `--target darwin-universal`, the two programs of a signed trial build
     (`Anima.ing.app/Contents/MacOS/`) and `shasum -a 256`. Expected: the same, with `launchctl print
