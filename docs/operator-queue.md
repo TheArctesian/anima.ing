@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (233)
+## 2. Open decisions (234)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -58,6 +58,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C26 | What may Anima copy from LM Studio and Unsloth Studio (R-380)? Open, not decided. | Copy only what the screens and documents of LM Studio show, with our own code and none of its assets; copy the design of Unsloth Studio only, and nobody reads S… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C27 | How does a coding agent of Anima Code reach a local model (R-380)? Open, put to the operator, not decided. | (C) in steps, `/v1/messages` first. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C28 | How does a model that Ollama, Unsloth or the Hugging Face cache already has on a node become a copy of Anima (PULL-012, R-NEW-localmodels)? Open. | Open. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-ROL-17 | A machine that is connected and busy (it runs a job, a build or a job of a runner) does not start its update (ROL-028). Does its step wait for it? ROL-039 lets… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
