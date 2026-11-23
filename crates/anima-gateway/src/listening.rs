@@ -1,7 +1,4 @@
-//! The gateway's listener: it accepts the hub's connections and starts one worker process
-//! for each, with the connection as the worker's standard input. The listener never reads
-//! from a connection, so it never holds a credential, and a worker that fails takes one
-//! session with it and nothing else. OS work only.
+//! The gateway's listener: one worker process per hub connection; the listener never reads a connection.
 
 use std::io;
 #[cfg(unix)]
@@ -27,8 +24,7 @@ pub use windows::hub_connection;
 #[cfg(windows)]
 use windows::start;
 
-/// The most sessions at one time. A connection beyond it is told that the gateway is busy
-/// and closed.
+/// The most sessions at one time; a connection beyond it is told that the gateway is busy.
 pub const MOST_SESSIONS: usize = 64;
 /// `GUAC_PROTOCOL_STATUS_SERVER_BUSY`.
 const SERVER_BUSY: u16 = 0x0201;
@@ -36,17 +32,14 @@ const SERVER_BUSY: u16 = 0x0201;
 pub const WORKER: &str = "session";
 /// The option that names another gateway for the protocols this one does not serve.
 pub const OTHER_GATEWAY: &str = "--other-gateway";
-/// The option that names a protocol that goes to the other gateway though this one serves
-/// it.
+/// The option that names a protocol that goes to the other gateway though this one serves it.
 pub const PASS: &str = "--pass";
 
-/// How a worker is started.
 #[derive(Clone, Debug)]
 pub struct Workers {
     /// The gateway program itself.
     pub program: PathBuf,
     pub other_gateway: Option<String>,
-    /// Protocols that go to the other gateway though this one serves them.
     pub passed: Vec<String>,
     /// The most sessions at one time; [`MOST_SESSIONS`] for the program.
     pub most_sessions: usize,
@@ -91,8 +84,6 @@ pub async fn listen(listener: TcpListener, workers: Workers) -> io::Result<()> {
     }
 }
 
-/// Starts a worker with `connection` as its standard input. The worker gets no environment
-/// and no other open connection.
 #[cfg(unix)]
 fn start(connection: TcpStream, workers: &Workers) -> io::Result<Child> {
     let connection = OwnedFd::from(connection.into_std()?);

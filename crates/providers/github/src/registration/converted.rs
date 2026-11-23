@@ -1,5 +1,4 @@
-//! Reading the conversion reply. Only the App's id, slug, owner and key are read: the client
-//! secret and the webhook secret in the reply are never put into a value (PRJ-039).
+//! Only the id, slug, owner and key are read: the reply's other secrets stay unread (PRJ-039).
 
 use serde::Deserialize;
 use source_exchange::{Converted, Owner, Problem};
@@ -30,7 +29,7 @@ struct Account {
     kind: String,
 }
 
-/// Reads the `201` reply. The problem never quotes it: it holds a key (LOG-007).
+/// The problem never quotes the reply: it holds a key (LOG-007).
 pub(crate) fn parse_converted(body: &[u8]) -> Result<Converted, Problem> {
     serde_json::from_slice::<Reply>(body)
         .ok()

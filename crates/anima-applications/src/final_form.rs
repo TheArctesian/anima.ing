@@ -1,8 +1,4 @@
-//! The final form of a project (contract K10 Section 6.4.4, step 5): the one file that
-//! Compose reads. The program writes it itself, as JSON, from the file that passed the check
-//! of `compose-rules`: each value with its type, each image by the digest of its pull, the
-//! name of the project, each path of the machine as the real path, and what the program adds
-//! to or fixes in each service.
+//! The final form of a project: the one file that Compose reads (K10 Section 6.4.4, step 5).
 
 mod declared;
 
@@ -15,31 +11,22 @@ use crate::{
     settings::OwnLimits,
 };
 
-/// What the final form needs beside the file.
 #[derive(Clone, Copy, Debug)]
 pub struct Frame<'a> {
     /// The name of the project: `anima-` and the 32 hexadecimal digits of the application.
     pub project: &'a str,
-    /// The real path of `binds/` of the application.
     pub binds: &'a str,
-    /// The limits of a service at this machine.
     pub own: &'a OwnLimits,
-    /// "Open to the network".
     pub open_to_network: bool,
-    /// The digest by which the program pulled the image of each service.
     pub digests: &'a [Pulled],
 }
 
-/// The final form of one project. Its text holds values of the environment file: `{:?}`
-/// shows only its length.
+/// Its text holds values of the environment file, so `{:?}` shows only its length.
 #[derive(Clone, PartialEq, Eq)]
 pub struct FinalForm {
-    /// The text of the file.
     pub text: String,
-    /// The name of the folder of each bind mount, each one time.
     pub binds: Vec<String>,
-    /// True when the project has a volume or a bind mount: data that `application_back` does
-    /// not bring back.
+    /// A volume or a bind mount holds data that `application_back` does not bring back.
     pub holds_volumes: bool,
 }
 
@@ -58,7 +45,6 @@ const fn refused(rule: Rule, service: Option<usize>) -> Refusal {
     Refusal::FileNotPermitted { rule, service }
 }
 
-/// True when a text of `node`, a key or a value, holds a NUL.
 fn holds_nul(node: &Node) -> bool {
     match node {
         Node::Null => false,
@@ -70,9 +56,7 @@ fn holds_nul(node: &Node) -> bool {
     }
 }
 
-/// The image of a service by the digest of its pull: the name with no tag, then `@` and the
-/// digest. Thus the engine never starts an image that was on the machine for a different
-/// reason (SF-041).
+/// By digest, so the engine never starts an image on the machine for a different reason (SF-041).
 pub(crate) fn image_by_digest(image: &str, digest: &str) -> String {
     let (folders, last) = image
         .rsplit_once('/')
@@ -82,7 +66,6 @@ pub(crate) fn image_by_digest(image: &str, digest: &str) -> String {
     format!("{folders}{separator}{name}@{digest}")
 }
 
-/// The digest that `frame` has for the service `name` with the image `image`.
 fn digest_of<'a>(frame: &Frame<'a>, name: &str, image: &str) -> Option<&'a str> {
     frame
         .digests
@@ -90,7 +73,6 @@ fn digest_of<'a>(frame: &Frame<'a>, name: &str, image: &str) -> Option<&'a str> 
         .find(|pulled| pulled.service == name && pulled.image == image)
         .map(|pulled| pulled.digest.as_str())
         .filter(|digest| is_digest(digest))
-        // An image that the file names by a digest is started by that digest and no other.
         .filter(|digest| {
             image
                 .split_once('@')
@@ -115,7 +97,6 @@ fn services(document: &Node, frame: &Frame<'_>) -> Result<Json, Refusal> {
     Ok(Json::Record(members))
 }
 
-/// A top-level network: the driver `bridge` when the file names it, and `internal`.
 fn network(node: &Node) -> Result<Json, Refusal> {
     let mut members = Vec::new();
     if node.get("driver").and_then(Node::text).is_some() {
@@ -128,7 +109,6 @@ fn network(node: &Node) -> Result<Json, Refusal> {
     Ok(Json::Record(members))
 }
 
-/// One top-level key whose entries have names: each entry formed by `reader`.
 fn named(
     document: &Node,
     key: &str,
@@ -144,7 +124,6 @@ fn named(
     Ok(Some((key.to_owned(), Json::Record(members))))
 }
 
-/// The names of the folders of the bind mounts of the file, each one time.
 fn binds(document: &Node) -> Vec<String> {
     let mut names: Vec<String> = Vec::new();
     let services = document
@@ -169,12 +148,8 @@ fn binds(document: &Node) -> Vec<String> {
     names
 }
 
-/// Makes the final form of `checked` for the project of `frame`.
-///
 /// # Errors
-/// `no_digest` for a service whose image has no digest in `frame`; `file_not_permitted`
-/// with `value_not_permitted` for a NUL in a text, and for a value that does not have the
-/// form of its rule.
+/// `no_digest` for an image with no digest in `frame`; `file_not_permitted` for a bad value.
 pub fn formed(checked: &Checked, frame: &Frame<'_>) -> Result<FinalForm, Refusal> {
     let document = &checked.document;
     let entries = document

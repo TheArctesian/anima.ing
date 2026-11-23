@@ -3,13 +3,16 @@
 
 use super::support::{
     DOCKER_HOST, FakeDns, FakeIssuer, HUB, KEY_PEM, application, device, new_route, now, settings,
+    shaped, web,
 };
 use crate::{
     fleet::credentials::test_vault,
     work::routes::{
         self, Error, Ordering, Waits,
         certificates::IssueError,
+        kinds::{Access, Shape},
         proof::{Proof, record_value},
+        target::TargetRefusal,
     },
 };
 
@@ -176,5 +179,37 @@ db_test! {
             .await
             .unwrap();
         assert_eq!(left, 0);
+    }
+}
+
+db_test! {
+    async fn r_390_a_private_route_waits_for_no_consent_and_may_reach_a_database(pool: PgPool) {
+        let private = shaped("db.example.com", Shape { access: Access::Private, ..web(5432) });
+        let mut conn = pool.acquire().await.unwrap();
+        let database = routes::add((&pool, &settings()), &mut conn, &private, now())
+            .await
+            .unwrap()
+            .route;
+        assert_eq!(database.address, Some("10.10.0.21:5432".parse().unwrap()));
+        let public = new_route("pg.example.com", 5432);
+        let public = routes::add((&pool, &settings()), &mut conn, &public, now()).await;
+        assert!(matches!(public, Err(Error::Target(TargetRefusal::ServicePort))), "{public:?}");
+        add(&pool, "photos.example.com", 3000).await.unwrap();
+
+        sqlx::query("UPDATE routes.route SET proof = 'proven', application_recorded = true")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let waits = |name: &str| {
+            let pool = pool.clone();
+            let name = name.to_owned();
+            async move {
+                let all = routes::list(&pool, None).await.unwrap();
+                all.into_iter().find(|route| route.name.as_str() == name).unwrap().waits(now())
+            }
+        };
+        // A private web route waits only for its certificate; the public one for the consent.
+        assert_eq!(waits("db.example.com").await, Some(Waits::Certificate));
+        assert_eq!(waits("photos.example.com").await, Some(Waits::MachineConsent));
     }
 }

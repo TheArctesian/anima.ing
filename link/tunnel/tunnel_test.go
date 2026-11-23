@@ -17,7 +17,6 @@ func TestMain(m *testing.M) { testbed.Main(m) }
 
 const echoPort = 7
 
-// identity is what a hub saves between starts.
 type identity struct {
 	key   tunnel.PrivateKey
 	psk   tunnel.PresharedKey
@@ -40,7 +39,6 @@ func startHub(t *testing.T, id identity, admit func(tunnel.DeviceKey) bool) *tun
 	return hub
 }
 
-// serveEcho answers each stream on echoPort with the bytes it gets.
 func serveEcho(t *testing.T, hub *tunnel.Hub) {
 	t.Helper()
 	ln, err := hub.Listen(echoPort)
@@ -98,12 +96,10 @@ func echo(t *testing.T, c net.Conn, message string) {
 
 func admitAll(tunnel.DeviceKey) bool { return true }
 
-// admission is an Admit answer that a test can change while the hub runs.
 type admission struct{ atomic.Bool }
 
 func (a *admission) admit(tunnel.DeviceKey) bool { return a.Load() }
 
-// waitForPath pings until the device reports the wanted kind of path.
 func waitForPath(t *testing.T, device *tunnel.Device, want tunnel.PathKind) tunnel.Path {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)

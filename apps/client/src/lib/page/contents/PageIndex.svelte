@@ -8,10 +8,13 @@
     readonly icon: IconName;
     /** The group of the section, for example "This computer": the index writes it once, above the first link of the group. */
     readonly group?: string;
+    /** A section that moved to a page of its own: the link opens that page (HSE-010 keeps Routes findable in Settings). */
+    readonly href?: '/hosting/routes';
   }
 </script>
 
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import Icon from '$lib/icons/Icon.svelte';
   import QuietLabel from '../QuietLabel.svelte';
 
@@ -38,7 +41,7 @@
       const page = document.scrollingElement ?? document.documentElement;
       const atFoot = page.scrollTop > 0 && page.scrollTop + innerHeight >= page.scrollHeight - 1;
       let next = entries[0]?.id ?? null;
-      for (const entry of entries) {
+      for (const entry of entries.filter((each) => each.href === undefined)) {
         // The entries' ids are the page's own anchors: plain words and hyphens.
         const section = document.querySelector(`[data-section="${entry.id}"]`);
         if (section !== null && (atFoot || section.getBoundingClientRect().top <= line)) next = entry.id;
@@ -59,7 +62,7 @@
   {#if heading !== undefined}<span class="heading"><QuietLabel>{heading}</QuietLabel></span>{/if}
   {#each entries as entry, at (entry.id)}
     {#if entry.group !== undefined && entry.group !== entries[at - 1]?.group}<span class="group"><QuietLabel>{entry.group}</QuietLabel></span>{/if}
-    <a href="#{entry.id}" aria-current={(current ?? entries[0]?.id) === entry.id ? 'true' : undefined}>
+    <a href={entry.href === undefined ? `#${entry.id}` : resolve(entry.href)} aria-current={(current ?? entries[0]?.id) === entry.id ? 'true' : undefined}>
       <Icon name={entry.icon} size="sm" />{entry.title}
     </a>
   {/each}

@@ -1,5 +1,3 @@
-//! PRJ-031: the commits of a branch, the branches and the releases of a repository.
-
 use super::{fixture, ok, path_and_query};
 use crate::live::{commits, refs};
 

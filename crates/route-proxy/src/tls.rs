@@ -1,6 +1,5 @@
-//! The TLS of the names that serve: one certificate for each name, found by the SNI field
-//! (Section 12.3). A name whose certificate is not valid for it is left out, so a certificate
-//! can never serve a different name. I/O free.
+//! One certificate for each name, found by SNI (Section 12.3); a name whose certificate is not
+//! valid for it is left out. I/O free.
 
 use std::sync::Arc;
 
@@ -37,7 +36,6 @@ pub fn server_config(table: &Table) -> Result<(Arc<ServerConfig>, Vec<String>), 
     Ok((Arc::new(config), left_out))
 }
 
-/// The chain and the key as rustls holds them; `None` when either does not parse.
 fn certified(provider: &CryptoProvider, chain: &str, key: &[u8]) -> Option<CertifiedKey> {
     let chain: Vec<CertificateDer<'static>> = CertificateDer::pem_slice_iter(chain.as_bytes())
         .collect::<Result<_, _>>()

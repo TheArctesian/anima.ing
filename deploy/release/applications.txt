@@ -79,6 +79,7 @@ cli in deploy/bin/windows-bundle.ps1
 cli in deploy/bin/windows-command.ts
 cli in deploy/windows/
 cli in deploy/bin/cli-formula
+cli in deploy/bin/cli-archive
 cli in deploy/bin/crate-version
 
 # The iOS application (TestFlight; task B8i). It is the client in the phone shell, with the

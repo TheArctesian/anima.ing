@@ -38,17 +38,14 @@ pub const K4_PASSWORD_VALUES: [(&str, &str); 11] = [
     ("server-alive-interval", "30"),
 ];
 
-/// The K4 password values with the test display and `UTC`.
 pub fn k4_params() -> ConnectParams {
     params(DISPLAY, "UTC", values_of(&K4_PASSWORD_VALUES))
 }
 
-/// A handshake that has sent `select` and waits for `args`.
 pub fn started(params: ConnectParams) -> Handshake {
     Handshake::new("ssh", params).0
 }
 
-/// A K4 handshake that has answered the guacd 1.5.5 `args` and waits for `ready`.
 pub fn after_args() -> Handshake {
     let mut handshake = started(k4_params());
     handshake
@@ -57,7 +54,6 @@ pub fn after_args() -> Handshake {
     handshake
 }
 
-/// The `args` instruction in `bytes`, decoded with the crate's own decoder.
 pub fn decode_args(bytes: &[u8]) -> Instruction {
     let mut decoded = Decoder::new().feed(bytes).expect("fixture decodes");
     assert_eq!(decoded.len(), 1, "a fixture holds one instruction");
@@ -91,7 +87,6 @@ pub fn params(display: Display, timezone: &str, values: ArgValues) -> ConnectPar
     }
 }
 
-/// Runs `select` then `args` and returns what the hub sends to guacd.
 pub fn reply(args: Instruction, params: ConnectParams) -> Vec<Instruction> {
     match started(params).on_instruction(args) {
         Ok(HandshakeStep::Send(send)) => send,
@@ -100,14 +95,12 @@ pub fn reply(args: Instruction, params: ConnectParams) -> Vec<Instruction> {
     }
 }
 
-/// The `connect` instruction of a reply (always the last one).
 pub fn connect_of(reply: &[Instruction]) -> &Instruction {
     let connect = reply.last().expect("reply is not empty");
     assert_eq!(connect.opcode, "connect");
     connect
 }
 
-/// The `connect` value sent for `name`, given the `args` it answers.
 pub fn value_for<'a>(args: &Instruction, connect: &'a Instruction, name: &str) -> &'a str {
     let at = args
         .args

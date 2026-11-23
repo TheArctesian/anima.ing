@@ -84,6 +84,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         daemon::daemon_bundled,
         daemon::daemon_install,
         daemon::daemon_remove,
+        daemon::at_start::daemon_update_notice,
         daemon::keychain::daemon_keychain_waits,
         local_hub::local_hub_carried,
         local_hub::local_hub_install,
@@ -129,6 +130,7 @@ fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())
         .manage(daemon::Installing::default())
+        .manage(daemon::Notices::default())
         .manage(local_hub::Changing::default())
         .manage(local_hub::Replacements::default())
         .manage(link::Changing::default())
@@ -138,7 +140,7 @@ fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
             stay_awake::start(app.handle());
             link::start(&app.state::<Arc<link::DeviceLink>>());
             local_hub::update::at_start(&app.state::<local_hub::Changing>());
-            daemon::update_at_start(&app.state::<daemon::Installing>());
+            daemon::update_at_start(app.handle());
             Ok(())
         })
 }

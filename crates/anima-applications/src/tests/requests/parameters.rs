@@ -1,5 +1,3 @@
-//! The forms of the `parameters` of each container type (K10 Sections 6.4.6 to 6.4.11).
-
 use super::{apply, work};
 use crate::{
     Refusal,
@@ -7,7 +5,6 @@ use crate::{
     tests::{APPLICATION, OF_ANIMA, item},
 };
 
-/// Each of `refused`, parameters of the type `kind`, is refused with `member_unknown`.
 fn refuses(kind: &str, refused: &[&str]) {
     for parameters in refused {
         let read = work(kind, parameters);
@@ -147,7 +144,6 @@ fn k10_6_4_8_to_6_4_11_the_members_of_each_other_type_have_their_forms() {
             r#"{"what":"images"}"#,
         ],
     );
-    // `tail` is 0 to 1,000.
     let follow = |tail: &str| format!(r#"{{"container":"{OF_ANIMA}","tail":{tail}}}"#);
     let none = format!(r#"{{"container":"{OF_ANIMA}"}}"#);
     refuses(

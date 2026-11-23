@@ -1,13 +1,9 @@
-//! The shapes of RED-002 from the fixture (RED-004), the provider keys and the text of many
-//! lines. The rules of event text are pinned by the hub's `log_007` tests.
-
 use std::collections::BTreeSet;
 
 use crate::{redact_document, redact_text};
 
 const SHAPES: &str = include_str!("fixtures/secret-shapes.txt");
 
-/// The shapes RED-002 names. Each must have a line in the fixture.
 const REQUIRED: [&str; 12] = [
     "anthropic",
     "openai",
@@ -23,7 +19,6 @@ const REQUIRED: [&str; 12] = [
     "password-assignment",
 ];
 
-/// One fixture line: the shape, the text with the secret in it, and the secret.
 fn shapes() -> Vec<(String, String, String)> {
     SHAPES
         .lines()

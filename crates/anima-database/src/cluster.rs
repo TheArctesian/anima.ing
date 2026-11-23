@@ -1,14 +1,9 @@
-//! The cluster: the PostgreSQL data folder of one bundled database.
+//! The PostgreSQL data folder of one bundled database.
 //!
-//! These choices are fixed when the cluster is made and cannot change without a dump: UTF-8,
-//! the built-in `C.UTF-8` locale provider (no ICU, and no index that an operating system
-//! update can break) and data checksums (PostgreSQL 18 turns them on, and an upgrade needs
-//! both sides equal).
-//!
-//! Who may sign in is this crate's own `pg_hba.conf`. The superuser has no password: it signs
-//! in only as the operating-system user who runs the database, which PostgreSQL asks the
-//! kernel about (`peer`). Every other login needs `scram-sha-256`. There is no rule for a
-//! network connection, and the server has no network listener (DB-001).
+//! The built-in `C.UTF-8` locale provider keeps indexes safe from OS updates; checksums stay on
+//! because an upgrade needs both sides equal.
+//! The superuser signs in only by `peer`, every other login by `scram-sha-256`, and the server
+//! has no network listener (DB-001).
 
 use std::fs;
 use std::io::{self, Write};
@@ -22,11 +17,9 @@ use crate::{Layout, Lock, Program, Tree, owner_only};
 #[cfg(all(test, unix))]
 mod tests;
 
-/// The superuser of a bundled cluster. Only this crate signs in with it, for the roles, the
-/// checks and an upgrade; the hub is never given it.
+/// The superuser of a bundled cluster; only this crate signs in with it, never the hub.
 pub const SUPERUSER: &str = "anima_super";
 
-/// The name of the map in `pg_ident.conf` that lets the operating-system user be [`SUPERUSER`].
 #[cfg(unix)]
 const USER_MAP: &str = "anima";
 
@@ -74,12 +67,17 @@ fn io_error(step: &'static str) -> impl FnOnce(io::Error) -> ClusterError {
 /// How a cluster's major version stands to the tree that would run it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Fit {
-    /// The tree can run the cluster.
     Same,
     /// The cluster needs an upgrade before this tree can run it.
-    ClusterOlder { cluster: u32, tree: u32 },
-    /// A newer application made or upgraded the cluster. This tree must never touch it.
-    ClusterNewer { cluster: u32, tree: u32 },
+    ClusterOlder {
+        cluster: u32,
+        tree: u32,
+    },
+    /// A newer application made or upgraded the cluster; this tree does not touch it.
+    ClusterNewer {
+        cluster: u32,
+        tree: u32,
+    },
 }
 
 #[must_use]
@@ -107,16 +105,12 @@ pub fn major_version(layout: &Layout) -> Result<Option<u32>, ClusterError> {
     }
 }
 
-/// Makes the cluster with `initdb`. The caller holds the [`Lock`]: two copies that make one
-/// cluster remove each other's half-made folder.
+/// Makes the cluster with `initdb`; the caller holds the [`Lock`].
 ///
-/// The cluster is made beside its place, gets its access rules, and is moved in last. So a
-/// crash at any point leaves either no cluster, and the next start makes one, or a whole
-/// cluster. No password exists at this point: the superuser has none.
+/// The cluster is made beside its place and moved in last, so a crash leaves none or a whole one.
 ///
 /// # Errors
-/// When a cluster folder is there already, a folder or a file cannot be made, or `initdb`
-/// fails.
+/// When a cluster folder is there already, a file cannot be made, or `initdb` fails.
 pub fn create(_lock: &Lock, tree: &Tree, layout: &Layout) -> Result<(), ClusterError> {
     if layout.cluster().exists() {
         return Err(ClusterError::AlreadyThere);
@@ -139,8 +133,8 @@ pub fn create(_lock: &Lock, tree: &Tree, layout: &Layout) -> Result<(), ClusterE
     fs::rename(&being_made, layout.cluster()).map_err(io_error("move the new cluster into place"))
 }
 
-/// Lets the operating-system user who runs this program be the cluster's superuser, and
-/// nobody else. Run before each start: the user's name can change between two starts.
+/// Lets only the operating-system user who runs this program be the superuser; run before each
+/// start, because the user's name can change.
 ///
 /// # Errors
 /// When the user has no name or the map cannot be written.
@@ -174,15 +168,12 @@ fn this_user() -> Result<String, ClusterError> {
     }
 }
 
-/// Whether `name` means only itself in `pg_ident.conf`. A leading `/` makes a quoted value a
-/// regular expression there, and a line break would start a second mapping.
+/// In `pg_ident.conf` a leading `/` makes a value a regular expression and a line break starts a mapping.
 #[cfg(unix)]
 fn is_plain_user_name(name: &str) -> bool {
     !name.is_empty() && !name.starts_with('/') && !name.chars().any(char::is_control)
 }
 
-/// The `pg_ident.conf` text that maps `user` to [`SUPERUSER`]. The name is quoted, so no
-/// character in it can add a second mapping.
 #[cfg(unix)]
 fn user_map(user: &str) -> String {
     format!(
@@ -260,9 +251,6 @@ fn run_initdb(tree: &Tree, cluster: &Path) -> Result<(), ClusterError> {
     })
 }
 
-/// The cause in what `initdb` printed: its own `initdb: error:` line, or the `FATAL:` line of
-/// the server it runs to fill the cluster (for example "could not create shared memory
-/// segment: No space left on device"). No password exists when `initdb` runs.
 fn initdb_reason(errors: &str) -> String {
     let own = errors
         .lines()

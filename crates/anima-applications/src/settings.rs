@@ -1,5 +1,4 @@
-//! The settings at the machine (contract K10 Section 6.4.2). Only the administrator of the
-//! machine sets them; the applications program reads them and never writes them.
+//! The settings at the machine (contract K10 Section 6.4.2): the applications program reads them and never writes them.
 //!
 //! The file is JSON with these members, each always there:
 //!
@@ -48,9 +47,7 @@ pub struct Managed {
     pub engine: EngineKind,
     /// The path of the Unix socket of the engine, as the administrator recorded it.
     pub socket: String,
-    /// The path of the `docker` program.
     pub docker: String,
-    /// The path of the Compose program.
     pub compose: String,
     /// The identifier of the one user whose daemon is accepted on the socket of the program.
     pub accepted_user: u32,
@@ -81,7 +78,6 @@ pub struct Limits {
     pub free_disk_bytes: u64,
 }
 
-/// What the limits need to know of the machine.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Machine {
     pub memory_bytes: u64,
@@ -100,8 +96,6 @@ pub struct OwnLimits {
 }
 
 impl Limits {
-    /// The limits after the install: a quarter of the memory of the machine, 512 processes,
-    /// the processors of the machine, 30 seconds to stop, 10 GiB of free disk before a pull.
     #[must_use]
     pub const fn after_install() -> Self {
         Self {
@@ -113,8 +107,7 @@ impl Limits {
         }
     }
 
-    /// The limits of a service on `machine`. No limit is zero: zero is "no limit" to the
-    /// engine.
+    /// The limits of a service on `machine`; none is zero, which the engine reads as "no limit".
     #[must_use]
     pub fn own(&self, machine: &Machine) -> OwnLimits {
         let quarter = (machine.memory_bytes / 4).max(1);
@@ -128,31 +121,22 @@ impl Limits {
     }
 }
 
-/// The settings of one machine.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     /// "Manage applications": `None` is off.
     pub managed: Option<Managed>,
-    /// "All containers".
     pub all_containers: bool,
-    /// "Open to the network".
     pub open_to_network: bool,
-    /// "The hub may delete volumes".
     pub hub_may_delete_volumes: bool,
-    /// "Adopted projects".
     pub adopted: Vec<Adopted>,
     /// "Protected": names of containers and of Compose projects that no item can change.
     pub protected: Vec<String>,
-    /// "Registries with a login".
     pub registries: Vec<String>,
-    /// "Limits of a service".
     pub limits: Limits,
-    /// "Label prefixes".
     pub label_prefixes: Vec<String>,
 }
 
 impl Settings {
-    /// The settings after the install: each setting is off and each list is empty.
     #[must_use]
     pub const fn after_install() -> Self {
         Self {
@@ -177,13 +161,11 @@ impl Settings {
         }
     }
 
-    /// True when `name` is in the list "Protected".
     #[must_use]
     pub fn protects(&self, name: &str) -> bool {
         self.protected.iter().any(|protected| protected == name)
     }
 
-    /// The adopted project of the name `name`.
     #[must_use]
     pub fn adopted_project(&self, name: &str) -> Option<&Adopted> {
         self.adopted.iter().find(|adopted| adopted.name == name)

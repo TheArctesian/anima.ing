@@ -1,5 +1,11 @@
-//! Reads the agent session files of the daemon's user (AIS-018, AIS-022 to AIS-024); nothing read is logged.
-//! An excluded session is read no further and none of its counts is kept (AIS-008, AIS-023).
+//! Reads the session files of Claude Code and Codex of the user the daemon runs as, and gives
+//! the session days whose files changed (AIS-018, AIS-022 to AIS-024, K8 Section 4). This is
+//! the I/O edge; the lines are read by `daemon_core::agent_usage`.
+//!
+//! Each file is read from where the last read stopped, and not at all while its size and
+//! modification time stay the same (AIS-001). A file is decided on as soon as it names its
+//! working folder: a session of an excluded folder or repository is read no further, and none
+//! of its counts is kept (AIS-008, AIS-023). Nothing read is logged.
 
 mod files;
 mod git;
@@ -17,11 +23,15 @@ use crate::config::agent_usage::UsageSettings;
 use crate::config::home::HOME_VARIABLE;
 use crate::units::plan::SYSTEM_HOME;
 use files::{Found, Stamp};
-use git::{Bounds, Repository};
+use git::Bounds;
+use git::Repository;
 
+/// The most working folders whose repository is remembered between reads.
 const MAX_REMEMBERED: usize = 4096;
 
-/// `None` for the systemd system unit, which cannot see a user's files (AIS-024), or a relative `HOME`.
+/// The home folder whose sessions this daemon reads: `HOME`, unless the daemon runs as the
+/// systemd system unit, which sets `ANIMA_DAEMON_HOME` and has its state folder as `HOME`, and
+/// cannot see a user's files (AIS-024). `None` then, and when `HOME` is not an absolute path.
 #[must_use]
 pub fn user_home(env: impl Fn(&str) -> Option<String>) -> Option<PathBuf> {
     if env(HOME_VARIABLE).as_deref() == Some(SYSTEM_HOME) {
@@ -31,8 +41,35 @@ pub fn user_home(env: impl Fn(&str) -> Option<String>) -> Option<PathBuf> {
     (home.is_absolute() && home != Path::new(SYSTEM_HOME)).then_some(home)
 }
 
+/// Resolves the session exclusion across its working folder and main repository.
+#[cfg(unix)]
+pub(crate) fn shared_repository(
+    home: &Path,
+    folder: &Path,
+    settings: &UsageSettings,
+) -> Option<Repository> {
+    if settings.off
+        || settings.excludes(&[folder], None) && settings.excluded_repositories.is_empty()
+    {
+        return None;
+    }
+    let real_home = std::fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
+    let current = std::fs::canonicalize(folder).unwrap_or_else(|_| folder.to_path_buf());
+    let bounds = Bounds {
+        home,
+        real_home: &real_home,
+        macos: cfg!(target_os = "macos"),
+    };
+    let repo = git::repository(&current, &bounds);
+    let mut folders = vec![folder, current.as_path()];
+    folders.extend(repo.main.as_deref());
+    (!settings.excludes(&folders, repo.name.as_deref())).then_some(repo)
+}
+
+/// The session files followed so far, and the repositories of their folders.
 pub struct AgentSessions {
     home: PathBuf,
+    /// The home folder with its links resolved (the home folder itself when it cannot be).
     real_home: PathBuf,
     macos: bool,
     settings: UsageSettings,
@@ -40,6 +77,7 @@ pub struct AgentSessions {
     repositories: HashMap<String, Repository>,
 }
 
+/// One file: where the last read stopped and what it counted.
 struct Followed {
     found: Found,
     offset: u64,
@@ -47,6 +85,7 @@ struct Followed {
     verdict: Verdict,
 }
 
+/// Whether a file's session may be counted, known once the file names its working folder.
 /// Nothing of a file is sent before it is `Counted` (AIS-023).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Verdict {
@@ -69,12 +108,14 @@ impl AgentSessions {
         }
     }
 
+    /// Whether the operator's settings send the accounts of the programs (THR-149, on by default).
     #[must_use]
     pub const fn sends_accounts(&self) -> bool {
         self.settings.send_accounts
     }
 
-    /// Blocking; it ends early when `stopping` is set.
+    /// Reads what changed since the last scan and gives every session day of each session one
+    /// of whose files changed. Blocking; it ends early when `stopping` is set.
     pub fn scan(&mut self, stopping: &AtomicBool) -> Vec<SessionDay> {
         let found = files::find(&self.home);
         let present: HashSet<&Path> = found.iter().map(|file| file.path.as_path()).collect();
@@ -93,6 +134,7 @@ impl AgentSessions {
         self.session_days(&changed)
     }
 
+    /// Reads the new lines of `file`; whether it gave anything new to count.
     fn read(&mut self, file: Found, stopping: &AtomicBool) -> bool {
         let followed = self
             .followed
@@ -142,7 +184,8 @@ impl AgentSessions {
         }
     }
 
-    /// A Claude Code session is named by its file, a Codex one by the root of its thread's chain.
+    /// The session days of each session with a file in `changed`: a Claude Code session is
+    /// named by its file, a Codex one by the root of its thread's chain.
     fn session_days(&self, changed: &HashSet<PathBuf>) -> Vec<SessionDay> {
         let parents: HashMap<&str, &str> = self
             .followed
@@ -188,6 +231,7 @@ impl AgentSessions {
     }
 }
 
+/// The files of one session.
 #[derive(Default)]
 struct Group<'a> {
     changed: bool,
@@ -206,6 +250,10 @@ impl Followed {
     }
 }
 
+/// Whether a session in `cwd` may be counted: not when the folder, the main folder of its
+/// repository (each as written and with its links resolved) or the repository is excluded, or
+/// when a repository is excluded and this one's name cannot be read. Remembers the repository
+/// of `cwd`.
 fn decide(
     cwd: &str,
     settings: &UsageSettings,

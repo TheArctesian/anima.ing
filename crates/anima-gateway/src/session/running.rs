@@ -1,6 +1,3 @@
-//! The open session: the device's updates into the screen copy, frames to the client as
-//! fast as it draws them, and the client's input to the device. I/O edge.
-
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite};
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::sync::mpsc;
@@ -14,10 +11,8 @@ use super::picture::Picture;
 use super::{Ended, Settings, status};
 use crate::vnc::{self, Event, requests};
 
-/// Bytes read from the device at a time.
 const READ_BYTES: usize = 64 * 1024;
-/// Reads from the device that wait for the session. Small, so a device that sends faster
-/// than the session draws is held back by TCP and not buffered.
+/// Small, so a device that sends faster than the session draws is held back by TCP.
 const WAITING_READS: usize = 4;
 
 struct Running<'a, S> {
@@ -25,16 +20,13 @@ struct Running<'a, S> {
     to_device: OwnedWriteHalf,
     allowed: Allowed,
     write_wait: std::time::Duration,
-    /// Reads the device; stopped when the session ends.
     reader: JoinHandle<()>,
     device: vnc::Device,
     picture: Picture,
     clipboard: Clipboard,
-    /// The device's screen has a new size: the next request asks for all of it.
     resized: bool,
 }
 
-/// Runs the session until one side ends it.
 pub(super) async fn run<S>(hub: &mut Hub<S>, opened: Opened, settings: &Settings) -> Ended
 where
     S: AsyncRead + AsyncWrite + Send + 'static,
@@ -88,8 +80,6 @@ impl<S> Running<'_, S>
 where
     S: AsyncRead + AsyncWrite + Send + 'static,
 {
-    /// Waits for the client, the device or the time of a held-back frame, handles it, and
-    /// sends a frame when one is due.
     async fn turn(&mut self, reads: &mut mpsc::Receiver<Vec<u8>>) -> Result<(), Ended> {
         let due = self.picture.due();
         tokio::select! {
@@ -113,8 +103,7 @@ where
         Ended::ByDevice
     }
 
-    /// Writes to the device. A device that takes no byte within the write limit has stopped
-    /// reading: the session ends, so it cannot be held open.
+    /// A device that takes no byte within the write limit ends the session, so it cannot hold it.
     async fn write(&mut self, message: &[u8]) -> Result<(), Ended> {
         write_unless_stalled(&mut self.to_device, message, self.write_wait)
             .await

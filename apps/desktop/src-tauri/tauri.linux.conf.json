@@ -13,5 +13,12 @@
         "decorations": false
       }
     ]
+  },
+  "bundle": {
+    "resources": {
+      "../../../LICENSE": "licences/LICENSE",
+      "../../../crates/shortening/NOTICE": "licences/NOTICE",
+      "../../../crates/shortening/LICENSE-APACHE": "licences/LICENSE-APACHE"
+    }
   }
 }

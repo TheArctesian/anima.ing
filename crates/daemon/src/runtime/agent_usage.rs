@@ -2,7 +2,7 @@
 //! AIS-022, AIS-024, THR-149).
 
 #[cfg(unix)]
-mod runner;
+pub(super) mod runner;
 
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;

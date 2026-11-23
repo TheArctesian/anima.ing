@@ -1,10 +1,7 @@
-//! The entry file of a recipe (`entry.json`): the fields of the template registry of Arcane at
-//! the top level (HOST-025), so that a list made for Arcane reads the same entry, and the fields
-//! of Anima below the key `anima` (HOST-047). A key that is not here makes the file unreadable.
+//! The entry file of a recipe (`entry.json`): Arcane's template registry fields at the top level (HOST-025), Anima's below `anima` (HOST-047).
 
 use serde::{Deserialize, Serialize};
 
-/// One entry file.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Entry {
@@ -25,7 +22,7 @@ pub struct Entry {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Anima {
-    /// What the entry installs: an application, or a database server (R-216, task H24).
+    /// What the entry installs: an application, or a database server (R-216).
     #[serde(default)]
     pub kind: Kind,
     /// For an entry of kind `database`: the server that it installs.
@@ -34,26 +31,19 @@ pub struct Anima {
     pub database: Option<Need>,
     /// The image of each service, by digest (R-233).
     pub images: Vec<Pinned>,
-    /// What the recipe needs beyond the default rules. Empty for most recipes.
+    /// What the recipe needs beyond the default rules.
     #[serde(default)]
     pub marks: Vec<Mark>,
-    /// The exceptions of a fixed list to the rights of a service, each with the services that it
-    /// applies to. Empty for most recipes.
+    /// The exceptions of a fixed list to the rights of a service, each with the services that it applies to.
     #[serde(default)]
     pub exceptions: Vec<Exception>,
-    /// What a person may do with the entry: an application, or a shell (Section 15.7 of the
-    /// proposal, OD-HOST-54).
+    /// What a person may do with the entry: an application, or a shell (OD-HOST-54).
     #[serde(default)]
     pub class: Class,
-    /// Where the entry comes from: written by a person when absent, or generated from the data
-    /// of a publisher (tier 2, OD-HOST-50).
+    /// Where the entry comes from: written by a person when absent, or generated from a publisher's data (OD-HOST-50).
     pub origin: Option<Origin>,
-    /// Whether a person read a generated entry (SF-255): not reviewed, or reviewed
-    /// by a named person on a day. The generator writes `not-reviewed` for a new entry and keeps
-    /// the state when it changes only the digest or the version.
     pub reviewed: Option<Reviewed>,
-    /// The published ports other than the port of the test, with their protocols: the streams
-    /// that a route of task H40 can carry.
+    /// The published ports other than the port of the test, with their protocols.
     #[serde(default)]
     pub streams: Vec<Stream>,
     /// The parts of the application that are off, because they need a setting of the machine
@@ -66,25 +56,22 @@ pub struct Anima {
     /// no value for them.
     #[serde(default)]
     pub generated: Vec<String>,
-    /// The test that a machine runs after the install (task H37).
+    /// The test that a machine runs after the install.
     pub test: HealthTest,
     /// The day of the last pin of the digests, `YYYY-MM-DD`.
     pub pinned: String,
-    /// The last test on a machine.
     pub last_test: MachineTest,
 }
 
-/// What an entry installs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Kind {
     #[default]
     Application,
-    /// A database server that applications of the machine use (Section 14 of the proposal).
+    /// A database server that applications of the machine use.
     Database,
 }
 
-/// The engine of a database server.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Engine {
@@ -104,8 +91,7 @@ pub struct Server {
     pub extensions: Vec<String>,
 }
 
-/// The database that an application needs: the engine, the lowest major version, the
-/// extensions, and the names of the variables in which it wants the connection values.
+/// The database that an application needs.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Need {
@@ -131,7 +117,6 @@ pub struct Variables {
 }
 
 impl Variables {
-    /// Each variable that is given.
     #[must_use]
     pub fn named(&self) -> Vec<&str> {
         [
@@ -149,8 +134,6 @@ impl Variables {
 }
 
 impl Need {
-    /// True when `server` has the engine, a major version from the lowest one, and each
-    /// extension that this need names.
     #[must_use]
     pub fn met_by(&self, server: &Server) -> bool {
         self.engine == server.engine
@@ -162,7 +145,6 @@ impl Need {
     }
 }
 
-/// The image of one service.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Pinned {
@@ -204,7 +186,6 @@ pub enum Exception {
 }
 
 impl Exception {
-    /// The services that the exception names.
     #[must_use]
     pub fn services(&self) -> &[String] {
         match self {
@@ -213,7 +194,6 @@ impl Exception {
     }
 }
 
-/// What a person may do with an entry.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Class {
@@ -232,7 +212,7 @@ pub enum Publisher {
     Linuxserver,
 }
 
-/// A generated entry (task H39): the publisher, and the day of its data, `YYYY-MM-DD`.
+/// A generated entry: the publisher, and the day of its data, `YYYY-MM-DD`.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Origin {
@@ -261,7 +241,6 @@ pub struct Stream {
     pub protocols: Vec<Protocol>,
 }
 
-/// A part of the application that is off.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(tag = "part", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum Optional {
@@ -277,7 +256,6 @@ pub enum Protocol {
     Udp,
 }
 
-/// One volume and the kind of copy that it needs.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Kept {
@@ -310,7 +288,7 @@ pub enum Reach {
 }
 
 /// The test that a machine runs: one port of one service, and the answer that counts as
-/// healthy, inside a time limit. Data only: task H37 runs it.
+/// healthy, inside a time limit.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HealthTest {
@@ -329,7 +307,6 @@ pub struct HealthTest {
     pub limit_seconds: u32,
 }
 
-/// The result of the last test on a machine.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(tag = "result", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum MachineTest {

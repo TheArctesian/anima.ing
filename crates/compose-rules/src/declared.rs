@@ -7,10 +7,8 @@ use crate::{
     project::Names,
 };
 
-/// The shortest time between two runs of a health check, in seconds.
 const SHORTEST_INTERVAL: u64 = 5;
 
-/// One service and where it is, for the refusals.
 pub(crate) struct Declared<'a> {
     pub node: &'a Node,
     pub position: usize,
@@ -21,12 +19,10 @@ impl Declared<'_> {
         Refusal::of(rule, self.position)
     }
 
-    /// The text of a key; `None` when the key is not there or has no value.
     pub(crate) fn text(&self, key: &str) -> Option<&str> {
         self.node.get(key).and_then(Node::text)
     }
 
-    /// The scalars of a key that is one scalar or a list of them.
     pub(crate) fn texts(&self, key: &str) -> Vec<&str> {
         match self.node.get(key) {
             Some(Node::Text(text)) => vec![text],
@@ -35,7 +31,6 @@ impl Declared<'_> {
         }
     }
 
-    /// Checks the text of `key`, when it is there, with `rule`.
     fn each(&self, key: &str, kind: Rule, rule: impl Fn(&str) -> bool) -> Result<(), Refusal> {
         match self.node.get(key) {
             None => Ok(()),
@@ -53,9 +48,7 @@ fn is_restart(text: &str) -> bool {
     }
 }
 
-/// The name and the value of each entry of `environment` or `labels`: a map, or a list of
-/// `NAME=value`. An entry with a name and no value is refused: Compose would fill it from its
-/// own process.
+/// An entry with a name and no value is refused: Compose would fill it from its own process.
 fn pairs<'a>(service: &Declared<'a>, key: &str) -> Result<Vec<(&'a str, &'a str)>, Refusal> {
     let wrong = service.refusal(Rule::ValueNotPermitted);
     match service.node.get(key) {
@@ -74,8 +67,6 @@ fn pairs<'a>(service: &Declared<'a>, key: &str) -> Result<Vec<(&'a str, &'a str)
     }
 }
 
-/// A label is permitted only when its key starts with a prefix that the owner named at the
-/// machine, and never with the prefix of Compose itself.
 fn labels(service: &Declared<'_>, settings: &Settings) -> Result<(), Refusal> {
     let permitted = |name: &str| {
         !name.starts_with("com.docker.")
@@ -94,7 +85,7 @@ fn labels(service: &Declared<'_>, settings: &Settings) -> Result<(), Refusal> {
     }
 }
 
-/// The limits: each is above zero. A value of zero means "no limit" to the engine.
+/// A value of zero means "no limit" to the engine, so each limit is above zero.
 fn limits(service: &Declared<'_>) -> Result<(), Refusal> {
     let kind = Rule::LimitNotPermitted;
     service.each("mem_limit", kind, |text| {
@@ -131,7 +122,6 @@ fn healthcheck(service: &Declared<'_>) -> Result<(), Refusal> {
     if sound { Ok(()) } else { Err(wrong) }
 }
 
-/// `depends_on` names services of this file; a condition is one that Compose knows.
 fn depends_on(service: &Declared<'_>, all: &Names<'_>) -> Result<(), Refusal> {
     let wrong = service.refusal(Rule::ValueNotPermitted);
     let known = |name: &str| all.services.contains(&name);
@@ -164,7 +154,6 @@ fn depends_on(service: &Declared<'_>, all: &Names<'_>) -> Result<(), Refusal> {
     }
 }
 
-/// The single values of a service that are one line of text, a truth value or a list.
 fn plain_values(service: &Declared<'_>) -> Result<(), Refusal> {
     let kind = Rule::ValueNotPermitted;
     for key in [
@@ -205,10 +194,6 @@ fn plain_values(service: &Declared<'_>) -> Result<(), Refusal> {
     }
 }
 
-/// Applies each rule to one service.
-///
-/// # Errors
-/// The [`Refusal`] of the first rule that a value breaks.
 pub(crate) fn checked(
     node: &Node,
     position: usize,

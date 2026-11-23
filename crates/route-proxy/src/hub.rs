@@ -1,6 +1,5 @@
-//! The proxy's side of the one interface to the hub ([`crate::wire`]). The interface is a Unix
-//! socket, so [`HubSocket`] exists only on Unix: routing needs a hub on Linux (R-366).
-//! I/O edge.
+//! The proxy's side of the one interface to the hub, a Unix socket: routing needs a hub on Linux
+//! (R-366). I/O edge.
 
 #[cfg(unix)]
 use std::path::PathBuf;
@@ -17,7 +16,7 @@ use tokio::{
 use crate::wire::{self, Answer, Request};
 use crate::wire::{Counts, Dial, Table, WireError};
 
-/// What the proxy may ask of the hub. A connection names an application, never a port.
+/// A connection names an application, never a port.
 pub trait Hub: Send + Sync + 'static {
     type Stream: AsyncRead + AsyncWrite + Unpin + Send;
 
@@ -25,7 +24,6 @@ pub trait Hub: Send + Sync + 'static {
     fn table(&self) -> impl Future<Output = Result<Table, WireError>> + Send;
     /// A connection to the port of a route of an application, as the hub's record gives it.
     fn connect(&self, dial: Dial) -> impl Future<Output = io::Result<Self::Stream>> + Send;
-    /// What the proxy counted for `name`.
     fn count(
         &self,
         name: &str,
@@ -33,7 +31,6 @@ pub trait Hub: Send + Sync + 'static {
     ) -> impl Future<Output = Result<(), WireError>> + Send;
 }
 
-/// The hub at its Unix socket.
 #[cfg(unix)]
 pub struct HubSocket(pub PathBuf);
 

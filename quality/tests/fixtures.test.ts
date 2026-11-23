@@ -9,7 +9,6 @@ const phase3: unknown = JSON.parse(read("fixtures/phase3.json"));
 
 const ID_PATTERN = /^0190a000-0000-7000-80[0-9a-f]{2}-[0-9a-f]{12}$/;
 
-/** Enum name to its values, from `enum Name ... { VALUE ... }` blocks of K1. */
 function schemaEnums(sdl: string): Map<string, Set<string>> {
   const enums = new Map<string, Set<string>>();
   for (const block of sdl.matchAll(/^enum (\w+)[^{]*\{([^}]*)\}/gm)) {
@@ -23,7 +22,6 @@ function schemaEnums(sdl: string): Map<string, Set<string>> {
   return enums;
 }
 
-/** Every value found by following `path`; `*` fans out over arrays. Arrays at the leaf are flattened. */
 function valuesAt(node: unknown, path: readonly string[]): unknown[] {
   const [head, ...rest] = path;
   if (head === undefined) return Array.isArray(node) ? (node as unknown[]) : [node];
@@ -32,7 +30,6 @@ function valuesAt(node: unknown, path: readonly string[]): unknown[] {
   return valuesAt((node as Record<string, unknown>)[head], rest);
 }
 
-/** Every `id` property anywhere in the document. */
 function allIds(node: unknown): string[] {
   if (Array.isArray(node)) return (node as unknown[]).flatMap(allIds);
   if (typeof node !== "object" || node === null) return [];
@@ -50,7 +47,6 @@ const referencePaths = [
   "metrics.*.deviceId",
 ].map((p) => p.split("."));
 
-/** Fixture path to the K1 enum its values must come from. */
 const enumPaths: Record<string, string> = {
   "devices.*.rdp.security": "RdpSecurity",
   "devices.*.rdp.resizeMethod": "RdpResizeMethod",
@@ -140,7 +136,6 @@ const phase3EnumPaths: Record<string, string> = {
 /** Field names that would hold a secret value; the Phase 3 fixtures carry none (SEC-005). */
 const SECRET_KEYS = /^(url|urls|token|password|secret|topic|key|headers|headerValues|hash|keyHash)$/i;
 
-/** Every value at a key `at` or ending in `At`, anywhere in the document; null values are left out. */
 function timestamps(node: unknown): unknown[] {
   if (Array.isArray(node)) return (node as unknown[]).flatMap(timestamps);
   if (typeof node !== "object" || node === null) return [];
@@ -149,7 +144,6 @@ function timestamps(node: unknown): unknown[] {
   );
 }
 
-/** Every property name and every string value of the document, skipping the `_comment`. */
 function namesAndStrings(node: unknown): { names: string[]; strings: string[] } {
   if (Array.isArray(node)) {
     const parts = (node as unknown[]).map(namesAndStrings);

@@ -8,11 +8,7 @@ import (
 	"syscall"
 )
 
-// CheckProgram refuses a program that a different user could replace: the
-// unit would then run their program as this user, with the key of the link.
-// The file and its folder must belong to this user or to root, and neither
-// may be writable by its group or by others. The file must be a regular
-// file that its owner can run.
+// CheckProgram refuses a program that another user could replace: the unit would run it as this user, with the link's key.
 func CheckProgram(program string, uid int) error {
 	for _, path := range []string{program, filepath.Dir(program)} {
 		entry, err := os.Lstat(path)

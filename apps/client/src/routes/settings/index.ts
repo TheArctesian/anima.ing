@@ -16,7 +16,8 @@ export const SECTIONS = {
   account: { id: 'settings-account', title: 'Account', icon: 'carbon:user-avatar', description: 'Who is signed in to this hub.' },
   leave: { id: 'settings-leave', title: 'Leave', icon: 'carbon:logout', description: 'Sign out and forget this hub.' },
   hub: { id: 'settings-hub', title: 'Hub', icon: 'carbon:network-enterprise', description: 'The hub this app talks to.' },
-  routes: { id: 'settings-routes', title: 'Routes', icon: 'carbon:server-dns', description: 'Names of yours that the hub sends to your applications.' },
+  // Routes is a section of Hosting now (HSE-010); the index still finds it and opens it there.
+  routes: { id: 'settings-routes', title: 'Routes in Hosting', icon: 'carbon:server-dns', href: '/hosting/routes', description: 'Names of yours that the hub sends to your applications.' },
   // The next two show only when the shell or the hub says they apply, so the index leaves them out (FRN-006, FRN-009).
   localHub: { id: 'settings-local-hub', title: "This computer's hub", icon: 'carbon:bare-metal-server', description: 'The hub on this computer, its database and link.' },
   linkDevices: { id: 'settings-link-devices', title: 'Devices on the link', icon: 'carbon:remote-connection', description: 'Devices that reach this hub over the link.' },

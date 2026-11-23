@@ -124,3 +124,20 @@ db_test! {
         assert_eq!(routes::get(&pool, public.id).await.unwrap().waits(now()), None);
     }
 }
+
+db_test! {
+    async fn r_390_a_private_stream_to_a_database_serves_with_no_consent(pool: PgPool) {
+        let database = shaped(
+            "db.example.com",
+            stream(Kind::TcpStream, Access::Private, 20_432, 5432),
+        );
+        let route = add(&pool, &database).await.unwrap().route;
+        sqlx::query("UPDATE routes.route SET proof = 'proven', application_recorded = true")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let streams = routes::served_streams(&pool, now()).await.unwrap();
+        assert_eq!(streams.len(), 1, "no consent at the machine for a private stream");
+        assert_eq!((streams[0].id, streams[0].access), (route.id, Access::Private));
+    }
+}

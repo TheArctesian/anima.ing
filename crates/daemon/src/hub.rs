@@ -1,9 +1,12 @@
 //! The daemon's one HTTP client and its calls to the hub (K8 Section 1; K-E5 Section 2.1).
 //!
-//! In the link mode the client uses only the Unix socket of `anima-link` (R-172), and writes only
-//! to a peer that passed its check ([`peer`]). It logs nothing; callers log at their own boundary,
-//! never a code, a token or a body (LOG-007). Web PKI roots, no redirect, no proxy, no cookie and
-//! [`TIMEOUT`] are MET-020.
+//! In the link mode the client sends plain HTTP on the Unix socket of `anima-link`, and to no
+//! TCP port (R-172). It writes a request only to a connection whose peer passed its check
+//! ([`peer`]).
+//!
+//! The client verifies certificates against the web PKI roots, follows no redirect, ignores
+//! proxy variables, keeps no cookie, and gives up after 10 seconds (MET-020). It logs nothing:
+//! its callers log at their own boundary, and never a code, a token or a body (LOG-007).
 
 pub mod answer;
 pub mod body;
@@ -23,7 +26,7 @@ use std::time::Duration;
 use bytes::Bytes;
 use daemon_core::wire::{
     Batch, DaemonToken, EnrolRequest, Enrolled, EnrolmentCode, FetchedKey, KeyFetch, PushAccepted,
-    RenewRequest, Renewed,
+    RenewRequest, Renewed, ThreadUpload, ThreadUploadReceipt,
 };
 use reqwest::{Client, Url, redirect};
 use zeroize::Zeroizing;
@@ -39,10 +42,11 @@ use unix::Local;
 #[cfg(windows)]
 use windows::Local;
 
-/// One request, connection and answer together (K8 Section 7).
+/// How long one request may take, connection and answer together (K8 Section 7).
 pub const TIMEOUT: Duration = Duration::from_secs(10);
 
-/// No request goes to this address: the client connects to the socket and sets the `Host` itself.
+/// The base URL of a client for the socket of the link. No request goes to this address: the
+/// client connects to the socket and sets the loopback `Host` itself.
 const ON_LINK_SOCKET: &str = "http://127.0.0.1/";
 
 #[derive(Debug, thiserror::Error)]
@@ -56,6 +60,8 @@ pub enum HubError {
     Peer(#[from] PeerError),
 }
 
+/// One request: its route, its bearer (none for enrolment), its JSON body and the statuses that
+/// mean success. A push takes `204`, and `200` with `Accepted` (K8 Section 8.2).
 struct Call<'a> {
     route: &'static str,
     bearer: Option<&'a DaemonToken>,
@@ -63,6 +69,7 @@ struct Call<'a> {
     ok: &'static [u16],
 }
 
+/// A client for one hub.
 pub struct HubClient {
     http: Client,
     base: Url,
@@ -70,8 +77,9 @@ pub struct HubClient {
 }
 
 impl HubClient {
-    /// Pass an [`Origin`](crate::config::origin::Origin)'s URL; its parser owns what a hub
-    /// origin is.
+    /// A client for the hub at `base` that gives up on a request after `limit`, connection and
+    /// answer together (callers pass [`TIMEOUT`]). Pass an [`Origin`](crate::config::origin::Origin)'s
+    /// URL; the rule for what a hub origin is belongs to the origin's parser.
     ///
     /// # Errors
     /// [`HubError`] when the TLS roots cannot be set up.
@@ -89,7 +97,10 @@ impl HubClient {
         })
     }
 
-    /// Each request connects only to `socket`, and on Unix only to the peer this daemon expects.
+    /// A client for the hub behind the socket of `anima-link` at `socket` (K8 Section 1). Each
+    /// request connects to the socket and to nothing else. On Unix it goes only to the peer that
+    /// this daemon expects ([`Expected::of_this_daemon`]); Windows checks the access list of
+    /// the socket.
     ///
     /// # Errors
     /// [`HubError::LinkSocket`] when a different user could listen at the path;
@@ -106,6 +117,8 @@ impl HubClient {
         }
     }
 
+    /// As [`HubClient::over_link`], with the peer that a request may go to given as `expected`.
+    ///
     /// # Errors
     /// [`HubError::LinkSocket`] when a different user could listen at the path.
     #[cfg(unix)]
@@ -127,7 +140,8 @@ impl HubClient {
         )
     }
 
-    /// `own_socket` serves a daemon that was enrolled with an old link origin.
+    /// A client for the hub that `reach` names; `own_socket` is the socket in the daemon's own
+    /// folder, for a daemon that was enrolled with an old link origin.
     ///
     /// # Errors
     /// [`HubError`] as [`HubClient::new`] and [`HubClient::over_link`].
@@ -143,7 +157,7 @@ impl HubClient {
         }
     }
 
-    /// The code is spent by this call (K8 Section 3).
+    /// `POST /daemon/v1/enrol` (K8 Section 3). The code is spent by this call.
     pub async fn enrol(&self, code: EnrolmentCode) -> Answer<Enrolled> {
         let call = Call {
             route: "daemon/v1/enrol",
@@ -154,6 +168,7 @@ impl HubClient {
         self.post(call, |_, body| read_json(body)).await
     }
 
+    /// `POST /daemon/v1/push` (K8 Section 4): `None` for `204`, the `Accepted` of a `200`.
     pub async fn push(&self, token: &DaemonToken, batch: &Batch) -> Answer<Option<PushAccepted>> {
         let call = Call {
             route: "daemon/v1/push",
@@ -168,6 +183,22 @@ impl HubClient {
         .await
     }
 
+    /// Publishes a bounded transcript batch (K8 Section 4.2).
+    pub async fn upload_thread(
+        &self,
+        token: &DaemonToken,
+        upload: &ThreadUpload,
+    ) -> Answer<ThreadUploadReceipt> {
+        let call = Call {
+            route: "daemon/v1/threads/entries",
+            bearer: Some(token),
+            body: json(upload),
+            ok: &[200],
+        };
+        self.post(call, |_, body| read_json(body)).await
+    }
+
+    /// `POST /daemon/v1/keys/fetch` (K-E5 Section 2.1).
     pub async fn fetch_key(&self, token: &DaemonToken, asked: &KeyFetch) -> Answer<FetchedKey> {
         let call = Call {
             route: "daemon/v1/keys/fetch",
@@ -178,6 +209,7 @@ impl HubClient {
         self.post(call, |_, body| read_json(body)).await
     }
 
+    /// `POST /daemon/v1/renew` with the current token (K8 Section 5).
     pub async fn renew(&self, token: &DaemonToken) -> Answer<Renewed> {
         let call = Call {
             route: "daemon/v1/renew",
@@ -203,7 +235,10 @@ impl HubClient {
             .http
             .post(url)
             .header("content-type", "application/json")
-            // The daemon's one copy is wiped on drop; the buffers of hyper and rustls are not.
+            // The request owns the body as `Bytes`, so the one copy is wiped when the last
+            // reference to it drops, and no other copy is made by the daemon. (hyper and rustls
+            // copy the request body into their own buffers, which are not wiped: a known
+            // remainder, as for the answer in `body`.)
             .body(Bytes::from_owner(call.body));
         if let Some(token) = call.bearer {
             request = request.bearer_auth(token.expose());
@@ -225,11 +260,14 @@ impl HubClient {
             let read = read_ok(status, bytes.bytes());
             return read.map_or(Answer::Failed(Cause::Unreadable), Answer::Accepted);
         }
+        // Not a success status, so the reader of a success is never called.
         answer(status, bytes.bytes(), call.ok[0], |_| None)
     }
 }
 
-/// Whether the peer at `socket` is one that `expected` admits; nothing is written to it.
+/// Whether the program at the socket of the link at `socket` is a peer that `expected` admits.
+/// Nothing is written to it. False when nothing listens there or the check takes longer than
+/// [`TIMEOUT`].
 ///
 /// # Errors
 /// [`HubError::LinkSocket`] when a different user could listen at the path.

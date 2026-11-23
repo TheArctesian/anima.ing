@@ -4,17 +4,12 @@ use crate::{Layout, Program, Tree};
 use std::{ffi::OsStr, fs, io, path::Path, process::Command};
 
 /// Stops a server that a killed copy left running on this cluster; `true` when one was there.
-/// The caller holds the [`Lock`], so no other copy starts a server meanwhile.
 ///
-/// A signal goes only to this cluster's PostgreSQL server: one that answers on this
-/// database's own socket, or a `postgres` process that was started on this cluster. The
-/// process ID in a stale `postmaster.pid` can belong to any program by now; then the file is
-/// removed, because `postgres` refuses to start while the number in it is a live process of
-/// the same user.
+/// A signal goes only to this cluster's own server. A stale `postmaster.pid` is removed, as
+/// `postgres` refuses to start while its number is a live process of the same user.
 ///
 /// # Errors
-/// When `postmaster.pid` cannot be read, a program cannot run, or a server is there and does
-/// not stop in `limits.stop`.
+/// When `postmaster.pid` cannot be read, a program cannot run, or the server does not stop in time.
 pub fn stop_left_over(
     _lock: &Lock,
     tree: &Tree,
@@ -60,8 +55,7 @@ fn answers_on_socket(tree: &Tree, layout: &Layout) -> Result<bool, ServerError> 
     Ok(matches!(answer.code(), Some(0 | 1)))
 }
 
-/// Whether the process that `postmaster.pid` names is now a `postgres` that was started on
-/// this cluster. Another cluster's server can have the number a dead server left.
+/// Whether `postmaster.pid` names a `postgres` of this cluster; another server can have the number.
 fn names_this_clusters_server(pid_file_text: &str, layout: &Layout) -> Result<bool, ServerError> {
     let Some(process_id) = pid_file_text
         .lines()
@@ -90,8 +84,7 @@ fn names_this_clusters_server(pid_file_text: &str, layout: &Layout) -> Result<bo
     }
 }
 
-/// Whether `command_line` is a `postgres` program with `-D <cluster>`, as [`Server::start`]
-/// and `pg_ctl` start it. The cluster's path must end there: `cluster-copy` is another one.
+/// Whether `command_line` is `postgres` with `-D <cluster>` ending there: `cluster-copy` is another one.
 pub(super) fn is_postgres_on(command_line: &str, cluster: &Path) -> bool {
     let flag = format!(" -D {}", cluster.display());
     let Some((program, after)) = command_line.split_once(&flag) else {

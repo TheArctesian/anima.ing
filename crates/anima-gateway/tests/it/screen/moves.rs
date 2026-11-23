@@ -1,5 +1,3 @@
-//! When the screen copy tells the client to move pixels, and when it sends them instead.
-
 use anima_gateway::frames::Formats;
 use anima_gateway::screen::{Area, BYTES_PER_PIXEL, MOST_MOVES, Screen};
 
@@ -9,7 +7,6 @@ use crate::screen::whole;
 
 const WIDTH: usize = 200;
 
-/// `rows` rows in which every row differs from every other.
 fn page(rows: usize) -> Vec<u8> {
     (0..rows)
         .flat_map(|row| {
@@ -25,7 +22,6 @@ fn page(rows: usize) -> Vec<u8> {
         .collect()
 }
 
-/// A screen that shows the first `height` rows of the page, and a client that has it.
 fn showing(height: usize) -> (Screen, Drawn, Area) {
     let area = Area {
         x: 0,
@@ -40,7 +36,6 @@ fn showing(height: usize) -> (Screen, Drawn, Area) {
     (screen, client.counted_from_here(), area)
 }
 
-/// The page from row `first` on, as the pixels of `area`.
 fn scrolled_to(first: usize, area: Area) -> Vec<u8> {
     let row_bytes = WIDTH * BYTES_PER_PIXEL;
     page(first + area.height)[first * row_bytes..].to_vec()
@@ -73,7 +68,6 @@ fn a_few_scrolled_rows_are_sent_and_not_moved() {
 #[test]
 fn rows_that_only_look_scrolled_in_places_are_not_moved() {
     let (mut screen, _, area) = showing(96);
-    // New content, except that three rows repeat rows the screen had elsewhere.
     let row_bytes = WIDTH * BYTES_PER_PIXEL;
     let old = page(96);
     let mut new = scrolled_to(1000, area);
@@ -100,7 +94,6 @@ fn a_move_to_the_same_place_or_of_nothing_tells_the_client_nothing() {
 #[test]
 fn a_flood_of_small_moves_does_not_cost_more_than_sending_the_pixels() {
     let (mut screen, mut client, _) = showing(96);
-    // 2000 one-pixel moves: 12 bytes each from a VNC device.
     for step in 0..2000 {
         let from = Area {
             x: step % 190,

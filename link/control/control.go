@@ -1,6 +1,4 @@
-// Package control is how the operator, and later the application and the
-// hub, tell a running anima-link what to do: one JSON request on a line,
-// one JSON reply on a line, over a socket that only the owner can reach.
+// Package control is the owner-only socket of a running anima-link: one JSON request and one JSON reply per line.
 package control
 
 import (
@@ -15,8 +13,7 @@ import (
 	"time"
 )
 
-// Error is a refusal that crosses the socket. Code is for programs and
-// Message is for the operator. Neither may hold a secret (LNK-008).
+// Error is a refusal that crosses the socket; neither field may hold a secret (LNK-008).
 type Error struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -31,13 +28,10 @@ const (
 	CodeFailed      = "failed"
 )
 
-// Verb does one kind of request. args is the request's JSON arguments. An
-// error that is not an *Error reaches the caller as CodeFailed with a fixed
-// message, so that no detail leaves by accident.
+// Verb does one kind of request; an error that is not an *Error reaches the caller as CodeFailed with a fixed message.
 type Verb func(ctx context.Context, args json.RawMessage) (any, error)
 
-// Arguments reads the arguments of a request into value. A field that value
-// does not have is a mistake of the caller, and is refused.
+// Arguments reads a request's arguments into value and refuses unknown fields.
 func Arguments(args json.RawMessage, value any) error {
 	decoder := json.NewDecoder(bytes.NewReader(args))
 	decoder.DisallowUnknownFields()
@@ -58,14 +52,10 @@ type reply struct {
 	Error  *Error          `json:"error,omitempty"`
 }
 
-// maxLine is the largest request or reply. Requests are small; a list of
-// devices is the largest reply.
+// maxLine is the largest request or reply; a device list is the largest reply.
 const maxLine = 1 << 20
 
-// Serve answers requests on each connection of the listener until ctx ends.
-//
-// A request that has started gets its reply before Serve returns: a verb
-// can end the server (by ending ctx) and its caller still hears the answer.
+// Serve answers requests until ctx ends; a started request, also one that ends ctx, gets its reply first.
 func Serve(ctx context.Context, listener net.Listener, verbs map[string]Verb) error {
 	go func() {
 		<-ctx.Done()
@@ -85,9 +75,7 @@ func Serve(ctx context.Context, listener net.Listener, verbs map[string]Verb) er
 	}
 }
 
-// AcceptPatiently accepts one connection. When the system has no free file
-// for it, it waits and tries again: that state passes, and a server that
-// stopped for it could be stopped by whoever opens many connections.
+// AcceptPatiently retries when the system has no free file, so that many connections cannot stop a server.
 func AcceptPatiently(ctx context.Context, listener net.Listener) (net.Conn, error) {
 	for wait := 5 * time.Millisecond; ; wait = min(2*wait, time.Second) {
 		conn, err := listener.Accept()
@@ -145,8 +133,7 @@ func refusal(err error) reply {
 	return reply{Error: told}
 }
 
-// Call sends one request on conn and reads its reply into result (nil to
-// drop it). A refusal comes back as an *Error.
+// Call sends one request and reads its reply into result (nil drops it); a refusal returns as an *Error.
 func Call(conn net.Conn, verb string, args, result any) error {
 	argsText, err := json.Marshal(args)
 	if err != nil {

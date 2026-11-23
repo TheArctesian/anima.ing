@@ -1,6 +1,4 @@
-//! The settings of the proxy, from its environment. The proxy listens only when
-//! `ANIMA_ROUTE_PROXY_LISTEN` is set: off by default, so no deploy opens a public listener by
-//! accident.
+//! The proxy is off unless `ANIMA_ROUTE_PROXY_LISTEN` is set, so no deploy listens by accident.
 
 use std::{
     collections::BTreeMap,
@@ -34,53 +32,40 @@ const UDP_IDLE_SECONDS: &str = "ANIMA_ROUTE_PROXY_UDP_IDLE_SECONDS";
 const UDP_NEW_PER_SECOND: &str = "ANIMA_ROUTE_PROXY_UDP_NEW_PER_SECOND";
 const UDP_FLOWS_PER_NETWORK: &str = "ANIMA_ROUTE_PROXY_UDP_FLOWS_PER_NETWORK";
 const DAY_MS: u64 = 24 * 60 * 60 * 1000;
-/// The default cap of one client network: below the 32 streams of one link of the hub.
 const PER_CLIENT: u32 = 8;
-/// The default cap of the connections of one route, also below the 32 streams of one link, so
-/// the slow clients of one route cannot hold each stream of its device (SF-327).
 const PER_ROUTE: u32 = 16;
 
-/// What the proxy runs with.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     pub hub_socket: PathBuf,
-    /// The TLS listener (443 on a hub that a person hosts).
     pub listen: SocketAddr,
     /// The plain HTTP listener for ACME and the redirect (80); `None`: not served.
     pub listen_plain: Option<SocketAddr>,
     /// The connections come from the door with a PROXY header. Never on a self-hosted hub.
     pub door: bool,
-    /// The addresses of the door: the only peers whose PROXY header is read. Empty: each
-    /// connection in door mode is closed (SF-327).
+    /// The only peers whose PROXY header is read; empty closes each door connection (SF-327).
     pub door_addresses: Vec<IpAddr>,
     pub limits: Limits,
     pub timeouts: Timeouts,
-    /// The connections of the TLS listener before the name is known.
     pub tls_caps: Caps,
-    /// The connections of the plain listener.
     pub plain_caps: Caps,
     /// Where the private routes listen; `None`: no private route is served.
     pub private: Option<Private>,
-    /// The flows of each UDP stream at one time.
     pub udp_flows: usize,
-    /// The time with no datagram after which a UDP flow ends.
     pub udp_idle: Duration,
-    /// The new flows of each UDP stream each second; the burst is twice as many. A source of
-    /// UDP can be false, so this keeps false sources from filling the flows (SF-327).
+    /// The burst is twice this; it keeps false UDP sources from filling the flows (SF-327).
     pub udp_new_per_second: u32,
     /// The flows of each UDP stream from one source network (`limits::source_network`).
     pub udp_flows_per_network: usize,
 }
 
-/// The address of the proxy on the network of Anima, and the networks of its nodes: a private
-/// route listens only there and answers only them (Section 16.7, SF-245).
+/// A private route listens only on `address` and answers only `networks` (Section 16.7, SF-245).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Private {
     pub address: IpAddr,
     pub networks: Vec<Network>,
 }
 
-/// Why the settings were not read.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum SettingsError {
     #[error("{0} is not valid")]
@@ -89,6 +74,10 @@ pub enum SettingsError {
     NoHub,
     #[error("{PRIVATE_ADDRESS} needs {PRIVATE_NETWORKS}")]
     NoPrivateNetworks,
+    #[error("{PRIVATE_NETWORKS} holds a network wider than /8 (IPv4) or /16 (IPv6)")]
+    WidePrivateNetwork,
+    #[error("{PRIVATE_ADDRESS} is unspecified or the public address of {LISTEN}")]
+    PrivateAddressPublic,
 }
 
 /// The settings, or `None` when the proxy is off.
@@ -125,7 +114,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
             total: positive(env, OPEN_PLAIN)?.unwrap_or(256),
             per_client: positive(env, OPEN_PER_CLIENT)?.unwrap_or(PER_CLIENT),
         },
-        private: private(env)?,
+        private: private(env, listen)?,
         udp_flows: positive(env, UDP_FLOWS)?.unwrap_or(64),
         udp_idle: positive::<u64>(env, UDP_IDLE_SECONDS)?
             .map_or(Duration::from_secs(60), Duration::from_secs),
@@ -134,11 +123,19 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
     }))
 }
 
-/// The private place, when its address is set; its networks are then needed.
-fn private(env: &BTreeMap<String, String>) -> Result<Option<Private>, SettingsError> {
+/// The private place, when its address is set; its networks are then needed. A private route
+/// may reach a database with no consent at the machine (R-390, R-391), so a network that holds
+/// the internet or an address that is also public is refused.
+fn private(
+    env: &BTreeMap<String, String>,
+    listen: SocketAddr,
+) -> Result<Option<Private>, SettingsError> {
     let Some(address) = read::<IpAddr>(env, PRIVATE_ADDRESS)? else {
         return Ok(None);
     };
+    if address.is_unspecified() || address.to_canonical() == listen.ip().to_canonical() {
+        return Err(SettingsError::PrivateAddressPublic);
+    }
     let networks = env.get(PRIVATE_NETWORKS).map_or(Ok(Vec::new()), |text| {
         text.split(',')
             .map(str::trim)
@@ -152,11 +149,12 @@ fn private(env: &BTreeMap<String, String>) -> Result<Option<Private>, SettingsEr
     if networks.is_empty() {
         return Err(SettingsError::NoPrivateNetworks);
     }
+    if networks.iter().any(Network::is_wide) {
+        return Err(SettingsError::WidePrivateNetwork);
+    }
     Ok(Some(Private { address, networks }))
 }
 
-/// The timeouts: 10 s for the handshake and the head, 60 s for a whole request, 300 s with no
-/// byte and 30 s for one write to the client by default.
 fn timeouts(env: &BTreeMap<String, String>) -> Result<Timeouts, SettingsError> {
     let default = Timeouts::default();
     let seconds = |name, default: Duration| {
@@ -171,7 +169,6 @@ fn timeouts(env: &BTreeMap<String, String>) -> Result<Timeouts, SettingsError> {
     })
 }
 
-/// A comma-separated list of addresses; empty when it is not set.
 fn addresses(
     env: &BTreeMap<String, String>,
     name: &'static str,
@@ -185,7 +182,6 @@ fn addresses(
     })
 }
 
-/// A number above 0, or `None` when it is not set.
 fn positive<T: std::str::FromStr + Default + PartialEq>(
     env: &BTreeMap<String, String>,
     name: &'static str,

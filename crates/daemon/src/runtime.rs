@@ -4,6 +4,8 @@ mod agent_usage;
 mod link_wait;
 #[cfg(unix)]
 pub mod old_origin;
+#[cfg(unix)]
+pub(crate) mod thread_sync;
 mod token_wait;
 
 use std::sync::Arc;
@@ -112,6 +114,12 @@ pub async fn run(
         let processors = u64::try_from(processors).unwrap_or(1);
         Source::HostedHub(Container::new(PathBuf::from("/"), data, processors))
     });
+    #[cfg(unix)]
+    let publishing = tokio::spawn(thread_sync::publish(
+        home.clone(),
+        sender.clone(),
+        pusher.thread_sync_target(),
+    ));
     let mut sampling = tokio::spawn(sample(source, sender));
     report::running(device);
     let outcome = tokio::select! {
@@ -135,6 +143,8 @@ pub async fn run(
     // A read on a blocking thread ignores an abort; the flag ends it between two lines.
     stopping.store(true, Ordering::Relaxed);
     usage.abort();
+    #[cfg(unix)]
+    publishing.abort();
     outcome
 }
 

@@ -1,6 +1,3 @@
-//! The recipes that ship with Anima pass the static test, except the ones whose need no rule
-//! permits yet.
-
 use std::path::Path;
 
 use compose_rules::{Refusal, Rule};
@@ -42,8 +39,7 @@ fn host_047_each_shipped_recipe_passes_or_has_its_known_refusal() {
             .into_iter()
             .map(|finding| finding.code)
             .collect();
-        // Pi-hole serves DNS on port 53. The rules permit a published port from 1024 only,
-        // also with "Open to the network" on, so its file is refused until a rule permits it.
+        // Pi-hole serves DNS on port 53, and the rules permit a published port from 1024 only.
         let expected = match recipe.folder.as_str() {
             "pihole" => vec![Code::ComposeRefused(Refusal::File {
                 rule: Rule::PortNotPermitted,

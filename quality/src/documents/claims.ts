@@ -3,7 +3,6 @@ import type { Violation } from "../report.ts";
 import type { Document } from "./documents.ts";
 import { header } from "./register.ts";
 
-/** A claim: one file that says which machine and which coding agent builds a task now (PLN-022). */
 export const CLAIM = /^docs\/claims\/(?!README\.md$)[^/]+\.md$/;
 const KEYS = ["task", "plan", "machine", "agent", "branch", "started"] as const;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -22,7 +21,7 @@ function fieldViolations(claim: Document, fields: Map<string, string>, exists: (
   return details.map((detail) => ({ path: claim.path, signal: "claim-not-complete", detail }));
 }
 
-/** PLN-022: each claim names its task, plan, machine, agent, branch and day, and one claim holds a task, whichever plan it names. */
+/** PLN-022: a claim names each of its fields, and one claim holds a task, whichever plan it names. */
 export function checkClaims(documents: Document[], exists: (path: string) => boolean): Violation[] {
   const holder = new Map<string, string>();
   const violations: Violation[] = [];

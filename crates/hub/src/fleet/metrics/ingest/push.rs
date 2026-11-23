@@ -10,6 +10,7 @@
 
 mod batch;
 mod samples;
+pub(super) mod thread_upload;
 
 use std::net::IpAddr;
 
@@ -24,7 +25,7 @@ use base64::Engine as _;
 use chrono::{DateTime, Utc};
 use daemon_core::{
     readings::Drive,
-    wire::{Batch, KeyVersion, PushAccepted, RefusalCode},
+    wire::{Batch, KeyVersion, PushAccepted, RefusalCode, ThreadSummariesReceipt},
 };
 
 use super::{
@@ -114,30 +115,34 @@ async fn push(
         hardware: accepted.hardware.as_ref(),
         daemon_version: daemon_version.as_deref(),
         agent_usage: accepted.agent_usage.as_ref(),
+        agent_threads: accepted.agent_threads.as_ref(),
     };
     drop(token);
     let _request = state.turns.request().await.ok_or(Stop::Busy)?;
     match batch::write(&state.db, &state.bus, (pushed, &rows), now).await {
-        Ok(Written::Kept(kept)) => {
+        Ok(Written::Kept(kept, receipt)) => {
             if kept > 0 {
                 publish(state, device, &rows).await;
             }
-            answer(state, device, (held, wants_salt), now).await
+            answer(state, device, (held, wants_salt, receipt), now).await
         }
         Ok(Written::Refused(code)) => Err(refused(code)),
         Err(error) => Err(Stop::Failed(error)),
     }
 }
 
-/// The `200` answer of a stored batch: the keys the daemon holds when it listed them, and the
-/// account salt when it listed its accounts; `None` (`204`) when it listed neither.
+/// The optional members of the answer to a stored batch.
 async fn answer(
     state: &DaemonState,
     device: DeviceId,
-    (held, wants_salt): (Option<Vec<KeyVersion>>, bool),
+    (held, wants_salt, agent_threads): (
+        Option<Vec<KeyVersion>>,
+        bool,
+        Option<ThreadSummariesReceipt>,
+    ),
     now: DateTime<Utc>,
 ) -> Result<Option<PushAccepted>, Stop> {
-    let told = match held {
+    let keys = match held {
         Some(held) => keys::current(state, device, &held, now).await,
         None => None,
     };
@@ -147,11 +152,14 @@ async fn answer(
         None
     };
     Ok(
-        (told.is_some() || account_salt.is_some()).then_some(PushAccepted {
-            keys: told,
-            update: None,
-            account_salt,
-        }),
+        (keys.is_some() || account_salt.is_some() || agent_threads.is_some()).then_some(
+            PushAccepted {
+                keys,
+                update: None,
+                account_salt,
+                agent_threads,
+            },
+        ),
     )
 }
 

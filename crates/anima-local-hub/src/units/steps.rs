@@ -1,11 +1,9 @@
-//! One command of the operating system's unit tool, run with a fixed environment and a limit.
-
 use std::io;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// How long a command may take. A stop waits for the group to stop in order.
+/// How long a command may take; a stop waits for the group to stop in order.
 pub const STEP_LIMIT: Duration = Duration::from_secs(120);
 
 const LAUNCHCTL: &str = "/bin/launchctl";
@@ -19,9 +17,8 @@ pub struct Step {
     pub args: Vec<String>,
     /// A failure is not an error: the unit may not be loaded.
     pub may_fail: bool,
-    /// While a run fails, wait the next of these pauses and run it again; empty: one run.
-    /// `launchctl bootstrap` right after `bootout` answers an input/output error (5) for some
-    /// seconds while launchd still takes the old service out.
+    /// The pauses between runs while a run fails; empty: one run.
+    /// `launchctl bootstrap` right after `bootout` fails with error 5 for some seconds.
     pub retries: &'static [Duration],
 }
 
@@ -146,7 +143,6 @@ mod tests {
         const SHORT: Duration = Duration::from_millis(10);
         let folder = tempfile::tempdir().unwrap();
         let count = folder.path().join("count");
-        // Fails twice, as launchd did after a bootout on 2026-11-21, then succeeds.
         let script = format!(
             "echo run >> '{0}'; [ $(wc -l < '{0}') -ge 3 ] || exit 5",
             count.display()

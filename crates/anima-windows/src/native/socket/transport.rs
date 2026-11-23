@@ -1,5 +1,4 @@
-//! Windows `AF_UNIX` sockets use Winsock handles. Register them with Tokio's socket
-//! readiness driver; no worker thread, polling loop, or loopback TCP port is needed.
+//! Windows `AF_UNIX` sockets are Winsock handles, so Tokio's socket readiness driver takes them.
 use std::{
     io,
     mem::ManuallyDrop,
@@ -33,8 +32,7 @@ impl Stream {
     }
 }
 
-/// Only stream I/O and readiness methods are used on this registration; no TCP operation
-/// or socket-address conversion is applied to the `AF_UNIX` handle.
+/// Only stream I/O and readiness touch this handle; never a TCP or socket-address operation.
 fn register(socket: RawSocket) -> io::Result<TcpStream> {
     // SAFETY: socket is newly transferred from its former owner. Windows socket operations
     // are defined for every Winsock family. from_std owns/closes it even if registration fails.
@@ -64,7 +62,6 @@ impl Listener {
         register(listener.into_raw_socket()).map(Self)
     }
 
-    /// Await a connection without taking ownership of the listening socket a second time.
     /// # Errors
     /// Accept or registering the accepted socket fails.
     pub async fn accept(&self) -> io::Result<Stream> {

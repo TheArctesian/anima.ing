@@ -1,11 +1,6 @@
-//! The generator of the recipes of LinuxServer.io (task H39). It reads a saved fleet list and a
-//! file of digests that were read from the registry, writes the recipe of each image that has a
-//! digest, and prints the report of the whole fleet. It reaches no network.
-//!
-//! `generate <fleet.json> <pins.json> <entries folder>`
-//!
-//! It writes nothing when one recipe that exists would change in more than its digest or its
-//! version, or was written by a person (SF-244), and ends with a failure.
+//! The generator of the recipes of LinuxServer.io (task H39); it reaches no network.
+//! It writes nothing when a recipe that exists would change in more than its digest or its
+//! version, or was written by a person (SF-244).
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -29,7 +24,6 @@ use serde::Deserialize;
 /// A digest that no registry gives: the report uses it for an image with no pin.
 const NO_DIGEST: &str = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
-/// One line of the file of digests.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Read {
@@ -67,7 +61,6 @@ fn write(root: &Path, made: &Recipe) -> io::Result<()> {
     Ok(())
 }
 
-/// The report of the fleet in Markdown: the count of each place, and the images of each reason.
 fn report(places: &[(String, Assessment)]) -> String {
     let mut groups: BTreeMap<String, Vec<&str>> = BTreeMap::new();
     for (name, place) in places {
@@ -91,8 +84,7 @@ fn report(places: &[(String, Assessment)]) -> String {
     text
 }
 
-/// The ports of the machine of each recipe that this run does not make: the run adds the ports
-/// of each recipe that it makes, so that no two recipes publish the same port.
+/// The run adds the ports of each recipe it makes, so no two recipes publish the same port.
 fn taken_before(existing: &[Recipe], images: &[Image], pins: &BTreeMap<String, Read>) -> Vec<u16> {
     let made_here: BTreeSet<&str> = (images.iter())
         .filter(|image| !image.deprecated && pins.contains_key(&image.name))

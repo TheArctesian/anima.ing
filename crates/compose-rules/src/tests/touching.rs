@@ -1,5 +1,3 @@
-//! Where a container touches the machine: its ports, its mounts, its networks, its configs.
-
 use super::{ENVIRONMENT, Refusal, Rule, app, checked, refusal, with};
 use crate::{Settings, check};
 

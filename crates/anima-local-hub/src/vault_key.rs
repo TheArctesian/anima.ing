@@ -16,13 +16,11 @@ const KEY_BYTES: usize = 32;
 
 #[derive(Debug, thiserror::Error)]
 pub enum KeyError {
-    /// The database has content that only the lost key can open. No key is made.
     #[error(
         "the hub's key file is missing and the database is not new: put the key file back at {0}"
     )]
     Missing(String),
-    /// A link or a folder at the key's path. The hub would follow a link to a file that
-    /// others may read or change.
+    /// The hub would follow a link to a file that others may read or change.
     #[error("{0} is not a plain file: remove it and put the key file back")]
     NotAFile(String),
     #[error("the hub's key file cannot be made or looked at ({0})")]
@@ -33,9 +31,7 @@ pub enum KeyError {
 
 /// Makes the key file at `path` when it is absent and the database is new.
 ///
-/// `database_is_new` is the caller's knowledge that nothing was ever sealed: the cluster
-/// folder was not there. The key is written before the database is made, so a crash between
-/// the two leaves a key and no database, never a database and no key.
+/// The key is written before the database, so a crash leaves a key and no database, not the reverse.
 ///
 /// # Errors
 /// [`KeyError::Missing`] when the key is absent and the database is not new.
@@ -60,8 +56,7 @@ pub fn prepare(path: &Path, database_is_new: bool) -> Result<(), KeyError> {
     write(path, text.as_bytes()).map_err(|error| KeyError::Write(error.kind()))
 }
 
-/// The whole key under a name beside `path`, then the name `path`: a crash never leaves half
-/// a key under the name the hub reads.
+/// Writes beside `path`, then renames, so a crash leaves no half key under the name the hub reads.
 fn write(path: &Path, text: &[u8]) -> io::Result<()> {
     let mut being_written = path.as_os_str().to_owned();
     being_written.push(".new");

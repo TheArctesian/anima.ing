@@ -6,8 +6,7 @@
 
 //! The shape of a log line: two lines of one shape say the same with different numbers.
 
-/// `line` with each number, address and path after its first `:` or `=` replaced by a fixed
-/// word. The text before that mark stays, so two different messages never get one shape.
+/// The text before the first `:` or `=` stays, so two different messages never get one shape.
 #[must_use]
 pub fn shape(line: &str) -> String {
     let split = line.find([':', '=']).unwrap_or(line.len());
@@ -23,8 +22,6 @@ pub fn shape(line: &str) -> String {
     shape
 }
 
-/// The fixed word for what `rest` starts with, if it starts with an address, a number or a
-/// path, and how many bytes that takes.
 fn replaced(rest: &str, first: char) -> (Option<&'static str>, usize) {
     if let Some(hex) = rest.strip_prefix("0x") {
         let digits = run(hex, |each| each.is_ascii_hexdigit());
@@ -46,7 +43,6 @@ fn replaced(rest: &str, first: char) -> (Option<&'static str>, usize) {
     (None, first.len_utf8())
 }
 
-/// The bytes at the start of `text` whose characters all pass `fits`.
 fn run(text: &str, fits: impl Fn(char) -> bool) -> usize {
     text.find(|each| !fits(each)).unwrap_or(text.len())
 }

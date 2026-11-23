@@ -1,5 +1,8 @@
-//! Whether the hub takes a parsed batch (K8 Sections 4 and 6, MET-017). Pure: the device and the
-//! clock are parameters (CQ-021); the hub transport refuses the bearer, size and JSON first.
+//! Whether the hub takes a parsed batch: K8 Sections 4 and 6, in the order device, shape,
+//! times (MET-017).
+//!
+//! Pure: the token's device and the hub's clock are parameters (CQ-021). The bearer, the size
+//! and the JSON are the hub transport's to refuse first.
 
 use std::collections::BTreeSet;
 
@@ -9,7 +12,7 @@ use uuid::Uuid;
 use super::batteries::batteries_fit;
 use super::{
     Batch, BatchBattery, BatchDrive, BatchGpu, BatchPoint, BatchSeries, BatchUpdate, GpuVendor,
-    KeyVersion, RefusalCode, versions_fit,
+    KeyVersion, RefusalCode, ThreadSummaries, versions_fit,
 };
 use crate::agent_usage::AgentUsage;
 use crate::hardware::Hardware;
@@ -19,34 +22,49 @@ use crate::points::{
     is_label, is_window_end,
 };
 
+/// The oldest a point may be on the hub's clock (MET-017).
 const OLDEST: TimeDelta = TimeDelta::hours(1);
 
+/// The furthest ahead of the hub's clock a point may be (MET-017).
 const AHEAD: TimeDelta = TimeDelta::seconds(60);
 
+/// The longest daemon version a batch may carry, in bytes (R-122).
 const MAX_VERSION_BYTES: usize = 64;
 
-/// What the hub takes from a batch (K8 Section 4); the inventory holds only the tools this hub
-/// knows by name.
+/// What the hub takes from a batch: the points of the series whose kind it knows, each with
+/// its non-null values only, the GPUs, drives, batteries and inventory when the batch has them, and the
+/// version of the daemon when it sent one (K8 Section 4, R-122). The inventory holds only the
+/// tools this hub knows by name.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Accepted {
     pub points: Vec<Point>,
     pub gpus: Option<Vec<BatchGpu>>,
     pub drives: Option<Vec<BatchDrive>>,
+    /// The batteries, when the batch has them (MET-032).
     pub batteries: Option<Vec<BatchBattery>>,
     pub inventory: Option<Inventory>,
-    /// With only the backends this hub knows (CAP-032).
+    /// The hardware values, when the batch has them, with the backends this hub knows (CAP-032).
     pub hardware: Option<Hardware>,
     pub daemon_version: Option<String>,
-    /// With only the session days of known sources (R-135).
+    /// The agent usage, when the batch has it, with the session days of known sources only
+    /// (R-135).
     pub agent_usage: Option<AgentUsage>,
+    pub agent_threads: Option<ThreadSummaries>,
+    /// The versions the daemon's key cache holds, when the batch had a `keys` member (R-147).
     pub keys: Option<Vec<KeyVersion>>,
+    /// What the daemon says about its update, when the batch had an `update` member (R-139).
     pub update: Option<BatchUpdate>,
 }
 
 impl Batch {
+    /// What the hub takes from this batch, pushed with a token of `device` and read at `now`.
+    ///
     /// # Errors
-    /// The first refusal of K8 Section 6, in the order `WrongDevice`, `Malformed`, `OutOfRange`.
-    /// A series of a kind this hub does not know is held to the counts and "no two equal" only.
+    /// The first refusal of K8 Section 6 it meets, in this order: `WrongDevice` when the batch
+    /// names another device; `Malformed` when it breaks a rule of Section 4; `OutOfRange` when a
+    /// point is more than 1 hour before `now` or more than 60 seconds after it (exactly 1 hour
+    /// and exactly 60 seconds are taken). A series of a kind this hub does not know is held to
+    /// the counts and to "no two equal" only; its column is ignored.
     pub fn check(self, device: Uuid, now: DateTime<Utc>) -> Result<Accepted, RefusalCode> {
         if self.device != device {
             return Err(RefusalCode::WrongDevice);
@@ -57,6 +75,10 @@ impl Batch {
             && drives_fit(self.drives.as_deref())
             && batteries_fit(self.batteries.as_deref())
             && self.daemon_version.as_deref().is_none_or(is_version)
+            && self
+                .agent_threads
+                .as_ref()
+                .is_none_or(ThreadSummaries::fits)
             && self
                 .keys
                 .as_ref()
@@ -97,12 +119,15 @@ impl Batch {
             hardware,
             daemon_version: self.daemon_version,
             agent_usage,
+            agent_threads: self.agent_threads,
             keys: self.keys.map(|keys| keys.held),
             update: self.update,
         })
     }
 }
 
+/// The key of each column, `None` for a kind this hub does not know; `None` overall when the
+/// series break Section 4.
 fn series_keys(series: &[BatchSeries]) -> Option<Vec<Option<SeriesKey>>> {
     if !(1..=MAX_SERIES).contains(&series.len()) {
         return None;
@@ -123,6 +148,8 @@ fn series_keys(series: &[BatchSeries]) -> Option<Vec<Option<SeriesKey>>> {
         .collect()
 }
 
+/// 1 to 360 points, `at` strictly increasing and on multiples of 10 seconds, each with one
+/// value per series that fits its kind.
 fn points_fit(points: &[BatchPoint], keys: &[Option<SeriesKey>]) -> bool {
     let increasing = points.windows(2).all(|pair| pair[0].at < pair[1].at);
     (1..=MAX_POINTS).contains(&points.len())
@@ -147,6 +174,7 @@ fn point_fits(point: &BatchPoint, keys: &[Option<SeriesKey>]) -> bool {
     })
 }
 
+/// A mean, and a max only for the kinds that keep one, never without a mean or below it.
 fn value_fits(kind: Kind, mean: Option<f64>, max: Option<f64>) -> bool {
     match (mean, max) {
         (_, Some(_)) if !kind.has_max() => false,
@@ -156,7 +184,9 @@ fn value_fits(kind: Kind, mean: Option<f64>, max: Option<f64>) -> bool {
     }
 }
 
-/// `-0` is refused, as a sample refuses it.
+/// Finite, at least 0, at most 100 for a percent kind and at most the kind's [`ceiling`] (a
+/// GPU temperature 1000, a GPU power 10 000; CR-17). `-0` is refused, as a sample refuses it;
+/// the daemon never sends it.
 fn number_fits(kind: Kind, value: f64) -> bool {
     value.is_finite()
         && !value.is_sign_negative()
@@ -164,6 +194,8 @@ fn number_fits(kind: Kind, value: f64) -> bool {
         && value <= ceiling(kind)
 }
 
+/// Each GPU: index 0 to 63 and unique, a name of 1 to 128 bytes without a control character,
+/// and no VRAM for Intel and Apple (MET-007).
 fn gpus_fit(gpus: Option<&[BatchGpu]>) -> bool {
     let gpus = gpus.unwrap_or_default();
     let indexes: BTreeSet<u8> = gpus.iter().map(|gpu| gpu.index).collect();
@@ -174,6 +206,9 @@ fn gpus_fit(gpus: Option<&[BatchGpu]>) -> bool {
         })
 }
 
+/// At most [`MAX_LABELS`] drives with unique names, each a label (K8 Section 4), a size of at
+/// most `i64::MAX` and at most [`MAX_LABELS`] mounts, each a label that starts with `/`
+/// (MET-027).
 fn drives_fit(drives: Option<&[BatchDrive]>) -> bool {
     let drives = drives.unwrap_or_default();
     let names: BTreeSet<&str> = drives.iter().map(|drive| drive.name.as_str()).collect();
@@ -190,7 +225,9 @@ fn drives_fit(drives: Option<&[BatchDrive]>) -> bool {
         })
 }
 
-/// A Semantic Versioning version fits, and no control character or space does (R-122).
+/// A daemon version: 1 to 64 bytes of ASCII letters, digits, `.`, `-` and `+`, starting with a
+/// digit, so a version of Semantic Versioning fits and no control character or space does
+/// (R-122).
 fn is_version(text: &str) -> bool {
     text.len() <= MAX_VERSION_BYTES
         && text
@@ -202,6 +239,7 @@ fn is_version(text: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'+'))
 }
 
+/// The oldest point is at most 1 hour old and the newest at most 60 seconds ahead of `now`.
 /// The points are in order, so the two ends decide.
 fn in_range(points: &[BatchPoint], now: DateTime<Utc>) -> bool {
     let oldest_fits = points.first().is_some_and(|point| now - point.at <= OLDEST);
@@ -209,6 +247,7 @@ fn in_range(points: &[BatchPoint], now: DateTime<Utc>) -> bool {
     oldest_fits && newest_fits
 }
 
+/// The point the hub stores: the known columns that have a mean.
 fn accepted(point: BatchPoint, keys: &[Option<SeriesKey>]) -> Point {
     let max = point.max.unwrap_or_default();
     let values = keys

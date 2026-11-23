@@ -9,7 +9,7 @@ use crate::builder::{
 };
 
 /// The `bundle` settings that carry the seven programs and the PostgreSQL tree (INS-002, S12 2.1).
-const CARRIED: &str = r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"database":"database"}}"#;
+const CARRIED: &str = r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"../../../LICENSE":"licences/LICENSE","../../../crates/shortening/LICENSE-APACHE":"licences/LICENSE-APACHE","../../../crates/shortening/NOTICE":"licences/NOTICE","database":"database"}}"#;
 
 fn args(command: &plan::Command) -> Vec<&str> {
     command.args.iter().map(|a| a.to_str().unwrap()).collect()

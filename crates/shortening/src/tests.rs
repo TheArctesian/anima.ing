@@ -1,11 +1,7 @@
-//! The rules of a shortened answer on built lists (SHA-001 to SHA-007). The real answers of
-//! Anima's tools are in the tests of `anima-cli` (SHA-023).
-
 use serde_json::{Value, json};
 
 use crate::{FIELD, Limits, Reason, shortened};
 
-/// A list of `count` events that are alike, with the rows of `odd` in place of some.
 fn events(count: usize, odd: &[(usize, Value)]) -> Value {
     let rows: Vec<Value> = (0..count)
         .map(|row| {
@@ -197,7 +193,6 @@ fn sha_003_a_list_inside_an_object_is_found_and_a_list_of_numbers_is_not_touched
     assert_eq!(short.marked("h", "t")["samples"], whole["samples"]);
 }
 
-/// A small generator with a fixed seed: the same lists in each run.
 struct Dice(u64);
 
 impl Dice {

@@ -1,6 +1,3 @@
-//! The client's display and time zone are checked before anything reaches guacd
-//! (GW-012).
-
 use guac_protocol::{Display, HandshakeError, HandshakeStep, is_zone_name};
 
 use crate::guacd::{

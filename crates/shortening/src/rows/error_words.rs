@@ -10,8 +10,7 @@
 
 use serde_json::Value;
 
-/// The 12 words of Headroom, in lower case. A word inside a longer word counts: it is better
-/// to keep one row too many.
+/// Headroom's words; a word inside a longer word counts, as it is better to keep one row too many.
 pub const ERROR_WORDS: [&str; 12] = [
     "error",
     "exception",
@@ -27,15 +26,12 @@ pub const ERROR_WORDS: [&str; 12] = [
     "rejected",
 ];
 
-/// Whether `text` holds an error word, with case ignored.
 #[must_use]
 pub fn names_error(text: &str) -> bool {
     let lower = text.to_lowercase();
     ERROR_WORDS.iter().any(|word| lower.contains(word))
 }
 
-/// Whether `row` reports a fault: a text value with an error word at any depth, or a field
-/// whose name has an error word and that holds something.
 #[must_use]
 pub fn reports_error(row: &Value) -> bool {
     match row {
@@ -48,7 +44,6 @@ pub fn reports_error(row: &Value) -> bool {
     }
 }
 
-/// Whether a field says something: not null, not false, not zero, not empty.
 fn holds(value: &Value) -> bool {
     match value {
         Value::Null => false,

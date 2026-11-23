@@ -1,5 +1,3 @@
-//! Tests of the parse of the power source of a Mac and of a Linux laptop.
-
 use super::*;
 
 #[test]

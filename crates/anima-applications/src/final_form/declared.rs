@@ -1,5 +1,4 @@
-//! One service of the final form: the values of the file, each with its type, and what the
-//! program adds to or fixes in each service (contract K10 Section 6.4.4).
+//! One service of the final form (contract K10 Section 6.4.4).
 
 use compose_rules::{
     Node,
@@ -9,18 +8,14 @@ use compose_rules::{
 use super::Frame;
 use crate::json::Json;
 
-/// A value of the file that does not have the form that its rule gives it. The check of the
-/// file refuses each such value before the final form is made; when one still comes here,
-/// the file is refused and nothing is written.
+/// A value that the check of the file missed: the file is refused and nothing is written.
 pub(super) struct Unsound;
 
 type Formed = Result<Json, Unsound>;
 
-/// The address of the machine itself.
 const LOCAL: &str = "127.0.0.1";
 /// The options of each `tmpfs`: those that the engine gives a `tmpfs` of a command.
 const TMPFS_OPTIONS: &str = "rw,noexec,nosuid,nodev";
-/// The size of one log file and the count of the log files of a service.
 const LOG_FILE_SIZE: &str = "10m";
 const LOG_FILE_COUNT: &str = "3";
 
@@ -28,7 +23,6 @@ fn text(node: &Node) -> Formed {
     node.text().map(Json::text).ok_or(Unsound)
 }
 
-/// One text, or a list of texts, in the form that the file has.
 fn texts(node: &Node) -> Formed {
     match node {
         Node::Text(one) => Ok(Json::text(one)),
@@ -47,14 +41,11 @@ fn flag(node: &Node) -> Formed {
     node.text().and_then(truth).map(Json::Truth).ok_or(Unsound)
 }
 
-/// A time, written in whole seconds.
 fn time(node: &Node) -> Formed {
     let seconds = node.text().and_then(seconds).ok_or(Unsound)?;
     Ok(Json::Text(format!("{seconds}s")))
 }
 
-/// The members of a map of the file, each formed by the reader of its key. A key with no
-/// value is left out.
 fn record(node: &Node, reader: impl Fn(&str, &Node) -> Formed) -> Formed {
     let mut members = Vec::new();
     for (key, value) in node.entries().ok_or(Unsound)? {
@@ -74,7 +65,6 @@ fn each(node: &Node, reader: impl Fn(&Node) -> Formed) -> Formed {
     }
 }
 
-/// `environment` and `labels`: a map of names to texts, or a list of `NAME=value`.
 fn pairs(node: &Node) -> Formed {
     match node {
         Node::List(_) => texts(node),
@@ -92,8 +82,7 @@ fn healthcheck(node: &Node) -> Formed {
     })
 }
 
-/// `depends_on`: names, or for each name its condition. Compose asks for a condition in the
-/// long form, so the one that it uses for a name alone is written when the file has none.
+/// Compose asks for a condition in the long form, so a name alone gets the one Compose uses.
 fn depends_on(node: &Node) -> Formed {
     if matches!(node, Node::List(_)) {
         return texts(node);
@@ -116,8 +105,6 @@ fn depends_on(node: &Node) -> Formed {
     Ok(Json::Record(members))
 }
 
-/// One port. With "Open to the network" off the address is the machine itself, whatever the
-/// file says.
 fn port(node: &Node, frame: &Frame<'_>) -> Formed {
     let mut members = vec![
         (
@@ -142,8 +129,6 @@ fn port(node: &Node, frame: &Frame<'_>) -> Formed {
     Ok(Json::Record(members))
 }
 
-/// One mount. The source of a bind mount is the real path of its folder below `binds/` of
-/// the application, and Compose never makes a folder of the machine for it.
 fn mount(node: &Node, frame: &Frame<'_>) -> Formed {
     let field = |key: &str| node.get(key).and_then(Node::text).ok_or(Unsound);
     let mut members = vec![("type".to_owned(), Json::text(field("type")?))];
@@ -165,7 +150,6 @@ fn mount(node: &Node, frame: &Frame<'_>) -> Formed {
     Ok(Json::Record(members))
 }
 
-/// The networks of a service: names, or for each name its aliases.
 fn networks(node: &Node) -> Formed {
     if matches!(node, Node::List(_)) {
         return texts(node);
@@ -190,7 +174,6 @@ fn networks(node: &Node) -> Formed {
     Ok(Json::Record(members))
 }
 
-/// `tmpfs`: each path, with the options that the program sets.
 fn tmpfs(node: &Node) -> Formed {
     let with_options = |path: &Node| {
         let path = path.text().ok_or(Unsound)?;
@@ -202,8 +185,7 @@ fn tmpfs(node: &Node) -> Formed {
     }
 }
 
-/// The value of one key of a service that the file gives; `None` for a key whose value the
-/// program writes itself.
+/// `None` for a key whose value the program writes itself.
 fn member(key: &str, value: &Node, frame: &Frame<'_>) -> Result<Option<Json>, Unsound> {
     let formed = match key {
         "image" | "cap_drop" | "mem_limit" | "cpus" | "pids_limit" | "stop_grace_period"
@@ -233,8 +215,7 @@ fn member(key: &str, value: &Node, frame: &Frame<'_>) -> Result<Option<Json>, Un
     formed.map(Some)
 }
 
-/// The lower of the value of the file and the own limit; the own limit when the file has
-/// none (SF-029, SF-044).
+/// The lower of the file's value and the own limit (SF-029, SF-044).
 fn lower(
     node: &Node,
     key: &str,
@@ -250,7 +231,6 @@ fn lower(
     }
 }
 
-/// `cap_drop` of the file, and `NET_RAW`, which the program adds to each service.
 fn cap_drop(node: &Node) -> Result<Json, Unsound> {
     let mut dropped = match node.get("cap_drop") {
         None | Some(Node::Null) => Vec::new(),
@@ -267,8 +247,6 @@ fn cap_drop(node: &Node) -> Result<Json, Unsound> {
     Ok(Json::List(dropped))
 }
 
-/// `logging`: the driver of the file, or `json-file`; the program sets the size and the
-/// count of the files.
 fn logging(node: &Node) -> Json {
     let driver = node
         .get("logging")

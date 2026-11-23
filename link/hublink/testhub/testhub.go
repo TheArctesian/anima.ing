@@ -1,6 +1,4 @@
-// Package testhub stands in for the hub on its socket for the link, in
-// tests. It reads the header that names the device, as the hub does, and
-// answers each request with the link address that the header gave.
+// Package testhub stands in for the hub on its socket in tests.
 package testhub
 
 import (
@@ -20,13 +18,11 @@ import (
 	"time"
 )
 
-// HoldPath is the path of a request that the hub keeps open, as a session.
-// The hub answers "held" and then waits for the other side to close.
+// HoldPath is a request that the hub holds open, as a session, until the other side closes.
 const HoldPath = "/hold"
 
 // Hub is a hub on a socket.
 type Hub struct {
-	// Socket is the path that the hub link gets as its target.
 	Socket string
 	// Ended gets the link address of each held request when it ends.
 	Ended chan netip.Addr
@@ -77,8 +73,7 @@ func (h *Hub) answer(w http.ResponseWriter, r *http.Request) {
 	h.Ended <- device
 }
 
-// named is the socket's listener. Each connection it gives has the device's
-// link address as its remote address.
+// named gives each connection the device's link address as its remote address.
 type named struct {
 	net.Listener
 	hub *Hub
@@ -112,15 +107,12 @@ type namedConn struct {
 func (c namedConn) Read(p []byte) (int, error) { return c.reader.Read(p) }
 func (c namedConn) RemoteAddr() net.Addr       { return c.device }
 
-// ErrHeader means that a connection did not start with the header that
-// names a device.
+// ErrHeader means that a connection did not start with a device header.
 var ErrHeader = errors.New("testhub: no header that names a device")
 
 var signature = []byte{0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A}
 
-// ReadHeader reads the PROXY header (version 2, TCP over IPv6) at the start
-// of a connection and returns its source: the device's link address and the
-// device's port of the stream.
+// ReadHeader reads a PROXY v2 header (TCP over IPv6) and returns its source address and port.
 func ReadHeader(from io.Reader) (netip.AddrPort, error) {
 	start := make([]byte, 16)
 	if _, err := io.ReadFull(from, start); err != nil {
