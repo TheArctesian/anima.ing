@@ -1,0 +1,18 @@
+query HubThreads($device: ID, $program: String, $first: Int!, $after: String) {
+  agentThreads(device: $device, program: $program, first: $first, after: $after) {
+    nodes { id deviceId program state title startedAt activityAt repository }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+
+query HubThread($id: ID!) {
+  agentThread(id: $id) {
+    summary { id deviceId program state title startedAt activityAt repository }
+    entries { sequence content }
+    lastSequence
+  }
+}
+
+subscription WatchHubThread($id: ID!, $after: String!) {
+  agentThreadEntries(id: $id, afterSequence: $after) { sequence content }
+}

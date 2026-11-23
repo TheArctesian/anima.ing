@@ -78,6 +78,13 @@ describe("the licence files of a copy of anima", () => {
     expect(trial).toContain("Compress-Archive -Path cli-stage/* -DestinationPath out-cli/anima-windows-x86_64.zip");
   });
 
+  test("the Windows bundle of the Builds view (builder/carried.rs) names each licence file under licences/", () => {
+    const carried = readFileSync(join(ROOT, "apps", "desktop", "src-tauri", "src", "builder", "carried.rs"), "utf8");
+    const list = /const LICENCES: \[\(&str, &str\); \d+\] = \[([\s\S]*?)\];/.exec(carried)?.[1] ?? "";
+    const pairs = [...list.matchAll(/\(\s*"([^"]+)",\s*"([^"]+)",?\s*\)/g)].map(([, source, target]) => [source, target]);
+    expect(pairs).toEqual(LICENCES.map(({ source, name }) => [`../../../${source}`, `licences/${name}`]));
+  });
+
   // Windows: in the file that only the bundle step reads (windows-bundle.ps1), beside the tree of the database.
   test.each([
     ["macos", "tauri.macos.conf.json", {}],

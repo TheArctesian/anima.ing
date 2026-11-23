@@ -121,3 +121,5 @@ async fn malformed_thread_summary_is_refused_with_the_whole_batch(pool: PgPool) 
         .unwrap();
     assert_eq!(count, 0);
 }
+
+mod entries;

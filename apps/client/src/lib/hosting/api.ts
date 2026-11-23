@@ -14,6 +14,7 @@ const MACHINES = graphql(`
         node {
           id
           name
+          status
           ssh {
             enabled
           }
@@ -27,6 +28,8 @@ const MACHINES = graphql(`
 export interface Machine {
   readonly id: string;
   readonly name: string;
+  /** The status of the device in the hub: Up, Down, Degraded, Maintenance or Unknown. */
+  readonly state: HostingMachinesQuery['devices']['edges'][number]['node']['status'];
 }
 
 /** What the section Applications asks of the hub (HSE-002). Each call reads the machine at that time; the hub keeps nothing. */
@@ -48,7 +51,7 @@ export function hostingApi(hub: Pick<Hub, 'request'>): HostingCalls {
         const result: HubResult<HostingMachinesQuery> = await hub.request(MACHINES, { after });
         if (!result.ok) return result;
         const page: HostingMachinesQuery['devices'] = result.value.devices;
-        for (const { node } of page.edges) if (node.ssh.enabled) machines.push({ id: node.id, name: node.name });
+        for (const { node } of page.edges) if (node.ssh.enabled) machines.push({ id: node.id, name: node.name, state: node.status });
         if (!page.pageInfo.hasNextPage || page.pageInfo.endCursor == null) return { ok: true, value: machines };
         after = page.pageInfo.endCursor;
       }

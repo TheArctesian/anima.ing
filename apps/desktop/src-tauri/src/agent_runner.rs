@@ -40,6 +40,8 @@ pub enum RunnerError {
     BadCall,
     #[error("the notification was not shown")]
     Notification,
+    #[error("the daemon of this computer is older than this app and does not know the call")]
+    OlderDaemon,
 }
 
 impl RunnerError {
@@ -51,12 +53,15 @@ impl RunnerError {
             Self::Foreign => "foreign",
             Self::BadCall => "bad_call",
             Self::Notification => "notification",
+            Self::OlderDaemon => "older_daemon",
         }
     }
 
     fn of(failure: &Failure) -> Self {
         match failure {
             Failure::Forbidden { .. } => Self::Foreign,
+            // The runner closed the call and names an older daemon, or none (HMD-055).
+            Failure::Conflict { .. } => Self::OlderDaemon,
             _ => Self::NotRunning,
         }
     }

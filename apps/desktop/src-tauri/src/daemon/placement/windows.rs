@@ -18,6 +18,10 @@ pub enum PlacementError {
     Source,
     #[error("the daemon could not be copied or replaced")]
     Write,
+    /// The update of the daemon runs only on Unix; the variant keeps one mapping of errors.
+    #[expect(dead_code, reason = "made only by the update, which runs on Unix")]
+    #[error("the new copy of the daemon did not pass its check")]
+    Refused,
 }
 
 pub fn destination(home: &Path) -> PathBuf {

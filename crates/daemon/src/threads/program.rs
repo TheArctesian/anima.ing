@@ -17,6 +17,9 @@ use super::outbox::{MAX_LINE, TOO_LONG};
 use super::tree;
 use super::wire::{Event, Exit, Line, Stream, ThreadKey};
 
+mod inherited;
+pub use inherited::keep_inherited_from_programs;
+
 /// What the daemon names for a start.
 pub struct Start<'a> {
     pub program: &'a str,

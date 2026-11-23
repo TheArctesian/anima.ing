@@ -46,12 +46,23 @@ pub enum DaemonError {
     TimedOut,
     #[error("the install did not finish")]
     Failed,
+    #[error("the new copy of the daemon did not pass its check; the copy of before stays")]
+    Unchecked,
+    #[error("the new daemon did not answer in time after its start; the copy of before runs again")]
+    #[cfg_attr(
+        not(unix),
+        expect(
+            dead_code,
+            reason = "only the update of a Unix system starts a new daemon"
+        )
+    )]
+    Unhealthy,
 }
 
 impl DaemonError {
     /// Every error, for the tests that check each one.
     #[cfg(all(test, unix))]
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 17] = [
         Self::Caller,
         Self::Unavailable,
         Self::NotBundled,
@@ -67,6 +78,8 @@ impl DaemonError {
         Self::Remove,
         Self::TimedOut,
         Self::Failed,
+        Self::Unchecked,
+        Self::Unhealthy,
     ];
 
     /// Stable code the client switches on.
@@ -87,6 +100,8 @@ impl DaemonError {
             Self::Remove => "remove",
             Self::TimedOut => "timed-out",
             Self::Failed => "failed",
+            Self::Unchecked => "unchecked",
+            Self::Unhealthy => "unhealthy",
         }
     }
 
@@ -95,6 +110,7 @@ impl DaemonError {
             PlacementError::Untrusted => Self::Untrusted,
             PlacementError::Source => Self::NotBundled,
             PlacementError::Write => Self::Copy,
+            PlacementError::Refused => Self::Unchecked,
         }
     }
 

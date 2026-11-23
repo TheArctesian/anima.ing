@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import type { Fixtures } from '../synthetic/fixtures';
 import { HUB_ORIGIN } from '../synthetic/access';
 import type { Screen } from './shots';
-import { DEVICE_IDS, failOperations, openDevice } from './steps';
+import { DEVICE_IDS, failOperations, onOperations, openDevice } from './steps';
 
 // The failures of the other screens: an address the app does not have, a project that is not there, and the hub
 // failing on Projects, Agent usage, Extensions and Containers. They come last, so the numbers before them stay.
@@ -60,6 +60,18 @@ export const ERROR_SCREENS: readonly Screen[] = [
       if (await tab.count()) await tab.click();
       await expect(page.getByRole('main')).toBeVisible();
       await page.waitForTimeout(1500);
+    },
+  },
+  {
+    // A hub from before project groups (PRO-059) does not know the field: the page says so quietly, with no Retry.
+    name: 'projects-older-hub',
+    fixtures: projectsOn,
+    open: async (page) => {
+      const body = JSON.stringify({ data: null, errors: [{ message: 'Unknown field "projectGroups" on type "Query".' }] });
+      await onOperations(page, ['SharedProjectGroups'], (route) => route.fulfill({ status: 200, contentType: 'application/graphql-response+json', body }));
+      await page.goto(`${HUB_ORIGIN}/projects`);
+      await expect(page.getByText('Groups need a newer hub')).toBeVisible();
+      await page.waitForTimeout(1000);
     },
   },
 ];

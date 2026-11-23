@@ -93,6 +93,7 @@ pub(crate) async fn answer<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
     tracing::info!(name = %name, status = ?status, "a request of a public name");
 }
 
+/// Answers a redirect with its one address; it never reaches a machine.
 async fn redirect<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
     proxy: &Proxy<H>,
     tls: &mut S,

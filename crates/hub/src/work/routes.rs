@@ -40,7 +40,7 @@ pub use self::model::{Added, CertificateState, NewRoute, Route, Traffic, Waits};
 pub use self::serving::{Served, served, served_streams, target_of};
 use self::{
     certificates::Issuer,
-    kinds::{Kind, KindRefusal, StreamRules},
+    kinds::{Access, Kind, KindRefusal, StreamRules},
     names::{NameRefusal, NameRules, RouteName},
     proof::{ProofRule, Resolver},
     target::TargetRefusal,
@@ -193,8 +193,8 @@ pub async fn add(
         })?;
     let (port, address) = match new.shape.port {
         Some(port) => {
-            let port = target::check_port(port)?;
-            let address = fixed_address(&device.host, port, settings).await?;
+            let port = target::check_port(port, new.shape.access)?;
+            let address = fixed_address(&device.host, (port, new.shape.access), settings).await?;
             if new.shape.kind == Kind::UdpStream && on_link(address.ip().to_canonical()) {
                 return Err(KindRefusal::UdpThroughLink.into());
             }
@@ -238,13 +238,18 @@ pub async fn add(
 }
 
 /// The one address of the target, resolved once now and checked (SF-233).
-async fn fixed_address(host: &str, port: u16, settings: &Settings) -> Result<SocketAddr, Error> {
+async fn fixed_address(
+    host: &str,
+    (port, access): (u16, Access),
+    settings: &Settings,
+) -> Result<SocketAddr, Error> {
     let found = targets::resolve_checked(host, port, &settings.policy)
         .await
         .map_err(|_| Error::Unresolved)?;
     let first = *found.first().ok_or(Error::Unresolved)?;
     Ok(target::check_address(
         first,
+        access,
         &settings.policy,
         &settings.hub_listeners,
     )?)

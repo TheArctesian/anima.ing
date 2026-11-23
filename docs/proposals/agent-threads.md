@@ -1009,8 +1009,8 @@ The order of the build of stage 1b: (1) TH18, the measurement of Full access; (2
 | Task | Work | Needs | Check | State |
 | --- | --- | --- | --- | --- |
 | TH20 | Contract change for the device thread rows and the upload of entries (THR-012, THR-022, THR-126). See Section 6.3.1. | OD-THR4, OD-THR9, OD-THR19 | Contract review and ruling (CON-001) | Approved by R-431. Section 6.3.1 and K8 Section 4. |
-| TH21 | The hub domain for thread rows, queries `agentThreads` and `agentThread`, and subscription `agentThreadEntries` (THR-023). Store entries from opted-in devices under THR-126 and THR-130. | TH20 | Hub tests for access, retries, reconnect and deletion | In progress. Summary ingestion and receipts are built on `code/hub-thread-sync`. Transcript upload, queries and subscription remain. |
-| TH22 | `anima agents threads --device`, the MCP tool with `device` | TH21 | Tests | Not started |
+| TH21 | The hub domain for thread rows, queries `agentThreads` and `agentThread`, and subscription `agentThreadEntries` (THR-023). Store entries from opted-in devices under THR-126 and THR-130. | TH20 | Hub tests for access, retries, reconnect and deletion | In progress. Summary ingestion merged in `1b678e5ea`. The daemon publisher, transcript upload, snapshots and replay have local tests. The phone client and real-device check are tracked in TH50 and TH51. |
+| TH22 | `anima agents threads --device`, `hub-thread` and `watch-hub-thread --after`. The MCP tool with `device` gives summaries only. | TH21 | Tests | Implemented. The CLI contract checks passed locally. |
 | TH23 | The page Threads with the choice of a device | TH21 | Client tests, a human check with `pop-os` | Not started |
 
 Needs: W0 (the socket of the link) for a machine that reaches the hub through the link. Not W3, W4 or W7: nothing starts.
@@ -1028,6 +1028,29 @@ R-431 approves this contract under CON-001. [K8 Section 4](../../contracts/daemo
 - Specify the transcript request size, batch pacing and retry rules with the transcript implementation. Measure the time from a runner approval request to a visible phone action. Keep the metrics path independent: the current K8 push needs a metrics point and sends on a 10-second interval, with its own backoff.
 
 For summary ingestion, start at the authenticated batch and transaction in `crates/hub/src/fleet/metrics/ingest/push.rs` and `push/batch.rs`. Reuse K8 daemon authentication for the transcript route. Exercise the boundary with an old daemon, an old hub response, a lost receipt, duplicate and out-of-order uploads, two devices with the same runner ID, the switch off, an excluded folder, API-key access, and a reconnect during a commit.
+
+#### 6.3.2 Test handoff through the CLI
+
+On an enrolled Mac or Linux test daemon, enable transcript sharing as described in
+[K8 Section 4.2](../../contracts/daemon-push.md#42-agent-thread-entries-th21-r-431). Start a Code
+thread on that machine. With an operator login to the same hub, list the device's threads
+and open the thread using its hub ID:
+
+```sh
+anima agents threads --device DEVICE --json
+anima agents hub-thread THREAD_ID --json
+```
+
+Record the snapshot's `lastSequence`. Let the agent produce another entry, then open the
+stream from the recorded sequence:
+
+```sh
+anima agents watch-hub-thread THREAD_ID --after LAST_SEQUENCE --json
+```
+
+The stream shows the missed entry once and continues with new entries. The PostgreSQL
+integration test covers this sequence. Phone UI integration and real-device handoff
+verification remain in TH50 and TH51.
 
 ### 6.4 Stage 3: drive the agents of the other machines through the hub
 

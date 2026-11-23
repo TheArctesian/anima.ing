@@ -244,6 +244,9 @@
       "devices",
       "metrics"
     ],
+    "agent_threads": [
+      "access"
+    ],
     "agent_usage": [
       "access"
     ],

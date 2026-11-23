@@ -102,15 +102,77 @@ impl RunnerLink {
     ///
     /// # Errors
     /// As [`Self::send`] and [`Self::next`].
+    /// [`Failure::Conflict`] when the runner closed the connection at the call because its daemon
+    /// is older than this program and does not know the call.
     pub async fn call(&mut self, action: Action) -> Result<Outcome, Failure> {
         let id = self.send(action).await?;
         loop {
-            match self.next().await?.ok_or_else(not_running)? {
-                Reply::Done { id: done, result } if done == id => return Ok(result),
-                _ => {}
+            match self.next().await? {
+                Some(Reply::Done { id: done, result }) if done == id => return Ok(result),
+                Some(_) => {}
+                None => return Err(closed().await),
             }
         }
     }
+
+    /// The version of the daemon of the runner; `None` when the runner closed the connection at
+    /// the call, as a runner from before it does.
+    async fn version(&mut self) -> Result<Option<String>, Failure> {
+        let id = self.send(Action::Version).await?;
+        while let Some(reply) = self.next().await? {
+            if let Reply::Done { id: done, result } = reply
+                && done == id
+            {
+                return Ok(match result {
+                    Outcome::Version { version } => Some(version),
+                    _ => None,
+                });
+            }
+        }
+        Ok(None)
+    }
+}
+
+/// Why a runner closed the connection with no answer: it asks a new connection for the version
+/// of the daemon. A runner that closes that one too, or names an older version, is older than
+/// this program and did not know the call (HMD-055).
+async fn closed() -> Failure {
+    let Ok(mut link) = RunnerLink::connect().await else {
+        return not_running();
+    };
+    let this = env!("CARGO_PKG_VERSION");
+    match link.version().await {
+        Ok(None) => older(None, this),
+        Ok(Some(version)) if numbers(&version) < numbers(this) => older(Some(&version), this),
+        _ => Failure::NotFound {
+            message: "The thread runner of this computer ended the call with no answer.".to_owned(),
+            hint: Some(Hint::run("anima agents running")),
+        },
+    }
+}
+
+/// The failure of a call that the daemon of this computer does not know, in words for the person.
+#[must_use]
+pub fn older(daemon: Option<&str>, this: &str) -> Failure {
+    let versions = daemon.map_or_else(
+        || format!("this app and command are {this}"),
+        |daemon| format!("the daemon is {daemon}, this app and command are {this}"),
+    );
+    Failure::Conflict {
+        message: format!(
+            "The daemon on this computer is older than this app ({versions}): it does not know this call. Update it: quit Anima and open it again, which updates the daemon at its start; or install it again in the settings of this computer, at Metrics source: Daemon."
+        ),
+    }
+}
+
+/// The three numbers of a version, for an order; a version that does not read is the lowest.
+fn numbers(version: &str) -> [u64; 3] {
+    let mut parts = version.split('.').map(|part| part.parse().unwrap_or(0));
+    [
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+    ]
 }
 
 /// A refusal of the runner as a failure of the command, in words for the person.

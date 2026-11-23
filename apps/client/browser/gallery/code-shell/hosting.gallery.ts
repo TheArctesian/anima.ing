@@ -13,7 +13,7 @@ import { EVERY_STATE } from '../threads/scenario';
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-shell/', import.meta.url));
 const SHOTS = [
-  { name: 'hosting-1-applications', path: '/hosting', heading: 'Applications are not listed here yet' },
+  { name: 'hosting-1-applications', path: '/hosting', heading: 'Applications' },
   { name: 'hosting-2-catalogue', path: '/hosting/catalogue', heading: 'Catalogue' },
   { name: 'hosting-3-routes', path: '/hosting/routes', heading: 'Routes' },
   { name: 'hosting-4-machines', path: '/hosting/machines', heading: 'Machines are not listed here yet' },

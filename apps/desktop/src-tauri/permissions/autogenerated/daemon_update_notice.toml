@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-daemon-update-notice"
+description = "Enables the daemon_update_notice command without any pre-configured scope."
+commands.allow = ["daemon_update_notice"]
+
+[[permission]]
+identifier = "deny-daemon-update-notice"
+description = "Denies the daemon_update_notice command without any pre-configured scope."
+commands.deny = ["daemon_update_notice"]

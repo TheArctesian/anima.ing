@@ -207,6 +207,9 @@ pub enum Action {
         #[serde(flatten)]
         action: crate::git::GitAction,
     },
+    /// The version of the daemon of the runner (HMD-055). A runner from before this call closes
+    /// the connection at it, which says that it is older.
+    Version,
 }
 
 /// A frame of the runner to a client.
@@ -286,6 +289,10 @@ pub enum Outcome {
     Git {
         #[serde(flatten)]
         result: crate::git::GitOutcome,
+    },
+    /// The version of the daemon of the runner, as its `--version` prints it after the name.
+    Version {
+        version: String,
     },
     Refused {
         why: Refusal,

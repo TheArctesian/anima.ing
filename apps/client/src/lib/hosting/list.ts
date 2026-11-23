@@ -1,10 +1,10 @@
 import type { Container, ImageUpdate } from '$lib/containers/api';
 import { NO_PROJECT, projectGroups, type ContainerRow, type Tone } from '$lib/containers/rows';
+import { statusLabel } from '$lib/devices/card/card';
+import type { Machine } from './api';
 
 /** What the hub has answered for one machine, as the store keeps it. */
-export interface Place {
-  readonly id: string;
-  readonly name: string;
+export interface Place extends Machine {
   readonly status: 'loading' | 'ready' | 'failed';
   /** Why the containers did not load, in the hub's words; empty when they did. */
   readonly problem: string;
@@ -49,6 +49,9 @@ export interface ApplicationRow {
 export interface PlaceGroup {
   readonly id: string;
   readonly name: string;
+  /** The status of the machine as the Devices page words it, with its colour (MAT-005: the word is always beside it). */
+  readonly state: string;
+  readonly tone: Tone;
   readonly status: Place['status'];
   readonly problem: string;
   /** "3 of 4 running", over all its containers; empty while the containers load or when they did not. */
@@ -57,6 +60,8 @@ export interface PlaceGroup {
   /** The machine was read and has no container at all: "Nothing installed". */
   readonly empty: boolean;
 }
+
+const MACHINE_TONES: Readonly<Record<Machine['state'], Tone>> = { UP: 'up', DOWN: 'down', DEGRADED: 'warning', MAINTENANCE: 'warning', UNKNOWN: 'unknown' };
 
 /** HSE-002: the rows of each machine, the machines by name, narrowed by the field, the machine and the choice. */
 export function placeGroups(places: readonly Place[], narrowing: Narrowing): readonly PlaceGroup[] {
@@ -69,6 +74,8 @@ export function placeGroups(places: readonly Place[], narrowing: Narrowing): rea
       return {
         id: place.id,
         name: place.name,
+        state: statusLabel(place.state),
+        tone: MACHINE_TONES[place.state],
         status: place.status,
         problem: place.problem,
         summary: place.status === 'ready' ? running(place.containers) : '',

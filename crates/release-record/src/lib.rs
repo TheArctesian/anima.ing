@@ -1,5 +1,6 @@
 //! The signed list of the program files of one release for one target (ROL-003 to ROL-005, ROL-010 to ROL-013, ROL-036, ROL-041).
 //! Its signature is the updater signature, one key (OD-ROL-2).
+//! The hub checks it before it offers a release (ROL-007), and a machine checks it again by itself (ROL-010).
 //!
 //! The bytes that were signed are the bytes that are read: no form of the record is made again before its check (ROL-004).
 //! Pure: no file, no clock, no network, no log.

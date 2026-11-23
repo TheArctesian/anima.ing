@@ -591,7 +591,9 @@ pub async fn batteries(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId
 Folder `crates/hub/src/fleet/agent_threads/`. The domain owns the summary persistence of K8
 Section 4. The metrics push passes the authenticated device and an accepted summary batch to
 `record_announced` with the device row locked. It returns the stored revisions and hub thread IDs.
-The push sends the receipt after commit.
+The push sends the receipt after commit. The same daemon admission protects transcript uploads.
+K1 exposes the authenticated list, an operator-only snapshot and an operator-only stream.
+The stream replays durable entries by sequence before waiting for newer ones.
 
 ## agent_usage (R-135, operator, 2026-11-17; AIS-018 to AIS-024; AU-2)
 
