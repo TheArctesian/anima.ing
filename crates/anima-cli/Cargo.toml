@@ -62,6 +62,10 @@ rmcp = { workspace = true, features = ["elicitation"] }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# The handle of the original of a shortened answer (SHA-011).
+sha2.workspace = true
+# The rules of a shortened MCP answer (SHA-001 to SHA-009).
+shortening = { path = "../shortening" }
 # The token file and the configuration are written to a temporary file, then renamed (CMD-012).
 tempfile.workspace = true
 thiserror.workspace = true
