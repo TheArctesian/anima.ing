@@ -5536,3 +5536,19 @@ These checks do not close the operator check or prove macOS behavior.
    reply and completed state update; the page does not stay at “Working” after the reply.
 7. Repeat on macOS and Linux. Sessions started outside Anima and hub synchronization of Grok
    threads are not included in this local slice.
+
+## HT-NEW-linux-pointer — Linux tiled-window pointer alignment
+
+State: Open. The operator reported wrong hover and click targets on 2026-11-23.
+
+Built: the Linux main window no longer imposes a 960 by 600 minimum on a tiling
+compositor. In the reported arrangement the compositor allocated 863 pixels across,
+but WebKit rendered 960; the displayed buttons were compressed while input used
+the larger layout. Other platforms keep their existing minimum window sizes.
+
+1. Tile Anima beside another window on a fractionally scaled Linux display, narrower
+   than 960 logical pixels. Hover New thread and the adjacent project filter. Each
+   button highlights only when the pointer is over that button.
+2. Click each button. New thread opens a draft; the folder button opens the project
+   filter. Resize the tiled window and repeat, including a short window.
+3. Maximize and restore the window. Hover and clicks still match the drawn controls.
