@@ -41,6 +41,14 @@ on a solid `#17191c` background.
 `sh apps/desktop/src-tauri/ios-archive.sh --plan 0.7.95` builds nothing and prints the version, the build
 number (795) and if the run signs.
 
+The archive resolves Tauri's SwiftRs 1.0.9 from
+[`swift-rs-1.0.9.bundle`](../../../deploy/testflight/swift-rs-1.0.9.bundle).
+The bundle keeps the upstream tag and revision
+`207e4bfe5d36fdd0cc08f28d1849ff94ac7e24b8`, including its MIT and Apache-2.0 license files.
+It was made with `git bundle create swift-rs-1.0.9.bundle refs/tags/1.0.9` from the public
+`Brendonovich/swift-rs` repository. When upgrading the dependency, verify the upstream tag and update
+the bundle and the expected revision in [the preparation script](../../../deploy/testflight/swift-package.sh).
+
 ## 3. The build number
 
 `deploy/bin/phone-build-number <version>` gives the build number of iOS and the version code of Android
