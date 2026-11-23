@@ -46,7 +46,9 @@ impl Kit {
     /// A kit with no runner yet.
     pub(super) fn unstarted(claude: &str) -> Self {
         use std::os::unix::fs::PermissionsExt as _;
-        let home = tempfile::tempdir().expect("a folder");
+        // Git records must stay outside the shared agent temporary directory.
+        let root = std::fs::canonicalize("/var/tmp").expect("the persistent temporary directory");
+        let home = tempfile::tempdir_in(root).expect("a folder");
         let bin = home.path().join("bin");
         std::fs::create_dir(&bin).expect("bin");
         for (name, text) in [("claude", claude), ("codex", CODEX), ("login-shell", SHELL)] {

@@ -64,6 +64,7 @@ impl Gits {
         let places = Places {
             anima: home.unwrap_or_default().join(".anima"),
             chosen: None,
+            private_tmp: false,
             kept_out: dir.parent().map(Path::to_owned).into_iter().collect(),
             // The real path: the records refuse a link above them, and `/var` of macOS is one.
             records: own_home.then(|| {
