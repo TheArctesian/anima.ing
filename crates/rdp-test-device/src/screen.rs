@@ -1,6 +1,3 @@
-//! What the test device sends about its screen: its capabilities, painted rectangles as
-//! fast-path bitmap updates, and the Deactivate All that starts a resize.
-
 use std::borrow::Cow;
 
 use anima_gateway::screen::Area;
@@ -18,14 +15,10 @@ use ironrdp_pdu::rdp::capability_sets::{
 use ironrdp_pdu::rdp::headers::{ServerDeactivateAll, ShareControlHeader, ShareControlPdu};
 use ironrdp_pdu::x224::X224;
 
-/// The bytes of a 32-bit pixel.
 const PIXEL: usize = 4;
-/// The most bitmap bytes in one fast-path update: its length field and the fast-path
-/// PDU's own (at most 0x7fff bytes) leave room for this and the headers.
+/// Leaves room for the headers within the fast-path PDU's limit of 0x7fff bytes.
 const MOST_BYTES: usize = 0x7000;
 
-/// What the device can do: fast-path output, uncompressed 32-bit bitmaps of its size, and
-/// fast-path input of scancodes, Unicode and the pointer.
 pub(super) fn capabilities(size: DesktopSize) -> Vec<CapabilitySet> {
     let general = General {
         extra_flags: GeneralExtraFlags::FASTPATH_OUTPUT_SUPPORTED
@@ -59,8 +52,6 @@ pub(super) fn capabilities(size: DesktopSize) -> Vec<CapabilitySet> {
     ]
 }
 
-/// `area` in one colour (red, green, blue), as fast-path PDUs of uncompressed 32-bit
-/// bitmaps: one for each band of rows that fits in an update.
 pub(super) fn fill(area: Area, [red, green, blue]: [u8; 3]) -> Vec<u8> {
     let row = area.width * PIXEL;
     assert!(row > 0 && row <= MOST_BYTES, "a row fits in one update");
@@ -68,8 +59,7 @@ pub(super) fn fill(area: Area, [red, green, blue]: [u8; 3]) -> Vec<u8> {
     let mut pdus = Vec::new();
     for top in (area.y..area.y + area.height).step_by(band) {
         let rows = band.min(area.y + area.height - top);
-        // RDP bitmaps are bottom-up with rows padded to four bytes; 32-bit rows need no
-        // padding and the rows of one colour are all the same.
+        // Bottom-up row order and four-byte padding do not matter for 32-bit rows of one colour.
         let pixels = [blue, green, red, 0].repeat(area.width * rows);
         let rectangle = InclusiveRectangle {
             left: wire(area.x),
@@ -94,7 +84,6 @@ pub(super) fn fill(area: Area, [red, green, blue]: [u8; 3]) -> Vec<u8> {
     pdus
 }
 
-/// One fast-path PDU with one bitmap update in one piece.
 fn fast_path(update: &[u8]) -> Vec<u8> {
     let update = FastPathUpdatePdu {
         fragmentation: Fragmentation::Single,
@@ -109,7 +98,6 @@ fn fast_path(update: &[u8]) -> Vec<u8> {
     pdu
 }
 
-/// The Deactivate All PDU on the session's I/O channel.
 pub(super) fn deactivate_all(session: &AcceptorResult) -> Vec<u8> {
     let deactivate = ShareControlHeader {
         share_id: 0,
@@ -124,7 +112,6 @@ pub(super) fn deactivate_all(session: &AcceptorResult) -> Vec<u8> {
     encode_vec(&X224(indication)).expect("an X.224 PDU")
 }
 
-/// A coordinate or length on the wire.
 fn wire(value: usize) -> u16 {
     u16::try_from(value).expect("a screen coordinate")
 }

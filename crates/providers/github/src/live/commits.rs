@@ -80,8 +80,7 @@ impl Raw {
     }
 }
 
-/// `GET /repos/{o}/{r}/commits`, 100 to a page, starting from `git_ref` (a branch name or a
-/// commit sha; the default branch when `None`). The ref goes in as the query value `sha`.
+/// Starts from `git_ref`, a branch name or a commit sha, or the default branch when `None`.
 ///
 /// # Errors
 /// A [`Problem`] when the repository name or the ref cannot go into a request.

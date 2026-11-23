@@ -1,7 +1,4 @@
-//! The updater signature as tauri-plugin-updater reads it (BLD-046, UPD-002): the `.sig` file is
-//! base64 of a minisign signature over the BLAKE2b-512 hash of the file, and the trusted comment
-//! holds `version:<v>` for `requireSignedVersion`. Pure over the bytes it is given; the time is a
-//! parameter (CQ-021).
+//! The updater signature as tauri-plugin-updater reads it: base64 minisign over a BLAKE2b-512 prehash (BLD-046, UPD-002).
 
 use base64::{Engine, engine::general_purpose::STANDARD};
 use blake2::{Blake2b512, Digest};
@@ -157,9 +154,7 @@ impl SignatureStream<'_> {
         self.finish_named(version, None)
     }
 
-    /// As [`Self::finish`], and when `file_name` is given, the trusted comment must also name
-    /// exactly that file once. A release record uses it, so that the signature of a file of a
-    /// different name is never read as the signature of a record (ROL-013).
+    /// As [`Self::finish`]; with `file_name`, the trusted comment must also name that file once (ROL-013).
     ///
     /// # Errors
     ///

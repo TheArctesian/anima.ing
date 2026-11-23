@@ -1,6 +1,3 @@
-//! The handshake fails closed: out-of-order instructions, gateway errors and
-//! replies guacd would misread (GW-010, GW-014, LOG-007).
-
 use guac_protocol::{
     Handshake, HandshakeError, HandshakeStep, Instruction, MAX_ELEMENTS, MAX_INSTRUCTION_BYTES,
 };
@@ -14,7 +11,6 @@ fn ready() -> Instruction {
     Instruction::new("ready", ["$4c1f6a0e"])
 }
 
-/// Every later instruction, even a valid one, returns `error` again.
 fn assert_stays_failed(handshake: &mut Handshake, error: &HandshakeError) {
     for next in [
         decode_args(ARGS_1_5_5),

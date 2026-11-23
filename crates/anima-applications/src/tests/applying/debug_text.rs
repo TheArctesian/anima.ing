@@ -1,6 +1,3 @@
-//! The debug text of each value that holds the two files or the final form (K10 Section
-//! 6.4.5: only the user of the program can read them).
-
 use super::{COMPOSE, ENVIRONMENT, digests, plan, prepare};
 use crate::{
     tests::World,
@@ -40,6 +37,5 @@ fn k10_6_4_5_a_value_that_holds_the_files_shows_no_secret_value_in_its_debug_tex
         assert!(!text.contains("TOKEN"), "{text}");
         assert!(!text.contains("115, 51, 99, 114"), "{text}");
     }
-    // The length of each written file is shown.
     assert!(format!("{:?}", planned.plan).contains("content_bytes"));
 }

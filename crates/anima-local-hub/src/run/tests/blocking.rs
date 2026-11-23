@@ -1,4 +1,4 @@
-//! A group that the operator must unblock, and the key rule (S4 Section 1.5).
+//! S4 Section 1.5.
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -21,7 +21,7 @@ async fn dbl_009_a_database_of_another_version_blocks_the_hub_until_the_run_is_s
             .await
             .unwrap();
 
-        // Not a failure: the unit must not start the group again in a loop.
+        // Not a failure, so the unit does not start the group again in a loop.
         assert_eq!(ended, Ended::Asked);
         assert_eq!(rig.events(), ["database start"]);
     }

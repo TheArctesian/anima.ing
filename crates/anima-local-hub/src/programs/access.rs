@@ -1,5 +1,4 @@
-//! Platform permissions for a carried program tree. Windows bundles contain real files,
-//! never junctions or symlinks; new copies inherit their private destination directory.
+//! Windows bundles hold only real files; new copies inherit their private destination directory.
 #[cfg(unix)]
 use std::{
     fs::OpenOptions,
@@ -51,7 +50,6 @@ pub(super) fn set_mode(file: &File, mode: u32) -> io::Result<()> {
     #[cfg(windows)]
     {
         let _ = mode;
-        // Verify the handle still names the regular file created under our private parent.
         if !file.metadata()?.is_file() {
             return Err(io::ErrorKind::PermissionDenied.into());
         }

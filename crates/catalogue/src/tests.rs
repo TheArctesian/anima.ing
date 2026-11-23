@@ -1,7 +1,4 @@
-//! Tests of the static test of a recipe (HOST-047): the recipes that ship (`shipped`), and a
-//! sound recipe with one fault at a time (`refused`), the rights of the services
-//! (`privileges`), the commands of the services (`commands`), the fields about a database
-//! (`database`), and the recipe form of LinuxServer.io (`linuxserver`).
+//! Tests of the static test of a recipe (HOST-047).
 
 mod commands;
 mod database;
@@ -18,7 +15,6 @@ use crate::{Code, Recipe, check};
 const IMAGE: &str =
     "example/notes@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
-/// An entry file that passes each check, for the Compose file [`COMPOSE`].
 const ENTRY: &str = r#"{
   "id": "notes",
   "name": "Notes",
@@ -89,7 +85,6 @@ fn sound() -> Recipe {
     }
 }
 
-/// The codes of `recipe`.
 fn codes(recipe: &Recipe) -> Vec<Code> {
     check(recipe)
         .into_iter()
@@ -97,13 +92,11 @@ fn codes(recipe: &Recipe) -> Vec<Code> {
         .collect()
 }
 
-/// `text` with `old` replaced by `new`, once; `old` must be there.
 fn replaced(text: &str, old: &str, new: &str) -> String {
     assert!(text.contains(old), "{old}");
     text.replacen(old, new, 1)
 }
 
-/// [`sound`] with one change of its entry file.
 fn with_entry(old: &str, new: &str) -> Recipe {
     Recipe {
         entry: Some(replaced(ENTRY, old, new)),
@@ -111,7 +104,6 @@ fn with_entry(old: &str, new: &str) -> Recipe {
     }
 }
 
-/// [`sound`] with one change of its Compose file.
 fn with_compose(old: &str, new: &str) -> Recipe {
     Recipe {
         compose: Some(replaced(COMPOSE, old, new)),

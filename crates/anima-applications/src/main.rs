@@ -1,6 +1,4 @@
-//! The applications program (contract K10 Section 6.4.1). It is not complete: the library has
-//! the checks and the plans, and no part that opens the socket or starts a program of Docker
-//! exists (task H31, part 2). Thus this program does nothing and ends with a failure.
+//! The applications program (contract K10 Section 6.4.1).
 
 use std::process::ExitCode;
 

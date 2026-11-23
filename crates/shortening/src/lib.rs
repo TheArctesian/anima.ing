@@ -1,9 +1,5 @@
-//! The shortener of long answers for an AI agent (SHA-001 to SHA-009): rows of a list in JSON
-//! and lines of a log are left out, never a row that reports a fault or that is not like the
-//! others, and the answer says that it was shortened.
-//!
-//! Pure: no file, no network, no clock, no log (SHA-009). The same answer gives the same
-//! result (SHA-005). The caller stores the original before it gives the shortened answer.
+//! The shortener of long answers for an AI agent (SHA-001 to SHA-009).
+//! Pure: no file, no network, no clock, no log (SHA-009); the same answer gives the same result (SHA-005).
 //!
 //! Parts are from Headroom (Apache-2.0); see `NOTICE` and the head of each file.
 
@@ -22,12 +18,10 @@ pub use limits::Limits;
 pub use mark::FIELD;
 pub use rows::Cut;
 
-/// The bytes that the mark of a shortened answer takes, about, for the test of the saving:
-/// the fixed part, and the part of each list.
+/// About the bytes the mark takes, for the test of the saving: the fixed part and each list's part.
 const MARK_ROOM: usize = 450;
 const MARK_ROOM_OF_A_LIST: usize = 160;
-/// The most lists of one answer that lose rows. An answer with more is not touched: its mark
-/// would be long, and it is not a page of rows.
+/// The most lists of one answer that lose rows; with more, the mark is long and it is not a page of rows.
 const MOST_CUTS: usize = 8;
 
 /// An answer with rows left out, before it has its mark.

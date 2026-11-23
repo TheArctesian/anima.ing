@@ -1,13 +1,9 @@
-//! Putting a repository name and a branch into a request path.
-
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
-/// A repository name that cannot go into a path.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 #[error("a repository name is owner/name, with letters, digits, dots, dashes and underscores")]
 pub(crate) struct UnusableName;
 
-/// Checks that `full_name` is `owner/name` and safe to put in a path.
 pub(crate) fn check(full_name: &str) -> Result<(), UnusableName> {
     let plain = |part: &str| {
         !part.is_empty()
@@ -23,13 +19,11 @@ pub(crate) fn check(full_name: &str) -> Result<(), UnusableName> {
     }
 }
 
-/// A branch name that cannot go into a path.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 #[error("a branch name must not have a segment that is a dot or two dots")]
 pub(crate) struct UnusableBranch;
 
-/// Checks that `branch` has no `.` or `..` segment, which a URL parser would resolve and so
-/// move the request off the repository it names.
+/// A URL parser resolves a `.` or `..` segment and so moves the request off the repository.
 pub(crate) fn check_branch(branch: &str) -> Result<(), UnusableBranch> {
     if branch
         .split('/')
@@ -41,9 +35,7 @@ pub(crate) fn check_branch(branch: &str) -> Result<(), UnusableBranch> {
     }
 }
 
-/// A branch name as one or more path segments: slashes stay, anything else unsafe is
-/// percent-encoded (a branch may hold `@`, `#`, `?` or `%`). Only a branch that passed
-/// [`check_branch`] goes in.
+/// Keeps `/` and percent-encodes each unsafe byte; takes only a branch that passed [`check_branch`].
 pub(crate) fn encode_branch(branch: &str) -> String {
     let mut out = String::with_capacity(branch.len());
     for byte in branch.bytes() {

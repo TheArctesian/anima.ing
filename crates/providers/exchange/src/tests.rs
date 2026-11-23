@@ -6,7 +6,6 @@ mod change;
 mod parts;
 mod text;
 
-/// `count` copies of `c`.
 fn long(c: char, count: usize) -> String {
     std::iter::repeat_n(c, count).collect()
 }
@@ -14,8 +13,7 @@ fn long(c: char, count: usize) -> String {
 #[test]
 fn src_006_a_provider_request_is_a_get_below_the_api_base() {
     let request = Request::get("/installation/repositories", &[("per_page", "100")]).unwrap();
-    // Irrefutable: `Method` has exactly one variant, so a request cannot express a write
-    // (PRJ-017, OD-E14). A second variant fails this line at compile time.
+    // Irrefutable: `Method` has one variant, so a request cannot express a write (PRJ-017, OD-E14).
     let Method::Get = request.method;
     assert_eq!(request.path, "/installation/repositories");
     assert_eq!(request.query, [("per_page".to_owned(), "100".to_owned())]);

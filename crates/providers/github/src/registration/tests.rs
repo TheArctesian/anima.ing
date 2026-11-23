@@ -119,8 +119,6 @@ fn prj_039_the_conversion_reply_gives_the_app_and_neither_secret() {
         }
     );
     assert!(converted.private_key_pem.contains("PEM-MARKER-2222"));
-    // `Converted` has no `Debug`, so the key cannot be printed with `{:?}`. The only fields that
-    // hold text are the slug, the owner's login and the key; neither secret is among them.
     for text in [&converted.slug, &converted.owner.login] {
         assert!(!text.contains("SECRET-MARKER"));
     }

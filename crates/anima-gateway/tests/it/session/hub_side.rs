@@ -1,6 +1,3 @@
-//! The hub's side of a session for the tests: the hub's own handshake, then instructions
-//! read and sent as the hub's relay does.
-
 use std::time::Duration;
 
 use anima_gateway::session::{Ended, Settings, serve};
@@ -37,7 +34,6 @@ impl<S: AsyncRead + AsyncWrite + Unpin> HubSide<S> {
             .expect("sent to the gateway");
     }
 
-    /// Sends `instruction`; `false` when the gateway has closed the connection.
     pub(crate) async fn try_send(&mut self, instruction: &Instruction) -> bool {
         self.stream
             .write_all(encode(instruction).as_bytes())
@@ -45,7 +41,6 @@ impl<S: AsyncRead + AsyncWrite + Unpin> HubSide<S> {
             .is_ok()
     }
 
-    /// The gateway's next instruction; `None` when it closed the connection.
     pub(crate) async fn next(&mut self) -> Option<Instruction> {
         let mut buffer = [0; 8192];
         while self.waiting.is_empty() {
@@ -65,7 +60,6 @@ impl<S: AsyncRead + AsyncWrite + Unpin> HubSide<S> {
         self.waiting.pop_front()
     }
 
-    /// Whether the gateway sends nothing for `time`.
     pub(crate) async fn is_quiet_for(&mut self, time: Duration) -> bool {
         if !self.waiting.is_empty() {
             return false;
@@ -85,7 +79,6 @@ impl<S: AsyncRead + AsyncWrite + Unpin> HubSide<S> {
         }
     }
 
-    /// Reads until an instruction with `opcode` comes, and gives it.
     pub(crate) async fn next_of(&mut self, opcode: &str) -> Instruction {
         loop {
             let instruction = self
@@ -98,7 +91,6 @@ impl<S: AsyncRead + AsyncWrite + Unpin> HubSide<S> {
         }
     }
 
-    /// The hub's handshake for `protocol` with `values`, to `ready`.
     pub(crate) async fn open(
         &mut self,
         protocol: &str,
@@ -140,14 +132,12 @@ impl<S: AsyncRead + AsyncWrite + Unpin> HubSide<S> {
     }
 }
 
-/// A session served in this process, and the hub's side of it.
 pub(crate) fn session(settings: Settings) -> (HubSide<DuplexStream>, JoinHandle<Ended>) {
     let (hub, gateway) = duplex(1 << 20);
     let served = tokio::spawn(async move { serve(gateway, "$test", &settings).await });
     (HubSide::on(hub), served)
 }
 
-/// The `connect` values the hub sends for a device at `address`.
 pub(crate) fn values(address: std::net::SocketAddr, extra: &[(&str, &str)]) -> ArgValues {
     let mut values = ArgValues::new();
     values.set("hostname", address.ip().to_string());

@@ -31,7 +31,6 @@ pub struct Cut {
     pub kept: Kept,
 }
 
-/// Leaves out rows of the lists of `answer`, and says which lists lost rows.
 pub fn cut_lists(answer: &mut Value, limits: &Limits) -> Vec<Cut> {
     let mut walk = Walk {
         limits,
@@ -92,7 +91,6 @@ impl Walk<'_> {
     }
 }
 
-/// What the choice needs to know of each row: for a list of objects and for a list of texts.
 fn marked(rows: &[Value]) -> Option<Marked> {
     if rows.iter().all(Value::is_object) {
         let rare = rare::rare_rows(rows);

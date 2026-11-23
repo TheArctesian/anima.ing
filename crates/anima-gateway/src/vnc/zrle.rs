@@ -1,6 +1,4 @@
-//! ZRLE tiles (RFC 6143 Section 7.7.6), after the zlib stream: 64 x 64 tiles, each raw,
-//! one colour, a packed palette, run-length, or palette run-length. A pixel is three
-//! bytes: blue, green, red.
+//! ZRLE tiles (RFC 6143 Section 7.7.6); a pixel is three bytes: blue, green, red.
 
 use crate::screen::{Area, BYTES_PER_PIXEL};
 
@@ -8,7 +6,6 @@ use super::Malformed;
 
 const TILE: usize = 64;
 
-/// The unread tile bytes.
 struct Unread<'a>(&'a [u8]);
 
 impl<'a> Unread<'a> {
@@ -22,8 +19,7 @@ impl<'a> Unread<'a> {
         Ok(self.take(1)?[0])
     }
 
-    /// A run length: 1 and the sum of its bytes, where 255 means another byte follows. A
-    /// run longer than `most` is malformed, so the sum cannot grow without limit.
+    /// A run length is 1 plus the sum of its bytes, where 255 means another byte follows.
     fn run(&mut self, most: usize) -> Result<usize, Malformed> {
         let mut length = 1;
         loop {
@@ -39,8 +35,6 @@ impl<'a> Unread<'a> {
     }
 }
 
-/// Gives `draw` each tile of `area` with its pixels as red, green, blue, in order. The
-/// tile bytes must end with the last tile.
 pub(super) fn tiles(
     bytes: &[u8],
     area: Area,
@@ -68,14 +62,12 @@ pub(super) fn tiles(
     }
 }
 
-/// Adds `count` pixels of the blue-green-red `colour` to `rgb`.
 fn push(rgb: &mut Vec<u8>, colour: &[u8], count: usize) {
     for _ in 0..count {
         rgb.extend_from_slice(&[colour[2], colour[1], colour[0]]);
     }
 }
 
-/// Reads one tile into `rgb`.
 fn tile_pixels(unread: &mut Unread<'_>, tile: Area, rgb: &mut Vec<u8>) -> Result<(), Malformed> {
     let count = tile.width * tile.height;
     match unread.byte()? {
@@ -116,7 +108,6 @@ fn tile_pixels(unread: &mut Unread<'_>, tile: Area, rgb: &mut Vec<u8>) -> Result
     Ok(())
 }
 
-/// A tile of palette numbers packed into 1, 2 or 4 bits, each row filled to a whole byte.
 fn packed_palette(
     unread: &mut Unread<'_>,
     tile: Area,

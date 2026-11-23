@@ -1,4 +1,4 @@
-//! A release version, `MAJOR.MINOR.PATCH`, with the rule of BLD-002 and its order.
+//! A release version, `MAJOR.MINOR.PATCH`, with the rule of BLD-002.
 
 use std::{fmt, str::FromStr};
 
@@ -10,8 +10,7 @@ pub struct Version {
     patch: u32,
 }
 
-/// The text is not `MAJOR.MINOR.PATCH` with each part a number of 1 to 9 digits and no leading
-/// zero.
+/// The text is not `MAJOR.MINOR.PATCH` of numbers of 1 to 9 digits with no leading zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("a version is three numbers with dots between, such as 0.1.12")]
 pub struct VersionError;

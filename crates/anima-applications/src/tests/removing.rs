@@ -1,5 +1,3 @@
-//! `application_remove` (K10 Section 6.4.8).
-
 use super::{APPLICATION, DIGEST, FILES, FIRST, OF_ANIMA, PROJECT, World, commands, pulled};
 use crate::{Installed, Network, Plan, Refusal, Removal, Step, Volume, work::removal::removed};
 
@@ -11,7 +9,6 @@ fn removal(volumes: bool, images: bool) -> Removal {
     }
 }
 
-/// The arguments of each command of a plan, after the first four.
 fn verbs(plan: &Plan) -> Vec<String> {
     commands(plan)
         .iter()
@@ -22,7 +19,6 @@ fn verbs(plan: &Plan) -> Vec<String> {
         .collect()
 }
 
-/// The arguments of each command whose failure does not stop the plan, after the first four.
 fn attempts(plan: &Plan) -> Vec<String> {
     plan.steps
         .iter()
@@ -53,7 +49,6 @@ fn k10_6_4_8_a_removal_stops_the_project_from_the_kept_final_form_and_deletes_fi
         "--project-name {PROJECT} --project-directory {FILES} --file {FILES}/final-form.json down"
     );
     assert_eq!(verbs(&plan), [down]);
-    // `files/` is deleted in each case; `binds/` stays.
     assert_eq!(deleted(&plan), [FILES]);
 }
 
@@ -97,8 +92,7 @@ fn k10_6_4_8_files_is_deleted_directly_after_the_stop_and_also_when_a_step_fails
             _ => "other",
         })
         .collect();
-    // A failed `down` or a refused image removal never leaves `files/`, which holds the
-    // environment file and the final form. `binds/` goes only after a `down` that did not fail.
+    // `files/` holds the environment file and the final form, so it goes even after a failure.
     assert_eq!(
         kinds,
         [

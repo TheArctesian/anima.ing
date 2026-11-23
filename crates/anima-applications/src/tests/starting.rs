@@ -1,5 +1,3 @@
-//! The checks at the start (K10 Section 6.4.1).
-
 use super::World;
 use crate::{
     EngineKind,
@@ -19,7 +17,6 @@ fn of_root() -> Entry {
     }
 }
 
-/// A system engine: the program runs as the identifier 0.
 fn system() -> StartFacts {
     StartFacts {
         running_as: 0,
@@ -40,7 +37,6 @@ fn system() -> StartFacts {
     }
 }
 
-/// An engine of the user 501, who is the accepted user of the daemon.
 fn of_a_user() -> (World, StartFacts) {
     let mut world = World::new();
     let managed = world.settings.managed.as_mut().expect("on");
@@ -77,7 +73,7 @@ fn k10_6_4_1_it_refuses_to_start_while_manage_applications_is_off() {
 #[test]
 fn k10_6_4_1_the_owner_of_the_real_socket_is_the_user_that_the_program_runs_as() {
     let world = World::new();
-    // The program as the administrator with the engine of a user (SF-035).
+    // An administrator runs the program with the engine of a user (SF-035).
     let facts = StartFacts {
         socket_owner: 501,
         ..system()
@@ -146,8 +142,6 @@ fn k10_6_4_1_on_a_system_engine_the_accepted_user_cannot_connect_to_the_engine()
 fn k10_6_4_1_a_path_that_a_user_who_is_not_permitted_can_write_refuses_the_start() {
     let world = World::new();
     let writable = [
-        // The owner is neither the identifier 0, nor an administrator account, nor the user
-        // that the program runs as.
         Entry {
             owner: 1000,
             ..of_root()
@@ -190,7 +184,6 @@ fn k10_6_4_1_a_path_that_a_user_who_is_not_permitted_can_write_refuses_the_start
 fn k10_6_4_1_a_path_that_only_permitted_users_can_write_does_not_refuse_the_start() {
     let world = World::new();
     let permitted = [
-        // An administrator account owns it; a group whose members are each permitted.
         Entry {
             owner: 501,
             ..of_root()
@@ -237,7 +230,6 @@ fn k10_6_4_1_only_the_user_of_the_program_can_write_the_configuration_folder() {
             mode: 0o702,
             ..of_root()
         },
-        // Not even an administrator account.
         Entry {
             owner: 501,
             mode: 0o700,

@@ -9,7 +9,6 @@ use super::{Label, StateFilter, User, get, label_names, login, read, unreadable}
 
 const SUBJECT: &str = "issues";
 
-/// GitHub's `state_reason`, an open string: anything not named here is `Other`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CloseReason {
     Completed,
@@ -92,8 +91,6 @@ impl Raw {
     }
 }
 
-/// `GET /repos/{o}/{r}/issues`, newest first, 100 to a page.
-///
 /// # Errors
 /// A [`Problem`] when the repository name cannot go into a path.
 pub fn list_request(repository: &str, state: StateFilter, page: u32) -> Result<Request, Problem> {
@@ -109,8 +106,7 @@ pub fn list_request(repository: &str, state: StateFilter, page: u32) -> Result<R
     )
 }
 
-/// The issues of one page. An entry with the `pull_request` key is a pull request and is
-/// dropped, so a page can hold fewer than 100.
+/// A page can hold fewer than 100 issues, as its pull requests are dropped.
 ///
 /// # Errors
 /// A [`Problem`] when the status is not 200 or the body is not a list of issues.
@@ -127,8 +123,6 @@ pub fn list_parse(response: &Response<'_>) -> Result<Vec<Issue>, Problem> {
         .collect()
 }
 
-/// `GET /repos/{o}/{r}/issues/{number}`.
-///
 /// # Errors
 /// A [`Problem`] when the repository name cannot go into a path.
 pub fn one_request(repository: &str, number: u64) -> Result<Request, Problem> {

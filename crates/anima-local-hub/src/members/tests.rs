@@ -101,7 +101,6 @@ fn f_6_the_link_keeps_its_state_below_the_hub_root_and_sends_to_the_hubs_socket(
 
 #[test]
 fn f_6_a_socket_path_that_the_system_cannot_have_is_refused_before_the_link_starts() {
-    // The database's socket fits; the link's control socket, deeper below the root, does not.
     let root = |length: usize| {
         let root = PathBuf::from(format!("/{}", "r".repeat(length - 1)));
         Folders::new(root, PathBuf::from("/srv/s")).unwrap()
@@ -157,8 +156,7 @@ fn net_003_the_hub_listens_on_loopback_and_no_network_is_permitted_by_address() 
         value(&spec.env, "ANIMA_FILES_DIR"),
         Some("/srv/hub root/files")
     );
-    // NET-001: the link mode permits this computer and the link's devices; the hub refuses
-    // a list of networks beside the link's socket.
+    // NET-001: the hub refuses a list of networks beside the link's socket.
     for owned_by_s5 in [
         "ANIMA_PUBLIC_ORIGIN",
         "ANIMA_PERMITTED_NETWORKS",

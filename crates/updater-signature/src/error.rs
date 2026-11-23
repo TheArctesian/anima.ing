@@ -1,5 +1,4 @@
-/// Why a key file could not be opened or a file could not be signed or checked. Carries no key
-/// text, no password, no path and no signature: only the variant and its fixed text (LOG-007).
+/// Why a key file could not be opened or a file signed or checked; it carries no secret (LOG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum SignatureError {
     #[error("the file is not a minisign key")]

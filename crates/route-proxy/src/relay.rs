@@ -1,11 +1,5 @@
-//! One request from the client to the application and its answer back (Section 12.3). The head
-//! is the one that [`crate::head::rewrite`] wrote; the body goes as its `Content-Length` says and
-//! no byte more, so a second request on the same connection never reaches the application
-//! unread. The body must come before the deadline of its request ([`Body::by`]), so a client that
-//! sends one byte at a time cannot hold the stream. A WebSocket upgrade goes both ways as it is
-//! after the application's `101`. Each stream can end after a time with no byte ([`Idle`]), and
-//! the stream of a client also when one write to it does not finish in its time.
-//! Nothing here reads or logs a body.
+//! One request and its answer (Section 12.3). A body goes as its `Content-Length` says and no
+//! byte more, so a second request never reaches the application unread. Nothing reads or logs a body.
 
 use std::{
     future::Future as _,
@@ -26,22 +20,18 @@ use tokio::{
 
 use crate::head::{self, HEAD_MAX, Rewritten, Status};
 
-/// The most bytes read for the status line of an answer.
 const STATUS_MAX: usize = 16 * 1024;
 
-/// What one request moved.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Relayed {
     /// Bytes from the client to the application, the head included.
     pub bytes_in: u64,
-    /// Bytes from the application to the client.
     pub bytes_out: u64,
     /// The status of the application's answer; `None` for an answer that does not start with a
     /// status line.
     pub status: Option<u16>,
 }
 
-/// The body of a request as the relay gets it.
 #[derive(Clone, Copy, Debug)]
 pub struct Body<'a> {
     /// The bytes of the body that came with the head.
@@ -50,13 +40,10 @@ pub struct Body<'a> {
     pub by: Instant,
 }
 
-/// Sends the request to `app` and its answer to `client`. A WebSocket upgrade goes both ways
-/// only when the application answers `101`; any other answer goes back as a plain one and the
-/// connection ends (SF-332).
+/// A WebSocket upgrade goes both ways only when the application answers `101` (SF-332).
 ///
 /// # Errors
-/// An I/O error of either side; [`io::ErrorKind::TimedOut`] when the body is not all there by
-/// [`Body::by`].
+/// An I/O error of either side; [`io::ErrorKind::TimedOut`] when the body is late ([`Body::by`]).
 pub async fn relay<C, A>(
     client: &mut C,
     body: Body<'_>,
@@ -104,9 +91,6 @@ where
     Ok(relayed)
 }
 
-/// The head of one request within `wait`, written again for the application of `name`, and
-/// the bytes after it.
-///
 /// # Errors
 /// The [`Status`] that the proxy answers in place of the application.
 pub async fn read_request<S: AsyncRead + Unpin>(
@@ -123,12 +107,9 @@ pub async fn read_request<S: AsyncRead + Unpin>(
     Ok((head::rewrite(&head, name, client)?, early))
 }
 
-/// Why a head was not read.
 #[derive(Debug)]
 pub struct NoHead;
 
-/// Reads up to the end of a request head: the head and the bytes after it.
-///
 /// # Errors
 /// [`NoHead`] when the stream ends or fails first, or the head is longer than [`HEAD_MAX`].
 pub async fn read_head<S: AsyncRead + Unpin>(stream: &mut S) -> Result<(Vec<u8>, Vec<u8>), NoHead> {
@@ -150,8 +131,6 @@ pub async fn read_head<S: AsyncRead + Unpin>(stream: &mut S) -> Result<(Vec<u8>,
     }
 }
 
-/// The first bytes of the answer of the application, up to the end of its status line or
-/// [`STATUS_MAX`] bytes, whichever comes first.
 async fn status_line<A: AsyncRead + Unpin>(app: &mut A) -> io::Result<Vec<u8>> {
     let mut first = Vec::with_capacity(STATUS_MAX);
     let mut chunk = [0_u8; 1024];
@@ -173,15 +152,12 @@ pub fn status(bytes: &[u8]) -> Option<u16> {
     std::str::from_utf8(code).ok()?.parse().ok()
 }
 
-/// A stream that fails with [`io::ErrorKind::TimedOut`] when no byte moved through it, in either
-/// direction, for its idle time, or, with [`Idle::writes_within`], when one write does not finish
-/// in its time: the least rate of a client that reads the answer (SF-327).
+/// A stream that times out after its idle time with no byte, or a write that is too slow (SF-327).
 pub struct Idle<S> {
     inner: S,
     after: Duration,
     deadline: Pin<Box<Sleep>>,
     write_within: Option<Duration>,
-    /// The end of the write that waits now.
     write_by: Option<Pin<Box<Sleep>>>,
 }
 
@@ -197,7 +173,6 @@ impl<S> Idle<S> {
         }
     }
 
-    /// The same stream, on which each write must finish within `within`.
     #[must_use]
     pub fn writes_within(self, within: Duration) -> Self {
         Self {
@@ -211,7 +186,6 @@ impl<S> Idle<S> {
         self.deadline.as_mut().reset(next);
     }
 
-    /// `Pending` stays pending until the idle time is over, then it is an error.
     fn waiting<T>(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<T>> {
         match self.deadline.as_mut().poll(cx) {
             Poll::Ready(()) => Poll::Ready(Err(io::ErrorKind::TimedOut.into())),
@@ -219,7 +193,6 @@ impl<S> Idle<S> {
         }
     }
 
-    /// A write that waits: an error when its time or the idle time is over.
     fn writing<T>(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<T>> {
         if let Some(within) = self.write_within {
             let by = self.write_by.get_or_insert_with(|| Box::pin(sleep(within)));

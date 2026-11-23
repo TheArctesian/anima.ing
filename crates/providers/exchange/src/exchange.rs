@@ -28,9 +28,7 @@ pub struct Request {
 }
 
 impl Request {
-    /// A `GET` of `path` with `query`. The path must start with `/` and hold no `://`, no `@`,
-    /// no `.` or `..` segment and no encoded dot, so the engine's URL is always `api_base` plus
-    /// this path.
+    /// A `GET` of `path` with `query`; the engine's URL is always `api_base` plus this path.
     ///
     /// # Errors
     /// [`RequestError`] when the path could point away from `api_base`.
@@ -55,8 +53,7 @@ impl Request {
     }
 }
 
-/// Whether `path` has a `.` or `..` segment, or a percent-encoded dot anywhere: a URL parser
-/// resolves either, and the request would leave the path it names.
+/// Whether `path` has a `.` or `..` segment or an encoded dot, either of which a URL parser resolves.
 fn has_dot_segment(path: &str) -> bool {
     path.split('/')
         .any(|segment| segment == "." || segment == "..")
@@ -77,15 +74,12 @@ pub struct Response<'a> {
 /// The body of a reply, as far as the engine read it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Body<'a> {
-    /// The whole body.
     Read(&'a [u8]),
-    /// The body was larger than the hub reads: the engine stopped at its cap and kept none of
-    /// it. The provider decides what that means for the request it made.
+    /// The body was larger than the hub reads, and none of it was kept.
     TooLarge,
 }
 
-/// Something wrong the provider saw that the operator should read. Fixed words, never a
-/// provider reply (LOG-007).
+/// Something wrong the operator should read, in fixed words, never a provider reply (LOG-007).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Problem {
     pub code: &'static str,

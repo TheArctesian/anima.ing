@@ -17,7 +17,6 @@ fn mode_of(path: &Path) -> u32 {
     fs::metadata(path).unwrap().permissions().mode() & 0o777
 }
 
-/// What `pg_controldata` prints for the cluster, as `label` to value.
 fn control_value(layout: &Layout, label: &str) -> String {
     let output = local_tree()
         .command(Program::PgControldata)
@@ -143,7 +142,6 @@ fn db_003_a_user_name_means_only_itself_in_the_map() {
     assert!(!is_plain_user_name(""));
 }
 
-/// A tree whose `initdb` fails as the real one does: its error line on standard error.
 fn tree_with_a_failing_initdb(folder: &Path) -> Tree {
     let bin = folder.join("tree/bin");
     fs::create_dir_all(&bin).unwrap();

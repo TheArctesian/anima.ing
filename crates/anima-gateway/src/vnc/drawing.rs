@@ -1,8 +1,5 @@
-//! Drawing an update's rectangles into the screen copy (RFC 6143 Section 7.7): Raw,
-//! `CopyRect`, Zlib, ZRLE and the desktop-size message.
-//!
-//! Everything a device sends is limited here before it costs memory: inflated data may
-//! not be longer than its rectangle's pixels need.
+//! Drawing an update's rectangles into the screen copy (RFC 6143 Section 7.7).
+//! Inflated data is never longer than its rectangle's pixels need.
 
 use flate2::{Decompress, FlushDecompress, Status};
 
@@ -10,13 +7,10 @@ use super::Malformed;
 use super::messages::{Body, PIXEL_BYTES, Rect};
 use crate::screen::{Area, BYTES_PER_PIXEL, Screen};
 
-/// The two zlib streams of a session. Each lives as long as the session, so each packed
-/// rectangle must be inflated, in order, exactly once.
+/// The two zlib streams of a session; each packed rectangle is inflated in order, exactly once.
 pub(super) struct Inflaters {
     zlib: Decompress,
     zrle: Decompress,
-    /// Space for inflated data and for pixels on their way to the screen, kept between
-    /// rectangles.
     inflated: Vec<u8>,
     rgb: Vec<u8>,
 }
@@ -33,7 +27,7 @@ impl Default for Inflaters {
 }
 
 impl Inflaters {
-    /// Draws `rects`, in order, into `screen`. Returns whether the screen got a new size.
+    /// Returns whether the screen got a new size.
     pub(super) fn draw(
         &mut self,
         rects: &[Rect<'_>],
@@ -79,7 +73,6 @@ impl Inflaters {
         Ok(resized)
     }
 
-    /// Writes pixels that arrive as blue, green, red and one unused byte.
     fn write_bgrx(
         &mut self,
         screen: &mut Screen,
@@ -101,7 +94,6 @@ impl Inflaters {
     }
 }
 
-/// Inflates all of `packed` into `out`, which may not become longer than `most`.
 fn inflate(
     stream: &mut Decompress,
     packed: &[u8],

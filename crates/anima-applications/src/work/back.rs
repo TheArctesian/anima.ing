@@ -1,5 +1,4 @@
-//! `application_back` (contract K10 Section 6.4.9): brings one application back to the kept
-//! version, by the six steps of Section 6.4.4 of today, with the kept digests and no pull.
+//! `application_back` (K10 Section 6.4.9): one application back to the kept version, with no pull.
 
 use compose_rules::Rule;
 
@@ -12,8 +11,7 @@ use super::{
 };
 use crate::{Refusal, Step};
 
-/// The kept Compose file and the kept environment file, as the program reads them from
-/// `files/` of the application. `{:?}` shows only their lengths.
+/// The kept Compose file and environment file, as read from `files/` of the application.
 #[derive(Clone, Copy)]
 pub struct Kept<'a> {
     pub compose: &'a [u8],
@@ -33,8 +31,7 @@ impl std::fmt::Debug for Kept<'_> {
 /// The check of `application_back` before the program reads the kept files.
 ///
 /// # Errors
-/// `applications_off`; `nothing_kept` when the application has no kept version, also after
-/// an earlier `application_back`; `protected`, `name_taken` and `busy` as for an apply.
+/// `applications_off`, `nothing_kept`, or `protected`, `name_taken` and `busy` as for an apply.
 pub fn accepted(application: &str, facts: &Facts<'_>) -> Result<(), Refusal> {
     managed(facts)?;
     let installed = facts.records.installed(application);
@@ -47,14 +44,11 @@ pub fn accepted(application: &str, facts: &Facts<'_>) -> Result<(), Refusal> {
     project_checked(application, facts)
 }
 
-/// The plan of `application_back`: the final form made again from the kept files by the
-/// rules of today, started with the kept digests. It sets no tag on an image. When the
-/// start did not fail, the kept version is deleted, so that a second `application_back` is
-/// refused until the next `application_apply`, and the kept records become the current ones.
+/// The plan of `application_back`: the kept files under today's rules, started with the kept
+/// digests; the kept version is then deleted, so a second `application_back` is refused.
 ///
 /// # Errors
-/// Each refusal of [`accepted`]; `file_not_permitted` and `not_at_machine` when a kept file
-/// breaks a rule of today; `no_digest` for a service with no kept digest.
+/// Each refusal of [`accepted`], or `file_not_permitted`, `not_at_machine` or `no_digest`.
 pub fn prepared(application: &str, kept: &Kept<'_>, facts: &Facts<'_>) -> Result<Planned, Refusal> {
     accepted(application, facts)?;
     let installed = facts.records.installed(application);

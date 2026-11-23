@@ -16,7 +16,6 @@ use windows::{
 static BUTTONS: GUID = GUID::from_u128(0x4f971e89_eebd_4455_a8de_9e59040e7347);
 static LID: GUID = GUID::from_u128(0x5ca83367_6e45_459f_a27b_476b1d01c936);
 
-/// Identity of a Windows power scheme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Scheme(GUID);
 

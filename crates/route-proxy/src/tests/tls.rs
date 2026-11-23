@@ -1,5 +1,3 @@
-//! A certificate serves only the name it is valid for.
-
 use zeroize::Zeroizing;
 
 use crate::{
