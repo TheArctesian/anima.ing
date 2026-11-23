@@ -87,24 +87,30 @@ pub fn update_at_start<R: Runtime>(app: &AppHandle<R>) {
     let app = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let copy = placement::destination(&home);
+        let user = this_user();
         let env = run::daemon_env(&home, |name| std::env::var_os(name));
         let read = |program: &Path| version::read(program, &env, VERSION_DEADLINE, &claim.stop);
-        let (installed, offered) = (read(&copy), read(&carried));
+        // The installed copy runs only when the install would trust it: never from a folder or
+        // a file that a different user can change, nor through a link.
+        let installed = update::copy_trusted(&copy, user)
+            .then(|| read(&copy))
+            .flatten();
+        let offered = read(&carried);
         if signature::of_program(&carried) == signature::Identity::NewEachBuild {
             log::info!(
                 "this build has no Developer ID signature: after an update, the Keychain asks the person once for the new daemon"
             );
         }
-        // The team of the bundle, read with its seal: a Developer ID build takes only a new copy
-        // of the same team, so a program put in the bundle after this check does not pass.
-        let bundle = bundle_of(&carried);
-        let sealed = bundle.as_deref().is_some_and(signature::sealed);
-        let team = bundle.as_deref().and_then(signature::team_of);
-        let signed = |part: &Path| signature::sealed_by(part, team.as_deref());
+        // The signer of the app that runs, read from its process: a Developer ID build takes
+        // only a bundle and a new copy of the same team, so a program put in the bundle after
+        // the start does not pass, and a signer that cannot be read lets nothing pass.
+        let this_app = signature::of_this_app();
+        let signed = |part: &Path| signature::sealed_by(part, &this_app);
+        let sealed = bundle_of(&carried).as_deref().is_some_and(signed);
         let swap = update::Swap {
             copy: &copy,
             carried: &carried,
-            user: this_user(),
+            user,
             env: &env,
             restart: super::INSTALL_DEADLINE,
             stop: &claim.stop,

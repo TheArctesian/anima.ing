@@ -10,7 +10,7 @@ use super::updates::{
 };
 use crate::daemon::{
     DaemonError,
-    update::{Updated, previous},
+    update::{Updated, copy_trusted, previous},
 };
 
 fn checked(rig: &super::rig::Rig, checks: Checks) -> Result<Updated, DaemonError> {
@@ -20,9 +20,17 @@ fn checked(rig: &super::rig::Rig, checks: Checks) -> Result<Updated, DaemonError
 #[test]
 fn r_updateall_a_link_at_the_copy_or_at_the_copy_of_before_is_refused_and_not_followed() {
     let (rig, _, _) = installed(OLD, NEW, "exit 0");
+    assert!(
+        copy_trusted(&rig.installed(), rig.user),
+        "a plain copy of this user"
+    );
     let elsewhere = rig.dir.path().join("elsewhere");
     fs::rename(rig.installed(), &elsewhere).expect("moved");
     std::os::unix::fs::symlink(&elsewhere, rig.installed()).expect("a link at the copy");
+    assert!(
+        !copy_trusted(&rig.installed(), rig.user),
+        "the start of the app does not run a copy behind a link to read its version"
+    );
 
     assert_eq!(
         checked(&rig, Checks::default()),
@@ -49,6 +57,10 @@ fn r_updateall_a_link_at_the_copy_or_at_the_copy_of_before_is_refused_and_not_fo
 fn r_updateall_a_copy_that_others_may_change_is_refused() {
     let (rig, old, _) = installed(OLD, NEW, "exit 0");
     fs::set_permissions(rig.installed(), fs::Permissions::from_mode(0o757)).expect("chmod");
+    assert!(
+        !copy_trusted(&rig.installed(), rig.user),
+        "nor a copy that others may change"
+    );
 
     assert_eq!(
         checked(&rig, Checks::default()),

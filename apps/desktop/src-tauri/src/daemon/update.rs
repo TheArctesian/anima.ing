@@ -120,7 +120,9 @@ pub fn previous(copy: &Path) -> PathBuf {
 pub fn update_here(swap: &Swap<'_>) -> Result<Updated, DaemonError> {
     let aside = previous(swap.copy);
     if fs::symlink_metadata(swap.copy).is_err() && placement::file_trusted(&aside, swap.user) {
-        // An update stopped between the two renames: the copy of before goes back.
+        // An update stopped between the two renames: the copy of before goes back, into a
+        // folder that the checks of the install trust.
+        folder_trusted(swap)?;
         put_back(swap.copy, &aside).map_err(|_| DaemonError::Copy)?;
     }
     if fs::symlink_metadata(swap.copy).is_err() {
@@ -144,12 +146,26 @@ fn read(swap: &Swap<'_>, program: &Path) -> Option<Version> {
     version::read(program, swap.env, VERSION_DEADLINE, swap.stop)
 }
 
+/// Whether the installed `copy` may run: its folder and each folder above it, and the copy
+/// itself, a plain file of `user` that no other user can change, as [`update_here`] checks them.
+pub fn copy_trusted(copy: &Path, user: User) -> bool {
+    copy.parent()
+        .is_some_and(|folder| placement::trusted_folder(folder, user).is_ok())
+        && placement::file_trusted(copy, user)
+}
+
+/// The folder of the copy and each folder above it: no other user can change them.
+fn folder_trusted(swap: &Swap<'_>) -> Result<(), DaemonError> {
+    let folder = swap.copy.parent().ok_or(DaemonError::Untrusted)?;
+    placement::trusted_folder(folder, swap.user).map_err(DaemonError::of_placement)?;
+    Ok(())
+}
+
 /// The checks of the hand install, before anything is moved or run: the folder of the copy and
 /// each folder above it, then the copy and a copy of before that waits, each a plain file of
 /// this user that no other user can change. A link at either place is refused, never followed.
 fn trusted(swap: &Swap<'_>, aside: &Path) -> Result<(), DaemonError> {
-    let folder = swap.copy.parent().ok_or(DaemonError::Untrusted)?;
-    placement::trusted_folder(folder, swap.user).map_err(DaemonError::of_placement)?;
+    folder_trusted(swap)?;
     let aside_ok =
         fs::symlink_metadata(aside).is_err() || placement::file_trusted(aside, swap.user);
     if placement::file_trusted(swap.copy, swap.user) && aside_ok {

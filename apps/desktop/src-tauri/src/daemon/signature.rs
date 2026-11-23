@@ -73,37 +73,90 @@ pub const fn sealed(_path: &Path) -> bool {
     true
 }
 
-/// The team that signed `path` (an app bundle); none for an ad hoc signature or one that could
-/// not be read.
-#[cfg(target_os = "macos")]
-pub fn team_of(path: &Path) -> Option<String> {
-    codesign(&["-d", "--verbose=2"], path).and_then(|(success, shown)| team(success, &shown))
+/// Who signed the app that runs, as the code in memory shows it: a program put in the bundle
+/// after the start does not change it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Signer {
+    /// A team with a Developer ID: each part must be signed by it.
+    Team(String),
+    /// An ad hoc signature (a build of a person): each part needs only its seal.
+    AdHoc,
+    /// The signature could not be read or is neither: no part passes.
+    Unknown,
 }
 
-/// No teams outside macOS.
-#[cfg(not(target_os = "macos"))]
-pub const fn team_of(_path: &Path) -> Option<String> {
-    None
+/// The signer from what `codesign -d --verbose=2` showed of the running app and whether it
+/// succeeded, and whether the running code verified.
+#[cfg_attr(
+    all(not(target_os = "macos"), not(test)),
+    expect(dead_code, reason = "read only on macOS and by its tests")
+)]
+pub fn signer(success: bool, shown: &str, valid: bool) -> Signer {
+    if !(success && valid) {
+        return Signer::Unknown;
+    }
+    if let Some(team) = team(success, shown) {
+        return Signer::Team(team);
+    }
+    let ad_hoc = shown.lines().any(|line| line.trim() == "Signature=adhoc");
+    if ad_hoc {
+        Signer::AdHoc
+    } else {
+        Signer::Unknown
+    }
 }
 
-/// Whether the seal of the program `path` verifies and, when `team` names one, the program was
-/// signed by that team with a Developer ID: a program of a different signer, also one with a
-/// seal of its own, does not pass. With no team (an ad hoc build) only the seal is checked.
+/// The signer of this running app, read from its process: the team is never taken from the
+/// files of the bundle, which can change after the start.
 #[cfg(target_os = "macos")]
-pub fn sealed_by(path: &Path, team: Option<&str>) -> bool {
-    let Some(team) = team else {
-        return sealed(path);
-    };
-    let requirement =
-        format!("=anchor apple generic and certificate leaf[subject.OU] = \"{team}\"");
-    codesign(&["--verify", "--strict", "-R", &requirement], path)
-        .is_some_and(|(success, _)| success)
+pub fn of_this_app() -> Signer {
+    let pid = std::process::id().to_string();
+    let process = Path::new(&pid);
+    let valid = codesign(&["--verify"], process).is_some_and(|(success, _)| success);
+    codesign(&["-d", "--verbose=2"], process).map_or(Signer::Unknown, |(success, shown)| {
+        signer(success, &shown, valid)
+    })
 }
 
 /// No seals outside macOS.
 #[cfg(not(target_os = "macos"))]
-pub const fn sealed_by(_path: &Path, _team: Option<&str>) -> bool {
+pub const fn of_this_app() -> Signer {
+    Signer::AdHoc
+}
+
+/// Whether the seal of `path` (the bundle or a program) verifies for `signer`: for a team, also
+/// that the team signed it with a Developer ID, so a program of a different signer, also one
+/// with a seal of its own, does not pass; for an ad hoc app only the seal; for an unknown
+/// signer nothing passes.
+#[cfg(target_os = "macos")]
+pub fn sealed_by(path: &Path, signer: &Signer) -> bool {
+    match signer {
+        Signer::Team(team) => {
+            let requirement = developer_id(team);
+            codesign(&["--verify", "--strict", "-R", &requirement], path)
+                .is_some_and(|(success, _)| success)
+        }
+        Signer::AdHoc => sealed(path),
+        Signer::Unknown => false,
+    }
+}
+
+/// No seals outside macOS.
+#[cfg(not(target_os = "macos"))]
+pub const fn sealed_by(_path: &Path, _signer: &Signer) -> bool {
     true
+}
+
+/// The requirement of a Developer ID Application certificate of `team`: Apple's chain, the
+/// Developer ID intermediate, the Developer ID Application leaf and the team.
+#[cfg_attr(
+    all(not(target_os = "macos"), not(test)),
+    expect(dead_code, reason = "read only on macOS and by its tests")
+)]
+fn developer_id(team: &str) -> String {
+    format!(
+        "=anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = \"{team}\""
+    )
 }
 
 /// Runs `/usr/bin/codesign` with `args` on `path`, with no environment: whether it succeeded and
@@ -174,5 +227,38 @@ mod tests {
         assert_eq!(identity(true, ""), Identity::NewEachBuild);
         assert_eq!(team(true, developer_id).as_deref(), Some("ABCDE12345"));
         assert_eq!(team(true, ad_hoc), None);
+    }
+
+    #[test]
+    fn hmd_055_only_a_team_or_an_ad_hoc_app_that_verifies_lets_a_part_pass() {
+        let developer_id = "Identifier=ing.anima\nTeamIdentifier=ABCDE12345\n";
+        let ad_hoc = "Identifier=ing.anima\nSignature=adhoc\nTeamIdentifier=not set\n";
+        assert_eq!(
+            signer(true, developer_id, true),
+            Signer::Team("ABCDE12345".to_owned())
+        );
+        assert_eq!(signer(true, ad_hoc, true), Signer::AdHoc);
+        assert_eq!(
+            signer(true, developer_id, false),
+            Signer::Unknown,
+            "running code that does not verify"
+        );
+        assert_eq!(
+            signer(false, developer_id, true),
+            Signer::Unknown,
+            "a read that failed falls closed, never to the seal alone"
+        );
+        assert_eq!(
+            signer(true, "Identifier=ing.anima\n", true),
+            Signer::Unknown
+        );
+        assert!(developer_id_requirement_names_the_team());
+    }
+
+    fn developer_id_requirement_names_the_team() -> bool {
+        let requirement = developer_id("ABCDE12345");
+        requirement.contains("1.2.840.113635.100.6.2.6")
+            && requirement.contains("1.2.840.113635.100.6.1.13")
+            && requirement.ends_with("certificate leaf[subject.OU] = \"ABCDE12345\"")
     }
 }
