@@ -8,7 +8,7 @@ R-339, R-342, R-326; each stricter form is a setting at the machine,
 Section 10.1. Version 0.1, 2026-11-20, was the text of the first security read; version 0.2 has the corrections of
 its 14 plain findings, and the safe default of its 4 findings that wait for the operator, marked "until the
 operator decides"; [security-findings.md](../../docs/security-findings.md), the section of the model work).
-R-344 gives this contract the number K11. Task L1-3 of [compute-plan.md](../../docs/plans/compute-plan.md) Section 12.4. Code may be built from this text
+R-344 gives this contract the number K11. The security review SEC-C-012 (a separate reviewer, 2026-11-22) tightened the text inside what R-344 permits (the operator's relayed direction: no new ruling); its findings are SF-NEW-k11a to SF-NEW-k11i. R-NEW-servernet (operator, 2026-11-22) sets no network block on a model server by default (Sections 4 and 9; SF-300 accepted). Task L1-3 of [compute-plan.md](../../docs/plans/compute-plan.md) Section 12.4. Code may be built from this text
 (R-344; CON-001, AGT-004). Change it only through a programme ruling.
 
 Requirements: CAG-002 to CAG-006, CAG-008, CAG-009, PULL-004 to PULL-011, RTC-002 to RTC-006, SEC-C-001,
@@ -80,9 +80,13 @@ a command, an argument, a flag or an environment variable.
   `llama_server`, `b` and digits). `backend` is `metal`, `cuda`, `rocm`, `vulkan` or `cpu`.
 - `source.organisation` and `source.repository` have only the characters that Hugging Face permits for a name:
   letters, digits, `-`, `_` and `.`, at most 96 characters, not `.` or `..`. `revision` is a commit of the
-  repository, never a branch name: a branch can change after the hub read its file list.
-- `files[].name` is a path inside the repository: segments of the characters above and `/`, no segment `.` or
-  `..`, no leading `/`, at most 256 characters, at most 64 files. `sizeBytes` is above 0. The daemon makes each
+  repository, never a branch name: a branch can change after the hub read its file list. It is exactly 40
+  lower-case hexadecimal characters (`0-9`, `a-f`); each other value is refused (`member_unknown`)
+  (SEC-C-012, SF-NEW-k11c).
+- `files[].name` is a flat file name at the root of the repository, permitted by the list of Section 2.2 for
+  the format: only the characters above, no `/`, no `..`, no `%`, no control character, at most 256 characters,
+  at most 64 files. Two names that are equal when they are in lower case are refused (as in the unpack of
+  Section 6) (SEC-C-012, SF-NEW-k11c). `sizeBytes` is above 0. The daemon makes each
   address from a fixed pattern (Section 7).
 - `probe` is a word of a fixed list in the daemon. Today: `text_short` (one fixed prompt, a fixed answer check)
   and `vision_short` (one fixed image in the daemon program). The hub sends no prompt.
@@ -112,7 +116,9 @@ The values that the daemon sets:
 - Host: `127.0.0.1` only (RTC-006, SEC-C-001). Never `0.0.0.0`, `::` or a name.
 - Port: a free port that the daemon selects from the range in its configuration, default 41000 to 41999.
 - API key: a random key of 32 bytes that the daemon makes for each start, gives to the process in its
-  environment (never on its command line), and holds in memory only. It is not the model key of L1-9.
+  environment (never on its command line), and holds in memory only. It is not the model key of L1-9. The key protects a server only against other users of
+  the machine and against browser pages; a process of the same user can read the environment of the runtime, so
+  the key is no limit against such a process (SEC-C-012, SF-NEW-k11i).
 - Parallel slots: from the memory share of the device policy and the fit estimate of the copy, by a pure function
   in `daemon-core`.
 - Remote code: off. For vLLM the daemon passes no `--trust-remote-code` and sets the refusal of remote code in
@@ -142,8 +148,8 @@ daemon, and the daemon refuses each other file of `files` (`file_type`) before i
 | `gguf` | `*.gguf` |
 | `safetensors`, `mlx` | `*.safetensors`, `*.safetensors.index.json`, `config.json`, `generation_config.json`, `tokenizer.json`, `tokenizer_config.json`, `special_tokens_map.json`, `*.model` (a SentencePiece file), `chat_template.jinja`, `preprocessor_config.json` |
 
-- Each `.bin`, `.pt`, `.pth`, `.pkl`, `.py`, `.npz`, `.ckpt` and `.h5` file is refused (`file_type`), also when
-  its name is in a sub-folder.
+- Each `.bin`, `.pt`, `.pth`, `.pkl`, `.py`, `.npz`, `.ckpt` and `.h5` file is refused (`file_type`). A name in a
+  sub-folder is refused too (Section 2).
 - Before a load, the daemon reads `config.json` and `tokenizer_config.json` of the copy with a JSON parser. It
   refuses the copy (`remote_code`) when one of them has the member `auto_map` or `custom_pipelines`, or names a
   class that is not in the list of the runtime.
@@ -201,7 +207,7 @@ daemon, and the daemon refuses each other file of `files` (`file_type`) before i
 | Hugging Face | The fetch process (below) | HTTPS only, to `huggingface.co` and the file hosts that the daemon holds in a fixed list. It follows a redirect only to a host of that list. |
 | Release source of a runtime | The fetch process | HTTPS only, to the address of the daemon configuration (Section 6). Redirects only to a host of the fixed list for that runtime. |
 | A model server | The probe process (below) | `http://127.0.0.1:<port>` of a server that the daemon started, for `model_measure` and the check of a start only. Before each request it confirms that the listener of that port belongs to the process tree of that server (Section 9). |
-| Each other address | A runtime | None. A runtime makes no outgoing connection: its environment (Section 2.1) turns off each fetch of Hugging Face and each report of use, it gets no media address, and the isolation of Section 9 refuses the network outside loopback where the system can do it. |
+| Each other address | A runtime | No block by default (R-NEW-servernet; SF-300 accepted). The daemon does not stop an outgoing connection of a runtime. What it does: the server listens on loopback only (Section 2.1; a LAN switch of the operator is not in this version); the environment of Section 2.1 is cleaned, holds no token, and sets the offline and no-telemetry variables, which a runtime can ignore; only GGUF and safetensors files load, with the `remote_code` refusal (Section 2.2); media only as a `data:` URL. The isolation of Section 9 (`sandbox`, off by default) refuses the network outside loopback where the system can do it. |
 
 Rules of the fetch process (both sources):
 
@@ -219,10 +225,11 @@ standard input as JSON from the daemon, and give back fixed codes and numbers. T
 to the hub makes no other connection. This follows K10 point W1-P1. MET-020 has this exception in its text
 (MW-P1, R-344).
 
-**For task L1-6 only (R-336).** The build of task L1-6 downloads a runtime archive in the daemon
-process, with a client of its own that holds no token, no hub origin and no proxy, and verifies the SHA-256 before it
-opens the archive. This is permitted for `runtime_install` of task L1-6 only. The child fetch process of this section
-is built before task L1-7 (task L1-6b of the compute plan), and task L1-7 does not start without it.
+The limit of this separation (SEC-C-012, SF-NEW-k11e): the fetch process and the probe process run as the user
+of the daemon, with each file right of that user. "No daemon token" means that the daemon does not give them the
+token; a fault in such a process can still read the daemon folder, the configuration and the token from disk.
+The separation keeps the token out of their memory and their environment, not out of their reach. (The earlier
+exception of R-336 for task L1-6 is removed: the child fetch process is built, task L1-6b; SF-NEW-k11h.)
 
 ## 5. What the daemon checks, and the causes of a refusal
 
@@ -267,6 +274,9 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
   writes it at the machine. The hub cannot write it. A daemon release has a default file of entries that the
   release signs (K8 Section 8); a value of the operator replaces a default entry.
 - Each entry also has `sizeBytes`, the largest size of the archive. The fetch process reads no more.
+- An entry with no SHA-256 is refused (`runtime_not_configured`), in the default file and in the value of the
+  operator. The pinned SHA-256 is the control of the archive; the list of hosts of a release source (for
+  GitHub, a broad list) is not (SEC-C-012, SF-NEW-k11g).
 - The archive is a `.tar.gz` (or `.tgz`) or a `.zip`, by the end of the path of its address; another form is
   `runtime_not_configured` (R-329). Each rule of the unpack below applies to both forms in the same way;
   a `.zip` entry that is a symbolic link, or that is encrypted, is refused, and the declared size of an entry
@@ -274,8 +284,9 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
 - The daemon downloads the archive with the fetch process and verifies the SHA-256 before it opens the archive.
   It unpacks it into a new temporary folder, then renames that folder to `runtimes/<runtime>/<version>-<backend>/`
   of its runtime folder (Section 10). It accepts only regular files and folders: it refuses an entry that is a
-  symbolic link, a hard link, a device, a FIFO, an absolute path or a path with `..`, and two entries whose names
-  are equal when they are in lower case. It sets the mode of each folder and of each program file to 0755 and of
+  symbolic link, a hard link, a device, a FIFO, an absolute path or a path with `..`, an entry whose name has a
+  character outside ASCII (two names can be equal after Unicode normalisation on APFS; SEC-C-012, SF-NEW-k11f),
+  and two entries whose names are equal when they are in lower case. It sets the mode of each folder and of each program file to 0755 and of
   each other file to 0644; it clears each setuid, setgid and sticky bit. It stops at 8 GiB of unpacked bytes or at
   50,000 entries (`limit_disk`).
 - The daemon program holds the lowest version of each runtime that it accepts, and a list of versions with a
@@ -294,7 +305,10 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
 - **The source.** The daemon downloads each file directly from Hugging Face to its model cache. The files do not
   go through the hub (PULL-004). The address is
   `https://huggingface.co/<organisation>/<repository>/resolve/<revision>/<file>`, made by the fetch process from
-  the parameters; each part is encoded as a path segment.
+  the parameters; each part is encoded as a path segment. `revision` and each file name are checked by the
+  rules of Section 2 before the address is made. The daemon writes each file with `openat` relative to the
+  folder of the copy, a folder of mode 0700, with `O_NOFOLLOW` and `O_EXCL`, so a name never leaves that folder
+  and never opens a file that is there (SEC-C-012, SF-NEW-k11c).
 - **The approved organisations.** The hub holds the approved list (LIBM-003). The machine holds its own list too,
   and refuses a pull from an organisation that is not in it (`source_not_permitted`). By R-342, the default list of the machine (the setting `organisations`, Section 10.1) is `unsloth`,
   `mlx-community` and the publishers that the release of the daemon names; the owner of the machine changes it
@@ -316,6 +330,11 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
   `Range` request. A part is 16 MiB. The SHA-256 state is kept with each complete part, so the daemon does not
   read the file again. When the source answers 200 in place of 206, the daemon starts that file again from 0.
   The partial folder survives a restart of the daemon; the next `model_pull` of the same copy continues it.
+  The files of `partial/` belong to the user of the daemon, and a runtime runs as that user (R-346), so their
+  bytes can change between two parts. Thus, before the move to `copies/`, the daemon reads the whole file again
+  and computes its SHA-256 from byte 0; only that value counts for the check. (A build that holds each partial
+  file open through one descriptor for the whole life of the pull, and never opens it again by name, may skip
+  the second read for a pull with no restart.) (SEC-C-012, SF-NEW-k11a.)
   The bytes of `partial/` count in the disk share and in `cacheBytes`. The daemon deletes a partial copy that no
   pull touched for 7 days, and at `copy_delete` of that copy. It holds at most 4 partial copies; a fifth pull
   is refused (`disk_share`).
@@ -331,9 +350,14 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
   the token from the key vault of E0-6 (K-E5) when the holder asks for it, and not before. The daemon asks for it
   in `preparing`, gives it to the fetch process on its standard input, and to no other process. It writes it to
   no file, no log, no command line and no environment variable. The operator must give a fine-grained token of
-  Hugging Face with read access to gated repositories only; the hub says so where he enters it. The fetch process sends it only in the
-  `Authorization` header of a request to `huggingface.co`, and drops it at a redirect to a different host. The
-  Rust types that hold it implement neither `Debug`, `Display` nor `Clone`, and wipe on drop. The hub writes
+  Hugging Face with read access to gated repositories only; the hub says so where he enters it. The fetch
+  process sends it only when `gated` is true, only in the `Authorization` header, only to the host
+  `huggingface.co`, and only on a `/resolve/` request; it drops it at a redirect to each other host. A test shows
+  that the header is not sent on the redirect from `huggingface.co` to `cas-bridge.xethub.hf.co`; the code strips
+  it itself and does not depend on the default of an HTTP library (SF-303). In the order, `hf_token` is a type of
+  its own: it wipes its bytes on drop, implements neither `Debug`, `Display` nor `Clone`, and is never serialised
+  back into a message or a report. The fetch process is not dumpable: it sets `PR_SET_DUMPABLE` to 0 (Linux) and
+  `RLIMIT_CORE` to 0 before it reads the token (SEC-C-012, SF-NEW-k11d). The hub writes
   each release to the audit log without the value (K10 Section 8). No command, MCP tool or query gives it
   (MCP-004).
 - **The key vault on dev.** The operational keys of K-E5 Section 2 are built on `dev` and wait for the human
@@ -424,8 +448,12 @@ of the batches between.
   it is installed. The runtime can read its runtime folder and its copies, write only its temporary folder,
   and listen and connect only on loopback. It cannot read the daemon folder (the token and the configuration),
   the home folder of the user or the other folders of the daemon. When the daemon cannot make the isolation, the
-  start fails (`isolation_failed`); there is no start with less isolation. With the setting off, the environment
-  and the flags of Section 2.1 still apply, and the loopback check below is the only control of the network.
+  start fails (`isolation_failed`); there is no start with less isolation. With the setting off (the default),
+  nothing blocks an outgoing connection of a runtime (R-NEW-servernet; SF-300 accepted). What stays required:
+  the listener on loopback only (a LAN switch of the operator is not in this version), the cleaned environment
+  with no token and with the offline and no-telemetry variables, only GGUF and safetensors with the
+  `remote_code` refusal (Section 2.2), and the loopback check below for the listeners. The isolation stays a
+  setting that the owner of the machine can set on.
 
 - **The tree of a server, and what the loopback check binds (R-331).** Without the sandbox, the
   loopback check below constrains an honest runtime only: a runtime that is not honest can make outgoing
