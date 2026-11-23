@@ -69,11 +69,23 @@ export interface PermissionMode {
   readonly can: Can;
 }
 
+/** Why the list has fewer models than the programs offer: they have not come yet, or they could not load. */
+export interface ModelsNotice {
+  /** The whole reason, as the runner gave it. */
+  readonly words: string;
+  /** The models could not load: the picker offers to ask again. */
+  readonly failed: boolean;
+  /** Still waiting: when the first unanswered ask went out, in milliseconds since the epoch. */
+  readonly since?: number;
+}
+
 /** All that the picker offers. The order of `providers` and of `models` is the order shown. */
 export interface Catalogue {
   readonly providers: readonly Provider[];
   readonly models: readonly Model[];
   readonly modes: readonly PermissionMode[];
+  /** Shown on a line of its own under the list, never in a row. */
+  readonly notice?: ModelsNotice;
 }
 
 /** What is picked now. */
@@ -278,4 +290,18 @@ export function describeEffort(model: Model | undefined, value: Choice, display:
     bolt,
     detail: [reasoning, ...on].filter((part) => part !== '').join(' · '),
   };
+}
+
+/** The families a maker puts before the version of a model; T3 Code's `modelShortName` drops them. */
+const FAMILIES = /^(claude|gpt|gemini|grok)[\s-]+/i;
+
+/**
+ * The short name of a model for the trigger and the head of the levels (T3 Code `modelShortName.ts`): a maker's
+ * "Vendor: " and its family go when what is left names a model, that is, holds a version number. "GPT-5.4-Codex" is
+ * "5.4 Codex"; "Claude Code default" stays whole. Pure.
+ */
+export function shortName(label: string): string {
+  const bare = label.replace(/^[^:]{1,24}:\s+/, '');
+  const rest = bare.replace(FAMILIES, '');
+  return rest !== bare && /\d/.test(rest) ? rest.replace(/-/g, ' ') : bare;
 }

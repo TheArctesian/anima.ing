@@ -5,7 +5,7 @@
 use std::io::Write as _;
 use std::path::Path;
 
-use agent_threads::control::{Change, Limits, Listing, Project, RunState, Workspace};
+use agent_threads::control::{Change, Limits, Listing, Project, Queued, RunState, Workspace};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -75,7 +75,20 @@ pub fn write(dir: &Path, record: &Record) -> std::io::Result<()> {
         .open(&new)?;
     file.write_all(&text)?;
     file.sync_all()?;
-    std::fs::rename(new, dir.join(FILE))
+    std::fs::rename(new, dir.join(FILE))?;
+    // The new name is on the disk only when the folder is too. A disk that cannot sync a
+    // folder (some network and FAT disks) keeps the record as its files are kept.
+    match std::fs::File::open(dir)?.sync_all() {
+        Err(error)
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::Unsupported | std::io::ErrorKind::InvalidInput
+            ) =>
+        {
+            Ok(())
+        }
+        synced => synced,
+    }
 }
 
 /// Makes the folder of the threads, and checks that it is a private folder of this user.
@@ -135,6 +148,8 @@ impl Runner {
             let id = thread.row.id;
             let steps = thread.settle_answering();
             self.threads.insert(id, thread);
+            // A thread of a record from before the mark gets it now (TH61).
+            self.mark_started(id);
             for step in steps {
                 if let Step::Change(change) = step {
                     self.publish(id, change);
@@ -177,6 +192,13 @@ impl Runner {
 impl Runner {
     /// Writes the record, after it lets go of the oldest stopped threads.
     pub(super) fn save(&mut self) {
+        // A record that was not written is logged; the threads go on.
+        let _ = self.written();
+    }
+
+    /// Writes the record, after it lets go of the oldest stopped threads; whether it was
+    /// written.
+    pub(super) fn written(&mut self) -> bool {
         let mut stopped: Vec<(chrono::DateTime<chrono::Utc>, Uuid)> = self
             .threads
             .values()
@@ -197,8 +219,48 @@ impl Runner {
             listings: self.listings.values().cloned().collect(),
             projects: self.projects.clone(),
         };
-        if let Err(error) = write(&self.dir, &record) {
-            tracing::warn!(%error, "the record of the runner was not written");
+        match write(&self.dir, &record) {
+            Ok(()) => true,
+            Err(error) => {
+                tracing::warn!(%error, "the record of the runner was not written");
+                false
+            }
         }
+    }
+}
+
+impl Runner {
+    /// Whether `line` of thread `id` is held back. A turn that leaves the profile may be taken
+    /// while the runner is down: the record says that the profile is gone before its line goes,
+    /// or the line does not go and the turn ends (THR-041).
+    pub(super) fn held_back(&mut self, id: Uuid, line: &str) -> bool {
+        let leaves = self
+            .threads
+            .get(&id)
+            .is_some_and(|thread| thread.leaves_with(line));
+        if !leaves || self.written() {
+            return false;
+        }
+        let ended = self
+            .threads
+            .get_mut(&id)
+            .map(|thread| thread.held_back(line));
+        for step in ended.unwrap_or_default() {
+            self.own_step(id, step, None);
+        }
+        true
+    }
+
+    /// The prompt of the queue whose line was held back waits again, first; whether it does.
+    pub(super) fn waits_first(&mut self, id: Uuid, queued: &Queued) -> bool {
+        let back = self
+            .threads
+            .get_mut(&id)
+            .and_then(|thread| thread.put_back(queued.id, queued.text.clone()));
+        let waits = back.is_some();
+        if let Some(back) = back {
+            self.own_step(id, back, None);
+        }
+        waits
     }
 }

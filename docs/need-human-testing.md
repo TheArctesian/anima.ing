@@ -410,8 +410,8 @@ sources, the command line and the environment, the waits of a restart, the loopb
 folders) and `crates/daemon/src/model/` (the claim and the report through the work route,
 `runtime_install`, `server_start`, `server_stop`, the supervision, `model_report`), task L1-6 of
 the compute plan (CAG-001 to CAG-009, RTC-002 to RTC-006, SEC-C-001, SEC-C-007, SEC-C-008). The
-contract is `contracts/compute/model-work.md` version 0.3, which waits for R-344 and the
-security review SEC-C-012. The tests use a scripted hub and a scripted runtime (a Perl program);
+contract is `contracts/compute/model-work.md` version 0.3 (K11), accepted by R-344; the
+security review SEC-C-012 still runs, and SF-298 and SF-300 are Open. The tests use a scripted hub and a scripted runtime (a Perl program);
 no test downloads a real release or starts a real `llama-server`. The claim loop is not yet
 started by the running daemon: the switch at the machine (USE-004) does not exist in the daemon.
 Thus this check needs a small test program or a test build that calls `model::cycle::Node::cycle`.
@@ -2583,6 +2583,12 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
+
+Run on 2026-11-23 by a session on `pop-os`, with Podman already installed: steps 1 to 4 gave the expected output, after an
+empty login file for Podman (its stored login for Docker Hub was refused). The log is in the record, with the name of
+the user removed, and the results are its Section 3.5.
+
+Result: Open.
 
 ### HT-133: the public names of applications through the route proxy (task H21)
 

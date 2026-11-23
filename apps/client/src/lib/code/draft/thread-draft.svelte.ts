@@ -45,8 +45,8 @@ export class ThreadDraft {
     this.folder = folder;
   }
 
-  /** The composer's engine for this draft: `call` is the runner, `started` takes the new thread. */
-  engine(call: (action: Action) => Promise<CallResult>, started: (thread: string) => void, models: DraftModels): ComposerEngine {
+  /** The composer's engine for this draft: `call` is the runner, `started` takes the new thread, `retry` asks for the models again. */
+  engine(call: (action: Action) => Promise<CallResult>, started: (thread: string) => void, models: DraftModels, retry?: () => void): ComposerEngine {
     return {
       phase: 'idle',
       ended: null,
@@ -63,6 +63,7 @@ export class ThreadDraft {
       sendQueued: refused(NO_QUEUE),
       pick: CAN,
       ...draftCatalogue(this.choice, models),
+      ...(retry === undefined ? {} : { askModels: retry }),
       choose: (next) => {
         this.choice = chosen(this.choice, next);
         return Promise.resolve({ ok: true });
