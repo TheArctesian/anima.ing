@@ -155,3 +155,35 @@ After connecting the OS to your private hub, use `anima ssh <device>` for a CLI 
 New hosted enrollments enable the device's SSH and RDP settings. An existing device, including one referenced by an enrollment code from your own hub, retains its settings: enable SSH on port 22 and RDP on port 3389 in that device's settings if they are off. Existing credentials and certificate trust are never replaced automatically.
 
 The OS initializes its local private-link port list only if absent. A local admin can disable access with `sudo -u anima-daemon anima-link ports -state /var/lib/anima-link off 3389` (or `22`), and restore it with `on`. These local choices and the SSH host identity and RDP certificate persist across restart and system updates. Disabling a port rejects new link connections; close existing sessions separately.
+
+## Automatic preview releases
+
+OS3-R10 uses `.github/workflows/os-release.yml` on GitHub-hosted Ubuntu runners.
+Changes to the OS, Rust workspace, link or toolchain on `dev` enqueue a release.
+The merge conductor also dispatches this workflow: pushes made with its GitHub token
+cannot trigger another push workflow. A source fingerprint skips already-published
+inputs; failed runs remain visible and require a deliberate rerun rather than an
+endless build loop. `main` and desktop/mobile feeds are not changed.
+
+The `os-preview` environment supplies `OS_PREVIEW_SIGNING_KEY` (the existing key,
+not a new identity) and `OS_RELEASE_CREDENTIALS` (the existing publisher env-file
+format). Its deployment branch policy admits only the authorized release branch.
+`ANIMA_OS_RELEASES=on` enables dispatch; changing it to `off` stops new releases.
+`ANIMA_OS_RUNNER` optionally selects a larger **GitHub-hosted** Ubuntu runner.
+The runner checks KVM and requires 64 GiB free after removing unused hosted SDKs.
+Insufficient disk fails before the expensive build; it must not bypass VM checks.
+
+One serialized workflow builds the matching ISO and signed closure, then fresh
+runners test graphical installation and an upgrade from the public ISO. The
+upgrade includes private SSH, RDP TLS and desktop login, reboot, owner port choices,
+and rollback with identity and work preserved. Candidate artifacts last three days;
+result JSON and screenshots last fourteen days. VM disks, passwords, private
+fixture keys and raw serial transcripts are not uploaded as Actions artifacts.
+
+Publication verifies all public artifact bytes before advancing either pointer.
+Conditional writes reject a concurrent publisher and older release versions. The
+two object pointers cannot be changed as one transaction: a failure between writes
+is visible as a failed release, and a rerun of the same qualified publication job
+can complete the second pointer. Do not rebuild/re-sign a version to repair it.
+The pipeline fails closed if the baseline ISO and update feed disagree.
+Installed machines still require the owner's explicit activation/restart.
