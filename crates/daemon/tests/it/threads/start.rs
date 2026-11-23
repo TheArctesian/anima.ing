@@ -28,8 +28,19 @@ async fn thr_040_a_program_gets_only_the_given_environment_and_three_descriptors
         .await;
     link.answer(id).await;
     let found = texts(&link.until(exited("fds")).await);
-    // Descriptor 3 is the folder that perl itself opened to list them.
-    assert_eq!(found, [(1, "0 1 2 3".to_owned())]);
+    // Descriptor 3 is the folder that perl itself opened to list them. The holder adds no
+    // descriptor: its program sees what a program that this test starts sees, which is
+    // "0 1 2 3" where nothing above the test leaves one open (Linux CI, a Mac of a person, and
+    // the daemon under launchd). The step of GitHub's Mac job leaves descriptors open without
+    // close-on-exec, and they reach each program below it (run 45131440281).
+    let here = std::process::Command::new("/usr/bin/perl")
+        .args(["-e", probe])
+        .env_clear()
+        .stdin(std::process::Stdio::piped())
+        .output()
+        .expect("perl runs");
+    let here = String::from_utf8_lossy(&here.stdout).trim().to_owned();
+    assert_eq!(found, [(1, here)]);
 }
 
 #[tokio::test]
