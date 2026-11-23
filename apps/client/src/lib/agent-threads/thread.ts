@@ -62,11 +62,32 @@ export function programName(program: Program): string {
   return program === 'claude_code' ? 'Claude Code' : 'Codex';
 }
 
-/** The last part of a folder path: the name a person knows the folder by. */
+/** The folder below the home folder in which the runner makes the folder of each thread with no project (THR-041). */
+const SCRATCH = 'Anima Scratch';
+
+function partsOf(folder: string): readonly string[] {
+  return folder.split(/[/\\]/).filter((part) => part !== '');
+}
+
+/** The folder that holds the folders of threads with no project, when `folder` is one of them; else null. */
+export function scratchHome(folder: string | null): string | null {
+  if (folder === null || partsOf(folder).at(-2) !== SCRATCH) return null;
+  return folder.slice(0, folder.replace(/[/\\]+$/u, '').search(/[/\\][^/\\]+$/u));
+}
+
+/** True for `~/Anima Scratch` itself, which is not a project. */
+export function isScratchHome(folder: string): boolean {
+  return partsOf(folder).at(-1) === SCRATCH;
+}
+
+/**
+ * The name a person knows the folder by: its last part, or "No project" for the folder that the runner made for a
+ * thread with no project, as T3 Code names a scratch thread, so that no generated name shows.
+ */
 export function folderName(folder: string | null): string {
   if (folder === null) return 'No folder';
-  const parts = folder.split(/[/\\]/).filter((part) => part !== '');
-  return parts.at(-1) ?? folder;
+  if (scratchHome(folder) !== null || isScratchHome(folder)) return 'No project';
+  return partsOf(folder).at(-1) ?? folder;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

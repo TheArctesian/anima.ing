@@ -95,6 +95,12 @@ describe('the project filter (02 section 5.3) and the empty inbox (section 5.10)
     expect(inProjects(rows, new Set())).toBe(rows);
   });
 
+  it('THR-041: the threads with no project are one project, "No project", whatever their scratch folders', () => {
+    const scratch = [row('s1', 'turn_ended', 1, { folder: '/h/Anima Scratch/2026-11-23-aa' }), row('s2', 'turn_ended', 1, { folder: '/h/Anima Scratch/2026-11-23-bb' }), row('a', 'turn_ended', 1, { folder: '/w/zeta' })];
+    expect(projectsOf(scratch).map((project) => [project.name, project.count])).toEqual([['No project', 2], ['zeta', 1]]);
+    expect(ids(inProjects(scratch, new Set(['/h/Anima Scratch'])).map((each) => ({ row: each })))).toEqual(['s1', 's2']);
+  });
+
   it('says why the inbox is empty', () => {
     expect(emptyWords([], false)).toBe('No threads yet');
     expect(emptyWords(['anima'], true)).toBe('No active threads in anima');

@@ -121,7 +121,7 @@ describe('the draft project', () => {
   it('takes an absolute folder for a new project and lists it once', () => {
     expect(addedFolder(' /work/site/ ')).toEqual({ ok: true, folder: '/work/site' });
     expect(addedFolder('site').ok).toBe(false);
-    const known = [{ folder: '/work/anima', name: 'anima', count: 2 }, { folder: null, name: 'No folder', count: 1 }];
+    const known = [{ folder: '/work/anima', name: 'anima', count: 2 }, { folder: null, name: 'No folder', count: 1 }, { folder: '/h/Anima Scratch', name: 'No project', count: 3 }];
     expect(draftProjects(known, '/work/site').map((each) => each.folder)).toEqual(['/work/anima', '/work/site']);
     expect(draftProjects(known, '/work/anima')).toHaveLength(1);
   });
