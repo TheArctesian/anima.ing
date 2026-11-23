@@ -1,9 +1,4 @@
-//! The link (`anima-link hub`) as the one member that the group starts again alone (F-6).
-//!
-//! The link needs its relay to start, and with no network it ends. The hub must still serve
-//! this computer, so an end of the link never stops the group: the link is started again after
-//! a pause that doubles from `first` to `longest`, and the pause is `first` again after the
-//! link was up for `steady`.
+//! The link (`anima-link hub`) is the one member that the group starts again alone (F-6).
 
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
@@ -21,7 +16,6 @@ use crate::state::{Link, LinkState};
 #[cfg(test)]
 mod tests;
 
-/// The pauses between two starts of the link.
 #[derive(Debug, Clone, Copy)]
 pub struct Backoff {
     pub first: Duration,
@@ -30,8 +24,7 @@ pub struct Backoff {
     pub steady: Duration,
 }
 
-/// The pause before the next start, after a pause of `previous` (none before the first) and
-/// a run that was up for `up_for`. Pure.
+/// The pause before the next start; `previous` is `None` before the first.
 #[must_use]
 pub fn pause_after(previous: Option<Duration>, up_for: Duration, backoff: &Backoff) -> Duration {
     match previous {
@@ -42,7 +35,7 @@ pub fn pause_after(previous: Option<Duration>, up_for: Duration, backoff: &Backo
     }
 }
 
-/// The running keeper of the link. Dropping it kills the link.
+/// Dropping it kills the link.
 #[derive(Debug)]
 pub struct LinkMember {
     ask: watch::Sender<bool>,
@@ -50,7 +43,6 @@ pub struct LinkMember {
     changes: watch::Receiver<LinkState>,
 }
 
-/// What the keeper works with.
 struct Keeper {
     log: PathBuf,
     limits: Limits,
@@ -82,7 +74,6 @@ impl LinkMember {
         }
     }
 
-    /// The link's state now.
     pub fn state(&mut self) -> LinkState {
         *self.changes.borrow_and_update()
     }
@@ -124,7 +115,7 @@ impl Keeper {
             .send_replace(LinkState::at(link, (self.clock)()));
     }
 
-    /// A line of this program in the link's log. A log that cannot be written is no fault.
+    /// A log that cannot be written is no fault.
     fn note(&self, line: &str) {
         if let Ok(mut log) = LogFile::open(&self.log, LOG_LIMIT) {
             let _ = log.line(&format!("anima-local-hub: {line}"));
@@ -132,7 +123,6 @@ impl Keeper {
     }
 }
 
-/// How one start of the link ended.
 enum Run {
     Ended { up_for: Duration },
     Stopped(Vec<String>),
@@ -171,7 +161,6 @@ async fn keep(spec: Result<Spec, LongSocketPath>, keeper: Keeper, mut stop: Stop
     }
 }
 
-/// Starts the link once and keeps it until it ends or a stop is asked for.
 async fn run_once(spec: &Spec, keeper: &Keeper, stop: &mut Stop) -> Run {
     let not_up = Run::Ended {
         up_for: Duration::ZERO,

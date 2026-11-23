@@ -117,7 +117,7 @@ fn ins_002_each_half_is_put_under_the_name_tauri_reads_for_its_target() {
 }
 
 #[test]
-fn ins_002_hmd_052_the_bundle_names_the_seven_programs_and_the_tree() {
+fn ins_002_hmd_052_the_bundle_names_the_seven_programs_the_tree_and_the_licence_files() {
     let bins: Vec<&str> = rust_programs::PROGRAMS
         .iter()
         .map(|(_, binary)| *binary)
@@ -138,7 +138,7 @@ fn ins_002_hmd_052_the_bundle_names_the_seven_programs_and_the_tree() {
     );
     assert_eq!(
         carried::bundle_settings().to_string(),
-        r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"database":"database"}}"#
+        r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"../../../LICENSE":"licences/LICENSE","../../../crates/shortening/LICENSE-APACHE":"licences/LICENSE-APACHE","../../../crates/shortening/NOTICE":"licences/NOTICE","database":"database"}}"#
     );
 }
 

@@ -1,5 +1,4 @@
-//! The mark of a shortened answer (SHA-004): it says that rows were left out, of which list,
-//! why each kept row stayed, and how to get the whole answer.
+//! The mark of a shortened answer (SHA-004).
 
 use std::collections::BTreeMap;
 

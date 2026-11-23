@@ -1,4 +1,3 @@
-//! Native supervisor boundaries exercised in Windows, without a Unix shell or WSL.
 use crate::{
     child::{Child, Spec, Stop, Stopped},
     log_file::LogFile,

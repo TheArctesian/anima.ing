@@ -1,5 +1,3 @@
-//! `application_back` (K10 Section 6.4.9).
-
 use compose_rules::Rule;
 
 use super::{

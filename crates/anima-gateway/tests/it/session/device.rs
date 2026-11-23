@@ -1,6 +1,4 @@
-//! A VNC device on a loopback port for the session tests: it signs a client in, answers
-//! the first update request with one colour, notes what the client sends, and does what
-//! the test tells it.
+//! A VNC device on a loopback port for the session tests.
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -20,32 +18,24 @@ pub(crate) const ALL: Area = Area {
     height: SIZE.1,
 };
 
-/// What the test tells the device to send.
 pub(crate) enum Tell {
     Bytes(Vec<u8>),
-    /// Stop reading what the client sends, and keep the connection open.
     StopReading,
     Close,
 }
 
-/// How the device treats a sign-in.
 #[derive(Clone, Copy)]
 pub(crate) enum SignIn {
     None,
-    /// A VNC password; `accepted` is the device's verdict on it.
-    Password {
-        accepted: bool,
-    },
+    Password { accepted: bool },
 }
 
 pub(crate) struct Device {
     pub(crate) address: SocketAddr,
     pub(crate) tell: mpsc::Sender<Tell>,
-    /// What the client sent after sign-in, one line for each message.
     pub(crate) heard: Arc<Mutex<Vec<String>>>,
 }
 
-/// The note for an update request: all of the screen, or what changed.
 pub(crate) const ASKED_FOR_ALL: &str = "update all";
 pub(crate) const ASKED_FOR_CHANGES: &str = "update changes";
 
@@ -68,7 +58,6 @@ impl Device {
         }
     }
 
-    /// What the client sent, without its update requests.
     pub(crate) fn heard(&self) -> Vec<String> {
         let all = self.heard.lock().expect("notes").clone();
         all.into_iter()
@@ -76,7 +65,6 @@ impl Device {
             .collect()
     }
 
-    /// The client's update requests, in order.
     pub(crate) fn asked(&self) -> Vec<String> {
         let all = self.heard.lock().expect("notes").clone();
         all.into_iter()
@@ -106,7 +94,6 @@ async fn serve(
     }
 }
 
-/// The opening up to `ClientInit`; `false` when the device refused the sign-in.
 async fn signed_in(client: &mut TcpStream, sign_in: SignIn) -> std::io::Result<bool> {
     client.write_all(b"RFB 003.008\n").await?;
     client.read_exact(&mut [0; 12]).await?;
@@ -131,8 +118,6 @@ async fn signed_in(client: &mut TcpStream, sign_in: SignIn) -> std::io::Result<b
     Ok(true)
 }
 
-/// Reads one client message of type `kind` and notes it. The first full update request is
-/// answered with a red screen.
 async fn hear(client: &mut TcpStream, kind: u8, heard: &Mutex<Vec<String>>) -> std::io::Result<()> {
     let mut body = vec![
         0;

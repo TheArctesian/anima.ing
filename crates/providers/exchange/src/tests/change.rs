@@ -1,5 +1,4 @@
-//! A named change has a fixed verb, and a rendered path made of its checked parts stays a
-//! plain path the engine accepts (OD-E14, PRJ-027 to PRJ-035).
+//! Named changes and their rendered paths (OD-E14, PRJ-027 to PRJ-035).
 
 use proptest::prelude::*;
 use serde_json::json;
@@ -26,7 +25,6 @@ fn sha() -> CommitSha {
     CommitSha::parse("6dcb09b5b57875f334f61aebed695e2e4193db5e").unwrap()
 }
 
-/// One change of each kind.
 fn every_change(repository: &RepositoryName, number: Number, run: RunId) -> Vec<Change> {
     let repository = || repository.clone();
     vec![
@@ -81,7 +79,6 @@ fn every_change(repository: &RepositoryName, number: Number, run: RunId) -> Vec<
     ]
 }
 
-/// A provider's render, shaped like GitHub's, built only from the change's parts.
 fn render(change: &Change) -> crate::Rendered {
     let below = ChangePath::new(REPOS).repository(change.repository());
     let path = match change {

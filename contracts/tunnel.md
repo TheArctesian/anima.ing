@@ -1,6 +1,6 @@
 # K4 — Remote access tunnel
 
-Status: **frozen for Phase 3** (change only through a programme ruling, CON-001). R-062 split SSH onto the terminal tunnel and added Section 8. Phase 2 additions are marked (Phase 2); Section 9 is new. Phase 3 additions are marked (Phase 3); Sections 10 to 12 are new.
+Status: **frozen for Phase 3** (change only through a programme ruling, CON-001). R-062 split SSH onto the terminal tunnel and added Section 8. Phase 2 additions are marked (Phase 2); Section 9 is new. Phase 3 additions are marked (Phase 3); Sections 10 to 12 are new. R-432 approves a change of behaviour in Section 8.6 for holder-backed SSH sessions on enrolled machines; the exact sentences come with tasks TH128 and TH126.
 
 The remote access stream does not use GraphQL (API-009). The client gets a ticket from the `startSession` mutation (K1), then opens one WebSocket to the hub. Owners: hub side WP-10 (`sessions`), protocol codec WP-08 (`guac-protocol`), client side WP-14; the terminal tunnel WP-18.
 
@@ -255,6 +255,8 @@ The reasons, events and audit are those of Section 5. The first cause wins. When
 | Hub shutdown | 1001 | `HUB_SHUTDOWN` |
 
 On every end the hub closes the SSH channel and connection and the WebSocket, and writes the row, event and audit entry as in Section 5. Event messages are fixed sentences; none holds device text, an address, a value or session content (LOG-007, RA-008).
+
+R-432 (operator, 2026-11-22, first-hand) approves this change of behaviour; the exact sentences come with tasks TH128 and TH126 of [agent-threads.md](../docs/proposals/agent-threads.md) Section 6.10, and may be looked at before the merge. For a holder-backed SSH session on an enrolled machine that runs the holder: the client closing, a drop of the WebSocket, or a Detach does not end the session and does not close the held program. The end reason `OPERATOR` and the close of the held program occur when the operator stops the session (`endSession`, the Stop control, or `anima attach stop`), or when the holder itself ends. A plain SSH device with no daemon keeps the table above: the client leaving ends the shell, close code 1000, `OPERATOR`, and the hub closes the SSH channel and connection. This ruling does not change Section 9.
 
 ### 8.7 What the client terminal may do
 

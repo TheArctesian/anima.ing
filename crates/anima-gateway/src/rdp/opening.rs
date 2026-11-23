@@ -1,15 +1,5 @@
-//! The opening of an RDP session, on `IronRDP`: the X.224 negotiation, TLS, the check of
-//! the device's certificate, the sign-in inside TLS when the device asks for it (NLA), and
-//! the exchange of capabilities up to the active session.
-//!
 //! No credential leaves before the certificate is checked (SEC-007). No error holds a
 //! value from the device or the account (LOG-007).
-//!
-//! `IronRDP` does not zero the account when it drops it. After the opening it holds none:
-//! the settings it keeps for a later exchange of capabilities are made without one. The
-//! worker process holds one session and ends with it.
-//!
-//! I/O edge.
 
 use std::sync::Arc;
 
@@ -39,13 +29,10 @@ use crate::handshake::{Certificate, Security};
 
 /// The US keyboard, the layout of the key table (`keys`).
 const US_KEYBOARD: u32 = 0x409;
-/// The name the device shows for the client's computer.
 const CLIENT_NAME: &str = "anima";
 
-/// The connection to a signed-in device.
 pub type Connection = TokioFramed<TlsStream<TcpStream>>;
 
-/// Why an RDP session did not open.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum OpenError {
     #[error("the device did not answer as an RDP server")]
@@ -60,7 +47,6 @@ pub enum OpenError {
     Failed,
 }
 
-/// What the session asks of the device.
 pub struct Wanted<'a> {
     /// Empty when there is none: the device then shows its own sign-in.
     pub username: &'a str,
@@ -68,18 +54,15 @@ pub struct Wanted<'a> {
     pub domain: Option<&'a str>,
     pub security: Security,
     pub certificate: Certificate,
-    /// The size of the screen to ask for, in pixels.
     pub size: (u16, u16),
 }
 
-/// A session with its device signed in.
 pub struct Opened {
     pub connection: Connection,
     pub result: ConnectionResult,
 }
 
-/// Kerberos would ask a domain controller. The gateway signs in with NTLM, which asks
-/// nobody.
+/// Kerberos would ask a domain controller; NTLM asks nobody.
 struct NoNetwork;
 
 impl NetworkClient for NoNetwork {
@@ -89,10 +72,8 @@ impl NetworkClient for NoNetwork {
     }
 }
 
-/// Opens an RDP session on `device`, a new connection to it.
-///
 /// # Errors
-/// [`OpenError`]: each way the opening can end. The caller sets the time limit.
+/// [`OpenError`]. The caller sets the time limit.
 pub async fn open(
     device: TcpStream,
     wanted: Wanted<'_>,
@@ -111,7 +92,6 @@ pub async fn open(
     let upgrade = ironrdp_tokio::connect_begin(&mut plain, &mut connector)
         .await
         .map_err(|error| match error.kind() {
-            // The device refused what was asked, or picked what was not asked.
             ConnectorErrorKind::Negotiation(_) | ConnectorErrorKind::Reason(_) => {
                 OpenError::Security
             }
@@ -143,8 +123,7 @@ pub async fn open(
     })?;
     match outcome {
         ConnectionOutcome::Connected(mut result) => {
-            // `IronRDP` keeps its settings to exchange capabilities again after a resize.
-            // That exchange needs no account: it gets settings without one.
+            // `IronRDP` does not zero an account it drops, so the settings it keeps hold none.
             let no_account = Wanted {
                 username: "",
                 password: "",
@@ -163,8 +142,6 @@ pub async fn open(
     }
 }
 
-/// TLS on the connection, and the check of the certificate the device shows. Gives the
-/// key of that certificate, which the sign-in inside TLS is bound to.
 async fn secure(
     device: TcpStream,
     address: std::net::IpAddr,
@@ -176,7 +153,6 @@ async fn secure(
         .connect(name, device)
         .await
         .map_err(|_| OpenError::Failed)?;
-    // The handshake is done and nothing of the account has been sent.
     let shown = stream
         .get_ref()
         .1
@@ -234,8 +210,7 @@ fn config(wanted: &Wanted<'_>) -> Config {
         rail_support_level: RailSupportLevel::empty(),
         platform: MajorPlatformType::UNSPECIFIED,
         hardware_id: None,
-        // Without this `IronRDP` puts the user name into the first message, which goes
-        // out before TLS.
+        // Without this `IronRDP` puts the user name into the first message, before TLS.
         request_data: Some(NegoRequestData::cookie(CLIENT_NAME.to_owned())),
         autologon: !wanted.username.is_empty(),
         enable_audio_playback: false,

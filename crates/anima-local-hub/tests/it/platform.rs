@@ -1,4 +1,3 @@
-//! Real executables and process controls on the host that runs the integration tests.
 use std::{
     path::{Path, PathBuf},
     process::{Child, Command},

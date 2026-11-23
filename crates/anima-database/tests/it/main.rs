@@ -1,5 +1,3 @@
-//! The real `anima-database` program against this computer's PostgreSQL 17.
-
 use std::fs;
 use std::io::{BufRead as _, BufReader};
 use std::path::{Path, PathBuf};
@@ -19,7 +17,7 @@ fn program() -> PathBuf {
     )
 }
 
-/// The PostgreSQL 17 the gates already need. A test never skips for lack of it (CQ-024).
+/// A test never skips for lack of PostgreSQL 17 (CQ-024).
 fn tree() -> PathBuf {
     let named = std::env::var_os("ANIMA_POSTGRES_TREE").map(PathBuf::from);
     let known = [
@@ -62,7 +60,6 @@ impl Place {
         command
     }
 
-    /// Starts `serve` and waits for its `ready` line.
     fn serve(&self) -> Serving {
         let mut child = self
             .command("serve")
@@ -82,12 +79,10 @@ impl Place {
         fs::read_to_string(self.root().join("urls/hub.url")).unwrap()
     }
 
-    /// One statement as the hub, signed in from its URL file as the hub signs in.
     fn as_hub(&self, statement: &str) -> Result<(), sqlx::Error> {
         self.as_login("hub", statement)
     }
 
-    /// Statements as the login of `urls/<name>.url`.
     fn as_login(&self, name: &str, statements: &str) -> Result<(), sqlx::Error> {
         let url = fs::read_to_string(self.root().join(format!("urls/{name}.url"))).unwrap();
         tokio::runtime::Builder::new_current_thread()
@@ -106,7 +101,7 @@ impl Place {
     }
 }
 
-/// A failed test must leave no server: one that a killed `serve` left is stopped at once.
+/// Stops a server that a killed `serve` left, so a failed test leaves none.
 impl Drop for Place {
     fn drop(&mut self) {
         if self.server_runs() {
@@ -291,7 +286,6 @@ fn a_cluster_of_another_major_version_is_refused_and_not_touched() {
     place.as_hub("select 1").unwrap();
 }
 
-/// Every file below `folder` with its bytes.
 fn files_of(folder: &Path) -> Vec<(PathBuf, Vec<u8>)> {
     let mut files = Vec::new();
     for entry in fs::read_dir(folder).unwrap() {

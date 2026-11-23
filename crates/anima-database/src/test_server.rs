@@ -40,8 +40,7 @@ pub fn run(arguments: &[OsString]) -> Result<ExitStatus, Box<dyn std::error::Err
     let running = startup::start(&tree, &layout, settings, LIMITS)?;
     let endpoint = Endpoint::load(&layout)?;
     let password = endpoint.password()?;
-    // SQLx's lossy formatter prefixes certificate files with "file: "; its parser
-    // expects the raw path. Build these query pairs explicitly for a round trip.
+    // SQLx's lossy formatter prefixes certificate files with "file: "; its parser wants the path.
     let mut url = endpoint
         .options()
         .username(cluster::SUPERUSER)
@@ -54,10 +53,8 @@ pub fn run(arguments: &[OsString]) -> Result<ExitStatus, Box<dyn std::error::Err
         .append_pair("sslrootcert", &endpoint.certificate().to_string_lossy());
     fixture_connections(&layout)?;
     disposable_writes(url.as_str())?;
-    // SQLx sends Terminate before TLS close_notify. PostgreSQL can already have
-    // closed the socket, so Windows reports a reset while SQLx closes a fixture.
-    // Like the Unix gate's local socket, shared fixtures need no TLS layer.
-    // Independent database tests still exercise the installed TLS-only rules.
+    // SQLx sends Terminate before TLS close_notify, so Windows reports a reset when a fixture
+    // closes; shared fixtures skip TLS, like the Unix gate's local socket.
     url.set_query(Some("sslmode=disable"));
     let url = Zeroizing::new(url.to_string());
     let status = Command::new(program)
@@ -68,9 +65,7 @@ pub fn run(arguments: &[OsString]) -> Result<ExitStatus, Box<dyn std::error::Err
     Ok(status?)
 }
 
-/// Shared fixtures use local plaintext connections, including wire counting.
-/// Only this disposable cluster permits them, on loopback with SCRAM passwords.
-/// Production and independent database fixtures retain their TLS-only rules.
+/// Only this disposable cluster permits plaintext loopback connections, for shared fixtures.
 fn fixture_connections(layout: &Layout) -> io::Result<()> {
     let path = layout.cluster().join("pg_hba.conf");
     let rules = std::fs::read_to_string(&path)?;
@@ -80,8 +75,7 @@ fn fixture_connections(layout: &Layout) -> io::Result<()> {
     )
 }
 
-/// Match the Unix gate's `fsync=off`, only in the cluster this runner just created.
-/// The bundled database and its separate durability tests keep their normal settings.
+/// Matches the Unix gate's `fsync=off`, only in the cluster this runner just created.
 fn disposable_writes(url: &str) -> Result<(), Box<dyn std::error::Error>> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()

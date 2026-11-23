@@ -40,9 +40,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
-| HT-136 | The section Routes of Settings beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
+| HT-136 | The section Routes of Hosting beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
 | HT-145 | A Codex thread in the home folder cannot write in the folder of the daemon (THR-041) | A Mac with `codex` 0.170 signed in, the daemon of the branch `threads/start-warns` with a test state folder in the home folder | Open |
-| HT-135 | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
+| HT-135 | The mockup of the section Routes of Hosting (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -153,6 +153,27 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 - A daemon on the hosted hub: the `anima-daemon` of a computer, enrolled at the hosted hub. No document shows such an enrolment and no check ran one (HM-D16 of [hosted-mode.md](proposals/hosted-mode.md), open). If the hub refuses the enrolment, write that in the entry and in HM-D16. Where the entry permits a local hub, do the check with a local hub.
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
+
+### HT-166: the application updates the daemon on each build (R-437, HMD-055)
+
+Built: on the branch `daemon/update-updates-everything`, the application replaces an older daemon in
+`~/.local/bin` also on a build with an ad hoc signature, checks the seal of its bundle and of the new copy,
+waits for the new daemon to answer with its version and puts the copy of before back when it does not. The
+tests use stand-in daemons in a folder of their own; no test ran the real LaunchAgent, the Keychain or
+`codesign` on a real bundle.
+
+1. With an installed application whose daemon is older (for example 0.9.29), install a trial build of this
+   branch (an ad hoc signature) and open it. Expected: within a minute macOS asks whether `anima-daemon`
+   may use the Keychain; allow it. The Code page says "The daemon of this computer was updated from
+   0.9.29 to <new version>" one time.
+2. Run `ls ~/.local/bin`. Expected: `anima-daemon` and `anima-daemon.0.9.29`, and no `anima-daemon.previous`.
+3. Run `~/.local/bin/anima-daemon --version`. Expected: the version of the trial build.
+4. Quit the application and open it again. Expected: no message about the daemon, and no Keychain question.
+5. Start a Claude Code thread, then install a second trial build and open it while the thread runs.
+   Expected: the thread keeps running through the update.
+6. Run `anima agents running` in Terminal. Expected: the list of threads, with no error.
+
+Result: Open.
 
 ### HT-146: a process that an agent detached cannot answer an approval (R-315, THR-031)
 
@@ -2879,7 +2900,7 @@ The tests did not cover: the real gateway, the sign-in at the gateway, the real 
 7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
    installation), and open the same row.
    Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
-### HT-135: the mockup of the section Routes of the hub (tasks H21 and H40)
+### HT-135: the mockup of the section Routes of Hosting (tasks H21 and H40)
 
 Made on the branch `hosted/routes-screen` and brought to `hosted/routes-screen-2`: [routes/index.html](mockup/routes/index.html), with its record
 [records/routes.md](mockup/records/routes.md). The orchestrator approved it overnight after a separate design
@@ -2887,8 +2908,8 @@ reviewer read it (R-324). No person looked at it. Nothing of the screen is built
 approve it, or say what to change, before the client screen is built.
 
 1. Open `docs/mockup/routes/index.html` in a browser, in a window of at least 1320 px.
-   Expected: a board of ten frames at 1280 px. The first paragraph says why Routes is a section of Settings, in the
-   group Hub, and not an item of the navigation bar.
+   Expected: a board of ten frames at 1280 px. The first paragraph says that Routes is a section of Hosting, in the
+   list on the left with Applications, Catalogue, Models, Storage and Machines, and that Hosting is in the bar below Code.
 2. Frame 1 (the list) and Frame 1b (empty).
    Expected: each row shows the name, the kind and the access, the application on its machine with its port, the
    proof and the certificate, and the traffic of 24 hours. Rows that need you have a wash. The empty state says that a
@@ -2902,7 +2923,7 @@ approve it, or say what to change, before the client screen is built.
 5. Frame 3 (the details of one route).
    Expected: Make public is disabled with the warning that the consent at the machine is not given. The checks are in
    order. Remove asks for the six digits of your authenticator.
-6. Frame 4 (a TCP stream on a hub that you host) and Frame 6 (from the page of an application).
+6. Frame 4 (a TCP stream on a hub that you host) and Frame 6 (the tab Domains of the page of an application).
    Expected: the port of the hub with the refused ports; a database and a protocol with no TLS are "Private only";
    UDP is disabled with its reason. Frame 6 has a button that adds a route for the port of the application.
 7. Frames 5a and 5b.
@@ -2929,16 +2950,18 @@ VoiceOver in WebKit, and how often it speaks during a long turn.
    Expected: VoiceOver says "Approval needed to run a command:" and the command at once, and the focus is on Approve.
 5. Press Enter on Approve.
    Expected: the focus goes to the conversation, not to the top of the window.
-### HT-136: the section Routes of Settings (task H21)
+### HT-136: the section Routes of Hosting (task H21)
 
-Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
-(`apps/client/src/lib/application-routes/`). The vitest tests use fake calls of the hub: they prove each state of the
+Built on the branch `hosted/routes-section`: the section Routes (`apps/client/src/lib/application-routes/`), first in
+Settings; the move to the section Routes of Hosting (`/hosting/routes`, hosting-section.md) is the work of the session
+of the Hosting screen. The vitest tests use fake calls of the hub: they prove each state of the
 list, the page of a route, the refusals of the hub that the section shows, Check now, Check all and Remove. No person
 looked at the screen, and no picture of it was compared with the frames of [routes/index.html](mockup/routes/index.html):
 the screen was not run on this computer. No test used a real hub, a real DNS or a real second factor.
 
-1. Open Settings at 1280 px in the dark appearance, then in the light appearance, and put
-   `docs/mockup/routes/index.html` beside it. Expected: the index has Routes in the group Hub and account, after Hub.
+1. Open Hosting > Routes at 1280 px in the dark appearance, then in the light appearance, and put
+   `docs/mockup/routes/index.html` beside it. Expected: the list on the left has Applications, Catalogue, Models,
+   Storage, Routes and Machines, with Routes selected, and the page title is Hosting with Add a route in its header.
    The list has the parts of Frame 1 in the same order: the choice All, Needs you, Public and Private, Check all, the
    summary line, and one row for each route with its name, kind and access, target, proof and certificate, and
    traffic. Rows that need you have a wash. Write each difference that is not in the record
@@ -5084,3 +5107,34 @@ real program started from the application.
 
 Result: Open.
 
+
+### HT-167: Hosting > Applications lists the containers of each machine (task H42 stage 1; HSE-002, HSE-009)
+
+Built on the branch `hosted/h42-mount`: the page Hosting, section Applications, reads the devices with SSH on and the
+containers of each through the hub. The tests use a fake hub; nobody has seen the list with real machines.
+
+1. In the desktop application of this build, signed in to a hub with at least two devices that have SSH on with an
+   accepted host key and Docker, open Hosting.
+   Expected: the section Applications shows one group for each of those devices, by name. The header of each group has the
+   name, the number of items, the status of the device as the Devices page shows it (for example Up) and "X of Y running".
+2. On one machine, run a Compose project of two services (`docker compose up -d`) and one container with `docker run -d`.
+   Press Refresh.
+   Expected: the project is one row with "Compose project · 2 containers"; the plain container is a row of its own with its
+   image. Each row has the mark "Not managed" and "Read only".
+3. Press the arrow of the project row.
+   Expected: its two containers show below it, each with its state.
+4. Stop one container of the project (`docker stop`), then press Refresh, then choose "Needs you".
+   Expected: the project shows "Partly running" with a coloured wash; under Needs you only the rows that are not all
+   running are shown.
+5. Choose All, type a part of the name of a container of a different machine in the field.
+   Expected: only the group of that machine is shown, with the row that holds the container.
+6. Choose one machine in Machine.
+   Expected: only the group of that machine is shown.
+7. Add a device with SSH on and Docker but no container, and press Refresh.
+   Expected: its group says "Nothing installed" with the link "Install from the catalogue", which opens the Catalogue.
+8. Turn off the SSH credential of a machine in Anima, or stop its Docker, and press Refresh.
+   Expected: its group stays, with the words of the hub that say why; the other groups still show their rows.
+9. Press "Look for newer images".
+   Expected: the column Updates says "Up to date" or "Newer image" for each row of a machine that answered.
+
+Result: Open.

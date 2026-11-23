@@ -1,5 +1,4 @@
-//! The ports of a machine (SF-252): no recipe publishes a port of Anima, and no two
-//! recipes publish the same port, so that each two entries can run on one machine.
+//! No two recipes publish the same port, so that each two entries can run on one machine (SF-252).
 
 use super::{codes, sound, with_compose};
 use std::collections::BTreeMap;

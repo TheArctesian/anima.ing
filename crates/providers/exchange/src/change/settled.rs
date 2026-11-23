@@ -5,8 +5,7 @@ use chrono::{DateTime, Utc};
 use crate::exchange::Body;
 use crate::parts::CommitSha;
 
-/// The reply to a sent change, as far as the provider reads it. The engine reads the headers
-/// into [`Limit`], so the provider sees no header text.
+/// The reply to a sent change: the engine reads the headers into [`Limit`], so the provider sees no header text.
 #[derive(Clone, Copy, Debug)]
 pub struct ChangeReply<'a> {
     pub status: u16,
@@ -16,40 +15,41 @@ pub struct ChangeReply<'a> {
     pub at: DateTime<Utc>,
 }
 
-/// The rate limit headers of a reply. `None` when the reply had no such header or it was not
-/// a number.
+/// The rate limit headers of a reply; `None` when a header is missing or not a number.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Limit {
     /// `x-ratelimit-remaining`.
     pub remaining: Option<u64>,
     /// `x-ratelimit-reset`.
     pub reset_at: Option<DateTime<Utc>>,
-    /// `retry-after`, in seconds.
+    /// `retry-after`.
     pub retry_after_seconds: Option<u64>,
 }
 
 /// What came of a change. Fixed outcomes: none holds text from the reply (LOG-007).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Settled {
-    /// The provider made the change.
     Done(Receipt),
     /// The provider refused it: nothing was changed.
     Refused(Refusal),
     /// The provider limits requests until `until`: nothing was changed.
-    Limited { until: DateTime<Utc> },
+    Limited {
+        until: DateTime<Utc>,
+    },
     /// The reply does not say whether the change was made.
     Unknown,
 }
 
-/// What the provider gave back for a change it made.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Receipt {
-    /// Made, with nothing to read back.
     Made,
     /// Made a new thing: an issue's number, or a comment's ID.
-    Created { number: u64 },
-    /// Merged as this commit.
-    Merged { sha: CommitSha },
+    Created {
+        number: u64,
+    },
+    Merged {
+        sha: CommitSha,
+    },
 }
 
 /// Why the provider refused a change. Each kind has fixed words in the hub (design C.6).
@@ -57,7 +57,6 @@ pub enum Receipt {
 pub enum Refusal {
     /// The provider refused the key: connect the account again.
     KeyRefused,
-    /// The App is not permitted to do it.
     NotPermitted,
     /// No such thing, or the App may not read it.
     NotFound,

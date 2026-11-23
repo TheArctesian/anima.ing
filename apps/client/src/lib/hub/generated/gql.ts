@@ -90,6 +90,7 @@ type Documents = {
     "\n  query Extensions {\n    extensions {\n      key\n      name\n      built\n      fixed\n      on\n      needs\n      worksWith\n      neededBy\n    }\n  }\n": typeof types.ExtensionsDocument,
     "\n  mutation SetExtension($key: String!, $on: Boolean!) {\n    setExtension(key: $key, on: $on) {\n      key\n      name\n      built\n      fixed\n      on\n      needs\n      worksWith\n      neededBy\n    }\n  }\n": typeof types.SetExtensionDocument,
     "\n  query HubKeptCounts($after: String) {\n    devices(first: 200, after: $after) {\n      totalCount\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          checks {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.HubKeptCountsDocument,
+    "\n  query HostingMachines($after: String) {\n    devices(first: 100, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          name\n          status\n          ssh {\n            enabled\n          }\n        }\n      }\n    }\n  }\n": typeof types.HostingMachinesDocument,
     "\n  query LinkDevices {\n    linkDevices {\n      key\n      fingerprint\n      name\n      address\n      path\n      relay\n      expiresAt\n      streams\n    }\n  }\n": typeof types.LinkDevicesDocument,
     "\n  mutation CreateLinkInvite($name: String!) {\n    createLinkInvite(name: $name) {\n      invite\n      expiresAt\n    }\n  }\n": typeof types.CreateLinkInviteDocument,
     "\n  mutation RevokeLinkDevice($key: String!) {\n    revokeLinkDevice(key: $key)\n  }\n": typeof types.RevokeLinkDeviceDocument,
@@ -275,6 +276,7 @@ const documents: Documents = {
     "\n  query Extensions {\n    extensions {\n      key\n      name\n      built\n      fixed\n      on\n      needs\n      worksWith\n      neededBy\n    }\n  }\n": types.ExtensionsDocument,
     "\n  mutation SetExtension($key: String!, $on: Boolean!) {\n    setExtension(key: $key, on: $on) {\n      key\n      name\n      built\n      fixed\n      on\n      needs\n      worksWith\n      neededBy\n    }\n  }\n": types.SetExtensionDocument,
     "\n  query HubKeptCounts($after: String) {\n    devices(first: 200, after: $after) {\n      totalCount\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          checks {\n            id\n          }\n        }\n      }\n    }\n  }\n": types.HubKeptCountsDocument,
+    "\n  query HostingMachines($after: String) {\n    devices(first: 100, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          name\n          status\n          ssh {\n            enabled\n          }\n        }\n      }\n    }\n  }\n": types.HostingMachinesDocument,
     "\n  query LinkDevices {\n    linkDevices {\n      key\n      fingerprint\n      name\n      address\n      path\n      relay\n      expiresAt\n      streams\n    }\n  }\n": types.LinkDevicesDocument,
     "\n  mutation CreateLinkInvite($name: String!) {\n    createLinkInvite(name: $name) {\n      invite\n      expiresAt\n    }\n  }\n": types.CreateLinkInviteDocument,
     "\n  mutation RevokeLinkDevice($key: String!) {\n    revokeLinkDevice(key: $key)\n  }\n": types.RevokeLinkDeviceDocument,
@@ -702,6 +704,10 @@ export function graphql(source: "\n  mutation SetExtension($key: String!, $on: B
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query HubKeptCounts($after: String) {\n    devices(first: 200, after: $after) {\n      totalCount\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          checks {\n            id\n          }\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query HubKeptCounts($after: String) {\n    devices(first: 200, after: $after) {\n      totalCount\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          checks {\n            id\n          }\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query HostingMachines($after: String) {\n    devices(first: 100, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          name\n          status\n          ssh {\n            enabled\n          }\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query HostingMachines($after: String) {\n    devices(first: 100, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          name\n          status\n          ssh {\n            enabled\n          }\n        }\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

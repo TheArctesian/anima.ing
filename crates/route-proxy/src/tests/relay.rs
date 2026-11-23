@@ -1,5 +1,3 @@
-//! One request and its answer over in-memory streams.
-
 use std::time::Duration;
 
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _, duplex};
@@ -9,7 +7,6 @@ use crate::{
     relay::{Body, Idle, relay, status},
 };
 
-/// A body with the bytes that came with the head and an hour to come.
 fn body(early: &[u8]) -> Body<'_> {
     Body {
         early,

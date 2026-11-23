@@ -30,7 +30,7 @@ const GUARDED: [&str; 4] = [
 
 /// What the git files of a working folder say.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(super) struct Repository {
+pub(crate) struct Repository {
     /// `host/owner/name`; `None` with no remote `origin` that names a host.
     pub name: Option<String>,
     /// The folder of the main repository, for the exclusions.

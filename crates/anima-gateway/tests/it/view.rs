@@ -1,5 +1,3 @@
-//! A screen larger than the client's view is shown as a smaller picture of it.
-
 use anima_gateway::frames::{Formats, frame};
 use anima_gateway::screen::{Area, BYTES_PER_PIXEL, Screen};
 use anima_gateway::view::View;
@@ -17,7 +15,6 @@ fn fill(screen: &mut Screen, area: Area, colour: [u8; 3]) {
         .expect("inside");
 }
 
-/// A 400 x 200 screen: the left half red, the right half blue.
 fn two_halves() -> Screen {
     let mut screen = Screen::new(400, 200).expect("a valid size");
     fill(
@@ -43,7 +40,6 @@ fn two_halves() -> Screen {
     screen
 }
 
-/// Sends what the view shows to `client` as one frame; returns the frame's bytes.
 fn send(view: &mut View, device: &mut Screen, client: &mut Drawn) -> usize {
     let before = client.wire_bytes;
     let (shown, changes) = view.take_changes(device);
@@ -80,7 +76,6 @@ fn a_screen_that_does_not_fit_is_shown_smaller_with_its_shape() {
         (&RED[..], &RED[..], &BLUE[..], &BLUE[..])
     );
 
-    // A tall view is limited by its width, a wide one by its height.
     assert_eq!(View::new(&device, (100, 1000)).size(&device), (100, 50));
     assert_eq!(View::new(&device, (1000, 50)).size(&device), (100, 50));
 }
@@ -147,7 +142,6 @@ fn moved_pixels_reach_a_smaller_picture_too() {
     let mut view = View::new(&device, (200, 100));
     let mut client = Drawn::default();
     send(&mut view, &mut device, &mut client);
-    // The red half moves over the blue half.
     device
         .move_area(
             Area {
@@ -206,7 +200,6 @@ fn a_pointer_in_the_picture_is_over_the_device_pixel_it_shows() {
     ] {
         let (real_x, real_y) = view.to_device((x, y), &device);
         assert!(real_x < 4104 && real_y < 3404);
-        // The device pixel lies in the picture's pixel it was pointed at.
         let shown = (real_x * width / 4104, real_y * height / 3404);
         assert_eq!(shown, (x.min(width - 1), y.min(height - 1)));
     }
@@ -236,13 +229,11 @@ fn a_mac_with_three_displays_costs_what_the_client_view_holds() {
     assert_eq!(view.size(&device), (1085, 900));
     let mut client = Drawn::default();
     let bytes = send(&mut view, &mut device, &mut client);
-    // A whole-screen change is a picture of under 1 megapixel, not of 14.
     assert_eq!(client.rgb.len(), 1085 * 900 * BYTES_PER_PIXEL);
     assert!(bytes < 200_000, "{bytes} bytes for a whole-screen change");
 }
 
-/// The picture of `device` in `size`, made from the whole screen at once: each pixel is the
-/// mean of the device pixels it covers.
+/// The reference picture, made from the whole screen at once: each pixel is the mean it covers.
 fn whole_picture(device: &Screen, size: (usize, usize)) -> Vec<u8> {
     let real = whole(device);
     let (real_width, real_height) = (device.width(), device.height());
@@ -275,8 +266,6 @@ fn whole_picture(device: &Screen, size: (usize, usize)) -> Vec<u8> {
 }
 
 proptest! {
-    /// After any writes, what a client has drawn from the view's changes is the picture of
-    /// the whole device screen: no changed pixel at an edge is left out.
     #[test]
     fn the_picture_follows_every_change(
         device_size in (1..90usize, 1..90usize),

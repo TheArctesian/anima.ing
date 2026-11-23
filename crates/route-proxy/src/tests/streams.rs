@@ -1,6 +1,4 @@
-//! The streams (HOST-050, task H40): a TCP stream reaches its route through the hub by the
-//! application and the name, a private stream listens only where the settings say, a UDP flow
-//! answers a source with no more bytes than it sent, and the frames of datagrams.
+//! Route streams and UDP flows (HOST-050).
 
 use std::{
     collections::BTreeMap,
@@ -29,7 +27,6 @@ use crate::{
     wire::{Counts, Dial, Reach, StreamRoute, Table, Transport, WireError},
 };
 
-/// A hub that records each dial and answers each with a machine that echoes.
 #[derive(Default)]
 struct EchoHub {
     dials: Mutex<Vec<Dial>>,
@@ -184,6 +181,28 @@ fn a_private_route_answers_only_the_nodes_of_the_network_of_anima() {
         Err(SettingsError::NoPrivateNetworks)
     );
     assert!("10.0.0.0/33".parse::<Network>().is_err());
+}
+
+#[test]
+fn r_391_a_private_place_never_answers_the_internet() {
+    let networks = ("ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS", "100.64.0.0/10");
+    for wide in ["0.0.0.0/0", "100.64.0.0/10, 0.0.0.0/4", "::/0", "fd7a::/8"] {
+        assert_eq!(
+            self::settings(&[
+                ("ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS", "100.64.0.1"),
+                ("ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS", wide),
+            ]),
+            Err(SettingsError::WidePrivateNetwork),
+            "{wide}"
+        );
+    }
+    for public in ["127.0.0.1", "0.0.0.0", "::"] {
+        assert_eq!(
+            self::settings(&[("ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS", public), networks]),
+            Err(SettingsError::PrivateAddressPublic),
+            "{public}"
+        );
+    }
 }
 
 #[test]

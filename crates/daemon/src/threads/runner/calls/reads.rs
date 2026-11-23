@@ -22,6 +22,9 @@ impl Runner {
             },
             Action::Listings => self.listings(),
             Action::Projects => self.projects(),
+            Action::Version => Outcome::Version {
+                version: env!("CARGO_PKG_VERSION").to_owned(),
+            },
             Action::Accounts => Outcome::Accounts {
                 accounts: self.said.accounts.rows(),
             },

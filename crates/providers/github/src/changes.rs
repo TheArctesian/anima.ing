@@ -1,5 +1,4 @@
-//! The named changes GitHub can make (OD-E14, PRJ-027 to PRJ-035): how each one is sent and
-//! what GitHub's reply to it means. Pure: the engine sends the request and reads the headers.
+//! The named changes GitHub can make (OD-E14, PRJ-027 to PRJ-035). Pure: the engine sends them.
 
 mod render;
 mod settle;

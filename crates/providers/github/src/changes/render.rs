@@ -1,6 +1,5 @@
-//! The request for each named change: its path from fixed segments and checked parts only, and
-//! its JSON body (OD-E14). A branch, a title, a body or an input goes into the JSON body, never
-//! into the path. Endpoints, statuses and body fields are GitHub's REST API version 2022-11-28.
+//! A path holds fixed segments and checked parts only; free text goes into the body (OD-E14).
+//! Endpoints, statuses and body fields are GitHub's REST API version 2022-11-28.
 
 use serde_json::{Map, Value, json};
 use source_exchange::{
@@ -22,12 +21,10 @@ const WORKFLOWS: Fixed = Fixed::new("workflows");
 const DISPATCHES: Fixed = Fixed::new("dispatches");
 const STATUSES: Fixed = Fixed::new("statuses");
 
-/// The request that makes `change`, below `https://api.github.com`.
 pub(crate) fn render(change: &Change) -> Rendered {
     Rendered::new(change, path(change), body(change))
 }
 
-/// `/repos/{owner}/{repo}/` and the endpoint of the change.
 fn path(change: &Change) -> ChangePath {
     let repository = ChangePath::new(REPOS).repository(change.repository());
     match change {
@@ -61,8 +58,7 @@ fn path(change: &Change) -> ChangePath {
     }
 }
 
-/// The JSON body. `None` for the run controls: they send none. An optional field that is not
-/// set is left out, so GitHub keeps its default.
+/// An optional field that is not set is left out, so GitHub keeps its default.
 fn body(change: &Change) -> Option<Value> {
     match change {
         Change::CreateIssue {
@@ -122,8 +118,7 @@ fn new_issue(title: &str, body: Option<&str>, labels: &Labels) -> Value {
     Value::Object(issue)
 }
 
-/// Open, or closed with the reason when one is given. Anima never writes `duplicate`
-/// (decisions item 9).
+/// Anima never writes the reason `duplicate` (decisions item 9).
 fn issue_state(state: IssueState) -> Value {
     match state {
         IssueState::Open => json!({ "state": "open" }),

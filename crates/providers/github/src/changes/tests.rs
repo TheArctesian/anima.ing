@@ -1,6 +1,5 @@
-//! The named changes as GitHub receives them, and what its replies mean (OD-E14, PRJ-027 to
-//! PRJ-035). Endpoints, statuses and fields are those of GitHub's documentation, checked on
-//! 2026-11-14 for API version 2022-11-28.
+//! Endpoints, statuses and fields follow GitHub's documentation for API version 2022-11-28
+//! (OD-E14, PRJ-027 to PRJ-035).
 
 use source_exchange::{
     BranchName, Change, CommitSha, Inputs, IssueState, Labels, MergeMethod, Number, RepositoryName,
@@ -30,7 +29,6 @@ pub(super) fn run() -> RunId {
     RunId::parse("30433642").unwrap()
 }
 
-/// One ordinary change of each kind, in the order of [`Change`].
 pub(super) fn every_change() -> Vec<Change> {
     vec![
         Change::CreateIssue {

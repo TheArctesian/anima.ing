@@ -1,14 +1,10 @@
-//! One point of Dawarich, as the hub keeps it.
-
 use serde_json::Value;
 
-/// Kilometres in an hour for each metre in a second.
 const KMH_PER_MPS: f64 = 3.6;
 
 /// One point. Each number is `None` when Dawarich gave none: no number takes its place.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Point {
-    /// The id of the point at Dawarich, as text.
     pub id: String,
     /// The time of the fix, in Unix seconds.
     pub timestamp: Option<i64>,

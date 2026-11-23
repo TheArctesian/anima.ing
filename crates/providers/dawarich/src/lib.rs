@@ -1,6 +1,5 @@
 //! Dawarich as a source of location points (K-E4 Section 11; K-E1 Sections 2 and 7b; R-145,
-//! R-261). Pure: it names the request it wants and reads the reply that the engine hands
-//! back. The wire form is built from the documents of Dawarich; no code of it is copied.
+//! R-261). The wire form is built from the documents of Dawarich; no code of it is copied.
 
 mod point;
 #[cfg(test)]
@@ -14,15 +13,12 @@ use source_exchange::{
 
 pub use point::Point;
 
-/// The points of one page.
 pub const PER_PAGE: usize = 1000;
-/// The version of the sync state.
 const VERSION: u64 = 1;
 const POINTS: &str = "/api/v1/points";
 /// The end of each read: later than any point.
 const END: &str = "2100-01-01T00:00:00Z";
 
-/// The request that proves a key at connect: one point of the account.
 fn probe() -> Request {
     Request::get(POINTS, &[("per_page", "1")]).expect("a fixed path below the base")
 }
@@ -39,13 +35,11 @@ pub const DECLARATION: Declaration = Declaration {
     changes: None,
 };
 
-/// The time of the last point that a finished run stored, in Unix seconds; 0 before the first.
 fn since(state: &Value) -> i64 {
     state["since"].as_i64().unwrap_or(0)
 }
 
-/// The state at the start of a run: the time of the last stored point, and page 1. A state of
-/// an unknown version starts from the first point.
+/// A state of an unknown version starts from the first point.
 #[must_use]
 pub fn begin(state: &Value) -> Value {
     let known = state["v"].as_u64() == Some(VERSION);
@@ -83,8 +77,7 @@ fn problem(code: &'static str, message: &str) -> Problem {
     }
 }
 
-/// The state unchanged with one problem: the engine fails the run, and the next run asks for
-/// this page again.
+/// The engine fails the run, and the next run asks for this page again.
 fn stuck(state: &Value, code: &'static str, message: &str) -> Normalised<Point> {
     Normalised {
         records: Vec::new(),
@@ -93,9 +86,7 @@ fn stuck(state: &Value, code: &'static str, message: &str) -> Normalised<Point> 
     }
 }
 
-/// The points of one page and the state after it. A page with fewer than [`PER_PAGE`] points
-/// is the last one: the time of the newest point becomes the start of the next run. A point
-/// with no `id` is a problem and is not a record. The same input gives the same output.
+/// A page with fewer than [`PER_PAGE`] points is the last: its newest point starts the next run.
 #[must_use]
 pub fn normalise(_request: &Request, response: &Response<'_>, state: &Value) -> Normalised<Point> {
     let Body::Read(body) = response.body else {

@@ -1,17 +1,6 @@
-//! One frame for the client: the Guacamole instructions that draw what changed on the
-//! screen, ending with `sync` (guacamole-server `src/libguac/protocol.c`).
+//! One frame for the client, ending with `sync` (guacamole-server `src/libguac/protocol.c`).
 //!
-//! The bytes a frame costs decide how a session feels over a slow link, so each changed
-//! part goes out in its cheapest form: moved pixels as `copy`, one colour as `rect` and
-//! `cfill`, flat content as a PNG (with a palette when it has few colours), photographic
-//! content as a JPEG when the client draws JPEG. Parts that lie close together go out as
-//! one image, because each image has a fixed cost.
-//!
-//! A JPEG is not exact. The client then shows pixels a little different from the screen
-//! copy until that part changes again, and a later `copy` moves them as they are. guacd
-//! accepts the same.
-//!
-//! Pure: no I/O and no clock; the caller gives the timestamp.
+//! A JPEG is not exact: the client keeps its slightly different pixels until that part changes, as guacd does.
 
 mod joining;
 mod pacing;
@@ -29,15 +18,13 @@ use picture::Picture;
 const OVER: &str = "14";
 /// The default layer: the remote screen.
 const SCREEN_LAYER: &str = "0";
-/// The stream every image uses. One image ends before the next begins, so one index is
-/// enough, as in guacd.
+/// One image ends before the next begins, so one stream index is enough, as in guacd.
 const IMAGE_STREAM: &str = "0";
 /// The image bytes in one `blob`, as guacd sends (`GUAC_PROTOCOL_BLOB_MAX_LENGTH`). In
 /// base64 they are 8064 characters, inside the 8192 bytes of one instruction.
 const BLOB_BYTES: usize = 6048;
 
-/// Which image formats the client draws, from its `image` instruction. Every client
-/// draws PNG.
+/// Which image formats the client draws, from its `image` instruction; every client draws PNG.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Formats {
     pub jpeg: bool,
@@ -101,7 +88,6 @@ fn copy(moved: &Moved) -> Instruction {
     Instruction::new("copy", args)
 }
 
-/// Adds the instructions that draw `picture` at `area`.
 fn draw(area: Area, picture: &Picture, frame: &mut Vec<Instruction>) {
     let corner = [area.x, area.y].map(|at| at.to_string());
     match picture {
@@ -135,7 +121,6 @@ fn draw(area: Area, picture: &Picture, frame: &mut Vec<Instruction>) {
     }
 }
 
-/// An instruction whose arguments are `fixed` and then `values`.
 fn instruction<const N: usize>(opcode: &str, fixed: [&str; N], values: &[String]) -> Instruction {
     let fixed = fixed.into_iter().map(str::to_owned);
     Instruction::new(opcode, fixed.chain(values.iter().cloned()))

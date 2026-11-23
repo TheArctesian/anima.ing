@@ -1,6 +1,3 @@
-//! `Instruction::with_bmp_text`: the client-bound text whose lengths agree in code points and
-//! UTF-16 units, so guacamole-common-js before 1.5.2 parses it as guacd meant (R-046).
-
 use std::borrow::Cow;
 
 use guac_protocol::{Instruction, encode};

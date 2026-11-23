@@ -9,8 +9,7 @@ use windows::Win32::{
     },
 };
 
-// Store the handle value, not a borrowed pointer; the standard input handle belongs to
-// the process and is never closed here. A mutex serializes signal/panic restoration.
+// The handle value, not a pointer: the process owns standard input. The mutex serializes restoration.
 static SAVED: Mutex<Option<(isize, CONSOLE_MODE)>> = Mutex::new(None);
 
 /// Disable echo and line processing, and deliver arrow/function keys as VT bytes.

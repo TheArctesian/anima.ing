@@ -1,10 +1,4 @@
-//! An RDP device on a loopback port for the opening and session tests, on `IronRDP`'s
-//! acceptor: TLS with a certificate made at start, NLA with one account when the test asks
-//! for it, and a screen of one size. It serves every connection it gets until it is
-//! dropped, tells the test what each client sent, and paints when the test tells it.
-//!
-//! The acceptor's futures are not `Send`, so the device runs on its own thread with a
-//! runtime of its own; the test talks to it through channels.
+//! A loopback RDP device for tests; `IronRDP`'s acceptor futures are not `Send`, so it runs on its own thread and runtime.
 
 mod connection;
 mod input;
@@ -25,7 +19,6 @@ use tokio::sync::{mpsc, oneshot, watch};
 /// How long a test waits for the device, or for the client's side of a session.
 pub const WAIT: Duration = Duration::from_secs(10);
 
-/// The security the device offers.
 #[derive(Clone, Copy)]
 pub enum Offered {
     /// TLS only; the client signs in with its Client Info, which the device notes.
@@ -37,10 +30,9 @@ pub enum Offered {
     },
 }
 
-/// What the device is.
 #[derive(Clone, Copy)]
 pub struct Setup {
-    /// The size of its screen, in pixels.
+    /// The screen size in pixels.
     pub size: (u16, u16),
     pub offered: Offered,
 }
@@ -62,25 +54,21 @@ pub enum Seen {
     },
     /// A Synchronize event: the client's lock keys, as RDP's flag bits.
     Locks(u8),
-    /// The connection ended, for any reason.
     Ended,
 }
 
-/// What the test tells the connected client's connection to do.
 enum Tell {
     Paint { area: Area, colour: [u8; 3] },
     Resize { width: u16, height: u16 },
     Close,
 }
 
-/// What every connection of one device shares.
 struct Served {
     setup: Setup,
     tls: Arc<ServerConfig>,
     /// The key of the certificate, which NLA binds the sign-in to.
     public_key: Vec<u8>,
     seen: mpsc::Sender<Seen>,
-    /// The connection whose session is active, the one the test's tells go to.
     active: watch::Sender<Option<mpsc::Sender<Tell>>>,
 }
 
@@ -165,7 +153,6 @@ impl Device {
         self.tell(Tell::Resize { width, height }).await;
     }
 
-    /// Closes the connection of the active session.
     pub async fn close(&mut self) {
         self.tell(Tell::Close).await;
     }
@@ -181,7 +168,6 @@ impl Device {
     }
 }
 
-/// The device's thread: it accepts connections until the test drops the device.
 fn run(listener: std::net::TcpListener, served: Served, stopped: oneshot::Receiver<()>) {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()

@@ -1,6 +1,3 @@
-//! The names of the database and of the user of an application, and the quoting of an
-//! identifier in a statement.
-
 use std::fmt;
 
 /// The longest identifier of PostgreSQL, in bytes.
@@ -9,14 +6,12 @@ const LONGEST: usize = 63;
 /// Names that PostgreSQL or its image keeps for itself.
 const KEPT: [&str; 4] = ["postgres", "template0", "template1", "public"];
 
-/// Why a name was refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum NameError {
     #[error("a database name is [a-z][a-z0-9_]{{0,62}} and not a name that PostgreSQL keeps")]
     NotPermitted,
 }
 
-/// `[a-z][a-z0-9_]{0,62}`, not a kept name and not with the prefix `pg_`.
 fn is_database_name(text: &str) -> bool {
     text.bytes()
         .next()
@@ -29,9 +24,7 @@ fn is_database_name(text: &str) -> bool {
         && !text.starts_with("pg_")
 }
 
-/// The extensions that an entry may name: each is in the images of PostgreSQL or of `PostGIS`,
-/// and none reaches a file, a program or a different server. A pattern would permit an
-/// extension such as `plpython3u`, `adminpack` or `dblink` (SF-223).
+/// A fixed list: none reaches a file, a program or another server, as a pattern could (SF-223).
 const EXTENSIONS: [&str; 13] = [
     "btree_gin",
     "btree_gist",
@@ -48,8 +41,6 @@ const EXTENSIONS: [&str; 13] = [
     "vector",
 ];
 
-/// True when `text` is an extension of the fixed list (for example `pg_trgm`, `uuid-ossp`,
-/// `vector`).
 #[must_use]
 pub fn is_extension(text: &str) -> bool {
     EXTENSIONS.contains(&text)
@@ -96,10 +87,8 @@ pub struct Names {
 }
 
 impl Names {
-    /// The names of the application `application`: each `-` of the identifier becomes `_`,
-    /// and both names are that text. An identifier with `_` or with `--` is refused, so that
-    /// two identifiers never get the same names (`my-app` and `my_app`), and no name of an
-    /// application has the `__` of the names of the way back (SF-223).
+    /// Each `-` becomes `_`; `_` and `--` are refused, so two identifiers never share names and
+    /// none has the `__` of the names of the way back (SF-223).
     ///
     /// # Errors
     /// [`NameError::NotPermitted`] when the identifier has `_` or `--`, or the text is not a
