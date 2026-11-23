@@ -53,13 +53,58 @@ impl Runner {
     /// Checks a new thread, counts it against the soft limit (THR-114) and asks the holder to
     /// start its program; the answer goes to the client when the holder answers.
     pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
+        self.validate_start(&new)?;
+        if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
+            self.ask_login_again(new.program).await;
+        }
+        let copies = login::copies(new.program, &self.env, login::executable, login::trusted);
+        let path = login::chosen_copy(new.program_path.as_deref(), &copies)?;
+        let asking = Asking {
+            new,
+            back,
+            path,
+            copies,
+        };
+        match self.silence.kept(&asking.path) {
+            Some(true) => self.start_checked(asking).await,
+            Some(false) => {
+                Err(self
+                    .silence
+                    .refusal(asking.new.program, &asking.path, &asking.copies))
+            }
+            None => {
+                // The ask runs away from the loop; the start goes on when it answers (TH97).
+                // One ask for each copy at a time: a later start waits for the same answer.
+                let asked = self.asks.open.values().any(|open| open.path == asking.path);
+                let env = login::with_folder_of(self.env.clone(), &asking.path);
+                let (path, copies) = (asking.path.clone(), asking.copies.clone());
+                let ask = async move {
+                    let load = super::silence::load().await;
+                    super::silence::ask(path, copies, env, load).await
+                };
+                let sender = self.asks.sender.clone();
+                let id = self.asks.next;
+                self.asks.next += 1;
+                self.asks.open.insert(id, asking);
+                if !asked {
+                    tokio::spawn(async move {
+                        // A runner that ended does not need the answer.
+                        let _ = sender.send((id, ask.await)).await;
+                    });
+                }
+                Ok(())
+            }
+        }
+    }
+
+    fn validate_start(&self, new: &NewThread) -> Result<(), Refusal> {
         // A start whose copy is being asked counts against the soft limit too.
         self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
         let no_project = new.folder.as_os_str().is_empty();
         if !no_project {
             chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         }
-        self.draft_ready(&new)?;
+        self.draft_ready(new)?;
         if !self
             .said
             .models
@@ -67,57 +112,7 @@ impl Runner {
         {
             return Err(Refusal::BadValue);
         }
-        if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
-            self.ask_login_again(new.program).await;
-        }
-        let copies = login::copies(new.program, &self.env, login::executable, login::trusted);
-        let path = login::chosen_copy(new.program_path.as_deref(), &copies)?;
-        match self.silence.kept(&path) {
-            Some(true) => {
-                let asking = Asking {
-                    new,
-                    back,
-                    path,
-                    copies,
-                };
-                self.start_checked(asking).await
-            }
-            Some(false) => Err(self.silence.refusal(new.program, &path, &copies)),
-            None => {
-                self.ask_copy(Asking {
-                    new,
-                    back,
-                    path,
-                    copies,
-                });
-                Ok(())
-            }
-        }
-    }
-
-    /// Asks the copy of `asking` its version away from the loop; the start goes on when it
-    /// answers (TH97). One ask for each copy at a time: a later start waits for the same answer.
-    fn ask_copy(&mut self, asking: Asking) {
-        let path = &asking.path;
-        let asked = self.asks.open.values().any(|open| &open.path == path);
-        let env = login::with_folder_of(self.env.clone(), path);
-        let ask = {
-            let (path, copies) = (path.clone(), asking.copies.clone());
-            async move {
-                let load = super::silence::load().await;
-                super::silence::ask(path, copies, env, load).await
-            }
-        };
-        let sender = self.asks.sender.clone();
-        let id = self.asks.next;
-        self.asks.next += 1;
-        self.asks.open.insert(id, asking);
-        if !asked {
-            tokio::spawn(async move {
-                // A runner that ended does not need the answer.
-                let _ = sender.send((id, ask.await)).await;
-            });
-        }
+        Ok(())
     }
 
     /// The answers of the copies for the start `id`: it goes on, or it is refused with words.

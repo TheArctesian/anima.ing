@@ -14,7 +14,7 @@
 #   4. the pinning test of the desktop shell, with the trust hook of WKWebView.
 set -eu
 
-PACKAGES="anima-app anima-cli anima-daemon anima-database anima-hub"
+PACKAGES="anima-app anima-cli anima-daemon anima-database anima-hub remote-login"
 
 cd "$(dirname "$0")/../.."
 [ "$(uname -s)" = Darwin ] || { echo "macos-tests: this is not a Mac" >&2; exit 2; }

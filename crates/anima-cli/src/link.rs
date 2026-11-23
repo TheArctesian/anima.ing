@@ -7,12 +7,15 @@ pub mod documents;
 pub mod install;
 pub mod invite;
 pub mod revoke;
+mod ssh;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 
 #[derive(Debug, clap::Subcommand)]
 pub enum LinkCommand {
+    /// Set up private SSH access on this computer (asks for native administrator approval).
+    EnableSsh(ssh::EnableArgs),
     /// Show the devices the link permits: name, fingerprint, path, expiry and open streams.
     Devices(devices::DevicesArgs),
     /// Make a single-use invite for a new device (a login token is needed).
@@ -31,6 +34,7 @@ impl LinkCommand {
     /// [`Failure`] for a refusal, a hub with no link or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
+            Self::EnableSsh(args) => args.run(invocation).await,
             Self::Devices(args) => args.run(invocation).await,
             Self::Invite(args) => args.run(invocation).await,
             Self::Install(args) => args.run(invocation).await,
