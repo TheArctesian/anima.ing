@@ -12,8 +12,7 @@ const V6: IpAddr = IpAddr::V6(Ipv6Addr::LOCALHOST);
 const ANY4: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 const ANY6: IpAddr = IpAddr::V6(Ipv6Addr::UNSPECIFIED);
 
-/// `/proc/net/tcp` of a Linux machine (little-endian): user 1000 listens on 127.0.0.1:8443,
-/// user 1001 on 0.0.0.0:43123, user 1000 has a connection (state 01) on 9000.
+/// `/proc/net/tcp`: uid 1000 on 127.0.0.1:8443, uid 1001 on 0.0.0.0:43123, a connection on 9000.
 const PROC_TCP: &str = "\
   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
    0: 0100007F:20FB 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 31337 1 0000000000000000 100 0 0 10 0
@@ -22,8 +21,7 @@ const PROC_TCP: &str = "\
    3: garbage
 ";
 
-/// `/proc/net/tcp6`: user 1000 on `[::1]:8443`, user 1001 on `[::]:5000` (dual stack) and
-/// user 1002 on `[::ffff:127.0.0.1]:6000`.
+/// `/proc/net/tcp6`: uid 1000 on `[::1]:8443`, 1001 on dual-stack `[::]:5000`, 1002 on mapped 6000.
 const PROC_TCP6: &str = "\
   sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
    0: 00000000000000000000000001000000:20FB 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 41337 1 0000000000000000 100 0 0 10 0
@@ -103,7 +101,6 @@ fn the_proc_tables_give_listening_sockets_with_their_owners() {
         [
             listener(V6, 8443, Some(1000)),
             listener(ANY6, 5000, Some(1001)),
-            // An IPv4-mapped address is the IPv4 address.
             listener(V4, 6000, Some(1002)),
         ]
     );
@@ -117,12 +114,10 @@ fn on_linux_a_port_is_own_only_when_every_listener_that_reaches_it_is_this_users
 
     assert!(own(8443, 1000));
     assert!(!own(8443, 1001));
-    // Another user's listener on 0.0.0.0, on dual-stack `::`, or on a mapped address.
     assert!(!own(43123, 1000));
     assert!(!own(5000, 1000));
     assert!(own(6000, 1002));
     assert!(!own(6000, 1000));
-    // A connection is not a listener.
     assert!(!own(9000, 1000));
 
     let both = [
@@ -157,7 +152,6 @@ fn lsof_names_give_this_users_listeners_with_the_family_of_a_wildcard() {
         (V4, 8443),
         501
     ));
-    // This user's IPv6 wildcard does not vouch for 127.0.0.1.
     assert!(!listeners::only_own(
         &found,
         Listed::ThisUser,
@@ -204,7 +198,6 @@ fn a_listener_of_this_test_is_own_and_a_closed_port_has_nobody() {
     let port = listener.local_addr().unwrap().port();
 
     assert_eq!(owner(port, true), Owner::Own);
-    // The device link's port while the app's own child does not serve it.
     assert_eq!(owner(port, false), Owner::Other);
     drop(listener);
     assert_eq!(owner(port, true), Owner::Nobody);

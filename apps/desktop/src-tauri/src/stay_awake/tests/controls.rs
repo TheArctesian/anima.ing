@@ -120,7 +120,6 @@ fn a_start_after_a_failed_run_sets_the_sleep_setting_back() {
 fn a_choice_that_cannot_be_saved_changes_nothing() {
     let rig = Rig::new(Os::Linux);
     let mut control = control(&rig);
-    // A file where the folder must be: the save fails.
     fs::write(rig.folder(), "").unwrap();
     assert_eq!(control.choose(Level::Awake), Err(ControlError::Unsaved));
     assert_eq!(control.refresh().level, Level::Off);
@@ -189,7 +188,6 @@ fn a_computer_that_loses_the_idle_hold_also_ends_the_lid_hold() {
     assert!(!rig.marker().exists());
 }
 
-/// A `pmset` that reports the battery at `percent` and counts its runs in `runs`.
 fn pmset_on_battery(rig: &Rig, percent: u8) -> std::path::PathBuf {
     let runs = rig.dir.path().join("pmset-runs");
     let body = format!(

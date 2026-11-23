@@ -1,8 +1,5 @@
-//! Step output split into lines (BLD-048): never trusting a line's length.
-
 use crate::builder::lines::{Lines, MAX_LINE_BYTES};
 
-/// The lines of `input` when it arrives in the given chunks.
 fn split(input: &[u8], cuts: &[usize]) -> Vec<String> {
     let mut lines = Lines::default();
     let mut out = Vec::new();

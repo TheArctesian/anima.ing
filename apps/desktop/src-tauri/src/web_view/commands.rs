@@ -1,6 +1,5 @@
-//! The web view commands of the shell interface (WP-31), for the main web view only: the
-//! capability `desktop` allows them for `main`, and each command checks its caller too.
-//! Every failure is logged as its code only (LOG-007).
+//! For the main web view only: the capability `desktop` allows them for `main`, and each command
+//! checks its caller too (WP-31). Every failure is logged as its code only (LOG-007).
 
 use std::time::Duration;
 
@@ -13,11 +12,9 @@ use super::{
     leaf_fingerprint, opening::Opening, pinning_available, tabs::TabId, view,
 };
 
-/// How long reading a leaf certificate may take: name lookup, connect and handshake.
 const CERTIFICATE_PATIENCE: Duration = Duration::from_secs(10);
 
-/// Refuses every caller but the main web view. Device web views have no capability, so the
-/// ACL already refuses them; this is the second wall.
+/// Device web views have no capability, so the ACL already refuses them; this is the second wall.
 pub fn caller(label: &str) -> Result<(), WebViewError> {
     if label == MAIN {
         Ok(())
@@ -37,7 +34,6 @@ fn native(_: tauri::Error) -> WebViewError {
     WebViewError::Native
 }
 
-/// The checked tab ID and its open web view.
 fn open_view(app: &AppHandle, tab_id: &str) -> Result<(TabId, Webview), WebViewError> {
     let id = TabId::parse(tab_id)?;
     let view = app
@@ -52,9 +48,6 @@ pub fn web_view_pinning() -> bool {
     pinning_available()
 }
 
-/// Opens a device web view for a tab, in the main window at `bounds`, with the device's
-/// own store, then loads `url`. `https` is refused (`pinning_unavailable`) where the
-/// platform cannot pin; the client then uses the system browser.
 #[tauri::command]
 pub async fn web_view_open(webview: Webview, request: Request<'_>) -> Result<(), WebViewError> {
     let body = match request.body() {
@@ -73,8 +66,6 @@ async fn open(caller_view: &Webview, body: Option<serde_json::Value>) -> Result<
     .await
 }
 
-/// Opens a tab's device web view from `web_view_open`'s arguments, once the caller is
-/// checked: the view on its blank start, then the trust hook, then the first real load.
 pub async fn open_tab(app: &AppHandle, body: &serde_json::Value) -> Result<(), WebViewError> {
     let new = Opening::read(body)?.check(pinning_available())?;
     let window = app.get_window(MAIN).ok_or(WebViewError::Window)?;
@@ -110,8 +101,7 @@ pub async fn open_tab(app: &AppHandle, body: &serde_json::Value) -> Result<(), W
     Ok(())
 }
 
-/// Moves and sizes a tab's web view in the main window. A popped-out view fills its own
-/// window, so this leaves it alone.
+/// A popped-out view fills its own window, so this leaves it alone.
 #[tauri::command]
 pub async fn web_view_place(
     webview: Webview,
@@ -128,8 +118,7 @@ pub async fn web_view_place(
     }))
 }
 
-/// Shows or hides a tab's web view in the main window (the tab is hidden, or an overlay is
-/// open). A popped-out view stays shown in its own window.
+/// A popped-out view stays shown in its own window.
 #[tauri::command]
 pub async fn web_view_show(
     webview: Webview,
@@ -145,7 +134,6 @@ pub async fn web_view_show(
     }))
 }
 
-/// Takes a history step in a tab's web view, or reloads it.
 #[tauri::command]
 pub async fn web_view_go(webview: Webview, tab_id: &str, to: &str) -> Result<(), WebViewError> {
     reported(caller(webview.label()).and_then(|()| {
@@ -158,15 +146,12 @@ pub async fn web_view_go(webview: Webview, tab_id: &str, to: &str) -> Result<(),
     }))
 }
 
-/// Pins the certificate the operator accepted for the tab's `https` origin, then loads the
-/// tab's address again so the new pin decides.
+/// Loads the tab's address again so the new pin decides.
 #[tauri::command]
 pub async fn web_view_pin(webview: Webview, tab_id: &str, pin: &str) -> Result<(), WebViewError> {
     reported(caller(webview.label()).and_then(|()| pin_tab(webview.app_handle(), tab_id, pin)))
 }
 
-/// Pins `pin` to a tab's `https` origin and loads the tab's address again, once the caller is
-/// checked.
 pub fn pin_tab(app: &AppHandle, tab_id: &str, pin: &str) -> Result<(), WebViewError> {
     let (id, view) = open_view(app, tab_id)?;
     let fingerprint = pin.parse::<Fingerprint>()?;
@@ -174,7 +159,7 @@ pub fn pin_tab(app: &AppHandle, tab_id: &str, pin: &str) -> Result<(), WebViewEr
     view.navigate(tab.url.as_url().clone()).map_err(native)
 }
 
-/// Moves a tab's web view to a window of its own, with the same store. Again: no change.
+/// Keeps the same store; a second pop-out changes nothing.
 #[tauri::command]
 pub async fn web_view_pop_out(webview: Webview, tab_id: String) -> Result<(), WebViewError> {
     reported(caller(webview.label()).and_then(|()| {
@@ -192,8 +177,6 @@ pub async fn web_view_close(webview: Webview, tab_id: &str) -> Result<(), WebVie
     reported(caller(webview.label()).and_then(|()| close_tab(webview.app_handle(), tab_id)))
 }
 
-/// Ends a tab and closes its web view, and its own window if it has one, once the caller is
-/// checked.
 pub fn close_tab(app: &AppHandle, tab_id: &str) -> Result<(), WebViewError> {
     let id = TabId::parse(tab_id)?;
     let popped_out = app
@@ -203,15 +186,13 @@ pub fn close_tab(app: &AppHandle, tab_id: &str) -> Result<(), WebViewError> {
     view::close(app, &id, popped_out)
 }
 
-/// The answer of `web_certificate_read`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LeafCertificate {
     pub fingerprint_sha256: Fingerprint,
 }
 
-/// The SHA-256 fingerprint of the leaf certificate an `https` address presents now, for the
-/// system-browser mode (D-9).
+/// For the system-browser mode (D-9).
 #[tauri::command]
 pub async fn web_certificate_read(
     webview: Webview,

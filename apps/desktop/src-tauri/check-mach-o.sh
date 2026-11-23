@@ -1,14 +1,6 @@
 #!/bin/sh
-# Checks a signed macOS application before it goes to the notary service (UPD-011; S12
-# packaging 2.3, D-3 to D-5), for the release workflow (.github/workflows/release.yml, R-179).
-# It runs the commands of the release builder (src/builder/carried/mach_o.rs and
-# src/builder/artifact.rs) and decides on their output in the same way:
-#   - Contents/MacOS holds exactly the application's own program and the seven carried programs;
-#   - `codesign --verify --deep --strict` accepts the application;
-#   - each Mach-O file of the application (by its first bytes, never by its name) holds exactly
-#     x86_64 and arm64, has a Developer ID Application signature of the team, the hardened
-#     runtime, a secure timestamp and no entitlement, for each architecture.
-# The first file that fails stops the script with a failure.
+# Checks a signed macOS application before notarisation (UPD-011, D-3 to D-5, R-179).
+# It decides as the release builder does (src/builder/carried/mach_o.rs, src/builder/artifact.rs).
 #
 #   check-mach-o.sh <path to the .app> <Team ID>
 set -eu
@@ -31,8 +23,7 @@ is_mach_o() {
     esac
 }
 
-# One architecture of one file: one code directory with the `runtime` flag, a secure timestamp
-# (a signature without one prints `Signed Time=`), and no entitlement.
+# A signature without a secure timestamp prints `Signed Time=`.
 check_arch() {
     shown=$(codesign -d --verbose=4 --arch "$2" "$1" 2>&1) || fail "$1 ($2) has no signature"
     [ "$(echo "$shown" | grep -c '^CodeDirectory ')" = 1 ] || fail "$1 ($2) has not one code directory"

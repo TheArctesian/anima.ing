@@ -1,9 +1,5 @@
-//! Linux (WebKitGTK): NOT COMPILED OR RUN by the builder (macOS only); the operator runs it.
-//! WebKitGTK fails an untrusted load with `load-failed-with-tls-errors` and hands over the
-//! `GTlsCertificate`. A pinned leaf is allowed for the host with
-//! `WebContext::allow_tls_certificate_for_host` and the load is retried. Limits: the
-//! allowance is per host (not port) and per web context, and the signal never fires for a
-//! system-trusted certificate, so "a pin wins over system trust" (D-4) is not enforced here.
+//! Linux (WebKitGTK): not compiled or run by the builder (macOS only); the operator runs it.
+//! The allowance is per host and web context, and a system-trusted certificate never signals, so D-4 is not enforced here.
 
 use tauri::Url;
 use tauri::webview::PlatformWebview;
@@ -13,7 +9,7 @@ use webkit2gtk::{WebContextExt, WebViewExt};
 use super::TrustHook;
 use crate::pin::{Fingerprint, Presented, Verdict};
 
-/// Connects the TLS-error signal. Runs on the GTK main thread (`with_webview`).
+/// Runs on the GTK main thread (`with_webview`).
 pub fn install(platform: &PlatformWebview, hook: TrustHook) -> Result<String, String> {
     let view = platform.inner();
     let label = hook.label().to_owned();

@@ -1,6 +1,4 @@
-//! Changes a build hides from `git status` (S12 security review M-1, M-2): an index entry marked
-//! `--skip-worktree` or `--assume-unchanged`, an exclude rule, a changed recipe. Each is undone by
-//! the checkout or refused before a recipe runs. A local bare repository stands in for GitHub.
+//! Changes a build hides from `git status` (S12 security review M-1, M-2); a local bare repository stands in for GitHub.
 
 use std::{fs, path::PathBuf, sync::Arc};
 
@@ -15,9 +13,7 @@ use crate::builder::{
     steps::Workshop,
 };
 
-/// Fake recipes that write to `order` beside the clone: the tree's `tree` when its work folder is
-/// empty, else `stale`; the link's `link`, and it puts `link-output` beside the clone where the
-/// bundle step takes the Linux `anima-link`.
+/// Fake recipes log to `order` beside the clone; `link-output` stands in for the built Linux `anima-link`.
 const FILES: [(&str, &str); 7] = [
     (
         "apps/desktop/src-tauri/database-tree/build.sh",
@@ -44,8 +40,7 @@ const ELF: [u8; 20] = [
     0x7f, b'E', b'L', b'F', 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 62, 0,
 ];
 
-/// A bare repository whose `main` holds `FILES`, and the clone's path, in a folder reached
-/// through no link (the tree's work folder is made beside the clone).
+/// Canonicalized, so the folder is reached through no link.
 struct Origin {
     _root: tempfile::TempDir,
     bare: PathBuf,
@@ -182,18 +177,15 @@ async fn m_2_the_tree_recipe_in_a_new_work_folder_then_the_link_run_before_cargo
     let version = Version::parse("0.1.12").unwrap();
     let beside = origin.clone.parent().unwrap();
     let order = beside.join("order");
-    // What an earlier run left in the work folder is gone before the recipe runs.
     fs::create_dir_all(beside.join("database-tree")).unwrap();
     fs::write(beside.join("database-tree/STAMP"), "an old stamp").unwrap();
     fs::write(beside.join("link-output"), ELF).unwrap();
-    // Linux: no signing identity. The repository has no Cargo.toml, so `cargo build` fails.
+    // The repository has no Cargo.toml, so `cargo build` fails.
     let result = workshop
         .bundle(&origin.commit, Target::LinuxX86_64, &version)
         .await;
     assert_eq!(result, Err(BuilderError::StepFailed));
     assert_eq!(fs::read_to_string(&order).unwrap(), "tree\nlink\n");
-    // A link program that is not an x86-64 ELF program stops the step before `cargo build`.
-    // The checkout removes the link's output of the first run.
     assert_eq!(workshop.checkout(&origin.commit).await, Ok(()));
     fs::remove_file(&order).unwrap();
     fs::write(beside.join("link-output"), "#!/bin/sh\n").unwrap();

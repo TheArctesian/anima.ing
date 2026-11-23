@@ -1,6 +1,4 @@
-//! The PostgreSQL tree in the release (S3 T11, S12 2.2 step 4, D-1, D-2, D-5): the recipe's
-//! command, its work folder made anew, the signing identity read from the clone, and the tools
-//! a Linux builder needs for it (S12 T3).
+//! S3 T11, S12 2.2 step 4, S12 T3, D-1, D-2, D-5.
 
 use std::{
     fs,

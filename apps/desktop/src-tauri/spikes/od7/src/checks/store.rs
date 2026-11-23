@@ -1,5 +1,4 @@
-//! Check 1 (WEB-006): device A, device B and the default store (the main view's) share no
-//! cookie or `localStorage`. All three load the same origin, so only the store separates them.
+//! Check 1 (WEB-006): three stores on one origin share no cookie or `localStorage`.
 
 use std::time::Duration;
 
@@ -9,7 +8,6 @@ use crate::event::{Event, Journal, is_report};
 
 const WAIT: Duration = Duration::from_secs(8);
 
-/// What one web view saw: `document.cookie`, `localStorage['spike']` and the `Cookie` header.
 struct Seen {
     who: &'static str,
     cookie: String,
@@ -100,7 +98,6 @@ async fn read_back(journal: &mut Journal, from: usize, who: &'static str) -> Res
             .unwrap_or("")
             .to_owned()
     };
-    // The GET for this read carried the cookie header the store holds for the origin.
     let query = format!("who={who}");
     let header = journal
         .since(from, |e| matches!(e, Event::Served { path, query: q, .. } if path == "/store/read" && *q == query))

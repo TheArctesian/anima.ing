@@ -1,23 +1,19 @@
-//! Opens the page of the account sign-in in the browser of the phone (mobile plan M3-4, HMD-032). The
-//! command has the name of the desktop one, `system_browser_open`, so the client calls one command on
-//! each platform. Only `https` addresses; the URL is never logged (LOG-007).
+//! Opens the sign-in page in the browser of the phone (M3-4, HMD-032), under the desktop command name `system_browser_open`.
+//! Only `https` addresses; the URL is never logged (LOG-007).
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
 /// Why the address did not open. Carries no URL and no text of the operating system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum PhoneBrowserError {
-    /// The address is not a plain `https` address.
     #[error("the address cannot be opened")]
     Address,
-    /// A web view other than the main one asked.
     #[cfg_attr(
         not(mobile),
         expect(dead_code, reason = "only the command of a phone makes it")
     )]
     #[error("only the main window can do this")]
     Caller,
-    /// The operating system did not open it.
     #[error("the browser did not open")]
     Failed,
 }
@@ -42,9 +38,7 @@ impl Serialize for PhoneBrowserError {
     }
 }
 
-/// `url` when it is an `https` address with a host, no user name or password in front of the host,
-/// and no space or control character. The operating system then chooses the browser; it must never
-/// get an address of another scheme, which could open another app.
+/// Only `https`: the operating system chooses the app, and another scheme could open another app.
 pub(crate) fn checked(url: &str) -> Result<&str, PhoneBrowserError> {
     let rest = url
         .strip_prefix("https://")
@@ -59,7 +53,6 @@ pub(crate) fn checked(url: &str) -> Result<&str, PhoneBrowserError> {
     Ok(url)
 }
 
-/// Opens an `https` address in the default browser of the phone.
 #[cfg(mobile)]
 #[tauri::command]
 pub async fn system_browser_open(

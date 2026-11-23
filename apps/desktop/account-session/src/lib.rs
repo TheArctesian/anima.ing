@@ -1,8 +1,5 @@
 //! Native account sign-in and secure session storage (M3-5, MOB-006).
-//!
-//! iOS has a web authentication session for this: a page over the app that shares the sign-in of Safari. The
-//! plugin shows a page and takes it away; it knows nothing of the sign-in. The shell gets the result at a loopback
-//! address. The shell alone calls the native plugin.
+//! The plugin only shows and removes a page; the shell gets the result at a loopback address and alone calls it.
 
 use tauri::Runtime;
 use tauri::plugin::{Builder, TauriPlugin};
@@ -19,7 +16,6 @@ pub use tokens::{SecureTokens, StoreError};
 #[cfg(target_os = "ios")]
 pub struct AccountSession<R: Runtime>(tauri::plugin::PluginHandle<R>);
 
-/// Why the page did not show.
 #[cfg(target_os = "ios")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NotShown;
@@ -32,11 +28,9 @@ struct Open<'a> {
 
 #[cfg(target_os = "ios")]
 impl<R: Runtime> AccountSession<R> {
-    /// Shows the page at `url` (`https` only) and returns when it is gone: the person closed it, or `close` took
-    /// it away. It blocks, so call it off the main thread.
+    /// Shows the page at `url` (`https` only) and returns when it is gone. It blocks, so call it off the main thread.
     ///
     /// # Errors
-    ///
     /// `NotShown` when iOS did not show the page or a page already shows.
     pub fn open(&self, url: &str) -> Result<(), NotShown> {
         self.0

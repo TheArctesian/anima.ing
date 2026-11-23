@@ -1,4 +1,3 @@
-//! Lid holds are available on laptops whose power policy permits temporary lid settings.
 use super::platform::Platform;
 #[path = "../lid_set_up/model.rs"]
 mod model;

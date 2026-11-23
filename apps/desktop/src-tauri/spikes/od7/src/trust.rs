@@ -1,5 +1,4 @@
-//! The certificate trust hook of a device web view: it reports each presented leaf and
-//! answers with the pin decision (D-4). The platform part is the only `unsafe` code.
+//! The certificate trust hook of a device web view (D-4); the platform part is the only `unsafe` code.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -17,7 +16,6 @@ pub use linux::install;
 #[cfg(target_os = "macos")]
 pub use macos::install;
 
-/// The pin of each device web view, by label.
 pub type Pins = Arc<Mutex<HashMap<String, Pin>>>;
 
 #[derive(Clone)]
@@ -40,7 +38,7 @@ impl TrustHook {
         &self.label
     }
 
-    /// Decides one challenge and records it. The lock is held only to copy the pin.
+    /// The lock is held only to copy the pin.
     pub fn judge(&self, presented: &Presented) -> Verdict {
         let pin = self
             .pins

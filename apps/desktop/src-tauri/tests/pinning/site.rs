@@ -1,6 +1,4 @@
-//! A local HTTPS site with a fresh self-signed certificate, on loopback only. Every request is
-//! its own connection, so every load is a new TLS handshake, and the site counts the requests
-//! it answered: a cancelled challenge sends none.
+//! Each request is its own connection, so each load is a new TLS handshake; a cancelled challenge sends no request.
 
 use std::{
     io,
@@ -25,24 +23,19 @@ use tokio_rustls::TlsAcceptor;
 
 use crate::web_view::Fingerprint;
 
-/// Most request bytes read before the headers end; a longer request is dropped.
 const REQUEST_LIMIT: usize = 16 * 1024;
-/// Most connections open at once; more are closed on accept.
 const CONNECTIONS: usize = 64;
 const BODY: &str = "<!doctype html><title>proof</title><p>loaded</p>";
 
 /// A running site. Dropping it does not stop it; call `stop`.
 pub struct Site {
     pub port: u16,
-    /// SHA-256 of its leaf certificate.
     pub leaf: Fingerprint,
     served: Arc<AtomicUsize>,
     accept: JoinHandle<()>,
 }
 
 impl Site {
-    /// Serves on `address` and `port` (0 for any) with a new self-signed certificate, or with
-    /// a new leaf signed by a new issuer, presented as the chain leaf then issuer.
     pub fn serve(address: IpAddr, port: u16, chained: bool) -> Result<Self, String> {
         let (chain, key) = if chained {
             issued_chain()
@@ -72,12 +65,10 @@ impl Site {
         })
     }
 
-    /// How many requests it has answered.
     pub fn served(&self) -> usize {
         self.served.load(Ordering::SeqCst)
     }
 
-    /// Stops accepting and closes every open connection, which frees the port.
     pub async fn stop(self) {
         self.accept.abort();
         // An aborted task answers `JoinError::Cancelled`: the expected result.
@@ -138,8 +129,7 @@ async fn accept_loop(listener: TcpListener, acceptor: TlsAcceptor, served: Arc<A
     }
 }
 
-/// One connection: the handshake, one request, one page, then close. A refused handshake is
-/// what a cancelled challenge looks like from here.
+/// A refused handshake is what a cancelled challenge looks like from here.
 async fn answer(stream: TcpStream, acceptor: TlsAcceptor, served: Arc<AtomicUsize>) {
     let Ok(mut tls) = acceptor.accept(stream).await else {
         return;

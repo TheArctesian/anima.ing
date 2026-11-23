@@ -27,7 +27,7 @@ impl LidHold {
 impl Drop for LidHold {
     fn drop(&mut self) {
         self.input.take();
-        // Never kill the guard: it must be allowed to restore even after a timeout.
+        // The guard is not killed, so that it can still restore the plan after the wait.
         let end = std::time::Instant::now() + WAIT;
         while self.alive() && std::time::Instant::now() < end {
             thread::sleep(Duration::from_millis(20));
@@ -87,7 +87,6 @@ fn run(marker: &Path) -> io::Result<()> {
     output.write_all(b"ready\n")?;
     output.flush()?;
     let mut byte = [0];
-    // Data or EOF both mean release. An app crash closes the writer automatically.
     let _ = io::stdin().read(&mut byte)?;
     drop(restore);
     Ok(())

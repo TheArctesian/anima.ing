@@ -4,7 +4,6 @@ use std::fmt;
 
 use sha2::{Digest, Sha256};
 
-/// SHA-256 of a certificate's DER bytes.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Fingerprint([u8; 32]);
 
@@ -27,7 +26,6 @@ impl fmt::Debug for Fingerprint {
     }
 }
 
-/// An accepted certificate for one origin.
 #[derive(Clone, Debug)]
 pub struct Pin {
     pub host: String,
@@ -37,20 +35,15 @@ pub struct Pin {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Verdict {
-    /// Not the pinned origin, or no pin and the system trusts it: the system decides.
     Default,
-    /// The presented leaf is the pinned one.
     Accept,
-    /// No pin and the system does not trust it: show the fingerprint, stop.
     Untrusted(Fingerprint),
-    /// A pin exists and a different leaf was presented: stop and warn.
     Mismatch {
         expected: Fingerprint,
         presented: Fingerprint,
     },
 }
 
-/// What a server-trust challenge presented: the origin, the leaf and the system's opinion.
 #[derive(Clone, Debug)]
 pub struct Presented {
     pub host: String,

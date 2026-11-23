@@ -1,5 +1,4 @@
-//! The menu bar or tray item (AWK-004): the three levels as check lines, and "Open Anima.ing".
-//! It shows the same state as the Settings page: each change redraws both.
+//! The menu bar or tray item (AWK-004).
 
 use tauri::{
     AppHandle, Manager,
@@ -15,14 +14,12 @@ const AWAKE: &str = "stay-awake-awake";
 const LID_CLOSED: &str = "stay-awake-lid-closed";
 const OPEN: &str = "open";
 
-/// The three level lines, kept so a change of state can redraw them.
 pub struct Lines {
     off: CheckMenuItem<tauri::Wry>,
     awake: CheckMenuItem<tauri::Wry>,
     lid_closed: CheckMenuItem<tauri::Wry>,
 }
 
-/// The level a menu line chooses.
 #[must_use]
 pub fn level_of(id: &str) -> Option<Level> {
     match id {
@@ -33,7 +30,6 @@ pub fn level_of(id: &str) -> Option<Level> {
     }
 }
 
-/// The text of the lid-closed line: it says why it cannot be chosen.
 #[must_use]
 pub fn lid_text(lid: Lid) -> &'static str {
     match lid {
@@ -44,8 +40,6 @@ pub fn lid_text(lid: Lid) -> &'static str {
     }
 }
 
-/// Makes the tray item with the lines for `status`.
-///
 /// # Errors
 /// Tauri's error when the menu or the tray item could not be made.
 pub fn build(app: &AppHandle, status: Status) -> tauri::Result<()> {
@@ -86,7 +80,6 @@ pub fn build(app: &AppHandle, status: Status) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Redraws the lines for `status`. Without a tray item (it could not be made) it does nothing.
 pub fn show(app: &AppHandle, status: Status) {
     let Some(lines) = app.try_state::<Lines>() else {
         return;

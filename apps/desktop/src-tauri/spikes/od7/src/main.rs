@@ -1,5 +1,4 @@
-//! OD-7 spike harness (WP-31 T1). Runs hidden, prints `PASS|FAIL <check> <detail>` per check
-//! and exits 0 only if every check passed. A hard 60-second limit ends it with status 2.
+//! OD-7 spike harness (WP-31 T1): prints `PASS|FAIL <check> <detail>` per check and exits 0 only if all passed.
 
 mod checks;
 mod event;
@@ -16,7 +15,6 @@ use event::{Event, Events};
 
 const LIMIT: Duration = Duration::from_secs(60);
 
-/// The spike command. Records which web view reached it; nothing else.
 #[tauri::command]
 fn spike_probe(
     webview: tauri::Webview,

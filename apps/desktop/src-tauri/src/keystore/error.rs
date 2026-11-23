@@ -1,17 +1,7 @@
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
-/// Why a key-store call failed. Carries no token and no backend text: the backend's message
-/// can echo entry attributes (LOG-007), so only the variant crosses to the client.
-///
-/// What each code means, by platform:
-/// - `unavailable`: the store cannot be used. Linux: no Secret Service on the session bus.
-///   macOS: any Keychain failure that is not one of the cases below.
-/// - `denied`: the store exists and refused. Linux: the collection is locked or unlock was
-///   dismissed. macOS: the operator cancelled or failed the Keychain prompt (-128, -25293), or
-///   the keychain is missing, read-only or invalid.
-/// - `failed`: anything else, including data the store returned in an unexpected form.
-/// - `empty` and `origin`: input refused before the store was touched.
-/// - `caller`: a web view other than the main one asked for the builder token (C-5).
+/// Carries no token and no backend text: the backend's message can echo entry attributes (LOG-007).
+/// `caller`: a web view other than the main one asked for the builder token (C-5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum KeystoreError {
     #[error("the OS key store is not available")]

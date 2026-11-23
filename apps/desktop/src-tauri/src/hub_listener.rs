@@ -1,12 +1,6 @@
-//! Who listens on the port of a loopback hub address (F-10, security review M2). Before the
-//! client sends a token or a password to `http://127.0.0.1:<port>`, it asks the shell whether a
-//! process of this user listens there; another user of this computer could listen on a free
-//! loopback port. For the device link's port the listener must also be the app's own
-//! `anima-link device` child, up and on the port it reported.
-//!
-//! macOS: `lsof` as this user, which sees only this user's processes. Linux: the owner column
-//! of `/proc/net/tcp` and `/proc/net/tcp6`. Then a connection with a short limit tells whether
-//! anyone listens at all. The origin is never logged.
+//! The client sends a token or a password to a loopback hub only when a process of this user
+//! listens there; for the device link's port, only the app's own `anima-link device` child
+//! (F-10, security review M2). The origin is never logged.
 
 mod listeners;
 mod origin;
@@ -61,8 +55,6 @@ fn from_main(label: &str) -> Result<(), HubListenerError> {
     crate::web_view::caller(label).map_err(|_| HubListenerError::Caller)
 }
 
-/// The listeners on `port` that the system shows: macOS this user's only, with no owner told;
-/// Linux every user's, with their owners.
 fn system_listeners(port: u16, uid: u32) -> (Vec<Listener>, Listed) {
     if cfg!(target_os = "macos") {
         (lsof_listeners(port, uid), Listed::ThisUser)
@@ -71,7 +63,6 @@ fn system_listeners(port: u16, uid: u32) -> (Vec<Listener>, Listed) {
     }
 }
 
-/// This user's listeners on `port`, as `lsof` run as this user lists them.
 fn lsof_listeners(port: u16, uid: u32) -> Vec<Listener> {
     use crate::os_program::{self, AfterLimit, Limit, Stdout};
     let (uid, port) = (uid.to_string(), format!("-iTCP:{port}"));
@@ -93,7 +84,6 @@ fn lsof_listeners(port: u16, uid: u32) -> Vec<Listener> {
     .map_or_default(|printed| listeners::lsof_names(&String::from_utf8_lossy(&printed)))
 }
 
-/// Every user's listeners, with their owners, from `/proc/net`.
 fn proc_listeners() -> Vec<Listener> {
     let read = |path, ipv6| {
         std::fs::read_to_string(path).map_or_default(|text| listeners::proc_net_tcp(&text, ipv6))
@@ -103,8 +93,6 @@ fn proc_listeners() -> Vec<Listener> {
     all
 }
 
-/// Who listens on `127.0.0.1:port`. `link_permits` is false when the port is the device
-/// link's and the app's own child does not serve it now.
 fn owner(port: u16, link_permits: bool) -> Owner {
     let uid = nix::unistd::getuid().as_raw();
     let (found, listed) = system_listeners(port, uid);
@@ -114,9 +102,8 @@ fn owner(port: u16, link_permits: bool) -> Owner {
     listeners::verdict(accepts, own)
 }
 
-/// `"own"`, `"other"` or `"none"`: who listens on the port of the loopback hub address
-/// `origin`, which must be `http://127.0.0.1:<port>`. The client sends nothing to an address
-/// that is not `"own"`.
+/// `"own"`, `"other"` or `"none"` for `http://127.0.0.1:<port>`. The client sends nothing to
+/// an address that is not `"own"`.
 #[tauri::command]
 pub async fn hub_listener_check<R: Runtime>(
     webview: Webview<R>,

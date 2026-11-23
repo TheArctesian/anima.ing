@@ -1,5 +1,3 @@
-//! Real processes: `/usr/bin/env` and `/bin/sh`, which every builder computer has.
-
 use std::{
     ffi::OsString,
     path::Path,
@@ -15,7 +13,7 @@ use crate::builder::{
     plan::{Command, Kept, Program},
 };
 
-/// A command for `program` with `args`; the planned program is not used by `Claim::run`.
+/// The planned program is not used by `Claim::run`.
 pub(super) fn command(args: &[&str]) -> Command {
     Command {
         program: Program::Git,
@@ -164,7 +162,6 @@ async fn bld_027_a_process_left_behind_by_a_finished_step_is_killed() {
     let running = Running::default();
     let (sink, _) = collecting();
     let claim = running.claim(Arc::clone(&sink)).unwrap();
-    // The step exits at once but leaves a sleeper holding its output open.
     let script = command(&["-c", "sleep 60 & echo \"$!\""]);
     let started = Instant::now();
     let kept = claim
@@ -180,13 +177,11 @@ async fn bld_027_a_process_left_behind_by_a_finished_step_is_killed() {
     assert!(!alive(sleeper));
 }
 
-/// A stray in a new session, out of the step's group and without its marker, that holds both
-/// streams open; it prints its process ID first.
+/// A stray outside the step's group and marker that holds both streams open and prints its PID.
 const STRAY: &str = "/usr/bin/env -u ANIMA_BUILD_STEP /usr/bin/perl -e \
     'use POSIX; POSIX::setsid(); print \"$$\\n\"; STDOUT->flush(); sleep 30' & \
     sleep 1";
 
-/// Kills the stray whose process ID is the first line `seen` got.
 fn kill_stray(seen: &Mutex<Vec<String>>) {
     let pid: i32 = seen.lock().unwrap()[0].parse().unwrap();
     let _ = nix::sys::signal::kill(

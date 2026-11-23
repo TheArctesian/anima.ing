@@ -1,6 +1,4 @@
-//! The two calls of the Anima.ing cloud (HMD-043): the hub of the account, and the access of this
-//! device to it. Each sends the `WorkOS` access token as a bearer. The routes and their answers
-//! are those of the site's hub plan (`/v1/hub`, `/v1/hub/access`, 2026-11-17).
+//! The calls of the Anima.ing cloud (HMD-043), as the hub plan of the site (2026-11-17) defines them.
 
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -22,10 +20,7 @@ struct HubAnswer {
     state: HubState,
 }
 
-/// What the cloud gives this device for the ready hub: the link invite (none when this device
-/// is already on the hub's link) and the one-time claim that the device trades with the hub,
-/// through the link, for its own token (R-129, HMD-040). Both go to the main web view, which
-/// joins with them at once. No `Debug`: they are secrets.
+/// The link invite (none when already joined) and the one-time claim (R-129, HMD-040): secrets for the main web view, so no `Debug`.
 #[derive(Deserialize, Serialize)]
 pub struct HubAccess {
     invite: Option<String>,
@@ -34,7 +29,6 @@ pub struct HubAccess {
 
 #[cfg(desktop)]
 impl HubAccess {
-    /// Whether this device is on the link of the hub already: the cloud then gives no invite.
     pub fn is_joined(&self) -> bool {
         self.invite.is_none()
     }
@@ -59,7 +53,6 @@ struct ErrorCode {
     code: String,
 }
 
-/// `POST /v1/hub`: makes or wakes the hub of the account and says where it is.
 pub(super) async fn hub(http: &Client, base: &str, access: &str) -> Result<HubState, CloudError> {
     let response = http
         .post(format!("{base}/v1/hub"))
@@ -77,7 +70,6 @@ pub(super) async fn hub(http: &Client, base: &str, access: &str) -> Result<HubSt
     Ok(answer.state)
 }
 
-/// `POST /v1/hub/access` with `{"device": name}`.
 pub(super) async fn hub_access(
     http: &Client,
     base: &str,
@@ -102,8 +94,7 @@ pub(super) async fn hub_access(
     serde_json::from_slice(&body).map_err(|_| CloudError::Refused)
 }
 
-/// `POST /v1/hub/usage`: the figures of the account for the month (HMD-073 in form B,
-/// `contracts/account-usage.md`). The body goes to the page unchanged; the page checks its form.
+/// `POST /v1/hub/usage` (HMD-073, `contracts/account-usage.md`); the body goes to the page unchanged, and the page checks its form.
 pub(super) async fn hub_usage(
     http: &Client,
     base: &str,
@@ -122,13 +113,8 @@ pub(super) async fn hub_usage(
     serde_json::from_slice(&body).map_err(|_| CloudError::Refused)
 }
 
-/// How long the page waits for the figures of the account before it says that they are not
-/// available.
 const USAGE_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 
-/// The site's errors: 401 signs in again, 402 `payment_failed` asks for the payment, 409
-/// `not_ready` asks `/v1/hub` again, 5xx (`cloud_unavailable`, `not_configured`) is no answer,
-/// and any other 4xx is a refusal.
 pub(super) fn refusal(status: StatusCode, body: &[u8]) -> CloudError {
     if status == StatusCode::UNAUTHORIZED {
         return CloudError::Unauthenticated;

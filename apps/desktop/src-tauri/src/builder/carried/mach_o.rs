@@ -1,7 +1,5 @@
-//! The checks of each Mach-O file of the macOS app (UPD-011, S12 2.3, D-3 to D-5): both
-//! architectures, a Developer ID signature of the release's Team ID, the hardened runtime, a
-//! secure timestamp and no entitlement. A file is Mach-O by its first bytes, never by its name or
-//! folder (D-4). The plans and the decisions on their output are pure; the steps run them.
+//! UPD-011, S12 2.3, D-3 to D-5. A file is Mach-O by its first bytes, never by its name or
+//! folder (D-4).
 
 use std::path::Path;
 
@@ -22,25 +20,21 @@ const MAGICS: [[u8; 4]; 8] = [
     [0xca, 0xfe, 0xba, 0xbf],
     [0xbf, 0xba, 0xfe, 0xca],
 ];
-/// The architectures each file must hold; the display checks run for each.
 pub const ARCHS: [&str; 2] = ["x86_64", "arm64"];
 
-/// Whether `header`, the first bytes of a file, is a Mach-O magic number. A Java class file has
-/// the fat magic too; the checks then refuse it, which is safe.
+/// A Java class file has the fat magic too; the checks then refuse it, which is safe.
 pub fn is_mach_o(header: &[u8]) -> bool {
     header
         .get(..4)
         .is_some_and(|magic| MAGICS.iter().any(|known| known == magic))
 }
 
-/// The Team ID of a Developer ID identity: ten characters of `A-Z0-9`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TeamId(String);
 
 impl TeamId {
-    /// The Team ID in the last parentheses of `identity`, as `Developer ID Application: Name
-    /// (7GDLG48PV6)`. It goes into a code requirement, so anything but ten characters of
-    /// `A-Z0-9` at the end is refused.
+    /// The Team ID goes into a code requirement, so anything but ten characters of `A-Z0-9` is
+    /// refused.
     pub fn of_identity(identity: &str) -> Result<Self, BuilderError> {
         identity
             .strip_suffix(')')
@@ -61,8 +55,8 @@ impl TeamId {
     }
 }
 
-/// The code requirement of a Developer ID Application certificate of `team`: Apple's anchor, the
-/// Developer ID intermediate, the Developer ID Application leaf, and the team as its OU.
+/// Apple's anchor, the Developer ID intermediate, the Developer ID Application leaf, and the team
+/// as its OU.
 pub fn requirement(team: &TeamId) -> String {
     format!(
         "anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and \
@@ -78,13 +72,11 @@ fn on_file(program: Program, file: &Path, args: &[&str]) -> Command {
     step
 }
 
-/// `lipo -archs`; its output must name `x86_64` and `arm64`.
 pub fn archs(file: &Path) -> Command {
     on_file(Program::Lipo, file, &["-archs"])
 }
 
-/// `codesign --verify --strict` against the Developer ID requirement of `team`; exits 0 only
-/// when every architecture passes.
+/// Exits 0 only when every architecture passes.
 pub fn verify(file: &Path, team: &TeamId) -> Command {
     let requirement = format!("-R={}", requirement(team));
     on_file(
@@ -94,7 +86,6 @@ pub fn verify(file: &Path, team: &TeamId) -> Command {
     )
 }
 
-/// `codesign -d --verbose=4` of one architecture; its lines are on standard error.
 pub fn display(file: &Path, arch: &str) -> Command {
     let mut step = on_file(
         Program::Codesign,
@@ -105,8 +96,6 @@ pub fn display(file: &Path, arch: &str) -> Command {
     step
 }
 
-/// `codesign -d --entitlements - --xml` of one architecture: the entitlements on standard output,
-/// nothing when there are none.
 pub fn entitlements(file: &Path, arch: &str) -> Command {
     on_file(
         Program::Codesign,
@@ -115,9 +104,7 @@ pub fn entitlements(file: &Path, arch: &str) -> Command {
     )
 }
 
-/// Whether `codesign -d --verbose=4` printed one code directory with the `runtime` flag
-/// (`flags=0x10000(runtime)`) and a secure timestamp (`Timestamp=`). A signature with no
-/// timestamp prints `Signed Time=` instead.
+/// A signature with no timestamp prints `Signed Time=` instead of `Timestamp=`.
 pub fn hardened_and_timestamped(lines: &[String]) -> bool {
     let directories: Vec<&String> = lines
         .iter()
@@ -135,8 +122,7 @@ pub fn hardened_and_timestamped(lines: &[String]) -> bool {
     runtime && timestamp
 }
 
-/// Whether `codesign -d --entitlements - --xml` printed no entitlement: nothing, or a property
-/// list whose one dictionary is empty (D-3).
+/// Nothing, or a property list whose one dictionary is empty (D-3).
 pub fn no_entitlements(lines: &[String]) -> bool {
     let text: String = lines
         .concat()
@@ -151,8 +137,6 @@ pub fn no_entitlements(lines: &[String]) -> bool {
             && !text.contains("<key>"))
 }
 
-/// What the checks of one Mach-O file read: `lipo -archs`, whether `codesign --verify -R`
-/// passed, and for each architecture `codesign -d --verbose=4` and its entitlements.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Readings {
     pub archs: Vec<String>,
@@ -161,7 +145,6 @@ pub struct Readings {
     pub entitlements: Vec<(&'static str, Vec<String>)>,
 }
 
-/// Whether one reading of each of `ARCHS`, and no other, is in `found` and passes `good`.
 fn each_arch(found: &[(&str, Vec<String>)], good: fn(&[String]) -> bool) -> bool {
     found.len() == ARCHS.len()
         && ARCHS.iter().all(|arch| {
@@ -171,9 +154,7 @@ fn each_arch(found: &[(&str, Vec<String>)], good: fn(&[String]) -> bool) -> bool
         })
 }
 
-/// Whether the readings of one file are those of a release file (UPD-011, D-3): exactly the two
-/// architectures, the Developer ID signature of the team, and for each architecture the
-/// hardened runtime, a secure timestamp and no entitlement.
+/// The checks of a release file (UPD-011, D-3).
 pub fn released(readings: &Readings) -> bool {
     artifact::universal(&readings.archs)
         && readings.verified

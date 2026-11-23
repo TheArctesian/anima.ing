@@ -17,8 +17,7 @@ impl Cloud {
             .clone()
     }
 
-    /// Keeps the tokens of a sign-in or a refresh: the access token in memory, the refresh
-    /// token in the key store in place of the old one (HMD-034).
+    /// The access token stays in memory and the refresh token goes to the key store (HMD-034).
     pub(super) async fn keep(
         &self,
         webview: &Webview,
@@ -40,13 +39,12 @@ impl Cloud {
         Ok(())
     }
 
-    /// A new access token from the stored refresh token. A refused refresh token is deleted.
     pub(super) async fn refreshed(
         &self,
         webview: &Webview,
         id: &'static str,
     ) -> Result<(), CloudError> {
-        // An exchange can consume its input token. Keep the read, exchange and replacement together.
+        // An exchange can consume its input token, so the read, exchange and replacement share one lock.
         let _guard = self.session.lock().await;
         let Some(stored) = session::read(webview, id).await? else {
             return Err(CloudError::Unauthenticated);
@@ -62,7 +60,6 @@ impl Cloud {
         }
     }
 
-    /// Runs `call` with the access token; on `Unauthenticated` refreshes once and runs it again.
     pub(super) async fn with_access<T, F, R>(
         &self,
         webview: &Webview,

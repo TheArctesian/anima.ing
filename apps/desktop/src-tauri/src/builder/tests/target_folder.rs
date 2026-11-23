@@ -1,6 +1,3 @@
-//! Where a build step writes what cargo builds: inside the builder's clone, whatever the
-//! builder's own environment or cargo configuration names (BLD-044).
-
 use std::{
     path::{Path, PathBuf},
     sync::Arc,

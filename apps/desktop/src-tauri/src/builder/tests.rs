@@ -1,6 +1,3 @@
-//! Argument checks, plans, the environment allow-list and the tool check are pure; the
-//! process tests in `tests/child_process.rs` start real (harmless) programs.
-
 mod carried;
 mod checkout;
 mod child_process;
@@ -36,7 +33,6 @@ fn os(pairs: &[(&str, &str)]) -> Vec<(OsString, OsString)> {
         .collect()
 }
 
-/// The app's environment on a builder with every kind of secret in it.
 fn parent_with_secrets() -> Vec<(OsString, OsString)> {
     os(&[
         ("PATH", "/usr/bin:.::relative/bin:/home/op/bin"),
@@ -243,8 +239,7 @@ fn log_007_builder_errors_serialise_as_a_code_and_fixed_text() {
     );
 }
 
-/// N-4, R-108: an app built with the placeholder `plugins.updater.pubkey` names the updater
-/// public key as missing, so it claims no job; the shipped key is a real key line, not missing.
+/// N-4, R-108: a placeholder updater public key counts as missing, so the app claims no job.
 #[test]
 fn r_108_an_app_without_its_updater_public_key_claims_no_job() {
     use base64::{Engine as _, engine::general_purpose::STANDARD};
@@ -280,10 +275,7 @@ fn r_108_an_app_without_its_updater_public_key_claims_no_job() {
     assert_eq!(json, r#"["updater-public-key"]"#);
 }
 
-/// BLD-005, BLD-026: the builder loop and its lease reports run on timers of the main web
-/// view. `WebKit` slows or stops the timers of a page whose window is hidden or minimised, and
-/// the hub then takes the job back after 90 s with no report. The main window turns that off
-/// (macOS 14 and later; the app's minimum is 14.2).
+/// BLD-005, BLD-026: `WebKit` slows the timers of a hidden window, and they carry the lease reports.
 #[test]
 fn bld_005_the_main_web_view_keeps_its_timers_in_the_background() {
     let config: serde_json::Value =

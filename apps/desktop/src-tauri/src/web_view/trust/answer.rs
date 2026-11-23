@@ -1,38 +1,30 @@
-//! The answer a device web view gives a server-trust challenge (D-4, WEB-008): accept, cancel
-//! or leave it to the system, and which verdict the operator should see. Pure: the platform
-//! trust hook reads the challenge, this decides, the hook only carries the answer back.
+//! The answer to a server-trust challenge (D-4, WEB-008). Pure: the platform hook only carries it.
 
 use super::{
     fingerprint::Fingerprint,
     pin::{Challenge, Host, Pin, PinnedOrigin, Verdict, verdict},
 };
 
-/// The port a challenge without one is for: server trust is TLS, and TLS defaults to 443.
+/// A challenge without a port is TLS, which defaults to 443.
 const TLS_PORT: u16 = 443;
 
-/// A server-trust challenge as the platform reports it, before any check.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Presented<'a> {
-    /// The host as the platform spells it.
     pub host: &'a str,
-    /// The port as the platform gives it; 0 means none was set.
+    /// 0 means none was set.
     pub port: isize,
-    /// SHA-256 of the leaf certificate; `None` if the server presented no chain.
+    /// `None` if the server presented no chain.
     pub leaf: Option<Fingerprint>,
 }
 
-/// What the platform tells the web view.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Answer {
-    /// Use the presented chain: the pinned certificate.
     Accept,
     /// Stop the connection; nothing from it loads.
     Cancel,
-    /// Let the system decide, as it would with no hook.
     Default,
 }
 
-/// An answer and the verdict to show the operator, if any.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ruling {
     pub answer: Answer,
@@ -49,12 +41,9 @@ impl Ruling {
     }
 }
 
-/// Decides a challenge in a tab with `pin` that was opened on `origin`.
-///
-/// Fails closed: no leaf, no host or a port out of range cancels. `system_trust` is asked
-/// only when the tab has no pin, since a pin decides alone (D-4) and evaluating trust can
-/// block. An untrusted certificate is shown only for the tab's own origin, the one a pin
-/// would cover; on any other host it is just cancelled.
+/// Fails closed: no leaf, no host or a port out of range cancels.
+/// `system_trust` is asked only with no pin: a pin decides alone (D-4), and evaluating trust can block.
+/// An untrusted certificate is shown only for the tab's own origin; on any other host it is cancelled.
 pub fn rule(
     pin: Option<&Pin>,
     origin: Option<&PinnedOrigin>,
@@ -88,7 +77,6 @@ pub fn rule(
     }
 }
 
-/// The challenge's port: 0 is the TLS default, anything outside `u16` is no port.
 fn port_of(port: isize) -> Option<u16> {
     match port {
         0 => Some(TLS_PORT),

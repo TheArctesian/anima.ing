@@ -1,5 +1,3 @@
-//! A join and the swap of the link's folders, with a stand-in `anima-link`.
-
 use std::{
     fs, io,
     os::unix::fs::{PermissionsExt, symlink},
@@ -17,7 +15,6 @@ use super::runs::{free_port, ready_then_wait, stand_in, until};
 
 const INVITE_LINE: &str = "anima-invite.1.q83vEjRWeJCrze8SNFZ4kA.hub\n";
 
-/// `anima-link join -state DIR` with the invite on standard input.
 fn join_script() -> String {
     format!(
         r#"
@@ -37,7 +34,6 @@ esac
     )
 }
 
-/// A joined link folder with a key file and a saved port.
 fn joined_folder(folder: &Path, port: u16) {
     fs::create_dir_all(folder).unwrap();
     fs::write(folder.join("key"), "").unwrap();
@@ -95,7 +91,6 @@ fn a_swap_that_fails_half_way_puts_the_old_folder_back() {
     let folders = LinkFolders::below(folder.path());
     joined_folder(&folders.device, 41000);
     joined_folder(&folders.next, 42000);
-    // The first rename (device to device.old) works; the second (next to device) fails.
     let next = folders.next.clone();
     let rename = |from: &Path, to: &Path| {
         if from == next {
@@ -121,7 +116,6 @@ fn the_app_start_puts_back_a_folder_left_aside_by_a_stopped_swap() {
 
     assert_eq!(folder::read_port(&folders.device), Some(41000));
     assert!(!old.exists());
-    // With `device` there, an old folder is left for removal, never put over it.
     joined_folder(&old, 43000);
     folders.recover().unwrap();
     assert_eq!(folder::read_port(&folders.device), Some(41000));
@@ -137,7 +131,6 @@ fn a_failed_swap_runs_the_link_before_again_on_its_own_port() {
     joined_folder(&folders.next, new_port);
     let link = folders.device.parent().unwrap().to_path_buf();
     let device = DeviceLink::default();
-    // No rename can happen in a folder its owner may not write.
     fs::set_permissions(&link, fs::Permissions::from_mode(0o500)).unwrap();
 
     let result = replace(&device, program, &folders, new_port);

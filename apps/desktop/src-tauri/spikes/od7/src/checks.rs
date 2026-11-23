@@ -1,5 +1,4 @@
-//! The four OD-7 checks, run in order against hidden web views. Each prints its lines as soon
-//! as it is decided, so a timeout still shows what was proven.
+//! The OD-7 checks; each prints its lines when decided, so a timeout still shows what was proven.
 
 use std::fmt::Display;
 use std::time::Duration;
@@ -23,7 +22,6 @@ pub struct Nonces {
     pub default: String,
 }
 
-/// What every check needs: the hidden window, the plain site, the pins and the event sink.
 pub struct Harness {
     pub window: Window,
     pub events: Events,
@@ -118,7 +116,6 @@ async fn prepare(app: AppHandle, events: Events, journal: &mut Journal) -> Resul
     })
 }
 
-/// Positive control for check 2: the app's own page reaches the command.
 fn main_view(journal: &mut Journal, results: &mut Results) {
     let calls: Vec<String> = journal
         .since(

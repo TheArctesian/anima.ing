@@ -1,5 +1,4 @@
-//! The bundle paths: only the build's own regular files are uploaded, and only while their bytes
-//! are the ones the bundle step recorded (D-13, D-22).
+//! D-13, D-22.
 
 use std::{
     fs,
@@ -61,7 +60,6 @@ fn upd_010_stabilize_names_renames_tauri_output_to_the_stable_anima_prefix() {
     assert!(linux_to.is_file());
     assert!(!linux_from.exists());
 
-    // Already-stable names are left alone.
     artifact::stabilize_names(&clone, Target::LinuxX86_64, &version).unwrap();
     assert!(linux_to.is_file());
 
@@ -209,7 +207,6 @@ fn bld_085_only_apples_final_accepted_status_counts_as_notarized() {
     assert!(!artifact::notarized(&[]));
 }
 
-/// A clone with one bundled file, recorded as the bundle step records it.
 fn bundled_clone() -> (tempfile::TempDir, PathBuf, Bundle) {
     let root = tempfile::tempdir().unwrap();
     let clone = root.path().join("clone");
@@ -238,7 +235,6 @@ fn s_3_a_hard_link_to_a_file_outside_the_clone_is_not_uploaded() {
         artifact::open_own(&clone, &linked).err(),
         Some(BuilderError::Bundle)
     );
-    // The bundled file itself, hard-linked after the bundle step, is refused too.
     fs::hard_link(&bundle.path, root.path().join("copy")).unwrap();
     assert_eq!(
         bound_updater(&clone, &bundle).err(),

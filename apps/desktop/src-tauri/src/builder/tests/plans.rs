@@ -194,7 +194,6 @@ fn bld_043_bld_083_macos_builds_universal_and_bundles_app_and_dmg_with_no_apple_
             "app,dmg"
         ]
     );
-    // No ad-hoc identity and no Apple secret in a step.
     assert!(commands.iter().all(|command| command.env.is_empty()));
     let app = Path::new("/c/bundle/macos/Anima.ing.app");
     let [codesign, lipo] = plan::bundle_checks(app, &app.join("Contents/MacOS/Anima"));
@@ -243,7 +242,6 @@ fn s12_s_2_both_tauri_steps_sign_with_the_builders_own_identity_on_macos_only() 
         assert_eq!(config["bundle"]["macOS"]["signingIdentity"], identity);
         assert_eq!(config["bundle"]["resources"]["database"], "database");
     }
-    // Linux names no identity, also when one is given.
     let linux = plan::bundle(
         Path::new("/c"),
         Target::LinuxX86_64,

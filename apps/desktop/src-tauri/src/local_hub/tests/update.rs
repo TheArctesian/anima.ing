@@ -1,6 +1,3 @@
-//! The update of the hub's programs at the app's start: the answer of the program, what it is
-//! asked, and that the update holds the one change. Stand-in programs; no unit is installed.
-
 use std::fs;
 
 use super::super::{

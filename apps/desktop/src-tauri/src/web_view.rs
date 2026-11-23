@@ -1,9 +1,5 @@
-//! Device web views (WEB-004–008): child web views of the main window, one store per device,
-//! no IPC, navigation only to `http` and `https`, their certificate pins, the macOS trust
-//! hook that enforces them and the leaf-certificate probe for the system-browser mode (D-9).
-//!
-//! URLs, hosts, fingerprints and page content are never logged and never part of an error
-//! (LOG-007): every error crosses to the client as `{ code }` only.
+//! Device web views (WEB-004–008, D-9): one store per device, no IPC, only `http` and `https`.
+//! URLs, hosts, fingerprints and page content are never logged and never part of an error (LOG-007).
 
 mod address;
 mod bounds;
@@ -34,12 +30,7 @@ pub use trust::{
     leaf_fingerprint,
 };
 
-/// Whether a device web view can pin a certificate on this platform (D-6, D-7).
-///
-/// The one place that answers it. `true` on macOS, where the trust hook (`macos_trust`,
-/// R-069) answers every server-trust challenge with the pin's verdict; `false` elsewhere
-/// until the operator has run the OD-7 spike on Linux. While it is `false`, `https` URLs open
-/// in the system browser and only `http` is embedded.
+/// The one answer (D-6, D-7): only macOS has the trust hook (R-069); elsewhere `https` opens in the system browser.
 pub const fn pinning_available() -> bool {
     cfg!(target_os = "macos")
 }
