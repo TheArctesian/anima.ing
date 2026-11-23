@@ -17,6 +17,7 @@ members = [
     "crates/shortening",
     "crates/compose-rules",
     "crates/power",
+    "crates/remote-login",
     "crates/catalogue",
     "crates/anima-applications",
     "crates/anima-osd",

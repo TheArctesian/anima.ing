@@ -21,6 +21,7 @@ path = "src/main.rs"
 tauri-build.workspace = true
 
 [dependencies]
+remote-login = { path = "../../../crates/remote-login" }
 # `unstable`: child web views in the main window and moving them to a window of their own
 # (`Window::add_child`, `Webview::reparent`) for device web views (WEB-004, D-3).
 # `tray-icon`: the menu bar or tray item of the stay-awake control (AWK-004).

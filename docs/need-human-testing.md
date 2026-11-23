@@ -4899,6 +4899,20 @@ Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` 
    Expected: that user cannot list it or read it.
 
 Result: Open. Not started: the steps W1 to W4 are not built.
+### HT-164-bootstrap: One-action local SSH setup (OS3-R12)
+
+Built on `access/ssh-bootstrap`. The shared helper is called by the desktop SSH switch and `anima link enable-ssh`. Native macOS and Windows installation and system authorization dialogs have not been verified. The operator waived the Mac-before-push check for this change.
+
+1. On an enrolled computer without an active SSH server, turn on SSH in Settings. Approve the operating system’s administrator prompt.
+   Expected: the server is installed if needed, the switch turns on after SSH is ready, and no router port forwarding is needed. The new server listens only on 127.0.0.1.
+2. Connect through the private hub with the local account and verify its host key. Restart the computer and reconnect.
+   Expected: login works and the host key stays the same.
+3. Turn SSH off, then on again. Cancel administrator authorization if requested.
+   Expected: turning off needs no elevation. A cancelled setup leaves the private port off and shows an error.
+4. Repeat setup on a computer with a working SSH service and custom configuration.
+   Expected: its configuration and host key remain intact.
+5. Run `anima link enable-ssh` from an interactive terminal on an enrolled computer.
+   Expected: native authorization, then the current username and Ready. Piped invocation is refused before setup.
 ### HT-156: the draft page of Code and the menu Add project (TC8, TC9)
 
 Built on the branch `code/draft-start` (R-394). New thread opens the draft page of T3 Code; the first send starts
