@@ -1,7 +1,4 @@
-//! The open RDP session: the device's messages into the screen copy, frames to the client
-//! as fast as it draws them, the client's input to the device, the clipboard under the
-//! device's switches (RA-033), and the client's view as the device's screen size
-//! (RA-004). I/O edge.
+//! The open RDP session (RA-004, RA-033). I/O edge.
 
 use std::time::Duration;
 
@@ -22,15 +19,13 @@ use super::super::{Ended, Settings, status};
 use super::Terms;
 use crate::rdp::{Device, Event, Opened, Reply, Said, Sharing, ViewRequests, reply};
 
-/// Messages read from the device that wait for the session. Small, so a device that
-/// sends faster than the session draws is held back by TCP and not buffered.
+/// Small, so a device that sends faster than the session draws is held back by TCP.
 const WAITING_MESSAGES: usize = 16;
 struct Running<'a, S> {
     hub: &'a mut Hub<S>,
     to_device: WriteHalf<TlsStream<TcpStream>>,
     allowed: Allowed,
     write_wait: Duration,
-    /// Reads the device; stopped when the session ends.
     reader: JoinHandle<()>,
     device: Device,
     picture: Picture,
@@ -43,7 +38,6 @@ struct Running<'a, S> {
     started: Instant,
 }
 
-/// Runs the session until one side ends it.
 pub(super) async fn run<S>(
     hub: &mut Hub<S>,
     opened: Opened,
@@ -54,7 +48,6 @@ where
     S: AsyncRead + AsyncWrite + Send + 'static,
 {
     let Terms { allowed, resizes } = terms;
-    // The size is checked before anything of that size is made.
     let size = opened.result.desktop_size;
     let size = (usize::from(size.width), usize::from(size.height));
     let Ok(picture) = Picture::new(size, &allowed, settings.pace) else {
@@ -110,8 +103,6 @@ impl<S> Running<'_, S>
 where
     S: AsyncRead + AsyncWrite + Send + 'static,
 {
-    /// Waits for the client, the device, the time of a held-back frame or the time to ask
-    /// for a new size, handles it, and sends a frame when one is due.
     async fn turn(&mut self, reads: &mut mpsc::Receiver<(Action, Vec<u8>)>) -> Result<(), Ended> {
         let frame_due = self.picture.due();
         let ask_due = self.view_requests.ask_at().map(|at| self.started + at);
@@ -141,15 +132,13 @@ where
         Ended::ByDevice
     }
 
-    /// Writes to the device. A device that takes no byte within the write limit has stopped
-    /// reading: the session ends, so it cannot be held open.
+    /// A device that takes no byte within the write limit ends the session, so it cannot hold it open.
     async fn write(&mut self, message: &[u8]) -> Result<(), Ended> {
         write_unless_stalled(&mut self.to_device, message, self.write_wait)
             .await
             .map_err(|_| Ended::ByDevice)
     }
 
-    /// Does what follows from a message of the device or from the client's input.
     async fn follow(
         &mut self,
         events: Result<Vec<Event>, crate::rdp::Malformed>,
@@ -211,8 +200,7 @@ where
                 }
                 Ok(())
             }
-            // The device learns that there is new text, when it may have it. With paste
-            // off it learns nothing, not even that the client's clipboard changed.
+            // With paste off the device learns nothing, not even that the client's clipboard changed.
             Input::Paste(_) if !self.allowed.paste => Ok(()),
             Input::Paste(text) => {
                 self.text = Some(text);
@@ -227,7 +215,6 @@ where
         }
     }
 
-    /// Asks the device for a screen of the size of the client's view, when one is due.
     async fn ask_for_view(&mut self) -> Result<(), Ended> {
         let screen = &self.picture.screen;
         let (screen, now) = ((screen.width(), screen.height()), self.started.elapsed());

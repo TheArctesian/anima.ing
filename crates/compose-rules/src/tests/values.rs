@@ -1,5 +1,3 @@
-//! The rules of the values of a service and of the top level.
-
 use super::{Refusal, Rule, SOUND, app, checked, refusal, top, with};
 use crate::{Settings, check};
 
@@ -83,7 +81,6 @@ fn host_028_a_label_needs_a_prefix_that_the_owner_named_at_the_machine() {
         ..Settings::default()
     };
     assert!(check(&labelled, super::ENVIRONMENT, &named).is_ok());
-    // The prefix of Compose itself can never be set, also when the owner named it.
     let compose = with(
         "restart: unless-stopped",
         "labels: [com.docker.compose.project=other]",

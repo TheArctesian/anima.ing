@@ -1,13 +1,10 @@
-//! Which parts of the screen changed since the client was last told: a grid of tiles, each
-//! changed or not. A tile is small enough that a blinking cursor costs one small image, and
-//! large enough that the grid of a 8192 x 8192 screen is 64 KiB.
+//! A tile is small enough that a blinking cursor costs one small image, and large enough that
+//! the grid of a 8192 x 8192 screen is 64 KiB.
 
 use super::{BYTES_PER_PIXEL, area::Area};
 
-/// The side of one tile, in pixels.
 pub const TILE: usize = 32;
 
-/// The changed tiles of one screen.
 pub(super) struct ChangedTiles {
     columns: usize,
     tiles: Vec<bool>,
@@ -17,8 +14,7 @@ pub(super) struct ChangedTiles {
 }
 
 impl ChangedTiles {
-    /// The grid of a `width` by `height` screen, with every tile changed: the client has
-    /// seen none of it.
+    /// Every tile starts changed: the client has seen none of the screen.
     pub(super) fn all(width: usize, height: usize) -> Self {
         let columns = width.div_ceil(TILE);
         Self {
@@ -44,12 +40,10 @@ impl ChangedTiles {
         }
     }
 
-    /// Whether any tile is changed.
     pub(super) fn any(&self) -> bool {
         self.rows.iter().any(|changed| *changed)
     }
 
-    /// Whether a tile that `area` touches is changed.
     pub(super) fn any_in(&self, area: Area) -> bool {
         if area.width == 0 || area.height == 0 {
             return false;
@@ -106,8 +100,7 @@ impl ChangedTiles {
 }
 
 impl ChangedTiles {
-    /// `area` without the unchanged rows at its top and bottom. An area of changed tiles
-    /// has a changed row.
+    /// An area of changed tiles always has a changed row.
     fn changed_rows_of(&self, area: Area) -> Area {
         let rows = &self.rows[area.y..area.y + area.height];
         let first = rows.iter().position(|changed| *changed).unwrap_or(0);
@@ -140,7 +133,6 @@ fn runs(row: &[bool]) -> Vec<(usize, usize)> {
     runs
 }
 
-/// An area of tiles as an area of pixels, cut at the screen's right and bottom edges.
 fn in_pixels(tiles: Area, width: usize, height: usize) -> Area {
     let (x, y) = (tiles.x * TILE, tiles.y * TILE);
     Area {

@@ -10,10 +10,7 @@ use crate::{
 /// The plan of `container_action`.
 ///
 /// # Errors
-/// `applications_off`; `no_container`, `protected` and `not_adopted` (Section 6.4.3);
-/// `start_not_permitted` for a start of a container that is neither of an application that
-/// Anima installed nor has a restart policy other than `no`; `busy` for a start or a restart
-/// while an item that changes Docker runs. A `stop` is never refused for `busy`.
+/// `applications_off`, the refusals of Section 6.4.3, `start_not_permitted` and `busy`; a `stop` is never refused for `busy`.
 pub fn acted(id: &str, action: Action, facts: &Facts<'_>) -> Result<Plan, Refusal> {
     managed(facts)?;
     let container = reached(id, facts.settings, facts.inventory, facts.records)?;

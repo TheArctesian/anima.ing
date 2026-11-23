@@ -52,6 +52,8 @@ pub(crate) fn check(file: &File, private: bool) -> io::Result<bool> {
     if acl.is_null() || !(user.trusted(owner) || (!private && identity::installer(owner))) {
         return Ok(false);
     }
+    // Write rights: DELETE, WRITE_DAC, WRITE_OWNER, FILE_WRITE_DATA/ADD_FILE,
+    // APPEND_DATA/ADD_SUBDIR, WRITE_EA, DELETE_CHILD, WRITE_ATTRIBUTES, GENERIC_ALL, GENERIC_WRITE.
     let denied = if private {
         u32::MAX
     } else if file.metadata()?.is_dir() {
@@ -81,10 +83,7 @@ fn ace_allows(acl: *const ACL, index: u32, user: &Identity, denied: u32) -> io::
     }
     let ace = unsafe { &*pointer.cast::<ACCESS_ALLOWED_ACE>() };
     let sid = PSID(std::ptr::from_ref(&ace.SidStart).cast_mut().cast());
-    // DELETE, WRITE_DAC, WRITE_OWNER, FILE_WRITE_DATA/ADD_FILE, APPEND_DATA/ADD_SUBDIR,
-    // WRITE_EA, DELETE_CHILD, WRITE_ATTRIBUTES, GENERIC_ALL, GENERIC_WRITE.
-    // Windows owns and updates system programs through TrustedInstaller. It is trusted
-    // for integrity checks, but does not grant access to the user's private secret files.
+    // TrustedInstaller updates system programs: trusted for integrity, never for private files.
     Ok(user.trusted(sid)
         || ace.Mask & denied == 0
         || (denied != u32::MAX && identity::installer(sid)))
@@ -140,7 +139,7 @@ fn set_acl(file: &File, text: &str) -> io::Result<()> {
     }
 }
 
-/// Copy a checked source ACL onto an empty replacement before writing any bytes.
+/// Call on an empty replacement, before any bytes are written.
 pub(crate) fn copy_acl(source: &File, destination: &File) -> io::Result<()> {
     if !check(source, false)? {
         return Err(io::ErrorKind::PermissionDenied.into());

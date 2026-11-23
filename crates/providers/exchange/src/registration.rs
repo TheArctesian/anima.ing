@@ -1,4 +1,4 @@
-//! How a source makes its own App for the operator, and what the hub reads back (PRJ-039).
+//! How a source makes its own App for the operator (PRJ-039).
 //!
 //! Pure types and function pointers: the hub supplies entropy, the origin and the transport.
 
@@ -6,13 +6,11 @@ use zeroize::Zeroizing;
 
 use crate::exchange::Problem;
 
-/// The provider's side of "Connect in three presses": the form to post, the manifest in it, the
-/// pages the operator presses on, and how to read the replies.
+/// The provider's side of "Connect in three presses".
 #[derive(Clone, Copy, Debug)]
 pub struct Registration {
     /// Where the operator's browser goes, for example `https://github.com`.
     pub web_base: &'static str,
-    /// The App name from 7 bytes of entropy the hub supplies.
     pub name: fn(entropy: &[u8; 7]) -> String,
     /// The manifest the form posts, as JSON text.
     pub manifest: fn(&ManifestFacts<'_>) -> String,
@@ -25,7 +23,6 @@ pub struct Registration {
     pub settings_path: fn(owner: Option<&Owner>, slug: Option<&str>) -> String,
     /// The conversion path below `api_base`. Always a path `Request::get` accepts.
     pub conversion_path: fn(code: &str) -> String,
-    /// Reads the conversion reply.
     pub parse_converted: fn(&[u8]) -> Result<Converted, Problem>,
     /// The path of one installation below `api_base`, for the App's own token.
     pub installation_path: fn(id: &str) -> String,
@@ -55,8 +52,7 @@ pub enum Webhook {
     InactivePlaceholder,
 }
 
-/// What the provider returned when the manifest was converted. No `Debug`: it holds the key,
-/// which wipes itself when dropped.
+/// What the provider returned for the converted manifest. No `Debug`: it holds the key.
 pub struct Converted {
     pub app_id: u64,
     pub slug: String,
@@ -64,7 +60,6 @@ pub struct Converted {
     pub private_key_pem: Zeroizing<String>,
 }
 
-/// Who owns the App.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Owner {
     pub id: u64,
@@ -72,7 +67,6 @@ pub struct Owner {
     pub organisation: bool,
 }
 
-/// One installation of the App.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Installation {
     pub id: u64,

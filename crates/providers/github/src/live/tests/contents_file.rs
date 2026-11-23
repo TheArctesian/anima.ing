@@ -1,12 +1,9 @@
-//! PRJ-030: the reading of a file of the repository.
-
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use source_exchange::{Body, Response};
 
 use super::{fixture, ok};
 use crate::live::contents::{FileRead, file_parse};
 
-/// A file object as GitHub sends it, with `content` as given.
 fn file_body(size: u64, content: &str) -> Vec<u8> {
     serde_json::to_vec(&serde_json::json!({
         "type": "file", "encoding": "base64", "name": "f.txt", "path": "d/f.txt",

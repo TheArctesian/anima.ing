@@ -1,6 +1,4 @@
-//! The review state of a generated entry (SF-255): the static test refuses a
-//! generated entry with no state, and a review that names no person: an empty name, a bad day,
-//! an agent, a session or a program. A recipe that a person wrote needs no state.
+//! The review state of a generated entry (SF-255).
 
 use std::path::Path;
 

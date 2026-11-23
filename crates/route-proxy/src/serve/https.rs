@@ -1,8 +1,5 @@
-//! A TLS listener of the names that serve (Section 12.3): the public one, and the private one on
-//! the address of the proxy on the network of Anima (Section 16.7). A private name answers only
-//! on the private listener and only to a node of that network; a redirect answers its one
-//! address and never reaches a machine. A connection holds a place of its route until it ends, a
-//! WebSocket after its `101` included, and each write to the client has its time.
+//! The TLS listeners of the names that serve (Sections 12.3 and 16.7). A private name answers only on
+//! the private listener; a connection holds a place of its route until it ends, a WebSocket included.
 
 use std::{
     net::IpAddr,
@@ -26,10 +23,8 @@ use crate::{
     wire::{Dial, Reach, Transport},
 };
 
-/// The answer to a connection that a limit of its name refused.
 const OVER_LIMIT: &[u8] =
     b"HTTP/1.1 503 Service Unavailable\r\ncontent-length: 0\r\nconnection: close\r\n\r\n";
-/// The answer when the hub cannot reach the application.
 const NO_APPLICATION: &[u8] =
     b"HTTP/1.1 502 Bad Gateway\r\ncontent-length: 0\r\nconnection: close\r\n\r\n";
 
@@ -48,7 +43,6 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, listener: TcpListener, reach: R
     }
 }
 
-/// One TLS connection up to its name: its caps, the PROXY header and the handshake.
 async fn one<H: Hub>(
     proxy: &Proxy<H>,
     mut stream: TcpStream,
@@ -75,8 +69,6 @@ async fn one<H: Hub>(
     answer(proxy, tls, (&name, client), listener).await;
 }
 
-/// One connection of `name` after its handshake, on the listener of `listener`: the limits of its
-/// route, its request and its answer. The place of the route is held until the connection ends.
 pub(crate) async fn answer<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
     proxy: &Proxy<H>,
     mut tls: S,
@@ -101,7 +93,6 @@ pub(crate) async fn answer<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
     tracing::info!(name = %name, status = ?status, "a request of a public name");
 }
 
-/// Answers a request of a redirect with its one address.
 async fn redirect<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
     proxy: &Proxy<H>,
     tls: &mut S,
@@ -117,7 +108,6 @@ async fn redirect<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
     Some(status)
 }
 
-/// Reads, checks and relays one request; returns the status sent to the client.
 async fn request<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
     proxy: &Proxy<H>,
     tls: &mut S,

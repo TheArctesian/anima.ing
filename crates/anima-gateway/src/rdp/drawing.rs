@@ -1,14 +1,9 @@
-//! A changed area of `IronRDP`'s picture into the gateway's screen copy, which finds what
-//! is new in it.
-
 use ironrdp_pdu::geometry::InclusiveRectangle;
 use ironrdp_session::image::DecodedImage;
 
 use super::device::Malformed;
 use crate::screen::{Area, BYTES_PER_PIXEL, Screen};
 
-/// Copies `area` of `image` into `screen`. The part of `area` outside the picture is left
-/// out.
 pub(super) fn draw(
     image: &DecodedImage,
     area: &InclusiveRectangle,

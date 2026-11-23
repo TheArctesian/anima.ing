@@ -1,5 +1,4 @@
-//! A child starts suspended, joins a kill-on-close job, then resumes. No descendant can
-//! escape between spawn and assignment. The caller retains its child handle until attached.
+//! A child starts suspended, joins a kill-on-close job, then resumes, so no descendant escapes.
 use std::{
     io,
     mem::size_of,
@@ -89,7 +88,7 @@ impl Job {
         Ok(Self(job))
     }
 
-    /// End the entire job now. Dropping the returned empty owner does nothing further.
+    /// Ends the job and each process in it now.
     pub fn kill(self) {
         drop(self.0);
     }

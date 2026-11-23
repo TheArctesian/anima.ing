@@ -1,5 +1,3 @@
-//! The roles step against a real server, and against what `deploy/postgres/roles.sql` makes.
-
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -11,7 +9,6 @@ use super::{login_statement, prepare};
 use crate::scratch::Database;
 use crate::{Layout, Role, urls};
 
-/// What a role may do and who may connect where, as one text to compare.
 const RIGHTS: &str = "
     select r.rolname, r.rolcanlogin, r.rolsuper, r.rolcreatedb, r.rolcreaterole,
            r.rolbypassrls, r.rolreplication, r.rolinherit,
@@ -26,8 +23,7 @@ const RIGHTS: &str = "
      where d.datname in ('anima', 'postgres', 'template1')
      order by 1;";
 
-/// Signs in with the URL in `role`'s file exactly as the hub does (`connect(url.trim())`) and
-/// runs one statement; `Err` holds the SQLSTATE.
+/// Signs in exactly as the hub does (`connect(url.trim())`); `Err` holds the SQLSTATE.
 fn as_role(layout: &Layout, role: Role, statement: &str) -> Result<(), String> {
     let url = fs::read_to_string(layout.url_file(role)).unwrap();
     tokio::runtime::Builder::new_current_thread()
@@ -110,7 +106,6 @@ fn db_003_the_hub_login_owns_nothing_and_reaches_only_its_database() {
         Ok(())
     );
 
-    // The hub's URL with the `postgres` database in place of its own.
     let elsewhere = fs::read_to_string(layout.url_file(Role::Hub))
         .unwrap()
         .replace("/anima?", "/postgres?");

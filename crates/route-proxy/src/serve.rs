@@ -1,14 +1,7 @@
-//! The state that each connection of the proxy shares (Section 12.3): the names and the streams
-//! of the table of the hub, the limits of each name, the caps of each listener and the counts.
-//! The listeners are in [`https`] (TLS for the names that serve, public and private) and
-//! [`http`] (plain HTTP for the ACME challenge and the redirect), and the streams in
-//! [`crate::streams`]. Each listener caps its connections in all and for each client network
-//! before the TLS handshake, each step has a time limit, a request has one deadline for its head
-//! and its body, and in door mode only the door's addresses may send a PROXY header
-//! (SF-327). A private route answers only on the private address and only the
-//! nodes of the network of Anima (Section 16.7, SF-245). The log has only the name,
-//! the bytes, the status and the time: never a path, a query, a header or a cookie (LOG-007,
-//! SF-229). I/O edge.
+//! The state that each connection of the proxy shares (Section 12.3).
+//! In door mode only the door's addresses may send a PROXY header (SF-327). A private route
+//! answers only nodes of the network of Anima (SF-245). The log holds no path, query, header
+//! or cookie (LOG-007, SF-229).
 
 pub mod http;
 pub mod https;
@@ -33,7 +26,6 @@ use crate::{
     wire::{Counts, Reach, StreamRoute},
 };
 
-/// One name that serves.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {
     pub application: Uuid,
@@ -42,12 +34,10 @@ pub struct Entry {
     pub redirect_to: Option<String>,
 }
 
-/// The state that each connection shares.
 pub struct Proxy<H: Hub> {
     hub: H,
     /// Whether each connection comes from the door with a PROXY header.
     door: bool,
-    /// The peers whose PROXY header is read in door mode.
     door_addresses: Vec<IpAddr>,
     private: Option<Private>,
     places: Places,
@@ -195,19 +185,15 @@ impl<H: Hub> Proxy<H> {
         self.udp_flows_per_network
     }
 
-    /// The connections of one route at one time.
     pub(crate) const fn route_connections(&self) -> u32 {
         self.route_connections
     }
 
-    /// The name that serves as `name`.
     pub(crate) fn entry(&self, name: &str) -> Option<Entry> {
         let names = self.names.read().unwrap_or_else(PoisonError::into_inner);
         names.get(name).cloned()
     }
 
-    /// Whether `client` may reach a route of `reach`: each client for a public one, only a node
-    /// of the network of Anima for a private one.
     pub(crate) fn reaches(&self, reach: Reach, client: IpAddr) -> bool {
         match (reach, &self.private) {
             (Reach::Public, _) => true,
@@ -219,7 +205,6 @@ impl<H: Hub> Proxy<H> {
         }
     }
 
-    /// Admits one new connection to `name`; a refusal is counted.
     pub(crate) fn admit(&self, name: &str) -> bool {
         let admitted = self
             .limiter
@@ -232,7 +217,6 @@ impl<H: Hub> Proxy<H> {
         admitted.is_ok()
     }
 
-    /// A connection to `name` ended.
     pub(crate) fn release(&self, name: &str) {
         self.limiter
             .lock()
@@ -240,7 +224,6 @@ impl<H: Hub> Proxy<H> {
             .release(name);
     }
 
-    /// Counts one request or connection of `name` and its bytes in its period.
     pub(crate) fn moved(&self, name: &str, bytes_in: u64, bytes_out: u64) {
         self.add(name, |counts| {
             counts.requests += 1;
@@ -262,9 +245,6 @@ impl<H: Hub> Proxy<H> {
         change(counts.entry(name.to_owned()).or_default());
     }
 
-    /// The client of a connection: from the PROXY header of the door within the handshake
-    /// time, or the peer; `None` closes the connection. In door mode a peer that is not an
-    /// address of the door is closed before a byte is read.
     async fn client(&self, stream: &mut TcpStream, peer: IpAddr) -> Option<IpAddr> {
         if !self.door {
             return Some(peer);
@@ -279,7 +259,6 @@ impl<H: Hub> Proxy<H> {
     }
 }
 
-/// The client address of the PROXY header of the door; `None` closes the connection.
 async fn client_of_door(stream: &mut TcpStream) -> Option<IpAddr> {
     let mut line = Vec::with_capacity(door_header::HEADER_MAX);
     while line.len() < door_header::HEADER_MAX {

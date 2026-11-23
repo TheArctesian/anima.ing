@@ -1,5 +1,3 @@
-//! Keysyms from the client become the keys of a US keyboard, or Unicode characters.
-
 use anima_gateway::rdp::{KeyEvent, Keyboard};
 use proptest::prelude::*;
 
@@ -27,7 +25,6 @@ fn unicode(character: char, pressed: bool) -> KeyEvent {
     KeyEvent::Unicode { unit, pressed }
 }
 
-/// The scancodes of `text` typed on a new keyboard, each key pressed alone.
 fn typed(text: &str) -> Vec<KeyEvent> {
     let mut keyboard = Keyboard::default();
     text.chars()
@@ -104,7 +101,6 @@ fn characters_outside_the_table_go_as_unicode() {
         keyboard.key(0x0100_0000 + 0x20ac, true),
         [unicode('€', true)]
     );
-    // Outside the Basic Multilingual Plane: two units.
     assert_eq!(
         keyboard.key(0x0100_0000 + 0x1f600, true),
         [
@@ -127,7 +123,6 @@ fn a_shortcut_sends_the_key_whatever_shift_state_the_character_needs() {
 
     // Control and C, with Caps Lock on at the client.
     assert_eq!(keyboard.key(u32::from('C'), true), [key(0x2e, true)]);
-    // A character with no US key still goes as itself.
     assert_eq!(keyboard.key(0xf6, true), [unicode('ö', true)]);
 }
 
@@ -169,8 +164,6 @@ fn the_lock_keys_and_unknown_keysyms_send_nothing() {
 }
 
 proptest! {
-    /// Whatever the client sends, each release answers its press in kind, and no more
-    /// keys are remembered than the limit.
     #[test]
     fn any_keys_are_released_as_they_were_pressed(
         keys in proptest::collection::vec((prop_oneof![0x20u32..0x100, 0xff00u32..0x1_0000], any::<bool>()), 0..200)

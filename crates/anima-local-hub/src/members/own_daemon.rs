@@ -1,12 +1,5 @@
-//! The daemon in the container of a hosted hub (HMD-071, task HM-T35 of hosted-mode.md): where
-//! it keeps its token, how it reaches the hub and what it measures. Pure.
-//!
-//! The hub serves it the routes of K8 on a private socket in the socket folder of the database
-//! (this user's, mode 0700). When the daemon has no token yet, the hub writes one enrolment
-//! code of its own device to a file beside that socket at its start; `run` gives the code to
-//! `anima-daemon enrol -` on standard input and removes the file. A daemon that holds its token
-//! and its configuration is not enrolled again: no new code, token or device at each start.
-//! The daemon deletes a token that the hub refuses (HM-T35), so the next start enrols again.
+//! The daemon in the container of a hosted hub (HMD-071). Pure.
+//! A daemon with its token and configuration is not enrolled again; a refused token is deleted, so the next start enrols (HM-T35).
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -15,15 +8,12 @@ use super::{Carried, Pool};
 use crate::Folders;
 use crate::child::Spec;
 
-/// The daemon of the hub's own device. A Rust program; the pool's image may leave it out.
+/// The daemon of the hub's own device; the pool's image may leave it out.
 pub const DAEMON: &str = "anima-daemon";
 
-/// The files of an enrolment in the daemon's folder (`crates/daemon/src/config/home.rs`): the
-/// token, and the configuration that names the hub and the device.
+/// The files of an enrolment, as `crates/daemon/src/config/home.rs` names them.
 const ENROLMENT_FILES: [&str; 2] = ["token", "daemon.json"];
 
-/// The daemon of a hosted hub: its program, its folder, the hub's socket for it, the file of its
-/// code and the folder whose bytes it measures.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwnDaemon {
     program: PathBuf,
@@ -48,7 +38,6 @@ impl OwnDaemon {
         })
     }
 
-    /// Whether the daemon holds an enrolment: its token and its configuration are both there.
     /// An enrolment that stopped between the two files counts as none.
     #[must_use]
     pub fn is_enrolled(&self) -> bool {
@@ -57,7 +46,6 @@ impl OwnDaemon {
             .all(|file| self.home.join(file).is_file())
     }
 
-    /// The file in which the hub writes the code of an enrolment.
     #[must_use]
     pub fn code_file(&self) -> &Path {
         &self.code_file

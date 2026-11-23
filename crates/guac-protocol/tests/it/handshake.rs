@@ -1,5 +1,3 @@
-//! The handshake reply to guacd `args` fixtures (GW-010, GW-014).
-
 use guac_protocol::{
     ArgValues, Handshake, HandshakeError, HandshakeStep, Instruction, MAX_INSTRUCTION_BYTES, encode,
 };
@@ -90,7 +88,6 @@ fn gw_010_connect_has_version_then_one_value_per_name_in_order() {
     }
 }
 
-/// `(position in connect, value)` for the K4 values in the official-image fixtures.
 const POSITIONS_1_5_5: [(usize, &str); 12] = [
     (1, "10.20.0.15"),
     (

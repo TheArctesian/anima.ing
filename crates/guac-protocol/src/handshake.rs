@@ -1,9 +1,4 @@
 //! The hub side of the guacd handshake as a pure state machine (GW-010).
-//!
-//! `select` → read `args` → send `size`, `audio`, `video`, `image`,
-//! `timezone`, `name`, `connect` → read `ready`. Every refusal fails closed:
-//! after the first error the handshake returns that error for every later
-//! instruction, because the caller closes the gateway connection.
 
 use std::fmt;
 
@@ -21,15 +16,11 @@ const IMAGE_TYPES: [&str; 3] = ["image/png", "image/jpeg", "image/webp"];
 const GATEWAY_MESSAGE_CHARS: usize = 128;
 
 /// What the caller does after an instruction from guacd.
-///
-/// `Debug` redacts `connection_id`: anyone who reaches guacd with it can join
-/// the session (GW-014, LOG-007).
+/// `Debug` redacts `connection_id`: anyone who reaches guacd with it can join the session (GW-014).
 #[derive(Clone, PartialEq, Eq)]
 pub enum HandshakeStep {
     /// Send these instructions to guacd, in order. Empty for a `nop`.
-    ///
-    /// `connect` carries passwords and keys: never log the instructions'
-    /// arguments (LOG-007); `Instruction`'s `Debug` already omits them.
+    /// `connect` carries passwords and keys: never log the arguments (LOG-007).
     Send(Vec<Instruction>),
     /// guacd is connected. Keep `connection_id` with the session and never
     /// send it to the client (GW-014).
@@ -48,9 +39,7 @@ impl fmt::Debug for HandshakeStep {
     }
 }
 
-/// Why the handshake failed. No variant carries an argument value (LOG-007);
-/// names and opcodes from guacd are cut to 32 characters, its error message
-/// to 128.
+/// Why the handshake failed. No variant carries an argument value (LOG-007).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum HandshakeError {
     /// The first `args` value is missing, not `VERSION_X_Y_Z`, or older than 1.5.0.
@@ -68,12 +57,10 @@ pub enum HandshakeError {
         opcode: &'static str,
         argument: String,
     },
-    /// An instruction to send is larger than guacd accepts.
     #[error(
         "the {opcode} instruction exceeds {MAX_INSTRUCTION_BYTES} bytes or {MAX_ELEMENTS} elements"
     )]
     InstructionTooLarge { opcode: &'static str },
-    /// guacd sent `ready` without a connection ID.
     #[error("guacd sent ready without a connection ID")]
     MissingConnectionId,
     /// guacd refused the connection with `error` before `ready`.
@@ -81,11 +68,9 @@ pub enum HandshakeError {
     Gateway {
         /// The Guacamole status code, or `None` when guacd sent none or a non-number.
         status: Option<u16>,
-        /// guacd's text, cut to 128 characters. It is gateway text for the
-        /// process log only; never send it to the client.
+        /// guacd's text, cut to 128 characters; for the process log only, never for the client.
         message: String,
     },
-    /// guacd sent an instruction this step of the handshake does not accept.
     #[error("expected {expected} from guacd, got {opcode:?}")]
     UnexpectedInstruction {
         expected: &'static str,
@@ -111,8 +96,7 @@ impl Handshake {
     /// Starts a handshake for `protocol` and returns the `select` instruction
     /// to send first.
     ///
-    /// `protocol` must be a hub constant such as `ssh`, without NUL; it is not
-    /// checked.
+    /// `protocol` must be a hub constant such as `ssh`, without NUL; it is not checked.
     #[must_use]
     pub fn new(protocol: &str, params: ConnectParams) -> (Self, Instruction) {
         let handshake = Self {
@@ -167,7 +151,6 @@ fn advance(state: State, i: Instruction) -> Result<(State, HandshakeStep), Hands
     }
 }
 
-/// `size`, `audio`, `video`, `image`, `timezone`, `name` and `connect`, in order.
 fn reply_to_args(
     params: &ConnectParams,
     args: &[String],
@@ -195,8 +178,6 @@ fn reply_to_args(
     ])
 }
 
-/// `opcode` with `args`, refused when guacd's parser would not accept it
-/// (its byte and element limits).
 fn sendable<A>(opcode: &'static str, args: A) -> Result<Instruction, HandshakeError>
 where
     A: IntoIterator,
@@ -218,7 +199,6 @@ fn size(display: Display) -> Result<Instruction, HandshakeError> {
     )
 }
 
-/// `connect` with our version, then one value per `args` name, `""` when unset.
 fn connect(params: &ConnectParams, names: &[String]) -> Result<Instruction, HandshakeError> {
     let mut values = Vec::with_capacity(names.len() + 1);
     values.push(VERSION.to_owned());
@@ -229,7 +209,6 @@ fn connect(params: &ConnectParams, names: &[String]) -> Result<Instruction, Hand
     sendable("connect", values)
 }
 
-/// `value` as an owned argument, refused when guacd would cut it at a NUL.
 fn checked(opcode: &'static str, argument: &str, value: &str) -> Result<String, HandshakeError> {
     if value.contains('\0') {
         return Err(HandshakeError::NulInValue {
@@ -240,7 +219,6 @@ fn checked(opcode: &'static str, argument: &str, value: &str) -> Result<String, 
     Ok(value.to_owned())
 }
 
-/// `(major, minor, patch)` from `VERSION_<major>_<minor>_<patch>`, digits only.
 fn parse_version(text: &str) -> Option<(u32, u32, u32)> {
     let mut parts = text.strip_prefix("VERSION_")?.split('_').map(|part| {
         if !part.bytes().all(|b| b.is_ascii_digit()) {

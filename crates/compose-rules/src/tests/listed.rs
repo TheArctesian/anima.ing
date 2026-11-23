@@ -1,5 +1,3 @@
-//! A key that is not in the list is refused, at any level, with no rule of its own.
-
 use super::{Refusal, Rule, SOUND, app, checked, refusal, top, with};
 
 #[test]

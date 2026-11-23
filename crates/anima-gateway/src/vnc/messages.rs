@@ -1,6 +1,4 @@
-//! The server's messages after sign-in (RFC 6143 Section 7.6), read from a buffer of
-//! received bytes. Nothing is decoded here: a message is cut into its parts and checked
-//! against the limits, so the gateway never waits for more bytes than a device may send.
+//! The server's messages after sign-in (RFC 6143 Section 7.6), cut and checked against the limits.
 
 use crate::screen::{Area, MAX_SIDE};
 
@@ -8,8 +6,7 @@ use super::Malformed;
 
 /// The bytes of one pixel as the gateway asks for it (`requests::pixel_format`).
 pub(super) const PIXEL_BYTES: usize = 4;
-/// The longest clipboard text taken from a device. A longer one is skipped, not an error:
-/// the operator may copy a large text on the device for another purpose.
+/// A longer clipboard text is skipped, not an error: the operator may copy it for another purpose.
 pub(super) const LONGEST_CUT_TEXT: usize = 1 << 20;
 const RAW: i32 = 0;
 const COPY_RECT: i32 = 1;
@@ -19,13 +16,14 @@ const DESKTOP_SIZE: i32 = -223;
 /// The encodings the gateway asks for, most wanted first.
 pub(super) const ENCODINGS: [i32; 5] = [ZRLE, ZLIB, COPY_RECT, RAW, DESKTOP_SIZE];
 
-/// How one rectangle's pixels arrive.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Body<'a> {
-    /// Four bytes for each pixel.
     Raw(&'a [u8]),
     /// The pixels are on the screen already, at this corner.
-    CopyFrom { x: usize, y: usize },
+    CopyFrom {
+        x: usize,
+        y: usize,
+    },
     /// Raw pixels through the session's zlib stream.
     Zlib(&'a [u8]),
     /// ZRLE tiles through the session's ZRLE zlib stream.
@@ -40,7 +38,6 @@ pub(super) struct Rect<'a> {
     pub(super) body: Body<'a>,
 }
 
-/// How a message from the device begins.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Start<'a> {
     /// An update of this many rectangles, which follow one by one ([`rect`]).
@@ -56,9 +53,7 @@ pub(super) enum Start<'a> {
     },
 }
 
-/// Why reading stopped.
 enum Stop {
-    /// The buffer ends inside the message.
     Incomplete,
     Malformed(Malformed),
 }
@@ -69,7 +64,6 @@ impl From<Malformed> for Stop {
     }
 }
 
-/// The unread end of the buffer.
 struct Unread<'a>(&'a [u8]);
 
 impl<'a> Unread<'a> {
@@ -90,7 +84,6 @@ impl<'a> Unread<'a> {
     }
 }
 
-/// Reads one thing from `buffer`; `None` when the buffer does not hold all of it yet.
 fn whole<'a, T>(
     buffer: &'a [u8],
     read: impl FnOnce(&mut Unread<'a>) -> Result<T, Stop>,
@@ -103,13 +96,10 @@ fn whole<'a, T>(
     }
 }
 
-/// The start of the message at the front of `buffer`, and its length in bytes. An update
-/// is read rectangle by rectangle, so the gateway never holds more than one rectangle of
-/// a device's bytes.
+/// The start of the message at the front of `buffer` and its length; an update is read by rectangle.
 ///
 /// # Errors
-/// [`Malformed`] when the bytes cannot be a message the gateway asked for. The session
-/// then ends: the stream cannot be read further.
+/// [`Malformed`] when the bytes cannot be a message the gateway asked for.
 pub(super) fn start(buffer: &[u8]) -> Result<Option<(Start<'_>, usize)>, Malformed> {
     whole(buffer, |unread| match unread.take(1)?[0] {
         0 => {
@@ -131,8 +121,7 @@ pub(super) fn start(buffer: &[u8]) -> Result<Option<(Start<'_>, usize)>, Malform
     })
 }
 
-/// The rectangle at the front of `buffer`, for a screen of `size`, and its length in
-/// bytes. A rectangle outside the screen is refused before its pixels are waited for.
+/// The rectangle at the front of `buffer` and its length; one outside `size` is refused at once.
 ///
 /// # Errors
 /// [`Malformed`], as [`start`].
@@ -165,7 +154,6 @@ pub(super) fn rect(
     })
 }
 
-/// The body of a rectangle of `pixels` pixels in `encoding`.
 fn pixel_body<'a>(unread: &mut Unread<'a>, encoding: i32, pixels: usize) -> Result<Body<'a>, Stop> {
     match encoding {
         RAW => Ok(Body::Raw(unread.take(pixels * PIXEL_BYTES)?)),

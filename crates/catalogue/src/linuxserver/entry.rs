@@ -1,5 +1,4 @@
-//! The entry file of a generated recipe, in the order of the fields of Section 13.2: the shape
-//! that `serde_json` writes. [`crate::entry::Entry`] reads it back.
+//! The entry file of a generated recipe; its fields keep the order of Section 13.2.
 
 use serde::Serialize;
 

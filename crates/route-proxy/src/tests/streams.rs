@@ -1,6 +1,4 @@
-//! The streams (HOST-050, task H40): a TCP stream reaches its route through the hub by the
-//! application and the name, a private stream listens only where the settings say, a UDP flow
-//! answers a source with no more bytes than it sent, and the frames of datagrams.
+//! Route streams and UDP flows (HOST-050).
 
 use std::{
     collections::BTreeMap,
@@ -29,7 +27,6 @@ use crate::{
     wire::{Counts, Dial, Reach, StreamRoute, Table, Transport, WireError},
 };
 
-/// A hub that records each dial and answers each with a machine that echoes.
 #[derive(Default)]
 struct EchoHub {
     dials: Mutex<Vec<Dial>>,

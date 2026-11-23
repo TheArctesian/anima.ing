@@ -1,5 +1,4 @@
-//! Windows file security: reject reparse points, inspect ACLs by handle, and create
-//! protected directories before a caller writes sensitive bytes (WIN2, CMD-012).
+//! Windows file security: no reparse points, and ACLs checked by handle (WIN2, CMD-012).
 use crate::native;
 use std::{
     fs::{self, File, OpenOptions},

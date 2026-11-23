@@ -1,7 +1,3 @@
-//! `anima-gateway listen <address:port> [--other-gateway <host:port> [--pass <protocol>]]`
-//! runs the gateway. `anima-gateway session` is one worker; the listener starts it. Wiring
-//! only.
-
 use std::process::ExitCode;
 
 use anima_gateway::listening::{self, MOST_SESSIONS, OTHER_GATEWAY, PASS, WORKER, Workers};
@@ -11,16 +7,13 @@ use tokio::net::TcpListener;
 const USAGE: &str =
     "usage: anima-gateway listen <address:port> [--other-gateway <host:port> [--pass rdp|vnc]]";
 
-/// The options of a command: another gateway, and the protocols that go to it though this
-/// gateway serves them.
+/// `passed` holds the protocols that go to the other gateway though this gateway serves them.
 struct Options {
     other_gateway: Option<String>,
     passed: Vec<String>,
 }
 
 impl Options {
-    /// Reads `rest`: nothing, or `--other-gateway` with its value and then any number of
-    /// `--pass` with a protocol.
     fn read(rest: &[String]) -> std::io::Result<Self> {
         let usage = || std::io::Error::other(USAGE);
         let Some((other, pairs)) = rest.split_first_chunk::<2>() else {

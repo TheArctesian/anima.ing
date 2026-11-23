@@ -1,5 +1,3 @@
-//! Tests run from JSON fixtures under `tests/fixtures`, shaped like GitHub's replies.
-
 use serde_json::{Value, json};
 use source_exchange::{Body, Normalised, Problem, Request, Response};
 
@@ -18,7 +16,6 @@ pub(super) fn fixture(name: &str) -> Vec<u8> {
     std::fs::read(path).unwrap()
 }
 
-/// The fixture repository with its id, name and `pushed_at` changed.
 pub(super) fn repository(id: u64, full_name: &str, pushed_at: &str) -> Value {
     let mut entry: Value = serde_json::from_slice(&fixture("repository.json")).unwrap();
     entry["id"] = json!(id);
@@ -41,8 +38,6 @@ pub(super) fn empty_tree() -> Vec<u8> {
     br#"{"sha":"0","tree":[],"truncated":false}"#.to_vec()
 }
 
-/// What the stand-in GitHub answers: listing pages by number, then one answer for every
-/// tree request and one for every deployments request.
 pub(super) struct Replies {
     pub pages: Vec<Vec<u8>>,
     pub tree: (u16, Vec<u8>),
@@ -87,7 +82,6 @@ pub(super) struct Run {
     pub state: Value,
 }
 
-/// One run as the engine drives it: begin, then request and normalise until none is left.
 pub(super) fn run(state: &Value, replies: &Replies) -> Run {
     let mut state = begin(state);
     let mut done = Run {
@@ -144,7 +138,6 @@ pub(super) fn tree_only(kind: SignKind, path: &str) -> Vec<Sign> {
 
 pub(super) const ANIMA: &str = "612345678";
 
-/// One listing page holding the fixture repository.
 pub(super) fn one_repository() -> Vec<Vec<u8>> {
     vec![listing(
         1,

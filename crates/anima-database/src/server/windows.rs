@@ -1,5 +1,4 @@
-//! Windows PostgreSQL lifetime: one owned job for the server tree, and `pg_ctl` for a
-//! normal fast shutdown. Never signal a recycled PID from an unproved stale file.
+//! One owned job holds the server tree; `pg_ctl` does the fast shutdown.
 use super::{Limits, Lock, Server, ServerError, Stopped, io_error};
 use crate::{Layout, Program, Tree};
 use std::{
@@ -38,8 +37,7 @@ pub fn stop_left_over(
         false
     };
     if same {
-        // Our job cannot leave a live server behind. Without an owned process handle we
-        // cannot prove that this instance is this cluster, so do not stop another one.
+        // Without an owned process handle, the live process cannot be proved to be this cluster's.
         return Err(ServerError::LeftOverStays);
     }
     fs::remove_file(file).map_err(io_error("remove a stale postmaster.pid"))?;

@@ -1,4 +1,4 @@
-//! A VNC device for the tests: the bytes a server sends after sign-in (RFC 6143).
+//! The bytes a VNC server sends after sign-in (RFC 6143).
 
 use anima_gateway::screen::{Area, BYTES_PER_PIXEL};
 use flate2::{Compress, Compression, FlushCompress};
@@ -15,14 +15,12 @@ fn four(value: usize) -> [u8; 4] {
         .to_be_bytes()
 }
 
-/// A rectangle header for `area` in `encoding`.
 pub(crate) fn header(area: Area, encoding: i32) -> Vec<u8> {
     let mut bytes = [area.x, area.y, area.width, area.height].map(two).concat();
     bytes.extend_from_slice(&encoding.to_be_bytes());
     bytes
 }
 
-/// A `FramebufferUpdate` of `rects`.
 pub(crate) fn update(rects: &[Vec<u8>]) -> Vec<u8> {
     let mut bytes = vec![0, 0];
     bytes.extend_from_slice(&two(rects.len()));
@@ -30,7 +28,6 @@ pub(crate) fn update(rects: &[Vec<u8>]) -> Vec<u8> {
     bytes
 }
 
-/// RGB pixels as the gateway asks for them: blue, green, red and an unused byte.
 fn bgrx(rgb: &[u8]) -> Vec<u8> {
     let (pixels, _) = rgb.as_chunks::<BYTES_PER_PIXEL>();
     pixels
@@ -64,7 +61,6 @@ pub(crate) fn cut_text(text: &[u8]) -> Vec<u8> {
     [vec![3, 0, 0, 0], four(text.len()).to_vec(), text.to_vec()].concat()
 }
 
-/// One of a session's zlib streams, on the device's side.
 pub(crate) struct Deflater(Compress);
 
 impl Default for Deflater {
@@ -74,7 +70,6 @@ impl Default for Deflater {
 }
 
 impl Deflater {
-    /// `bytes` through the stream, with its length in front.
     fn packed(&mut self, bytes: &[u8]) -> Vec<u8> {
         let mut out = Vec::with_capacity(bytes.len() + 1024);
         self.0
@@ -87,7 +82,6 @@ impl Deflater {
         [header(area, 6), self.packed(&bgrx(rgb))].concat()
     }
 
-    /// `area` as ZRLE, every tile in the form `kind`.
     pub(crate) fn zrle(&mut self, area: Area, rgb: &[u8], kind: Tile) -> Vec<u8> {
         let mut tiles = Vec::new();
         for top in (0..area.height).step_by(64) {
@@ -105,13 +99,11 @@ impl Deflater {
         [header(area, 16), self.packed(&tiles)].concat()
     }
 
-    /// A rectangle in `encoding` whose zlib data is `bytes` packed.
     pub(crate) fn packed_as(&mut self, area: Area, encoding: i32, bytes: &[u8]) -> Vec<u8> {
         [header(area, encoding), self.packed(bytes)].concat()
     }
 }
 
-/// The blue-green-red pixels of the tile at `corner` with `size`, from `rgb` in rows of `row`.
 fn tile_pixels(
     rgb: &[u8],
     row: usize,
@@ -127,12 +119,10 @@ fn tile_pixels(
         .collect()
 }
 
-/// The forms of a ZRLE tile.
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Tile {
     Raw,
     OneColour,
-    /// A palette, and each pixel packed into as few bits as its size needs.
     Packed,
     Runs,
     PaletteRuns,
@@ -150,7 +140,6 @@ fn run_length(length: usize) -> Vec<u8> {
     bytes
 }
 
-/// The colours of `pixels`, in the order they first appear.
 fn palette(pixels: &[[u8; 3]]) -> Vec<[u8; 3]> {
     let mut colours = Vec::new();
     for pixel in pixels {
@@ -161,7 +150,6 @@ fn palette(pixels: &[[u8; 3]]) -> Vec<[u8; 3]> {
     colours
 }
 
-/// Runs of equal pixels: each colour and how often it repeats.
 fn runs(pixels: &[[u8; 3]]) -> Vec<([u8; 3], usize)> {
     let mut runs: Vec<([u8; 3], usize)> = Vec::new();
     for pixel in pixels {
@@ -173,7 +161,6 @@ fn runs(pixels: &[[u8; 3]]) -> Vec<([u8; 3], usize)> {
     runs
 }
 
-/// One tile of blue-green-red `pixels`, `width` wide, in the form `kind`.
 fn tile(pixels: &[[u8; 3]], width: usize, kind: Tile) -> Vec<u8> {
     let colours = palette(pixels);
     let number = |pixel: &[u8; 3]| {

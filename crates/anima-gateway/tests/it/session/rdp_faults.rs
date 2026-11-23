@@ -1,5 +1,3 @@
-//! RDP sessions that cannot open, and RDP that goes to the other gateway.
-
 use anima_gateway::session::{Ended, Settings};
 use guac_protocol::Instruction;
 use tokio::io::AsyncWriteExt as _;
@@ -59,7 +57,6 @@ async fn rdp_goes_to_the_other_gateway_only_when_the_gateway_is_told_to_pass_it(
             .expect("args");
         select
     });
-    // Not told: the gateway answers `select rdp` itself, with its own names.
     let (mut hub, _served) = session(Settings {
         other_gateway: Some(address.clone()),
         ..Settings::default()
