@@ -32,6 +32,7 @@ async fn the_claim_names_only_the_built_model_types() {
         claim["types"],
         json!([
             "model_report",
+            "model_drain",
             "runtime_install",
             "server_start",
             "server_stop"
@@ -106,4 +107,19 @@ async fn an_owned_flag_and_an_agent_outside_agent_types_are_refused() {
         hub.seen("report")[1].body["result"]["cause"],
         json!("actor_not_permitted")
     );
+}
+
+#[tokio::test]
+async fn cap_013_a_model_drain_succeeds_within_its_seconds_and_stops_no_server() {
+    let hub = FakeHub::start().await;
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
+    let root = tempfile::tempdir().expect("a folder");
+    let mut node = node(root.path());
+    hub.queue_claim(Reply::json(200, &item("model_drain", &json!({ "seconds": 60 }))));
+    let start = std::time::Instant::now();
+    node.cycle(&client, &token()).await.expect("a cycle");
+    assert!(start.elapsed() <= std::time::Duration::from_secs(60));
+    let reports = hub.seen("report");
+    assert_eq!(reports[0].body["state"], json!("running"));
+    assert_eq!(reports[1].body["state"], json!("succeeded"));
 }
