@@ -1,4 +1,4 @@
-//! `anima source get <id-or-label>`: one account with its runs and their counts (ITG-003).
+//! `anima source get` (ITG-003).
 
 use super::account::resolve;
 use super::documents::{SourceAccounts, source_accounts};

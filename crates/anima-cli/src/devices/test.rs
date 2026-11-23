@@ -1,5 +1,5 @@
-//! `anima device test`: can the hub reach a saved device and sign in? The answer carries the
-//! host key or certificate the hub saw, so the operator can compare it before trusting it.
+//! The answer carries the host key or certificate the hub saw, so the operator can compare it
+//! before trusting it.
 
 use super::documents::{DeviceTest, device_test};
 use super::get::resolve;

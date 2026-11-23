@@ -1,5 +1,4 @@
-//! `release log --follow`, `vpn status --watch` and `reminder watch` against the scripted
-//! subscription hub (CMD-020, BLD-081, REM-008).
+//! `release log --follow`, `vpn status --watch` and `reminder watch` (CMD-020, BLD-081, REM-008).
 
 use serde_json::{Value, json};
 

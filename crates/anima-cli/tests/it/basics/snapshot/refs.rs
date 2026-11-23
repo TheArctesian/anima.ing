@@ -3,7 +3,6 @@
 
 use super::repos::Repos;
 
-/// A repository with one pushed snapshot; its ref.
 async fn pushed() -> (Repos, String, String) {
     let repos = Repos::new();
     repos.write("a.txt", "changed\n");

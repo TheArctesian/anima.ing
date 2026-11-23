@@ -1,5 +1,4 @@
-//! The hub's origin: `https` and a host, nothing after it (CMD-013). Plain `http` only for this
-//! computer, so tests can run a hub on a loopback port.
+//! The hub's origin (CMD-013); plain `http` is only for loopback, so tests can run a local hub.
 
 use std::fmt;
 
@@ -8,7 +7,7 @@ use reqwest::Url;
 /// The hub when the operator names none (CMD-013, DNS-001).
 pub const DEFAULT_HUB: &str = "https://hub.anima.ing";
 
-/// Hosts that may use plain `http`: they never leave this computer.
+/// The only hosts that may use plain `http`: they never leave this computer.
 const LOOPBACK: [&str; 3] = ["localhost", "127.0.0.1", "[::1]"];
 
 /// A hub origin such as `https://hub.anima.ing` or `https://10.10.0.2:8443`.
@@ -50,7 +49,6 @@ impl Origin {
         Ok(Self(url))
     }
 
-    /// [`DEFAULT_HUB`].
     #[must_use]
     #[expect(
         clippy::missing_panics_doc,

@@ -1,6 +1,4 @@
-//! `anima containers updates <device>`: whether a newer image exists for each container
-//! (HOST-021). The hub compares the digest on the device with the digest of the same tag at
-//! its public registry. Anima updates nothing by itself (ETH-004).
+//! Anima reports newer images and updates nothing by itself (HOST-021, ETH-004).
 
 use super::documents::{ContainerUpdateList, container_update_list};
 use crate::devices::get::resolve;

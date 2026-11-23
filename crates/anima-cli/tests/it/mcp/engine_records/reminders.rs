@@ -1,5 +1,4 @@
-//! The reminder tools of the `records` set against the scripted hub (MCP-002, MCP-017; K-E6
-//! Section 6).
+//! The reminder tools of the `records` set (MCP-002, MCP-017; K-E6 Section 6).
 
 use serde_json::{Value, json};
 

@@ -1,11 +1,9 @@
-//! What a push sends beyond the working tree: commits the remote does not have yet, and files
-//! the remote already has (JOB-018).
+//! What a push sends beyond the working tree (JOB-018).
 
 use super::repos::Repos;
 
 const SECRET: &str = "TOPSECRET-HISTORY\n";
 
-/// `.env` committed, then deleted and the deletion committed; `a.txt` changed after.
 fn secret_in_history() -> Repos {
     let repos = Repos::new();
     repos.write(".env", SECRET);
@@ -67,8 +65,6 @@ async fn job_018_history_the_remote_already_has_is_not_refused() {
     );
     assert_eq!(run.json()["changed"], true);
 
-    // Deleted in the working tree only: the snapshot's tree has no .env, and origin has the
-    // commits that do.
     let repos = Repos::new();
     repos.write(".env", SECRET);
     repos.git(&["add", ".env"]);

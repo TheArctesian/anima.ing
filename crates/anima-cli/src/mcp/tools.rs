@@ -1,5 +1,5 @@
-//! Every MCP tool, one module for each tool set. A tool calls the typed documents of its noun
-//! through [`Hub`] (MCP-001, CMD-003); it never starts the `anima` program.
+//! A tool calls its noun's typed documents through [`Hub`], never the `anima` program
+//! (MCP-001, CMD-003).
 
 pub mod agents;
 pub mod checks;
@@ -28,7 +28,6 @@ use super::definition::Definition;
 use super::outcome::ToolError;
 use crate::hub::Hub;
 
-/// One tool of one set.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tool {
     Devices(devices::DeviceTool),
@@ -59,7 +58,6 @@ pub enum Tool {
 }
 
 impl Tool {
-    /// Every tool, set by set.
     #[must_use]
     pub fn all() -> Vec<Self> {
         let mut tools: Vec<Self> = Vec::new();
@@ -152,8 +150,6 @@ impl Tool {
         }
     }
 
-    /// Runs the tool with the agent's arguments.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, a refusal before the hub, or the hub's refusal.
     #[expect(
@@ -191,12 +187,10 @@ impl Tool {
     }
 }
 
-/// One tool of the catalogue with its definition.
 #[derive(Clone, Debug)]
 pub struct Entry {
     pub tool: Tool,
     pub set: ToolSet,
-    /// `anima_<noun>_<verb>`, as in the definition.
     pub name: &'static str,
     pub definition: Definition,
 }
@@ -208,7 +202,6 @@ impl Entry {
     }
 }
 
-/// Every tool with its definition, set by set.
 #[must_use]
 pub fn catalogue() -> Vec<Entry> {
     Tool::all()

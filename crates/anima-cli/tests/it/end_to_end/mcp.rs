@@ -1,7 +1,4 @@
-//! `anima mcp` against the real hub (MCP-002, MCP-007, MCP-013, MCP-014): the read tools find
-//! what the command line made, a tool that is off or not approved changes nothing and leaves
-//! no audit row, an approved call changes the hub, and only a person at a terminal widens the
-//! saved permissions.
+//! `anima mcp` against the real hub (MCP-002, MCP-007, MCP-013, MCP-014).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -12,7 +9,6 @@ use crate::kit::real_hub::RealHub;
 use crate::kit::terminal::Terminal;
 use crate::mcp::session::{Desk, Session};
 
-/// The sites on the hub, by name.
 async fn sites_on(hub: &RealHub, reader: &str) -> Vec<String> {
     let data = hub.data(reader, "{ sites { name } }", json!({})).await;
     let sites = data["sites"].as_array().expect("sites").iter();
@@ -29,7 +25,6 @@ fn refused(answer: &Value) -> &str {
     answer["content"][0]["text"].as_str().unwrap_or_default()
 }
 
-/// The command line makes a site `home` and devices `nas` and `web`; their IDs by name.
 async fn fleet(hub: &RealHub, reader: &str) -> [String; 2] {
     let anima = hub.anima().with("ANIMA_TOKEN", reader);
     let site = anima
@@ -111,7 +106,6 @@ async fn mcp_002_read_tools_find_the_fleet_and_an_off_tool_changes_nothing(pool:
     session.finish().await;
 }
 
-/// Saves `--ask anima_site_create --allow anima_device_delete` as a person at a terminal.
 async fn widen_at_a_terminal(desk: &Desk) {
     let line = "mcp permissions set --ask anima_site_create --allow anima_device_delete";
     let refused = desk.anima().run(&words(line)).await;
@@ -121,7 +115,6 @@ async fn widen_at_a_terminal(desk: &Desk) {
     assert_eq!(code, 0, "{screen}");
 }
 
-/// A session whose client asks the person and answers with `approve`.
 async fn asking_session(hub: &RealHub, desk: &Desk, token: &str, approve: bool) -> Session {
     let (mut session, _) = desk.start_at(&hub.origin, token, &[]).await;
     session.approval = Some(json!({ "action": "accept", "content": { "approve": approve } }));

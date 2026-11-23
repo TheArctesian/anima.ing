@@ -1,6 +1,4 @@
-//! `anima pr merge` against the scripted hub (PRJ-029, PRJ-033, PRO-013, CMD-021, CMD-024): it
-//! reads first, sends the head it showed, asks once, and a fork needs its name typed; `--yes`
-//! never stands for that name.
+//! PRJ-029, PRJ-033, PRO-013, CMD-021, CMD-024.
 
 use serde_json::{Value, json};
 

@@ -1,7 +1,4 @@
-//! The operator's saved choice for each MCP tool (MCP-002, MCP-012): `allow`, `ask` or `off`,
-//! per tool, with a default for each kind. The saved form keeps only explicit choices and the
-//! defaults, so a tool added later takes its kind's default. Pure: the commands read and write
-//! the configuration file around it.
+//! The operator's saved choice for each MCP tool (MCP-002, MCP-012); the commands do the file I/O.
 
 use std::collections::BTreeMap;
 
@@ -12,13 +9,11 @@ use super::tools::Entry;
 use crate::contexts::config::McpPermissions;
 use crate::failure::{Failure, Hint};
 
-/// What the server does with one tool.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum State {
-    /// Listed; the agent may call it.
     Allow,
-    /// Listed; each call needs the person's approval (MCP-013).
+    /// Each call needs the person's approval (MCP-013).
     Ask,
     /// Not listed, and refused if called.
     Off,
@@ -40,7 +35,6 @@ impl State {
             .find(|state| state.name() == name)
     }
 
-    /// The state of a kind with nothing saved: read tools `allow`, change tools `off`.
     #[must_use]
     pub const fn built_in(kind: Kind) -> Self {
         match kind {
@@ -50,22 +44,14 @@ impl State {
     }
 }
 
-/// One hub's saved choices.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Permissions {
-    /// The default of the read tools; `None` is the built-in `allow`.
     pub read: Option<State>,
-    /// The default of the change tools; `None` is the built-in `off`.
     pub change: Option<State>,
-    /// Explicit choices by tool name. A name no tool has (a tool removed later) is kept and
-    /// does nothing.
     pub tools: BTreeMap<String, State>,
 }
 
 impl Permissions {
-    /// The saved permissions of one hub; the form before MCP-012 (`toolsets`, `write`) becomes
-    /// explicit choices: tools outside `toolsets` off, change tools of `write` allowed.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when the file names a state or a set that does not exist.
     pub fn from_saved(saved: &McpPermissions, catalogue: &[Entry]) -> Result<Self, Failure> {
@@ -89,7 +75,6 @@ impl Permissions {
         Ok(permissions)
     }
 
-    /// The form the configuration file keeps.
     #[must_use]
     pub fn to_saved(&self) -> McpPermissions {
         McpPermissions {
@@ -105,8 +90,6 @@ impl Permissions {
         }
     }
 
-    /// The operator's saved choice for a tool: its own, else its kind's default; `None` when
-    /// nothing is saved for it.
     #[must_use]
     pub fn choice(&self, name: &str, kind: Kind) -> Option<State> {
         self.tools.get(name).copied().or(match kind {
@@ -115,21 +98,17 @@ impl Permissions {
         })
     }
 
-    /// The saved state of a tool, with the built-in default when nothing is saved.
     #[must_use]
     pub fn state(&self, name: &str, kind: Kind) -> State {
         self.choice(name, kind)
             .unwrap_or_else(|| State::built_in(kind))
     }
 
-    /// Saves `state` for one tool.
     pub fn choose(&mut self, name: &str, state: State) {
         self.tools.insert(name.to_owned(), state);
     }
 
-    /// Saves `state` for every tool in scope (`--allow-all` and the like). Without a set the
-    /// kinds' defaults change and their explicit choices go, so tools added later follow;
-    /// with a set each of its tools gets an explicit choice.
+    /// Without a set the kind defaults change, so tools added later follow them.
     pub fn choose_all(&mut self, state: State, scope: Scope, catalogue: &[Entry]) {
         let kinds: Vec<Kind> = scope
             .kind
@@ -156,15 +135,12 @@ impl Permissions {
     }
 }
 
-/// What a bulk choice covers: one set or all, one kind or both.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Scope {
     pub set: Option<ToolSet>,
     pub kind: Option<Kind>,
 }
 
-/// The tools a list of names stands for: each name is a tool or a whole set.
-///
 /// # Errors
 /// [`Failure::Usage`] (exit 2) naming the unknown name and listing the valid ones.
 pub fn resolve(asked: &[String], catalogue: &[Entry]) -> Result<Vec<&'static str>, Failure> {

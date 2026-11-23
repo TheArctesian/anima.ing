@@ -1,4 +1,4 @@
-//! `anima release create`: starts a release with one build job for each target (BLD-001).
+//! `anima release create` (BLD-001).
 
 use super::documents::{ReleaseCreate, release_create};
 use super::list::job_summary;

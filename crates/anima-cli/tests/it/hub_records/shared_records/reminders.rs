@@ -1,4 +1,4 @@
-//! `anima reminder` against the scripted hub (K-E6 Section 6; REM-004, REM-005, REM-007).
+//! K-E6 Section 6; REM-004, REM-005, REM-007.
 
 use serde_json::{Value, json};
 

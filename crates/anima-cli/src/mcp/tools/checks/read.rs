@@ -1,5 +1,3 @@
-//! `anima_check_get`: one check, its settings without a secret, and its heartbeats.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::Deserialize;

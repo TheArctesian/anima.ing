@@ -1,5 +1,3 @@
-//! `anima check defaults set`: changes the values you name and keeps the others.
-
 use super::documents::{
     CheckDefaultsGet, CheckDefaultsSet, check_defaults_get, check_defaults_set,
 };

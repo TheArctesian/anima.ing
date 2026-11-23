@@ -1,5 +1,4 @@
-//! `anima vpn` against the scripted hub: the picture, and the pre-auth keys that are shown once
-//! and stay out of everything else (VPN-001, VPN-003, CMD-014, LOG-007).
+//! VPN-001, VPN-003, CMD-014, LOG-007.
 
 use serde_json::{Value, json};
 

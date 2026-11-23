@@ -1,6 +1,3 @@
-//! The program's own nouns: who is signed in, which hub, raw access, completion, and snapshots
-//! of the working tree that use git on this computer rather than the hub.
-
 use clap::CommandFactory as _;
 
 use super::Cli;

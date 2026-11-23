@@ -1,7 +1,4 @@
-//! The command tree. Nouns are grouped by what the operator works on: `fleet` (devices and how
-//! they are reached), `hub_records` (what the hub keeps), `shared_records` (what every extension
-//! shares) and `program` (the program itself). A new noun adds one variant and one arm to the
-//! group it belongs to, beside its `mod` line in `lib.rs`.
+//! Each noun lives in one group: `fleet`, `hub_records`, `shared_records` or `program`.
 
 use std::ffi::OsString;
 use std::process::ExitCode;

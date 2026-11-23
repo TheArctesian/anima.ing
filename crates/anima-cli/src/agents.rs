@@ -1,5 +1,4 @@
-//! `anima agents`: the AI agent programs on the devices; today the use their daemons count
-//! (R-135; AIS-020, CMD-030) and their single sessions (AIS-025), and the sessions of this computer read as threads (THR-007).
+//! `anima agents`: the AI agent programs on the devices (R-135, AIS-020, AIS-025, CMD-030, THR-007).
 
 #[cfg(unix)]
 pub mod accounts;

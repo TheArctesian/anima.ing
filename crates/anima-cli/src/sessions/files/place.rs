@@ -1,16 +1,10 @@
-//! Where a transfer reads and writes (K4 Section 9). Pure: `<device>:<path>` on the device,
-//! and the local file a download goes to.
-//!
-//! A downloaded file is named by the device only when the operator names no file: then the
-//! name is the remote path's last part, refused when it is empty, `.`, `..`, or holds a
-//! backslash, NUL or a control character, so device text can never place a file outside the
-//! folder the operator chose.
+//! Where a transfer reads and writes (K4 Section 9). A download takes the device's name only when
+//! the operator names no file, and device text never places a file outside the chosen folder.
 
 use std::path::{Path, PathBuf};
 
 use crate::failure::{Failure, Hint};
 
-/// A path on a device, as `<device>:<path>` gave it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Remote {
     pub device: String,
@@ -18,8 +12,6 @@ pub struct Remote {
 }
 
 impl Remote {
-    /// `spec` split at its first `:` into the device (ID or name) and the path.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when either side is empty.
     pub fn parse(spec: &str) -> Result<Self, Failure> {
@@ -49,9 +41,6 @@ impl Remote {
     }
 }
 
-/// The local file a download of `remote` writes: `local` itself, or inside it when it is a
-/// folder (`local_is_dir`), or in the current folder when it is not given.
-///
 /// # Errors
 /// [`Failure::Usage`] when the device's name for the file is needed and not safe.
 pub fn download_target(
@@ -81,9 +70,6 @@ pub fn download_target(
     }
 }
 
-/// The device path an upload of `local` writes: `remote`'s path, or the local file's name
-/// inside it when it ends in `/`.
-///
 /// # Errors
 /// [`Failure::Usage`] when the local file's name is not UTF-8.
 pub fn upload_target(local: &Path, remote: &Remote) -> Result<String, Failure> {

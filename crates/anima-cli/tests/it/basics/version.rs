@@ -1,5 +1,4 @@
-//! `anima --version` (INS-003, OD-17): the release version the builder passes in
-//! `ANIMA_VERSION`, else the crate version.
+//! `anima --version` (INS-003, OD-17).
 
 use crate::kit::Anima;
 

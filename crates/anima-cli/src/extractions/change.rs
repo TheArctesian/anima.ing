@@ -1,6 +1,4 @@
-//! `anima extraction propose`, `confirm` and `reject`. The fields are a JSON list, as K1
-//! `ExtractedFieldInput` writes them: `[{"name":"title","type":"TEXT","value":"Emma",
-//! "confidence":0.8}]`; a confidence left out or null is unknown, not certain (VIS-004).
+//! `--fields` is a JSON list of K1 `ExtractedFieldInput`; a missing confidence is unknown (VIS-004).
 
 use serde::de::DeserializeOwned;
 

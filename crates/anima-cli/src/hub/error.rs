@@ -1,4 +1,3 @@
-//! How a hub request fails: the hub refused it with a K7 code, or no readable answer came.
 //! No variant holds the token or the request body (CMD-014).
 
 use serde::Serialize;
@@ -16,7 +15,6 @@ pub enum Code {
     Internal,
 }
 
-/// One rejected input field of a `VALIDATION` error.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 pub struct FieldError {
     pub field: String,
@@ -25,26 +23,23 @@ pub struct FieldError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum HubError {
-    /// The hub answered with a GraphQL error.
     #[error("{message}")]
     Refused {
         code: Code,
         message: String,
         fields: Vec<FieldError>,
     },
-    /// No answer came: the connection, TLS or the time limit failed.
+    /// The connection, TLS or the time limit failed.
     #[error("The hub at {origin} did not answer ({reason}).")]
     Unreachable { origin: String, reason: String },
-    /// An answer came that is not a GraphQL response, or not the shape the document asked for.
+    /// Not a GraphQL response, or not the shape the document asked for.
     #[error("The hub's answer could not be read (HTTP status {status}).")]
     Malformed { status: u16 },
-    /// The HTTP client could not be built.
     #[error("The HTTP client could not be set up.")]
     Setup,
 }
 
 impl Code {
-    /// The code a hub error names; an unknown or missing code counts as `INTERNAL`.
     #[must_use]
     pub fn parse(text: Option<&str>) -> Self {
         match text {
@@ -73,7 +68,6 @@ impl Code {
 }
 
 impl HubError {
-    /// The K7 code that stands for this failure.
     #[must_use]
     pub const fn code(&self) -> Code {
         match self {
@@ -83,7 +77,6 @@ impl HubError {
         }
     }
 
-    /// The rejected fields of a `VALIDATION` error; empty for any other.
     #[must_use]
     pub fn fields(&self) -> &[FieldError] {
         match self {

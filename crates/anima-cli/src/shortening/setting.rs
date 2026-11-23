@@ -1,4 +1,4 @@
-//! The switch of the shortening (SHA-017): one small private file that says `on` or `off`.
+//! The shortening switch (SHA-017): a private file that says `on` or `off`.
 
 use std::path::Path;
 
@@ -6,7 +6,6 @@ use crate::private_file::{self, PrivateFileError};
 
 const FILE: &str = "state";
 
-/// Whether the MCP server shortens its answers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum State {
@@ -14,8 +13,7 @@ pub enum State {
     Off,
 }
 
-/// The state when nothing is saved. Off until the saving is measured on real answers
-/// (OD-SHA3 of the proposal `shortened-answers.md`).
+/// Off until the saving is measured on real answers (OD-SHA3).
 pub const DEFAULT: State = State::Off;
 
 impl State {
@@ -28,8 +26,7 @@ impl State {
     }
 }
 
-/// The saved state. A file that is missing, exposed or holds a different word gives the
-/// default, and never `on` by a fault when the default is off.
+/// A missing, exposed or unknown file gives [`DEFAULT`].
 #[must_use]
 pub fn read(dir: &Path) -> State {
     let saved = private_file::read(&dir.join(FILE)).ok().flatten();
@@ -40,8 +37,6 @@ pub fn read(dir: &Path) -> State {
     }
 }
 
-/// Saves the state.
-///
 /// # Errors
 /// [`PrivateFileError`] when the file cannot be written.
 pub fn write(dir: &Path, state: State) -> Result<(), PrivateFileError> {

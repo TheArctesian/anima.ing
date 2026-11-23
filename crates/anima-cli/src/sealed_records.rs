@@ -1,6 +1,5 @@
-//! `anima sealed-record`: the bytes of a Class A record that a client sealed with the vault key
-//! (K-E5 Section 3; VLT-001). The commands move opaque bytes for a test and for a backup; they
-//! cannot open a record, and no command takes the vault key.
+//! The commands move opaque bytes sealed with the vault key (K-E5 Section 3, VLT-001); no command
+//! opens a record or takes the vault key.
 
 pub mod documents;
 

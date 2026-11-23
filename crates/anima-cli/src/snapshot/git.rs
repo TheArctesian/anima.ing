@@ -1,6 +1,5 @@
-//! The one edge of `anima snapshot`: `git` run as a child process in the top folder of the
-//! working tree, with each argument passed as it is (never through a shell). Its only network
-//! use is `git push` and `git ls-remote`; no hub request is made.
+//! The one edge of `anima snapshot`: `git` as a child process, its arguments never through a shell.
+//! Its only network use is `git push` and `git ls-remote`; it makes no hub request.
 
 use std::ffi::OsString;
 use std::fmt::Write as _;
@@ -10,14 +9,12 @@ use std::process::{Command, Stdio};
 use super::SnapshotError;
 use super::git_output::safe;
 
-/// git in one working tree, with the variables every call of this instance gets.
 #[derive(Clone, Debug)]
 pub struct Git {
     top: PathBuf,
     variables: Vec<(&'static str, OsString)>,
 }
 
-/// What one call printed and whether it succeeded.
 #[derive(Debug)]
 pub struct Ran {
     pub success: bool,
@@ -26,8 +23,6 @@ pub struct Ran {
 }
 
 impl Git {
-    /// git in the working tree that holds `folder`.
-    ///
     /// # Errors
     /// [`SnapshotError::NotWorkingTree`] when `folder` is not in one (a bare repository, or no
     /// repository); [`SnapshotError::GitMissing`] when git cannot be started.
@@ -47,7 +42,6 @@ impl Git {
         })
     }
 
-    /// The same git with `name=value` set for each call.
     #[must_use]
     pub fn with(&self, name: &'static str, value: impl Into<OsString>) -> Self {
         let mut git = self.clone();
@@ -55,7 +49,7 @@ impl Git {
         git
     }
 
-    /// Runs `git <args>` and keeps what it printed; a failure of git itself is in [`Ran`].
+    /// A failure of git itself is in [`Ran`], not an error.
     ///
     /// # Errors
     /// [`SnapshotError::GitMissing`] when git cannot be started.
@@ -76,8 +70,6 @@ impl Git {
         })
     }
 
-    /// Runs `git <args>` and returns standard output, which must be UTF-8 text.
-    ///
     /// # Errors
     /// [`SnapshotError::Git`] when git fails, with its error text made safe (LOG-007).
     pub fn text(&self, args: &[&str]) -> Result<String, SnapshotError> {
@@ -88,8 +80,6 @@ impl Git {
         })
     }
 
-    /// Runs `git <args>` and returns standard output as bytes.
-    ///
     /// # Errors
     /// As [`Git::text`].
     pub fn bytes(&self, args: &[&str]) -> Result<Vec<u8>, SnapshotError> {
@@ -105,13 +95,11 @@ impl Git {
     }
 }
 
-/// The git subcommand of `args`, for an error.
 fn step_of(args: &[&str]) -> String {
     args.first().copied().unwrap_or("git").to_owned()
 }
 
-/// `GIT_ALTERNATE_OBJECT_DIRECTORIES` with `objects` first, then what was set before. git
-/// splits the list on `:` and reads an entry that starts with `"` as a C string, so a path
+/// git splits the list on `:` and reads an entry that starts with `"` as a C string, so a path
 /// with `:`, `"`, `\` or a control character is written that way.
 #[must_use]
 pub fn alternates(objects: &str, before: Option<&str>) -> String {

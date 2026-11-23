@@ -1,5 +1,5 @@
-//! `anima key`: API keys for scripts and coding agents (INT-003). Only a login token makes,
-//! lists or revokes them.
+//! `anima key`: API keys for scripts and coding agents; only a login token makes, lists or
+//! revokes them (INT-003).
 
 pub mod create;
 pub mod documents;

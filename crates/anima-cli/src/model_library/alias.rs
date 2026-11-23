@@ -1,4 +1,4 @@
-//! `anima model alias`: points an alias at a model (LIBM-007, SEL-003).
+//! LIBM-007, SEL-003.
 
 use super::documents::{ModelAlias, model_alias};
 use crate::failure::Failure;

@@ -1,5 +1,4 @@
-//! The `sessions` tool set: the remote sessions and ending a live one. No tool opens a session
-//! (MCP-006).
+//! No tool opens a session (MCP-006).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

@@ -1,6 +1,4 @@
-//! `anima link devices`, `invite` and `revoke` against the scripted hub: the device list, the
-//! invite shown once and nowhere else, and the confirmed revocation (FRN-009, LNK-003, LNK-004,
-//! CMD-014, LOG-007).
+//! `anima link devices`, `invite` and `revoke` (FRN-009, LNK-003, LNK-004, CMD-014, LOG-007).
 
 use serde_json::{Value, json};
 

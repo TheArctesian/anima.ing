@@ -1,5 +1,4 @@
-//! `anima files`: list, download and upload over the files tunnel (K4 Section 9, RA-032).
-//! Login token only (INT-003). Each command opens an SSH session for the tunnel and ends it.
+//! `anima files` over the files tunnel (K4 Section 9, RA-032); login token only (INT-003).
 
 pub mod codec;
 pub mod exchange;

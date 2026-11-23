@@ -1,8 +1,5 @@
-//! The notification documents, typed from K1 at build time (CMD-004). A channel's settings can
-//! hold a secret (a webhook URL, an SMTP password, an ntfy token), so the documents that send
-//! it derive `Deserialize` only (the document is read from a file or standard input) and
-//! neither `Debug` nor `Serialize` of their own (CMD-014, LOG-007). K1 returns no secret, so
-//! the answers derive `Debug, Serialize` as everywhere else.
+//! A channel's settings can hold a secret, so the documents that send them derive `Deserialize`
+//! only (CMD-014, LOG-007).
 
 use graphql_client::GraphQLQuery;
 

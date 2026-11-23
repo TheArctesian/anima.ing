@@ -1,5 +1,3 @@
-//! How a rule and a firing look to a person.
-
 use serde_json::Value;
 
 use crate::output::Table;
@@ -12,7 +10,6 @@ fn text(value: &Value, field: &str) -> String {
     }
 }
 
-/// The trigger in a few words: its type and the fields that say when.
 #[must_use]
 pub fn trigger_words(trigger: &Value) -> String {
     let field = |name: &str| trigger[name].as_str().unwrap_or_default().to_owned();
@@ -32,7 +29,6 @@ pub fn trigger_words(trigger: &Value) -> String {
     }
 }
 
-/// The rules, one row each.
 pub fn rules(rules: &Value) -> Table {
     let mut table = Table::new(vec!["NAME", "TRIGGER", "ON", "TODAY", "LAST", "ID"]);
     for rule in rules.as_array().map_or_default(Vec::as_slice) {
@@ -53,7 +49,6 @@ pub fn rules(rules: &Value) -> Table {
     table
 }
 
-/// One rule as a record.
 pub fn rule(rule: &Value) -> Table {
     let mut table = Table::new(vec!["FIELD", "VALUE"]);
     let fields = [
@@ -76,7 +71,6 @@ pub fn rule(rule: &Value) -> Table {
     table
 }
 
-/// The firings, one row each.
 pub fn firings(firings: &Value) -> Table {
     let mut table = Table::new(vec!["DUE", "STATE", "REASON", "TEXT", "ID"]);
     for firing in firings.as_array().map_or_default(Vec::as_slice) {

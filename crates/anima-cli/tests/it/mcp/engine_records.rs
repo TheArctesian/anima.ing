@@ -1,6 +1,4 @@
-//! The `timeline` and `records` tool sets against the scripted hub (MCP-002, MCP-017;
-//! TML-007, RLK-001, RLK-002), with the file and extraction tools of `records` (FIL-001,
-//! FIL-004, VIS-001, VIS-004). No tool carries the bytes of a file (CMD-030). The place tools (PLC-001, PLC-004 to PLC-006).
+//! MCP-002, MCP-017, TML-007, RLK-001, RLK-002, FIL-001, FIL-004, VIS-001, VIS-004, CMD-030, PLC-001, PLC-004 to PLC-006.
 
 mod locations;
 mod reminders;

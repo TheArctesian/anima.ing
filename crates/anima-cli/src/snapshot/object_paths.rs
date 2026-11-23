@@ -1,11 +1,8 @@
-//! The paths in git's NUL-separated listings: the entries of `ls-tree -r -z` and the changes
-//! of `log --format= --name-only -z`. A path that is not UTF-8 is
-//! kept with its bad bytes replaced, so it can still be matched and named. Pure.
+//! Paths in git's NUL-separated listings; a path that is not UTF-8 keeps its bad bytes replaced.
 
 /// The file mode git gives a submodule or a nested repository (a gitlink).
 const GITLINK_MODE: &str = "160000";
 
-/// One entry of a tree.
 #[derive(Debug, PartialEq, Eq)]
 pub struct TreeEntry {
     pub path: String,

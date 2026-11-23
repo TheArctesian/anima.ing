@@ -1,5 +1,4 @@
-//! The `records` tool set: the links between records of different extensions (RLK-001,
-//! RLK-002, RLK-004). A record is `kind:id`; neither side of a link has to exist.
+//! The `records` tools for links between records (RLK-001, RLK-002, RLK-004).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

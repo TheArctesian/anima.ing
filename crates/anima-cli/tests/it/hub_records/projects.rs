@@ -1,4 +1,4 @@
-//! `anima project` against the scripted hub (PRJ-002, PRJ-016, PRO-004).
+//! PRJ-002, PRJ-016, PRO-004.
 
 use serde_json::{Value, json};
 
@@ -171,8 +171,6 @@ async fn pro_004_resource_confirm_confirms_the_resource_of_that_kind() {
     assert_eq!(run.code, 3, "no vercel resource: {run:?}");
 }
 
-/// A left-out or gone repository keeps its old name, which another repository can take later.
-/// The project lists both; the scripted hub answers both lists with them.
 fn stale_and_new() -> Value {
     let mut old = repository("acme/anima", true);
     old["id"] = json!("repo-old");

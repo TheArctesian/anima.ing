@@ -1,5 +1,4 @@
-//! `anima daemon` against the scripted hub (CMD-020, CMD-021, CMD-024, R-122,
-//! R-364).
+//! CMD-020, CMD-021, CMD-024, R-122, R-364.
 
 use serde_json::{Value, json};
 

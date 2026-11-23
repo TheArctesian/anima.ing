@@ -1,5 +1,3 @@
-//! Runs the `anima` program with a clean environment and its own configuration folder.
-
 pub mod browser;
 pub mod fake_hub;
 pub mod file_access;
@@ -19,7 +17,6 @@ use tempfile::TempDir;
 use tokio::io::AsyncWriteExt as _;
 use tokio::process::Command;
 
-/// What one run printed and how it ended.
 #[derive(Debug)]
 pub struct Outcome {
     pub code: i32,
@@ -27,7 +24,6 @@ pub struct Outcome {
     pub stderr: String,
 }
 
-/// One operator's computer: a home folder, and the variables every run gets.
 pub struct Anima {
     home: TempDir,
     variables: Vec<(String, String)>,
@@ -41,13 +37,11 @@ impl Anima {
         }
     }
 
-    /// Adds `name=value` to every later run.
     pub fn with(mut self, name: &str, value: &str) -> Self {
         self.variables.push((name.to_owned(), value.to_owned()));
         self
     }
 
-    /// `$XDG_CONFIG_HOME/anima`.
     pub fn config_dir(&self) -> PathBuf {
         #[cfg(unix)]
         {
@@ -63,7 +57,6 @@ impl Anima {
         self.run_with_input(args, "").await
     }
 
-    /// `program` with this computer's clean environment; no standard stream is set.
     pub fn command(&self, program: &str) -> Command {
         let mut command = Command::new(program);
         command
@@ -84,7 +77,7 @@ impl Anima {
         command
     }
 
-    /// Runs with `input` on standard input, which is a pipe, never a terminal.
+    /// Standard input is a pipe, never a terminal.
     pub async fn run_with_input(&self, args: &[&str], input: &str) -> Outcome {
         let mut command = self.command(env!("CARGO_BIN_EXE_anima"));
         command
@@ -109,7 +102,6 @@ impl Anima {
 }
 
 impl Outcome {
-    /// Standard output as JSON.
     pub fn json(&self) -> serde_json::Value {
         serde_json::from_str(&self.stdout).expect("standard output is JSON")
     }

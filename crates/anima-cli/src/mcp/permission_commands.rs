@@ -1,5 +1,4 @@
-//! `anima mcp permissions show|set|reset`: each tool's saved state for one hub, by hub origin,
-//! in the configuration file (MCP-012, MCP-014). The Settings panel reads `show --json`.
+//! `anima mcp permissions` (MCP-012, MCP-014); the Settings panel reads `show --json`.
 
 use super::catalogue::{Kind, ToolSet};
 use super::permission_change::{Change, Shown, save, saved_in, shown};

@@ -1,5 +1,3 @@
-//! `anima source list`.
-
 use super::documents::{SourceAccounts, source_accounts};
 use super::render;
 use crate::failure::Failure;

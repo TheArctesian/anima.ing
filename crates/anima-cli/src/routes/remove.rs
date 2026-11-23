@@ -1,5 +1,3 @@
-//! `anima route remove <id>`: removes a public name with its certificate and its key.
-
 use super::documents::{RouteRemove, route_remove};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
