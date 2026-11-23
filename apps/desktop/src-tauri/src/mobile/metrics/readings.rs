@@ -99,6 +99,7 @@ pub(super) fn batch(device: Uuid, now: DateTime<Utc>, path: &Path) -> Option<Bat
         hardware: None,
         daemon_version: None,
         agent_usage: None,
+        agent_threads: None,
         keys: None,
         update: None,
     })

@@ -70,6 +70,8 @@ fi
 
 ROOM=$(mktemp -d)
 trap 'rm -rf "$ROOM"' EXIT
+sh "$ROOT/deploy/testflight/swift-package.sh" "$ROOM" > "$ROOM/swift-git.env"
+while IFS= read -r setting; do export "$setting"; done < "$ROOM/swift-git.env"
 plist() { /usr/libexec/PlistBuddy -c "Print :$1" "$2"; }
 
 if [ "$SIGNED" = yes ]; then
