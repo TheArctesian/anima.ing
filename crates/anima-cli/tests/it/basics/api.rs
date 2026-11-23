@@ -1,5 +1,3 @@
-//! `anima api`: a document from a file or standard input, and the hub's whole answer printed.
-
 use serde_json::json;
 
 use crate::kit::Anima;

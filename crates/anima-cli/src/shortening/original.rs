@@ -1,5 +1,4 @@
-//! The MCP tool `anima_original_get` (SHA-016): the whole answer behind a handle, in parts
-//! that fit the context of the agent. It asks no hub. Its answer is never shortened.
+//! The MCP tool `anima_original_get` (SHA-016): the whole answer behind a handle, in parts.
 
 use std::time::SystemTime;
 

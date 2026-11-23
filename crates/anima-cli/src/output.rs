@@ -1,5 +1,4 @@
-//! Where a command's results go (CMD-020, CMD-022): data on standard output as a table or, with
-//! `--json`, as JSON with the K1 field names; messages and errors on standard error.
+//! Data on standard output, messages and errors on standard error (CMD-020, CMD-022).
 
 pub mod stream;
 pub mod table;
@@ -14,13 +13,11 @@ use crate::failure::{Failure, Hint};
 use crate::hub::FieldError;
 pub use table::{Cell, Table, Tone};
 
-/// How this run prints.
 #[derive(Clone, Copy, Debug)]
 pub struct Output {
     json: bool,
     colour: bool,
-    /// Standard output is a terminal: JSON goes out with its terminal-moving characters
-    /// escaped, still the same value.
+    /// Standard output is a terminal: JSON goes out with its control characters escaped, still the same value.
     terminal: bool,
 }
 
@@ -38,7 +35,6 @@ struct ErrorFields<'a> {
     fields: &'a [FieldError],
 }
 
-/// A failure as it is shown: every string that may come from the hub is clean.
 struct Shown {
     code: &'static str,
     message: String,
@@ -77,12 +73,10 @@ impl Shown {
                 fields: &self.fields,
             },
         };
-        // Strings and a list of string pairs: this cannot fail, and there is nowhere else to
-        // report it.
+        // Strings and string pairs cannot fail to serialise, and there is nowhere else to report it.
         serde_json::to_string(&body).unwrap_or_default()
     }
 
-    /// The sentence, the rejected fields and the hint, one to a line.
     fn lines(&self) -> String {
         let mut lines = format!("error: {}\n", self.message);
         for field in &self.fields {
@@ -117,8 +111,6 @@ impl Output {
         self.json
     }
 
-    /// Prints `value` as JSON, or the table `table` makes from it.
-    ///
     /// # Errors
     /// [`Failure::Write`] when standard output fails, other than a closed pipe.
     pub fn data<T: Serialize>(
@@ -133,8 +125,6 @@ impl Output {
         }
     }
 
-    /// `value` as pretty JSON and a line break; escaped for a terminal, as it is for a pipe or
-    /// a file (programs get the bytes `serde_json` wrote).
     fn json_text<T: Serialize>(self, value: &T) -> Result<String, Failure> {
         let text = serde_json::to_string_pretty(value).map_err(|error| Failure::Write {
             reason: error.to_string(),
@@ -150,16 +140,13 @@ impl Output {
         }
     }
 
-    /// Prints `text` and a line break, as it is.
-    ///
     /// # Errors
     /// As [`Output::data`].
     pub fn line(self, text: &str) -> Result<(), Failure> {
         write_out(&format!("{text}\n"))
     }
 
-    /// Prints the text of a file exactly, with no line break added; to a terminal with its
-    /// control characters made harmless ([`text::clean_file`]).
+    /// Prints the text of a file exactly, with no line break added.
     ///
     /// # Errors
     /// As [`Output::data`].
@@ -171,30 +158,24 @@ impl Output {
         }
     }
 
-    /// Prints JSON as it is, for `anima api`: to a terminal escaped as [`Output::data`] does.
-    ///
     /// # Errors
     /// As [`Output::data`].
     pub fn raw(self, value: &serde_json::Value) -> Result<(), Failure> {
-        // A `Value` has string keys only, so it always serialises.
         write_out(&self.for_stdout(&format!("{value:#}\n")))
     }
 
-    /// A message for a person on standard error; none with `--json`.
     pub fn note(self, message: &str) {
         if !self.json {
             self.message(message);
         }
     }
 
-    /// A message for a person on standard error, with or without `--json`: what a question at
-    /// the terminal is about, which the person must see before answering (CMD-024).
+    /// Shown also with `--json`: the person must see what a question is about before answering (CMD-024).
     pub fn message(self, message: &str) {
         write_err(&format!("{}\n", text::clean_lines(message)));
     }
 
-    /// The failure on standard error: a sentence and a hint, or the CMD-022 JSON object. Every
-    /// string is cleaned here, so no command has to (S2).
+    /// Every string is cleaned here, so no command has to (S2).
     pub fn failure(self, failure: &Failure) {
         let shown = Shown::of(failure);
         if self.json {
@@ -205,7 +186,6 @@ impl Output {
     }
 }
 
-/// Writes to standard output. A closed pipe (`anima device list | head`) is not an error.
 fn write_out(text: &str) -> Result<(), Failure> {
     let mut stdout = io::stdout().lock();
     match stdout
@@ -219,7 +199,7 @@ fn write_out(text: &str) -> Result<(), Failure> {
     }
 }
 
-/// Writes to standard error. A failure here has no other place to be reported.
+/// A failure here has no other place to be reported.
 fn write_err(text: &str) {
     let _ = io::stderr().lock().write_all(text.as_bytes());
 }

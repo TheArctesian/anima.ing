@@ -1,17 +1,14 @@
-//! Why a command failed, as the exit code (CMD-021), the code and the hint that `--json` prints
-//! (CMD-022). Every command returns this; `main` turns it into the exit status.
+//! Why a command failed: the exit code (CMD-021) and the `--json` code and hint (CMD-022).
 
 use crate::auth::token_store::StoreError;
 use crate::contexts::config::ConfigError;
 use crate::hub::{Code, FieldError, HubError};
 
-/// What to do next, as CMD-022 shows it: a command to run, or a sentence. A sentence is never
-/// printed as if it were a command.
+/// A sentence is never printed as if it were a command (CMD-022).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Hint {
     /// A command the operator can paste.
     Run(String),
-    /// Advice in words.
     Say(String),
 }
 
@@ -26,7 +23,6 @@ impl Hint {
         Self::Say(sentence.into())
     }
 
-    /// The hint's words, as `--json` carries them.
     #[must_use]
     pub fn text(&self) -> &str {
         match self {
@@ -39,45 +35,35 @@ impl Hint {
 pub enum Failure {
     #[error(transparent)]
     Hub(#[from] HubError),
-    /// Wrong usage: a missing value under `--no-input`, two inputs that exclude each other.
     #[error("{message}")]
     Usage { message: String, hint: Option<Hint> },
-    /// Something the operator named is not there: a context, a device name.
     #[error("{message}")]
     NotFound { message: String, hint: Option<Hint> },
     /// The hub or the device refused for a reason that has its own next step, not the token.
     #[error("{message}")]
     Forbidden { message: String, hint: Option<Hint> },
-    /// A notification the hub sent for a test did not arrive.
     #[error("{message}")]
     NotDelivered { message: String },
-    /// The operator was asked to confirm and said no: nothing was changed.
     #[error("Nothing was changed: you did not confirm.")]
     Declined,
-    /// The operator pressed Ctrl-C at a question: nothing was changed.
     #[error("Nothing was changed: the question was cancelled.")]
     Cancelled,
-    /// Something with this name is already there.
     #[error("{message}")]
     Conflict { message: String },
-    /// No token for this hub: none stored and no `ANIMA_TOKEN`.
     #[error("You are not signed in to {origin}.")]
     SignedOut { origin: String },
     #[error(transparent)]
     Config(#[from] ConfigError),
     #[error(transparent)]
     Store(#[from] StoreError),
-    /// Reading a document, variables or a token from a file or standard input.
     #[error("Could not read {what}: {reason}.")]
     Input { what: String, reason: String },
-    /// Paging with `--all` stopped: the hub repeated a cursor or the list passed the row cap.
     #[error("Stopped paging: {reason}.")]
     Paging { reason: String },
     /// Standard output failed (not a closed pipe).
     #[error("Could not write the output: {reason}.")]
     Write { reason: String },
-    /// A long-running command ended without doing what it was asked: its words say why and
-    /// `status` is the exit code that tells a script (`source connect github`).
+    /// A long-running command ended undone; `status` is the exit code a script reads.
     #[error("{message}")]
     Ended { message: String, status: u8 },
 }
@@ -105,8 +91,6 @@ impl Failure {
         }
     }
 
-    /// The code for `--json` (CMD-022): the K7 code, or `USAGE` and `FAILED` for failures the
-    /// hub has no code for.
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match self {
@@ -133,7 +117,6 @@ impl Failure {
         }
     }
 
-    /// The process exit code (CMD-021).
     #[must_use]
     pub const fn exit_code(&self) -> u8 {
         match self {
@@ -163,7 +146,6 @@ impl Failure {
         }
     }
 
-    /// The next command to try (CMD-022).
     #[must_use]
     pub fn hint(&self) -> Option<Hint> {
         match self {
@@ -192,7 +174,6 @@ impl Failure {
         }
     }
 
-    /// The rejected input fields of a hub `VALIDATION` error.
     #[must_use]
     pub fn fields(&self) -> &[FieldError] {
         match self {

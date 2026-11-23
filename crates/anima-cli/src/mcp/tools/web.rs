@@ -1,6 +1,4 @@
-//! The `web` tool set: a device's web interfaces (its admin pages). They are read through
-//! `anima_device_get`. A URL with a user name or password in it is refused (MCP-004), and no
-//! tool accepts a certificate (MCP-005).
+//! The `web` tool set: a device's web interfaces; no tool accepts a certificate (MCP-005).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

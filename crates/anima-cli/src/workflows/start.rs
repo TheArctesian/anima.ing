@@ -1,6 +1,4 @@
-//! `anima workflow start <repository> <workflow>`: starts a workflow by hand on a branch, with
-//! named inputs, through the hub (PRJ-029, PRJ-035). The question names the inputs, never their
-//! values, and nothing printed after it holds a value (LOG-007).
+//! `anima workflow start` (PRJ-029, PRJ-035): nothing it asks or prints holds an input's value (LOG-007).
 
 use super::documents::{WorkflowList, WorkflowStart, workflow_list, workflow_start};
 use super::inputs::{self, Input};

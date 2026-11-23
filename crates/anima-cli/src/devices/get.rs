@@ -1,5 +1,3 @@
-//! `anima device get <id-or-name>`: one device, found by ID or by its exact name.
-
 pub mod battery;
 
 use super::documents::{DeviceGet, device_get, device_list};

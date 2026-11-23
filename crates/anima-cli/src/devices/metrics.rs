@@ -1,6 +1,3 @@
-//! `anima device metrics`: the metric series of a device over an hour, a day or a week, or with
-//! `--watch` each new reading.
-
 use super::documents::{DeviceMetrics, device_metrics};
 use super::get::resolve;
 use super::watch;

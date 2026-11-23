@@ -1,9 +1,7 @@
-//! The repair hint for a tool or a backend that is not usable: a fixed sentence chosen by the
-//! tool or backend and the reason, never text from the device (CAP-002, CAP-024).
+//! A repair hint is a fixed sentence, never text from the device (CAP-002, CAP-024).
 
 use super::documents::capability_list::{BackendNotUsable, NotUsableReason};
 
-/// What the operator can do about `backend` being not usable for `reason` (CAP-002).
 #[must_use]
 pub fn backend_hint(backend: &str, reason: &BackendNotUsable) -> &'static str {
     match (backend, reason) {
@@ -35,8 +33,6 @@ pub fn backend_hint(backend: &str, reason: &BackendNotUsable) -> &'static str {
     }
 }
 
-/// Whether the hint of `reason` is worth a note: the device has the hardware, and the operator
-/// can repair it.
 #[must_use]
 pub const fn backend_repairable(reason: &BackendNotUsable) -> bool {
     !matches!(
@@ -45,7 +41,6 @@ pub const fn backend_repairable(reason: &BackendNotUsable) -> bool {
     )
 }
 
-/// What the operator can do about `tool` being not usable for `reason`.
 #[must_use]
 pub fn hint(tool: &str, reason: &NotUsableReason) -> &'static str {
     match (tool, reason) {

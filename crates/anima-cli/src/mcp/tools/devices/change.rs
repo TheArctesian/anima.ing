@@ -1,5 +1,4 @@
-//! The change tools of the `devices` set. None of them takes a credential or the access
-//! settings that decide where one is sent: those stay with the operator (MCP-004).
+//! The change tools of the `devices` set; none takes a credential or access settings (MCP-004).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

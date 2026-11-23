@@ -1,5 +1,4 @@
-//! How issues read in a table. The documents select different parts of the K1 `Issue`, so each
-//! is rendered from its JSON.
+//! The documents select different parts of the K1 `Issue`, so each is rendered from its JSON.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -8,7 +7,6 @@ use crate::forge::comments;
 use crate::forge::render::{flag, many, names, number, text};
 use crate::output::{Cell, Table, Tone};
 
-/// `open`, or `closed` with the reason when GitHub gives one.
 fn state(issue: &Value) -> Cell {
     if flag(issue, "open") {
         return Cell::toned("open", Tone::Good);
@@ -19,7 +17,6 @@ fn state(issue: &Value) -> Cell {
     }
 }
 
-/// The issues of a page as rows: number, state, title, author, labels, comments.
 #[must_use]
 pub fn list<T: Serialize>(issues: &T) -> Table {
     let issues = serde_json::to_value(issues).unwrap_or_default();
@@ -40,8 +37,7 @@ pub fn list<T: Serialize>(issues: &T) -> Table {
     table
 }
 
-/// An issue just made, closed or opened: number, title, state, labels and link. The body is not
-/// asked for, so text the operator sent is not printed back.
+/// The body is not asked for, so text the operator sent is not printed back.
 #[must_use]
 pub fn changed<T: Serialize>(issue: &T) -> Table {
     let issue = serde_json::to_value(issue).unwrap_or_default();
@@ -54,7 +50,6 @@ pub fn changed<T: Serialize>(issue: &T) -> Table {
     table
 }
 
-/// One issue as label and value lines, with its comments when they were asked for.
 #[must_use]
 pub fn record<T: Serialize>(issue: &T) -> Table {
     let issue = serde_json::to_value(issue).unwrap_or_default();

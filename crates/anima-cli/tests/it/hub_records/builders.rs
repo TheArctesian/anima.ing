@@ -1,4 +1,4 @@
-//! `anima builder` against the scripted hub (BLD-023, BLD-025, CMD-014, CMD-024).
+//! BLD-023, BLD-025, CMD-014, CMD-024.
 
 use serde_json::{Value, json};
 

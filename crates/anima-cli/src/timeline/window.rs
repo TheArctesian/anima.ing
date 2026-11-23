@@ -1,6 +1,3 @@
-//! The span of time `anima timeline list` asks for: the day before now, unless the operator
-//! gives its start or its end. Pure.
-
 use chrono::{DateTime, Duration, SecondsFormat, Utc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -18,9 +15,6 @@ fn instant(text: &str) -> Option<DateTime<Utc>> {
     Some(parsed.with_timezone(&Utc))
 }
 
-/// The start and the end to send, as RFC 3339 in UTC. With no `to` the span ends at `now`;
-/// with no `from` it starts one day before its end.
-///
 /// # Errors
 /// [`WindowError`] for text that is no time, or an end that is not after the start.
 pub fn window(

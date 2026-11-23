@@ -77,6 +77,7 @@ const CHANNEL_SETTINGS_TYPES: Record<string, string> = {
   NTFY: 'NtfySettings',
   EMAIL: 'EmailSettings',
   APPRISE: 'AppriseSettings',
+  MOBILE: 'WebhookSettings',
 };
 
 /** A notification channel with its settings typed by kind and its latest delivery, if any (NOT-002). */

@@ -1,6 +1,9 @@
 //! How the engine is held to one worktree: an agent reads the thread it runs in and no other,
-//! a folder put in the place of the worktree gets no run, and two tasks never change one
-//! worktree at the same time.
+//! a folder put in the place of the worktree gets no run, two tasks never change one worktree
+//! at the same time, and a worktree whose start was refused goes again with nothing saved
+//! ([`refused`]).
+
+mod refused;
 
 use agent_threads::git::{GitAction, GitOutcome, GitRefusal};
 use uuid::Uuid;

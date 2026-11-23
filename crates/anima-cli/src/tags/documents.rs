@@ -1,4 +1,4 @@
-//! The tag document, typed from K1 at build time (CMD-004).
+//! CMD-004.
 
 use graphql_client::GraphQLQuery;
 

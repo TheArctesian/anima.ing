@@ -1,5 +1,4 @@
 //! `anima extraction`: the proposals of an extraction (K-E4 Section 10; VIS-001 to VIS-004).
-//! Nothing of a proposal is a record until the operator confirms it.
 
 pub mod change;
 pub mod documents;

@@ -1,8 +1,4 @@
-//! `anima containers check-file <path>`: the check of the syntax of a Compose file (HOST-022).
-//! The hub reads the text and reaches no device. It is a check of the syntax only: it does
-//! not say that a machine accepts the file. A value of the file can be a secret, so a problem
-//! gives a code, a position, the number of its service and the name of a key that Compose
-//! defines; never a text that the operator wrote.
+//! `anima containers check-file` (HOST-022). A value can be a secret, so a problem never quotes the operator's text.
 
 use std::path::PathBuf;
 

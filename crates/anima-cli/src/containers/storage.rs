@@ -1,6 +1,4 @@
-//! `anima containers images <device>` and `anima containers volumes <device>`: what Docker
-//! keeps on a device, with the size of each and the space that a clean-up can free
-//! (HOST-020). Read-only: Anima removes nothing here.
+//! `anima containers images` and `volumes` (HOST-020) are read-only: Anima removes nothing here.
 
 use super::documents::{ContainerStorageRead, container_storage_read};
 use crate::devices::get::resolve;

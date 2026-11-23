@@ -1,6 +1,6 @@
-//! A GraphQL subscription over `graphql-transport-ws` (API-002, K7): the second half of the only
-//! network code (CMD-003). A `watch` command opens a typed subscription document and reads its
-//! answers one by one:
+//! A GraphQL subscription over `graphql-transport-ws` (API-002, K7); nothing here logs, and no
+//! error holds the token (CMD-014). The token goes in `connection_init`, never in the URL
+//! (contracts/conventions.md, "Authentication transport").
 //!
 //! ```ignore
 //! let mut events = Subscription::open::<EventAdded>(&hub, event_added::Variables { .. }).await?;
@@ -8,10 +8,6 @@
 //!     print(event?.event_added);
 //! }
 //! ```
-//!
-//! The token goes in the `connection_init` payload as `{ "authorization": "Bearer <token>" }`,
-//! never in the URL (contracts/conventions.md, "Authentication transport"). Close code 4403 is
-//! `UNAUTHENTICATED`. Nothing here logs, and no error holds the token (CMD-014).
 
 use std::marker::PhantomData;
 
@@ -32,7 +28,6 @@ use super::error::{Code, HubError};
 use super::wire::{self, Wire};
 use super::{Hub, Origin, TIMEOUT, Token};
 
-/// The subprotocol name the hub speaks.
 const PROTOCOL: &str = "graphql-transport-ws";
 
 /// The close code with which the hub refuses a missing or invalid token (conventions.md).
@@ -54,7 +49,6 @@ pub struct Subscription<D> {
     answer: PhantomData<fn() -> D>,
 }
 
-/// A frame of `graphql-transport-ws` that the client acts on.
 #[derive(Debug, PartialEq)]
 enum Frame {
     Ack,
@@ -65,7 +59,6 @@ enum Frame {
     Complete,
 }
 
-/// The socket and the origin that names it in errors.
 struct Link {
     socket: Socket,
     origin: String,
@@ -75,9 +68,7 @@ impl<D: DeserializeOwned> Subscription<D> {
     /// Connects, signs in with the hub's token and starts document `Q`.
     ///
     /// # Errors
-    /// [`HubError::Refused`] (`UNAUTHENTICATED`, `FORBIDDEN`) when the hub does not accept the
-    /// token; [`HubError::Unreachable`] when no connection comes in [`TIMEOUT`];
-    /// [`HubError::Malformed`] for a hub that does not speak the protocol.
+    /// [`HubError::Refused`], [`HubError::Unreachable`] after [`TIMEOUT`], or [`HubError::Malformed`].
     pub async fn open<Q>(hub: &Hub, variables: Q::Variables) -> Result<Self, HubError>
     where
         Q: GraphQLQuery<ResponseData = D>,
@@ -204,7 +195,6 @@ fn init_message(token: Option<&Token>, agent: bool) -> Message {
     Message::Text(text)
 }
 
-/// `wss://host/graphql` for an `https` hub, `ws://` for plain `http` on this computer.
 fn socket_url(origin: &Origin) -> String {
     let mut url = origin.graphql();
     let scheme = if url.scheme() == "https" { "wss" } else { "ws" };

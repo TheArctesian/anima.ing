@@ -89,6 +89,7 @@ pub fn hosted_env(link: &FakeLink, folder: &tempfile::TempDir) -> BTreeMap<Strin
             "ANIMA_HOSTED_CLOUD_KEY_FILE".to_owned(),
             key_file.display().to_string(),
         ),
+        ("ANIMA_PROBE_DENY".to_owned(), "192.0.2.0/24".to_owned()),
     ])
 }
 

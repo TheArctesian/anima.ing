@@ -1,8 +1,5 @@
-//! `anima link install <name>`: the install code of a computer with no application
-//! (hosted-mode.md HM-T33, R-240 c). The code holds the link invite and the claim of the daemon
-//! enrolment, and is the one secret this command exists to show: on standard output, once, or
-//! with `--to-file` in a `0600` file and nowhere else. The install script reads it on standard
-//! input (CMD-014, LOG-007).
+//! `anima link install` (HM-T33, R-240 c) shows the install code once, on standard output or in a
+//! `0600` file and nowhere else (CMD-014, LOG-007).
 
 use serde_json::json;
 use zeroize::Zeroizing;

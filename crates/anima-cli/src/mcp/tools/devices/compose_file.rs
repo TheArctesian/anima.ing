@@ -1,8 +1,5 @@
-//! `anima_compose_check` and `anima_compose_from_run`: the check of the syntax of a Compose
-//! file and the Compose file of a `docker run` command (HOST-022). The hub reads only the
-//! text that the agent gives: it reaches no device, runs nothing and keeps nothing. A result
-//! of the check holds no value of the file; the converter gives back only what the agent
-//! gave, as a Compose file.
+//! HOST-022; the hub reads only the text that the agent gives and reaches no device. A check result
+//! holds no value of the file.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -228,7 +225,6 @@ mod tests {
         let file = "services:\n  web:\n    image: \"nginx\"\n";
         assert_eq!(given(Some(file)), (Some(file.trim_end()), None));
         assert_eq!(given(None), (None, None));
-        // A zero-width space is printable YAML, but the cleaning removes it.
         let hidden = "services:\n  web:\n    image: \"ng\u{200b}inx\"\n";
         assert_eq!(given(Some(hidden)).0, None);
         let long = format!("services:\n{}", "x".repeat(4_000));

@@ -1,5 +1,4 @@
-//! The one-time link: asked for only at a terminal, printed once, handed to the opener once and
-//! in no other output (PRJ-041, MCP-004, LOG-007).
+//! The one-time link of the GitHub connect flow (PRJ-041, MCP-004, LOG-007).
 
 use anima_cli::failure::Failure;
 use anima_cli::hub::{Hub, Origin, Token};
@@ -36,7 +35,6 @@ async fn prj_041_at_a_terminal_the_link_is_asked_for_and_shown_once() {
     assert_eq!(asked(&hub, "GithubConnectOpen"), 1);
 }
 
-/// What a run through the library printed and what the opener was given.
 struct Library {
     outcome: Result<Value, Failure>,
     notes: String,

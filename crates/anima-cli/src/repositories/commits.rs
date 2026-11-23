@@ -1,4 +1,4 @@
-//! `anima repo commits <repository>`: commits, newest first, with pages (CMD-026).
+//! Commits, newest first, with pages (CMD-026).
 
 use super::query::{History, Query};
 use super::render;

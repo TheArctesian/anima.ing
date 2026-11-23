@@ -1,8 +1,5 @@
-//! `anima_container_list`, `anima_container_storage`, `anima_container_networks` and
-//! `anima_container_updates`: what Docker has on a device, read through the hub's SSH link
-//! (HOST-001, HOST-013, HOST-019 to HOST-021). The names, images and status texts come from the device; the server cleans and
-//! caps each string before the agent sees it (MCP-008). No tool returns the log of a container
-//! or its details: a log, a command or a label can hold a secret (MCP-004, HOST-017).
+//! Docker reads of a device (HOST-001, HOST-013, HOST-019 to HOST-021). No tool returns a
+//! container's log or details: a log, a command or a label can hold a secret (MCP-004, HOST-017).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

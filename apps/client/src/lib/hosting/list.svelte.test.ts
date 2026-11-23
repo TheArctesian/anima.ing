@@ -68,3 +68,22 @@ it('HOST-021: looks for newer images only when the operator asks, on each machin
   await store.checkUpdates();
   expect(calls.updatesAsked.toSorted()).toEqual(['m-mini', 'm-pop']);
 });
+
+it('HOST-001 HOST-017: a container on any machine opens its log or its details below the list, read from its machine', async () => {
+  await open();
+  const press = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((each) => each.getAttribute('aria-label') === label)?.click();
+  press('Log of watchtower');
+  await Promise.resolve();
+  await Promise.resolve();
+  flushSync();
+  expect(calls.logMachines).toEqual(['m-pop']);
+  expect(calls.logs.logsAsked).toEqual([['c'.repeat(64), 200]]);
+  expect(document.querySelector('.log h3')?.textContent).toBe('Log of watchtower');
+  press('Details of samba');
+  await Promise.resolve();
+  await Promise.resolve();
+  flushSync();
+  expect(calls.logMachines).toEqual(['m-pop', 'm-nas']);
+  expect(document.querySelector('.log')).toBeNull();
+  expect(document.querySelector('.detail h3')?.textContent).toBe('Details of samba');
+});

@@ -1,4 +1,4 @@
-//! `anima release cancel <job id>`: stops a build job that has not finished (BLD-010).
+//! `anima release cancel` (BLD-010).
 
 use super::documents::{ReleaseCancel, release_cancel};
 use crate::failure::Failure;

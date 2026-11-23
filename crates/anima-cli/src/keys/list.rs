@@ -1,5 +1,3 @@
-//! `anima key list`.
-
 use super::documents::{KeyList, key_list};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

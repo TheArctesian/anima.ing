@@ -7,7 +7,6 @@ use crate::kit::fake_hub::{FakeHub, data};
 
 const TOKEN: &str = "login-token-for-capability-tests";
 
-/// The K1 `hardware` of an Apple silicon Mac with 48 GiB (CAP-005: the default share).
 fn mac_hardware() -> Value {
     json!({ "systemMemoryBytes": 51_539_607_552.0_f64, "unifiedMemoryBytes": 51_539_607_552.0_f64,
             "dedicatedMemoryBytes": null, "usableMemoryBytes": 38_654_705_664.0_f64,
@@ -22,7 +21,6 @@ fn mac_hardware() -> Value {
             "foundAt": "2026-11-15T09:00:00+00:00" })
 }
 
-/// The K1 `hardware` of a Linux PC with one 24 GiB NVIDIA GPU and its drivers.
 fn nvidia_hardware() -> Value {
     json!({ "systemMemoryBytes": 68_719_476_736.0_f64, "unifiedMemoryBytes": null,
             "dedicatedMemoryBytes": 25_769_803_776.0_f64, "usableMemoryBytes": null,
@@ -37,8 +35,6 @@ fn nvidia_hardware() -> Value {
             "foundAt": "2026-11-15T09:01:00+00:00" })
 }
 
-/// The K1 `capabilities` answer: a Mac with cargo and a bun that timed out, and an NVIDIA Linux
-/// PC with no tools; each with its hardware values (CAP-032).
 pub fn capabilities() -> Value {
     json!({ "capabilities": [
         { "device": { "id": "0190a000-0000-7000-8002-00000000000a", "name": "mac-office-1" },

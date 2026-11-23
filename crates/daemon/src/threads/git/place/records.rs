@@ -1,7 +1,8 @@
 //! The place of the records and of the runner's Git folders (ruling of the operator): outside
 //! the home folder of the person, so that a thread that starts in the home folder, which is
 //! allowed with a warning (THR-041), cannot write them. The Git stage is safe only while no
-//! thread can write this place (THR-050).
+//! thread in a sandbox can write this place (THR-050). A thread in Full access has no sandbox
+//! and can write it; by the operator's ruling of 2026-11-23 that is an accepted cost.
 //!
 //! The place is in a folder that each user of the computer can write (`/Users/Shared`,
 //! `/var/tmp`). A different user can make a folder or a link of the same name first. So the
@@ -37,6 +38,8 @@ pub enum BadRecords {
     Unreadable,
     #[error("the folder of the records is not there any more; start Anima again to make it")]
     Gone,
+    #[error("the records of Anima's Git are in a temporary folder that an agent can write")]
+    InTemp,
 }
 
 /// The place of the records for the user with the number `user`: one folder for each user,
@@ -188,128 +191,33 @@ pub fn open_for_actions(records: &Path, held: bool) -> Result<(), GitRefusal> {
 /// counts as one that holds them.
 #[must_use]
 pub fn held_by(records: &Path, folder: &Path) -> bool {
-    let real = |path: &Path| std::fs::canonicalize(path).ok();
-    match (real(folder), real(records)) {
-        (Some(folder), Some(records)) => {
-            records.starts_with(&folder) || folder.starts_with(&records)
-        }
-        // Records that are not made yet are where their path says.
-        (Some(folder), None) => records.starts_with(&folder) || folder.starts_with(records),
-        (None, _) => true,
+    match (std::fs::canonicalize(folder), resolved(records)) {
+        (Ok(folder), Some(records)) => records.starts_with(&folder) || folder.starts_with(&records),
+        _ => true,
     }
+}
+
+/// The real path of `path`. For a path that is not made yet, such as records before the first
+/// start: the real path of the nearest folder above it that is there, with the rest of `path`
+/// after it, so that a link above it (`/tmp` on a Mac) is followed.
+fn resolved(path: &Path) -> Option<PathBuf> {
+    path.ancestors().find_map(|above| {
+        let real = std::fs::canonicalize(above).ok()?;
+        let rest = path.strip_prefix(above).ok()?;
+        // A missing part then `..` would point somewhere else than the path says.
+        super::plain(rest).then(|| real.join(rest))
+    })
+}
+
+/// A running thread in a sandbox holds the records at `records` when one of `roots`, the
+/// folders that its sandbox lets its agent write, holds them ([`held_by`]): its folder, its
+/// `TMPDIR`, `/tmp`, and each more root of the sandbox (THR-050). An agent in Full access has
+/// no sandbox and can write each folder of the person: this check does not cover it (operator's
+/// ruling of 2026-11-23).
+#[must_use]
+pub fn held_by_any(records: &Path, roots: &[PathBuf]) -> bool {
+    roots.iter().any(|root| held_by(records, root))
 }
 
 #[cfg(all(test, unix))]
-mod tests {
-    use std::os::unix::fs::PermissionsExt as _;
-
-    use super::*;
-
-    fn above() -> (tempfile::TempDir, PathBuf) {
-        let keep = tempfile::tempdir().expect("a folder");
-        let real = std::fs::canonicalize(keep.path()).expect("its real path");
-        (keep, real)
-    }
-
-    fn mode(path: &Path, mode: u32) {
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).expect("a mode");
-    }
-
-    #[test]
-    fn the_folder_is_made_for_its_owner_alone_and_found_again() {
-        let (_keep, above) = above();
-        let place = above.join("anima-501");
-        assert_eq!(opened(&place), Ok(place.clone()));
-        let about = std::fs::metadata(&place).expect("the folder");
-        assert_eq!(about.permissions().mode() & 0o777, 0o700);
-        assert_eq!(opened(&place), Ok(place));
-        assert_eq!(
-            standard(501).and_then(|place| place.file_name().map(ToOwned::to_owned)),
-            Some("anima-501".into())
-        );
-    }
-
-    #[test]
-    fn a_folder_open_to_others_a_link_and_a_file_are_never_used() {
-        let (_keep, above) = above();
-        let open = above.join("open");
-        std::fs::create_dir(&open).expect("a folder");
-        mode(&open, 0o750);
-        assert_eq!(opened(&open), Err(BadRecords::OpenToOthers));
-        // What a different user can leave at the place first: a link to a folder of ours.
-        let ours = above.join("ours");
-        std::fs::create_dir(&ours).expect("a folder");
-        mode(&ours, 0o700);
-        let link = above.join("anima-link");
-        std::os::unix::fs::symlink(&ours, &link).expect("a link");
-        assert_eq!(opened(&link), Err(BadRecords::NotAFolder));
-        assert_eq!(checked(&link), Err(BadRecords::NotAFolder));
-        assert_eq!(checked(&above.join("nothing")), Err(BadRecords::Gone));
-        let file = above.join("anima-file");
-        std::fs::write(&file, "").expect("a file");
-        assert_eq!(opened(&file), Err(BadRecords::NotAFolder));
-        assert_eq!(opened(Path::new("relative")), Err(BadRecords::BadPath));
-    }
-
-    #[test]
-    fn a_folder_above_that_others_can_change_is_refused_unless_entries_are_kept() {
-        let (_keep, above) = above();
-        let shared = above.join("shared");
-        std::fs::create_dir(&shared).expect("a folder");
-        mode(&shared, 0o777);
-        assert_eq!(
-            opened(&shared.join("anima-501")),
-            Err(BadRecords::OpenAbove)
-        );
-        // As `/Users/Shared` and `/var/tmp`: each user writes, only the owner removes.
-        mode(&shared, 0o1777);
-        assert!(opened(&shared.join("anima-501")).is_ok());
-        let through = above.join("through");
-        std::os::unix::fs::symlink(&shared, &through).expect("a link");
-        assert_eq!(
-            opened(&through.join("anima-502")),
-            Err(BadRecords::OpenAbove)
-        );
-    }
-
-    #[test]
-    fn a_touch_marks_each_file_of_the_records_as_used_now() {
-        let (_keep, above) = above();
-        let place = opened(&above.join("anima-501")).expect("the records");
-        std::fs::create_dir_all(place.join("a/b")).expect("folders");
-        let file = place.join("a/b/pack");
-        std::fs::write(&file, "x").expect("a file");
-        let long_ago = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_hours(24);
-        let old = std::fs::FileTimes::new()
-            .set_accessed(long_ago)
-            .set_modified(long_ago);
-        std::fs::File::options()
-            .write(true)
-            .open(&file)
-            .and_then(|file| file.set_times(old))
-            .expect("old times");
-        touch(&place).expect("a touch");
-        let now = std::fs::metadata(&file)
-            .and_then(|about| about.modified())
-            .expect("a time");
-        assert!(now > long_ago + std::time::Duration::from_hours(24));
-    }
-
-    #[test]
-    fn a_thread_in_a_folder_above_the_records_holds_them() {
-        let (_keep, above) = above();
-        let records = above.join("shared/anima-501");
-        std::fs::create_dir_all(&records).expect("a folder");
-        std::fs::create_dir_all(above.join("home/project")).expect("a folder");
-        assert!(held_by(&records, &above));
-        assert!(held_by(&records, &above.join("shared")));
-        assert!(held_by(&records, &records));
-        std::fs::create_dir_all(records.join("inside")).expect("a folder");
-        assert!(held_by(&records, &records.join("inside")));
-        assert!(!held_by(&records, &above.join("home")));
-        assert!(!held_by(&records, &above.join("home/project")));
-        assert!(held_by(&records, &above.join("gone")));
-        std::os::unix::fs::symlink(above.join("shared"), above.join("home/link")).expect("a link");
-        assert!(held_by(&records, &above.join("home/link")));
-    }
-}
+mod tests;

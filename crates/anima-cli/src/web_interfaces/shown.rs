@@ -1,5 +1,3 @@
-//! A web interface as the documents of this noun print it.
-
 use crate::output::{Cell, Table};
 
 /// The fields every web interface document selects, as text.
@@ -12,7 +10,6 @@ pub struct Shown<'a> {
 }
 
 impl Shown<'_> {
-    /// Label and value lines for one web interface.
     #[must_use]
     pub fn table(&self) -> Table {
         let mut table = Table::record();

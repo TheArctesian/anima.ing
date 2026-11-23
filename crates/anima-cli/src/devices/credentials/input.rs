@@ -1,5 +1,4 @@
-//! Where a credential comes from and how it is sent (CMD-025): a prompt with echo off, standard
-//! input (`-`) or a private file, never an argument; and the request's copy is wiped after.
+//! A credential comes from a prompt, standard input or a private file, never an argument (CMD-025).
 
 use std::path::Path;
 
@@ -11,18 +10,13 @@ use crate::hub::{Hub, HubError};
 use crate::input;
 use crate::prompt::Prompter;
 
-/// The path that means standard input.
 const STDIN: &str = "-";
 
 /// The longest password or key; a private key file is a few kilobytes.
 const LIMIT: usize = 64 * 1024;
 
-/// A password from `from_file` (a path, or `-` for standard input), or else asked for at the
-/// terminal. One line break at its end is not part of the password.
-///
 /// # Errors
-/// [`Failure::Usage`] naming `--from-file` when it cannot ask; [`Failure::Input`] when the
-/// file is exposed, unreadable, empty or not text.
+/// [`Failure::Usage`] when it cannot ask; [`Failure::Input`] for an unusable file.
 pub fn password(
     prompter: Prompter,
     what: &str,
@@ -40,8 +34,7 @@ pub fn password(
 /// A secret that cannot be typed on one line (a private key) from `from_file`.
 ///
 /// # Errors
-/// As [`password`]; [`Failure::Usage`] when `from_file` is missing, as a prompt cannot take
-/// several lines.
+/// As [`password`]; [`Failure::Usage`] when `from_file` is missing.
 pub fn from_file_only(
     prompter: Prompter,
     what: &str,
@@ -51,8 +44,7 @@ pub fn from_file_only(
     nonempty(read(prompter, path, what)?, what)
 }
 
-/// Sends `variables` of document `Q` and wipes the secrets in them with `wipe` whether or not
-/// the hub accepted the request.
+/// Wipes the secrets in `variables` with `wipe` whether or not the hub accepted the request.
 ///
 /// # Errors
 /// [`HubError`] for a refusal or a failed request.
@@ -74,7 +66,7 @@ fn nonempty(text: Zeroizing<String>, what: &str) -> Result<Zeroizing<String>, Fa
     Ok(text)
 }
 
-/// The text of a private file, or of standard input for `-`. The reason never holds the text.
+/// The reason in a failure never holds the text.
 fn read(prompter: Prompter, path: &Path, what: &str) -> Result<Zeroizing<String>, Failure> {
     let bytes = if path.as_os_str() == STDIN {
         input::read(prompter, path, what, LIMIT)?

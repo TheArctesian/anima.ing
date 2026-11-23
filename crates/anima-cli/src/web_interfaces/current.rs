@@ -1,5 +1,4 @@
-//! The web interface that `web update` changes, as the hub has it now. K1 has no query by a web
-//! interface's ID, so the devices are read in pages until one holds it.
+//! K1 has no query by a web interface's ID, so `find` reads the devices in pages.
 
 use super::documents::{WebCurrent, web_current};
 use crate::failure::{Failure, Hint};
@@ -9,7 +8,6 @@ use crate::output::text::enum_name;
 /// The hub's largest page of devices.
 const PAGE: i64 = 200;
 
-/// A web interface's address, label and place to open, in K1 input form.
 #[derive(Debug)]
 pub struct Current {
     pub url: String,
@@ -17,8 +15,6 @@ pub struct Current {
     pub open_in: String,
 }
 
-/// The web interface with `id`.
-///
 /// # Errors
 /// [`Failure::NotFound`] when no device holds it; the hub's refusal.
 pub async fn find(hub: &Hub, id: &str) -> Result<Current, Failure> {

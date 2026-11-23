@@ -1,11 +1,5 @@
-//! The device settings that `device create` and `device update` take as flags (CMD-020). Each K1
-//! input field is a flag with its K1 name in kebab-case. The flags become the K1 input as JSON,
-//! and the generated input type of the document reads it back, so K1 still decides what is valid.
-//!
-//! A group (`--ssh-*`, `--rdp-*`, `--vnc-*`, `--transfer-*`) is sent whole, because the hub
-//! replaces the group. A new device has no current values, so its SSH and RDP groups need
-//! `--ssh-username` or `--rdp-username`. `device update` reads the current values first (never a
-//! credential) and lays the flags over them.
+//! The device settings that `device create` and `device update` take as flags (CMD-020).
+//! `device update` lays the flags over the current values, which it reads without any credential.
 
 use clap::ValueEnum;
 use serde::Serialize;

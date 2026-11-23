@@ -1,6 +1,5 @@
-//! The words of the command, each a pure function of the attempt (K-E1 design, Sections E and F).
-//! Text from GitHub is cleaned where a line is printed. Links that GitHub made are shown only
-//! when they point at `github.com`.
+//! The words of the command (K-E1 design, Sections E and F); text from GitHub is cleaned where a
+//! line is printed.
 
 use super::attempt::{Attempt, Phase, Reason};
 use crate::failure::{Failure, exit};
@@ -8,13 +7,11 @@ use crate::failure::{Failure, exit};
 /// The only place a link from the hub's answer is shown to be followed (design Section F).
 const GITHUB: &str = "https://github.com/";
 
-/// Why the command stopped with the connection still open.
 pub const STILL_OPEN: &str = "The connection is still open on the hub. `anima source connect \
                               github --cancel` stops it.";
 
 pub const NONE_OPEN: &str = "No GitHub connection is in progress.";
 
-/// What `connect` prints before the one-time link, which comes on the next line.
 pub const LINK_INTRO: &str = "Open this link in your browser. It works once, for 5 minutes:";
 
 /// What `connect` prints before the page link, off a terminal.
@@ -101,7 +98,6 @@ pub fn outcome(attempt: &Attempt) -> Result<(), Failure> {
     }
 }
 
-/// The attempt as `--state` prints it: the phase, the hub's sentence and the links that apply.
 #[must_use]
 pub fn state_text(attempt: &Attempt) -> String {
     let mut parts = vec![format!(

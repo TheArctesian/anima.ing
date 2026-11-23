@@ -1,5 +1,4 @@
-//! `anima notify channel create` and `update`: the channel's name, settings and secrets come
-//! from a JSON document in a file or on standard input (CMD-025).
+//! The channel's secrets come from a JSON document in a file or on standard input (CMD-025).
 
 use std::path::PathBuf;
 

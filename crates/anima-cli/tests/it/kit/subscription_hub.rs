@@ -25,14 +25,11 @@ pub enum Script {
     Refuse,
 }
 
-/// What the client sent.
 #[derive(Clone, Debug, Default)]
 pub struct Received {
     /// The request path and query, where a token must never be.
     pub uri: String,
-    /// The payload of `connection_init`.
     pub init: Value,
-    /// The payload of `subscribe`: `query`, `variables` and `operationName`.
     pub subscribe: Value,
     /// How many `pong` frames answered the hub's ping.
     pub pongs: usize,
@@ -49,14 +46,13 @@ pub struct Socket {
 }
 
 impl Socket {
-    /// What the client has sent so far.
     pub fn received(&self) -> Received {
         self.shared.received.lock().expect("received").clone()
     }
 }
 
-/// `GET /graphql` as a route to add to another scripted hub (see `FakeHub::start_with`), and
-/// the handle that shows what the client sent it.
+/// `GET /graphql` as a route to add to another scripted hub, and the handle that shows what the
+/// client sent it.
 pub fn socket(script: Script) -> (MethodRouter, Socket) {
     let shared = Arc::new(Shared {
         script,
@@ -80,7 +76,6 @@ impl SubscriptionHub {
         Self { origin, socket }
     }
 
-    /// What the client has sent so far.
     pub fn received(&self) -> Received {
         self.socket.received()
     }

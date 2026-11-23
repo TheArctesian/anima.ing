@@ -1,5 +1,4 @@
-//! `anima pr merge` with several numbers against the scripted hub (PRJ-033, PRO-013, CMD-021):
-//! it reads them all, asks once, prints one outcome for each and never takes a fork.
+//! `anima pr merge` with several numbers (PRJ-033, PRO-013, CMD-021).
 
 use serde_json::json;
 

@@ -9,7 +9,9 @@
   import type { CheckFormValues } from '$lib/checks/form/model/values';
   import { containersApi } from '$lib/containers/api';
   import ContainersPanel from '$lib/containers/ContainersPanel.svelte';
-  import { ContainersStore } from '$lib/containers/store.svelte';
+  import { StorageStore } from '$lib/containers/storage/storage.svelte';
+  import { hostingApi } from '$lib/hosting/api';
+  import { HostingStore } from '$lib/hosting/store.svelte';
   import { thisComputerShell } from '$lib/desktop/daemon/shell';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
   import { readKept } from '$lib/hosted/kept/api';
@@ -88,12 +90,19 @@
     detail.showTab(place.tab);
   });
 
-  // HOST-013: the hub reads the device's containers when the tab opens, and again only when the operator asks.
+  // HSE-008: the tab shows the one list of Hosting narrowed to this machine. The hub reads the containers when the tab
+  // opens, and again only when the operator asks; the images, the volumes and the networks when one is first opened.
   // svelte-ignore state_referenced_locally
-  const containers = new ContainersStore(containersApi(hub, id));
-  const onContainers = $derived(place.tab === 'containers');
+  const storage = new StorageStore(containersApi(hub, id));
+  const containers = new HostingStore(hostingApi(hub));
+  const containersReady = $derived(place.tab === 'containers' && device !== null);
   $effect(() => {
-    if (onContainers) untrack(() => void containers.load());
+    if (!containersReady) return;
+    untrack(() => {
+      if (device === null) return;
+      containers.only = { id: device.id, name: device.name, state: device.status };
+      void containers.load();
+    });
   });
 
   // The bar says why a device is not up from its checks (D16), so they load on every tab while it is not.
@@ -217,8 +226,8 @@
       </TabPanel>
     {:else if place.tab === 'containers'}
       <!-- The panel shows its own errors and Retry. -->
-      <TabPanel name="containers" loading={loading || containers.status === 'idle' || (containers.status === 'loading' && containers.containers.length === 0)}>
-        <ContainersPanel store={containers} />
+      <TabPanel name="containers" loading={loading || containers.status === 'idle' || (containers.status === 'loading' && containers.places.length === 0)}>
+        <ContainersPanel hosting={containers} {storage} />
       </TabPanel>
     {:else if place.tab === 'sessions'}
       <TabPanel name="sessions" loading={loading || sessionPages.items === null && sessionPages.error === null}>
