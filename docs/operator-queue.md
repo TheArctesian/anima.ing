@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (233)
+## 2. Open decisions (231)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -202,8 +202,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-BOT21 | Does MCP-006 (no tool runs a command on a device) get a narrow exception, so that an MCP tool can ask the daemon to run a recipe of the catalog (BOT-075)? (yes/… | Open | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT22 | May an AI agent start a recipe before the operator confirmed its terms row on that machine (BOT-041, BOT-065)? (yes/no) | Open | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT23 | May the operator type a key that lasts (Gemini CLI, Pi, OpenCode; Pi replaces Aider, R-196) in the secret-entry pane, when R-153 covers a one-time code only (BO… | Open | [proposals/bots.md](proposals/bots.md) |
-| OD-CLU4 | When a machine joins a cluster, does its agreement at the machine also count as its consent to serve public routes of the things of that cluster? A: yes, one ag… | A. With B, a move or a restart can stop a public route with no warning until a person goes to the new machine. The join is already a person at the machine, whic… | [proposals/clusters.md](proposals/clusters.md) |
-| OD-CLU5 | Who can put a thing on a cluster or move it between members? A: the same rule as an install (R-384): the person, the app, `anima` and a Full access thread with… | A. A move does no more than an install and a remove, which that rule already allows. | [proposals/clusters.md](proposals/clusters.md) |
 | OD-CLU6 | By default, how old may the copy of the data of a thing with restart on be (the person can change it for each thing)? A: 15 minutes (a copy each 7.5 minutes). B… | A. It keeps the loss of a failure to minutes with little load; B doubles the copies for a few minutes less; C loses up to an hour of writes. | [proposals/clusters.md](proposals/clusters.md) |
 | OD-CLU7 | By default, how long does the hub wait before it takes a member as gone? A: 6 minutes (3 times the lease of 2 minutes). B: 15 minutes. C: 2 minutes, with a leas… | A. Long enough for the restart of a machine and a short loss of the network; B leaves things down longer; C gives false alarms on a busy home network. | [proposals/clusters.md](proposals/clusters.md) |
 | OD-CLU8 | When no copy is new enough, may Anima start a thing from an older copy by itself? A: no; it stays down and a person can start it from the old copy. B: yes, alwa… | A. Starting from an old copy loses data that the person may still get back when the machine returns. | [proposals/clusters.md](proposals/clusters.md) |
