@@ -13,6 +13,7 @@ pub mod link;
 pub mod marker;
 pub mod notice;
 pub mod outbox;
+pub mod priority;
 pub mod program;
 pub mod record;
 pub mod runner;

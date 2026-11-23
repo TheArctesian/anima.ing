@@ -130,7 +130,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 ### HT-149: reporting after an iPad update and the phone Code tab
 
 - State: Open.
-- On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory and storage show for the existing device row.
+- On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
 - On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
 
 ### HT-148: phone Devices, offline notice and Integrations (M2-5)
@@ -4993,6 +4993,22 @@ Built on the branch `threads/codex-rollout-items`. The tests read rollouts that 
    Expected: one command row `sleep 20 && echo done` with the output `done`; no separate rows for its waits.
 4. On the page of a new thread, choose a Codex model whose efforts list Ultra, and choose Ultra.
    Expected: the thread starts. A model whose list has no Ultra does not offer it.
+### HT-159: an agent from Anima is as fast as from a terminal (R-403)
+
+Built on the branch `threads/agents-priority`. The runner lifts the holder of the agent programs, and its own questions to a
+program, out of the background priority of the daemon. The tests lift a child of the test; nobody has timed a turn of a
+real program started from the application.
+
+1. Install the build, quit each thread, and stop the holder (restart the computer, or end `anima-daemon holder`), so that
+   the next thread starts a new holder.
+   Expected: nothing; this makes sure that the holder is a new one.
+2. While the Mac is busy (for example a long build in a terminal), start a Codex thread from the page of a new thread with
+   the prompt `reply with the word ok`, and time it from the press to the answer.
+   Expected: the thread starts; no words "did not answer".
+3. In a terminal of the same Mac, at the same load, run `codex exec "reply with the word ok"` and time it.
+   Expected: the time of step 2 is about the time of step 3, not many times longer.
+4. Open the log of the runner: the file `runner.log` in the folder `threads` of the state folder of the daemon.
+   Expected: no line "a program runs at background priority: the lift failed".
 
 Result: Open.
 
