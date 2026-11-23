@@ -60,6 +60,21 @@ pub fn parse(output: &[u8], secrets: &[String]) -> Vec<(String, String)> {
     found.into_iter().collect()
 }
 
+/// The environment of this daemon process, the input of [`environment`]. A value is read
+/// lossily, as the output of the login shell is, so that a secret value that is not UTF-8 is
+/// still found and stripped (THR-040).
+#[must_use]
+pub fn of_the_daemon() -> Vec<(String, String)> {
+    std::env::vars_os()
+        .filter_map(|(name, value)| {
+            Some((
+                name.into_string().ok()?,
+                value.to_string_lossy().into_owned(),
+            ))
+        })
+        .collect()
+}
+
 /// The environment of the login of the person, from `$SHELL -l -i -c` with no input and only
 /// the names a login needs; `daemon` is the environment of the daemon. When the shell does not
 /// answer, the few names the daemon has, and a warning in the log.

@@ -4,6 +4,7 @@
 
 use std::path::Path;
 
+use crate::config::home::{Home, HomeError};
 use crate::config::private_file::{self, PrivateFileError};
 
 pub const FILE: &str = "work-switch";
@@ -27,6 +28,32 @@ pub fn is_on(dir: &Path) -> Result<bool, PrivateFileError> {
 /// [`PrivateFileError`] when the file cannot be written; the old file then stays.
 pub fn set(dir: &Path, on: bool) -> Result<(), PrivateFileError> {
     private_file::write(dir, FILE, if on { ON } else { OFF })
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SwitchError {
+    #[error("{0}")]
+    Home(#[from] HomeError),
+    #[error("{0}")]
+    File(#[from] PrivateFileError),
+}
+
+/// `anima-daemon work on` or `off`: sets the switch, and says what it means. The running daemon
+/// reads the switch before each claim, so it needs no restart.
+///
+/// # Errors
+/// [`SwitchError`] when the daemon folder or the file cannot be written.
+pub fn turn_and_say(home: &Home, on: bool) -> Result<(), SwitchError> {
+    home.ensure()?;
+    set(home.dir(), on)?;
+    if on {
+        eprintln!("This machine takes work from the hub.");
+    } else {
+        eprintln!(
+            "This machine takes no work from the hub. Running servers go on; the hub can still stop them."
+        );
+    }
+    Ok(())
 }
 
 #[cfg(test)]

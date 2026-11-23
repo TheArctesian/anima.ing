@@ -129,11 +129,7 @@ async fn a_runtime_that_stops_is_started_again_then_failed_after_the_limit() {
     let mut states = Vec::new();
     for _ in 0..40 {
         tokio::time::sleep(Duration::from_millis(150)).await;
-        node.servers
-            .lock()
-            .await
-            .cycle(now, |_| temporary.clone())
-            .await;
+        cycle(&node, now, &temporary).await;
         let servers = node.servers.lock().await;
         let server = &servers.map[&SERVER];
         states.push((server.state, server.record.restarts()));
@@ -162,6 +158,14 @@ fn child_of(node: &Node) -> rustix::process::Pid {
     rustix::process::Pid::from_raw(text.trim().parse().expect("a pid")).expect("a pid")
 }
 
+async fn cycle(node: &Node, now: u64, temporary: &std::path::Path) {
+    node.servers
+        .lock()
+        .await
+        .cycle(now, |_| temporary.to_owned())
+        .await;
+}
+
 pub async fn gone(pid: rustix::process::Pid) -> bool {
     for _ in 0..50 {
         if rustix::process::test_kill_process(pid).is_err() {
@@ -183,11 +187,7 @@ async fn the_children_of_a_server_end_when_its_main_process_ends() {
     let child = child_of(&node);
     let temporary = node.folders.server(SERVER).join("tmp");
     // One poll of the cycle records the child; on macOS the walk keeps what a poll saw.
-    node.servers
-        .lock()
-        .await
-        .cycle(900, |_| temporary.clone())
-        .await;
+    cycle(&node, 900, &temporary).await;
     let leader = node.servers.lock().await.map[&SERVER]
         .running
         .as_ref()
@@ -198,11 +198,7 @@ async fn the_children_of_a_server_end_when_its_main_process_ends() {
     let leader = rustix::process::Pid::from_raw(leader).expect("a pid");
     rustix::process::kill_process(leader, rustix::process::Signal::KILL).expect("killed");
     tokio::time::sleep(Duration::from_millis(200)).await;
-    node.servers
-        .lock()
-        .await
-        .cycle(1_000, |_| temporary.clone())
-        .await;
+    cycle(&node, 1_000, &temporary).await;
     assert!(
         gone(child).await,
         "the child of the ended server still runs"
@@ -236,11 +232,7 @@ async fn a_child_that_leaves_the_session_is_still_seen_and_ended() {
         {
             tokio::time::sleep(Duration::from_millis(500)).await;
             let temporary = node.folders.server(SERVER).join("tmp");
-            node.servers
-                .lock()
-                .await
-                .cycle(1_000, |_| temporary.clone())
-                .await;
+            cycle(&node, 1_000, &temporary).await;
             assert_eq!(
                 node.servers.lock().await.map[&SERVER].state,
                 ServerState::Failed(Cause::Listener)

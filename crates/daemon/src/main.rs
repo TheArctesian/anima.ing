@@ -58,7 +58,8 @@ async fn daemon() -> ExitCode {
         Command::Install { target } => install(target, &home),
         Command::Uninstall => uninstall(&home),
         Command::Stop => stop_unit(),
-        Command::Work { on } => work(&home, on),
+        Command::Work { on } => anima_daemon::work::switch::turn_and_say(&home, on)
+            .map_or_else(|error| failure(&error), |()| ExitCode::SUCCESS),
         Command::KeyRead { name } => key_read(&name, &home),
         Command::Holder { .. } | Command::Version => ExitCode::FAILURE,
         Command::KeyForget => match KeyStore::open(&home).forget() {
@@ -166,24 +167,6 @@ fn install(target: Target, home: &Home) -> ExitCode {
     }
 }
 
-/// USE-004: the running daemon reads the switch before each claim, so no restart is needed.
-fn work(home: &Home, on: bool) -> ExitCode {
-    if let Err(error) = home.ensure() {
-        return failure(&error);
-    }
-    if let Err(error) = anima_daemon::work::switch::set(home.dir(), on) {
-        return failure(&error);
-    }
-    if on {
-        eprintln!("This machine takes work from the hub.");
-    } else {
-        eprintln!(
-            "This machine takes no work from the hub. Running servers go on; the hub can still stop them."
-        );
-    }
-    ExitCode::SUCCESS
-}
-
 /// HMD-056.
 #[cfg(unix)]
 fn uninstall(home: &Home) -> ExitCode {
@@ -279,9 +262,11 @@ async fn stop() {
 
 /// The system unit and a hosted hub start no agent (THR-128).
 async fn run(home: &Home, hosted_hub: Option<std::path::PathBuf>) -> ExitCode {
-    // SF-259: a newer unit restarts this daemon here.
+    // SF-259: a newer unit restarts this daemon here. The daemon of a hosted hub has no unit.
     #[cfg(unix)]
-    units::refresh::at_start(home);
+    if hosted_hub.is_none() {
+        units::refresh::at_start(home);
+    }
     let runner = (hosted_hub.is_none() && serves_a_person(home.dir()))
         .then(|| tokio::spawn(threads(home.dir().to_owned())));
     let outcome = match runtime::run(home, hosted_hub, stop()).await {
@@ -304,16 +289,7 @@ async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
         Ok(program) => program,
         Err(error) => return failure(&error),
     };
-    // A value is read lossily, as the login shell's output is, so that a secret value that is
-    // not UTF-8 is still found and stripped (THR-040).
-    let daemon: Vec<(String, String)> = std::env::vars_os()
-        .filter_map(|(name, value)| {
-            Some((
-                name.into_string().ok()?,
-                value.to_string_lossy().into_owned(),
-            ))
-        })
-        .collect();
+    let daemon = runner::login::of_the_daemon();
     match runner::run(&daemon_dir, &program, daemon, stop()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => failure(&error),
