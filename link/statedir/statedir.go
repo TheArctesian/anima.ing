@@ -1,5 +1,4 @@
-// Package statedir keeps the files of one anima-link in a directory that
-// only its owner can read (LNK-008). One process uses a directory at a time.
+// Package statedir keeps the files of one anima-link in an owner-only directory, one process at a time (LNK-008).
 package statedir
 
 import (
@@ -19,15 +18,13 @@ import (
 var (
 	// ErrInUse means that another anima-link has the directory.
 	ErrInUse = errors.New("statedir: another anima-link uses this directory")
-	// ErrExposed means that other users can reach the directory or a file,
-	// or can replace it.
+	// ErrExposed means that other users can reach or replace the directory or a file.
 	ErrExposed = errors.New("statedir: other users can reach this path; set owner-only access")
 	// ErrDamaged means that a file cannot be read as what it must hold.
 	ErrDamaged = errors.New("statedir: the file is damaged")
 	// ErrAbsent means that the file was never written.
 	ErrAbsent = errors.New("statedir: no such file")
-	// ErrLongPath means that the directory's path leaves no room for a
-	// socket name. The system limit for a socket path is about 100 bytes.
+	// ErrLongPath means that the directory's path leaves no room for a socket name.
 	ErrLongPath = errors.New("statedir: the path is too long for a socket; use a shorter state directory")
 )
 
@@ -42,8 +39,7 @@ type Dir struct {
 	lock *os.File
 }
 
-// Open makes the directory if it is absent, checks that only its owner can
-// reach it, and takes it for this process.
+// Open makes the directory if it is absent, checks that only its owner can reach it, and takes it for this process.
 func Open(path string) (*Dir, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
@@ -70,10 +66,7 @@ func Open(path string) (*Dir, error) {
 	return &Dir{path: path, lock: lock}, nil
 }
 
-// Beside opens the directory of an anima-link that may run now, without
-// taking it: for a file that a second process changes, such as the open
-// ports of a device. A file that Write replaces is read whole, the old or
-// the new one. The directory must exist and pass the same test as in Open.
+// Beside opens the directory of an anima-link that may run now, without taking it; it must pass the test of Open.
 func Beside(path string) (*Dir, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
@@ -93,8 +86,7 @@ func (d *Dir) Close() error {
 	return d.lock.Close()
 }
 
-// Read fills value from the JSON file name. It returns ErrAbsent when the
-// file was never written.
+// Read fills value from the JSON file name. It returns ErrAbsent when the file was never written.
 func (d *Dir) Read(name string, value any) error {
 	file, err := readFile(filepath.Join(d.path, name))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -104,8 +96,7 @@ func (d *Dir) Read(name string, value any) error {
 		return fmt.Errorf("%w: %s", ErrExposed, name)
 	}
 	defer file.Close()
-	// The check and the read use the same open file, so the file cannot be
-	// replaced between them.
+	// The check and the read use the same open file, so the file cannot be replaced between them.
 	stat, err := file.Stat()
 	if err != nil {
 		return err
@@ -124,8 +115,7 @@ func (d *Dir) Read(name string, value any) error {
 	return nil
 }
 
-// Write replaces the JSON file name with value. A reader sees the old file
-// or the new file, never a part of one.
+// Write replaces the JSON file name with value. A reader sees the old file or the new file, never a part of one.
 func (d *Dir) Write(name string, value any) error {
 	text, err := json.Marshal(value)
 	if err != nil {
@@ -153,8 +143,7 @@ func (d *Dir) Write(name string, value any) error {
 	return d.sync()
 }
 
-// sync makes a rename in the directory last through a power loss. Without
-// it a hub could lose its new identity file and come back as another hub.
+// sync makes a rename last through a power loss, or a hub could come back as another hub.
 func (d *Dir) sync() error {
 	directory, err := os.Open(d.path)
 	if err != nil {
@@ -164,9 +153,7 @@ func (d *Dir) sync() error {
 	return syncDirectory(directory)
 }
 
-// Listen makes the Unix socket name in the directory. Only the owner can
-// connect to it. A socket that an earlier process left is replaced: this
-// process holds the directory, so no other process serves it.
+// Listen makes the owner-only Unix socket name in the directory, and replaces one that an earlier process left.
 func (d *Dir) Listen(name string) (net.Listener, error) {
 	path := filepath.Join(d.path, name)
 	if len(path) > maxSocketPath {
@@ -178,8 +165,6 @@ func (d *Dir) Listen(name string) (net.Listener, error) {
 	return listenOwnerOnly(path)
 }
 
-// listenOwnerOnly makes the Unix socket at path, which only the owner can
-// connect to.
 func listenOwnerOnly(path string) (net.Listener, error) {
 	listener, err := net.Listen("unix", path)
 	if err != nil {
@@ -192,19 +177,14 @@ func listenOwnerOnly(path string) (net.Listener, error) {
 	return listener, nil
 }
 
-// Dial connects to the socket name of the state directory at path. The
-// caller is a second process: it does not take the directory.
+// Dial connects to the socket name of the state directory at path, without taking the directory.
 func Dial(ctx context.Context, path, name string) (net.Conn, error) {
 	var dialer net.Dialer
 	return dialer.DialContext(ctx, "unix", filepath.Join(path, name))
 }
 
-// DialOwned connects to a Unix socket of this user's other program, for
-// example the hub's socket for the link. It refuses a socket that another
-// user owns or can replace: what is sent there would reach that user. The
-// socket's folder must pass the same test as a state directory. The socket
-// is checked and then opened by its path: only this user or root can change
-// what the path leads to between the two.
+// DialOwned connects to a Unix socket of this user's other program in a private folder.
+// It refuses a socket that another user owns or can replace; in a private folder only this user or root can swap it after the check.
 func DialOwned(path string, limit time.Duration) (net.Conn, error) {
 	if err := private(filepath.Dir(path)); err != nil {
 		return nil, err
@@ -219,9 +199,7 @@ func DialOwned(path string, limit time.Duration) (net.Conn, error) {
 	return net.DialTimeout("unix", path, limit)
 }
 
-// private refuses a directory that is a symbolic link, that other users can
-// reach, or that another user can replace: a folder above it that another
-// user owns, or that others can write with no sticky bit.
+// private refuses a symbolic link, or a directory that other users can reach or replace.
 func private(path string) error {
 	stat, err := os.Lstat(path)
 	if err != nil {
@@ -233,12 +211,8 @@ func private(path string) error {
 	return foldersAbove(path)
 }
 
-// ListenOwned makes a Unix socket at path for this user's other program,
-// for example the socket of a device link for the metrics daemon (K8
-// Section 1). Only the owner can connect to it. The socket's folder must
-// pass the same test as a state directory, so no other user can put a
-// socket of their own at the path. A socket that an earlier process left is
-// replaced; a path that holds a thing that is not a socket is refused.
+// ListenOwned makes an owner-only Unix socket at path in a private folder, for this user's other program (K8 Section 1).
+// It replaces a socket that an earlier process left, and refuses a path that holds something else.
 func ListenOwned(path string) (net.Listener, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
+  import { withSent } from '$lib/agent-threads/live/timeline';
   import Card from '../composer/Card.svelte';
+  import Timeline from '../timeline/Timeline.svelte';
   import type { Project } from '../inbox/inbox';
   import { MODELS_WAITING, type DraftModels } from './choice';
   import { noticeParts } from './notice';
@@ -66,6 +68,10 @@
 -->
 <div class="draft">
   <div class="stack">
+    {#if draft.sent !== null}
+      <!-- The send is starting the thread: the prompt shows at once, with the program at work (T3 opens the thread on send). -->
+      <div class="sent"><Timeline entries={withSent([], { thread: '', ...draft.sent })} working onDecide={() => undefined} /></div>
+    {:else}
     <div class="hero">
       <h1>
         {#if heading.kind === 'build'}
@@ -89,6 +95,7 @@
         {/if}
       </p>
     </div>
+    {/if}
     {#if notice !== null}
       <div class="notice" role="note" aria-label="What this folder runs by itself">
         {#each noticeParts(notice) as part, index (index)}
@@ -124,6 +131,12 @@
     .draft {
       align-items: flex-end;
     }
+  }
+
+  .sent {
+    display: flex;
+    flex-direction: column;
+    min-block-size: 0;
   }
 
   .stack {

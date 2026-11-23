@@ -14,6 +14,7 @@
   import type { SettingsCalls } from '../calls';
   import type { SettingsDraft } from '../draft.svelte';
   import ConnectionRow from './ConnectionRow.svelte';
+  import SshSetup from './SshSetup.svelte';
   import { isSetUp, summaryParts } from './connections';
   import FieldErrors from './FieldErrors.svelte';
   import SecretRow, { type TypedSecret } from './SecretRow.svelte';
@@ -32,6 +33,8 @@
   let { draft, device, saved, calls, onTest, open = $bindable() }: Props = $props();
   /** "Set up" was pressed: the row shows its switch, off, while the operator fills it in. */
   let settingUp = $state(false);
+  let simpleSetup = $state(true);
+  let automaticallyTest = $state(false);
   let root = $state<HTMLElement>();
 
   const AUTH: readonly { value: SshAuth; label: string }[] = [
@@ -66,6 +69,9 @@
     onToggle={() => void draft.commit('ssh.enabled')}
     onSetUp={() => void setUp()}
   >
+    {#if simpleSetup && (settingUp || !isSetUp(device, 'ssh'))}
+      <SshSetup {saved} onSave={calls.onSave} onReady={() => { settingUp = false; automaticallyTest = true; }} onAdvanced={() => { simpleSetup = false; }} />
+    {:else}
     <div class="fields">
       <TextCell {draft} key="ssh.port" label="Port" port />
       <TextCell {draft} key="ssh.username" label="User name" />
@@ -96,12 +102,13 @@
       </div>
       <FieldErrors errors={draft.errorsIn('ssh').filter((error) => !error.field.startsWith('credential.'))} />
     </div>
+    {/if}
     {#if device.os === 'MACOS'}
       <div class="foot"><RemoteLoginButton /></div>
     {/if}
     {#if draft.values.ssh.enabled}
       <div class="foot">
-        <TestConnection initial={saved} values={draft.values} deviceId={device.id} canTest={() => draft.checkForTest('ssh')} {onTest} onAcceptHostKey={calls.onAcceptHostKey} />
+        <TestConnection autoStart={automaticallyTest} initial={saved} values={draft.values} deviceId={device.id} canTest={() => draft.checkForTest('ssh')} {onTest} onAcceptHostKey={calls.onAcceptHostKey} />
       </div>
     {/if}
   </ConnectionRow>

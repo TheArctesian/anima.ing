@@ -11,36 +11,28 @@ import (
 const (
 	// AnswerLimit is how long the dial socket waits for the device.
 	AnswerLimit = 10 * time.Second
-	// lineLimit is how long the first line of a connection may take.
-	lineLimit = 5 * time.Second
+	lineLimit   = 5 * time.Second
 )
 
-// Desk is where the hub link keeps each request until its device answers.
-// The zero value is an empty desk.
+// Desk holds each request until its device answers; the zero value is empty.
 type Desk struct {
 	mu      sync.Mutex
 	waiting map[string]*waiter
 }
 
-// waiter is one request that has no answer yet.
 type waiter struct {
 	device netip.Addr
-	// answer gets one value, and has room for it.
 	answer chan answer
 }
 
-// answer is what the device said. With the word "ok" it holds the stream,
-// and done closes when the hub has finished with the stream.
+// answer holds the stream only for "ok"; done closes when the hub has finished with it.
 type answer struct {
 	word   string
 	stream net.Conn
 	done   chan struct{}
 }
 
-// Open asks a device for one of its local ports and waits for the stream
-// that the device opens. ask writes one line on the device's stream of the
-// reverse port. The caller calls release when it has finished with the
-// stream; ctx limits the wait for the device.
+// Open asks a device for a local port and waits for its stream; the caller calls release when done.
 func (d *Desk) Open(ctx context.Context, device netip.Addr, port uint16, ask func(line string) error) (stream net.Conn, release func(), err error) {
 	if port == 0 {
 		return nil, nil, ErrBadRequest
@@ -80,8 +72,6 @@ func (d *Desk) forget(id string) bool {
 	return waits
 }
 
-// take removes the request with an id and returns it, when the device that
-// answers is the device that was asked.
 func (d *Desk) take(id string, device netip.Addr) *waiter {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -111,11 +101,8 @@ func (a answer) drop() {
 	}
 }
 
-// Deliver takes a stream that a device opened to the open port of the hub.
-// device is the link address that the tunnel authenticated. Deliver reads
-// the first line and gives the stream to the request that waits for it. It
-// returns when that request has released the stream, or at once when no
-// request to this device has the id. The caller then closes the stream.
+// Deliver gives a device's stream to the request with its id and returns when that request releases it.
+// device is the link address that the tunnel authenticated; only the asked device can answer. The caller then closes the stream.
 func (d *Desk) Deliver(device netip.Addr, stream net.Conn) {
 	_ = stream.SetReadDeadline(time.Now().Add(lineLimit))
 	line, read := readLine(stream)

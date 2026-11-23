@@ -1,7 +1,4 @@
-// Package devicelink is the device side of the link: a loopback port and,
-// for the metrics daemon, a Unix socket that reach the hub, a keepalive that holds the link ready, and a stream that
-// tells the hub that the device is connected and gives the hub the local
-// ports that the person opened.
+// Package devicelink is the device side of the link: local ways to the hub, a keepalive and the presence stream.
 package devicelink
 
 import (
@@ -16,26 +13,19 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// Errors of this package.
 var (
-	// ErrListen means that the local address is not on loopback. The local
-	// port gives the hub to whoever can reach it, so it stays on this computer.
+	// ErrListen means that the local address is not on loopback: the local port gives the hub to whoever reaches it.
 	ErrListen = errors.New("devicelink: the local address must be a loopback address and a port, for example 127.0.0.1:0")
 	// ErrNotEnrolled means that the device has no hub address yet.
 	ErrNotEnrolled = errors.New("devicelink: this device has no hub; it needs an invite")
 )
 
-// Times of the device link.
 const (
-	// DefaultKeepalive is how often the device pings the hub. A link with no
-	// traffic for 150 s or more stalls for seconds at the next request
-	// (spike K-A, 3.6); 15 s keeps it ready.
+	// DefaultKeepalive keeps the link ready: a link idle for 150 s stalls at the next request (spike K-A, 3.6).
 	DefaultKeepalive = 15 * time.Second
-	// DefaultNoticeEvery makes the device read the hub's next address each
-	// 5 minutes with the default keepalive.
+	// DefaultNoticeEvery makes the device read the hub's next address each 5 minutes with the default keepalive.
 	DefaultNoticeEvery = 20
-	// DefaultAnswerLimit is how long the device waits for one answer of the
-	// hub before it counts the hub as silent.
+	// DefaultAnswerLimit is how long the device waits for one answer of the hub.
 	DefaultAnswerLimit = 5 * time.Second
 	dialLimit          = 15 * time.Second
 )
@@ -45,28 +35,20 @@ type Config struct {
 	Identity identity.Device
 	// Listen is the loopback address of the local port. Port 0 takes a free port.
 	Listen string
-	// DaemonSocket is a second way to the hub on this computer: a Unix
-	// socket for the metrics daemon, which sends its token and must not
-	// send it to a port (K8 Section 1). The link closes it. Nil means none.
+	// DaemonSocket is a Unix socket for the metrics daemon, whose token stays off a port (K8 Section 1).
+	// The link closes it. Nil means none.
 	DaemonSocket net.Listener
 	// Keepalive is the time between pings. Zero means DefaultKeepalive.
 	Keepalive time.Duration
-	// AnswerLimit is how long the device waits for one answer of the hub. A
-	// registration, which is two messages, gets twice this. Zero means
-	// DefaultAnswerLimit.
+	// AnswerLimit is the wait for one answer of the hub; a registration gets twice this. Zero means DefaultAnswerLimit.
 	AnswerLimit time.Duration
-	// Save keeps the device's identity when a renewal changes it (LNK-005).
-	// Nil means that the key is never renewed.
+	// Save keeps the device's identity when a renewal changes it (LNK-005). Nil means that the key is not renewed.
 	Save func(identity.Device) error
-	// NoticeEvery is how many keepalives pass between two reads of the
-	// hub's next address (LNK-007). Zero means DefaultNoticeEvery.
+	// NoticeEvery is the keepalives between two reads of the hub's next address (LNK-007). Zero means DefaultNoticeEvery.
 	NoticeEvery int
-	// LookupTXT reads the TXT records of a domain name, for a device whose
-	// identity has a HubName (LNK-007). Nil means the system's resolver.
+	// LookupTXT reads the TXT records of the identity's HubName (LNK-007). Nil means the system's resolver.
 	LookupTXT func(ctx context.Context, name string) ([]string, error)
-	// OpenPort reports whether the hub may reach a local port of this
-	// computer through the link (HMD-048, HMD-049). It is asked for each
-	// request. Nil means that no port is open.
+	// OpenPort reports, for each request, whether the hub may reach a local port (HMD-048, HMD-049). Nil opens none.
 	OpenPort func(port uint16) bool
 	// Now is the clock. Nil means the system clock.
 	Now       func() time.Time
@@ -76,7 +58,7 @@ type Config struct {
 // Link is a running device link.
 type Link struct {
 	listener  net.Listener
-	daemon    net.Listener // Config.DaemonSocket; nil when there is none
+	daemon    net.Listener
 	stop      context.CancelFunc
 	done      sync.WaitGroup
 	save      func(identity.Device) error
@@ -84,27 +66,20 @@ type Link struct {
 	now       func() time.Time
 	debugLogf tunnel.Logf
 
-	// noticeEvery is how many keepalives pass between two reads of the
-	// hub's notice. beats and failures belong to the keepalive goroutine.
+	// beats and failures belong to the keepalive goroutine.
 	noticeEvery, beats, failures int
-	// pingLimit and registerLimit come from Config.AnswerLimit.
-	pingLimit, registerLimit time.Duration
+	pingLimit, registerLimit     time.Duration
 
-	mu     sync.Mutex
-	device *tunnel.Device // replaced when the key is renewed or the hub moves
-	saved  identity.Device
-	path   tunnel.Path
-	// reverse is the open stream to the reverse port, if there is one.
-	reverse net.Conn
-	// presentNow asks for a new stream to the reverse port with no wait.
+	mu         sync.Mutex
+	device     *tunnel.Device
+	saved      identity.Device
+	path       tunnel.Path
+	reverse    net.Conn
 	presentNow chan struct{}
-	// openPort is Config.OpenPort; giving holds one value for each
-	// connection to a local port that the hub has now.
-	openPort func(port uint16) bool
-	giving   chan struct{}
+	openPort   func(port uint16) bool
+	giving     chan struct{}
 }
 
-// tunnel is the device side of the tunnel for the device's current key.
 func (l *Link) tunnel() *tunnel.Device {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -123,8 +98,6 @@ func (l *Link) setIdentity(device identity.Device) {
 	l.saved = device
 }
 
-// replaceTunnel makes a renewed key the key in use and returns the tunnel
-// of the old key.
 func (l *Link) replaceTunnel(next *tunnel.Device, renewed identity.Device) (old *tunnel.Device) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -132,9 +105,8 @@ func (l *Link) replaceTunnel(next *tunnel.Device, renewed identity.Device) (old 
 	return old
 }
 
-// Start opens the local port and starts the keepalive and the stream to the
-// reverse port. It does not wait for the hub: a hub that is off now is
-// reached when it comes back. A start that fails closes Config.DaemonSocket.
+// Start opens the local port and starts the keepalive and the presence stream without waiting for the hub.
+// A start that fails closes Config.DaemonSocket.
 func Start(cfg Config) (*Link, error) {
 	link, err := start(cfg)
 	if err != nil && cfg.DaemonSocket != nil {
@@ -219,10 +191,8 @@ func (l *Link) Close() error {
 	return err
 }
 
-// keepAlive pings the hub at once and then at each interval. The ping holds
-// the link in use. When the hub does not answer, the device registers again:
-// a hub that restarted has forgotten it, and the library registers only at
-// the first use (spike K-A, 3.2).
+// keepAlive registers again when the hub does not answer: a restarted hub forgot the device, and the library
+// registers only at the first use (spike K-A, 3.2).
 func (l *Link) keepAlive(ctx context.Context, every time.Duration) {
 	defer l.done.Done()
 	ticker := time.NewTicker(every)
@@ -272,8 +242,6 @@ func (l *Link) ping(ctx context.Context) (tunnel.Path, error) {
 	return l.tunnel().Path(ctx)
 }
 
-// accept sends each connection of one listener, the local port or the
-// socket of the daemon, to the hub.
 func (l *Link) accept(ctx context.Context, listener net.Listener) {
 	defer l.done.Done()
 	for {
@@ -285,7 +253,6 @@ func (l *Link) accept(ctx context.Context, listener net.Listener) {
 	}
 }
 
-// forward sends one local connection to the hub.
 func (l *Link) forward(ctx context.Context, local net.Conn) {
 	ctx, cancel := context.WithTimeout(ctx, dialLimit)
 	defer cancel()

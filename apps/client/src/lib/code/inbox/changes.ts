@@ -27,13 +27,14 @@ export async function changeListings(live: LiveThreads, items: readonly InboxRow
   return null;
 }
 
-/** Settles, snoozes or wakes each of `items`. */
+/**
+ * Settles, snoozes or wakes each of `items`. Each row moves at once (`LiveThreads.changeListing`); the calls go out
+ * together, so a row of many does not wait for the answer of the one before.
+ */
 export async function changeMarks(engine: InboxEngine, items: readonly InboxRow[], change: InboxChange): Promise<string | null> {
-  for (const item of items) {
-    const result = await engine.change(item.row.id, change);
-    if (!result.ok) return refused(change.change, result.words);
-  }
-  return null;
+  const results = await Promise.all(items.map((item) => engine.change(item.row.id, change)));
+  const first = results.find((result) => !result.ok);
+  return first === undefined || first.ok ? null : refused(change.change, first.words);
 }
 
 /** Ends the program of the thread `id`. */

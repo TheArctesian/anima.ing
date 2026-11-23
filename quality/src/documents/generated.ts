@@ -1,4 +1,4 @@
-/** `text` with the part between the two marker comments replaced by `rows` (which hold both markers); undefined when a marker is missing. */
+/** `rows` holds both markers. */
 export function replaceBlock(text: string, start: string, end: string, rows: string): string | undefined {
   const from = text.indexOf(start);
   const to = text.indexOf(end);

@@ -1097,6 +1097,17 @@ p.dl-group { margin-top:18px; }
 
             <section class="section" id="ds-connections">
               <div class="label"><iconify-icon icon="carbon:login"></iconify-icon><span class="rule"></span>Connections</div>
+              <details>
+                <summary>First-time SSH setup</summary>
+                <p>Use the login for this computer. Anima fills in the connection settings.</p>
+                <div class="fields">
+                  <label class="field"><span>User name</span><span class="input"><input autocomplete="username" placeholder="operator"></span></label>
+                  <label class="field"><span>Password (optional)</span><span class="input"><input type="password" autocomplete="current-password"></span></label>
+                </div>
+                <p>A password entered here is saved for future connections. Leave it empty to enter it when connecting.</p>
+                <button class="btn primary" type="button">Enable SSH</button>
+                <button class="btn" type="button">Advanced settings</button>
+              </details>
               <div class="conns">
                 <div class="conn open">
             <div class="conn-head">

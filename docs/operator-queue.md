@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (18)
+## 1. In the order of the priorities (17)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -26,7 +26,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.22 | User documentation and the docs site docs.anima.ing | Operator: the approval of UDOC-001 to UDOC-050 (task UD20) in user-documentation.md Section 10, and its [NEEDS CLARIFICATION] markers. Agent: nothing; no ruling names a task. UD0 (a record) can start when a ruling names it |
-| 4.24 | Agent threads: the behaviour of T3 Code as a native part of Anima | Operator: OD-THR1 to OD-THR44 and the approval of THR-001 to THR-141 in agent-threads.md; the check HT-079. Agent: task TH4 in agent-threads.md (the comparison of the screen with its mockup) |
 | 4.4 | The engine (E0) | Agent: E0-6 T8 (one sign-in and the thread tokens), E0-6 T3 (the `anima secret` commands) and E0-5 T7 (plain `http` to a private address) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"); T1 to T4 of E0-7 are built. Operator: HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Agent: the tasks of Section 12.4 of compute-plan.md, in their order; read the claims first. Operator: the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md |
 | 4.7 | Jobs, builds and AI agent runs | Operator: the result of HT-065 (a session made the measurements of task W2 on `pop-os` on 2026-11-23; R-188, R-264), an administrator step on a Mac, the acceptance of the design (W2), the check HT-037 of task W0, and the steps of task B1 on his GitHub account. Agent: task W3 in projects-and-builds-plan.md, the queue of the hub (the contract K10 is accepted, R-209); task W4 comes after the acceptance of W2 |
@@ -37,9 +36,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes Agent in a pane; Code replaces Herdr and T3 Code) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Operator: OD-AXT25 to OD-AXT30 and the approval of AXT-054 to AXT-078 (task AX21, the shared project folder). Operator: OD-AXT35 (the hand-over from Hermes Agent to Code) and OD-AXT36 (the place of Hermes Agent in the registry). Agent: tasks AX0 and AX20 in agent-tools-as-extensions.md Section 10 (records only); AX2 to AX16 wait for AX1; AX22 to AX38 wait for AX21 |
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
-| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
+| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (227)
+## 2. Open decisions (228)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -169,6 +168,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AGL18 | Which identifier does a row have at the hub? (SF-122) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL19 | What does an alert give a channel of a different party? (SF-125) | A for ntfy and a webhook; B and C for a channel that the person runs | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL20 | Which gate is before the first code? (SF-130) | A. The rows and the alert go to a hub of a different party too | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-THR68 | Anima Code adds the other agent programs that T3 Code supports (R-416, TH119). How are they added? | Open. Recommendation of the orchestrating side: (a), ACP first, then native drivers for the programs that you use most. Each new program has its own separate se… | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow`… | Open. Recommendation: yes, an exception for the folder only. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT26 | Do folder tokens follow JOB-010 and MCP-004: minted on the hub, given over the relay as a secret for one job, deleted at the end, and never in a prompt, a URL o… | Open. Recommendation: yes. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT27 | How do short-lived file links work (wave 2)? (one choice: only through the gateway or the relay, to a signed-in caller or a valid folder token; no file links; p… | Open. Recommendation: only through the gateway or the relay, to a signed-in caller or a token. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
@@ -271,7 +271,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PAL3 | What does the palette show before a letter is typed? | The pages, then the devices that need a look, at most 8 rows. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 | OD-PAL4 | What is there on a phone, and in the bar that is collapsed to icons? | On a phone: no field and no shortcut; the Devices page keeps its own search. In the collapsed bar: one icon button with the same accessible name. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 
-## 3. Documents that wait for an approval (32)
+## 3. Documents that wait for an approval (34)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -287,12 +287,14 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
+| [proposals/clusters.md](proposals/clusters.md) | Proposal | Direction decided |
 | [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
 | [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |
 | [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Deferred; not built |
 | [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) | Proposal, with a task table | Direction decided |
 | [proposals/hosted-web-hub.md](proposals/hosted-web-hub.md) | Proposal | Direction decided |
+| [proposals/hosting-section.md](proposals/hosting-section.md) | Proposal | Direction decided |
 | [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/jobs.md](proposals/jobs.md) | Proposal, with a task table | Direction decided |
 | [proposals/machine-profiles.md](proposals/machine-profiles.md) | Proposal | Draft |
@@ -394,9 +396,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-131 | one account on two computers is one card with one limit on the page Agent usage, and the hub has its address (AIS-022, THR-149) |
 | HT-111 | the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054) |
 | HT-104 | Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29) |
-| HT-135 | the mockup of the section Routes of the hub (tasks H21 and H40) |
+| HT-135 | the mockup of the section Routes of Hosting (tasks H21 and H40) |
 | HT-138 | the conversation of Code with VoiceOver and the keyboard (TC3, accessibility findings 2, 3 and 4) |
-| HT-136 | the section Routes of Settings (task H21) |
+| HT-136 | the section Routes of Hosting (task H21) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |

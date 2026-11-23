@@ -13,9 +13,7 @@ import (
 
 const fileName = "invites.json"
 
-// Store is the open invites of a running hub link. Each change is on disk
-// before the call returns, so an invite that was used stays used after a
-// restart.
+// Store holds a hub's open invites; each change is on disk before the call returns.
 type Store struct {
 	dir *statedir.Dir
 
@@ -36,8 +34,7 @@ func Open(dir *statedir.Dir) (*Store, error) {
 	return &Store{dir: dir, current: current}, nil
 }
 
-// Make makes an invite for a device with the given name. The invite is the
-// return value only: the store keeps the public half of its temporary key.
+// Make makes an invite; the store keeps only the public half of its temporary key.
 func (s *Store) Make(hub tunnel.Address, name string, now time.Time, random io.Reader) (Invite, Record, error) {
 	if err := devices.ValidName(name); err != nil {
 		return Invite{}, Record{}, err
@@ -62,8 +59,7 @@ func (s *Store) Admits(key tunnel.DeviceKey, now time.Time) bool {
 	return s.current.open(key, now)
 }
 
-// Cancel ends the open invite with the given ID: the fingerprint of its
-// temporary key, as All shows it.
+// Cancel ends the open invite whose temporary key has the fingerprint id.
 func (s *Store) Cancel(id string, now time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -79,9 +75,7 @@ func (s *Store) Cancel(id string, now time.Time) error {
 	return ErrNotOpen
 }
 
-// Use ends an open invite, because a device used it, and returns its
-// record. Only the first call for an invite succeeds, also when what the
-// caller does next fails (LNK-003).
+// Use ends an open invite; only the first call succeeds, even when the caller then fails (LNK-003).
 func (s *Store) Use(key tunnel.DeviceKey, now time.Time) (Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -89,7 +83,6 @@ func (s *Store) Use(key tunnel.DeviceKey, now time.Time) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	// The expired invites leave the file with this one.
 	return record, s.save(next.keeping(func(each Record) bool { return now.Before(each.Expires) }))
 }
 

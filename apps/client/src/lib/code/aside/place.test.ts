@@ -56,6 +56,17 @@ describe('detailedRun', () => {
     expect(detailedRun(ROW, 'th-1')).toBeUndefined();
     expect(detailedRun(undefined, 'th-1')).toBeUndefined();
   });
+
+  it('has no card for a scratch folder whose only part, the context window, is hidden by default', () => {
+    const scratch: RunRow = { ...ROW, workspace: { kind: 'folder', top: ROW.folder, branch: null }, usage: { context: 900, window: 200_000, input: 1, output: 1, costUsd: null } };
+    expect(detailedRun(scratch, 'th-1')).toBeUndefined();
+    expect(detailedRun(scratch, 'th-1', { context: true })).toBe(scratch);
+  });
+
+  it('keeps the card when the person hid its one part, so the menu can show it again', () => {
+    const known: RunRow = { ...ROW, workspace: { kind: 'checkout', top: ROW.folder, branch: 'dev' } };
+    expect(detailedRun(known, 'th-1', { branch: false, environment: false })).toBe(known);
+  });
 });
 
 describe('fitsInline', () => {

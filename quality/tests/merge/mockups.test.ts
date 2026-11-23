@@ -34,17 +34,14 @@ function cells(compared: string, differences = "None"): Cells {
   return { Mockup: "[projects-v2/index.html](projects-v2/index.html)", Owner: "plan", Screens: `[projects](../../${SCREEN})`, State: "Built", Compared: `\`${compared}\``, Differences: differences };
 }
 
-/** The index in the form before the records: one table row. */
 function oldIndex(row: Cells): string {
   return `# Mockups\n\n## Index\n\n| ${FIELDS.join(" | ")} |\n| --- | --- | --- | --- | --- | --- |\n| ${FIELDS.map((field) => row[field]).join(" | ")} |\n`;
 }
 
-/** The index in the generated form, from the records given. */
 function newIndex(records: { path: string; text: string }[]): string {
   return `# Mockups\n\n## Index\n\n${mockupTable(records)}\n`;
 }
 
-/** What the merge does after the settle step: the table is written again from the records, then the check runs on the commit. */
 function finish(root: string): string | undefined {
   const record = { path: RECORD, text: readFileSync(join(root, RECORD), "utf8") };
   write(root, MOCKUPS, withMockupTable(readFileSync(join(root, MOCKUPS), "utf8"), mockupTable([record])) ?? "");
@@ -54,7 +51,6 @@ function finish(root: string): string | undefined {
   return checkMockups([index, record], (screen, at) => layoutChangedSince(root, screen, at))[0]?.signal;
 }
 
-/** Starts a merge that is expected to stop on conflicts; fails if git did not start it at all. */
 function mergeStopped(root: string, branch: string): void {
   const done = Bun.spawnSync(["git", "merge", "--no-ff", "--no-commit", branch], { cwd: root });
   if (Bun.spawnSync(["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"], { cwd: root }).exitCode !== 0) {
@@ -133,12 +129,10 @@ describe("PLN-019 the records of the mockups at a merge", () => {
 
 const DEVICES = "docs/mockup/records/devices.md";
 
-/** A record of a second mockup, for a branch that adds a row of its own. */
 function devicesRecord(compared: string): { path: string; text: string } {
   return { path: DEVICES, text: recordText({ ...cells(compared), Mockup: "[devices/index.html](devices/index.html)" }) };
 }
 
-/** The generated index with a line that a person wrote above the table. */
 function indexWith(intro: string, records: { path: string; text: string }[]): string {
   return `# Mockups\n\n${intro}\n\n## Index\n\n${mockupTable(records)}\n`;
 }
