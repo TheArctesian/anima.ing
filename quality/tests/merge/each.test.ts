@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { ATTEMPTS, outcomeOf, startOf } from "../../src/merge/each.ts";
 
-describe("merge-each: merge branches one at a time while dev moves", () => {
+describe("merge --each: merge branches one at a time while dev moves", () => {
   test("a branch that origin lacks is absent, and one that dev holds needs no merge", () => {
     expect(startOf(false, false)).toBe("absent");
     expect(startOf(true, true)).toBe("in-dev");

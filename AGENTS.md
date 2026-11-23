@@ -234,7 +234,7 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-023, operator, 2
   runs the document gates on that commit; if they fail, it removes the commit. The mockup check (PLN-019)
   reads commits, so it is wrong on a merge that is not committed: when you merge by hand, commit the merge
   first, then run `bun run quality:documents`. It pushes only with `--push`, and only to `dev`. Claims land on `dev` every few minutes, so merge by hand one branch at a time
-  and merge again when the push is refused: `bun quality/bin/merge-each.ts <branch>...` does that ([quality/README.md](quality/README.md),
+  and merge again when the push is refused: `bun quality/bin/merge.ts --each <branch>...` does that ([quality/README.md](quality/README.md),
   "A merge by hand while other sessions push to `dev`"). A conflict in a different file stops it:
   merge `origin/dev` into the branch and solve it there.
 

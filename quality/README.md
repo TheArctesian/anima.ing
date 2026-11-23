@@ -216,7 +216,7 @@ each task. Not built: the document has an owner.
 
 Claims land on `dev` every few minutes (`docs/claims/`, PLN-022), so a push of a merge made by hand is often
 refused because `dev` moved. Merge one branch at a time and push it before the next, and merge again on the new
-`dev` when the push is refused. `bun quality/bin/merge-each.ts <branch>...` does that, in a clean worktree that is
+`dev` when the push is refused. `bun quality/bin/merge.ts --each <branch>...` does that, in a clean worktree that is
 on `dev`: for each branch that origin has and `dev` does not hold, it runs `bin/merge.ts <branch> --push`, which
 refuses a branch whose gates did not pass on GitHub. When that fails while `dev` moved, it runs it again on the
 new `dev`, three times at most (`src/merge/each.ts`); a failure on a `dev` that did not move is the answer for
