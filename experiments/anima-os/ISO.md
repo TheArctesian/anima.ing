@@ -156,6 +156,12 @@ New hosted enrollments enable the device's SSH and RDP settings. An existing dev
 
 The OS initializes its local private-link port list only if absent. A local admin can disable access with `sudo -u anima-daemon anima-link ports -state /var/lib/anima-link off 3389` (or `22`), and restore it with `on`. These local choices and the SSH host identity and RDP certificate persist across restart and system updates. Disabling a port rejects new link connections; close existing sessions separately.
 
+## Publishing an OS release
+
+Publish only after the tested ISO and signed update target the same installed-system closure. Upload the immutable ISO under `os/preview/x86_64-linux/<version>/anima-os-x86_64.iso`, verify its complete public bytes, then publish the signed installed-OS package with `updates/publish.py`. Keep the local artifact and public verification receipts.
+
+Finish every ISO publication with the site repository's `scripts/publish-os.py <version> /path/to/anima-os-x86_64.iso --credentials /path/to/r2.env`. It verifies the complete public ISO and atomically advances `latest-iso.json`, preserving the previous pointer if verification fails. The permanent website address `https://anima.ing/download/os` and its version/size/checksum display read this manifest at runtime. No website rebuild is needed. Confirm both the signed update feed and `/download/os?format=json` name the intended version before reporting publication complete.
+
 ## Automatic preview releases
 
 OS3-R10 uses `.github/workflows/os-release.yml` on GitHub-hosted Ubuntu runners.
