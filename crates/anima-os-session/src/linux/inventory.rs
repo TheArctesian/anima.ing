@@ -43,7 +43,9 @@ pub async fn device(token: &str, name: &str) -> Result<String> {
     };
     let answer = graph("mutation($input:CreateDeviceInput!){createDevice(input:$input){id}}",json!({"input":{
         "siteId":site,"name":std::fs::read_to_string("/proc/sys/kernel/hostname")?.trim(),"host":address.to_string(),
-        "kind":"server","os":"LINUX","tags":[],"addDefaultCheck":false}}),Some(token)).await?;
+        "kind":"server","os":"LINUX","tags":[],"addDefaultCheck":false,
+        "ssh":{"enabled":true,"port":22,"username":"admin","auth":"PASSWORD"},
+        "rdp":{"enabled":true,"port":3389,"username":"admin","security":"TLS","ignoreCertificate":false,"audioOut":false}}}),Some(token)).await?;
     Ok(text(&answer["createDevice"], "id")?.to_owned())
 }
 

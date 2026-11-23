@@ -1,6 +1,6 @@
 { config, lib, pkgs, daemonPackage, workspaceRoot ? ../.., ... }:
 {
-  imports = [ ./branding.nix ./console.nix ./display.nix ./updates.nix ./naming.nix ./control.nix ];
+  imports = [ ./branding.nix ./console.nix ./display.nix ./updates.nix ./naming.nix ./control.nix ./remote.nix ];
   services.anima-os-control = { enable = true; package = import ./control-package.nix { inherit pkgs workspaceRoot; }; };
   system.stateVersion = "26.05";
   boot.loader.systemd-boot.enable = true;
@@ -25,7 +25,6 @@
   networking.wireless.extraConfig = "update_config=0";
   services.resolved.enable = true;
   networking.firewall.enable = true;
-  services.openssh.enable = false;
   users.mutableUsers = false;
   users.users.root.hashedPassword = "!";
   users.users.admin = { isNormalUser = true; extraGroups = [ "wheel" "networkmanager" ]; hashedPasswordFile = "/persist/owner-password"; };
