@@ -202,6 +202,13 @@ pub(super) struct AppriseShape {
     pub(super) tags: Option<Vec<String>>,
 }
 
+#[derive(InputObject)]
+#[graphql(name = "MobileRelayInput")]
+pub(super) struct MobileRelayShape {
+    pub(super) url: Option<SecretText>,
+    pub(super) token: Option<SecretText>,
+}
+
 #[derive(OneofObject)]
 #[graphql(name = "ChannelSettingsInput")]
 pub(super) enum SettingsShape {
@@ -209,6 +216,7 @@ pub(super) enum SettingsShape {
     Ntfy(NtfyShape),
     Email(EmailShape),
     Apprise(AppriseShape),
+    Mobile(MobileRelayShape),
 }
 
 #[derive(InputObject)]
