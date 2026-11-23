@@ -68,7 +68,7 @@
     active = target;
     problem = '';
     if (target !== undefined) {
-      selected = turnOn ? [...new Set([...selected, target])] : selected.filter((port) => port !== target);
+      if (turnOn) selected = [...new Set([...selected, target])];
       messages = { ...messages, [target]: '' };
     } else messages = {};
     try {
@@ -97,7 +97,7 @@
 
   async function register(result: Access, target: number | undefined, turnOn: boolean): Promise<void> {
     access = result;
-    selected = result.selected;
+    if (!turnOn) selected = result.selected;
     published = target === undefined ? [] : published.filter((port) => port !== target);
     for (const note of result.notes) messages[note.port] = note.message;
     if (target !== undefined && !turnOn) pendingOff = [...new Set([...pendingOff, target])];

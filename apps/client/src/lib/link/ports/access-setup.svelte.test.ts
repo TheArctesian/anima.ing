@@ -153,6 +153,8 @@ it('retries failed publication without preparing protocols and never calls unpub
   await settle();
   expect(document.body.textContent).toContain('Hub update failed. Retry.');
   expect(document.body.textContent).not.toContain('Ready in Anima');
+  document.querySelector<HTMLButtonElement>('#setup-port-5900')?.click();
+  await settle();
   const sync = document.querySelector<HTMLButtonElement>('[aria-label="Enable in Anima: SSH"]');
   expect(sync?.getAttribute('aria-disabled')).toBe('false');
   sync?.click();
@@ -161,6 +163,7 @@ it('retries failed publication without preparing protocols and never calls unpub
   expect(calls.localAccess.mock.calls.filter((args) => args.length > 0)).toHaveLength(1);
   expect(calls.publishAccess).toHaveBeenCalledTimes(2);
   expect(document.body.textContent).toContain('Ready in Anima');
+  expect(document.querySelector('#setup-port-5900')?.getAttribute('aria-checked')).toBe('false');
 });
 
 it('distinguishes a listening server from verified authentication and retries without a settings detour', async () => {
