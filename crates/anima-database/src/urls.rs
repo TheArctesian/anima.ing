@@ -1,5 +1,5 @@
 //! The URL file of each login, which the hub reads through `ANIMA_DATABASE_URL_FILE` (DB-002).
-//! A URL holds a password: no URL is printed or logged (LOG-007).
+//! A URL holds a password: its file has mode 0600 in a folder with mode 0700, and no URL is printed or logged (LOG-007).
 
 use std::fs;
 use std::io::{self, Write};

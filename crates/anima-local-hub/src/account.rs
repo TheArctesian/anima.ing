@@ -79,6 +79,7 @@ const GROUP_OR_OTHERS: u32 = 0o077;
 #[cfg(unix)]
 const GROUP_OR_OTHERS_WRITE: u32 = 0o022;
 
+/// Refuses the program unless it, the hub root and each folder between are this user's own, not symbolic links, and unchangeable by other users.
 fn trusted(folders: &Folders, program: &Path) -> Result<(), AccountError> {
     #[cfg(unix)]
     let uid = nix::unistd::Uid::effective().as_raw();

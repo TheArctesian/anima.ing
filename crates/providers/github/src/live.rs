@@ -38,6 +38,7 @@ impl StateFilter {
     }
 }
 
+/// A repository that cannot go into a path is refused, with fixed words, before any path is built.
 pub(crate) fn get(
     repository: &str,
     tail: &str,
