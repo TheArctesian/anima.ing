@@ -1,5 +1,3 @@
-//! Origin spelling rules: only the exact form a browser sends in `Origin` is accepted (D-3).
-
 use std::collections::BTreeMap;
 
 use super::super::{Error, PUBLIC_ORIGIN, from_env};

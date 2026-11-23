@@ -1,10 +1,7 @@
-//! The operator's projects (XP-02 first slice; PRO-001 to PRO-004, PRO-006, PRJ-001, PRJ-016).
+//! The operator's projects (XP-02; PRO-001 to PRO-004, PRO-006, PRJ-001, PRJ-016).
 //!
-//! Each repository the GitHub connection can read becomes a project (PRO-001). The engine
-//! feeds this domain's [`intake`] while Projects is on; the intake imports repositories, keeps
-//! the leave-out list (PRO-002) and turns the signs of a repository into proposed resources
-//! (PRO-003, PRO-004). Text from GitHub is stored as given and never interpreted or logged.
-//! No domain imports this one; wiring registers the intake and merges [`graphql`].
+//! Text from GitHub is stored as given and never interpreted or logged. No domain imports this
+//! one; wiring registers the intake and merges [`graphql`].
 
 mod browse;
 mod code;

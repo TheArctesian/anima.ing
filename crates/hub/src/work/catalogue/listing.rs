@@ -4,7 +4,7 @@ use catalogue::{Recipe, check, entry::Entry};
 
 use super::model::Listed;
 
-/// The name of each variable of an example environment file (`NAME=value`), never a value.
+/// The name of each variable of an example environment file, never a value.
 fn variable_names(example: &str) -> Vec<String> {
     example
         .lines()
@@ -15,7 +15,6 @@ fn variable_names(example: &str) -> Vec<String> {
         .collect()
 }
 
-/// The recipe as a listed entry, when the static test finds nothing.
 fn listed_one(recipe: Recipe) -> Option<Listed> {
     if !check(&recipe).is_empty() {
         return None;
@@ -28,8 +27,7 @@ fn listed_one(recipe: Recipe) -> Option<Listed> {
     })
 }
 
-/// Each recipe of `recipes` that passes the static test, in the order of the identifiers. A
-/// recipe with a finding is not listed (HOST-047).
+/// A recipe with a finding is not listed (HOST-047).
 pub(super) fn listed(recipes: Vec<Recipe>) -> Vec<Listed> {
     let mut found: Vec<Listed> = recipes.into_iter().filter_map(listed_one).collect();
     found.sort_by(|left, right| left.entry.id.cmp(&right.entry.id));

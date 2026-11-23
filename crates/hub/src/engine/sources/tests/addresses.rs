@@ -1,5 +1,4 @@
-//! K-E1 Section 7: the URL is always a declared API base plus the request's path; any path that
-//! could leave the base, and any base that is not declared, is refused before a send.
+//! K-E1 Section 7: a request goes only to a declared API base plus a path that cannot leave it.
 
 use proptest::prelude::*;
 use reqwest::Url;
@@ -112,8 +111,6 @@ fn src_006_only_a_declared_https_base_is_a_destination() {
 }
 
 proptest! {
-    /// Whatever the path, a URL that is made keeps the base's scheme, host and port, and starts
-    /// with the base's path.
     #[test]
     fn src_006_no_path_moves_the_url_off_its_base(path in "\\PC{0,40}", raw in proptest::collection::vec(any::<u8>(), 0..40)) {
         let base = Url::parse("https://api.github.com:443/v3").unwrap();
@@ -129,8 +126,6 @@ proptest! {
         }
     }
 
-    /// Whatever mix of plain, dot and encoded-dot segments, a URL that is made stays below the
-    /// base's path.
     #[test]
     fn src_008_no_mix_of_dot_segments_leaves_the_base_path(
         segments in proptest::collection::vec(

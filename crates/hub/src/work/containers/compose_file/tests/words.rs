@@ -1,6 +1,3 @@
-//! The words of a shell command line: quotes, the backslash, the line continuation, and what
-//! stays of a `$`.
-
 use super::super::words::{Split, split};
 
 fn words(command: &str) -> Vec<String> {

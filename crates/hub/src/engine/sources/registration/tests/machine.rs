@@ -1,6 +1,3 @@
-//! PRJ-039, PRJ-041: each step of the attempt and each refusal, with the time as a parameter.
-//! A refused step leaves the attempt as it was.
-
 use super::{Walked, app, app_created, at, at_github, exchanging, key, phase, t0, value, waiting};
 use crate::{
     engine::sources::registration::attempt::{Exchange, Finished, Phase, Refusal},

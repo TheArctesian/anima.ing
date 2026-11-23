@@ -1,19 +1,7 @@
 //! The one way a request leaves the hub for a source (K-E1 Section 7).
-//!
-//! The URL is always a declared `api_base` plus the request's path; a path that could point
-//! elsewhere, on the host or off it, is refused before anything is sent. The resolver resolves
-//! only the host names of the declared API bases, and each address it returns must pass the
-//! hub's address policy (R-030, P3-003), which allows private and VPN ranges: it is not what
-//! keeps the token from another host. TLS name verification is: the server must prove it is
-//! the declared host before the token is sent. The client follows no redirect,
-//! takes no proxy from the environment, speaks HTTPS only, gives up after 20 seconds and reads
-//! at most 8 MiB: past that it stops reading, keeps none of the body and says so. The token header is marked sensitive, and no URL, header or body reaches a
-//! log or an error (LOG-007).
-//!
-//! Every request names the API version it was written for and GitHub's media type (decision 1
-//! of the Projects slice). A named change is the only request with a body the hub builds from a
-//! provider: the transport renders it itself from a checked [`Change`], so no caller hands it a
-//! path, a verb or a URL.
+//! No URL, header or body reaches a log or an error (LOG-007).
+//! The client follows no redirect, takes no proxy from the environment, speaks HTTPS only and
+//! marks the token header sensitive.
 
 mod address;
 mod at_account;
@@ -39,7 +27,6 @@ use crate::{
     },
 };
 
-/// The most body bytes read.
 pub const BODY_CAP: usize = 8 * 1024 * 1024;
 const TIMEOUT: Duration = Duration::from_secs(20);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -47,7 +34,6 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 pub const CHANGE_BODY_CAP: usize = 1024 * 1024;
 /// The REST API version every request is written for (K-E1 Section 13.1).
 const API_VERSION: &str = "2022-11-28";
-/// GitHub's JSON media type.
 const MEDIA_TYPE: &str = "application/vnd.github+json";
 
 /// Why nothing usable came back. Fixed words: no URL, header or body (LOG-007).
@@ -59,12 +45,10 @@ pub enum Fault {
     Network,
 }
 
-/// The transport could not be built. Fixed words.
 #[derive(Debug, thiserror::Error)]
 #[error("the source transport could not be built")]
 pub struct BuildFailed(#[source] reqwest::Error);
 
-/// What a source answered.
 pub struct Answer {
     pub status: u16,
     pub limits: Limits,
@@ -73,7 +57,7 @@ pub struct Answer {
 }
 
 impl Answer {
-    /// The rate-limit headers as the provider's `settle` reads them: numbers, never text.
+    /// Numbers only, never header text.
     #[must_use]
     pub fn limit(&self) -> Limit {
         Limit {
@@ -87,41 +71,33 @@ impl Answer {
     }
 }
 
-/// What came of sending a change.
 pub enum Delivery {
     Answered(Answer),
-    /// The request may have reached the source, but no whole answer came back: whether the
-    /// change was made is unknown. Never sent again.
+    /// The request may have reached the source with no whole answer back; it is never sent again.
     Lost,
 }
 
-/// The body of an answer, or the fact that it was larger than the hub reads.
 pub enum Content {
     /// Wiped on drop: a mint reply holds a token, a conversion reply a key.
     Body(Zeroizing<Vec<u8>>),
-    /// Past [`BODY_CAP`]: reading stopped there and what was read is wiped.
     TooLarge,
 }
 
-/// The hub's client for sources, with the installation tokens it sends. Cheap to clone; clones
-/// share the tokens.
+/// Clones share the tokens.
 #[derive(Clone)]
 pub struct Transport {
     client: Client,
     /// The host names of the declared API bases: the only destinations.
     allowed: Arc<[String]>,
-    /// Replaces every API base: a loopback stub, set only by tests.
     base_override: Option<Url>,
     /// The address policy of the hub, for a base that is of an account (Section 7b).
     policy: AddressPolicy,
     tokens: Tokens,
-    /// The live path's cache, budget and pace (K-E1 Section 13.1).
     live: Live,
 }
 
-/// Resolves only the allowed names, and only to addresses the hub's address policy permits
-/// (private and VPN ranges included). TLS name verification, not this, ties the connection to
-/// the declared host.
+/// Resolves only the allowed names, to addresses the policy permits (R-030, P3-003);
+/// TLS name verification, not this, ties the connection to the declared host.
 struct AllowedHosts {
     hosts: Arc<[String]>,
     policy: AddressPolicy,
@@ -186,8 +162,7 @@ fn host_name(base: &str) -> Option<String> {
 }
 
 impl Transport {
-    /// The transport for the sources at `api_bases`, the declared bases: only their host
-    /// names resolve, and only to addresses `policy` permits.
+    /// The transport for the declared `api_bases`.
     ///
     /// # Errors
     /// [`BuildFailed`] when the TLS client cannot be built.
@@ -206,8 +181,7 @@ impl Transport {
         })
     }
 
-    /// A transport that sends every request to `stub` instead, over plain HTTP: for tests
-    /// with a loopback stub source. `policy` must permit the stub's address.
+    /// A transport to a loopback `stub` over plain HTTP, for tests.
     ///
     /// # Errors
     /// [`BuildFailed`] when the client cannot be built.
@@ -224,22 +198,18 @@ impl Transport {
         })
     }
 
-    /// The installation tokens this transport sends, in memory only (PRJ-018).
+    /// The installation tokens, in memory only (PRJ-018).
     #[must_use]
     pub fn tokens(&self) -> &Tokens {
         &self.tokens
     }
 
-    /// The live path's cache, budget and pace, shared by clones.
     pub(in crate::engine::sources) const fn live(&self) -> &Live {
         &self.live
     }
 
-    /// The URL of `request` below `api_base`, or [`Fault::Refused`] when the base is not an
-    /// allowed destination or the path could leave it.
-    ///
     /// # Errors
-    /// [`Fault::Refused`].
+    /// [`Fault::Refused`] when the base is not allowed or the path could leave it.
     pub fn url(&self, api_base: &str, request: &Request) -> Result<Url, Fault> {
         let base = match &self.base_override {
             Some(stub) => stub.clone(),
@@ -257,7 +227,6 @@ impl Transport {
         address(&base, &request.path, &request.query)
     }
 
-    /// Sends the provider's `request` to `url`, its address, with the installation token.
     /// There is only `GET`: a provider cannot express a write.
     pub(in crate::engine::sources) async fn get(
         &self,
@@ -274,7 +243,6 @@ impl Transport {
         read(sent.send().await.map_err(|_| Fault::Network)?).await
     }
 
-    /// Asks for an installation token at `url`, signed in with `app_token`.
     pub(in crate::engine::sources) async fn mint(
         &self,
         url: Url,
@@ -288,8 +256,7 @@ impl Transport {
         read(sent.send().await.map_err(|_| Fault::Network)?).await
     }
 
-    /// Converts a manifest code at `url`: a POST with no `Authorization` header and no body,
-    /// because the one-time code in the path is the only proof the source asks for (PRJ-039).
+    /// No `Authorization` and no body: the one-time code in the path is the only proof (PRJ-039).
     pub(in crate::engine::sources) async fn convert(&self, url: Url) -> Result<Answer, Fault> {
         let sent = self
             .client
@@ -300,12 +267,8 @@ impl Transport {
 }
 
 impl Transport {
-    /// Sends `change` to the source of `declaration` with the installation token: the
-    /// provider's `render` gives the path below `api_base` and the JSON body, and the change
-    /// fixes the verb. Refused before sending when the source makes no changes, the path fails
-    /// the checks of [`Self::url`] or the body passes [`CHANGE_BODY_CAP`]; [`Fault::Network`]
-    /// when the connection failed before anything was sent; [`Delivery::Lost`] once it may have
-    /// been.
+    /// The transport renders the change itself: no caller hands it a path, a verb or a URL.
+    /// [`Fault::Network`] when nothing was sent; [`Delivery::Lost`] once it may have been.
     pub(in crate::engine::sources) async fn change(
         &self,
         declaration: &Declaration,
@@ -351,7 +314,7 @@ impl Transport {
     }
 }
 
-/// `Bearer <token>`, marked sensitive so it never appears in a `Debug` output.
+/// Marked sensitive, so it never appears in a `Debug` output.
 fn bearer(token: &[u8]) -> Result<HeaderValue, Fault> {
     let mut text = Zeroizing::new(Vec::with_capacity(token.len() + 7));
     text.extend_from_slice(b"Bearer ");
@@ -361,8 +324,6 @@ fn bearer(token: &[u8]) -> Result<HeaderValue, Fault> {
     Ok(value)
 }
 
-/// The status, the rate-limit headers and the body, or [`Content::TooLarge`] as soon as the
-/// declared length or the bytes read pass [`BODY_CAP`]: the rest is never read.
 async fn read(mut response: Response) -> Result<Answer, Fault> {
     let status = response.status().as_u16();
     let limits = Limits::of(response.headers());

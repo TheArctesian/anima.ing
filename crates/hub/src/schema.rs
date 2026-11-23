@@ -1,8 +1,4 @@
 //! GraphQL schema root: merges each domain's `Query`, `Mutation` and `Subscription` (CQ-033, K3).
-//!
-//! A domain joins with one line in each root it has and one block of its data in
-//! `build_schema`; a domain with state `main.rs` builds once (such as `sessions::Live`) also
-//! adds a `Dependencies` field.
 
 use std::{sync::Arc, time::Duration};
 
@@ -32,7 +28,6 @@ use crate::{
     work::{catalogue, containers, projects, routes},
 };
 
-// One line per domain in each root (K3).
 #[derive(MergedObject, Default)]
 pub struct Query(
     access::graphql::Query,
@@ -201,46 +196,33 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     )
     .disable_suggestions()
     .extension(access::SignInRequired)
-    // Each request's count of GitHub reads (K-E1 Section 13.1).
     .extension(projects::RequestReads)
-    // Shared dependencies (K3 wiring).
     .data(config)
     .data(clock.clone())
     .data(pool.clone())
     .data(bus)
     .data(vault)
-    // The open claims of a hosted hub (R-129), and its open browser tickets (HMD-061).
     .data(link::Claims::default())
     .data(link::ComputerClaims::default())
     .data(access::BrowserTickets::default());
-    // One block per domain: its loaders (R-014) and its state.
     let builder = with_devices_loaders(builder, &pool, &clock)
-        // checks
         .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(checks::graphql::heartbeats_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
         .data(checks::graphql::check_notifications_loader(pool.clone()).delay(BATCH_WINDOW))
-        // notifications
         .data(notifications::graphql::last_delivery_loader(pool.clone()).delay(BATCH_WINDOW))
-        // trust: the accepted keys and certificates, and what the connection tests of `live` saw
         .data(trust::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(trust::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(live.sightings().clone())
-        // sessions (R-032)
         .data(live)
         .data(policy)
-        // metrics
         .data(metrics_feed)
-        // builds
         .data(build_updates)
         .data(bucket)
-        // vpn
         .data(vpn_feed)
         .data(vpn_broker)
-        // sources
         .data(sources)
-        // projects: the changes each API key made this minute (K-E1 Section 13.1)
         .data(projects::KeyChanges::default());
     with_shared_records(builder, files, reminders).finish()
 }
@@ -265,17 +247,11 @@ fn with_shared_records(
     reminders: reminders::Live,
 ) -> Builder {
     builder
-        // timeline: one adapter for each domain that has records to show (K-E3)
         .data(timeline::Adapters::new(vec![timeline::event_log()]))
-        // locations: the sealing keys of the positions (K-E4 Section 11)
         .data(locations::Seal::new(files.sealing_keys().clone()))
-        // files: the pieces, the data keys and the domains that derive records (K-E4 Section 9)
         .data(files)
-        // links: the title of each kind of record that a domain owns (K-E4 Section 4)
         .data(links::TitleSources::new(vec![places::record_titles()]))
-        // places: the later domains that hold a PlaceId (none yet)
         .data(places::Holders::default())
-        // reminders: the open applications (K-E6 Section 5)
         .data(reminders)
 }
 
@@ -291,12 +267,10 @@ fn with_devices_loaders(builder: Builder, pool: &PgPool, clock: &Arc<dyn Clock>)
         .data(devices::graphql::device_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::web_interfaces_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::web_interface_suggestions_loader(pool.clone()).delay(BATCH_WINDOW))
-        // devices fields that join checks (API-005)
         .data(devices::graphql::status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::checks_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::resolved_ip_loader(pool.clone()).delay(BATCH_WINDOW))
-        // devices fields that join metrics (API-005)
         .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::batteries_loader(pool.clone()).delay(BATCH_WINDOW))

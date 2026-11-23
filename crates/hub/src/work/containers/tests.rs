@@ -1,6 +1,5 @@
-//! Tests of the containers of a device: the reading of what `docker` writes (`docker`), the
-//! two reads against the link's test SSH server on loopback (`reads`), and each error with
-//! its code and sentence (`sentences`). The queries themselves are in the integration crate. In-crate, for the loopback policy.
+//! Tests of the containers of a device, in-crate for the loopback policy. The queries themselves
+//! are tested in the integration crate.
 
 mod detail;
 mod docker;
@@ -18,13 +17,10 @@ use sqlx::PgPool;
 use super::Reach;
 use crate::fleet::ssh::tests::{Answer, Bench, Heard, bench, reaching};
 
-/// A full container identifier.
 const ID: &str = "4f5c1d2e3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a";
-/// Text only a container's log holds; nothing the hub writes besides the answer may hold it.
+/// Nothing the hub writes besides the answer may hold this text of a container's log.
 const SECRET: &str = "API_TOKEN=hunter2";
 
-/// What `docker ps` writes for two containers in the hub's format: one of a Compose project,
-/// healthy, with two ports; one stopped, with no project.
 const LISTED: &str = concat!(
     r#"{"id":"4f5c1d2e3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a","#,
     r#""names":"dawarich_app","image":"freikin/dawarich:latest","state":"running","#,
@@ -39,7 +35,6 @@ const LISTED: &str = concat!(
     "\n",
 );
 
-/// An answer that writes `stdout`, and [`SECRET`] to standard error, and exits with `status`.
 fn exiting(stdout: &str, status: u32) -> Answer {
     Answer::Exit {
         stdout: stdout.as_bytes().to_vec(),
@@ -48,7 +43,6 @@ fn exiting(stdout: &str, status: u32) -> Answer {
     }
 }
 
-/// A bench whose `docker-host` answers every command with `answer`.
 async fn device(pool: &PgPool, answer: Answer) -> Bench {
     bench(pool, answer).await
 }
@@ -61,7 +55,6 @@ fn reach<'a>(bench: &'a Bench, policy: &'a crate::fleet::targets::AddressPolicy)
     }
 }
 
-/// The command lines the device heard.
 fn execs(bench: &Bench) -> Vec<String> {
     bench
         .server
@@ -74,7 +67,6 @@ fn execs(bench: &Bench) -> Vec<String> {
         .collect()
 }
 
-/// The policy that reaches the loopback test server.
 fn policy() -> crate::fleet::targets::AddressPolicy {
     reaching()
 }

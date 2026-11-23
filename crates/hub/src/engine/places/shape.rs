@@ -1,13 +1,10 @@
-//! The rules for the shape of a place (K-E4 Section 8; PLC-001, PLC-002, PLC-003). Pure: no
-//! database and no clock.
+//! The shape of a place (K-E4 Section 8; PLC-001, PLC-002, PLC-003). Pure.
 
 use super::model::{Category, Centre, Draft, Entry, Fault, Patch, Place};
 
-/// The longest name or alias, in characters.
 const MAX_NAME: usize = 120;
-/// The most aliases a place has.
 pub const MAX_ALIASES: usize = 20;
-/// The most levels a tree of places has: a top-level place is level 1.
+/// A top-level place is level 1.
 pub const MAX_DEPTH: usize = 5;
 const MAX_ICON: usize = 40;
 const MAX_RADIUS_M: i32 = 100_000;
@@ -26,8 +23,6 @@ fn is_icon(icon: &str) -> bool {
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
-/// The centre the three numbers make, `None` for none of them. `Err` when only some are given
-/// or one is out of range.
 fn centre(
     latitude: Option<f64>,
     longitude: Option<f64>,
@@ -97,11 +92,6 @@ fn geocoder(name: Option<&str>) -> Result<Option<String>, Fault> {
     .transpose()
 }
 
-/// The place the entry describes, or every field the operator must fix.
-///
-/// # Errors
-/// One [`Fault`] for each field that is not valid. A top-level place needs a centre and a
-/// radius; a child place must have none (PLC-002).
 pub(super) fn check(entry: Entry) -> Result<Draft, Vec<Fault>> {
     let mut faults = Vec::new();
     let name = one_line(&entry.name);
@@ -161,11 +151,7 @@ pub(super) fn check(entry: Entry) -> Result<Draft, Vec<Fault>> {
     }
 }
 
-/// The place `current` becomes with `patch`, checked as a whole. A place that moves inside
-/// another one and gives no centre loses its centre and radius.
-///
-/// # Errors
-/// As [`check`].
+/// A place that moves inside another one and gives no centre loses its centre and radius.
 pub(super) fn apply(current: &Place, patch: Patch) -> Result<Draft, Vec<Fault>> {
     let parent = patch.parent.unwrap_or(current.parent);
     let touches_centre =
@@ -204,7 +190,6 @@ pub(super) fn apply(current: &Place, patch: Patch) -> Result<Draft, Vec<Fault>> 
     })
 }
 
-/// The names of the fields that `draft` changes in `place`.
 #[must_use]
 pub(super) fn changes(place: &Place, draft: &Draft) -> Vec<&'static str> {
     let same = [
@@ -222,9 +207,7 @@ pub(super) fn changes(place: &Place, draft: &Draft) -> Vec<&'static str> {
         .collect()
 }
 
-/// The aliases of the remaining place after a merge: its own, then the name and the aliases of
-/// the merged place, without repeats and without the remaining place's own name. Extra names
-/// beyond [`MAX_ALIASES`] are dropped, so a merge never fails for this (PLC-004).
+/// Names beyond [`MAX_ALIASES`] are dropped, so a merge never fails for this (PLC-004).
 #[must_use]
 pub(super) fn merged_aliases(into: &Place, from: &Place) -> Vec<String> {
     let mut names = into.aliases.clone();
@@ -237,8 +220,6 @@ pub(super) fn merged_aliases(into: &Place, from: &Place) -> Vec<String> {
     names
 }
 
-/// Whether a subtree that is `height` levels below its root fits when the root sits at
-/// `root_depth` (a top-level place is depth 1).
 #[must_use]
 pub(super) const fn fits(root_depth: usize, height: usize) -> bool {
     root_depth + height <= MAX_DEPTH

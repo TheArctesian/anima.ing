@@ -1,5 +1,3 @@
-//! The metadata shown by the Projects list.
-
 use chrono::{DateTime, Utc};
 use provider_github::Repository;
 use sqlx::PgConnection;

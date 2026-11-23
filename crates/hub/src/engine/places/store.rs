@@ -1,5 +1,3 @@
-//! All SQL on schema `places`: I/O only.
-
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
@@ -14,13 +12,11 @@ use crate::ids::PlaceId;
 const COLUMNS: &str = "id, parent_id, name, latitude, longitude, radius_m, category, icon, \
                        aliases, geocoder_name, merged_into, created_at, updated_at";
 
-/// The most levels a walk of the tree reads: more than the 5 that a tree can have, so a walk
-/// ends also on rows that break the rule.
+/// More than the 5 levels that a tree can have, so a walk ends also on rows that break the rule.
 const WALK_LIMIT: i32 = 16;
 
-/// Holds the tree of places until the transaction ends: each change that reads the tree and
-/// then moves a place takes it first, so two changes cannot make a loop or a tree that is too
-/// deep between them.
+/// Each change that reads the tree and then moves a place takes this lock first, so two changes
+/// cannot make a loop or a tree that is too deep between them.
 pub(super) async fn lock_tree(conn: &mut PgConnection) -> Result<(), sqlx::Error> {
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('places.place tree', 2040))")
         .execute(conn)
@@ -140,7 +136,6 @@ pub(super) async fn update(
     row.try_into()
 }
 
-/// The place; with `lock` the row stays locked until the transaction ends.
 pub(super) async fn get(
     conn: &mut PgConnection,
     id: PlaceId,
@@ -156,7 +151,6 @@ pub(super) async fn get(
     row.map(Place::try_from).transpose()
 }
 
-/// The places that are not merged, by name.
 pub(super) async fn list(db: impl PgExecutor<'_>) -> Result<Vec<Place>, sqlx::Error> {
     let rows: Vec<PlaceRow> = sqlx::query_as(&format!(
         "SELECT {COLUMNS} FROM places.place WHERE merged_into IS NULL ORDER BY name, id"
@@ -166,7 +160,6 @@ pub(super) async fn list(db: impl PgExecutor<'_>) -> Result<Vec<Place>, sqlx::Er
     rows.into_iter().map(Place::try_from).collect()
 }
 
-/// `id` and then its ancestors, nearest first.
 pub(super) async fn chain(
     conn: &mut PgConnection,
     id: PlaceId,
@@ -182,7 +175,6 @@ pub(super) async fn chain(
     .await
 }
 
-/// How many levels of places lie below `id`; 0 for a place with no child.
 pub(super) async fn height(conn: &mut PgConnection, id: PlaceId) -> Result<i32, sqlx::Error> {
     let levels: Option<i32> = sqlx::query_scalar(
         "WITH RECURSIVE down AS (SELECT id, 0 AS n FROM places.place WHERE id = $1 \
@@ -210,7 +202,6 @@ pub(super) async fn count_references(
     .await
 }
 
-/// Moves the children of `from` (all, or only those in `only`) to `to`; returns how many.
 pub(super) async fn move_children(
     conn: &mut PgConnection,
     (from, to): (PlaceId, Option<PlaceId>),
@@ -228,8 +219,7 @@ pub(super) async fn move_children(
     .map(|done| done.rows_affected())
 }
 
-/// Marks `from` as merged into `into`, and points every place already merged into `from` at
-/// `into`, so a merge chain is never longer than one step.
+/// A merge chain is never longer than one step.
 pub(super) async fn set_merged(
     conn: &mut PgConnection,
     (from, into): (PlaceId, PlaceId),
@@ -267,7 +257,6 @@ pub(super) async fn set_aliases(
         .map(drop)
 }
 
-/// Deletes the place and the places that were merged into it.
 pub(super) async fn delete(conn: &mut PgConnection, id: PlaceId) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM places.place WHERE merged_into = $1")
         .bind(id)
@@ -280,8 +269,6 @@ pub(super) async fn delete(conn: &mut PgConnection, id: PlaceId) -> Result<(), s
         .map(drop)
 }
 
-/// The title of each of `ids` that is a place; a merged place gives the title of the place it
-/// was merged into.
 pub(super) async fn titles(
     db: impl PgExecutor<'_>,
     ids: &[Uuid],

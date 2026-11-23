@@ -1,6 +1,5 @@
-//! Record links: how a record of one extension points at a record of another, so that no
-//! extension imports another or waits for it (RLK-001, RLK-002, RLK-004). One table holds
-//! every link; a link to a record that does not exist yet keeps a text label.
+//! Record links: a record of one extension points at one of another, so no extension imports
+//! another or waits for it (RLK-001, RLK-002, RLK-004).
 
 pub mod graphql;
 mod model;
@@ -24,21 +23,17 @@ use crate::{
 /// The most links [`touching`] returns for one record.
 pub const MAX_LINKS: usize = 200;
 
-/// Why a links operation failed. Messages hold no SQL and no input value.
+/// Messages hold no SQL and no input value.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// The source and the target are the same record.
     #[error("a record cannot link to itself")]
     SelfLink,
-    /// A side has a subject kind and is not the text of that subject (RLK-004).
     #[error("{0} is not a valid subject key")]
     BadSubject(&'static str),
 }
 
-/// `side` when it may be one side of a link: any reference, except text that has a subject
-/// kind and is not the one spelling of that subject.
 fn checked(reference: &Reference, side: &'static str) -> Result<(), Error> {
     if Subject::owns(reference) && Subject::of(reference).is_none() {
         Err(Error::BadSubject(side))
@@ -47,9 +42,8 @@ fn checked(reference: &Reference, side: &'static str) -> Result<(), Error> {
     }
 }
 
-/// Makes the link in the caller's transaction, or finds the one that has the same source,
-/// target and kind: a second call with the same link writes nothing, and one with a new label
-/// writes the label. Neither record has to exist (RLK-002).
+/// A second call with the same link writes nothing, and one with a new label writes the label.
+/// Neither record has to exist (RLK-002).
 ///
 /// # Errors
 /// `SelfLink`, `BadSubject`; `Database` when a statement fails. The caller rolls back.
@@ -86,8 +80,7 @@ pub async fn connect(
     }
 }
 
-/// Removes one link in the caller's transaction and returns it; `None` when there is no such
-/// link. The two records are not touched.
+/// The two records are not touched.
 ///
 /// # Errors
 /// `Database` when the statement fails.
@@ -95,7 +88,7 @@ pub async fn disconnect(conn: &mut PgConnection, id: RecordLinkId) -> Result<Opt
     Ok(store::delete(conn, id).await?)
 }
 
-/// The links that start or end at `record`, newest first, at most [`MAX_LINKS`].
+/// Newest first, at most [`MAX_LINKS`].
 ///
 /// # Errors
 /// `Database` when the read fails.
@@ -104,13 +97,10 @@ pub async fn touching(db: &PgPool, record: &Reference) -> Result<Vec<Link>, Erro
     Ok(store::touching(db, record, limit).await?)
 }
 
-/// Moves every link of `from` to `to`: a link that would then join a record to itself, or
-/// repeat a link that `to` has, is removed instead. Returns how many links moved. A merge of
-/// two records calls this in its own transaction (PLC-004).
+/// A link that would join a record to itself, or repeat a link of `to`, is removed (PLC-004).
 ///
 /// # Errors
-/// `SelfLink` when `from` and `to` are the same; `BadSubject` when `to` is not a valid subject
-/// key; `Database` when a statement fails. The caller rolls back.
+/// `SelfLink`, `BadSubject`; `Database` when a statement fails. The caller rolls back.
 pub async fn retarget(
     conn: &mut PgConnection,
     from: &Reference,
@@ -123,8 +113,7 @@ pub async fn retarget(
     Ok(store::retarget(conn, (from, to), None).await?)
 }
 
-/// Moves the named links, and only those, from `from` to `to`. A name that is not a link of
-/// `from` moves nothing, so the caller compares the count with the names it gave (PLC-004).
+/// A name that is not a link of `from` moves nothing, so the caller compares the count (PLC-004).
 ///
 /// # Errors
 /// As [`retarget`].
@@ -141,7 +130,7 @@ pub async fn retarget_named(
     Ok(store::retarget(conn, (from, to), Some(&named)).await?)
 }
 
-/// How many links start or end at `record`: all of them, not only the newest [`MAX_LINKS`].
+/// All of them, not only the newest [`MAX_LINKS`].
 ///
 /// # Errors
 /// `Database` when the read fails.
@@ -150,9 +139,8 @@ pub async fn count(conn: &mut PgConnection, record: &Reference) -> Result<u64, E
     Ok(u64::try_from(total).unwrap_or_default())
 }
 
-/// What to call `record` when it names itself: a date or a repository is its own title. Any
-/// other record gets its title from the domain that owns it; until that domain exists a link
-/// shows its label (RLK-002).
+/// A date or a repository is its own title; any other record gets its title from its domain
+/// (RLK-002).
 #[must_use]
 pub fn own_title(record: &Reference) -> Option<String> {
     match Subject::of(record)? {

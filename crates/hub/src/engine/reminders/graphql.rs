@@ -1,6 +1,4 @@
-//! The reminders GraphQL part (K1; K-E6 Section 6): the rules, their firings, a test, and the
-//! answers of the operator to a firing (REM-007), and the subscription of an open application.
-//!
+//! The reminders GraphQL part (K1; K-E6 Section 6; REM-007).
 //! Each change of a rule writes its row, one audit entry and one event in one transaction.
 #![expect(
     clippy::unused_async_trait_impl,

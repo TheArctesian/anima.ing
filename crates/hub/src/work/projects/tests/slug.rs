@@ -1,5 +1,3 @@
-//! The slug of a new project: the clash cases, and a property over any name GitHub could send.
-
 use proptest::prelude::*;
 
 use crate::work::projects::slug::{for_repository, stem};

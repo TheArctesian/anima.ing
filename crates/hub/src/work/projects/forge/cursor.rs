@@ -1,19 +1,12 @@
-//! K7 cursors over GitHub's pages (API-006). Pure.
-//!
-//! The provider asks GitHub for 100 rows a page. A hub page is cut from one GitHub page, so it
-//! costs at most one request: a cursor holds GitHub's page number, the place on that page and
-//! the hub's page size (`first`), and a hub page ends where GitHub's page ends, so it can hold
-//! fewer than `first` rows and still have a next page. `after` with another `first` is
-//! refused. Pages are GitHub's: a row can repeat or be skipped when the list changes between
-//! pages.
+//! K7 cursors over the pages of GitHub (API-006).
+//! A hub page is cut from one GitHub page, so it costs at most one request and can hold fewer
+//! than `first` rows with a next page. A row can repeat or be skipped when the list changes.
 
 use std::ops::Range;
 
 use crate::api_errors::FieldError;
 
-/// Rows on one of GitHub's pages: the provider's `per_page`.
 pub const GITHUB_PAGE: usize = 100;
-/// The last page a cursor may name: 1,000,000 rows.
 const LAST_PAGE: u32 = 10_000;
 const PREFIX: &str = "g1";
 
@@ -28,8 +21,6 @@ impl Place {
     pub const START: Self = Self { page: 1, offset: 0 };
 }
 
-/// One hub page cut from one GitHub page: the rows to show, the cursor after each, and where
-/// the list goes on.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Cut {
     pub rows: Range<usize>,
@@ -39,8 +30,6 @@ pub struct Cut {
     pub end_cursor: Option<String>,
 }
 
-/// `first`, from 1 to `most`.
-///
 /// # Errors
 /// A `first` error outside that range.
 pub fn page_size(first: i32, most: usize) -> Result<usize, FieldError> {
@@ -53,8 +42,6 @@ pub fn page_size(first: i32, most: usize) -> Result<usize, FieldError> {
     }
 }
 
-/// Where a page starts: the list's start without `after`.
-///
 /// # Errors
 /// An `after` error when the text is not a cursor of this module, or was made for another
 /// page size.
@@ -93,14 +80,12 @@ pub fn start(after: Option<&str>, size: usize) -> Result<Place, FieldError> {
     Ok(Place { page, offset })
 }
 
-/// The cursor of `place` for pages of `size`.
 #[must_use]
 pub fn encode(place: Place, size: usize) -> String {
     format!("{PREFIX}.{}.{}.{size}", place.page, place.offset)
 }
 
-/// The page of `size` rows from `place`, on a GitHub page that shows `shown` rows. `full`:
-/// GitHub's page was full, so the list may go on past it.
+/// `full`: the GitHub page was full, so the list may go on past it.
 #[must_use]
 pub fn cut(place: Place, size: usize, shown: usize, full: bool) -> Cut {
     let begin = place.offset.min(shown);

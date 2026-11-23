@@ -1,5 +1,4 @@
-//! PRJ-039: the one attempt the hub holds: a new start replaces one with no App, is refused
-//! while an App waits for Install, and each change is published once.
+//! The one registration attempt the hub holds (PRJ-039).
 
 use std::time::Duration;
 

@@ -1,8 +1,6 @@
-//! `POST /locations/v1/owntracks`: the way in of the OwnTracks app (K-E4 Section 11). HTTP
-//! Basic: the user is any text and the password is an ingest token. A message of type
-//! `location` is stored; every other type is accepted and not stored. The answer is `200`
-//! with `[]`, as the app expects. No log line holds a token or a position (LOG-007): the route
-//! is logged by its template.
+//! `POST /locations/v1/owntracks`: the way in of the OwnTracks app (K-E4 Section 11). HTTP Basic:
+//! the user is any text and the password is an ingest token. The answer is `200` with `[]`, as the app expects. No log line
+//! holds a token or a position (LOG-007): the route is logged by its template.
 
 use std::sync::Arc;
 
@@ -33,7 +31,6 @@ use crate::{
     fleet::{access, events::ClientAddr},
 };
 
-/// The largest body of one post.
 const MAX_BODY: usize = 1024 * 1024;
 
 #[derive(Clone)]
@@ -43,7 +40,6 @@ struct Intake {
     seal: Seal,
 }
 
-/// The route of the OwnTracks path.
 pub fn router(db: &PgPool, clock: &Arc<dyn Clock>, keys: &SealingKeys) -> Router {
     Router::new()
         .route("/locations/v1/owntracks", post(owntracks_post))
@@ -55,7 +51,6 @@ pub fn router(db: &PgPool, clock: &Arc<dyn Clock>, keys: &SealingKeys) -> Router
         })
 }
 
-/// The password of an HTTP Basic header.
 fn password(headers: &HeaderMap) -> Option<Zeroizing<String>> {
     let value = headers.get(AUTHORIZATION)?.to_str().ok()?;
     let encoded = value.strip_prefix("Basic ")?;
@@ -102,10 +97,8 @@ async fn owntracks_post(State(intake): State<Intake>, request: Parts, body: Byte
     }
 }
 
-/// Stores the sample of `body` for the token `presented`; `false` when no token that is not
-/// revoked has this value. A stored fix writes no event and no audit entry of its own: it is
-/// counted for its token and its hour, and each hour that ended gets its one audit entry now
-/// (R-262).
+/// `false` when no unrevoked token has this value. A stored fix writes no event or audit entry of
+/// its own: it is counted per token and hour, and each ended hour gets one audit entry (R-262).
 async fn taken(
     intake: &Intake,
     client: ClientAddr,

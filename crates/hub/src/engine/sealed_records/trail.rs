@@ -1,5 +1,5 @@
-//! The audit entry and the event of each change (LOG-004, LOG-005). Pure. An entry names the
-//! owner record, the extension and the count of the bytes, and never a byte (VLT-004).
+//! An entry names the owner record, the extension and the byte count, never a byte (LOG-004,
+//! LOG-005, VLT-004).
 
 use serde_json::json;
 

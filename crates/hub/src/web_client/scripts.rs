@@ -1,9 +1,6 @@
-//! The CSP hashes of the inline scripts in `index.html` (A-2): `SvelteKit` starts the app from
-//! one inline `<script>`, and `script-src` allows exactly that text and no other.
-//!
-//! The page is the hub's own build output, not operator input. A misread can only drop a
-//! hash, which blocks a script, or add the hash of text the page holds; it never widens
-//! `script-src` to any other source.
+//! The CSP hashes of the inline scripts in `index.html` (A-2).
+//! The page is the hub's own build output, not operator input. A misread can only drop a hash
+//! or add one of text the page holds; it never widens `script-src`.
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sha2::{Digest as _, Sha256};
@@ -11,9 +8,6 @@ use sha2::{Digest as _, Sha256};
 const OPEN: &str = "<script";
 const CLOSE: &str = "</script";
 
-/// The CSP source `'sha256-<base64>'` of each inline script in `html`, in page order. A
-/// script with a `src` attribute is not inline and gets none; an unclosed script ends the
-/// search.
 #[must_use]
 pub fn inline_script_hashes(html: &str) -> Vec<String> {
     // ASCII lowercasing keeps every byte offset, so offsets in `lower` slice `html`.
@@ -44,8 +38,7 @@ pub fn inline_script_hashes(html: &str) -> Vec<String> {
     hashes
 }
 
-/// `'sha256-<base64>'` of `script`'s UTF-8 bytes, as a browser hashes an inline script: after
-/// its HTML parser has turned each CRLF and each lone CR into LF.
+/// A browser hashes an inline script after its HTML parser turns each CRLF and lone CR into LF.
 fn source_hash(script: &str) -> String {
     let parsed = script.replace("\r\n", "\n").replace('\r', "\n");
     format!(
@@ -54,8 +47,6 @@ fn source_hash(script: &str) -> String {
     )
 }
 
-/// The offset of the `>` that ends a start tag whose attributes begin `tag`; a `>` inside a
-/// quoted value does not end it.
 fn tag_end(tag: &str) -> Option<usize> {
     let mut quote = None;
     for (offset, byte) in tag.bytes().enumerate() {
@@ -69,7 +60,6 @@ fn tag_end(tag: &str) -> Option<usize> {
     None
 }
 
-/// The names of the attributes in a start tag's attribute text, values skipped.
 fn attribute_names(attributes: &str) -> Vec<&str> {
     let mut names = Vec::new();
     let mut rest = attributes;
@@ -89,7 +79,6 @@ fn attribute_names(attributes: &str) -> Vec<&str> {
     }
 }
 
-/// The text after one attribute value at the start of `value`: quoted, or up to whitespace.
 fn after_value(value: &str) -> &str {
     match value.chars().next() {
         Some(quote @ ('"' | '\'')) => value[1..]

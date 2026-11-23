@@ -1,51 +1,33 @@
-//! The pages the hub serves to the operator's browser during Connect GitHub (K-E1 Section 7a,
-//! K7). Pure.
-//!
-//! Every page is fixed text. The one exception is the form that posts the manifest to GitHub:
-//! its action (GitHub's page with the hub's own state) and the manifest JSON, both escaped. No
-//! value from GitHub or from a query string is ever written into a page.
+//! The pages the hub serves to the operator's browser during Connect GitHub (K-E1 Section 7a, K7).
+//! No value from GitHub or a query string is written into a page; only the manifest form's action and JSON vary, both escaped.
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sha2::{Digest as _, Sha256};
 
 mod installed;
 
-/// The one script the hub serves: it posts the form to GitHub at once.
 pub const SCRIPT: &str = "document.forms[0].submit();";
 
-/// The policy of every page but the one that posts the manifest.
 pub const PLAIN_POLICY: &str = "default-src 'none'; style-src 'unsafe-inline'; \
     form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
 
-/// A page of fixed words.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Notice {
-    /// A ticket that is wrong, used or old.
     LinkEnded,
-    /// `/open` from a browser with no Anima.ing session.
     SignIn,
-    /// `/open` from a page that is not Anima.ing's.
     NotFromAnima,
-    /// `/open` with no attempt waiting for a browser.
     NothingWaiting,
-    /// A page of the flow from a browser that is not the bound one, or with the wrong state.
     NotThisBrowser,
-    /// A page of the flow at a step that has passed.
     StepPassed,
-    /// The hub could not check something; the operator tries again.
     TryAgain,
-    /// The connection is stored.
     Connected,
-    /// The App is made, and the hub has not yet seen the installation.
     Finishing,
     /// A hit on `/installed` from a browser that is not bound: it only wakes the poll.
     MaybeInstalled,
-    /// The attempt failed.
     Failed,
 }
 
 impl Notice {
-    /// The page's heading: what happened, in a few words.
     const fn title(self) -> &'static str {
         match self {
             Self::LinkEnded => "This link has ended",
@@ -96,7 +78,6 @@ impl Notice {
     }
 }
 
-/// `text` with the five characters that matter in HTML text and attribute values escaped.
 #[must_use]
 pub fn escape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
@@ -113,7 +94,6 @@ pub fn escape(text: &str) -> String {
     out
 }
 
-/// The page of fixed words for `notice`, in the same layout as the result page.
 #[must_use]
 pub fn notice(notice: Notice) -> String {
     installed::document(notice.title(), notice.words(), "")
@@ -125,8 +105,7 @@ pub fn installed(notice: Notice) -> String {
     self::notice(notice)
 }
 
-/// The confirm page a signed-in operator opens from the link with no value in it: the same
-/// page whether or not an attempt exists.
+/// The same page whether or not an attempt exists, with no value in it.
 #[must_use]
 pub fn confirm() -> String {
     installed::document(
@@ -138,8 +117,6 @@ pub fn confirm() -> String {
     )
 }
 
-/// The page that posts `manifest` to `action` at once, with a button for a browser without
-/// scripts.
 #[must_use]
 pub fn to_github(action: &str, manifest: &str) -> String {
     installed::document(
@@ -155,8 +132,7 @@ pub fn to_github(action: &str, manifest: &str) -> String {
     )
 }
 
-/// The policy of the page that posts the manifest: only the hashed [`SCRIPT`] runs, and the
-/// form goes only to `web_base` (GitHub).
+/// Only the hashed [`SCRIPT`] runs, and the form goes only to `web_base` (GitHub).
 #[must_use]
 pub fn to_github_policy(web_base: &str) -> String {
     let hash = STANDARD.encode(Sha256::digest(SCRIPT.as_bytes()));

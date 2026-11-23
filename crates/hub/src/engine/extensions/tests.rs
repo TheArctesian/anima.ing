@@ -1,6 +1,3 @@
-//! Unit tests of the registry data and the pure switch plan. Behaviour against the database and
-//! GraphQL is tested in `tests/it/extensions`.
-
 use std::collections::HashSet;
 
 use proptest::prelude::*;
@@ -101,7 +98,6 @@ fn ext_012_the_refusal_names_the_dependant_in_the_operators_words() {
     );
 }
 
-/// Applies a plan to the set of keys that are on, as the mutation does.
 fn apply(mut on_now: HashSet<Key>, changed: &[Key], want: bool) -> HashSet<Key> {
     for key in changed {
         if want {
@@ -168,9 +164,6 @@ proptest! {
         }
     }
 }
-
-// The write path against the database, over a registry in which every extension is built so the
-// needs of Model gateway can be exercised.
 
 mod writing {
     use chrono::{TimeZone, Utc};

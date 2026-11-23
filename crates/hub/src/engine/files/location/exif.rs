@@ -1,7 +1,5 @@
-//! The GPS part of the EXIF data of a photo (FIL-003). Pure, and it trusts no length or offset
-//! of the data: each read is checked against the bounds of the block.
+//! The GPS part of a photo's EXIF data (FIL-003); each read is checked against the block's bounds.
 
-/// The tag of IFD0 that points at the GPS IFD.
 const GPS_POINTER: u16 = 0x8825;
 const LATITUDE_REF: u16 = 1;
 const LATITUDE: u16 = 2;
@@ -9,8 +7,7 @@ const LONGITUDE_REF: u16 = 3;
 const LONGITUDE: u16 = 4;
 const ENTRY: usize = 12;
 
-/// A position in degrees, as the photo gives it. It is metadata of the file, not evidence of
-/// where the operator was.
+/// A position in degrees from the photo's metadata, not evidence of where the operator was.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Position {
     pub latitude: f64,
@@ -46,7 +43,6 @@ impl Tiff {
     }
 }
 
-/// The byte order of a TIFF block and the offset of its IFD0.
 fn header(block: &[u8]) -> Option<(Tiff, usize)> {
     let tiff = match block.get(..2)? {
         b"II" => Tiff { big_endian: false },
@@ -57,7 +53,6 @@ fn header(block: &[u8]) -> Option<(Tiff, usize)> {
     Some((tiff, tiff.offset(block, 4)?))
 }
 
-/// The entries of the IFD at `at`: the offset of each 12-byte entry.
 fn entries(tiff: Tiff, block: &[u8], at: usize) -> Option<impl Iterator<Item = usize>> {
     let count = usize::from(tiff.u16(block, at)?);
     let first = at.checked_add(2)?;
@@ -65,14 +60,12 @@ fn entries(tiff: Tiff, block: &[u8], at: usize) -> Option<impl Iterator<Item = u
     (end <= block.len()).then(|| (0..count).map(move |index| first + index * ENTRY))
 }
 
-/// The offset of the GPS IFD that IFD0 points at.
 fn gps_ifd(tiff: Tiff, block: &[u8], ifd0: usize) -> Option<usize> {
     entries(tiff, block, ifd0)?
         .find(|&entry| tiff.u16(block, entry) == Some(GPS_POINTER))
         .and_then(|entry| tiff.offset(block, entry + 8))
 }
 
-/// The size of an entry's value in bytes, from its type and count.
 fn value_size(tiff: Tiff, block: &[u8], entry: usize) -> Option<usize> {
     let unit: usize = match tiff.u16(block, entry + 2)? {
         1 | 2 | 6 | 7 => 1,
@@ -84,7 +77,6 @@ fn value_size(tiff: Tiff, block: &[u8], entry: usize) -> Option<usize> {
     unit.checked_mul(usize::try_from(tiff.u32(block, entry + 4)?).ok()?)
 }
 
-/// Where the value of an entry is: in the entry when it fits in 4 bytes, else at its offset.
 fn value_at(tiff: Tiff, block: &[u8], entry: usize) -> Option<(usize, usize)> {
     let size = value_size(tiff, block, entry)?;
     let at = if size <= 4 {
@@ -111,13 +103,11 @@ fn degrees(tiff: Tiff, block: &[u8], entry: usize) -> Option<f64> {
     Some(total)
 }
 
-/// The first byte of an ASCII reference such as `N` or `W`.
 fn reference(tiff: Tiff, block: &[u8], entry: usize) -> Option<u8> {
     let (at, size) = value_at(tiff, block, entry)?;
     (size >= 1).then(|| block[at])
 }
 
-/// The position in the GPS IFD at `at`, when it has one in range.
 fn position(tiff: Tiff, block: &[u8], at: usize) -> Option<Position> {
     let mut parts = (None, None, None, None);
     for entry in entries(tiff, block, at)? {
@@ -142,17 +132,14 @@ fn position(tiff: Tiff, block: &[u8], at: usize) -> Option<Position> {
     )
 }
 
-/// Reads the position of a TIFF block (the EXIF data after `Exif\0\0`) and then removes the GPS
-/// part: each value of the GPS IFD and each of its entries become zero bytes, and its count
-/// becomes 0, so the block keeps its length and every other offset in it. A block whose GPS IFD
-/// cannot be found holds no GPS part that a reader could find.
+/// Reads the position of a TIFF block (the EXIF data after `Exif\0\0`) and zeroes its GPS IFD in
+/// place, so the block keeps its length and every other offset.
 pub fn remove_gps(block: &mut [u8]) -> Option<Position> {
     let (tiff, ifd0) = header(block)?;
     let at = gps_ifd(tiff, block, ifd0)?;
     let found = position(tiff, block, at);
     let Some(entries) = entries(tiff, block, at).map(Iterator::collect::<Vec<usize>>) else {
-        // A GPS IFD cut by the end of the block: a lenient reader could still find its first
-        // entries, so everything from it to the end goes.
+        // A truncated GPS IFD is zeroed to the end: a lenient reader could still find its entries.
         if let Some(rest) = block.get_mut(at..) {
             rest.fill(0);
         }

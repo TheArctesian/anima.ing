@@ -1,16 +1,13 @@
-//! Where a ref and a file are: whether a ref is a commit, and a file's page on GitHub
-//! (PRJ-010). Pure.
+//! Commit refs and file pages on GitHub (PRJ-010).
 
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
-/// Whether `git_ref` names one commit: 40 hex digits. A branch can move; a commit cannot.
 #[must_use]
 pub fn is_commit(git_ref: &str) -> bool {
     git_ref.len() == 40 && git_ref.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-/// `text` with each byte outside `A-Za-z0-9-._~` and `/` percent-encoded, so a name with a
-/// space, `#`, `?` or `%` stays one part of the address.
+/// Percent-encodes, so a name with a space, `#`, `?` or `%` stays one part of the address.
 fn encoded(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for byte in text.bytes() {
@@ -25,7 +22,6 @@ fn encoded(text: &str) -> String {
     out
 }
 
-/// The page of the file at `path` on `git_ref` of the repository whose page is `home`.
 #[must_use]
 pub fn file(home: &str, git_ref: &str, path: &str) -> String {
     format!(

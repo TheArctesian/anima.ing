@@ -1,5 +1,4 @@
-//! The K1 types of the reminders part. A trigger and `unless` are JSON in the stored form of
-//! K-E6 Section 2.
+//! A trigger and `unless` are JSON in the stored form of K-E6 Section 2.
 
 use async_graphql::{Enum, ID, InputObject, Json, SimpleObject};
 use chrono::{DateTime, Utc};

@@ -1,7 +1,5 @@
-//! GraphQL scalars that more than one domain uses (K1, R-012).
-//!
-//! `DateTime` is `chrono::DateTime<Utc>` and `JSON` is `async_graphql::Json<T>`; both come from
-//! async-graphql. This module adds the network scalars, so the merged schema registers each name once.
+//! GraphQL scalars that more than one domain uses (K1, R-012), so the merged schema registers each
+//! name once.
 
 use std::{fmt, net, str::FromStr};
 

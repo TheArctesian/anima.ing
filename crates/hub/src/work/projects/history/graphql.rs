@@ -1,5 +1,4 @@
-//! The history roots (K1): a page of a repository's commits, its branches and its releases on
-//! GitHub, with the checks of a commit when they are selected.
+//! The history roots (K1).
 
 use async_graphql::{ComplexObject, Context, ID, Object, Result};
 use provider_github::live::{commits as github_commits, refs as github_refs};

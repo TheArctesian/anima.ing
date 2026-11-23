@@ -1,5 +1,3 @@
-//! All SQL on schema `files`: I/O only.
-
 mod proposals;
 
 use chrono::{DateTime, Utc};
@@ -20,7 +18,6 @@ pub(super) use proposals::{decide, insert_proposal, proposal, proposals};
 const ATTACHMENT: &str = "a.id, a.hash, a.owner, a.name, a.media_type, a.archive_id, \
     a.latitude, a.longitude, a.created_at, p.key_name, p.size";
 
-/// The key of a piece row: `<key name>:<hash>`.
 pub(super) fn piece_key(key_name: &str, hash: &str) -> String {
     format!("{key_name}:{hash}")
 }
@@ -91,8 +88,7 @@ impl TryFrom<ArchiveRow> for Archive {
     }
 }
 
-/// Holds the piece until the transaction ends, so that an upload and a delete of the same
-/// piece take turns.
+/// An upload and a delete of the same piece take turns until the transaction ends.
 pub(super) async fn lock_piece(conn: &mut PgConnection, piece: &str) -> Result<(), sqlx::Error> {
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 2050))")
         .bind(piece)
@@ -111,7 +107,6 @@ pub(super) async fn piece_exists(
         .await
 }
 
-/// Stores the row of a piece; a row that exists stays.
 pub(super) async fn insert_piece(
     conn: &mut PgConnection,
     (key_name, hash): (&str, &str),
@@ -158,7 +153,6 @@ pub(super) async fn insert_attachment(
     .map(drop)
 }
 
-/// The attachments of `owner`, newest first.
 pub(super) async fn attachments(
     db: impl PgExecutor<'_>,
     owner: &Reference,
@@ -189,7 +183,6 @@ pub(super) async fn attachment(
     row.map(Attachment::try_from).transpose()
 }
 
-/// Deletes the attachments `WHERE <filter> = $1` and returns them.
 async fn delete_attachments_where(
     conn: &mut PgConnection,
     filter: &str,
@@ -219,7 +212,6 @@ pub(super) async fn delete_archive_attachments(
     delete_attachments_where(conn, "archive_id", archive.into()).await
 }
 
-/// Deletes the rows of the named pieces that no attachment uses and gives their key and hash.
 pub(super) async fn delete_unused_pieces(
     conn: &mut PgConnection,
     pieces: &[String],

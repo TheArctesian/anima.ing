@@ -8,7 +8,7 @@ use sqlx::PgPool;
 
 use crate::engine::records::Reference;
 
-/// A domain could not give its titles now. The message holds no detail.
+/// The message holds no detail.
 #[derive(Debug, thiserror::Error)]
 #[error("the titles of {0} records are not available")]
 pub struct Unavailable(pub &'static str);
@@ -16,7 +16,6 @@ pub struct Unavailable(pub &'static str);
 /// The domain that owns the records of one kind, as far as their titles go.
 #[async_trait]
 pub trait Titles: Send + Sync {
-    /// The record kind this domain owns, for example `place`.
     fn kind(&self) -> &'static str;
 
     /// The title of each id that exists. An id with no record is not in the answer.
@@ -30,7 +29,6 @@ pub trait Titles: Send + Sync {
     ) -> Result<HashMap<String, String>, Unavailable>;
 }
 
-/// Every [`Titles`] of the hub, built once in wiring.
 #[derive(Clone, Default)]
 pub struct TitleSources(Vec<Arc<dyn Titles>>);
 
@@ -40,8 +38,7 @@ impl TitleSources {
         Self(sources)
     }
 
-    /// The title of each of `records` that its domain knows. A record whose kind has no
-    /// domain here, or whose record does not exist, is not in the answer.
+    /// A record whose kind has no domain here, or that does not exist, is not in the answer.
     ///
     /// # Errors
     /// [`Unavailable`] from the first domain that cannot answer.

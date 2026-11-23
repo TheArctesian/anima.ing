@@ -1,7 +1,6 @@
 //! One sync run of one account (SRC-005, SRC-007, SRC-012, EXT-002; K-E1 Section 8).
 //!
-//! The order is fixed: claim, then for each intake whose extension is on, fetch a page and
-//! store it with the new slice in one transaction that first checks the claim; then end. A run
+//! Each page is stored with its new slice in one transaction that first checks the claim. A run
 //! whose claim was superseded writes nothing more.
 
 mod ending;
@@ -29,7 +28,6 @@ pub const CLAIM_FOR: TimeDelta = TimeDelta::minutes(10);
 /// The most requests one run sends; the next run resumes.
 pub const MAX_REQUESTS: u32 = 2000;
 
-/// A failed run: its kind, fixed words for the operator, and the end of a rate limit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Failure {
     pub kind: ErrorKind,
@@ -51,18 +49,15 @@ impl Failure {
     }
 }
 
-/// How the work of a run stopped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Stop {
     Done,
     /// The consumer was set off, the account paused, or the request cap reached.
     Stopped,
     Failed(Failure),
-    /// Another run claimed the account, or it was removed: write nothing more.
     LostClaim,
 }
 
-/// A claimed account: what the run works on.
 struct Claim {
     account: Account,
     state: Value,
@@ -71,8 +66,7 @@ struct Claim {
     declaration: Option<Declaration>,
 }
 
-/// Runs a sync of `account` started by `trigger`. `None` when another run holds the account,
-/// it is paused, or the run lost its claim; otherwise how it ended.
+/// `None` when another run holds the account, it is paused, or the run lost its claim.
 ///
 /// # Errors
 /// `Database` when the claim or the end cannot be written.
@@ -95,8 +89,6 @@ pub async fn run(
     ending::finish(scheduling, &claim, stop).await
 }
 
-/// Claims the account, ends the runs a superseded claim left open, and starts the run row, in
-/// one transaction.
 async fn claim(
     scheduling: &Scheduling,
     id: crate::ids::SourceAccountId,
@@ -124,7 +116,6 @@ async fn claim(
     }))
 }
 
-/// Feeds every intake of the source whose extension is on, in wiring order.
 async fn sync(scheduling: &Scheduling, claim: &Claim, declaration: &Declaration) -> Stop {
     let Ok(on) = extensions::on_keys(&scheduling.pool).await else {
         return Stop::Failed(Failure::store());
@@ -145,8 +136,7 @@ async fn sync(scheduling: &Scheduling, claim: &Claim, declaration: &Declaration)
     Stop::Done
 }
 
-/// Why a page that did not move the sync on fails the run. A reply too large to read is named
-/// as such: the provider found it too large for its request (the listing, say).
+/// A reply too large to read is named as such: the provider found it too large for its request.
 fn stuck(answer: &Answer) -> Failure {
     let words = match answer.content {
         Content::TooLarge => "The source sent a reply larger than the hub reads.",
@@ -155,7 +145,6 @@ fn stuck(answer: &Answer) -> Failure {
     Failure::new(ErrorKind::Provider, words)
 }
 
-/// Feeds one intake until it has no request left, from its stored slice.
 async fn feed(
     scheduling: &Scheduling,
     (claim, declaration): (&Claim, &Declaration),

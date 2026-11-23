@@ -1,18 +1,14 @@
-//! All SQL on schema `extensions`: I/O only.
-
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 
 use super::model::Key;
 
-/// The keys whose switch row says on.
 pub(super) async fn switched_on(db: impl PgExecutor<'_>) -> Result<Vec<String>, sqlx::Error> {
     sqlx::query_scalar("SELECT key FROM extensions.switches WHERE is_on")
         .fetch_all(db)
         .await
 }
 
-/// Every row: the key and when it last changed.
 pub(super) async fn changes(
     db: impl PgExecutor<'_>,
 ) -> Result<Vec<(String, DateTime<Utc>)>, sqlx::Error> {
@@ -21,8 +17,8 @@ pub(super) async fn changes(
         .await
 }
 
-/// Blocks other writers until the transaction ends, so two requests cannot both read the
-/// same switches and plan from them. Readers are not blocked.
+/// Blocks other writers until the transaction ends, so two requests cannot plan from the same
+/// switches.
 pub(super) async fn lock(conn: &mut PgConnection) -> Result<(), sqlx::Error> {
     sqlx::query("LOCK TABLE extensions.switches IN EXCLUSIVE MODE")
         .execute(conn)
@@ -30,7 +26,6 @@ pub(super) async fn lock(conn: &mut PgConnection) -> Result<(), sqlx::Error> {
         .map(drop)
 }
 
-/// Writes the switch of `key`.
 pub(super) async fn set(
     conn: &mut PgConnection,
     (key, on): (Key, bool),

@@ -1,4 +1,3 @@
-//! A listed entry and the K1 enums of its kind and its marks.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

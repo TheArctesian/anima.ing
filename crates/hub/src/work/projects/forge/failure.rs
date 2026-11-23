@@ -1,6 +1,5 @@
 //! A live read's failures, and what came of a change, as K7 codes with fixed words (K-E1
-//! Section 13.7; decisions item 7). Never a reply of GitHub, a token, a path or text the
-//! operator wrote (LOG-007). Pure.
+//! Section 13.7). Never a reply of GitHub, a token, a path or text the operator wrote (LOG-007).
 
 use async_graphql::Error as GraphQlError;
 use source_exchange::{Receipt, Refusal, Settled};

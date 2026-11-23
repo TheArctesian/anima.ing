@@ -52,7 +52,6 @@ fn on_events(source: &str, kind: &str, contains: Option<&str>) -> Rule {
 #[sqlx::test(migrations = "./migrations")]
 async fn rem_002_a_new_event_of_the_log_fires_a_rule_one_time(pool: PgPool) {
     add(&pool, on_events("check", "error", Some("DOWN"))).await;
-    // An event from before the first sweep fires nothing.
     event(
         &pool,
         (Source::Check, Severity::Error),

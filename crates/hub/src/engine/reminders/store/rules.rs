@@ -1,5 +1,4 @@
-//! The SQL of the rules and of the firings that the operator reads and changes (K-E6
-//! Section 6).
+//! The SQL of the rules and firings that the operator reads and changes (K-E6 Section 6).
 
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor, types::Json};
@@ -14,7 +13,6 @@ use crate::{
     ids::{FiringId, ReminderRuleId},
 };
 
-/// Every rule, by name.
 pub(in crate::engine::reminders) async fn rules(
     db: impl PgExecutor<'_>,
 ) -> Result<Vec<StoredRule>, sqlx::Error> {
@@ -26,7 +24,6 @@ pub(in crate::engine::reminders) async fn rules(
     rows.into_iter().map(TryInto::try_into).collect()
 }
 
-/// The rule `id`; its row is locked when `lock` is set.
 pub(in crate::engine::reminders) async fn rule(
     db: impl PgExecutor<'_>,
     id: ReminderRuleId,
@@ -42,8 +39,6 @@ pub(in crate::engine::reminders) async fn rule(
     row.map(TryInto::try_into).transpose()
 }
 
-/// Writes each field of `stored` that the operator can change, with its revision and the time
-/// of the change.
 pub(in crate::engine::reminders) async fn write_rule(
     conn: &mut PgConnection,
     stored: &StoredRule,
@@ -127,7 +122,6 @@ impl TryFrom<FiringRow> for Firing {
     }
 }
 
-/// The firings of `rule` (or of every rule) in `state` (or any), newest first, at most `limit`.
 pub(in crate::engine::reminders) async fn firings(
     db: impl PgExecutor<'_>,
     (rule, state): (Option<ReminderRuleId>, Option<FiringState>),
@@ -146,7 +140,6 @@ pub(in crate::engine::reminders) async fn firings(
     rows.into_iter().map(TryInto::try_into).collect()
 }
 
-/// The firing `id`, locked.
 pub(in crate::engine::reminders) async fn firing(
     conn: &mut PgConnection,
     id: FiringId,
@@ -160,8 +153,6 @@ pub(in crate::engine::reminders) async fn firing(
     row.map(TryInto::try_into).transpose()
 }
 
-/// Writes the decision of the operator about a firing: its state, the time of the decision
-/// and, for a snooze, the time to send it again.
 pub(in crate::engine::reminders) async fn answer(
     conn: &mut PgConnection,
     id: FiringId,
@@ -181,8 +172,8 @@ pub(in crate::engine::reminders) async fn answer(
     .map(drop)
 }
 
-/// The newest firing of each rule and the count of the firings of each rule since `since` that
-/// were not suppressed, as `(rule, newest due time, count)`.
+/// Each rule with its newest due time and its count of firings since `since` that were not
+/// suppressed.
 pub(in crate::engine::reminders) async fn activity(
     db: impl PgExecutor<'_>,
     since: DateTime<Utc>,

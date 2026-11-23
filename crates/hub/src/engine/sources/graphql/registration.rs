@@ -1,10 +1,8 @@
-//! The Connect GitHub part of the API (K1; K-E1 Section 7a): `githubConnect`,
-//! `startGithubConnect`, `openGithubConnect`, `cancelGithubConnect` and `githubConnectChanged`.
+//! The Connect GitHub part of the API (K1; K-E1 Section 7a).
 //!
-//! The three mutations are closed to API keys by the access guard (D-23, R-100). The one-time
-//! link is the only value an answer carries that opens anything, and only `openGithubConnect`
-//! returns it, never to a request that declares an AI agent (PRJ-041, LOG-012). No answer holds
-//! a key, a code, a cookie or a state (LOG-007).
+//! The mutations are closed to API keys (D-23, R-100). Only `openGithubConnect` returns the
+//! one-time link, never to an AI agent (PRJ-041, LOG-012). No answer holds a key, a code, a
+//! cookie or a state (LOG-007).
 
 mod view;
 

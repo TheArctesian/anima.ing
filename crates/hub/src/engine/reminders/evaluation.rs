@@ -1,6 +1,5 @@
 //! The evaluation of one rule (K-E6 Section 3; REM-001, REM-003, REM-004). Pure: no clock, no
-//! database and no random value. The order of the checks is fixed: the trigger is due; `unless`
-//! is not met; the cooldown passed; the daily limit is not reached.
+//! database and no random value.
 
 use chrono::{DateTime, SecondsFormat, TimeDelta, Utc};
 use chrono_tz::Tz;
@@ -19,15 +18,13 @@ const SOURCES: &str = "sources";
 /// The oldest sample that still fires a place rule (R-145).
 const PLACE_MAX_AGE: TimeDelta = TimeDelta::minutes(10);
 
-/// A trigger that is due: what it is about, the title for the text, and its class.
 struct Hit {
     subject: String,
     title: String,
     class: Class,
 }
 
-/// The start of the day of the rule at `now`: the local day of the zone of a time rule, else
-/// the day of UTC (REM-004). The caller counts the firings of the day from it.
+/// The local day of a time rule's zone, else the day of UTC (REM-004).
 #[must_use]
 pub fn day_start(rule: &Rule, now: DateTime<Utc>) -> DateTime<Utc> {
     let zone = match &rule.trigger {
@@ -67,8 +64,6 @@ fn placed(rule: &Rule, moment: &Moment<'_>) -> Vec<Hit> {
         .collect()
 }
 
-/// The hit of a record for a source event rule: the source and the kind are equal, and the
-/// title contains `contains` in any case.
 fn event_hit(
     (source, kind, contains): (&str, &str, Option<&str>),
     occurrence: &Occurrence,
@@ -92,8 +87,6 @@ fn event_hit(
     })
 }
 
-/// The hit of a change of health that the source framework gave, for the account of the rule
-/// or for any account.
 fn state_hit((account, state): (Option<&Reference>, &str), occurrence: &Occurrence) -> Option<Hit> {
     let Occurrence::Record {
         source,
@@ -114,8 +107,8 @@ fn state_hit((account, state): (Option<&Reference>, &str), occurrence: &Occurren
     })
 }
 
-/// The hit of an expiry: the nearest number of days that the time left is not more than. The
-/// larger numbers do not fire for a record that is first seen late.
+/// Only the nearest number of days fires, so the larger ones do not fire for a record that is
+/// first seen late.
 fn expiry_hit(
     (subject, days_before): (&str, &[u32]),
     occurrence: &Occurrence,
@@ -143,7 +136,6 @@ fn expiry_hit(
     })
 }
 
-/// The hit of one new occurrence for the trigger, when the trigger is about it.
 fn occurred(trigger: &Trigger, occurrence: &Occurrence, now: DateTime<Utc>) -> Option<Hit> {
     match trigger {
         Trigger::SourceEvent {
@@ -160,8 +152,6 @@ fn occurred(trigger: &Trigger, occurrence: &Occurrence, now: DateTime<Utc>) -> O
     }
 }
 
-/// The hits of a threshold: each new measure of the key that is on the side of the value when
-/// the measure before it was not. The measure before the first new one is the known one.
 fn crossed(rule: &Rule, moment: &Moment<'_>) -> Vec<Hit> {
     let Trigger::Threshold { key, is, value } = &rule.trigger else {
         return Vec::new();
@@ -207,7 +197,6 @@ fn hits(rule: &Rule, moment: &Moment<'_>) -> Vec<Hit> {
     }
 }
 
-/// Whether the `unless` of the rule is met: by what was known, or by a new occurrence.
 fn excused(unless: &Unless, moment: &Moment<'_>) -> bool {
     match unless {
         Unless::RecordToday { source, kind } => {
@@ -238,9 +227,8 @@ fn excused(unless: &Unless, moment: &Moment<'_>) -> bool {
     }
 }
 
-/// The firings of `rule` at `moment`: each one to send, and each one that the cooldown or the
-/// daily limit stops. A subject that fired before gives nothing, and a rule whose `unless` is
-/// met gives nothing.
+/// Each firing to send or stopped by the cooldown or the daily limit. A subject that fired
+/// before, or a rule whose `unless` is met, gives nothing.
 #[must_use]
 pub fn evaluate(rule: &Rule, history: &History, moment: &Moment<'_>) -> Vec<Due> {
     if rule

@@ -1,4 +1,4 @@
-//! The base of an account and its sealed key (K-E1 Section 7b, R-261).
+//! K-E1 Section 7b, R-261.
 
 use crate::engine::sources::acquisition::account_key::{
     Refusal, base, from_secret, instance_key, key, to_secret,

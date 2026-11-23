@@ -1,5 +1,4 @@
-//! The pure reading of `docker ps` and `docker logs` output, and the two checked values
-//! (HOST-001).
+//! The pure reading of `docker ps` and `docker logs` output (HOST-001).
 
 use chrono::{TimeZone, Utc};
 
@@ -52,7 +51,6 @@ fn host_001_the_list_gives_name_image_state_status_ports_and_compose_project() {
         (ContainerState::Exited, Health::None, None)
     );
     assert_eq!((&db.ports, &db.compose_project), (&vec![], &None));
-    // A container of no project, in the answer of a list that has no such label.
     assert_eq!(
         (&db.compose_working_dir, &db.compose_files),
         (&None, &vec![])
@@ -186,7 +184,6 @@ fn host_001_a_log_of_no_such_container_is_told_apart_from_a_docker_that_fails() 
         docker::log(&output("permission denied\n", Some(1))),
         Err(Error::DockerFailed)
     ));
-    // A line of the container that holds the words does not make the answer "not found".
     let quoted = "2026-11-18T18:00:00Z app: No such container: x\nError: the log driver failed\n";
     assert!(matches!(
         docker::log(&output(quoted, Some(1))),

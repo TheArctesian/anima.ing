@@ -1,8 +1,6 @@
-//! The request of a source whose server is of the operator (K-E1 Section 7b, R-261): the URL
-//! is the base of the account plus the path, and the host of the base is resolved one time and
-//! checked with the address policy of the hub before the key is sent. The policy is the one of
-//! each outbound connection: it permits private and VPN ranges and refuses loopback,
-//! link-local addresses, multicast, reserved ranges and the ranges of `ANIMA_PROBE_DENY`.
+//! The request of a source whose server is of the operator (K-E1 Section 7b, R-261): the host of
+//! the base is resolved one time and checked with the address policy of the hub before the key
+//! is sent.
 
 use std::net::IpAddr;
 
@@ -20,13 +18,11 @@ use crate::fleet::{
 };
 
 impl Transport {
-    /// Whether this transport also sends over plain `http`: only one made for a loopback stub
-    /// of the tests does.
+    /// Only a transport made for a loopback stub of the tests sends plain `http`.
     pub(in crate::engine::sources) const fn sends_plain_http(&self) -> bool {
         self.base_override.is_some()
     }
 
-    /// Sends the provider's `request` to the server at `base` with the key of the account.
     /// The connection goes only to an address that the policy permitted; the name is not
     /// resolved a second time, and no redirect is followed.
     ///

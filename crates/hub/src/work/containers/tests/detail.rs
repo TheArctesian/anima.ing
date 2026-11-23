@@ -1,6 +1,3 @@
-//! The details of one container (HOST-017): the command line the device hears and the pure
-//! reading of what Docker 29 writes for it.
-
 use chrono::{TimeZone, Utc};
 use sqlx::PgPool;
 
@@ -13,8 +10,6 @@ use crate::{
     },
 };
 
-/// What `docker container inspect` writes in the hub's format for a running container with a
-/// health check, a volume, one network, one label and three environment variables.
 const INSPECTED: &str = concat!(
     r#"{"id":"4f5c1d2e3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a","#,
     r#""name":"/dawarich_app","image":"freikin/dawarich:latest","#,
@@ -34,7 +29,6 @@ const INSPECTED: &str = concat!(
     r#""labels":{"probe":"1"},"env":["PROBE_SECRET","EMPTY","PATH"]}"#,
 );
 
-/// What `docker top` writes for it.
 const TOP: &str = "\
 UID                 PID                 PPID                C                   STIME               TTY                 TIME                CMD
 root                805                 781                 0                   07:40               ?                   00:00:00            sleep 300
@@ -120,8 +114,7 @@ fn host_017_the_processes_are_the_rows_of_docker_top() {
     );
 }
 
-/// What Docker 29 writes for a container that was stopped: the last health status stays,
-/// and the network has no address.
+/// Docker 29 keeps the last health status of a stopped container and gives its network no address.
 const STOPPED: &str = concat!(
     r#"{"id":"4f5c1d2e3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a","#,
     r#""name":"/old-db","image":"postgres:17","imageId":"sha256:f59a","path":"postgres","#,
@@ -142,7 +135,6 @@ fn host_017_a_container_that_does_not_run_has_its_details_and_no_process() {
         (read.command.as_slice(), read.restart_policy.as_str()),
         (["postgres".to_owned()].as_slice(), "no")
     );
-    // The last status of the health check is not the health of a container that does not run.
     assert_eq!(
         (read.health, read.failing_streak, read.last_health_run),
         (Health::None, 3, None)
@@ -170,7 +162,6 @@ fn host_017_a_warning_of_docker_before_either_part_hides_nothing() {
         (read.name.as_str(), read.processes.len()),
         ("dawarich_app", 2)
     );
-    // A line of the format that cannot be read is not a Docker that failed.
     let broken = format!(
         "{}\nError response from daemon: not running\n",
         &INSPECTED[..60]
@@ -224,8 +215,8 @@ async fn host_017_the_command_asks_for_the_names_of_the_environment_and_never_a_
     assert_eq!(read.processes.len(), 2);
     let heard = execs(&bench);
     assert_eq!(heard.len(), 1);
-    // The whole line: the only use of the environment is the text before the first `=` of
-    // each entry, and the output of a health check is not asked for.
+    // Only the text before the first `=` of each environment entry is read, and no health check
+    // output (HOST-017).
     let format = concat!(
         r#"'{"id":{{json .Id}},"name":{{json .Name}},"image":{{json .Config.Image}},"#,
         r#""imageId":{{json .Image}},"path":{{json .Path}},"args":{{json .Args}},"#,

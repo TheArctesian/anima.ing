@@ -1,4 +1,4 @@
-//! The rows of `sealed_records` (K-E5 Section 3). Each query names its columns.
+//! K-E5 Section 3.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;
@@ -53,8 +53,7 @@ pub(super) async fn read(
     row.map(TryInto::try_into).transpose()
 }
 
-/// Inserts the record of the owner or replaces its bytes. `true` for a record that is new: the
-/// row is locked first, so the answer is of this transaction.
+/// The row is locked first, so `true` (a new record) holds for this transaction.
 pub(super) async fn upsert(
     conn: &mut PgConnection,
     id: SealedRecordId,
@@ -123,7 +122,6 @@ pub(super) async fn insert_offer(
     .map(drop)
 }
 
-/// Deletes the offer and gives its bytes when it did not end before `now`.
 pub(super) async fn take_offer(
     conn: &mut PgConnection,
     id: KeyOfferId,
