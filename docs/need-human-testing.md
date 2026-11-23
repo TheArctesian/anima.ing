@@ -5542,6 +5542,14 @@ existing assignments and client retries. They do not cover two real devices or a
 5. Open Projects on a device that holds an empty earlier group. Expected: the group appears on
    this hub and on the second device, even though it has no projects. If the hub is too old to
    import empty groups, the name stays stored locally until the hub is updated.
+6. Open Projects with earlier device groups against a hub that supports shared groups but not
+   their import. Expected: a quiet note says that earlier groups need a newer hub. Shared groups
+   and project cards still work. Keep Projects visible through two refreshes. Expected: the client
+   does not repeat the unsupported import. After the hub is updated, leave Projects and open it
+   again. Expected: the earlier groups import; only acknowledged memberships leave device storage.
+   This compatibility repair is built on `t3/fix-project-group-sync-compatibility`. Synthetic
+   client tests cover the old schema responses, errors and retries; the installed app and the
+   hub update still need this check.
 
 The old device storage has no hub address. Unknown or foreign-hub memberships remain stored
 on the device; they are not imported into another hub or deleted. The operator chose B on

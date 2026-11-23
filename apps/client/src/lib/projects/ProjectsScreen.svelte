@@ -111,6 +111,8 @@
     <Notice tone="info" title="Groups need a newer hub" line="This hub is older than project groups. Update the hub to group your projects." />
   {:else if shared?.problem}
     <ErrorState message={`Project groups did not sync. ${shared.problem}`} onRetry={() => void shared?.refresh()} />
+  {:else if shared?.importUnserved}
+    <Notice tone="info" title="Earlier groups need a newer hub" line="Your earlier groups are kept on this device. Shared groups still work. Update the hub, then reopen Projects to sync the earlier groups." />
   {/if}
   {#if selecting}
     <SelectBar groups={projectGroups} canEdit={shared === null || shared.ready} {selected} shown={shownIds} onDone={toggleSelecting} />
