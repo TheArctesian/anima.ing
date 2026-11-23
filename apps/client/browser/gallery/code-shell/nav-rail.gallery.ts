@@ -44,8 +44,8 @@ for (const chosen of MODES.filter((mode) => !mode.dyslexic && mode.width === 128
       const panel = (title: string, png: string) =>
         `<figure><figcaption>${title}</figcaption><img src="data:image/png;base64,${png}"></figure>`;
       await page.setContent(
-        `<style>body{margin:0;display:flex;gap:24px;padding:16px;background:${chosen.theme === 'dark' ? '#2e3440' : '#eceff4'};` +
-          `font:14px sans-serif;color:${chosen.theme === 'dark' ? '#eceff4' : '#2e3440'}}figure{margin:0}img{display:block;border:1px solid #888}</style>` +
+        `<style>body{margin:0;display:flex;gap:24px;padding:16px;color-scheme:${chosen.theme};background:Canvas;` +
+          `font:14px sans-serif;color:CanvasText}figure{margin:0}img{display:block;border:1px solid GrayText}</style>` +
           panel('Collapsed by its button (Devices)', byButton) +
           panel('Folded by Code', byCode),
       );
