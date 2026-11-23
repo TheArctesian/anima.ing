@@ -12,14 +12,14 @@ use daemon_core::{
     hardware::Hardware,
     inventory::Inventory,
     readings::Drive,
-    wire::{RefusalCode, TokenHash},
+    wire::{RefusalCode, ThreadSummaries, ThreadSummariesReceipt, TokenHash},
 };
 use sqlx::{PgConnection, PgPool};
 
 use super::samples::Rows;
 use crate::{
     fleet::{
-        agent_usage,
+        agent_threads, agent_usage,
         devices::{self, MetricsSource},
         events::{self, ActorKind, Bus, NewEvent, Severity, Source},
         metrics::{
@@ -64,12 +64,13 @@ pub(super) struct Push<'a> {
     pub(super) daemon_version: Option<&'a str>,
     /// `None`: nothing new; `Some`: its state and session days are stored (R-135, AIS-020).
     pub(super) agent_usage: Option<&'a AgentUsage>,
+    pub(super) agent_threads: Option<&'a ThreadSummaries>,
 }
 
 /// What became of a batch that reached the store.
 pub(super) enum Written {
     /// Stored, with how many of its samples were new.
-    Kept(i64),
+    Kept(i64, Option<ThreadSummariesReceipt>),
     /// Not stored: the source or the token changed since the batch was checked
     /// (`TOKEN_REFUSED`), or it would pass [`MAX_NEW_SERIES`] (`MALFORMED`).
     Refused(RefusalCode),
@@ -128,8 +129,12 @@ pub(super) async fn write(
     if taken.needed {
         events::record(&mut tx, bus, now, need_gone(push.device, push.name)).await?;
     }
+    let receipt = match push.agent_threads {
+        Some(summaries) => Some(agent_threads::record(&mut tx, push.device, summaries).await?),
+        None => None,
+    };
     tx.commit().await?;
-    Ok(Written::Kept(kept))
+    Ok(Written::Kept(kept, receipt))
 }
 
 /// Writes the lists the batch announced, each in place of the stored one: the GPU set, the
