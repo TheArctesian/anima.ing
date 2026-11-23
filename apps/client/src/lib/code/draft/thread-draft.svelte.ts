@@ -37,12 +37,30 @@ const refused = (words: string) => (): Promise<Outcome> => Promise.resolve({ ok:
  */
 export class ThreadDraft {
   folder = $state<string | null>(null);
+  /**
+   * No project (T3 Code's scratch draft): the runner starts the thread in a folder of its own under `~/Anima Scratch`
+   * (`start` with an empty folder, THR-041). A draft with no folder starts so; choosing a project ends it.
+   */
+  scratch = $state(false);
   choice = $state<DraftChoice>(FIRST_CHOICE);
   /** The notice of the last folder that was read, shown over the composer until the start. */
   notice = $state<FolderNotice | null>(null);
 
   constructor(folder: string | null) {
     this.folder = folder;
+    this.scratch = folder === null;
+  }
+
+  /** The draft starts in `folder`, a project of this computer. */
+  inFolder(folder: string): void {
+    this.folder = folder;
+    this.scratch = false;
+  }
+
+  /** The draft starts with no project, in a scratch folder the runner makes. */
+  withoutProject(): void {
+    this.folder = null;
+    this.scratch = true;
   }
 
   /** The composer's engine for this draft: `call` is the runner, `started` takes the new thread, `retry` asks for the models again. */
@@ -77,9 +95,10 @@ export class ThreadDraft {
    * the next send starts (OD-THR21: project settings are honoured, with a notice).
    */
   async #start(prompt: string, call: (action: Action) => Promise<CallResult>, started: (thread: string) => void): Promise<Outcome> {
-    const folder = this.folder;
+    const folder = this.scratch ? '' : this.folder;
     if (folder === null) return { ok: false, words: NO_FOLDER };
-    if (this.notice?.folder !== folder) {
+    // A scratch folder is new and empty: it has no project files to read.
+    if (folder !== '' && this.notice?.folder !== folder) {
       const read = await call({ call: 'folder', folder });
       const lines = !read.ok ? [NOT_CHECKED] : read.outcome.outcome === 'folder' ? read.outcome.notice : [];
       this.notice = { folder, lines };

@@ -54,7 +54,7 @@ async function started(listed: () => boolean): Promise<{ shell: ReturnType<typeo
   const reads: string[] = [];
   const files = { list: () => Promise.resolve([]), read: (id: string) => (reads.push(id), Promise.reject(new Error('not_found'))) };
   const store = new ThreadsStore(files, null, () => new Date('2026-11-23T03:06:43Z'), live);
-  app = mount(ThreadBody, { target: document.body, props: { store, now: new Date('2026-11-23T03:06:43Z') } });
+  app = mount(ThreadBody, { target: document.body, props: { store, now: new Date('2026-11-23T03:06:43Z'), toolsOpen: false } });
   const draft = new ThreadDraft('/w/anima.ing');
   const engine = draft.engine((action) => live.call(action), (id) => void store.open(id, true), MODELS_WAITING);
   expect(await engine.send({ prompt: 'Fix the test', attachments: [] } as unknown as Parameters<typeof engine.send>[0])).toEqual({ ok: true });
