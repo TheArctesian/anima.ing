@@ -33,7 +33,8 @@ pub struct Route {
     pub token: String,
     pub proof: Proof,
     pub failed_reads: u32,
-    /// The second consent at the machine (OD-HOST-43). Nothing sets it yet.
+    /// The second consent at the machine (OD-HOST-43), which only a public route waits for
+    /// (R-390). Nothing sets it yet.
     pub machine_consent: bool,
     /// The hub's record of the application names this device and this port, and no socket of
     /// the engine (SF-331). The hub keeps no such record before task H6, so
@@ -89,7 +90,9 @@ impl Route {
         if self.proof != Proof::Proven {
             return Some(Waits::Proof);
         }
-        if !self.machine_consent {
+        // A private route needs no consent at the machine (R-390); a public one does
+        // (OD-HOST-43). The access is fixed when the route is added and never changes.
+        if self.access == Access::Public && !self.machine_consent {
             return Some(Waits::MachineConsent);
         }
         let unmarked =

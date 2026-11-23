@@ -4,6 +4,7 @@
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
+use super::kinds::Access;
 use crate::fleet::targets::{AddressPolicy, on_link};
 
 /// The ports of the sessions (SSH, VNC, RDP): never the port of an application (Section 12.3).
@@ -12,7 +13,7 @@ const SESSION_PORTS: [u16; 3] = [22, 5900, 3389];
 /// kubelet (10250). Whoever reaches one controls the machine (SF-331).
 const ENGINE_PORTS: [u16; 3] = [2375, 2376, 10250];
 /// The ports of databases (PostgreSQL, MySQL, Redis, MongoDB) and of Prometheus (9090): never a
-/// page of an application for the public.
+/// page of an application for the public. A private route may reach one (R-391).
 const SERVICE_PORTS: [u16; 5] = [5432, 3306, 6379, 27017, 9090];
 /// The address of the metadata service of the clouds.
 const METADATA: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 254, 169, 254));
@@ -28,7 +29,7 @@ pub enum TargetRefusal {
     AnimaPort,
     #[error("the port controls the engine of the containers (2375, 2376, 10250)")]
     EnginePort,
-    #[error("the port is a port of a database or of metrics, never of a public page")]
+    #[error("the port is a port of a database or of metrics: only a private route may reach it")]
     ServicePort,
     #[error("the device resolves to an address that the hub may not reach for an application")]
     Address,
@@ -36,12 +37,12 @@ pub enum TargetRefusal {
     Hub,
 }
 
-/// Checks the port of an application.
+/// Checks the port of an application for a route of `access`.
 ///
 /// # Errors
-/// [`TargetRefusal`] for port 0, a session port, a port of Anima, of the engine, of a database
-/// or of metrics.
-pub fn check_port(port: i64) -> Result<u16, TargetRefusal> {
+/// [`TargetRefusal`] for port 0, a session port, a port of Anima or of the engine, and, for a
+/// public route, a port of a database or of metrics (R-391).
+pub fn check_port(port: i64, access: Access) -> Result<u16, TargetRefusal> {
     let port = u16::try_from(port)
         .ok()
         .filter(|port| *port > 0)
@@ -56,14 +57,14 @@ pub fn check_port(port: i64) -> Result<u16, TargetRefusal> {
     if ENGINE_PORTS.contains(&port) {
         return Err(TargetRefusal::EnginePort);
     }
-    if SERVICE_PORTS.contains(&port) {
+    if access == Access::Public && SERVICE_PORTS.contains(&port) {
         return Err(TargetRefusal::ServicePort);
     }
     Ok(port)
 }
 
-/// Checks the address that the route will connect to, as resolved once when the name is added.
-/// Its port must pass [`check_port`], also on a link address. A link address is reached through
+/// Checks the address that a route of `access` will connect to, as resolved once when the name
+/// is added. Its port must pass [`check_port`], also on a link address. A link address is reached through
 /// the link only. Each other address must pass the hub's address rule (no loopback, link-local
 /// or metadata address) and must not be one of `hub_listeners`.
 ///
@@ -71,10 +72,11 @@ pub fn check_port(port: i64) -> Result<u16, TargetRefusal> {
 /// The refusal of [`check_port`], [`TargetRefusal::Address`] or [`TargetRefusal::Hub`].
 pub fn check_address(
     target: SocketAddr,
+    access: Access,
     policy: &AddressPolicy,
     hub_listeners: &[SocketAddr],
 ) -> Result<SocketAddr, TargetRefusal> {
-    check_port(i64::from(target.port()))?;
+    check_port(i64::from(target.port()), access)?;
     let ip = target.ip().to_canonical();
     if on_link(ip) {
         return Ok(target);

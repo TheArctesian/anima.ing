@@ -4014,6 +4014,8 @@ Effect, and who can cause it: A container on a machine of the network reaches a 
 
 Mitigation now: Section 16.7: a private route listens only on the address of the hub on the network of Anima and the proxy checks the interface; never in the table of the door; private means each node, containers included; the same rights as a public route.
 
+Change (2026-11-22, R-390 and R-391, branch `hosted/routes-private-consent`): a private route no longer waits for the consent at the machine, and it may point at the port of a database or of metrics. So a person or an agent with a login token makes a database of one machine reachable to each node of the network of Anima, also each container of each machine, with no question at the machine. The proxy still serves a private route only on its private listener, to a client address in the networks of the nodes (`Proxy::reaches`), and never in the table of the public listener. What stays open: "private" is each node of the network, not only the signed-in devices of the account.
+
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
 
 ### SF-248: Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium
