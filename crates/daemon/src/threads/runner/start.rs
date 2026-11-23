@@ -17,6 +17,7 @@ const ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
 use crate::threads::wire;
 
 mod new_thread;
+mod scratch;
 pub(super) use crate::threads::notice::chosen_folder;
 pub(super) use new_thread::NewThread;
 
@@ -54,7 +55,10 @@ impl Runner {
     pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
         // A start whose copy is being asked counts against the soft limit too.
         self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
-        chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
+        let no_project = new.folder.as_os_str().is_empty();
+        if !no_project {
+            chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
+        }
         self.draft_ready(&new)?;
         if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
             self.ask_login_again(new.program).await;
@@ -171,7 +175,22 @@ impl Runner {
     }
 
     /// The start of a thread whose copy answered its version.
-    async fn start_checked(&mut self, asking: Asking) -> Result<(), Refusal> {
+    /// A start with no project gets its new folder here, after each check that needs no folder,
+    /// and loses it again when a later check refuses the start (THR-041).
+    async fn start_checked(&mut self, mut asking: Asking) -> Result<(), Refusal> {
+        let no_project = asking.new.folder.as_os_str().is_empty();
+        if no_project {
+            asking.new.folder = scratch::made(&self.env, chrono::Local::now().date_naive())?;
+        }
+        let folder = asking.new.folder.clone();
+        let started = self.start_in(asking).await;
+        if no_project && started.is_err() {
+            scratch::unmade(&folder);
+        }
+        started
+    }
+
+    async fn start_in(&mut self, asking: Asking) -> Result<(), Refusal> {
         let Asking {
             new,
             back,

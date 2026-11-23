@@ -60,7 +60,7 @@ async fn th111_a_file_of_the_draft_goes_with_the_first_prompt_of_the_start_that_
     let shown = client
         .until(|reply| matches!(change(reply), Some(Change::Prompt { text, .. }) if text == "look"))
         .await;
-    let Outcome::Started { thread } = client.done(call).await else {
+    let Outcome::Started { thread, .. } = client.done(call).await else {
         panic!("the thread started");
     };
     let Some(Change::Prompt { files, .. }) = change(&shown) else {
@@ -92,7 +92,7 @@ async fn th111_the_id_of_a_thread_is_never_a_key_of_a_draft() {
     let mut client = kit.client().await;
     client.call(Action::Watch).await;
     let call = client.call(start(&kit, Uuid::now_v7(), Vec::new())).await;
-    let Outcome::Started { thread } = client.done(call).await else {
+    let Outcome::Started { thread, .. } = client.done(call).await else {
         panic!("the thread started");
     };
     let taken = client.call(draft_file(thread, b"a")).await;

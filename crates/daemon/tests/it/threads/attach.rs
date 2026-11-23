@@ -46,7 +46,7 @@ async fn idle_thread(kit: &Kit, client: &mut Client) -> Uuid {
             attachments: Vec::new(),
         })
         .await;
-    let Outcome::Started { thread } = client.done(start).await else {
+    let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
     client.until(state_is(RunState::Idle)).await;

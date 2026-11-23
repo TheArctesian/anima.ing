@@ -96,7 +96,7 @@ async fn th104_th105_a_claude_start_in_plan_mode_names_its_models_and_codex_in_p
     let started = client
         .call(start(&kit, Program::ClaudeCode, Mode::Plan))
         .await;
-    let Outcome::Started { thread } = client.done(started).await else {
+    let Outcome::Started { thread, .. } = client.done(started).await else {
         panic!("the thread started");
     };
     client.until(state_is(RunState::Idle)).await;
@@ -121,7 +121,7 @@ async fn th106_the_updates_of_a_thread_are_read_back_before_a_number() {
     let started = client
         .call(start(&kit, Program::ClaudeCode, Mode::FullAccess))
         .await;
-    let Outcome::Started { thread } = client.done(started).await else {
+    let Outcome::Started { thread, .. } = client.done(started).await else {
         panic!("the thread started");
     };
     let watch = client.call(Action::Watch).await;

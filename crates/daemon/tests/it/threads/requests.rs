@@ -43,7 +43,7 @@ async fn start(client: &mut Client, kit: &Kit) -> Uuid {
             attachments: Vec::new(),
         })
         .await;
-    let Outcome::Started { thread } = client.done(start).await else {
+    let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
     thread
