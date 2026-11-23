@@ -1,6 +1,6 @@
 import { ContainersStore } from '$lib/containers/store.svelte';
 import type { HostingCalls, Machine } from './api';
-import type { Place, Show } from './list';
+import type { Place, Show, View } from './list';
 
 export type ReadStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
@@ -13,6 +13,8 @@ export class HostingStore {
   search = $state('');
   machine = $state('');
   show = $state<Show>('all');
+  /** HOST-034: the applications, or each container of each machine. */
+  view = $state<View>('applications');
   open = $state.raw<readonly string[]>([]);
 
   /** HSE-008: the one machine of a device page; the list then reads no other machine. Null on the page Hosting. */
