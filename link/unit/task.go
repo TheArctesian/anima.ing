@@ -9,8 +9,7 @@ import (
 
 var sidPattern = regexp.MustCompile(`^S-1-[0-9]+(-[0-9]+)+$`)
 
-// windowsPath accepts local absolute paths. XML escaping protects the task document;
-// quotes, variables, alternate streams and relative components are refused.
+// windowsPath refuses quotes, variables, alternate streams and relative components.
 func windowsPath(value string) bool {
 	normalized := strings.ReplaceAll(value, `\`, "/")
 	if len(normalized) < 3 || normalized[1:3] != ":/" || path.Clean(normalized) != normalized {
@@ -37,7 +36,7 @@ func escaped(value string) string {
 func taskArguments(args []string) string {
 	quoted := make([]string, len(args))
 	for i, arg := range args {
-		// Paths cannot contain quotes. Double trailing backslashes before the closing quote.
+		// Paths hold no quotes, so only trailing backslashes need doubling.
 		suffix := len(arg) - len(strings.TrimRight(arg, `\`))
 		quoted[i] = `"` + arg + strings.Repeat(`\`, suffix) + `"`
 	}

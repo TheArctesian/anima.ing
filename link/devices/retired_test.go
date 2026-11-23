@@ -10,7 +10,6 @@ import (
 	"github.com/TheArctesian/anima/link/statedir"
 )
 
-// renewed takes a device through a whole key renewal.
 func renewed(t *testing.T, store *devices.Store, old, next devices.Device) {
 	t.Helper()
 	if _, err := store.Renew(old.Key, next.Key); err != nil {
@@ -38,15 +37,13 @@ func TestLNK004AKeyThatLeftTheListIsNeverPermittedAgain(t *testing.T) {
 	dir.Close()
 	store, _ = openStore(t, path) // the record is on disk
 
-	// The key that the renewal replaced would get the revoked device's
-	// address again; so would the revoked key itself.
+	// The replaced key and the revoked key would both get the revoked device's address again.
 	for name, key := range map[string]devices.Device{"replaced": {Key: first}, "revoked": {Key: second}} {
 		key.Name = "new laptop"
 		if _, err := store.Permit(key); !errors.Is(err, devices.ErrRetired) {
 			t.Errorf("the %s key: Permit = %v, want ErrRetired", name, err)
 		}
 	}
-	// Nor can a device in its renewal name such a key as its next key.
 	for _, gone := range []devices.Device{{Key: first}, {Key: second}} {
 		if _, err := store.Renew(other, gone.Key); !errors.Is(err, devices.ErrRetired) {
 			t.Errorf("Renew to a key that left the list = %v, want ErrRetired", err)

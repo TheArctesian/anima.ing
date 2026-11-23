@@ -13,8 +13,7 @@ import (
 
 const fileName = "devices.json"
 
-// Store is the list of permitted devices of a running hub link. Each change
-// is on disk before the call returns.
+// Store is the list of permitted devices of a running hub link. Each change is on disk before the call returns.
 type Store struct {
 	dir *statedir.Dir
 	now func() time.Time
@@ -24,9 +23,7 @@ type Store struct {
 	retired retired
 }
 
-// Open reads the list from the state directory. A directory with no list
-// has no permitted device: it refuses every key. now is the clock: a key
-// expires by it (LNK-005).
+// Open reads the list from the state directory; with no list it refuses every key. Keys expire by now (LNK-005).
 func Open(dir *statedir.Dir, now func() time.Time) (*Store, error) {
 	var saved []Device
 	if err := dir.Read(fileName, &saved); err != nil && !errors.Is(err, statedir.ErrAbsent) {
@@ -68,9 +65,7 @@ func (s *Store) Permit(device Device) (Device, error) {
 	return next[device.Key], s.save(next)
 }
 
-// Revoke removes a device from the list (LNK-004), with its current key and
-// its next key. It returns the device, so that the hub link can disconnect
-// both keys: see hublink.Disconnect.
+// Revoke removes a device with its current and its next key from the list, and returns it (LNK-004).
 func (s *Store) Revoke(key tunnel.DeviceKey) (Device, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -89,8 +84,6 @@ func (s *Store) Renew(current, next tunnel.DeviceKey) (Device, error) {
 	if s.retired.hasKey(next) {
 		return Device{}, ErrRetired
 	}
-	// A next key that the device named before and now replaces has left
-	// the list too.
 	replaced := s.current[current].NextKey
 	updated, device, err := s.current.renewing(current, next, s.now())
 	if err != nil {
@@ -102,9 +95,7 @@ func (s *Store) Renew(current, next tunnel.DeviceKey) (Device, error) {
 	return device, s.saveWithout(updated, s.retired.withKeys(replaced))
 }
 
-// Promote makes a next key the current key of its device. The caller has
-// a stream from the next key, which proves that the device holds it. The
-// result names the key that was replaced, for the hub link to disconnect.
+// Promote makes a next key the current key of its device; the caller's stream from the next key proves the device holds it.
 // For a key that is not a next key it returns nil and changes nothing.
 func (s *Store) Promote(next tunnel.DeviceKey) (*Promotion, error) {
 	s.mu.Lock()
@@ -116,18 +107,14 @@ func (s *Store) Promote(next tunnel.DeviceKey) (*Promotion, error) {
 	return &promotion, s.saveWithout(updated, s.retired.withKeys(promotion.Replaced))
 }
 
-// Permits reports whether a key can connect now: it is the current or the
-// next key of a device in the list, and the device's key has not expired.
-// The hub link asks when a device connects and for each new stream. A device
-// that is connected stays connected when it leaves the list or expires,
-// until the hub link disconnects it (LNK-004).
+// Permits reports whether a key is the current or next key of a device whose key has not expired.
+// A connected device stays connected after it leaves the list or expires, until the hub link disconnects it (LNK-004).
 func (s *Store) Permits(key tunnel.DeviceKey) bool {
 	_, permitted := s.AddressOf(key)
 	return permitted
 }
 
-// AddressOf returns the link address of the device that a key can connect
-// as now. It reports false for a key that Permits refuses.
+// AddressOf returns the link address of the device that a key can connect as now.
 func (s *Store) AddressOf(key tunnel.DeviceKey) (netip.Addr, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -149,7 +136,6 @@ func (s *Store) All() []Device {
 	return s.current.sorted()
 }
 
-// save writes the list and, when it is on disk, makes it the current list.
 func (s *Store) save(next list) error {
 	if err := s.dir.Write(fileName, next.sorted()); err != nil {
 		return err
@@ -158,10 +144,7 @@ func (s *Store) save(next list) error {
 	return nil
 }
 
-// saveWithout writes what has left the list and then the list. The order
-// matters when the process stops between the two: a key that is retired
-// and still in the list keeps working until it is removed again, but a key
-// that left the list with no record could come back.
+// saveWithout writes the retired keys before the list, so a key that left the list cannot come back after a stop.
 func (s *Store) saveWithout(next list, gone retired) error {
 	if err := s.dir.Write(retiredFileName, gone); err != nil {
 		return err

@@ -27,9 +27,7 @@ func TestMain(m *testing.M) { testbed.Main(m) }
 
 const greeting = "the hub answers"
 
-// seedRelay gives a new state directory a relay on loopback, as if an
-// earlier start had chosen it. Without it the hub link would ask the
-// internet for a relay map.
+// seedRelay gives a new state directory a loopback relay, so that the hub link does not ask the internet for one.
 func seedRelay(t *testing.T, state string) {
 	t.Helper()
 	dir, err := statedir.Open(state)
@@ -47,7 +45,6 @@ func seedRelay(t *testing.T, state string) {
 	}
 }
 
-// fakeHub is the loopback server that the hub link sends streams to.
 func fakeHub(t *testing.T) string {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -75,8 +72,7 @@ func (o *output) String() string {
 	return o.text.String()
 }
 
-// stateDir is a short path: a Unix socket path has a limit of about 100 bytes,
-// and the test's own temporary directory is too long on macOS.
+// stateDir is short: a Unix socket path has a limit of about 100 bytes, and t.TempDir is too long on macOS.
 func stateDir(t *testing.T) string {
 	t.Helper()
 	path, err := testpath.MkdirTemp("anima-link-")
@@ -87,7 +83,6 @@ func stateDir(t *testing.T) string {
 	return filepath.Join(path, "s")
 }
 
-// runningHub is a hub link that a test started.
 type runningHub struct {
 	state  string
 	stdin  io.Closer
@@ -102,13 +97,11 @@ func startHub(t *testing.T) runningHub {
 	return startHubOn(t, state)
 }
 
-// startHubOn starts a hub link on a state directory that has its relay.
 func startHubOn(t *testing.T, state string) runningHub {
 	t.Helper()
 	return startHubInFrontOf(t, state, fakeHub(t))
 }
 
-// startHubInFrontOf starts a hub link that sends streams to a target.
 func startHubInFrontOf(t *testing.T, state, target string) runningHub {
 	t.Helper()
 	stdinReader, stdinWriter := io.Pipe()
@@ -127,7 +120,6 @@ func startHubInFrontOf(t *testing.T, state, target string) runningHub {
 	return hub
 }
 
-// ctl runs one control verb as a second process would.
 func (h runningHub) ctl(t *testing.T, args ...string) (stdout string, code int) {
 	t.Helper()
 	var out, errs output
@@ -135,8 +127,7 @@ func (h runningHub) ctl(t *testing.T, args ...string) (stdout string, code int) 
 	return out.String() + errs.String(), code
 }
 
-// secretsOf reads every secret that a state directory holds, as the texts
-// that would show in a log.
+// secretsOf returns each secret of a state directory in each form that a log could show.
 func secretsOf(t *testing.T, state string) []string {
 	t.Helper()
 	text, err := os.ReadFile(filepath.Join(state, "hub.json"))
@@ -153,8 +144,6 @@ func secretsOf(t *testing.T, state string) []string {
 	return []string{saved.Key, strings.TrimPrefix(saved.Key, "privkey:"), saved.PresharedKey}
 }
 
-// get asks the fake hub for its greeting through the link, as a device with
-// the given key and the given hub address.
 func get(t *testing.T, key tunnel.PrivateKey, address string, limit time.Duration) (string, error) {
 	t.Helper()
 	hub, err := tunnel.ParseAddress(address)
@@ -179,7 +168,6 @@ func get(t *testing.T, key tunnel.PrivateKey, address string, limit time.Duratio
 	return string(body), err
 }
 
-// address asks the hub link for its address, as the operator does.
 func (h runningHub) address(t *testing.T) string {
 	t.Helper()
 	text, code := h.ctl(t, "address.show")
@@ -196,10 +184,6 @@ func (h runningHub) permit(t *testing.T, key tunnel.PrivateKey, name string) (st
 	return h.ctl(t, "devices.permit", fmt.Sprintf(`{"key":%q,"name":%q}`, keyText, name))
 }
 
-// startDevice starts a device link, as a program, for a device that already
-// has its key permitted on the hub and the hub's address saved.
-// startDevice starts a device link that the hub permits; more is more
-// arguments of the command "device".
 func startDevice(t *testing.T, hub runningHub, more ...string) (state, local string) {
 	t.Helper()
 	state = stateDir(t)

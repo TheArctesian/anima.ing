@@ -14,7 +14,6 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// rawHub is a loopback listener that gives each accepted connection to the test.
 func rawHub(t *testing.T) (target string, accepted chan net.Conn) {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -35,8 +34,6 @@ func rawHub(t *testing.T) (target string, accepted chan net.Conn) {
 	return listener.Addr().String(), accepted
 }
 
-// sendHello opens a stream from a permitted device and writes "hello" on
-// it. It returns what the hub side of the link got.
 func sendHello(t *testing.T, r rig, accepted chan net.Conn, key tunnel.PrivateKey) net.Conn {
 	t.Helper()
 	device, _ := r.device(t, key)

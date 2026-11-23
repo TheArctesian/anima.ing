@@ -14,22 +14,19 @@ import (
 	"github.com/TheArctesian/anima/link/statedir"
 )
 
-// joinLimit is how long a join waits for the hub, as for anima-link join.
 const joinLimit = 30 * time.Second
 
 var errBadInvite = errors.New("phonelink: this is not an invite")
 
-// joined is the answer of a join: the fingerprint of the device's key, which the operator can find on the hub.
 type joined struct {
 	Fingerprint string `json:"fingerprint"`
 }
 
-// started is the answer of a start: the loopback address that reaches the hub.
 type started struct {
 	Local string `json:"local"`
 }
 
-// linkStatus is the answer of a status. Path is "direct", "relayed" or "none" (LNK-006).
+// linkStatus.Path is "direct", "relayed" or "none" (LNK-006).
 type linkStatus struct {
 	Running       bool    `json:"running"`
 	Local         string  `json:"local,omitempty"`
@@ -45,7 +42,6 @@ type failure struct {
 	Error string `json:"error"`
 }
 
-// The one link of the app, and the directory that it holds while it runs.
 var (
 	guard       sync.Mutex
 	running     *devicelink.Link
@@ -55,7 +51,6 @@ var (
 	metricsPath string
 )
 
-// join uses the invite in line with the identity in the directory state, and saves the joined identity.
 func join(state, line string) (joined, error) {
 	invite, err := invites.Parse(line)
 	if err != nil {
@@ -84,7 +79,6 @@ func join(state, line string) (joined, error) {
 	return joined{Fingerprint: done.Key.Public().Fingerprint()}, nil
 }
 
-// start starts the link of the device in the directory state on listen; a link that runs already stays.
 func start(state, listen string) (started, error) {
 	guard.Lock()
 	defer guard.Unlock()
@@ -131,7 +125,6 @@ func metricsSocket(dir *statedir.Dir, fingerprint string) net.Listener {
 	}
 }
 
-// status reads the link that runs, if one does.
 func status() linkStatus {
 	guard.Lock()
 	defer guard.Unlock()
@@ -146,7 +139,6 @@ func status() linkStatus {
 	}
 }
 
-// stop stops the link that runs and lets its directory go.
 func stop() {
 	guard.Lock()
 	defer guard.Unlock()

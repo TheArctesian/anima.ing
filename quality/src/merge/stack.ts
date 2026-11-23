@@ -1,4 +1,3 @@
-/** The git work of a train: merges of branches one on the other in a worktree, and what a train holds. I/O. */
 import { undoMerge } from "./commit.ts";
 import { conflictsForAHand } from "./rules.ts";
 import { mergedBranch, type Tip } from "./train.ts";
@@ -8,17 +7,12 @@ function git(root: string, args: string[]): { ok: boolean; out: string } {
   return { ok: done.exitCode === 0, out: done.stdout.toString().trim() };
 }
 
-/** A branch that a train left out, and why. */
 export interface LeftOut {
   branch: string;
   reason: string;
 }
 
-/**
- * Merges each tip into the HEAD of `root`, in the order given. `finish` ends one merge that is
- * in progress (it commits) and returns the reason of a failure. A branch with a conflict for a
- * hand, or whose `finish` failed, is left out and the worktree is put back; the next one goes on.
- */
+/** A branch with a conflict for a hand, or whose `finish` failed, is left out and the worktree is put back. */
 export function stack(root: string, tips: Tip[], finish: (tip: Tip) => string | undefined): { merged: Tip[]; leftOut: LeftOut[] } {
   const merged: Tip[] = [];
   const leftOut: LeftOut[] = [];
@@ -37,7 +31,6 @@ export function stack(root: string, tips: Tip[], finish: (tip: Tip) => string | 
   return { merged, leftOut };
 }
 
-/** The branches that the commit `train` holds over `base`, in the order of their merges. */
 export function members(root: string, base: string, train: string): Tip[] {
   const lines = git(root, ["log", "--first-parent", "--reverse", "--format=%P%x09%s", `${base}..${train}`]).out.split("\n");
   return lines.flatMap((line) => {

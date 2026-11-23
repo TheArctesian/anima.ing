@@ -33,11 +33,7 @@ function clone(origin: string, name: string): string {
   return root;
 }
 
-/**
- * An origin with `dev` and two branches that passed, a conductor clone that holds the train
- * which the gates tested (the two branches merged on the first `dev`), and a second clone
- * that stands for the sessions which push to `dev` while the gates of the train run.
- */
+/** An origin with `dev` and two passed branches; `conductor` holds the tested train and `session` pushes to `dev` meanwhile. */
 function world(): { conductor: string; session: string; origin: string; tested: string; held: Tip[]; rules: Rules } {
   const folder = mkdtempSync(join(tmpdir(), "anima-carry-"));
   const origin = join(folder, "origin.git");
@@ -63,7 +59,6 @@ function world(): { conductor: string; session: string; origin: string; tested: 
   return { conductor, session, origin, tested, held, rules };
 }
 
-/** A session pushes one file to `dev`; the conductor then stands on that `dev`, as at the start of its step. */
 function devMoves(at: { conductor: string; session: string }, path: string, text: string): void {
   git(at.session, "pull", "--quiet", "origin", "dev");
   commit(at.session, path, text);

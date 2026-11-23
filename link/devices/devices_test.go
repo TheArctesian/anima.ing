@@ -30,7 +30,6 @@ func newKey() tunnel.DeviceKey { return tunnel.NewPrivateKey().Public() }
 
 var day = time.Date(2026, 11, 14, 9, 0, 0, 0, time.UTC)
 
-// today is the clock of the stores in these tests. A test moves it.
 var today = day
 
 func TestLNK002OnlyAPermittedKeyIsPermitted(t *testing.T) {
@@ -177,7 +176,7 @@ func TestLNK005AKeyIsRenewedInItsLast30DaysInTwoSteps(t *testing.T) {
 	}
 	dir.Close()
 
-	store, _ = openStore(t, path) // a restart between the steps
+	store, _ = openStore(t, path)
 	promotion, err := store.Promote(next)
 	if err != nil || promotion == nil || promotion.Replaced != old || promotion.Device.Key != next {
 		t.Fatalf("Promote = %+v, %v; want the device with its next key, in place of the old key", promotion, err)
@@ -205,7 +204,7 @@ func TestLNK004RevokingADeviceInARenewalRemovesBothKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	revoked, err := store.Revoke(next) // by either key
+	revoked, err := store.Revoke(next)
 	if err != nil || revoked.Key != old || revoked.NextKey != next {
 		t.Fatalf("Revoke = %+v, %v; want the device with both keys", revoked, err)
 	}

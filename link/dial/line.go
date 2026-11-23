@@ -1,22 +1,8 @@
-// Package dial is how the hub reaches a local port of a computer on its
-// link (HMD-048). The hub cannot open a stream to a device, so the device
-// opens it:
+// Package dial lets the hub reach a local port of a device, which opens the stream (HMD-048, HMD-049).
 //
-//  1. The hub link writes "open <port> <id>" on the device's stream of the
-//     reverse port (package presence). The id is 16 random bytes in hex.
-//  2. The device connects to the port on its own loopback address, only
-//     when the port is in its list of open ports (package ports, HMD-049).
-//  3. The device opens a new stream to the open port of the hub
-//     (tunnel.OpenPort) and writes "<id> ok", then the bytes of the local
-//     connection; or "<id> refused" (the port is not in the list) or
-//     "<id> closed" (nothing listens on it), and closes the stream.
-//
-// The hub gets the connection through its dial socket: the request line
-// "dial <link address> <port>", then the line "ok" and the bytes in both
-// directions, or one word line and the end of the connection.
-//
-// Each line ends with a newline. No line holds a secret, but an id is
-// known only to the hub and the one device, and is never logged.
+// The hub link writes "open <port> <id>" on the reverse port; the device answers on the open port with
+// "<id> ok" and the bytes, or "<id> refused" or "<id> closed". The hub's dial socket takes
+// "dial <link address> <port>" and answers "ok" and the bytes, or one word. An id is not logged.
 package dial
 
 import (
@@ -29,8 +15,7 @@ import (
 	"strings"
 )
 
-// The words of the answers. The device says the first three; the dial
-// socket also says the others.
+// The words of the answers. The device says the first three; the dial socket also says the others.
 const (
 	WordOK           = "ok"
 	WordRefused      = "refused"
@@ -40,8 +25,7 @@ const (
 	WordBadRequest   = "bad_request"
 )
 
-// Errors of this package: why the hub got no connection. Word gives the
-// word of each for the dial socket.
+// Errors of this package: why the hub got no connection.
 var (
 	ErrNotConnected = errors.New("dial: the device has no stream on the reverse port")
 	ErrRefused      = errors.New("dial: the port is not open on the device")
@@ -50,13 +34,10 @@ var (
 	ErrBadRequest   = errors.New("dial: the request is not valid")
 )
 
-// maxLine is the longest line of this package, without its newline.
 const maxLine = 128
 
-// idBytes is the number of random bytes of an id.
 const idBytes = 16
 
-// newID makes the id of one request.
 func newID() string {
 	id := make([]byte, idBytes)
 	_, _ = rand.Read(id)
@@ -71,8 +52,6 @@ func validID(id string) bool {
 	return err == nil && strings.ToLower(id) == id
 }
 
-// parsePort reads a port number in decimal with no sign and no leading
-// zero. Port 0 is not a port.
 func parsePort(text string) (uint16, bool) {
 	if text == "" || text[0] == '0' || text[0] == '+' {
 		return 0, false
@@ -81,7 +60,6 @@ func parsePort(text string) (uint16, bool) {
 	return uint16(port), err == nil
 }
 
-// openLine is the request of the hub on the reverse port.
 func openLine(port uint16, id string) string {
 	return "open " + strconv.Itoa(int(port)) + " " + id + "\n"
 }
@@ -92,8 +70,7 @@ type Request struct {
 	id   string
 }
 
-// ParseRequest reads a line of the hub on the reverse port, without its
-// newline. It reports false for a line that is not an open request.
+// ParseRequest reads a line of the hub on the reverse port, without its newline.
 func ParseRequest(line string) (Request, bool) {
 	fields := strings.Split(line, " ")
 	if len(fields) != 3 || fields[0] != "open" || !validID(fields[2]) {
@@ -103,10 +80,8 @@ func ParseRequest(line string) (Request, bool) {
 	return Request{Port: port, id: fields[2]}, valid
 }
 
-// answerLine is the first line of the device on the open port.
 func answerLine(id, word string) string { return id + " " + word + "\n" }
 
-// parseAnswer reads the first line of the device on the open port.
 func parseAnswer(line string) (id, word string, valid bool) {
 	id, word, found := strings.Cut(line, " ")
 	switch {
@@ -119,8 +94,6 @@ func parseAnswer(line string) (id, word string, valid bool) {
 	}
 }
 
-// parseDial reads the request line of the dial socket, without its
-// newline.
 func parseDial(line string) (netip.Addr, uint16, bool) {
 	fields := strings.Split(line, " ")
 	if len(fields) != 3 || fields[0] != "dial" {
@@ -131,9 +104,7 @@ func parseDial(line string) (netip.Addr, uint16, bool) {
 	return device, port, err == nil && valid
 }
 
-// Word is the word that the dial socket says for an error of Open. An
-// error of no other kind is a timeout: the hub link has stopped or the
-// stream ended.
+// Word is the word that the dial socket says for an error of Open; any other error is a timeout.
 func Word(err error) string {
 	switch {
 	case errors.Is(err, ErrNotConnected):
@@ -149,9 +120,7 @@ func Word(err error) string {
 	}
 }
 
-// readLine reads one line of at most maxLine bytes, one byte at a time: the
-// bytes after the line belong to the connection that follows, and a
-// buffered reader would take them.
+// readLine reads one byte at a time: the bytes after the line belong to the connection that follows.
 func readLine(stream io.Reader) (string, bool) {
 	line := make([]byte, 0, maxLine)
 	one := make([]byte, 1)

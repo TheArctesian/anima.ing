@@ -1,10 +1,3 @@
-// Merges one branch into `dev`: `bun quality/bin/merge.ts <branch> [--push]`, in a clean worktree
-// that is on `dev`. It writes the generated files again in place of a merge of them, gives each
-// placeholder its number (PLN-021), makes the merge commit and runs the document gates on that
-// commit (`src/merge/commit.ts` says why in that order); if they fail, the commit is removed.
-// Without `--push` it pushes nothing and prints the command. It never pushes to `main`.
-// `bun quality/bin/merge.ts --each <branch>...` merges several, one at a time, each with its own push,
-// and merges one again when `dev` moved during its merge (`src/merge/each.ts`).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { undoMerge } from "../src/merge/commit.ts";
@@ -25,7 +18,6 @@ function stop(code: number, message: string): never {
   process.exit(code);
 }
 
-/** Runs a step of the merge; a step that fails undoes the merge and ends the program. */
 function step(argv: string[]): string {
   const done = run(argv);
   if (!done.ok) {
@@ -35,7 +27,6 @@ function step(argv: string[]): string {
   return done.out;
 }
 
-/** With the rule `fullGates: github`, the gates of the tip of the branch must have passed on GitHub. */
 function requireGatesOnGitHub(commit: string): void {
   const repository = process.env["GITHUB_REPOSITORY"] ?? run(["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"], true).out.trim();
   const answer = run(["gh", "api", `repos/${repository}/commits/${commit}/check-runs`, "--jq", ".check_runs"], true);
