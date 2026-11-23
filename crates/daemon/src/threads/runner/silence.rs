@@ -12,8 +12,11 @@ use agent_threads::control::{Refusal, RunState};
 use agent_threads::drive::Program;
 use uuid::Uuid;
 
-/// The time a program has to answer `--version`.
+/// The time a program has to answer `--version` on a computer that is not busy; a busy one
+/// gives it more ([`probe_wait`]).
 const PROBE_WAIT: Duration = Duration::from_secs(20);
+/// The most time a program has to answer `--version`, however busy the computer is.
+const PROBE_CAP: Duration = Duration::from_secs(120);
 /// The time a different copy has to answer, when the chosen one did not.
 const OTHER_WAIT: Duration = Duration::from_secs(5);
 /// How long a copy that did not answer is not asked again: a second start in this time gets
@@ -45,6 +48,38 @@ struct Asked {
     stamp: Option<Stamp>,
     at: Instant,
     version: Option<String>,
+    /// How long it was given, and the load of the computer when it was asked.
+    waited: Duration,
+    load: Option<Load>,
+}
+
+/// The load of the computer: the average of the last minute, and its processor cores.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Load {
+    pub one: f64,
+    pub cores: usize,
+}
+
+impl Load {
+    /// More programs want to run than the computer has cores.
+    #[must_use]
+    pub fn busy(self) -> bool {
+        self.one > f64::from(u32::try_from(self.cores).unwrap_or(u32::MAX))
+    }
+}
+
+/// The time a program has to answer `--version` under `load`: [`PROBE_WAIT`] for each core's
+/// worth of load, at least once and at most [`PROBE_CAP`]. A daemon of background priority
+/// gets little time on a busy computer (measured 2026-11-22: 0.1 to 5.8 s at a load of 146 on
+/// 16 cores, for a program that answers in 0.01 s), so the time follows the load.
+#[must_use]
+pub fn probe_wait(load: Option<Load>) -> Duration {
+    let Some(load) = load else {
+        return PROBE_WAIT;
+    };
+    let cores = f64::from(u32::try_from(load.cores.max(1)).unwrap_or(u32::MAX));
+    let factor = (load.one / cores).clamp(1.0, PROBE_CAP.as_secs_f64() / PROBE_WAIT.as_secs_f64());
+    PROBE_WAIT.mul_f64(if factor.is_finite() { factor } else { 1.0 })
 }
 
 /// The copies that were asked, and the started threads that wait for their first line.
@@ -57,22 +92,78 @@ pub struct Silence {
 
 /// The answers of the copies of one start: the chosen copy first, then each other copy when the
 /// chosen one did not answer. A version is `None` for a copy that did not answer in time.
-pub type Answers = Vec<(PathBuf, Option<String>)>;
+#[derive(Clone, Debug, Default)]
+pub struct Answers {
+    pub copies: Vec<(PathBuf, Option<String>)>,
+    /// The time the chosen copy was given.
+    pub waited: Duration,
+    /// The load when it was asked; `None` when it could not be read.
+    pub load: Option<Load>,
+}
 
 /// Asks the chosen copy at `path` for its version and, only when it does not answer, each
-/// different copy of `others`. Runs away from the loop of the runner: it can take 20 seconds
-/// and 5 more for each other copy.
-pub async fn ask(path: PathBuf, others: Vec<PathBuf>, env: Vec<(String, String)>) -> Answers {
-    let first = ask_version(&path, PROBE_WAIT, &env).await;
+/// different copy of `others`, with the time that `load` gives ([`probe_wait`]). Runs away from
+/// the loop of the runner: it can take up to 120 seconds and 5 more for each other copy.
+pub async fn ask(
+    path: PathBuf,
+    others: Vec<PathBuf>,
+    env: Vec<(String, String)>,
+    load: Option<Load>,
+) -> Answers {
+    let waited = probe_wait(load);
+    let first = ask_version(&path, waited, &env).await;
     let silent = first.is_none();
-    let mut answers = vec![(path.clone(), first)];
+    let mut copies = vec![(path.clone(), first)];
     if silent {
         for other in others.into_iter().filter(|other| *other != path) {
             let version = ask_version(&other, OTHER_WAIT, &env).await;
-            answers.push((other, version));
+            copies.push((other, version));
         }
     }
-    answers
+    Answers {
+        copies,
+        waited,
+        load,
+    }
+}
+
+/// The load of this computer: `vm.loadavg` of `sysctl` on macOS, `/proc/loadavg` on Linux;
+/// `None` when it cannot be read in 2 seconds.
+pub async fn load() -> Option<Load> {
+    let cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    let read = async {
+        if cfg!(target_os = "macos") {
+            let output = tokio::process::Command::new("/usr/sbin/sysctl")
+                .args(["-n", "vm.loadavg"])
+                .env_clear()
+                .stdin(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .kill_on_drop(true)
+                .output()
+                .await
+                .ok()?;
+            Some(String::from_utf8_lossy(&output.stdout).into_owned())
+        } else {
+            tokio::fs::read_to_string("/proc/loadavg").await.ok()
+        }
+    };
+    let text = tokio::time::timeout(Duration::from_secs(2), read)
+        .await
+        .ok()??;
+    Some(Load {
+        one: first_load(&text)?,
+        cores,
+    })
+}
+
+/// The average of the last minute in `{ 1.50 1.20 1.00 }` (macOS) or `1.50 1.20 1.00 2/300 9`
+/// (Linux).
+fn first_load(text: &str) -> Option<f64> {
+    text.split_whitespace()
+        .find(|word| *word != "{")?
+        .parse()
+        .ok()
+        .filter(|load: &f64| load.is_finite() && *load >= 0.0)
 }
 
 impl Silence {
@@ -84,19 +175,23 @@ impl Silence {
             .asked
             .get(path)
             .filter(|kept| kept.stamp == stamp(path))?;
+        // A silence on a busy computer says nothing of the copy: the next start asks again.
+        let busy = kept.load.is_some_and(Load::busy);
         match kept.version {
             Some(_) => Some(true),
-            None => (kept.at.elapsed() < SILENT_KEPT).then_some(false),
+            None => (!busy && kept.at.elapsed() < SILENT_KEPT).then_some(false),
         }
     }
 
     /// Keeps the answers of one ask.
     pub fn keep(&mut self, answers: &Answers) {
-        for (path, version) in answers {
+        for (path, version) in &answers.copies {
             let asked = Asked {
                 stamp: stamp(path),
                 at: Instant::now(),
                 version: version.clone(),
+                waited: answers.waited,
+                load: answers.load,
             };
             self.asked.insert(path.clone(), asked);
         }
@@ -106,7 +201,14 @@ impl Silence {
     #[must_use]
     pub fn refusal(&self, program: Program, path: &Path, copies: &[PathBuf]) -> Refusal {
         let others = self.answered_others(path, copies);
-        let said = not_answered(program, path, &others);
+        let asked = self.asked.get(path);
+        let waited = asked.map_or(PROBE_WAIT, |asked| asked.waited);
+        let said = not_answered(
+            program,
+            path,
+            (waited, asked.and_then(|asked| asked.load)),
+            &others,
+        );
         let answered = others.into_iter().map(|(copy, _)| copy).collect();
         Refusal::ProgramDoesNotAnswer { said, answered }
     }
@@ -179,16 +281,34 @@ pub const fn name(program: Program) -> &'static str {
     }
 }
 
-/// The words when the chosen copy did not answer `--version`, with the copies that did.
+/// The words when the chosen copy did not answer `--version` in `asked` (the time it was given
+/// and the load then), with the copies that did. On a busy computer the words say so and do
+/// not send the person to a terminal: the copy is likely fine, and the next start asks again.
 #[must_use]
-pub fn not_answered(program: Program, path: &Path, answered: &[(PathBuf, String)]) -> String {
-    let mut words = format!(
-        "The {} at {} did not answer in {} seconds. Run `{} --version` once in a terminal to see what it waits for, or update it.",
-        name(program),
-        path.display(),
-        PROBE_WAIT.as_secs(),
-        path.display(),
-    );
+pub fn not_answered(
+    program: Program,
+    path: &Path,
+    asked: (Duration, Option<Load>),
+    answered: &[(PathBuf, String)],
+) -> String {
+    let (waited, load) = asked;
+    let mut words = match load.filter(|load| load.busy()) {
+        Some(load) => format!(
+            "The {} at {} did not answer `--version` in {} seconds while this computer was busy (load {:.0} on {} cores). Anima asks it again at the next start.",
+            name(program),
+            path.display(),
+            waited.as_secs(),
+            load.one,
+            load.cores,
+        ),
+        None => format!(
+            "The {} at {} did not answer in {} seconds. Run `{} --version` once in a terminal to see what it waits for, or update it.",
+            name(program),
+            path.display(),
+            waited.as_secs(),
+            path.display(),
+        ),
+    };
     for (other, version) in answered {
         let _ = write!(
             words,
