@@ -14,6 +14,7 @@ if [ "$existing" = no ]; then
         command -v apt-get >/dev/null || command -v dnf >/dev/null || command -v pacman >/dev/null || command -v zypper >/dev/null || exit 80
         # Packages must not start a public SSH listener, now or at the next boot.
         for unit in ssh.service ssh.socket sshd.service sshd.socket; do
+            [ "$(readlink "/etc/systemd/system/$unit" || true)" = /dev/null ] && continue
             [ -e "/etc/systemd/system/$unit" ] && exit 82
             [ -L "/etc/systemd/system/$unit" ] && exit 82
         done

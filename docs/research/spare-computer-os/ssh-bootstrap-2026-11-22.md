@@ -10,11 +10,11 @@ A disposable Ubuntu Noble cloud-image VM started with openssh-server purged. The
 
 The base image SHA256 was `04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94`, checked against the publisher’s checksum. Local evidence is `/tmp/anima-ssh-bootstrap-vm/results.json` and `serial.log`. These files are temporary, not release artifacts.
 
-Package service units are masked before first installation to prevent package scripts from opening a public listener. Anima uses its own configuration and host key. Existing working SSH servers retain their configuration. A setup failure does not open the private link port; a package operation can continue after the UI timeout.
+Package service units are masked before first installation to prevent package scripts from opening a public listener. Anima uses its own configuration and host key. Existing working SSH servers retain their configuration. A second VM run purged the package while retaining the service masks, then reinstalled, logged in and rebooted successfully; retries accept masks already set to /dev/null. A setup failure does not open the private link port; a package operation can continue after the UI timeout.
 
 ## Automated checks
 
-Linux workspace Clippy and the Windows-target Clippy build of `remote-login` passed. Client type checking, lint and 11 private-port UI tests passed. The tests include pending authorization, duplicate clicks and cancellation restoring the switch to off. The release dependency-map checks passed. The broader changed-package gate is required before push; CI remains the merge gate.
+Linux workspace Clippy and the Windows-target Clippy build of `remote-login` passed. Client type checking, lint and 11 private-port UI tests passed. The tests include pending authorization, duplicate clicks and cancellation restoring the switch to off. The release dependency-map checks passed. The changed-package run passed 1,285 Rust tests, 5,873 client tests, client type/lint checks and the production client build. The release-map check caught the missing registration of this new crate in the future Mac test runner; that registration was added. The CLI refused a piped enable-ssh invocation with exit 2 before any setup. All 107 deployment-map checks and the limits, names, imports, baseline and documents checks subsequently passed. CI remains the merge gate.
 
 ## Limits
 

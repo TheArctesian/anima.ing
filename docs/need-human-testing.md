@@ -4813,7 +4813,7 @@ Result: Open.
 Built on `access/ssh-bootstrap`. The shared helper is called by the desktop SSH switch and `anima link enable-ssh`. Native macOS and Windows installation and system authorization dialogs have not been verified. The operator waived the Mac-before-push check for this change.
 
 1. On an enrolled computer without an active SSH server, turn on SSH in Settings. Approve the operating system’s administrator prompt.
-   Expected: the server is installed if needed, the switch turns on after SSH is ready, and no host firewall port is opened. The new server listens only on 127.0.0.1.
+   Expected: the server is installed if needed, the switch turns on after SSH is ready, and no router port forwarding is needed. The new server listens only on 127.0.0.1.
 2. Connect through the private hub with the local account and verify its host key. Restart the computer and reconnect.
    Expected: login works and the host key stays the same.
 3. Turn SSH off, then on again. Cancel administrator authorization if requested.
