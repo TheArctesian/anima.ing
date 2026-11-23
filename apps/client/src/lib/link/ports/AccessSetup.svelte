@@ -63,10 +63,10 @@
       const result = await prepare(target);
       if (result === null) throw new Error('Remote access setup needs the desktop app.');
       access = result;
-      published = [];
+      published = target === undefined ? [] : published.filter((port) => port !== target);
       for (const note of result.notes) messages[note.port] = note.message;
-      await publishAccess(hub, result);
-      published = result.open;
+      await publishAccess(hub, result, target);
+      published = target === undefined ? result.open : [...published, ...result.open.filter((port) => port === target)];
       onSaved();
       if (target === undefined && result.notes.length === 0) opened = false;
     } catch (error) {

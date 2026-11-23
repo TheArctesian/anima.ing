@@ -1,3 +1,4 @@
+import type { DeviceDetail } from '$lib/devices/api';
 import { readLink } from '$lib/desktop/link/shell';
 import { devicesApi } from '$lib/devices/client';
 import { remoteValues } from '$lib/devices/form/remote/values';
@@ -15,11 +16,11 @@ export async function checkAccessHub(hub: Hub): Promise<string> {
   return local.value.publicKey;
 }
 
-export async function publishAccess(hub: Hub, access: Access): Promise<void> {
-  return publishForKey(hub, access, await checkAccessHub(hub));
+export async function publishAccess(hub: Hub, access: Access, target?: number): Promise<void> {
+  return publishForKey(hub, access, await checkAccessHub(hub), target);
 }
 
-async function publishForKey(hub: Hub, access: Access, key: string): Promise<void> {
+async function publishForKey(hub: Hub, access: Access, key: string, target?: number): Promise<void> {
   const linked = await linkApi(hub).devices();
   if (!linked.ok) throw new Error('The hub could not find this computer. Retry.');
   const host = linked.value.find((device) => device.key === key)?.address;
@@ -29,12 +30,15 @@ async function publishForKey(hub: Hub, access: Access, key: string): Promise<voi
   if (id === undefined) throw new Error('Enroll this computer in Devices, then retry remote access setup.');
   const found = await api.get(id);
   if (!found.ok || found.value === null) throw new Error('The hub could not read this computer. Retry.');
-  const device = found.value;
-  const remote = remoteValues(device);
-  const result = await api.update(id, {
-    ssh: { enabled: access.open.includes(22), port: 22, username: device.ssh.username || access.username, auth: device.ssh.auth },
-    rdp: rdpInput({ ...remote.rdp, enabled: access.open.includes(3389), port: '3389', username: remote.rdp.username || access.username }),
-    vnc: vncInput({ ...remote.vnc, enabled: access.open.includes(5900), port: '5900', username: device.os === 'MACOS' ? access.username : remote.vnc.username }),
-  });
+  const result = await api.update(id, connectionChanges(found.value, access, target));
   if (!result.ok) throw new Error(result.error.message);
+}
+
+function connectionChanges(device: DeviceDetail, access: Access, target?: number) {
+  const remote = remoteValues(device);
+  return {
+    ...(target === undefined || target === 22 ? { ssh: { enabled: access.open.includes(22), port: 22, username: device.ssh.username || access.username, auth: device.ssh.auth } } : {}),
+    ...(target === undefined || target === 3389 ? { rdp: rdpInput({ ...remote.rdp, enabled: access.open.includes(3389), port: '3389', username: remote.rdp.username || access.username }) } : {}),
+    ...(target === undefined || target === 5900 ? { vnc: vncInput({ ...remote.vnc, enabled: access.open.includes(5900), port: '5900', username: remote.vnc.username || (device.os === 'MACOS' ? access.username : '') }) } : {}),
+  };
 }

@@ -100,6 +100,7 @@ it('enables only the requested capability and reports progress until verified', 
   await settle();
   expect(document.body.textContent).toContain('Ready in Anima');
   expect(calls.publishAccess).toHaveBeenCalledOnce();
+  expect(calls.publishAccess.mock.calls[0]?.[2]).toBe(22);
   expect(document.activeElement).toBe(enable);
 });
 
