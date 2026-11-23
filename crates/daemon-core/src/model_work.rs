@@ -5,6 +5,7 @@ pub mod command;
 pub mod drain;
 pub mod files;
 pub mod folders;
+pub mod found;
 pub mod launcher;
 pub mod loopback;
 pub mod machine;

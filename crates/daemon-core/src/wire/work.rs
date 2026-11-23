@@ -21,6 +21,8 @@ pub enum WorkType {
     RuntimeInstall,
     ModelPull,
     CopyDelete,
+    /// A found model used where it is (Section 2.3, R-444).
+    CopyAdopt,
     ServerStart,
     ServerStop,
     ModelLoad,
@@ -31,12 +33,13 @@ pub enum WorkType {
     Unknown,
 }
 
-/// The ten model work types, in the order of the table of the model work contract.
-pub const MODEL_TYPES: [WorkType; 10] = [
+/// The eleven model work types, in the order of the table of the model work contract.
+pub const MODEL_TYPES: [WorkType; 11] = [
     WorkType::ModelReport,
     WorkType::RuntimeInstall,
     WorkType::ModelPull,
     WorkType::CopyDelete,
+    WorkType::CopyAdopt,
     WorkType::ServerStart,
     WorkType::ServerStop,
     WorkType::ModelLoad,
@@ -55,6 +58,7 @@ impl WorkType {
             Self::RuntimeInstall => "runtime_install",
             Self::ModelPull => "model_pull",
             Self::CopyDelete => "copy_delete",
+            Self::CopyAdopt => "copy_adopt",
             Self::ServerStart => "server_start",
             Self::ServerStop => "server_stop",
             Self::ModelLoad => "model_load",

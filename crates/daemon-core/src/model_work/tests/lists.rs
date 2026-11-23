@@ -14,7 +14,7 @@ fn the_machine_settings_have_the_defaults_of_the_operator() {
     assert!(!settings.sandbox && !settings.second_hash);
     assert_eq!(settings.revision_age_days, 0);
     assert_eq!(settings.organisations, ["unsloth", "mlx-community"]);
-    assert_eq!(settings.agent_types.len(), 10);
+    assert_eq!(settings.agent_types.len(), 11);
     let strict = MachineSettings::parse(
         r#"{"sandbox":true,"agentTypes":["model_report"],"organisations":["unsloth"]}"#,
     )

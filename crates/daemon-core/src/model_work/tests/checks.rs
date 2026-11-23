@@ -54,7 +54,7 @@ fn a_type_outside_the_list_is_refused() {
             "{name}"
         );
     }
-    assert_eq!(MODEL_TYPES.len(), 10);
+    assert_eq!(MODEL_TYPES.len(), 11);
 }
 
 #[test]

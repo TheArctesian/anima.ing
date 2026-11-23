@@ -47,6 +47,11 @@ pub enum Parameters {
     CopyDelete {
         copy: Uuid,
     },
+    /// `found` is a key of the walk, never a path (Section 2).
+    Adopt {
+        copy: Uuid,
+        found: String,
+    },
     Start {
         server: Uuid,
         release: Release,
@@ -227,6 +232,19 @@ fn server_start(object: &Object, machine: &ModelMachine<'_>) -> Result<Parameter
     })
 }
 
+fn adopt(object: &Object) -> Result<Parameters, Cause> {
+    exactly(object, &["copy", "found"])?;
+    let found = object
+        .get("found")
+        .and_then(Value::as_str)
+        .filter(|key| is_lower_hex(key, 64))
+        .ok_or(Cause::MemberUnknown)?;
+    Ok(Parameters::Adopt {
+        copy: uuid(object, "copy")?,
+        found: found.to_owned(),
+    })
+}
+
 /// # Errors
 /// The cause of the first member that does not hold.
 pub fn read(
@@ -251,6 +269,7 @@ pub fn read(
                 copy: uuid(object, "copy")?,
             })
         }
+        WorkType::CopyAdopt => adopt(object),
         WorkType::ServerStart => server_start(object, machine),
         WorkType::ServerStop => {
             exactly(object, &["server"])?;

@@ -20,6 +20,27 @@ pub struct MachineSettings {
     pub organisations: Vec<String>,
     /// The types that the machine takes from an item whose actor is `Agent` (Section 3).
     pub agent_types: Vec<WorkType>,
+    /// Read the folders of other model programs for found models (Section 10.2; default on, R-443).
+    pub find_models: bool,
+    /// The absolute folders that the owner of the machine adds to the walk (Section 10.1, R-444).
+    pub model_folders: Vec<String>,
+}
+
+/// The most folders that `modelFolders` may name (Section 10.1).
+pub const MAX_MODEL_FOLDERS: usize = 16;
+
+/// An absolute folder with no `.`, `..` or empty part, at most 4096 bytes, as `modelFolders` holds.
+#[must_use]
+pub fn is_model_folder(path: &str) -> bool {
+    let Some(rest) = path.strip_prefix('/') else {
+        return false;
+    };
+    path.len() <= 4096
+        && !path.contains('\0')
+        && (rest.is_empty()
+            || rest
+                .split('/')
+                .all(|part| !part.is_empty() && part != "." && part != ".."))
 }
 
 impl Default for MachineSettings {
@@ -30,6 +51,8 @@ impl Default for MachineSettings {
             revision_age_days: 0,
             organisations: DEFAULT_ORGANISATIONS.map(str::to_owned).to_vec(),
             agent_types: MODEL_TYPES.to_vec(),
+            find_models: true,
+            model_folders: Vec::new(),
         }
     }
 }
@@ -45,12 +68,14 @@ pub enum SettingsError {
     Value(&'static str),
 }
 
-const MEMBERS: [&str; 5] = [
+const MEMBERS: [&str; 7] = [
     "sandbox",
     "secondHash",
     "revisionAgeDays",
     "organisations",
     "agentTypes",
+    "findModels",
+    "modelFolders",
 ];
 
 fn words<T>(
@@ -77,7 +102,7 @@ fn flag(object: &Map<String, Value>, name: &'static str) -> Result<Option<bool>,
 
 impl MachineSettings {
     /// # Errors
-    /// [`SettingsError`] for a text that is not an object of the five settings.
+    /// [`SettingsError`] for a text that is not an object of the seven settings.
     pub fn parse(text: &str) -> Result<Self, SettingsError> {
         let value: Value = serde_json::from_str(text).map_err(|_| SettingsError::NotObject)?;
         let object = value.as_object().ok_or(SettingsError::NotObject)?;
@@ -98,6 +123,15 @@ impl MachineSettings {
         if let Some(list) = object.get("agentTypes") {
             let read = |name: &str| WorkType::parse(name).filter(|kind| kind.is_model());
             settings.agent_types = words(list, "agentTypes", read)?;
+        }
+        settings.find_models = flag(object, "findModels")?.unwrap_or(settings.find_models);
+        if let Some(list) = object.get("modelFolders") {
+            let read = |path: &str| is_model_folder(path).then(|| path.to_owned());
+            let folders = words(list, "modelFolders", read)?;
+            if folders.len() > MAX_MODEL_FOLDERS {
+                return Err(SettingsError::Value("modelFolders"));
+            }
+            settings.model_folders = folders;
         }
         Ok(settings)
     }
@@ -122,6 +156,8 @@ impl MachineSettings {
             "revisionAgeDays": self.revision_age_days,
             "organisations": self.organisations,
             "agentTypes": self.agent_types.iter().map(|kind| kind.as_str()).collect::<Vec<_>>(),
+            "findModels": self.find_models,
+            "modelFolders": self.model_folders,
         })
     }
 }

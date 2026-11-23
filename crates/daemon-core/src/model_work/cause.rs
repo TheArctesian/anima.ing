@@ -47,6 +47,12 @@ pub enum Cause {
     /// Linux, only where the model launcher is used: the SHA-256 of the runtime program is on no
     /// valid signed list of runtimes (R-347; the launcher exit code 125).
     RuntimeNotSigned,
+    /// `copy_adopt` names a key that the walk does not find now (Section 2.3).
+    FoundUnknown,
+    /// A file of a found copy differs from its record at a load (Section 2.3).
+    CopyChanged,
+    /// A file of a found copy is not there, or is not a regular file (Section 2.3).
+    CopyMissing,
 }
 
 /// Each launcher step has its own exit code, so a refusal of the user namespace reads as such.
@@ -165,6 +171,9 @@ impl Cause {
             Self::ArchiveRejected => "archive_rejected",
             Self::ContainmentFailed(_) => "containment_failed",
             Self::RuntimeNotSigned => "runtime_not_signed",
+            Self::FoundUnknown => "found_unknown",
+            Self::CopyChanged => "copy_changed",
+            Self::CopyMissing => "copy_missing",
         }
     }
 
@@ -197,11 +206,13 @@ impl Cause {
                 | Self::ArchiveRejected
                 | Self::ContainmentFailed(_)
                 | Self::RuntimeNotSigned
+                | Self::CopyChanged
+                | Self::CopyMissing
         )
     }
 
     /// Each cause once, for the reader of a code; `containment_failed` with any one step.
-    const ALL: [Self; 38] = [
+    const ALL: [Self; 41] = [
         Self::TypeUnknown,
         Self::KindNotPermitted,
         Self::MemberUnknown,
@@ -240,6 +251,9 @@ impl Cause {
         Self::ArchiveRejected,
         Self::ContainmentFailed(Containment::NoDelegation),
         Self::RuntimeNotSigned,
+        Self::FoundUnknown,
+        Self::CopyChanged,
+        Self::CopyMissing,
     ];
 
     /// Whether `code` is the code of a cause, as a report spells it.
