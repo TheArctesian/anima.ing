@@ -182,4 +182,36 @@
   .warning .dot {
     background: var(--status-warning);
   }
+
+  /* HSE-012: on a phone a row is the name of the volume, with what uses it and its size below it, under the header of
+     its machine; the column heads are not shown. */
+  @media (max-width: 767.98px) {
+    thead {
+      display: none;
+    }
+
+    tbody tr:not(.group) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      border-block-end: var(--border-thin) solid var(--border-subtle);
+    }
+
+    tbody tr:not(.group) > * {
+      padding-block: 0;
+      border: 0;
+    }
+
+    tbody tr:not(.group) > th {
+      grid-column: 1 / span 2;
+      padding-block-start: var(--space-2);
+    }
+
+    tbody tr:not(.group) > td {
+      padding-block-end: var(--space-2);
+    }
+
+    .group th {
+      display: block;
+    }
+  }
 </style>

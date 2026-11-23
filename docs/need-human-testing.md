@@ -5184,3 +5184,20 @@ link "Volumes in Hosting". The tests use a fake hub; nobody has seen the list wi
    Storage.
 
 Result: Open.
+
+### HT-NEW-hostingphone: Hosting > Applications and Storage on a phone (task H42; HSE-012)
+
+Built on the branch `hosted/h42-phone`: below a width of 768 px, the rows of the lists of Applications and Storage put
+the state and the other cells below the name. The tests do not measure a layout; nobody has seen it on a phone.
+
+1. Open Hosting > Applications in the web client of this build on a phone, or in the desktop application with its
+   window made narrower than 768 px, signed in to a hub with a machine that has SSH on and Docker with a Compose project.
+   Expected: each machine is a header with its name, the number of items and its status (for example Up); each row has
+   its name, below it what it is, its state with a dot and "Read only"; Details and Log are at the end of a container
+   row. No text is cut and the page does not scroll to the side.
+2. Open the project with its arrow and press Log on one of its containers.
+   Expected: the log shows below the list and fits the width.
+3. Open Hosting > Storage.
+   Expected: each volume has its name, below it what uses it (or the mark Not used) and its size at the end of the line.
+
+Result: Open.
