@@ -59,7 +59,6 @@ fn restore_schemes(previous: Scheme, temporary: Scheme) -> io::Result<()> {
     if Scheme::active()? == temporary {
         previous.activate()?;
     }
-    // A user selecting a different plan wins. Only our inactive copy is deleted.
     match temporary.remove() {
         Ok(()) => Ok(()),
         Err(error) if error.raw_os_error() == Some(2) => Ok(()),
@@ -128,7 +127,7 @@ mod tests {
 
         let journal = Journal::start(&marker).unwrap();
         journal.activate().unwrap();
-        drop(journal); // The recorded plan survives an interrupted guard.
+        drop(journal);
         restore(&marker).unwrap();
         assert_eq!(Scheme::active().unwrap(), original);
         assert!(!marker.exists());

@@ -1,22 +1,17 @@
-//! Opens the OS settings pane the operator needs to make this computer a device: on macOS,
-//! Sharing, where Remote Login (SSH, R-059) and Screen Sharing (R-079) are turned on. The web
-//! view names no pane or URL; the command opens one fixed pane.
+//! The web view names no pane or URL; the command opens one fixed pane (R-059, R-079).
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use tauri_plugin_log::log;
 
 use crate::os_program::{self, OsProgramError};
 
-/// System Settings → General → Sharing, which holds the Remote Login and Screen Sharing switches (macOS 13 and later).
+/// General → Sharing, macOS 13 and later.
 const SHARING_PANE: &str = "x-apple.systempreferences:com.apple.Sharing-Settings.extension";
 
 /// The URL opener. An absolute path, so `PATH` cannot swap it.
 const OPENER: &str = "/usr/bin/open";
 
-/// Why the settings pane did not open. Carries no OS error text.
-///
-/// - `unavailable`: this OS has no such pane (Linux), or the opener is missing.
-/// - `failed`: the opener ran and reported a failure.
+/// Carries no OS error text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum SystemSettingsError {
     #[error("these settings cannot be opened on this system")]
@@ -45,9 +40,6 @@ impl Serialize for SystemSettingsError {
     }
 }
 
-/// Runs `opener` with `target` as its one argument (no shell) and waits for its exit status,
-/// as long as every opener may (`os_program::OPENER_PATIENCE`). `open` hands a settings URL to
-/// System Settings and exits at once.
 fn open_with(opener: &str, target: &str) -> Result<(), SystemSettingsError> {
     os_program::open(opener, target.as_ref()).map_err(|error| match error {
         OsProgramError::NotFound => SystemSettingsError::Unavailable,
@@ -55,8 +47,6 @@ fn open_with(opener: &str, target: &str) -> Result<(), SystemSettingsError> {
     })
 }
 
-/// Opens System Settings at Sharing, where Remote Login and Screen Sharing are turned on.
-/// Unavailable off macOS.
 #[tauri::command]
 pub async fn sharing_settings_open() -> Result<(), SystemSettingsError> {
     if !cfg!(target_os = "macos") {
@@ -74,9 +64,6 @@ pub async fn sharing_settings_open() -> Result<(), SystemSettingsError> {
 
 #[cfg(test)]
 mod tests {
-    //! The tests run `true`, `false` or a missing program in place of `open`, so no test opens
-    //! System Settings.
-
     use super::{SystemSettingsError, open_with};
 
     #[test]

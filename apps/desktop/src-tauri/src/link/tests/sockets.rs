@@ -1,12 +1,8 @@
-//! The socket for the daemon that the app gives the device link (HMD-054): only one that the
-//! link would accept, so that the link still starts.
-
 use std::fs;
 
 use super::super::kept;
 
-/// A temporary folder that only this user can write to, whatever the umask (0002 on Ubuntu):
-/// the socket is refused below a folder that the group can write to.
+/// Mode 0700 whatever the umask (0002 on Ubuntu): the socket is refused below a folder that the group can write to.
 pub fn private_tempdir() -> tempfile::TempDir {
     use std::os::unix::fs::PermissionsExt;
     let folder = tempfile::tempdir().unwrap();
@@ -33,9 +29,7 @@ fn hmd_054_a_folder_that_others_can_reach_or_a_link_gives_no_socket() {
     assert_eq!(kept::private_socket(&long), None, "too long for a socket");
 }
 
-/// R-317: the link refuses to start with a socket that it cannot make, so the app
-/// gives it none: below a folder that others can write to, or with a file that is not a
-/// socket at the path.
+/// The link refuses to start with a socket that it cannot make, so the app gives it none (R-317).
 #[test]
 fn hmd_054_a_socket_that_the_link_would_refuse_is_not_given_to_it() {
     use std::os::unix::fs::PermissionsExt;

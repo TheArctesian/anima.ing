@@ -1,9 +1,6 @@
-//! The operator account of the hub on this computer (F-4, F-5, F-9) and the copy of its key
-//! (2.8). The shell runs `anima-local-hub account` with each secret on standard input; it never
-//! logs what the program reads or prints, only a fixed code and the exit code (LOG-007).
-//!
-//! `create` replaces an existing account only after the person at this computer confirmed that
-//! request in a native dialog, which script in the web view cannot answer (F-9).
+//! The operator account of the hub on this computer (F-4, F-5, F-9) and the copy of its key (2.8).
+//! Secrets go on standard input; only a fixed code and the exit code are logged (LOG-007).
+//! `create` replaces an account only after a native dialog that script in the web view cannot answer (F-9).
 
 use std::{
     ffi::OsString,
@@ -29,11 +26,9 @@ use crate::carried::run::{ExchangeError, Invocation, exchange};
 const ACCOUNT_LIMIT: Duration = Duration::from_mins(1);
 const KEY_FILE_NAME: &str = "anima-hub-key";
 
-/// When this app's last confirmation of a replacement was cancelled (F-9).
 #[derive(Debug, Default)]
 pub struct Replacements(Mutex<Cancellations>);
 
-/// What the client sends to make the account. Its secrets are wiped when it is dropped.
 #[derive(Deserialize)]
 pub struct NewAccount {
     name: String,
@@ -50,8 +45,6 @@ impl Drop for NewAccount {
     }
 }
 
-/// Runs `anima-local-hub account <args>`; a failed exit is `exited`. Logs only the verb, a
-/// fixed code and the exit code.
 fn run_account(
     args: &[&OsString],
     input: Option<&[u8]>,
@@ -99,8 +92,6 @@ async fn blocking<T: Send + 'static>(
         .unwrap_or(Err(LocalHubError::Failed))
 }
 
-/// The operator account of the hub on this computer: `{ name, totp }`, or `null` before the
-/// first run made it.
 #[tauri::command]
 pub async fn local_hub_account<R: Runtime>(
     webview: Webview<R>,
@@ -128,8 +119,7 @@ pub async fn local_hub_totp_new<R: Runtime>(
     .await
 }
 
-/// Asks the person at this computer, in a native dialog, to confirm that this request replaces
-/// the account. Blocks: call it off the async runtime.
+/// Blocks: call it off the async runtime.
 fn confirm_replacement<R: Runtime>(app: &AppHandle<R>, window: &Window<R>) -> bool {
     app.dialog()
         .message(CONFIRMATION)
@@ -143,10 +133,7 @@ fn confirm_replacement<R: Runtime>(app: &AppHandle<R>, window: &Window<R>) -> bo
         .blocking_show()
 }
 
-/// Makes the operator account with a password, a TOTP secret and a code of that secret. When
-/// the hub has an account, a native dialog asks the person at this computer to confirm its
-/// replacement first, for this request only (F-9); `cancelled` when they do not. Every sign-in
-/// to the hub ends.
+/// Replacing an account needs a native confirmation for this request only (F-9); every sign-in to the hub ends.
 #[tauri::command]
 pub async fn local_hub_account_create<R: Runtime>(
     app: AppHandle<R>,
@@ -184,8 +171,7 @@ pub async fn local_hub_account_create<R: Runtime>(
     result
 }
 
-/// Saves a copy of the hub's key at a place the operator chooses in a native save dialog.
-/// `false` when the operator cancelled. The key never passes through the web view.
+/// `false` when the operator cancelled; the key never passes through the web view.
 #[tauri::command]
 pub async fn local_hub_key_save<R: Runtime>(
     app: AppHandle<R>,

@@ -1,7 +1,5 @@
-//! The updater file the last bundle step made (D-13, D-22): its job, its path and the SHA-256 of
-//! its bytes. The upload takes the file from here, so it sends only what this bundle step wrote,
-//! and only while its bytes are unchanged. The next checkout forgets it. The lock is held only
-//! for short synchronous sections.
+//! The upload sends only what this bundle step wrote, and only while its bytes are unchanged (D-13,
+//! D-22). The lock is held only for short synchronous sections.
 
 use std::{
     path::PathBuf,
@@ -10,7 +8,6 @@ use std::{
 
 use super::job::{Commit, Target, Version};
 
-/// The bundle of one job.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Bundle {
     pub commit: Commit,
@@ -21,7 +18,6 @@ pub struct Bundle {
     pub sha256: [u8; 32],
 }
 
-/// The last bundle, until the next checkout.
 #[derive(Debug, Default)]
 pub struct Bundled {
     last: Mutex<Option<Bundle>>,
@@ -40,7 +36,6 @@ impl Bundled {
         self.with_last(|last| *last = None);
     }
 
-    /// The bundle of `target` at `version`, when that is the last one made.
     pub fn of(&self, target: Target, version: &Version) -> Option<Bundle> {
         self.with_last(|last| {
             last.as_ref()

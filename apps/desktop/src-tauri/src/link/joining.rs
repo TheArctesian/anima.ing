@@ -1,6 +1,4 @@
-//! One join of this device to a hub (2.6, F-7): `anima-link join` makes a new key in a new
-//! folder with the invite on standard input, and the shell chooses the folder's local port.
-//! Neither the invite nor what `join` says is logged (LOG-007).
+//! One join to a hub (2.6, F-7): the invite goes on standard input, and neither it nor what `join` says is logged (LOG-007).
 
 use std::{
     ffi::OsString,
@@ -17,16 +15,13 @@ use crate::carried::run::{ExchangeError, Invocation, exchange};
 /// `join` gives up after 30 s by itself; this is the shell's own limit.
 const JOIN_LIMIT: Duration = Duration::from_secs(45);
 
-/// What the client shows after a join: the device key's fingerprint, to compare with the
-/// hub's list, and the local port of the link.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Joined {
     pub fingerprint: String,
     pub port: u16,
 }
 
-/// Joins into `folders.next` and saves a free local port there. The folder is removed when the
-/// join fails. `invite` is the line that [`printed::invite`] gave.
+/// The folder is removed when the join fails.
 pub fn join(
     program: &Path,
     folders: &LinkFolders,
@@ -69,7 +64,6 @@ fn join_into(
     Ok(Joined { fingerprint, port })
 }
 
-/// A loopback port that is free now: the system gives one, and it is let go at once.
 fn free_port() -> Option<u16> {
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).ok()?;
     listener.local_addr().ok().map(|address| address.port())

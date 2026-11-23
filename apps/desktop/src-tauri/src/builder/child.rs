@@ -1,7 +1,4 @@
-//! Runs the processes of one build step (BLD-027, BLD-029, BLD-044): a scrubbed environment, its
-//! own process group, its output passed on line by line, and cancellation that kills the whole
-//! group and every process that left it (`reaper`). The lock is held only for short synchronous
-//! sections, never across an `await`.
+//! Runs the processes of one build step (BLD-027, BLD-029, BLD-044); the lock is never held across an `await`.
 
 use std::{
     ffi::OsString,
@@ -23,13 +20,9 @@ use super::{
     reaper,
 };
 
-/// Receives each output line of a step.
 pub type Sink = Arc<dyn Fn(String) + Send + Sync>;
 
-/// At most this many lines of the command's kept stream are kept for the caller to read (`git
-/// status`, `lipo -archs`, `codesign -d`); every line still goes to the sink.
 const KEPT_LINES_MAX: usize = 2000;
-/// How long the output may take to close after the process group is gone.
 const DRAIN: Duration = Duration::from_secs(5);
 const CHUNK: usize = 8192;
 
@@ -40,11 +33,9 @@ struct Slot {
     #[cfg(windows)]
     job: Option<anima_windows::job::Job>,
     cancelled: bool,
-    /// The `reaper::MARKER` value of the step's processes.
     marker: Option<String>,
 }
 
-/// Each step's marker is this process's ID and a count, so no two steps share one.
 fn next_marker() -> String {
     static COUNT: AtomicU64 = AtomicU64::new(0);
     format!(
@@ -60,14 +51,12 @@ pub struct Running {
     slot: Mutex<Slot>,
 }
 
-/// Holds `Running` for one step, and where the step's lines go; dropping it frees the slot.
 pub struct Claim<'a> {
     running: &'a Running,
     sink: Sink,
     marker: String,
 }
 
-/// Sends SIGKILL to the process group `group`. A group that is gone is not an error.
 fn kill_group(group: Option<i32>) {
     #[cfg(unix)]
     if let Some(group) = group {
@@ -85,7 +74,6 @@ impl Running {
         change(&mut self.slot.lock().unwrap_or_else(PoisonError::into_inner))
     }
 
-    /// Takes the slot for one step whose lines go to `sink`; `Busy` while another step holds it.
     pub fn claim(&self, sink: Sink) -> Result<Claim<'_>, BuilderError> {
         self.with_slot(|slot| {
             if slot.busy {
@@ -106,8 +94,6 @@ impl Running {
         })
     }
 
-    /// Kills the running step's process group and every process that left it, and marks the
-    /// step cancelled. Also called when the app exits, so no build outlives it.
     pub fn cancel(&self) {
         self.with_slot(|slot| {
             if slot.busy {
@@ -129,7 +115,6 @@ impl Drop for Claim<'_> {
     }
 }
 
-/// Reads one stream to its end, passing each line to `sink`; keeps up to `KEPT_LINES_MAX`.
 async fn read_lines(stream: Option<impl AsyncRead + Unpin>, sink: Sink, keep: bool) -> Vec<String> {
     let mut kept = Vec::new();
     let Some(mut stream) = stream else {
@@ -151,9 +136,7 @@ async fn read_lines(stream: Option<impl AsyncRead + Unpin>, sink: Sink, keep: bo
 }
 
 impl Claim<'_> {
-    /// Runs `command` as `program` with exactly `env` for its exit status only. `Cancelled` once
-    /// the step is cancelled; `StepFailed` for a non-zero exit. A process that left the step and
-    /// still holds its output (a compiler cache server) does not fail it.
+    /// A process that left the step and still holds its output (a compiler cache server) does not fail it.
     pub async fn run(
         &self,
         command: &Command,
@@ -163,9 +146,7 @@ impl Claim<'_> {
         self.finish(command, program, env).await.map(drop)
     }
 
-    /// Runs `command` as [`Claim::run`] does and returns the lines of the stream `command.kept`
-    /// names, for a decision. A kept stream that did not close fails the step: its lines may be
-    /// cut short, and for `git status` or `codesign -d --entitlements` empty is the passing answer.
+    /// A kept stream that did not close fails the step: for `git status` or `codesign -d --entitlements`, empty is the passing answer.
     pub async fn read(
         &self,
         command: &Command,
@@ -177,7 +158,6 @@ impl Claim<'_> {
             .ok_or(BuilderError::StepFailed)
     }
 
-    /// The kept lines of a run that exited 0, or `None` when the kept stream did not close.
     async fn finish(
         &self,
         command: &Command,
@@ -243,7 +223,6 @@ impl Claim<'_> {
     }
 }
 
-/// The kept lines, if the kept stream closed, of a run that exited 0.
 fn outcome(
     cancelled: bool,
     status: Option<ExitStatus>,

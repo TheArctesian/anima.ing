@@ -1,5 +1,3 @@
-//! WEB-005: the toolbar's back, forward and reload.
-
 use crate::web_view::{WebViewError, history::Step};
 
 #[test]

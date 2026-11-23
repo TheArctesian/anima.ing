@@ -5,8 +5,7 @@ use zeroize::Zeroizing;
 use super::CloudError;
 use crate::keystore::SERVICE;
 
-/// The `WorkOS` refresh token of this app, one for each client ID, in the OS key store (HMD-034).
-/// It never reaches the web view, a file or a log (LOG-007).
+/// One refresh token per client ID in the OS key store (HMD-034); it never reaches the web view, a file or a log (LOG-007).
 fn entry(client_id: &str) -> Result<Entry, CloudError> {
     Entry::new(&format!("{SERVICE}.cloud"), client_id).map_err(|_| CloudError::Keystore)
 }
@@ -26,7 +25,7 @@ fn read_password(client_id: &str) -> Result<Option<Zeroizing<String>>, CloudErro
     }
 }
 
-/// Keeps `token` in place of the stored one: `WorkOS` may rotate it at each exchange.
+/// `WorkOS` may rotate the token at each exchange.
 pub(super) async fn write(
     _: &Webview,
     client_id: &'static str,
@@ -41,7 +40,6 @@ pub(super) async fn write(
     .await
 }
 
-/// Deletes the stored token, as when `WorkOS` refuses it (HMD-034).
 pub(super) async fn clear(_: &Webview, client_id: &'static str) -> Result<(), CloudError> {
     blocking(move || clear_password(client_id)).await
 }

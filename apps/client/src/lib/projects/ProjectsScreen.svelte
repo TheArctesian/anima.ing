@@ -14,7 +14,6 @@
   import type { ProjectsStore } from './store.svelte';
   import { GROUP_ORDER, GROUP_TITLES, groupOf, type TileGroup } from './tile';
   import { SvelteSet } from 'svelte/reactivity';
-  import ShareDeviceGroups from './groups/ShareDeviceGroups.svelte';
   import GroupHead from './groups/GroupHead.svelte';
   import SelectBar from './groups/SelectBar.svelte';
   import { SharedProjectGroups } from './groups/shared.svelte';
@@ -112,9 +111,6 @@
     <Notice tone="info" title="Groups need a newer hub" line="This hub is older than project groups. Update the hub to group your projects." />
   {:else if shared?.problem}
     <ErrorState message={`Project groups did not sync. ${shared.problem}`} onRetry={() => void shared?.refresh()} />
-  {/if}
-  {#if byOwnGroup && shared?.ready}
-    <ShareDeviceGroups groups={shared} />
   {/if}
   {#if selecting}
     <SelectBar groups={projectGroups} canEdit={shared === null || shared.ready} {selected} shown={shownIds} onDone={toggleSelecting} />

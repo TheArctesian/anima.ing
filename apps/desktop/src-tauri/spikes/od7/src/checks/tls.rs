@@ -1,5 +1,4 @@
-//! Check 3 (WEB-008): the untrusted leaf's SHA-256 reaches Rust and equals the server's; with
-//! that pin the page loads; a new certificate on the same host and port is stopped.
+//! Check 3 (WEB-008): the untrusted leaf reaches Rust, a pin loads it, and a new certificate is stopped.
 
 use std::time::Duration;
 
@@ -21,7 +20,6 @@ pub async fn check(harness: &Harness, journal: &mut Journal, results: &mut Resul
     }
 }
 
-/// The TLS web view and the HTTPS port every step visits.
 struct Visit {
     view: Webview,
     port: u16,
@@ -68,7 +66,6 @@ async fn run(
     Ok(())
 }
 
-/// No pin: the leaf must reach Rust, equal the server's, and the page must not load.
 async fn first_visit(
     visit: &Visit,
     journal: &mut Journal,
@@ -88,7 +85,6 @@ async fn first_visit(
     Ok(())
 }
 
-/// With the pin: the same certificate now loads and the page's script runs.
 async fn pinned_visit(
     visit: &Visit,
     journal: &mut Journal,
@@ -120,7 +116,6 @@ async fn pinned_visit(
     Ok(())
 }
 
-/// Same host and port, new certificate: WebKit must ask again and the pin must stop it.
 async fn switched_visit(
     visit: &Visit,
     journal: &mut Journal,
@@ -147,7 +142,6 @@ async fn switched_visit(
     Ok(())
 }
 
-/// A device web view on a blank http page, with the trust hook in place before any https load.
 async fn hooked_view(harness: &Harness, journal: &mut Journal) -> Result<Webview, String> {
     let from = journal.mark();
     let view = device::open(harness, LABEL, Some(STORE_TLS), harness.http_url("/blank"))?;
@@ -193,7 +187,6 @@ fn is_challenge(event: &Event) -> bool {
     matches!(event, Event::Challenge { label, .. } if label == LABEL)
 }
 
-/// The verdict of a challenge for 127.0.0.1:`port` that the system did not trust.
 fn verdict_from(event: Option<&Event>, port: u16) -> Option<Verdict> {
     match event {
         Some(Event::Challenge {

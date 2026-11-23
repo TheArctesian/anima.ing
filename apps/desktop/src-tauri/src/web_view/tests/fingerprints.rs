@@ -1,8 +1,7 @@
-//! D-5 and H-4: the hub's fingerprint form, parsed and shown the same way.
+//! D-5, H-4.
 
 use crate::web_view::{Fingerprint, FingerprintError};
 
-/// Every hex digit, in both nibbles of a byte.
 const HEX: &str = "0123456789abcdeffedcba98765432100f1e2d3c4b5a69788796a5b4c3d2e1f0";
 
 fn with_colons(hex: &str) -> String {

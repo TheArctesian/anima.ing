@@ -1,4 +1,4 @@
-//! D-2, WEB-006: one store per device, named by its `DeviceId`.
+//! D-2, WEB-006.
 
 use crate::web_view::{
     WebViewError,
@@ -50,8 +50,6 @@ fn web_006_a_device_id_is_the_hyphenated_uuid_and_nothing_else() {
     }
 }
 
-/// A one-character change anywhere in the ID, to any non-hex character, is refused, and a
-/// change to another hex digit is another store: the folder name is always hex and hyphens.
 #[test]
 fn web_006_the_nil_uuid_names_no_device() {
     assert_eq!(

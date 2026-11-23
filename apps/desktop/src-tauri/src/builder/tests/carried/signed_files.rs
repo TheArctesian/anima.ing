@@ -1,6 +1,4 @@
-//! The Mach-O checks on real files (UPD-011, S12 2.3, D-4): the walk that finds every Mach-O
-//! file of the app, and on macOS the planned `codesign` commands against files signed ad hoc in
-//! a temporary folder.
+//! UPD-011, S12 2.3, D-4.
 
 use std::{fs, os::unix::fs::symlink};
 
@@ -45,7 +43,6 @@ fn s12_d_4_every_mach_o_file_below_the_app_is_found_and_no_link_is_followed() {
     let fat = [0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 2];
     fs::write(app.join("Contents/MacOS/anima"), fat).unwrap();
     fs::write(lib.join("amcheck.dylib"), [0xcf, 0xfa, 0xed, 0xfe]).unwrap();
-    // Named for a text file, found by its bytes.
     fs::write(lib.join("README"), fat).unwrap();
     fs::write(app.join("Contents/Info.plist"), b"<?xml").unwrap();
     fs::write(lib.join("short"), [0xca, 0xfe]).unwrap();
@@ -69,7 +66,6 @@ fn s12_d_4_every_mach_o_file_below_the_app_is_found_and_no_link_is_followed() {
     );
 }
 
-/// The planned commands against real files signed ad hoc in a temporary folder.
 #[cfg(target_os = "macos")]
 mod signed_here {
     use std::{path::Path, process::Command, sync::Arc};
@@ -85,7 +81,6 @@ mod signed_here {
     const IDENTITY: &str = "Developer ID Application: Stephen Okita (7GDLG48PV6)";
     const ENTITLED: &str = r#"<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>com.apple.security.cs.disable-library-validation</key><true/></dict></plist>"#;
 
-    /// Runs `command` as `/usr/bin/<program>` in a scrubbed environment.
     async fn run(command: &plan::Command) -> Result<Vec<String>, BuilderError> {
         let running = Running::default();
         let claim = running.claim(Arc::new(|_| {})).unwrap();

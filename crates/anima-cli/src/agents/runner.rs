@@ -183,7 +183,8 @@ pub fn refusal(why: &Refusal) -> Failure {
         | Refusal::HolderOlder { said }
         | Refusal::CannotChange { said }
         | Refusal::TooLarge { said }
-        | Refusal::CannotAttach { said } => {
+        | Refusal::CannotAttach { said }
+        | Refusal::FolderShared { said } => {
             return Failure::Forbidden {
                 message: said.clone(),
                 hint: None,

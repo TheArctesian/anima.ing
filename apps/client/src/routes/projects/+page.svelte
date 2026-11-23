@@ -9,7 +9,7 @@
 
   const hub = useHub();
   const store = new ProjectsStore(projectsApi(hub));
-  const projectGroups = new SharedProjectGroups(hub);
+  const projectGroups = new SharedProjectGroups(hub, localStorage);
   onMount(() => {
     void store.load();
     void projectGroups.refresh();

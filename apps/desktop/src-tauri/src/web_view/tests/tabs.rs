@@ -161,8 +161,6 @@ fn web_004_a_tab_opened_again_is_a_new_reservation_the_old_one_cannot_end() {
     assert!(!tabs.holds(&id("missing"), new));
 }
 
-/// Every character in every position: a tab ID is accepted only if each character is one
-/// of `A-Z a-z 0-9 _ -`, so no label can hold another.
 #[test]
 fn d_3_every_character_outside_the_tab_id_set_is_refused_in_any_position() {
     let probes = (0..=0x2FF_u32)

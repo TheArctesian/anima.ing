@@ -15,6 +15,8 @@ const CONTAINERS = graphql(`
       createdAt
       composeProject
       composeService
+      composeWorkingDir
+      composeFiles
       composeProjectState
     }
   }

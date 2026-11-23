@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 use tauri::{Runtime, plugin::PluginHandle};
 
-/// The native session store refused the operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct StoreError;
 
-/// The app's native store. Plugin calls stay inside the shell.
+/// Plugin calls stay inside the shell.
 pub struct SecureTokens<R: Runtime>(PluginHandle<R>);
 
 #[derive(Serialize)]

@@ -1,6 +1,4 @@
-//! The seven programs in the release (INS-002, INS-003, OD-16, OD-17, S12 2.1 and 2.2): their
-//! build, where each is put for the bundle, the set the signed app may hold, and the Rust targets
-//! a universal build needs before a job is claimed (BLD-028).
+//! INS-002, INS-003, OD-16, OD-17, S12 2.1 and 2.2, BLD-028.
 
 use std::{
     fs,
@@ -229,7 +227,6 @@ fn ins_002_staging_copies_cargos_output_and_never_writes_through_a_planted_link(
     );
 }
 
-/// `exists` for a sysroot `/toolchain` that has the standard library of each of `triples`.
 fn toolchain_with(triples: &'static [&'static str]) -> impl Fn(&Path) -> bool {
     move |path: &Path| {
         triples
@@ -246,7 +243,6 @@ fn bld_028_a_universal_build_needs_both_darwin_standard_libraries() {
         tools::rust_targets(Target::DarwinUniversal, sysroot, both),
         []
     );
-    // A system toolchain, as Homebrew's, carries the host's library only.
     let host = toolchain_with(&["aarch64-apple-darwin"]);
     assert_eq!(
         tools::rust_targets(Target::DarwinUniversal, sysroot, host),

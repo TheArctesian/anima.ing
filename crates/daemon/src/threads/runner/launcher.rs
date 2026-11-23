@@ -29,12 +29,15 @@ use uuid::Uuid;
 use read::Confinement;
 
 use super::Runner;
-use crate::threads::git::place::records::held_by;
+use crate::threads::git::place::records::held_by_any;
 use crate::threads::git::place::shared::pack::is_read;
 use crate::threads::git::run::hooks::{AsThread, Ended, Kind, ThreadRun};
 use crate::threads::marker;
 
 pub mod read;
+mod seat;
+
+pub use seat::Seat;
 
 /// The names that the Git engine may add to the environment of a run.
 const ADDED: [&str; 1] = ["GIT_INDEX_FILE"];
@@ -65,13 +68,6 @@ pub struct Rights {
     pub(super) codex_home: Option<PathBuf>,
 }
 
-/// A thread for the launcher: its folder, and how its agent is confined.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Seat {
-    pub folder: PathBuf,
-    pub confinement: Confinement,
-}
-
 /// A run after its checks: what the launcher starts.
 struct Checked {
     program: PathBuf,
@@ -85,15 +81,16 @@ struct Checked {
 pub type SharedRights = Arc<Mutex<Rights>>;
 
 impl Rights {
-    /// Whether a thread that runs is in a folder that holds `records`: its agent can write them
-    /// ([`crate::threads::git::Engine::hold`]). A thread whose worktree is being made has no
-    /// agent yet, and its folder is not there yet.
+    /// Whether the sandbox of a thread that runs lets its agent write `records`: one of its
+    /// roots holds them ([`crate::threads::git::Engine::hold`], THR-050). A thread in Full access
+    /// has no sandbox and no roots: this check does not cover it (operator's ruling of
+    /// 2026-11-23). A thread whose worktree is being made has no agent yet.
     #[must_use]
     pub fn hold(&self, records: &Path) -> bool {
         self.threads
             .iter()
             .filter(|(id, _)| !self.coming.contains_key(id))
-            .any(|(_, seat)| held_by(records, &seat.folder))
+            .any(|(_, seat)| held_by_any(records, &seat.roots))
     }
 
     /// What `run` starts, after the checks of its rights: a read for each thread, a hook only
@@ -178,6 +175,9 @@ impl Rights {
             .iter()
             .filter(|(name, _)| read::login_env(name.as_ref()) && name != "CODEX_HOME")
             .map(|(name, value)| (OsString::from(name), OsString::from(value)));
+        // A read writes only the `TMPDIR` of its thread, never the one of the login (THR-050).
+        let tmp = super::start::private_tmp::NAMES
+            .map(|name| (OsString::from(name), seat.tmp.clone().into_os_string()));
         let own = run
             .env
             .iter()
@@ -187,7 +187,12 @@ impl Rights {
         // of the repository wins over `protocol.allow`. This list wins over both, and names no
         // protocol.
         let closed = (OsString::from("GIT_ALLOW_PROTOCOL"), OsString::from("none"));
-        let env = login.chain(own).chain(home).chain([closed, mark]).collect();
+        let env = login
+            .chain(tmp)
+            .chain(own)
+            .chain(home)
+            .chain([closed, mark])
+            .collect();
         Ok(Checked {
             program,
             args,
@@ -314,29 +319,42 @@ impl Runner {
     }
 
     /// Each thread that runs, or whose worktree the runner makes, with its folder and its rights.
+    /// The `TMPDIR` of a thread that no longer runs goes; a new start makes it again.
     fn rights_of_threads(&self) {
+        let keep = self.seats_now();
+        super::start::private_tmp::sweep(&self.dir, |thread| keep.contains(&thread));
+    }
+
+    /// The `TMPDIR` of a running thread, made again when it is not there. When it cannot be
+    /// made, its path as named: the hold counts a root that does not resolve as one that holds.
+    fn tmp_of(&self, thread: Uuid) -> PathBuf {
+        super::start::private_tmp::made(&self.dir, thread).unwrap_or_else(|error| {
+            tracing::warn!(%error, %thread, "the temporary folder of a thread could not be made");
+            super::start::private_tmp::folder(&self.dir, thread)
+        })
+    }
+
+    /// Writes the seats of the threads that run or are coming, and gives their IDs.
+    fn seats_now(&self) -> std::collections::BTreeSet<Uuid> {
         let daemon = self.dir.parent().unwrap_or(&self.dir);
-        let mut rights = self.rights.lock().unwrap_or_else(PoisonError::into_inner);
-        let live: BTreeMap<Uuid, Seat> = self
+        // The folders are made before the lock: the launcher does not wait on this I/O.
+        let running: Vec<_> = self
             .threads
             .values()
             .filter(|thread| thread.row.state != RunState::Stopped)
-            .map(|thread| {
-                let row = &thread.row;
+            .map(|thread| (&thread.row, self.tmp_of(thread.row.id)))
+            .collect();
+        let mut rights = self.rights.lock().unwrap_or_else(PoisonError::into_inner);
+        let live: BTreeMap<Uuid, Seat> = running
+            .into_iter()
+            .map(|(row, tmp)| {
                 let confinement = Confinement {
                     mode: row.mode,
                     program: row.program,
                     codex: rights.copies.get(&row.id).cloned(),
                     kept: crate::threads::notice::held_anima(&row.folder, daemon),
                 };
-                let folder = row.folder.clone();
-                (
-                    row.id,
-                    Seat {
-                        folder,
-                        confinement,
-                    },
-                )
+                (row.id, Seat::new(row.folder.clone(), confinement, tmp))
             })
             .collect();
         let rights = &mut *rights;
@@ -353,6 +371,7 @@ impl Runner {
             .extend(rights.coming.iter().map(|(id, seat)| (*id, seat.clone())));
         rights.env.clone_from(&self.env);
         rights.codex_home = Some(self.dir.join("codex-reads"));
+        rights.threads.keys().copied().collect()
     }
 
     /// The copy of the program that started `thread`: a read of a confined Codex thread runs in

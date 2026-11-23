@@ -45,7 +45,7 @@ impl From<store::GroupRow> for GroupView {
     }
 }
 
-fn failed(error: impl Into<Error>) -> async_graphql::Error {
+pub(super) fn failed(error: impl Into<Error>) -> async_graphql::Error {
     error.into().into_graphql()
 }
 
@@ -54,7 +54,7 @@ fn group_id(id: &ID) -> Result<ProjectGroupId> {
         .map_err(|_| invalid(&[FieldError::new("id", "That id is not valid.")]))
 }
 
-fn checked_name(text: &str) -> Result<String> {
+pub(super) fn checked_name(text: &str) -> Result<String> {
     rules::name(text).ok_or_else(|| {
         invalid(&[FieldError::new(
             "name",
@@ -63,7 +63,7 @@ fn checked_name(text: &str) -> Result<String> {
     })
 }
 
-fn project_ids(given: &[ID]) -> Result<Vec<ProjectId>> {
+pub(super) fn project_ids(given: &[ID]) -> Result<Vec<ProjectId>> {
     let parsed: Vec<ProjectId> = given
         .iter()
         .map(|id| id.parse())
@@ -77,7 +77,7 @@ fn project_ids(given: &[ID]) -> Result<Vec<ProjectId>> {
     })
 }
 
-fn entry(
+pub(super) fn entry(
     action: AuditAction,
     group: ProjectGroupId,
     message: &str,
@@ -149,6 +149,16 @@ pub struct GroupsMutation;
 
 #[Object(name = "ProjectGroupsMutation")]
 impl GroupsMutation {
+    /// Imports a device group without replacing shared assignments; returns acknowledged project IDs.
+    #[graphql(guard = "Authenticated")]
+    async fn import_project_group(
+        &self,
+        ctx: &Context<'_>,
+        input: super::imports::ImportInput,
+    ) -> Result<Vec<ID>> {
+        super::imports::import(ctx, input).await
+    }
+
     /// Makes a group and puts `projects` in it; a project in a different group moves (PRO-060).
     #[graphql(guard = "Authenticated")]
     async fn create_project_group(

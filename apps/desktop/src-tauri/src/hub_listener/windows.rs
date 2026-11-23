@@ -1,5 +1,4 @@
-//! Windows loopback credentials go only to the live child or the protected persistent
-//! link executable running as this user (WIN2, F-10). Other local servers are refused.
+//! Loopback credentials go only to this user's live link child or kept link (WIN2, F-10).
 #[path = "origin.rs"]
 mod origin;
 use crate::{
@@ -36,7 +35,6 @@ fn listens(text: &str, port: u16, pid: u32) -> bool {
     listener_pid(text, port) == Some(pid)
 }
 
-/// Fail closed unless the socket belongs to this user's verified device link.
 #[tauri::command]
 pub async fn hub_listener_check<R: Runtime>(
     webview: Webview<R>,

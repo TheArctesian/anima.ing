@@ -1,11 +1,5 @@
-//! UPD-002, BLD-067, BLD-068, BLD-069, DNS-007: the real `tauri-plugin-updater`, configured from
-//! the shipped `plugins.updater` block of `tauri.conf.json`, against a feed served over loopback.
-//! It proves that the app asks for `<target>-<arch>/latest.json`, takes the newer build, installs
-//! nothing whose signature fails, and keeps what it has when the feed has no entry for its target.
-//!
-//! Nothing here leaves 127.0.0.1, and no key outlives its test: each test makes a throwaway
-//! minisign key pair in memory, and its public half replaces the placeholder `pubkey` of the shipped
-//! configuration, so the operator's real key is never needed.
+//! UPD-002, BLD-067, BLD-068, BLD-069, DNS-007: the real `tauri-plugin-updater` against a loopback feed.
+//! Nothing here leaves 127.0.0.1, and each test signs with a throwaway key, never the operator's.
 
 mod feed;
 

@@ -1,5 +1,4 @@
-//! The operator's choice between runs (AWK-001): one small JSON file in the app's
-//! configuration folder. A missing or unreadable file is the default: off, no floor.
+//! AWK-001. A missing or unreadable file is the default: off, no floor.
 
 use std::{
     fs, io,
@@ -13,13 +12,11 @@ const FILE: &str = "stay-awake.json";
 /// Exists while Anima has changed the macOS sleep setting and not set it back (AWK-007).
 const MARKER: &str = "stay-awake-sleep-disabled";
 
-/// The marker file in `folder`.
 #[must_use]
 pub fn marker(folder: &Path) -> PathBuf {
     folder.join(MARKER)
 }
 
-/// The saved choice, with a floor inside the accepted range.
 #[must_use]
 pub fn load(folder: &Path) -> Wanted {
     let wanted: Wanted = fs::read(folder.join(FILE))

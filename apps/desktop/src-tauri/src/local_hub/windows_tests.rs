@@ -1,4 +1,3 @@
-//! Windows installation paths and private key export at the shell boundary.
 use super::{LocalHubError, carried, environment, key_copy};
 use crate::carried::DevFolders;
 use std::{ffi::OsString, fs};

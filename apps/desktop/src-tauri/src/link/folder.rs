@@ -1,11 +1,4 @@
-//! The device link's folders and its saved port (F-2, F-7).
-//!
-//! ```text
-//! <application>/link/device/        the state folder of `anima-link device`
-//! <application>/link/device/anima-port   the local port chosen at the join
-//! <application>/link/device.next/   a join in progress; replaces `device` when it succeeds
-//! <application>/link/device.old/    the folder before the last join, while it is removed
-//! ```
+//! F-2, F-7.
 
 use std::{
     fs::{self, DirBuilder, OpenOptions},
@@ -22,7 +15,6 @@ const UNIT_FILE: &str = "anima-unit";
 /// More than a port number and a line end.
 const MOST_PORT_FILE: u64 = 16;
 
-/// The folders of the device link below the application's folder.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkFolders {
     pub device: PathBuf,
@@ -40,8 +32,6 @@ impl LinkFolders {
         }
     }
 
-    /// Makes the folders above the state folders, owner-only (0700) where it makes them, sets
-    /// the link's own folder to 0700, and removes a join that did not finish.
     pub fn prepare_next(&self) -> io::Result<()> {
         let link = self.device.parent().ok_or(ErrorKind::InvalidInput)?;
         let mut builder = DirBuilder::new();
@@ -57,13 +47,11 @@ impl LinkFolders {
         remove_folder(&self.next)
     }
 
-    /// The new folder takes the place of the one before, which waits at `device.old` for
-    /// [`Self::remove_old`]. When the swap fails, the folder before is back at `device`.
+    /// When the swap fails, the folder before is back at `device`.
     pub fn take_next(&self) -> io::Result<()> {
         self.take_next_with(|from, to| fs::rename(from, to))
     }
 
-    /// [`Self::take_next`] with the rename as a parameter, so a test can make one fail.
     pub fn take_next_with(
         &self,
         rename: impl Fn(&Path, &Path) -> io::Result<()>,
@@ -84,13 +72,11 @@ impl LinkFolders {
         Ok(())
     }
 
-    /// Removes the folder before the last join.
     pub fn remove_old(&self) -> io::Result<()> {
         remove_folder(&self.old)
     }
 
-    /// Puts the folder before a join back at `device` when a swap stopped half way: `device` is
-    /// missing and `device.old` is there.
+    /// A swap that stopped half way leaves `device` missing and `device.old` there.
     pub fn recover(&self) -> io::Result<()> {
         let missing = matches!(
             fs::symlink_metadata(&self.device),
@@ -102,7 +88,6 @@ impl LinkFolders {
         Ok(())
     }
 
-    /// Removes every folder of the device link.
     pub fn remove(&self) -> io::Result<()> {
         remove_folder(&self.next)?;
         remove_folder(&self.old)?;
@@ -110,8 +95,7 @@ impl LinkFolders {
     }
 }
 
-/// Removes a folder and what is in it; one that is not there is not an error. A symbolic link
-/// is removed, not followed.
+/// A symbolic link is removed, not followed.
 fn remove_folder(folder: &Path) -> io::Result<()> {
     match fs::symlink_metadata(folder) {
         Ok(found) if found.is_dir() => fs::remove_dir_all(folder),
@@ -121,7 +105,6 @@ fn remove_folder(folder: &Path) -> io::Result<()> {
     }
 }
 
-/// The port in the port file: decimal digits and an optional line end, 1 to 65535.
 pub fn parse_port(text: &[u8]) -> Option<u16> {
     let digits = text.strip_suffix(b"\n").unwrap_or(text);
     let fits = !digits.is_empty() && digits.len() <= 5 && digits.iter().all(u8::is_ascii_digit);
@@ -135,7 +118,7 @@ pub fn parse_port(text: &[u8]) -> Option<u16> {
         .filter(|port| *port != 0)
 }
 
-/// The saved port of the state folder `folder`. A symbolic link is not followed.
+/// A symbolic link is not followed.
 pub fn read_port(folder: &Path) -> Option<u16> {
     let mut options = OpenOptions::new();
     options.read(true);
@@ -155,7 +138,6 @@ pub fn read_port(folder: &Path) -> Option<u16> {
     parse_port(&text)
 }
 
-/// Saves `port` in the new state folder `folder`, in a new owner-only file (0600).
 pub fn write_port(folder: &Path, port: u16) -> io::Result<()> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
@@ -166,7 +148,6 @@ pub fn write_port(folder: &Path, port: u16) -> io::Result<()> {
     file.sync_all()
 }
 
-/// Marks `folder`: a unit of the user must keep its link. A mark that is there is not an error.
 pub fn want_unit(folder: &Path) -> io::Result<()> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
@@ -179,7 +160,7 @@ pub fn want_unit(folder: &Path) -> io::Result<()> {
     }
 }
 
-/// Whether `folder` is marked for a unit of the user. A link at the place of the mark is no mark.
+/// A link at the place of the mark is no mark.
 pub fn wants_unit(folder: &Path) -> bool {
     fs::symlink_metadata(folder.join(UNIT_FILE)).is_ok_and(|mark| mark.is_file())
 }

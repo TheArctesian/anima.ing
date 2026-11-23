@@ -31,10 +31,9 @@ fn of(program: Program, mode: Mode, folder: &Path) -> (SharedRights, Uuid) {
         codex: None,
         kept: None,
     };
-    let seat = Seat {
-        folder: folder.to_owned(),
-        confinement,
-    };
+    let tmp = folder.join(".tmp");
+    std::fs::create_dir_all(&tmp).expect("the TMPDIR of the thread");
+    let seat = Seat::new(folder.to_owned(), confinement, tmp);
     let rights = Rights {
         env: vec![
             ("PATH".to_owned(), "/usr/bin:/bin".to_owned()),
@@ -158,10 +157,47 @@ fn thr_050_a_thread_in_a_folder_above_the_records_holds_them() {
     std::fs::create_dir_all(&records).expect("the records");
     let project = home.path().join("project");
     std::fs::create_dir_all(&project).expect("a project");
-    let (in_project, _) = rights(Mode::FullAccess, &project);
-    assert!(!in_project.lock().expect("rights").hold(&records));
+    let (in_project, _) = rights(Mode::Ask, &project);
+    // `/tmp` is a root of each sandboxed thread: records there are held by each of them.
+    let in_tmp = std::fs::canonicalize(&records)
+        .is_ok_and(|real| std::fs::canonicalize("/tmp").is_ok_and(|tmp| real.starts_with(tmp)));
+    assert_eq!(in_project.lock().expect("rights").hold(&records), in_tmp);
     let (in_home, _) = rights(Mode::Ask, home.path());
     assert!(in_home.lock().expect("rights").hold(&records));
+}
+
+#[test]
+fn thr_050_a_sandboxed_thread_holds_records_in_its_tmpdir() {
+    let folder = tempfile::tempdir().expect("a folder");
+    let project = folder.path().join("project");
+    std::fs::create_dir(&project).expect("a project");
+    let (rights, _) = rights(Mode::Ask, &project);
+    let records = project.join(".tmp/records");
+    std::fs::create_dir(&records).expect("the records");
+    // A folder of the thread that does not hold the records, and that resolves.
+    std::fs::create_dir(folder.path().join("elsewhere")).expect("a folder");
+    let tmp_only = Seat::new(
+        folder.path().join("elsewhere"),
+        rights
+            .lock()
+            .expect("rights")
+            .threads
+            .values()
+            .next()
+            .expect("a seat")
+            .confinement
+            .clone(),
+        project.join(".tmp"),
+    );
+    let mut rights = rights.lock().expect("rights");
+    let thread = *rights.threads.keys().next().expect("a thread");
+    rights.threads.insert(thread, tmp_only);
+    let seat = &rights.threads[&thread];
+    assert!(
+        seat.roots.contains(&project.join(".tmp")),
+        "its TMPDIR is a root"
+    );
+    assert!(rights.hold(&records), "the agent can write its TMPDIR");
 }
 
 #[tokio::test]
@@ -198,4 +234,83 @@ async fn thr_050_a_run_ends_with_its_program_though_a_background_child_holds_its
         "as with git, the background child keeps running"
     );
     assert!(alive("-9"), "the test ends its child");
+}
+
+#[test]
+fn thr_050_a_running_full_access_thread_does_not_hold_the_engine() {
+    let folder = tempfile::tempdir().expect("a folder");
+    let records = folder.path().join(".records");
+    std::fs::create_dir(&records).expect("the records");
+    let (full, _) = rights(Mode::FullAccess, folder.path());
+    let held = full.lock().expect("the rights").hold(&records);
+    assert!(
+        !held,
+        "Full access has no sandbox: the ruling of 2026-11-23 leaves it out"
+    );
+
+    let (sandboxed, _) = rights(Mode::AcceptEdits, folder.path());
+    let held = sandboxed.lock().expect("the rights").hold(&records);
+    assert!(
+        held,
+        "a sandboxed thread whose folder holds the records holds the engine"
+    );
+}
+
+/// A seat in `mode` in `folder` with the `TMPDIR` `tmp`, both made.
+fn seat(mode: Mode, folder: &Path, tmp: &Path) -> Seat {
+    std::fs::create_dir_all(folder).expect("the folder");
+    std::fs::create_dir_all(tmp).expect("the TMPDIR");
+    let confinement = Confinement {
+        mode,
+        program: Program::ClaudeCode,
+        codex: None,
+        kept: None,
+    };
+    Seat::new(folder.to_owned(), confinement, tmp.to_owned())
+}
+
+#[test]
+fn thr_050_a_sandbox_root_shared_with_a_different_running_thread_is_refused() {
+    let folder = tempfile::tempdir().expect("a folder");
+    // A `TMPDIR` is a real path, as `private_tmp::made` gives it.
+    let home = std::fs::canonicalize(folder.path()).expect("the real path");
+    let at = |name: &str| home.join(name);
+    let records = at("records");
+    std::fs::create_dir(&records).expect("the records");
+    let first = seat(Mode::Ask, &at("project"), &at("runner/tmp/1"));
+
+    let same_folder = seat(Mode::AcceptEdits, &at("project"), &at("runner/tmp/2"));
+    assert_eq!(
+        same_folder.shared([&first], Some(&records)),
+        None,
+        "two threads in one folder are permitted"
+    );
+
+    // A thread whose folder holds the folder of the runner can write the `TMPDIR` of the new one.
+    let above = seat(Mode::Ask, home.as_path(), &at("elsewhere/tmp"));
+    let said = same_folder.shared([&above], None).expect("refused");
+    assert!(said.contains("a different running thread"), "{said}");
+    let full = seat(Mode::FullAccess, home.as_path(), &at("elsewhere/tmp"));
+    assert_eq!(
+        same_folder.shared([&full], None),
+        None,
+        "a thread in Full access is not checked"
+    );
+
+    let nested = seat(Mode::Ask, &at("project/sub"), &at("runner/tmp/3"));
+    let said = nested.shared([&first], None).expect("refused");
+    assert!(
+        said.contains("a different running thread"),
+        "a folder inside a folder: {said}"
+    );
+    // The new thread can write the `TMPDIR` of the running one.
+    let holds_runner = seat(Mode::Ask, &at("runner"), &at("elsewhere/tmp/4"));
+    let said = holds_runner.shared([&first], None).expect("refused");
+    assert!(said.contains("a different running thread"), "{said}");
+
+    let in_records = seat(Mode::Ask, &at("other"), &records.join("tmp"));
+    let said = in_records.shared([], Some(&records)).expect("refused");
+    assert!(said.contains("records of the Git engine"), "{said}");
+    let unsandboxed = seat(Mode::FullAccess, &at("other"), &records.join("tmp"));
+    assert_eq!(unsandboxed.shared([&first], Some(&records)), None);
 }

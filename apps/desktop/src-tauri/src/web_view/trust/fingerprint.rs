@@ -1,4 +1,4 @@
-//! The SHA-256 fingerprint of a leaf certificate, in the hub's form (D-5, H-4).
+//! D-5, H-4.
 
 use std::{fmt, str::FromStr};
 
@@ -6,21 +6,17 @@ use sha2::{Digest, Sha256};
 
 const BYTES: usize = 32;
 
-/// SHA-256 of a leaf certificate's DER. Shown as 64 lower-case hex digits, the hub's form.
-///
-/// A fingerprint is public, so plain equality is enough; it is no secret to compare in
-/// constant time.
+/// A fingerprint is public, so plain equality is enough; it is no secret to compare in constant
+/// time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Fingerprint([u8; BYTES]);
 
 impl Fingerprint {
-    /// The fingerprint of a DER-encoded certificate.
     pub fn of_certificate(der: &[u8]) -> Self {
         Self(Sha256::digest(der).into())
     }
 }
 
-/// The text is not 64 hex digits, with or without colons between every byte pair.
 /// Carries no part of the text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 #[error("the fingerprint is not 64 hexadecimal digits")]
@@ -56,7 +52,6 @@ impl FromStr for Fingerprint {
     }
 }
 
-/// The value of one ASCII hex digit; no sign, no other byte.
 fn hex_value(digit: u8) -> Result<u8, FingerprintError> {
     match digit {
         b'0'..=b'9' => Ok(digit - b'0'),
@@ -66,7 +61,6 @@ fn hex_value(digit: u8) -> Result<u8, FingerprintError> {
     }
 }
 
-/// 64 lower-case hex digits, no separators.
 impl fmt::Display for Fingerprint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.iter().try_for_each(|byte| write!(f, "{byte:02x}"))

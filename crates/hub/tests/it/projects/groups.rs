@@ -1,5 +1,7 @@
 //! Project groups (PRO-059 to PRO-064).
 
+mod imports;
+
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

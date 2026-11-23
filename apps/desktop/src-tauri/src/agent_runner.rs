@@ -1,8 +1,5 @@
-//! The agent threads that the daemon of this computer runs (TH14, THR-128): the page Code is a
-//! client of the local socket of the runner, as `anima agents` is. This module adds the caller
-//! check, the error codes, the watch that sends each update to the main window, and the system
-//! notification of a thread that needs the person (THR-059). It starts no program itself, sends
-//! nothing to the hub and logs no text of a thread (LOG-007).
+//! The agent threads of the daemon of this computer (TH14, THR-128, THR-059).
+//! It starts no program, sends nothing to the hub and logs no text of a thread (LOG-007).
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -17,13 +14,9 @@ use tauri_plugin_notification::NotificationExt as _;
 
 use crate::web_view::MAIN;
 
-/// The event of one update of a thread, to the main window only.
 pub const UPDATE_EVENT: &str = "agent-runner:update";
-/// The event that says whether the watch reaches the runner: `true` or `false`.
 pub const LINK_EVENT: &str = "agent-runner:link";
-/// The time between two tries to reach a runner that is not there.
 const RETRY: Duration = Duration::from_secs(2);
-/// The most characters of the title and of the words of a notification.
 const TITLE_CHARS: usize = 120;
 const WORDS_CHARS: usize = 80;
 
@@ -77,8 +70,7 @@ impl Serialize for RunnerError {
     }
 }
 
-/// The number of the newest watch of the runner: an older watch ends at its next update, so that
-/// one watch runs, and a page that loads again gets the kept updates again.
+/// The newest watch: an older one ends at its next update, so only one watch runs.
 #[derive(Default)]
 pub struct Watching(AtomicU64);
 
@@ -86,8 +78,7 @@ fn checked<R: Runtime>(webview: &Webview<R>) -> Result<(), RunnerError> {
     crate::web_view::caller(webview.label()).map_err(|_| RunnerError::Caller)
 }
 
-/// One call to the runner and its result. A refusal of the runner is a result
-/// (`Outcome::Refused`), not an error: the page says it in words.
+/// A refusal of the runner is a result (`Outcome::Refused`), not an error.
 #[tauri::command]
 pub async fn agent_runner_call<R: Runtime>(
     webview: Webview<R>,
@@ -109,8 +100,6 @@ pub async fn agent_runner_call<R: Runtime>(
     })
 }
 
-/// Starts a new watch of the runner in place of the one before: each update goes to the main
-/// window as [`UPDATE_EVENT`]; when the runner is not there, the watch tries again each [`RETRY`].
 #[expect(
     clippy::needless_pass_by_value,
     reason = "a Tauri command takes its arguments by value"
@@ -156,8 +145,7 @@ async fn watch<R: Runtime>(app: AppHandle<R>, generation: u64) {
     }
 }
 
-/// `text` on one line with no control character and no character of markup (a notification
-/// server of Linux may read markup), held to `most` characters.
+/// One line with no control or markup character (a Linux notification server may read markup), at most `most` characters.
 fn shown(text: &str, most: usize) -> String {
     let one: String = text
         .chars()
@@ -177,8 +165,7 @@ fn shown(text: &str, most: usize) -> String {
     }
 }
 
-/// A system notification of this computer for a thread that needs the person (THR-059). Its
-/// text goes to the operating system only (THR-060); the page decides when one is due.
+/// A system notification (THR-059); its text goes to the operating system only (THR-060).
 #[expect(
     clippy::needless_pass_by_value,
     reason = "a Tauri command takes its arguments by value"

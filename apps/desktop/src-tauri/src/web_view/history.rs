@@ -1,8 +1,7 @@
-//! The toolbar's history steps (WEB-005): back, forward and reload. Pure: no I/O.
+//! WEB-005.
 
 use super::WebViewError;
 
-/// A history step or a reload, as the client names it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Step {
     Back,
@@ -11,7 +10,6 @@ pub enum Step {
 }
 
 impl Step {
-    /// Reads `BACK`, `FORWARD` or `RELOAD`; nothing else.
     pub fn parse(text: &str) -> Result<Self, WebViewError> {
         match text {
             "BACK" => Ok(Self::Back),
@@ -21,8 +19,7 @@ impl Step {
         }
     }
 
-    /// The fixed script that takes the step in the page, or `None` for a reload, which the
-    /// web view does itself. No part of a script comes from input.
+    /// No part of a script comes from input.
     pub fn script(self) -> Option<&'static str> {
         match self {
             Self::Back => Some("history.back()"),

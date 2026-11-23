@@ -1,4 +1,3 @@
-//! Protected persistent-link placement on Windows.
 use crate::link::LinkError;
 use std::{
     fs,
@@ -66,5 +65,4 @@ pub fn waits_for_restart(_program: &Path) -> bool {
     false
 }
 
-/// Nothing to delete on Windows: see [`waits_for_restart`].
 pub fn forget_previous(_program: &Path) {}

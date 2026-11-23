@@ -1,6 +1,5 @@
-//! Opens a device's web interface in the operator's own browser (D-9): where a device web
-//! view cannot pin its certificate, the client shows the fingerprint and sends the operator
-//! here. Only `http` and `https` addresses; the URL is never logged (LOG-007).
+//! Opens a device's web interface in the operator's own browser where a web view cannot pin (D-9).
+//! Only `http` and `https` addresses; the URL is never logged (LOG-007).
 
 #[cfg(unix)]
 use std::time::Duration;
@@ -13,8 +12,7 @@ use crate::os_program::{self, OPENER_PATIENCE, OsProgramError};
 
 use crate::web_view::{WebUrl, WebViewError};
 
-/// The URL opener: `open` on macOS, `xdg-open` on Linux. An absolute path, so `PATH`
-/// cannot swap it.
+/// An absolute path, so `PATH` cannot swap it.
 #[cfg(unix)]
 const OPENER: &str = if cfg!(target_os = "macos") {
     "/usr/bin/open"
@@ -22,11 +20,7 @@ const OPENER: &str = if cfg!(target_os = "macos") {
     "/usr/bin/xdg-open"
 };
 
-/// Why the address did not open in the system browser. Carries no URL or OS error text.
-///
-/// - `url`, `scheme`, `userinfo`, `host`: the address broke that rule.
-/// - `unavailable`: there is no opener on this system.
-/// - `failed`: the opener ran and reported a failure.
+/// Carries no URL or OS error text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum SystemBrowserError {
     #[error("the address cannot be opened: {}", .0.code())]
@@ -57,9 +51,7 @@ impl Serialize for SystemBrowserError {
     }
 }
 
-/// Runs `opener` with `url` as its one argument (no shell). A checked URL starts with its
-/// scheme, so the opener cannot read it as an option. An opener still running after
-/// `patience` is taken as a browser in the foreground (see `os_program::open_within`).
+/// A checked URL starts with its scheme, so the opener cannot read it as an option.
 #[cfg(unix)]
 fn open_with(opener: &str, url: &WebUrl, patience: Duration) -> Result<(), SystemBrowserError> {
     os_program::open_within(opener, url.as_str().as_ref(), patience).map_err(|error| match error {
@@ -68,7 +60,6 @@ fn open_with(opener: &str, url: &WebUrl, patience: Duration) -> Result<(), Syste
     })
 }
 
-/// Opens an `http` or `https` address in the system's default browser.
 #[tauri::command]
 pub async fn system_browser_open(
     webview: tauri::Webview,
@@ -89,9 +80,6 @@ pub async fn system_browser_open(
 
 #[cfg(all(test, unix))]
 mod tests {
-    //! The tests run `true`, `false` or a missing program in place of the opener, so no test
-    //! opens a browser.
-
     use std::{
         fs,
         os::unix::fs::PermissionsExt,

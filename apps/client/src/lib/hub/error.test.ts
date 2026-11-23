@@ -31,8 +31,11 @@ describe('parseResponse', () => {
     expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message: 'The query is too deep.' } });
   });
 
-  it('a field the hub does not know is unserved: the hub is older than this client, and its own words are not shown', () => {
-    const answer = parseResponse({ errors: [{ message: 'Unknown field "projectGroups" on type "Query".' }] });
+  it.each([
+    'Unknown field "projectGroups" on type "Query".',
+    'Invalid value for argument "input", unknown field "includeEmpty" of type "ProjectGroupImportInput"',
+  ])('a field the hub does not know is unserved: %s', (message) => {
+    const answer = parseResponse({ errors: [{ message }] });
     expect(answer).toEqual({ ok: false, error: UNSERVED });
     expect(!answer.ok && needsNewerHub(answer.error)).toBe(true);
   });

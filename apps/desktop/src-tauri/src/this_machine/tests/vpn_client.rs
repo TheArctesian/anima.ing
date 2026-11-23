@@ -1,5 +1,4 @@
-//! The Anima VPN client is a stand-in script that prints fixed Tailscale answers; no test asks
-//! this computer's real client or reads its interfaces (ADR-005, R-060).
+//! A stand-in script answers for the VPN client; no test asks this computer's real client or reads its interfaces (ADR-005, R-060).
 
 use std::{
     fs,
@@ -13,7 +12,6 @@ use serde_json::{Value, json};
 
 use super::super::vpn_client::{CLIENT_PATIENCE, own_address, running_address, signed_in_to};
 
-/// The hub's `vpnLoginServer`, as the web view passes it in.
 const ANIMA_LOGIN_SERVER: &str = "https://hs.anima.ing";
 const PATIENCE: Duration = Duration::from_millis(500);
 const ANIMA_ADDRESS: Ipv4Addr = Ipv4Addr::new(100, 101, 0, 9);
@@ -35,7 +33,6 @@ fn bytes(answer: &Value) -> Vec<u8> {
     serde_json::to_vec(answer).unwrap()
 }
 
-/// A stand-in client in `folder` that runs `script` (with the arguments in `$1`, `$2`).
 fn stand_in(folder: &Path, script: &str) -> String {
     let program = folder.join("tailscale");
     fs::write(&program, format!("#!/bin/sh\n{script}\n")).unwrap();
@@ -43,7 +40,6 @@ fn stand_in(folder: &Path, script: &str) -> String {
     program.to_str().unwrap().to_owned()
 }
 
-/// A stand-in client that answers `debug prefs` and `status` as Tailscale does.
 fn answering(folder: &Path, prefs: &Value, status: &Value) -> String {
     fs::write(folder.join("prefs.json"), bytes(prefs)).unwrap();
     fs::write(folder.join("status.json"), bytes(status)).unwrap();
@@ -62,8 +58,6 @@ esac"#
 
 #[test]
 fn the_vpn_address_is_the_one_the_anima_client_reports_even_beside_a_lower_overlay_address() {
-    // NetBird holds 100.64.0.7 on its own interface. The client's answer is all that is read,
-    // so that lower address in the same range never competes.
     let folder = tempfile::tempdir().unwrap();
     let client = answering(
         folder.path(),
@@ -122,7 +116,6 @@ fn a_missing_failing_or_slow_client_gives_no_vpn_address_in_time() {
     let missing = folder.path().join("missing").to_str().unwrap().to_owned();
     assert_eq!(own_address(&missing, ANIMA_LOGIN_SERVER, PATIENCE), None);
 
-    // Without tailscaled the command line exits with a failure.
     let failing = stand_in(folder.path(), "exit 1");
     assert_eq!(own_address(&failing, ANIMA_LOGIN_SERVER, PATIENCE), None);
 

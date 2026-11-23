@@ -1,6 +1,4 @@
-//! Tests run against an in-memory credential store installed as keyring's default builder, never
-//! the real Keychain. keyring's own mock keeps nothing between two `Entry::new` calls, so it
-//! cannot show that two origins are independent; this store is keyed by (service, account).
+//! An in-memory store keyed by (service, account) replaces keyring's mock, which keeps nothing between entries.
 
 use std::{
     any::Any,
@@ -77,8 +75,6 @@ impl CredentialBuilderApi for MemoryStore {
     }
 }
 
-/// Installs the in-memory store once for the test process and returns it, so a test can see
-/// the exact (service, account) keys. Each test uses its own origins.
 pub(crate) fn use_memory_store() -> &'static Store {
     static STORE: OnceLock<Store> = OnceLock::new();
     STORE.get_or_init(|| {

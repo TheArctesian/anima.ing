@@ -1,5 +1,4 @@
 //! The calls into the Go link library that `link/build-phone.sh` builds (`link/cmd/phonelink`). Each call
-//! answers JSON that the library allocated; it is read here and given back to the library at once.
 
 use std::ffi::{CStr, CString, c_char};
 use std::path::Path;
@@ -17,19 +16,16 @@ unsafe extern "C" {
     fn AnimaLinkFree(text: *mut c_char);
 }
 
-/// A join's answer: the fingerprint of this device's key.
 #[derive(Deserialize)]
 struct Joined {
     fingerprint: String,
 }
 
-/// A start's answer: the loopback address of the link.
 #[derive(Deserialize)]
 struct Started {
     local: String,
 }
 
-/// What the library says about the link that runs.
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Running {
@@ -48,13 +44,11 @@ pub struct Running {
     pub latency_ms: Option<f64>,
 }
 
-/// A failed call's answer.
 #[derive(Deserialize)]
 struct Failure {
     error: String,
 }
 
-/// The text that `call` returned, given back to the library.
 #[expect(
     unsafe_code,
     reason = "the answer is a C string that the Go library allocated"
@@ -72,7 +66,6 @@ fn answer(text: *mut c_char) -> String {
     read
 }
 
-/// The answer as `T`, or the error that the library named.
 fn read<T: for<'a> Deserialize<'a>>(text: &str) -> Result<T, LinkError> {
     if let Ok(failure) = serde_json::from_str::<Failure>(text) {
         return Err(match failure.error.as_str() {
@@ -94,7 +87,6 @@ fn c_path(path: &Path) -> Result<CString, LinkError> {
     c_text(path.to_str().ok_or(LinkError::Folder)?)
 }
 
-/// Uses `invite` with the identity in `state`; the fingerprint of this device's key.
 #[expect(unsafe_code, reason = "a call into the Go link library")]
 pub fn join(state: &Path, invite: &str) -> Result<String, LinkError> {
     let (state, invite) = (
@@ -106,7 +98,6 @@ pub fn join(state: &Path, invite: &str) -> Result<String, LinkError> {
     read::<Joined>(&text).map(|joined| joined.fingerprint)
 }
 
-/// Starts the link of `state` on `listen`; the loopback address it listens on.
 #[expect(unsafe_code, reason = "a call into the Go link library")]
 pub fn start(state: &Path, listen: &str) -> Result<String, LinkError> {
     let (state, listen) = (c_path(state)?, c_text(listen)?);
@@ -115,7 +106,6 @@ pub fn start(state: &Path, listen: &str) -> Result<String, LinkError> {
     read::<Started>(&text).map(|started| started.local)
 }
 
-/// The link that runs, if one does.
 #[expect(unsafe_code, reason = "a call into the Go link library")]
 pub fn status() -> Running {
     // SAFETY: the call takes nothing and returns a string of the library.
@@ -123,7 +113,6 @@ pub fn status() -> Running {
     read(&text).unwrap_or_default()
 }
 
-/// Stops the link; nothing happens when none runs.
 #[expect(unsafe_code, reason = "a call into the Go link library")]
 pub fn stop() {
     // SAFETY: the call takes nothing.

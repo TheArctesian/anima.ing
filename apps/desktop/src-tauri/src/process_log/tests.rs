@@ -1,6 +1,3 @@
-//! The folder tests run a harmless program in place of the file manager (`true`, `false`, `ls`
-//! or a small script), so no test opens a Finder or file-manager window.
-
 use std::{
     fs,
     os::unix::fs::PermissionsExt,
@@ -18,11 +15,9 @@ use super::{
     line::{Stamp, line_of},
 };
 
-/// A fresh, missing folder under the system temp folder for one test.
 fn scratch(name: &str) -> PathBuf {
     let root =
         std::env::temp_dir().join(format!("anima-process-log-{}-{name}", std::process::id()));
-    // A folder left by an earlier run is removed; a missing one is the expected case.
     let _ = fs::remove_dir_all(&root);
     root
 }
@@ -31,7 +26,6 @@ fn open(folder: &Path, opener: &str) -> Result<(), ProcessLogError> {
     open_with(folder, opener, OPENER_PATIENCE)
 }
 
-/// Writes a `sh` script to `path` with the given mode and returns it as an opener.
 fn script(path: &Path, body: &str, mode: u32) -> String {
     fs::write(path, format!("#!/bin/sh\n{body}\n")).unwrap();
     fs::set_permissions(path, fs::Permissions::from_mode(mode)).unwrap();
@@ -43,7 +37,6 @@ const STAMP: Stamp = Stamp {
     time: (9, 5, 7),
 };
 
-/// The line for a record built the way the `log` macros and the `plugin:log|log` command do.
 fn line(level: Level, target: &str, message: &str) -> String {
     let args = format_args!("{message}");
     line_of(
@@ -60,7 +53,6 @@ fn line(level: Level, target: &str, message: &str) -> String {
 #[test]
 fn log_008_a_missing_folder_is_created_then_given_to_the_opener() {
     let root = scratch("created");
-    // The space shows the opener gets the folder as one argument.
     let folder = root.join("ing.anima.desktop logs");
     // `ls` fails unless the folder exists and arrives as one argument.
     assert_eq!(open(&folder, "ls"), Ok(()));

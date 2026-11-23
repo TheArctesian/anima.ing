@@ -1,7 +1,6 @@
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
-/// Why a build step did not finish. Carries no process output, path or secret: the step's lines went
-/// to the web view as events, and only the variant crosses here (LOG-007).
+/// Carries no process output, path or secret; only the variant crosses here (LOG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum BuilderError {
     #[error("another build step is running")]

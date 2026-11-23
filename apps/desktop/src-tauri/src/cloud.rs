@@ -1,12 +1,6 @@
-//! The sign-in to the Anima.ing account and the calls of its cloud (hosted-mode.md Section 4.1,
-//! HMD-032 to HMD-035, HMD-043). They run in the shell, not in the web view: the `WorkOS` refresh
-//! token stays in the key store and never reaches script (HMD-034), and no browser rule (CORS)
-//! of `api.workos.com` or `cloud.anima.ing` decides whether a call may go. No token, device code
-//! or answer is logged (LOG-007).
-//!
-//! The desktop application and the phone application have the same commands (mobile plan M3-4). They
-//! differ in three places only: where the refresh token is kept, how the device is named, and
-//! `cloud_device`, which only a computer has (HMD-044).
+//! The sign-in to the Anima.ing account and the calls of its cloud (HMD-032 to HMD-035, HMD-043).
+//! They run in the shell: the refresh token stays in the key store and never reaches script (HMD-034).
+//! No token, device code or answer is logged (LOG-007).
 
 mod api;
 #[cfg(desktop)]
@@ -47,9 +41,7 @@ pub use api::{HubAccess, HubState};
 pub use device::CloudDevice;
 pub use error::CloudError;
 
-/// The public client ID of the app in `WorkOS`: the production client, which the site checks
-/// tokens against. A build can set another one (a staging client) with `ANIMA_CLOUD_CLIENT_ID`;
-/// set empty, the build has no sign-in. A client ID is public (HMD-035).
+/// A client ID is public (HMD-035); `ANIMA_CLOUD_CLIENT_ID` set empty builds an app with no sign-in.
 const CLIENT_ID: &str = match option_env!("ANIMA_CLOUD_CLIENT_ID") {
     Some(id) => id,
     None => "client_01M7M1VFKREYV6H5714SDVS4E6",
@@ -61,16 +53,12 @@ const CLOUD_URL: &str = match option_env!("ANIMA_CLOUD_URL") {
     None => "https://cloud.anima.ing",
 };
 
-/// How long one call may take.
 const CALL_LIMIT: Duration = Duration::from_secs(20);
-/// The extra wait that `slow_down` asks for.
 const SLOW_DOWN: Duration = Duration::from_secs(5);
-/// While the hub is not ready for an access: the wait between two asks, and how long to ask.
 const NOT_READY_WAIT: Duration = Duration::from_secs(2);
 const NOT_READY_LIMIT: Duration = Duration::from_secs(90);
 
-/// The sign-in of this app: the device code of a sign-in that runs, and the `WorkOS` access token
-/// of the account, in memory only.
+/// The device code of a running sign-in and the `WorkOS` access token, in memory only.
 pub struct Cloud {
     http: reqwest::Client,
     pending: Mutex<Option<Zeroizing<String>>>,
@@ -123,15 +111,13 @@ fn from_main(webview: &Webview) -> Result<(), CloudError> {
         .ok_or(CloudError::Caller)
 }
 
-/// The name of this computer on the link of the hub: from its computer name, which stays the same
-/// across sign-ins, so a second sign-in finds the device on the link.
+/// From the computer name, which stays the same across sign-ins, so a second sign-in finds the device.
 #[cfg(desktop)]
 fn device_name(_: &Webview) -> String {
     name::device_name(&crate::this_machine::computer_name())
 }
 
-/// The name of this phone on the link of the hub: kept in the data folder of the app, so a second
-/// sign-in finds the device on the link.
+/// Kept in the data folder of the app, so a second sign-in finds the device on the link.
 #[cfg(mobile)]
 fn device_name(webview: &Webview) -> String {
     use tauri::Manager;
@@ -147,7 +133,6 @@ fn device_name(webview: &Webview) -> String {
     })
 }
 
-/// Starts a sign-in: the short code to show and the page to open in the system browser.
 #[tauri::command]
 pub async fn cloud_sign_in_start(
     webview: Webview,
@@ -191,8 +176,7 @@ pub async fn cloud_sign_in_poll(
     }
 }
 
-/// Signs in again with no step of the person when the key store holds a refresh token that
-/// `WorkOS` still takes: `true` when it did.
+/// Signs in again from the refresh token in the key store, with no step of the person; `true` when it did.
 #[tauri::command]
 pub async fn cloud_sign_in_resume(
     webview: Webview,
@@ -206,7 +190,6 @@ pub async fn cloud_sign_in_resume(
     }
 }
 
-/// Drops this phone's local Anima.ing account session.
 #[cfg(mobile)]
 #[tauri::command]
 pub async fn cloud_sign_out(webview: Webview, cloud: State<'_, Cloud>) -> Result<(), CloudError> {
@@ -233,8 +216,7 @@ pub async fn cloud_hub(webview: Webview, cloud: State<'_, Cloud>) -> Result<HubS
         .await
 }
 
-/// `GET /v1/hub/usage`: the figures of the account for the page of the hub (HMD-073 in form B).
-/// They come from the account, never from the hub; nothing of them is logged (LOG-007).
+/// The figures come from the account, never from the hub; nothing of them is logged (LOG-007).
 #[tauri::command]
 pub async fn cloud_hub_usage(
     webview: Webview,
@@ -250,8 +232,7 @@ pub async fn cloud_hub_usage(
         .await
 }
 
-/// `POST /v1/hub/access` for this device, with its name on the link (`device_name`). While the hub
-/// is not ready, it asks `/v1/hub` again (which makes or wakes it) every 2 s, for up to 90 s.
+/// `POST /v1/hub/access` for this device; while the hub is not ready, it asks `/v1/hub` again, which wakes it.
 #[tauri::command]
 pub async fn cloud_hub_access(
     webview: Webview,
@@ -285,17 +266,13 @@ pub async fn cloud_hub_access(
     }
 }
 
-/// This computer as the hosted hub lists it (HMD-044): the device name that `cloud_hub_access`
-/// sends, the computer name and the OS. It calls no network and reads no secret. A phone has no
-/// such command: the client adds only a computer to the devices of the hub.
+/// This computer as the hosted hub lists it (HMD-044); it calls no network and reads no secret.
 #[cfg(desktop)]
 #[tauri::command]
 pub async fn cloud_device(webview: Webview) -> Result<CloudDevice, CloudError> {
     from_main(&webview)?;
-    // Desktop sign-in uses the native OS reported by this shell.
     let os = OperatingSystem::current().ok_or(CloudError::Unconfigured)?;
-    // The client asks this only for a hosted hub, at each start: the shell then knows that a
-    // unit of the user must keep the link, also when no sign-in runs (HMD-058).
+    // The client asks this only for a hosted hub, so a unit of the user must keep the link (HMD-058).
     crate::link::hosted_hub_opened(&webview, true);
     Ok(device::cloud_device(
         &crate::this_machine::computer_name(),

@@ -4,24 +4,20 @@
 #
 #   build.sh <darwin-universal|linux> <work folder> <out folder>
 #
-# The out folder gets bin/, lib/ and share/: a tree that runs from any folder, links only
-# system libraries, and holds the programs `anima-database` runs and nothing else.
+# The out folder is a tree that runs from any folder, links only system libraries, and holds only what `anima-database` runs.
 # A work folder that already holds the tree of this pin and target is left as it is.
 #
 # Environment:
-#   SIGN_IDENTITY              macOS: the Developer ID identity. Each Mach-O file is signed with
-#                              it, the hardened runtime and a secure timestamp. Empty: an ad hoc
-#                              signature for a trial on this computer; never for a release.
+#   SIGN_IDENTITY              macOS: the Developer ID identity. Empty: an ad hoc signature for a
+#                              trial on this computer; never for a release.
 #   ANIMA_POSTGRESQL_SOURCE    A source archive that is already here; it is still checked
 #                              against the pin. Unset: the archive is downloaded.
 #
 # Needs: a C compiler, make, bison, flex, curl; on Linux also patchelf, readelf and the zlib headers.
 set -eu
 
-# The build sees a fixed environment and the system's own programs only. A variable of the
-# caller (CONFIG_SITE, LDFLAGS, CC, a PATH with a folder the user can write) would change what
-# is built or which program checks the pin. ANIMA_BUILD_STEP is the mark by which the release
-# builder finds and stops every process of a step (D-20); it must reach the build's processes.
+# A fixed environment: a caller's CONFIG_SITE, LDFLAGS, CC or PATH would change what is built or what checks the pin.
+# ANIMA_BUILD_STEP marks every process of the step for the release builder (D-20).
 if [ "${DATABASE_TREE_ENVIRONMENT:-}" != fixed ]; then
     exec /usr/bin/env -i DATABASE_TREE_ENVIRONMENT=fixed PATH=/usr/bin:/bin HOME="${HOME:-/}" \
         SIGN_IDENTITY="${SIGN_IDENTITY:-}" ANIMA_POSTGRESQL_SOURCE="${ANIMA_POSTGRESQL_SOURCE:-}" \
@@ -48,9 +44,7 @@ RECIPE=$(shasum -a 256 "$0" 2>/dev/null || sha256sum "$0")
 STAMP="postgresql $VERSION $SHA256 $TARGET signed-by:${SIGN_IDENTITY:-ad-hoc} recipe:${RECIPE%% *}"
 
 fail() { echo "database-tree: $1" >&2; exit 1; }
-# The libraries a Mach-O file links, one install name a line. A name may hold spaces (a work
-# folder under "Application Support"), so the name is all that comes before otool's
-# " (compatibility version" and not the first word.
+# An install name may hold spaces, so it is all that comes before otool's " (compatibility version".
 linked() { otool "$@" | sed -n 's/^[[:space:]][[:space:]]*\(.*\) (compatibility version .*$/\1/p'; }
 
 case "$TARGET" in darwin-universal | linux) ;; *) fail "unknown target $TARGET" ;; esac
@@ -60,8 +54,7 @@ WORK=$(cd "$WORK" && pwd)
 if [ -f "$WORK/tree/STAMP" ] && [ "$(cat "$WORK/tree/STAMP")" = "$STAMP" ]; then
     echo "database-tree: PostgreSQL $VERSION for $TARGET is built already"
 else
-    # The archive that is checked is the copy in the work folder, and only that copy is
-    # unpacked: nobody else can change it between the check and the build.
+    # Only the checked copy in the work folder is unpacked, so nobody can change it between check and build.
     ARCHIVE=$WORK/postgresql-$VERSION.tar.bz2
     rm -f "$ARCHIVE"
     if [ -n "${ANIMA_POSTGRESQL_SOURCE:-}" ]; then
@@ -78,15 +71,13 @@ else
     fi
     [ "$FOUND" = "$SHA256" ] || fail "the source archive is not the pinned one (sha256 $FOUND)"
 
-    # One build. $1 names its folders; the rest is added to configure.
     build() {
         name=$1; shift
         rm -rf "$WORK/build-$name" "$WORK/install-$name"
         mkdir -p "$WORK/build-$name"
         ( cd "$WORK/build-$name"
           tar -xjf "$ARCHIVE" --strip-components=1
-          # No ICU: the cluster uses the built-in C.UTF-8 provider. No OpenSSL: the server has
-          # no network listener, and SCRAM and random numbers have code inside PostgreSQL.
+          # No ICU: the cluster uses the built-in C.UTF-8 provider. No OpenSSL: the server has no network listener.
           ./configure --prefix="$WORK/install-$name" \
               --without-icu --without-readline --without-openssl --without-llvm --disable-nls \
               CFLAGS="-O2" "$@" >configure.log 2>&1 || { tail -5 configure.log >&2; exit 1; }
@@ -117,8 +108,7 @@ else
             lipo -create "$module" "$WORK/install-x86_64/lib/postgresql/$name" \
                 -output "$TREE/lib/postgresql/$name"
         done
-        # The build writes libpq's own install path into each program that uses it. Point it
-        # at the tree itself, so the tree runs from any folder.
+        # Point libpq's install path at the tree, so the tree runs from any folder.
         install_name_tool -id "@loader_path/../lib/libpq.5.dylib" "$TREE/lib/libpq.5.dylib"
         for file in "$TREE"/bin/* "$TREE"/lib/postgresql/*.dylib; do
             case "$file" in */lib/postgresql/*) place="@loader_path/../libpq.5.dylib" ;; *) place="@loader_path/../lib/libpq.5.dylib" ;; esac
@@ -128,8 +118,7 @@ else
             done
         done
         for file in "$TREE"/bin/* "$TREE"/lib/*.dylib "$TREE"/lib/postgresql/*.dylib; do strip -x "$file"; done
-        # The hardened runtime loads a library only when it has the Team ID of the program.
-        # A Developer ID signature gives every file that Team ID, and no entitlement is due.
+        # The hardened runtime loads only libraries with the program's Team ID, which a Developer ID signature gives.
         if [ -n "${SIGN_IDENTITY:-}" ]; then
             codesign --force --sign "$SIGN_IDENTITY" --options runtime --timestamp \
                 "$TREE"/lib/postgresql/*.dylib "$TREE"/lib/*.dylib "$TREE"/bin/* 2>"$WORK/codesign.log" ||
@@ -140,8 +129,7 @@ else
                 '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
                 '<plist version="1.0"><dict><key>com.apple.security.cs.disable-library-validation</key><true/></dict></plist>' \
                 >"$WORK/trial.entitlements"
-            # codesign says "replacing existing signature" for each file; the check below
-            # is what proves the result.
+            # The check below proves the result, not codesign's output.
             codesign --force --sign - --options runtime \
                 "$TREE"/lib/postgresql/*.dylib "$TREE"/lib/*.dylib 2>/dev/null
             codesign --force --sign - --options runtime --entitlements "$WORK/trial.entitlements" \
@@ -149,8 +137,7 @@ else
         fi
         ;;
     linux)
-        # Stack protector, checked libc calls, and a read-only relocation table with no lazy
-        # binding (S3 T11, condition d). The checks below prove the last two.
+        # Hardening of S3 T11, condition d; the checks below prove relro and bind-now.
         build linux CFLAGS="-O2 -fstack-protector-strong" CPPFLAGS="-D_FORTIFY_SOURCE=2" \
             LDFLAGS="-Wl,-z,relro,-z,now"
         cp -R "$WORK/install-linux/share" "$TREE/share"
@@ -208,7 +195,6 @@ fi
 rm -rf "$OUT"
 mkdir -p "$(dirname "$OUT")"
 cp -R "$TREE" "$OUT"
-# The work folder is private (umask 077). The tree in the application must be readable by
-# every user of the computer, as the application's other files are.
+# The work folder is private (umask 077); the tree in the application is readable by every user.
 chmod -R u=rwX,go=rX "$OUT"
 echo "database-tree: PostgreSQL $VERSION for $TARGET is in $OUT ($(du -sh "$OUT" | cut -f1))"
