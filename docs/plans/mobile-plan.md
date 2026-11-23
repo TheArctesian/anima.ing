@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Version 0.6 (2026-11-22). R-429 makes new threads, handoff and approvals a single public launch scope on iOS and Android. Version 0.5 (2026-11-19). Task M3-4 (the account sign-in on a phone) is built and waits for HT-055; OD-M9 is open. The build number (M5-3) and the iOS archive script (M5-4) are built; the archive with a signature waits for HT-053. Version 0.4: R-181 adds M5-7 for F-Droid and puts Google Play aside. The operator decided OD-M1 to OD-M8 and approved the phone mockups on 2026-11-16. It serves Section 4, tier 4, "iOS client and Android client (Phase 5)", and starts now (OD-M2). MOB-001 to MOB-042. Its Section 5 holds the state of each task. The branch `mobile/m1-shell` was merged into `main` on 2026-11-17, and again with the Paste invite and Joining screens (M3-2). Its facts are from a test build on the local branch `spike/mobile`, which is not for merge.
+evidence: Version 0.7 (2026-11-23). Adds a native Mobile notification channel and phased push delivery. Version 0.6 (2026-11-22). R-429 makes new threads, handoff and approvals a single public launch scope on iOS and Android. Version 0.5 (2026-11-19). Task M3-4 (the account sign-in on a phone) is built and waits for HT-055; OD-M9 is open. The build number (M5-3) and the iOS archive script (M5-4) are built; the archive with a signature waits for HT-053. Version 0.4: R-181 adds M5-7 for F-Droid and puts Google Play aside. The operator decided OD-M1 to OD-M8 and approved the phone mockups on 2026-11-16. It serves Section 4, tier 4, "iOS client and Android client (Phase 5)", and starts now (OD-M2). MOB-001 to MOB-042. Its Section 5 holds the state of each task. The branch `mobile/m1-shell` was merged into `main` on 2026-11-17, and again with the Paste invite and Joining screens (M3-2). Its facts are from a test build on the local branch `spike/mobile`, which is not for merge.
 ---
 
 # Anima Mobile Plan
@@ -11,8 +11,8 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Mobile plan: the iOS client and the Android client |
-| Version | 0.6 |
-| Date | 2026-11-22 |
+| Version | 0.7 |
+| Date | 2026-11-23 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | The header of this document holds the state (PLN-020). History: Approved. The operator decided OD-M1 to OD-M8 on 2026-11-16 (Section 3). Version 0.2 writes Section 4.4 again for the ruling on OD-M3. MOB-032 waits for the test of task M1-4. Version 0.3: the operator approved the phone mockups on 2026-11-16 ("Mock are good enough now as well"); Section 4.2 follows them. Version 0.5 (2026-11-19): task M3-4 is built, MOB-002 names the cloud commands, and OD-M9 is added; the build number (M5-3), the iOS archive script (M5-4) and the iOS build procedure (M1-3, in part) are built. |
 | Parent | [work-plan.md](../work-plan.md) Section 4, tier 4, row "iOS client and Android client (Phase 5)" (PLN-003) |
@@ -236,12 +236,21 @@ The test for the end of M3: the operator installs the application on a real iPho
 3. Use a thread in Supervised mode and give it a task that produces an approval request. Review the request and answer it on the phone. Check that the host observes one answer and that both clients show the result. Exercise both allow and decline.
 4. Check that the phone shows a clear result when the machine is offline or refuses the launch. Use a test machine with remote starts off and then a project outside its permitted folders.
 
+### Mobile notifications
+
+Operators can choose Mobile in the hub notification settings, select it for checks, and send a test. The hub uses its existing outbox and sends to an authenticated HTTPS relay. The relay delivers to enrolled Anima installations. The operator can see whether the relay accepted a notification in the delivery log. Enabling Mobile is an explicit choice.
+
+| Task | Stage | Work | Needs | State | Check |
+| --- | --- | --- | --- | --- | --- |
+| M7-1 | M7 Notifications | Add Mobile to the notification channel kinds. Send a versioned alert to a configured relay through the existing notification outbox. | NOT-002 to NOT-004 | Not started | Channel settings, Send test and the delivery log |
+| M7-2 | M7 Notifications | Enroll and revoke mobile push subscriptions, deliver alerts through the relay, and open the corresponding hub destination on tap. | M7-1 | Not started | A real iPhone and Android phone receive a test with the app in the background. The Android distribution path must document provider availability. |
+| M7-3 | M7 Notifications | Route Code alerts that need the operator to Mobile and open the corresponding thread from the alert. | M7-2, THR-059 to THR-064 | Not started | A desktop thread asks for approval and the phone opens the same thread. The push contains no transcript, command, diff or path. |
+
 ## 6. Not planned here
 
 | Item | Reason |
 | --- | --- |
 | iOS device reporting, screen broadcast, offline copy and backup store (IOS-001 to IOS-004) | They stay in the design specification Section 10.1. They come after the first version (OD-M6). |
-| Push notifications from Apple and from Google | They need a relay that Anima operates. ntfy gives notifications now. |
 | A tablet layout | The phone layout comes first. |
 | An application for a watch or a widget | Not asked for. |
 
