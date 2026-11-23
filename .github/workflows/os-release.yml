@@ -3,15 +3,6 @@ name: OS preview release
 on:
   push:
     branches: [dev, os/automatic-releases]
-    paths:
-      - experiments/anima-os/**
-      - crates/**
-      - link/**
-      - Cargo.toml
-      - Cargo.lock
-      - rust-toolchain.toml
-      - .cargo/**
-      - .github/workflows/os-release.yml
   workflow_dispatch:
 
 permissions: {}
