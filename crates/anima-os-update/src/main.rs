@@ -1,4 +1,6 @@
 #[cfg(target_os = "linux")]
+mod automatic;
+#[cfg(target_os = "linux")]
 mod boot;
 #[cfg(target_os = "linux")]
 mod command;
@@ -66,7 +68,7 @@ async fn run() -> Result<serde_json::Value> {
     }
     let [action] = args.as_slice() else {
         return Err(Error::Refused(
-            "Choose status, check, download, activate, rollback, health or failure.",
+            "Choose status, check, automatic, download, activate, rollback, health or failure.",
         ));
     };
     if !nix::unistd::Uid::effective().is_root() {
