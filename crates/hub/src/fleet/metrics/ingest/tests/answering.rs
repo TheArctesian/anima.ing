@@ -35,7 +35,7 @@ fn router(pool: &PgPool, now: DateTime<Utc>, answer_time: Duration) -> Router {
         answer: answer_time,
         ..Deadlines::HUB
     };
-    daemon_router_within(pool.clone(), Bus::new(16), clock, deadlines)
+    daemon_router_within((pool.clone(), Bus::new(16), clock), deadlines)
 }
 
 /// Posts the code to `/daemon/v1/enrol`, from a permitted address when `addressed`.

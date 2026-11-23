@@ -80,14 +80,12 @@ pub(super) struct DaemonState {
     pub(super) turns: Turns,
     recorder: Recorder,
     pub(super) deadlines: Deadlines,
-    /// Whether the device policy of a machine permits model work now (K11 Section 3).
     pub(super) policy: PolicyGate,
 }
 
 /// `POST /daemon/v1/enrol`, `POST /daemon/v1/push`, `POST /daemon/v1/renew` and
 /// `POST /daemon/v1/keys/fetch`, each answering within ten seconds (K8). `vault` opens the
-/// operational keys a daemon fetches (R-147). `policy` reads the device policy for the
-/// hand-out of model items (K11 Section 3).
+/// operational keys a daemon fetches (R-147); `policy` reads the device policy (K11 Section 3).
 /// The caller mounts it inside `crate::logged` and behind the permitted-networks layer, whose
 /// client address every refusal event names (NET-002); without that layer each request is
 /// refused as `UNAVAILABLE`.
@@ -114,9 +112,7 @@ pub fn daemon_router(
 /// wait for the hub's.
 #[cfg(test)]
 pub(in crate::fleet::metrics) fn daemon_router_within(
-    db: PgPool,
-    bus: Bus,
-    clock: Arc<dyn Clock>,
+    (db, bus, clock): (PgPool, Bus, Arc<dyn Clock>),
     deadlines: Deadlines,
 ) -> Router {
     let recorder = Recorder::new(db.clone(), bus.clone());

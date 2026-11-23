@@ -50,7 +50,7 @@ async fn database_now(pool: &PgPool) -> DateTime<Utc> {
 /// Pushes `batch` with `token` at `now` from a permitted address; the status.
 async fn push(pool: &PgPool, now: DateTime<Utc>, token: &DaemonToken, batch: &Value) -> StatusCode {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
-    let router = daemon_router_within(pool.clone(), Bus::new(16), clock, Deadlines::HUB);
+    let router = daemon_router_within((pool.clone(), Bus::new(16), clock), Deadlines::HUB);
     let mut request = Request::post("/daemon/v1/push")
         .header("content-type", "application/json")
         .header("authorization", format!("Bearer {}", token.expose()))
