@@ -16,7 +16,7 @@
   import type { RemoteStart } from '../start';
   import { clipboardRules, NO_CLIPBOARD } from '../clipboard/clipboard';
   import ConnectionSteps from '../steps/ConnectionSteps.svelte';
-  import { displayScale } from './fit';
+  import { displayScale, fillDisplay } from './fit';
   import { followPixelRatio, remotePane, type RemotePane } from './pane';
   import { gatewayAsk, PROMPT_CANCELLED, PROMPT_REFUSED } from './prompt';
   import RemoteToolbar from './RemoteToolbar.svelte';
@@ -35,13 +35,14 @@
     visible: boolean;
     /** The pane should take the keyboard (its tab is selected and the app has focus). */
     focused: boolean;
+    onback?: (() => void) | undefined;
     /** Hears the final ending of each attempt (after `endSession` answered, D-4). */
     onended?: (ending: SessionEnding) => void;
     /** Hears the client of each opened tunnel before the gateway's first frame; the function it returns runs when that tunnel goes. */
     onclient?: (client: Client) => (() => void) | undefined;
   }
 
-  const { device, protocol, start, api, visible, focused, onended, onclient }: Props = $props();
+  const { device, protocol, start, api, visible, focused, onback, onended, onclient }: Props = $props();
   /** Fixed texts of the clipboard notices; never the clipboard's content (LOG-007). */
   const COPY_FAILED = 'Could not copy to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow access, or use Paste in the Keys menu.';
@@ -95,7 +96,7 @@
   const certificateOpen = $derived(visible && stage.kind === 'ended' && stage.certificateChanged && dismissed !== stage);
   /** Keys are sent only while the focus is really in the pane, so no key is held when it leaves (D-8). */
   const bound = $derived(wanted && paneHasFocus);
-  const scale = $derived(displayScale(protocol, remote, paneSize ?? remote, pixelRatio));
+  const scale = $derived(onback ? fillDisplay(remote, paneSize ?? remote) : displayScale(protocol, remote, paneSize ?? remote, pixelRatio));
 
   function connect(css: Size) {
     const display = displayInput(css, window.devicePixelRatio, Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -116,10 +117,6 @@
     notice = undefined;
     connect(paneSize ?? { width: 0, height: 0 });
   }
-
-  $effect(() => {
-    if (displayState?.displays !== undefined) untrack(() => displayView?.fit());
-  });
 
   function copyToSystem(text: string) {
     navigator.clipboard.writeText(text).catch(() => {
@@ -245,6 +242,7 @@
 <section class="session" hidden={!visible} aria-label="{protocol} session on {device.name}">
   <RemoteToolbar
     deviceName={device.name}
+    {onback}
     {ready}
     policy={rules.notice}
     pasteOff={rules.pasteOff}
@@ -273,7 +271,7 @@
       {@attach attachPane}
     >
       {#if ready && client !== undefined}
-        <RemoteDisplay bind:this={displayView} {client} pane={paneElement} paneSize={paneSize ?? remote} {remote} {scale} {mobile} interactive={visible && ask.kind !== 'ask' && displayState?.displayPending !== true} />
+        <RemoteDisplay bind:this={displayView} {client} pane={paneElement} paneSize={paneSize ?? remote} fitKey={displayState?.displays} {remote} {scale} {mobile} interactive={visible && ask.kind !== 'ask' && displayState?.displayPending !== true} />
       {/if}
     </div>
     {#if !ready}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/icons/Icon.svelte';
   import { KEY_COMBINATIONS, type KeyCombination } from '../guacamole/keys';
   import KeysMenu from '../menu/KeysMenu.svelte';
   import type { DisplayChoices } from '../../tunnel/guacamole/tunnel';
@@ -6,6 +7,7 @@
 
   interface Props {
     deviceName: string;
+    onback?: (() => void) | undefined;
     /** The session is connected, so the Keys menu may send. */
     ready: boolean;
     /** The clipboard policy notice (RA-033), shown while connected. */
@@ -24,10 +26,13 @@
     ondismiss: () => void;
   }
 
-  const { deviceName, ready, policy, pasteOff, notice, fit, canFit = false, displays, switching = false, selectDisplay, onkeys, onpaste, ondismiss }: Props = $props();
+  const { deviceName, onback, ready, policy, pasteOff, notice, fit, canFit = false, displays, switching = false, selectDisplay, onkeys, onpaste, ondismiss }: Props = $props();
 </script>
 
 <div class="toolbar">
+  {#if onback !== undefined}
+    <button type="button" aria-label="Back to app" onclick={onback}><Icon name="carbon:chevron-left" /></button>
+  {/if}
   <KeysMenu disabled={!ready} entries={KEY_COMBINATIONS} {onkeys} {onpaste} {pasteOff} />
   {#if ready && fit !== undefined}<button type="button" onclick={fit} disabled={!canFit}>Fit</button>{/if}
   {#if ready && displays !== undefined && displays.monitors.length > 1}

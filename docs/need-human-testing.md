@@ -195,10 +195,10 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 ### HT-NEW-vncdisplays: one VNC monitor at a time on iPad
 
 - State: Open.
-- Connect from the iPad to the Mac with three monitors. Open Displays. Check that it lists All displays and three numbered displays.
+- Connect from the iPad to the Mac with three monitors. Check that VNC uses the iPad viewport with a small margin in portrait and landscape. Open Displays. Check that it lists All displays and three numbered displays.
 - Choose each display. Check that its picture fits the session area and that there is no part of a different monitor. Tap a harmless spot on each display, and confirm the pointer moves there on the Mac.
 - Pinch to zoom on one display. Use Fit and check that the selected display fills the available space again.
-- Select All displays and check that the combined desktop returns. Check that the picker is absent in an ordinary single-display VNC session.
+- Select All displays and check that the combined desktop returns. Use Back, then reopen the session from its tab. Check that it stayed connected. Check that the picker is absent in an ordinary single-display VNC session.
 
 ### HT-171-touch: VNC and RDP with touch on iPadOS and Android
 
