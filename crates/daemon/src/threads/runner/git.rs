@@ -71,6 +71,9 @@ impl Gits {
                     .unwrap_or_else(|_| dir.to_owned())
                     .join("git-records")
             }),
+            // Each agent still gets the `TMPDIR` of the login: records in a temporary folder
+            // are refused until the runner gives each agent one of its own (THR-050).
+            private_tmp: false,
         };
         let login = env.iter().map(|(name, value)| (name.into(), value.into()));
         let engine = wired::engine(login, &places, launcher::launcher(rights.clone()));
