@@ -257,7 +257,9 @@ because a different program, and each user who can write its folder, can change 
   refuses another (`actor_not_permitted`). The hub writes `actor`, so the setting limits an honest hub only.
 - The `Claim` gets `model` in `kinds` and the eleven types in `types` when the daemon has the model function. The
   model function is on when the switch is on; there is no second switch (OD-C8).
-- Model items do not use the job slot of K10 (`free.slots` counts jobs). The hub counts its own leases: one
+- Model items do not use the job slot of K10 (`free.slots` counts jobs), and they take no room of `free`: the daemon sends 0
+  for `free.slots`, `free.memoryBytes` and `free.diskBytes` when it offers only model work, and the placement does not
+  compare `free.memoryBytes` and `free.diskBytes` with the `limits` of a model item. The hub counts its own leases: one
   machine has at most one model item that changes the machine (`runtime_install`, `model_pull`, `copy_adopt`,
   `copy_delete`, `server_start`, `server_stop`, `model_load`, `model_unload`) and one `model_measure` at a time. A `model_report`
   and a `model_drain` are not counted. One claim gets at most one item. The order: `model_drain`, `server_stop`,

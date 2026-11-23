@@ -62,6 +62,12 @@ const REDUCING: [WorkType; 5] = [
 ];
 
 /// Whether the device policy can stop `job`: a model item that is not of a reducing type.
+/// A model item takes no room of `free`: the claim offers none for it (K11 Section 3), and the hub
+/// checks the fit of the model (FIT-005) and counts its own leases.
+fn takes_room(job: &Job) -> bool {
+    job.asked.kind != WorkKind::Model
+}
+
 fn policy_applies(job: &Job) -> bool {
     job.asked.kind == WorkKind::Model && !REDUCING.contains(&job.asked.work_type)
 }
@@ -241,10 +247,13 @@ pub(super) fn alone(job: &Job, named: Option<DeviceId>, offer: &Offer) -> Verdic
             Verdict::Architecture,
         ),
         (
-            asked.limits.memory_bytes <= offer.memory_bytes,
+            !takes_room(job) || asked.limits.memory_bytes <= offer.memory_bytes,
             Verdict::Memory,
         ),
-        (asked.limits.disk_bytes <= offer.disk_bytes, Verdict::Disk),
+        (
+            !takes_room(job) || asked.limits.disk_bytes <= offer.disk_bytes,
+            Verdict::Disk,
+        ),
         (
             !job.refused_by.contains(&offer.device),
             Verdict::RefusedBefore,

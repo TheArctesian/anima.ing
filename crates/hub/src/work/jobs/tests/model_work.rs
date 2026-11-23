@@ -2,7 +2,7 @@
 //! order.
 
 use daemon_core::model_work::names::Actor;
-use daemon_core::wire::{Switch, WorkKind, WorkType};
+use daemon_core::wire::{Free, Switch, WorkKind, WorkType};
 
 use super::placement::{offer, verdicts};
 use super::{MAC, PVE, at, claim_of, device, queued};
@@ -37,6 +37,42 @@ fn model_offer(policy_permits: bool) -> Offer {
         policy_permits,
         ..offer(&claim)
     }
+}
+
+/// The claim of a daemon that offers only model work, as `Node::claim` of the daemon writes it: no
+/// job slot and no room (K11 Section 3).
+fn model_only_offer() -> Offer {
+    let mut claim = claim_of(PVE);
+    claim.kinds = vec![WorkKind::Model];
+    claim.types = daemon_core::wire::MODEL_TYPES.to_vec();
+    claim.free = Free {
+        slots: 0,
+        memory_bytes: 0,
+        disk_bytes: 0,
+    };
+    Offer {
+        policy_permits: true,
+        ..offer(&claim)
+    }
+}
+
+#[test]
+fn k11_3_each_model_item_goes_to_a_daemon_that_offers_no_room_of_free() {
+    let daemon = model_only_offer();
+    for work_type in daemon_core::wire::MODEL_TYPES {
+        let job = model(work_type);
+        assert!(job.asked.limits.memory_bytes > 0 && job.asked.limits.disk_bytes > 0);
+        let decided = verdicts(&[job], &daemon, &[], at(3600));
+        assert_eq!(decided, [Verdict::Fits], "{work_type:?}");
+    }
+}
+
+#[test]
+fn a_job_of_k10_still_needs_the_room_that_it_asks() {
+    let mut claim = claim_of(PVE);
+    claim.free.memory_bytes = 0;
+    let decided = verdicts(&[queued(WorkType::Build)], &offer(&claim), &[], at(3600));
+    assert_eq!(decided, [Verdict::Memory]);
 }
 
 #[test]
