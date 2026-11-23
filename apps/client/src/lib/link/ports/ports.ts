@@ -7,23 +7,23 @@ export type System = 'mac' | 'linux' | 'windows';
 export interface PortRow {
   readonly port: number;
   readonly label: string;
-  /** The setting of the system that must be on as well: Anima installs no program for a session (HMD-049). */
+  /** The preparation needed for a private connection (HMD-049, OS3-R12). */
   readonly needs: string;
   readonly on: boolean;
 }
 
 const NEEDS: Readonly<Record<System, Readonly<Record<number, string>>>> = {
   mac: {
-    22: 'Needs Remote Login: System Settings, General, Sharing.',
+    22: 'Sets up SSH automatically. Your system may ask for administrator approval.',
     5900: 'Needs Screen Sharing: System Settings, General, Sharing.',
   },
   linux: {
-    22: 'Needs an SSH server on this computer, such as OpenSSH.',
+    22: 'Sets up SSH automatically. Your system may ask for administrator approval.',
     3389: 'Needs an RDP server on this computer, such as xrdp. Included in Anima OS.',
     5900: 'Needs a VNC server on this computer, such as the screen sharing of your desktop.',
   },
   windows: {
-    22: 'Needs OpenSSH Server: Settings, System, Optional features.',
+    22: 'Sets up SSH automatically. Your system may ask for administrator approval.',
     5900: 'Needs a VNC server on this computer.',
     3389: 'Needs Remote Desktop: Settings, System, Remote Desktop.',
   },

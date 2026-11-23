@@ -31,6 +31,8 @@ export interface Scenario {
   readonly models?: readonly Record<string, unknown>[];
   /** The program's words when `models` fails, as a runner that could not ask it answers. */
   readonly modelsSaid?: string;
+  /** The folders in each folder, as the call `folders` answers (TH113); a folder left out is refused. */
+  readonly disk?: Readonly<Record<string, readonly string[]>>;
 }
 
 /** What the first script leaves on the window for the second: the scenario with its times, and the runner's answers. */
@@ -56,6 +58,11 @@ function seedRunner(made: Scenario): void {
     folder: (action) => ({ outcome: 'folder', notice: world.notices?.[String(action['folder'])] ?? [] }),
     models: () =>
       world.modelsSaid === undefined ? { outcome: 'models', models: world.models ?? [] } : { outcome: 'refused', refusal: 'program_does_not_answer', said: world.modelsSaid },
+    folders: (action) => {
+      const folder = String(action['folder']);
+      const names = world.disk?.[folder];
+      return names === undefined ? { outcome: 'refused', refusal: 'folder_not_permitted' } : { outcome: 'folders', folder, folders: names, more: false };
+    },
     start: () => world.startAnswer ?? { outcome: 'started', thread: String(world.running[0]?.['id'] ?? '') },
   };
   const gallery: Gallery = { world, runner: (action) => answers[String(action['call'])]?.(action) ?? { outcome: 'ok' } };

@@ -1,7 +1,7 @@
 //! The daemon side of the fetch process: it starts the child with an empty environment, writes
 //! its order as one line, keeps its input open while it runs, reads its one word and ends it at
-//! the deadline. A stall or a fault of the child
-//! ends the child, never the daemon (R-348).
+//! the deadline. A stall or a fault of the child ends the child, never the daemon, and reads as
+//! `fetch_failed` (R-406).
 
 use std::path::Path;
 use std::process::Stdio;
@@ -17,8 +17,9 @@ use super::child::FETCH_MODE;
 /// Runs `order` in a child made from `program`, and waits at most `deadline`.
 ///
 /// # Errors
-/// The cause that the child gave back; `source_failed` for a stall, a fault or a reply that
-/// does not read.
+/// The cause that the child gave back (`source_failed` only when the child says so: the source
+/// refused or did not answer); `fetch_failed` for a stall, a signal, a nonzero exit, a child
+/// that did not start or a reply that is not a word of its list.
 pub async fn fetch_in_child(
     program: &Path,
     order: &FetchOrder,

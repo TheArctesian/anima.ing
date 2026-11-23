@@ -70,6 +70,7 @@
       failed: store.listProblem !== null || live?.linked === false,
       chosen: store.chosen,
       newThread: newOff === null ? newThread : undefined,
+      addProject: newOff === null ? () => (draft = (draft ?? new ThreadDraft(open?.folder ?? null)).addProject()) : undefined,
       open: (id) => void choose(id),
       settings: () => void goto(resolve('/settings')),
     }),
@@ -86,11 +87,12 @@
     draft = new ThreadDraft(open?.folder ?? null);
   }
 
-  async function choose(id: string): Promise<void> {
+  /** Opens `id`; `started`: the draft's send started it, from the runner's `Started` answer alone. */
+  async function choose(id: string, started = false): Promise<void> {
     if (narrow) sheetOpen = false;
     draft = null;
     visits.opened(id);
-    await store.open(id);
+    await store.open(id, started);
     await tick();
     page?.querySelector<HTMLElement>(`[data-thread="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
   }
@@ -226,7 +228,7 @@
     {/snippet}
     {#snippet aside()}{#if detailed !== undefined}<ThreadAside row={detailed} shown={details} />{/if}{/snippet}
     {#snippet notice()}{#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}{/snippet}
-    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id)} />{:else}<ThreadBody {store} now={view.moment} />{/if}
+    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id, true)} />{:else}<ThreadBody {store} now={view.moment} />{/if}
     {#snippet composer()}{#if draft === null && store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>

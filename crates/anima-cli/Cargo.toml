@@ -27,6 +27,7 @@ name = "anima"
 path = "src/main.rs"
 
 [dependencies]
+remote-login = { path = "../remote-login" }
 # One body type for every request: the serialised document is wiped when it drops.
 bytes.workspace = true
 # API-key expiry from a number of days (`key create --expires 90d`).
@@ -62,6 +63,10 @@ rmcp = { workspace = true, features = ["elicitation"] }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# The handle of the original of a shortened answer (SHA-011).
+sha2.workspace = true
+# The rules of a shortened MCP answer (SHA-001 to SHA-009).
+shortening = { path = "../shortening" }
 # The token file and the configuration are written to a temporary file, then renamed (CMD-012).
 tempfile.workspace = true
 thiserror.workspace = true

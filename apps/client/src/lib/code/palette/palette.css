@@ -49,3 +49,136 @@
   --code-palette-hint-gap: var(--space-3);
   --code-palette-hint-row-gap: 0.375rem;
 }
+
+/* The surface of a palette: the command palette and the "Add project" palette. */
+.code-palette .scrim,
+.code-palette .frame {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-modal);
+}
+
+.code-palette .scrim {
+  background: var(--scrim);
+}
+
+.code-palette .frame {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--code-palette-top-narrow) var(--space-4) var(--code-palette-bottom-narrow);
+}
+
+.code-palette .surface {
+  display: flex;
+  flex-direction: column;
+  inline-size: min(100%, var(--code-palette-width));
+  max-block-size: var(--code-palette-height);
+  overflow: hidden;
+  border: var(--border-thin) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  box-shadow: var(--elevation-3);
+  color: var(--text);
+}
+
+.code-palette .field {
+  position: relative;
+  flex: none;
+  padding: var(--code-palette-input-pad);
+}
+
+.code-palette .search {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  color: var(--code-quiet-text);
+  pointer-events: none;
+}
+
+/* T3 Code's search icon: 18 px on a narrow window, 16 px from 40rem. */
+.code-palette .search .code-icon {
+  inline-size: var(--icon-md);
+  block-size: var(--icon-md);
+}
+
+.code-palette input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: var(--code-palette-input-narrow);
+  padding-inline: var(--code-palette-input-inset-narrow) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--code-palette-input-text-narrow);
+}
+
+.code-palette input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* The ring sits on the field, inset, so the input row keeps its height (D9: every focus shows). */
+.code-palette input:focus-visible {
+  outline: var(--border-focus) solid var(--focus-ring);
+  outline-offset: calc(var(--border-focus) * -1);
+}
+
+.code-palette .results {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  max-block-size: var(--code-palette-results);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: var(--code-palette-scroll-margin);
+}
+
+/* The rows fade under a scrolled edge; the mask reads only the alpha of its colour. */
+.code-palette .fade-top {
+  mask-image: linear-gradient(to bottom, transparent, var(--text) var(--code-palette-fade));
+}
+
+.code-palette .fade-bottom {
+  mask-image: linear-gradient(to top, transparent, var(--text) var(--code-palette-fade));
+}
+
+.code-palette .fade-top.fade-bottom {
+  mask-image: linear-gradient(to bottom, transparent, var(--text) var(--code-palette-fade), var(--text) calc(100% - var(--code-palette-fade)), transparent);
+}
+
+.code-palette .empty {
+  margin: 0;
+  padding: var(--space-10) 0;
+  color: var(--code-quiet-text);
+  font-size: var(--code-text-body);
+  text-align: center;
+}
+
+.code-palette .visually-hidden {
+  position: absolute;
+  inline-size: var(--border-thin);
+  block-size: var(--border-thin);
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (width >= 40rem) {
+  .code-palette .frame {
+    padding-block: var(--code-palette-top) var(--code-palette-bottom);
+  }
+
+  .code-palette .search .code-icon {
+    inline-size: var(--icon-sm);
+    block-size: var(--icon-sm);
+  }
+
+  .code-palette input {
+    block-size: var(--code-palette-input);
+    padding-inline-start: var(--code-palette-input-inset);
+    font-size: var(--code-text-body);
+  }
+}
