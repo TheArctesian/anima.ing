@@ -1,6 +1,4 @@
-//! Files in the hub's folder that the program opens without trust: a link or a pipe that took
-//! the place of one must not block the program or make it read without end. The way is that
-//! of the copy: no link followed, no wait for a pipe, and the descriptor must be a regular file.
+//! Files in the hub's folder opened without trust, so a link or pipe in their place cannot block or flood a read.
 
 #[cfg(unix)]
 use std::fs::{File, OpenOptions, Permissions};
@@ -27,11 +25,6 @@ fn refuse_what_is_not_a_file(file: &File) -> io::Result<()> {
 #[cfg(unix)]
 const NO_LINK_NO_WAIT: i32 = OFlag::O_NOFOLLOW.bits() | OFlag::O_NONBLOCK.bits();
 
-/// The file at `path`, made with mode 0600 when it is missing and set to 0600 when it was
-/// there, open for appending (the lock of a change keeps it open).
-///
-/// # Errors
-/// When `path` is a link or not a regular file, or the file cannot be opened.
 #[cfg(unix)]
 pub(crate) fn appended(path: &Path) -> io::Result<File> {
     let file = OpenOptions::new()
@@ -45,11 +38,6 @@ pub(crate) fn appended(path: &Path) -> io::Result<File> {
     Ok(file)
 }
 
-/// The text of the file at `path`, which may hold no more than `limit` bytes.
-///
-/// # Errors
-/// When `path` is a link or not a regular file, holds more than `limit` bytes or is not
-/// text, or cannot be read.
 pub(crate) fn read_text(path: &Path, limit: u64) -> io::Result<String> {
     #[cfg(unix)]
     let file = OpenOptions::new()

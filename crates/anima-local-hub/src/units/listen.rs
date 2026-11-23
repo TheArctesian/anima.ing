@@ -1,5 +1,4 @@
-//! The address that `install --listen` gave the hub. The unit file names it, and an `update`
-//! that writes the unit file again must name the same one.
+//! The address `install --listen` gave the hub, which an `update` writes into the unit file again.
 
 use std::fs;
 use std::io::{self, Write as _};
@@ -9,10 +8,6 @@ use anima_database::owner_only;
 
 use crate::Folders;
 
-/// Records `listen` in the hub's folder, or forgets the recorded one when it is `None`.
-///
-/// # Errors
-/// When the file cannot be written or removed.
 pub(super) fn record(folders: &Folders, listen: Option<SocketAddr>) -> io::Result<()> {
     let file = folders.listen_file();
     let Some(listen) = listen else {
@@ -25,8 +20,7 @@ pub(super) fn record(folders: &Folders, listen: Option<SocketAddr>) -> io::Resul
     writeln!(new, "{listen}").and_then(|()| new.sync_all())
 }
 
-/// The recorded address. A file that holds anything but a loopback socket address counts as
-/// none: the unit then has the default (NET-003).
+/// Anything but a loopback socket address counts as none, so the unit has the default (NET-003).
 #[must_use]
 pub(super) fn recorded(folders: &Folders) -> Option<SocketAddr> {
     let text = crate::plain_file::read_text(&folders.listen_file(), 64).ok()?;
@@ -52,8 +46,7 @@ pub fn require_allowed(listen: SocketAddr) -> Result<SocketAddr, NotAllowed> {
 #[error("--listen must be a loopback address with a port that is not 0")]
 pub struct NotAllowed;
 
-/// Whether the hub may listen at `listen`: a loopback address (NET-003) and a port that is
-/// named, because the unit file keeps it and the hub is told where to look for it.
+/// A loopback address (NET-003) and a named port, because the unit file keeps it for the hub.
 #[must_use]
 pub fn is_allowed(listen: SocketAddr) -> bool {
     listen.ip().is_loopback() && listen.port() != 0

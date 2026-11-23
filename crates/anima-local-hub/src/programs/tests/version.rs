@@ -1,5 +1,3 @@
-//! An update never puts older programs over newer ones.
-
 use crate::programs::version::is_older;
 
 #[test]

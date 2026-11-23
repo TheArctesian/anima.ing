@@ -1,5 +1,3 @@
-//! A pipe or a link where the program expects a file must not make it wait or read without end.
-
 use std::fs;
 use std::path::Path;
 use std::sync::mpsc;
@@ -16,7 +14,6 @@ fn pipe(path: &Path) {
     nix::unistd::mkfifo(path, nix::sys::stat::Mode::S_IRWXU).unwrap();
 }
 
-/// Runs `work` in a thread: a regression that waits fails the test and does not hang it.
 fn at_once<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> T {
     let (done, result) = mpsc::channel();
     thread::spawn(move || {

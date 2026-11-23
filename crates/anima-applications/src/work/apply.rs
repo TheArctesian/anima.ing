@@ -1,7 +1,5 @@
-//! `application_apply` (contract K10 Section 6.4.6): installs or updates one application that
-//! Anima installed. The check has three parts, because the program gets the two files and
-//! pulls the images between them: [`accepted`] before the files, [`prepared`] with the files,
-//! and [`planned`] with the digests of the pulls.
+//! `application_apply` (K10 Section 6.4.6). The check has three parts, because the program gets
+//! the files and pulls the images between them.
 
 use std::fmt::Write;
 
@@ -18,7 +16,7 @@ use crate::{
     plan::Project,
 };
 
-/// The two files of an item, as the daemon gave them. `{:?}` shows only their lengths.
+/// The two files of an item; `{:?}` shows only their lengths.
 #[derive(Clone, Copy)]
 pub struct Files<'a> {
     pub compose: &'a [u8],
@@ -36,7 +34,6 @@ impl std::fmt::Debug for Files<'_> {
     }
 }
 
-/// The pull of the image of one service, and the read of the digest that the pull gave.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pull {
     pub service: String,
@@ -46,8 +43,7 @@ pub struct Pull {
     pub inspect: Command,
 }
 
-/// One version of an application whose files passed each rule: what [`planned`] starts.
-/// `{:?}` shows no byte of the two files and no value of the checked file.
+/// One version whose files passed each rule; `{:?}` shows no byte or value of the files.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Prepared {
     pub(crate) application: String,
@@ -76,17 +72,14 @@ impl std::fmt::Debug for Prepared {
     }
 }
 
-/// The plan of one version, and what the result and the log of the machine say of it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Planned {
     pub plan: Plan,
     /// The SHA-256 of the final form, for the log of the machine (Section 9).
     pub final_form_sha256: String,
-    /// True when the project has a volume or a bind mount.
     pub holds_volumes: bool,
 }
 
-/// The SHA-256 of `bytes` in 64 lower-case hexadecimal characters.
 pub(crate) fn sha256(bytes: &[u8]) -> String {
     let mut hex = String::with_capacity(64);
     for byte in Sha256::digest(bytes) {
@@ -106,11 +99,7 @@ pub fn accepted(apply: &Apply, facts: &Facts<'_>) -> Result<(), Refusal> {
     project_checked(&apply.application, facts)
 }
 
-/// The checks of the project of `application` that an apply and a back do before the files
-/// and again before the plan, with the facts of that moment.
-///
-/// # Errors
-/// As [`accepted`].
+/// The project checks of an apply and a back, done before the files and again before the plan.
 pub(crate) fn project_checked(application: &str, facts: &Facts<'_>) -> Result<(), Refusal> {
     managed(facts)?;
     let project = project_of(application);
@@ -131,7 +120,6 @@ pub(crate) fn project_checked(application: &str, facts: &Facts<'_>) -> Result<()
     free(facts)
 }
 
-/// The names and the images of the services of a checked file, in the order of the file.
 fn images(checked: &Checked) -> Vec<(&str, &str)> {
     let services = checked.document.get("services").and_then(Node::entries);
     services
@@ -156,7 +144,6 @@ fn pulls(checked: &Checked, facts: &Facts<'_>) -> Vec<Pull> {
         .collect()
 }
 
-/// The final form of `prepared` with `digests`.
 pub(crate) fn final_form_of(
     prepared: &Prepared,
     digests: &[Pulled],
@@ -233,15 +220,9 @@ fn digests_written(digests: &[Pulled]) -> Vec<u8> {
     json::written(&Json::List(digests.iter().map(one).collect())).into_bytes()
 }
 
-/// The steps that write one version and start it: the Compose file, the environment file and
-/// the digests under their staged names, the final form, the check that `files/` holds no
-/// `.env`, the check of each folder of `binds/` directly before the start (SF-016), and the
-/// start from the final form only (SF-017). The records of the version are moved in place
-/// only after the start, by [`in_place_steps`].
-///
-/// The final form is written in place before the start, because it is the file that Compose
-/// reads. After a failed start it is the final form of the new version, and the records are
-/// those of the version before it.
+/// The steps that write one version and start it from the final form only (SF-017), checking
+/// each `binds/` folder right before the start (SF-016).
+/// The final form is written in place first because Compose reads it; the records move only after the start.
 pub(crate) fn version_steps(
     prepared: &Prepared,
     digests: &[Pulled],
@@ -290,8 +271,6 @@ pub(crate) fn version_steps(
     Ok((steps, form))
 }
 
-/// The steps after a start that did not fail: the staged records of the new version are moved
-/// in place of the records of the current version.
 pub(crate) fn in_place_steps(folders: &Folders) -> Vec<Step> {
     folders
         .staged()
@@ -301,7 +280,6 @@ pub(crate) fn in_place_steps(folders: &Folders) -> Vec<Step> {
         .collect()
 }
 
-/// The folders of an application and of each bind mount, which the program makes itself.
 pub(crate) fn folder_steps(folders: &Folders, binds: &[String]) -> Vec<Step> {
     let mut paths = vec![
         folders.application().to_owned(),
@@ -319,7 +297,6 @@ pub(crate) fn folder_steps(folders: &Folders, binds: &[String]) -> Vec<Step> {
         .collect()
 }
 
-/// Each image that the program pulled for the application, with those of `digests`.
 fn pulled_written(prepared: &Prepared, digests: &[Pulled], facts: &Facts<'_>) -> Vec<u8> {
     let installed = facts.records.installed(&prepared.application);
     let mut pulled = installed.map_or_default(|installed| installed.pulled.clone());
@@ -335,9 +312,8 @@ fn pulled_written(prepared: &Prepared, digests: &[Pulled], facts: &Facts<'_>) ->
     .into_bytes()
 }
 
-/// The plan of `application_apply`, with `pulled`, the digests of the pulls of `prepared`.
-/// `facts` are those of the moment after the pulls: the checks of [`accepted`] are done
-/// again with them.
+/// The plan of `application_apply`; `facts` are of the moment after the pulls, and the checks
+/// of [`accepted`] run again with them.
 ///
 /// # Errors
 /// Each refusal of [`accepted`]; `no_digest` for a service that has no digest;

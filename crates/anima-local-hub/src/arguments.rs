@@ -1,5 +1,4 @@
-//! The words of the command line: the commands of `anima-local-hub` and their options. `main.rs`
-//! wires each command to the library.
+//! The commands of `anima-local-hub` and their options.
 
 use std::net::SocketAddr;
 use std::path::PathBuf;

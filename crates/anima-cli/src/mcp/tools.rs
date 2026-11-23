@@ -182,7 +182,7 @@ impl Tool {
             Self::Places(tool) => tool.call(hub, arguments).await,
             Self::Locations(tool) => tool.call(hub, arguments).await,
             Self::Reminders(tool) => tool.call(hub, arguments).await,
-            Self::Agents(tool) => tool.call(arguments),
+            Self::Agents(tool) => tool.call(hub, arguments).await,
         }
     }
 }

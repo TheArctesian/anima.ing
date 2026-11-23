@@ -1,6 +1,3 @@
-//! One container item as the daemon gives it (K10 Sections 4, 5 and 8); the forms of the
-//! members of each type are in `parameters`.
-
 mod parameters;
 
 use super::{APPLICATION, OF_ANIMA, item};
@@ -100,7 +97,6 @@ fn k10_5_a_member_that_the_contract_does_not_name_is_refused_at_each_level() {
             "\"attempt\":1,",
             "\"attempt\":1,\"command\":\"docker system prune\",",
         ),
-        // An item of a container type has no `repository`, and its `project` is null.
         (
             "\"attempt\":1,",
             "\"attempt\":1,\"repository\":{\"forge\":\"github\",\"owner\":\"a\",\"name\":\"b\"},",
@@ -172,7 +168,6 @@ fn k10_8_secrets_names_only_the_purposes_of_the_type() {
     assert!(read(&install).is_ok());
     let unknown = install.replacen("\"compose_file\"", "\"compose_file\",\"project_secret\"", 1);
     assert_eq!(read(&unknown), Err(Refusal::SecretUnknown));
-    // An environment file that the parameters do not name, and no Compose file.
     let more = install.replacen(
         "\"compose_file\"",
         "\"compose_file\",\"environment_file\"",

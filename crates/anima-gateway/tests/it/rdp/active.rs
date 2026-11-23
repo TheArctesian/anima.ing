@@ -1,6 +1,3 @@
-//! The test device carries an active session: what it paints reaches `IronRDP`'s session,
-//! the client's keys and pointer reach it, and it changes its size or closes when told.
-
 use anima_gateway::handshake::{Certificate, Security};
 use anima_gateway::rdp::{Button, Connection, KeyEvent, PointerEvent};
 use anima_gateway::screen::Area;
@@ -19,7 +16,6 @@ use ironrdp_tokio::{FramedWrite as _, single_sequence_step};
 use super::device::{Device, Seen, WAIT};
 use super::opening::{TLS, opened, wanted};
 
-/// A client's side of an active session, driven by the test as the gateway will drive it.
 struct Client {
     connection: Connection,
     stage: ActiveStage,
@@ -55,7 +51,6 @@ impl Client {
         }
     }
 
-    /// Processes what the device sends, answering it, until an output `ends` the wait.
     async fn until(&mut self, ends: impl Fn(&ActiveStageOutput) -> bool) -> ActiveStageOutput {
         loop {
             let (action, frame) = tokio::time::timeout(WAIT, self.connection.read_pdu())
@@ -83,7 +78,6 @@ impl Client {
         }
     }
 
-    /// Sends input events as the session encodes them.
     async fn send(&mut self, events: &[FastPathInputEvent]) {
         let outputs = self
             .stage
@@ -94,15 +88,12 @@ impl Client {
         }
     }
 
-    /// The colour (red, green, blue) of one pixel of the session's picture.
     fn pixel(&self, x: usize, y: usize) -> [u8; 3] {
         let at = y * self.image.stride() + x * 4;
         let data = self.image.data();
         [data[at], data[at + 1], data[at + 2]]
     }
 
-    /// Runs the Deactivation-Reactivation Sequence after a Deactivate All, and returns the
-    /// new size.
     async fn reactivated(&mut self) -> (u16, u16) {
         let mut sequence = self.activation.create();
         let mut buf = WriteBuf::new();
@@ -173,7 +164,6 @@ async fn what_the_device_paints_reaches_the_sessions_picture() {
     }
 }
 
-/// A mouse PDU at `x`, `y`.
 fn mouse(flags: PointerFlags, units: i16, x: u16, y: u16) -> FastPathInputEvent {
     FastPathInputEvent::MouseEvent(MousePdu {
         flags,
@@ -183,7 +173,6 @@ fn mouse(flags: PointerFlags, units: i16, x: u16, y: u16) -> FastPathInputEvent 
     })
 }
 
-/// A button the device saw at `x`, `y`.
 fn button(x: u16, y: u16, button: Button, pressed: bool) -> Seen {
     let event = PointerEvent::Button { button, pressed };
     Seen::Pointer { x, y, event }

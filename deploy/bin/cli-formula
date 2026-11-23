@@ -1,7 +1,8 @@
 #!/bin/sh
 # Prints the Homebrew formula `anima` for one release (INS-010, R-217; task B8h): it installs
 # the standalone `anima` file of the release for macOS (one universal file) or for Linux
-# x86_64, and checks its SHA-256. It builds nothing and installs nothing else.
+# x86_64, and checks its SHA-256, with the licence files that the archive carries beside it
+# (deploy/release/licences.txt, deploy/bin/cli-archive). It builds nothing.
 #
 #   cli-formula <version> <sha256 of the macOS file> <sha256 of the Linux file>
 #
@@ -24,7 +25,7 @@ class Anima < Formula
   desc "Command-line tool and MCP server for an Anima hub"
   homepage "https://anima.ing"
   version "$VERSION"
-  license "AGPL-3.0-or-later"
+  license all_of: ["AGPL-3.0-or-later", "Apache-2.0"]
 
   on_macos do
     on_arm do
@@ -46,6 +47,7 @@ class Anima < Formula
 
   def install
     bin.install "anima"
+    prefix.install "LICENSE", "NOTICE", "LICENSE-APACHE"
   end
 
   test do

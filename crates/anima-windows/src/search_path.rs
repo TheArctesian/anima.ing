@@ -1,4 +1,4 @@
-//! Current-user PATH registration. Never changes the machine PATH or expands its variables.
+//! Registration in the current user's PATH only; its variables stay unexpanded.
 use std::{io, path::Path, sync::Mutex};
 use winreg::{
     RegKey,
@@ -79,7 +79,7 @@ fn change(key: &RegKey, folder: &str, install: bool) -> io::Result<()> {
     key.set_raw_value("Path", &value)
 }
 
-/// Add or remove only the supplied folder. Preserve unrelated entries and registry string type.
+/// Adds or removes only `folder`; other entries and the registry string type stay.
 /// # Errors
 /// The folder is invalid or Windows refuses the registry write.
 pub fn register(folder: &Path, install: bool) -> io::Result<()> {

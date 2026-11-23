@@ -14,5 +14,12 @@
         "trafficLightPosition": { "x": 16, "y": 28 }
       }
     ]
+  },
+  "bundle": {
+    "resources": {
+      "../../../LICENSE": "licences/LICENSE",
+      "../../../crates/shortening/NOTICE": "licences/NOTICE",
+      "../../../crates/shortening/LICENSE-APACHE": "licences/LICENSE-APACHE"
+    }
   }
 }

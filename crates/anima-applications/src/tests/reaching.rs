@@ -1,6 +1,3 @@
-//! `container_action` and `container_follow`, and which containers a type reaches
-//! (K10 Sections 6.4.3, 6.4.6 and 6.4.11).
-
 use super::{FIRST, OF_ADOPTED, OF_ANIMA, OF_THE_OWNER, World, arguments, commands};
 use crate::{
     Action, Refusal,
@@ -26,7 +23,6 @@ fn k10_6_4_3_a_container_of_anima_or_of_an_adopted_project_is_reached() {
 fn k10_6_4_3_each_other_container_is_refused_unless_all_containers_is_on() {
     let mut world = World::new();
     assert_eq!(stop(&world, OF_THE_OWNER), Err(Refusal::NotAdopted));
-    // A project label that names an application of which the program has no record.
     world.inventory.containers[2].project =
         Some("anima-ffffffffffffffffffffffffffffffff".to_owned());
     assert_eq!(stop(&world, OF_THE_OWNER), Err(Refusal::NotAdopted));
@@ -39,7 +35,6 @@ fn k10_6_4_6_an_identifier_that_the_engine_does_not_have_is_refused() {
     let world = World::new();
     let unknown = "d".repeat(64);
     assert_eq!(stop(&world, &unknown), Err(Refusal::NoContainer));
-    // A name and a short identifier are never looked for.
     assert_eq!(stop(&world, "anima-app-1"), Err(Refusal::NoContainer));
     assert_eq!(stop(&world, &OF_ANIMA[..12]), Err(Refusal::NoContainer));
 }
@@ -69,7 +64,6 @@ fn k10_6_4_6_a_start_is_only_for_a_container_of_anima_or_one_with_a_restart_poli
     assert!(start(&world, OF_ANIMA).is_ok());
     assert_eq!(start(&world, OF_ADOPTED), Err(Refusal::StartNotPermitted));
     assert_eq!(start(&world, OF_THE_OWNER), Err(Refusal::StartNotPermitted));
-    // A restart of a container that does not run is a start.
     let restart = acted(OF_THE_OWNER, Action::Restart, &world.facts());
     assert_eq!(restart, Err(Refusal::StartNotPermitted));
     world.inventory.containers[2].restarts = true;
@@ -78,7 +72,6 @@ fn k10_6_4_6_a_start_is_only_for_a_container_of_anima_or_one_with_a_restart_poli
         arguments(&plan)[4..],
         ["container", "start", "--", OF_THE_OWNER]
     );
-    // A restart of a container that runs is permitted with no restart policy.
     world.inventory.containers[1].running = true;
     let plan = acted(OF_ADOPTED, Action::Restart, &world.facts()).expect("it runs");
     assert_eq!(
@@ -149,8 +142,6 @@ fn k10_6_4_1_a_command_is_a_program_with_arguments_and_only_the_environment_of_t
         ]
     );
     assert_eq!(command.folder, None);
-    // The socket path and the configuration folder are arguments, and no argument is a line
-    // of a shell.
     assert!(
         command
             .arguments

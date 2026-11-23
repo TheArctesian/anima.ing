@@ -1,12 +1,7 @@
-//! The gateway side of the Guacamole handshake (K4 Section 3, GW-010), as guacd answers
-//! it: read `select`, send `args`, read `size`, `audio`, `video`, `image`, `timezone`,
-//! `name` and `connect`, send `ready`. The hub's side is `guac_protocol::Handshake`.
+//! The gateway side of the Guacamole handshake (K4 Section 3, GW-010), as guacd answers it.
 //!
-//! guacd sends `ready` before it reaches the device, and so does the gateway: a missing
-//! credential is asked for after `ready` (`prompt`, GW-015), and a device that cannot be
-//! reached or refuses the sign-in is an `error` in the open session.
-//!
-//! Pure: no I/O. No error and no `Debug` output holds a value from `connect` (LOG-007).
+//! As guacd does, the gateway sends `ready` before it reaches the device (GW-015).
+//! No error and no `Debug` output holds a value from `connect` (LOG-007).
 
 mod opening;
 mod prompt;
@@ -19,15 +14,11 @@ pub use opening::{Desktop, Opening, Secret};
 pub use prompt::{Credential, Prompt, PromptStep};
 pub use rdp::{Certificate, Rdp, Security};
 
-/// The protocols the gateway serves, as `select` names them.
 const VNC: &str = "vnc";
 const RDP: &str = "rdp";
 /// The protocol version the gateway speaks; the hub answers with the same (K4 Section 3).
 const VERSION: &str = "VERSION_1_5_0";
-/// The `connect` values the gateway reads for both protocols, in the order `args` lists
-/// them. They are the names the hub sets for VNC (`tunnel/arguments.rs`); RDP has those of
-/// `rdp::ARGUMENTS` after them. guacd's other arguments have no meaning here, and the hub
-/// sends a value only for a name it is offered.
+/// The `connect` values read for both protocols, in `args` order; RDP adds `rdp::ARGUMENTS`.
 const ARGUMENTS: [&str; 6] = [
     "hostname",
     "port",
@@ -57,8 +48,7 @@ pub enum Refused {
 }
 
 impl Refused {
-    /// The Guacamole status: unsupported for a protocol the gateway does not serve, a bad
-    /// request for the rest (`protocol-types.h`).
+    /// The Guacamole status: unsupported for a protocol not served, else bad request (`protocol-types.h`).
     #[must_use]
     pub const fn status(self) -> u16 {
         match self {
@@ -74,8 +64,7 @@ pub fn error(status: u16) -> Instruction {
     Instruction::new("error", [ERROR_TEXT.to_owned(), status.to_string()])
 }
 
-/// `ready` with the connection's ID. The caller makes the ID; the hub keeps it and never
-/// shows it (GW-014).
+/// `ready` with the connection's ID, which the hub keeps and never shows (GW-014).
 #[must_use]
 pub fn ready(connection_id: &str) -> Instruction {
     Instruction::new("ready", [connection_id])
@@ -86,13 +75,11 @@ pub fn ready(connection_id: &str) -> Instruction {
 pub enum Step {
     /// Send this, then go on reading.
     Send(Instruction),
-    /// Go on reading.
     Read,
     /// The hub sent `connect`: send [`ready`], then open this session.
     Opened(Box<Opening>),
 }
 
-/// What the hub has said so far.
 enum State {
     AwaitingSelect,
     Collecting {
@@ -103,7 +90,6 @@ enum State {
     Finished,
 }
 
-/// One handshake with the hub.
 pub struct Handshake {
     state: State,
 }
@@ -163,7 +149,6 @@ fn advance(state: State, instruction: Instruction) -> Result<(State, Step), Refu
     }
 }
 
-/// `select`: `args` with the names of the selected protocol.
 fn select(instruction: &Instruction) -> Result<(State, Step), Refused> {
     let rdp = match instruction.args.first().map(String::as_str) {
         Some(VNC) => false,

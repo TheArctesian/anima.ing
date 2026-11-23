@@ -57,6 +57,15 @@ pub struct ThreadsArgs {
     /// The most threads to show, the last changed first (1 to 500).
     #[arg(long, default_value_t = DEFAULT_LIMIT)]
     limit: usize,
+    /// List threads shared by this connected device.
+    #[arg(long)]
+    device: Option<String>,
+    /// List shared threads across connected devices.
+    #[arg(long)]
+    hub: bool,
+    /// Resume a hub list using its page cursor.
+    #[arg(long)]
+    after: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -191,6 +200,21 @@ impl ThreadsArgs {
     /// # Errors
     /// [`Failure`] when the home folder is not known or the output fails.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        if self.device.is_some() || self.hub || self.after.is_some() {
+            let program = self.program.map(|program| program_name(program.source()));
+            let limit = i64::try_from(self.limit.clamp(1, 200)).unwrap_or(200);
+            let hub = invocation.hub()?;
+            let page = super::hub_threads::list(
+                &hub,
+                (self.device.as_deref(), program),
+                limit,
+                self.after,
+            )
+            .await?;
+            return invocation
+                .output
+                .data(&page, super::hub_threads::list_table);
+        }
         let removed = removed().await;
         let rows = list(
             &home()?,

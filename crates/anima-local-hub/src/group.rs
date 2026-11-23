@@ -24,7 +24,6 @@ const DATABASE_IN_USE: i32 = 10;
 /// `anima-database`: the cluster is of another PostgreSQL major version.
 const DATABASE_VERSION: i32 = 11;
 
-/// How long each step may take.
 #[derive(Debug, Clone, Copy)]
 pub struct Limits {
     /// A start after a kill replays the write-ahead log; the database's own limit is 300 s.
@@ -61,24 +60,20 @@ pub const LIMITS: Limits = Limits {
     },
 };
 
-/// What one run of the group works with.
 #[derive(Debug, Clone)]
 pub struct Plan {
     pub carried: Carried,
     pub folders: Folders,
-    /// Where the hub listens. S5 owns this choice; see `members::hub_environment`.
+    /// S5 owns this choice (`members::hub_environment`).
     pub listen: SocketAddr,
     pub limits: Limits,
-    /// The time of the link's state changes.
     pub clock: fn() -> SystemTime,
-    /// What only a hub of the pool is told, by options of `run` (R-129, R-239). Empty on the
-    /// desktop.
+    /// What only a hub of the pool is told (R-129, R-239); empty on the desktop.
     pub pool: members::Pool,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum StartError {
-    /// The operator must act; a new start cannot help.
     #[error("the hub cannot start until the operator acts ({0:?})")]
     Blocked(Blocked),
     #[error(transparent)]
@@ -90,12 +85,10 @@ pub enum StartError {
         name: &'static str,
         kind: io::ErrorKind,
     },
-    /// A stop was asked for while the group started.
     #[error("stopped while starting")]
     StopAsked,
 }
 
-/// What a started group reports.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ready {
     pub hub: SocketAddr,
@@ -103,7 +96,6 @@ pub struct Ready {
     pub link: LinkState,
 }
 
-/// Why a ready group is no longer kept.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ending {
     Asked,
@@ -112,11 +104,9 @@ pub enum Ending {
     LinkChanged(LinkState),
 }
 
-/// The running members in start order, each with its time to stop.
 #[derive(Debug)]
 pub struct Group {
     members: Vec<(Child, Duration)>,
-    /// Started after the hub; stopped first.
     link: Option<LinkMember>,
     ended: mpsc::UnboundedReceiver<&'static str>,
     report_end: mpsc::UnboundedSender<&'static str>,
@@ -135,12 +125,10 @@ impl Default for Group {
 }
 
 impl Group {
-    /// Starts each member when the one before it is ready. The members that did start are
-    /// left running when this fails: call [`Group::stop`] in every case.
+    /// The members that did start keep running when this fails: call [`Group::stop`] in every case.
     ///
     /// # Errors
-    /// [`StartError::Blocked`] when a new start cannot help, [`StartError::StopAsked`] as soon
-    /// as `stop` is asked, also in the middle of a wait, and the member's error otherwise.
+    /// [`StartError::Blocked`] when a new start cannot help, [`StartError::StopAsked`], or the member's.
     pub async fn start(&mut self, plan: &Plan, stop: &Stop) -> Result<Ready, StartError> {
         let Plan {
             carried,
@@ -148,8 +136,7 @@ impl Group {
             limits,
             ..
         } = plan;
-        // Before the database: a crash after this leaves a key and no database, never a
-        // database that no key opens.
+        // A crash after this leaves a key and no database, never a database that no key opens.
         let database_is_new = match folders.database().cluster().symlink_metadata() {
             Ok(_) => false,
             Err(error) if error.kind() == io::ErrorKind::NotFound => true,
@@ -261,8 +248,7 @@ impl Group {
     }
 }
 
-/// `wait`, unless a stop is asked for first. The member that `wait` is for keeps running;
-/// [`Group::stop`] ends it.
+/// The member that `wait` is for keeps running after a stop; [`Group::stop`] ends it.
 async fn unless_stopped<T>(
     stop: &Stop,
     wait: impl Future<Output = Result<T, ChildError>>,
@@ -307,8 +293,6 @@ fn log(plan: &Plan, name: &'static str) -> Result<LogFile, StartError> {
 /// one transaction, so the database loses nothing.
 const MIGRATION_STOP: Duration = Duration::from_secs(5);
 
-/// Runs `anima-hub migrate` to its end. One that runs past its limit, or that a stop request
-/// finds running, is stopped.
 async fn migrate(plan: &Plan, stop: &Stop) -> Result<(), StartError> {
     let spec = members::migration(&plan.carried, &plan.folders);
     // Its end is awaited here, so nobody else is told of it.

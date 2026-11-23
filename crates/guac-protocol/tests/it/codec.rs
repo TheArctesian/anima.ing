@@ -1,5 +1,3 @@
-//! Example-based behaviour of `encode` and `Decoder` (GW-011).
-
 use guac_protocol::{
     DecodeError, Decoder, Instruction, MAX_ELEMENTS, MAX_INSTRUCTION_BYTES, MAX_LENGTH_DIGITS,
     encode,
@@ -148,7 +146,6 @@ fn gw_011_rejects_invalid_utf8() {
 
 #[test]
 fn gw_011_accepts_instruction_of_exactly_max_bytes() {
-    // 4 digits + '.' + value + ';' == MAX_INSTRUCTION_BYTES.
     let length = MAX_INSTRUCTION_BYTES - 6;
     let stream = format!("{length}.{};", "a".repeat(length));
     assert_eq!(stream.len(), MAX_INSTRUCTION_BYTES);
@@ -163,7 +160,6 @@ fn too_long_at(position: usize) -> Result<Vec<Instruction>, DecodeError> {
     })
 }
 
-/// Feeds `bytes` seven bytes at a time and collects every result.
 fn decode_in_chunks(bytes: &[u8]) -> Result<Vec<Instruction>, DecodeError> {
     let mut decoder = Decoder::new();
     let mut instructions = Vec::new();

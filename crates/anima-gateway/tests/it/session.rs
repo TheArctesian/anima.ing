@@ -1,5 +1,4 @@
-//! A whole session through the gateway: the hub's handshake on one side, a VNC device on
-//! the other (K4 Sections 3 to 5).
+//! Whole sessions from the hub's handshake to a VNC device (K4 Sections 3 to 5).
 
 mod device;
 mod flow;
@@ -23,7 +22,6 @@ fn base64(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
-/// Draws the gateway's instructions until the `sync` of a frame, and answers it.
 async fn draw_frame<S>(hub: &mut HubSide<S>, client: &mut Drawn)
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
@@ -39,7 +37,6 @@ where
     }
 }
 
-/// Waits until the device has heard `count` messages.
 async fn heard(device: &Device, count: usize) -> Vec<String> {
     for _ in 0..500 {
         if device.heard().len() >= count {
@@ -140,7 +137,6 @@ async fn the_clipboard_switches_hold_in_both_directions() {
         )])))
         .await
         .expect("told");
-    // The next thing the hub gets is the frame, not the device's clipboard.
     let next = hub.next().await.expect("a frame");
     assert_ne!(next.opcode, "clipboard");
 }
@@ -180,7 +176,6 @@ async fn a_missing_password_is_asked_for_and_asked_again_after_a_refused_answer(
         .expect("ready");
     assert_eq!(hub.next_of("required").await.args, ["password"]);
 
-    // An empty answer is refused, and the gateway asks again.
     hub.send(&Instruction::new("argv", ["2", "text/plain", "password"]))
         .await;
     hub.send(&Instruction::new("end", ["2"])).await;
@@ -237,7 +232,6 @@ async fn another_protocol_is_refused_or_passed_to_the_other_gateway() {
         .await;
     assert_eq!(refused.expect_err("refused").args[1], "256");
 
-    // The other gateway here answers every byte with `4.args,13.VERSION_1_5_0;` once.
     let other = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("a port");

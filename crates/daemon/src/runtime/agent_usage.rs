@@ -4,7 +4,7 @@
 //! `sendAccounts` is false (AIS-022, THR-149: on by default).
 
 #[cfg(unix)]
-mod runner;
+pub(super) mod runner;
 
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;

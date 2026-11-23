@@ -1,7 +1,4 @@
-//! The check of a record and of its file, in the order of ROL-010: the signature with the
-//! public key of the program, then the version, the target and the program in the record, then
-//! the size and the SHA-256 of the file. Then whether the machine takes the version (ROL-012,
-//! ROL-041).
+//! The check of a record and its file in the order of ROL-010, and whether the machine takes the version (ROL-012, ROL-041).
 
 use std::fmt::Write as _;
 
@@ -86,8 +83,6 @@ impl FileCheck {
         }
     }
 
-    /// Feeds the next bytes of the file.
-    ///
     /// # Errors
     ///
     /// `FileMismatch` as soon as more bytes came than the record gives.
@@ -101,8 +96,6 @@ impl FileCheck {
         Ok(())
     }
 
-    /// Ends the check.
-    ///
     /// # Errors
     ///
     /// `FileMismatch` when the size or the SHA-256 is not that of the record.
@@ -116,7 +109,6 @@ impl FileCheck {
     }
 }
 
-/// `bytes` as hexadecimal digits in lower case.
 pub(crate) fn to_hex(bytes: &[u8]) -> String {
     bytes
         .iter()

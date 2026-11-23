@@ -1,7 +1,3 @@
-//! The recipe form of LinuxServer.io (task H39): the entries that ship are what the form makes
-//! from the saved fleet list, each passes the static test, an image that cannot fit gives its
-//! reason, and the generator changes an entry only by its digest or its version.
-
 use std::path::Path;
 
 use crate::{
@@ -14,7 +10,6 @@ use crate::{
     published, read,
 };
 
-/// One change of an image of the fleet list.
 type Edit = fn(&mut Image);
 
 const FLEET: &str = include_str!("../../linuxserver/fleet.json");
@@ -132,7 +127,6 @@ fn h39_the_form_writes_streams_an_optional_device_volumes_and_a_shell() {
     assert_eq!(duplicati, ["SETTINGS_ENCRYPTION_KEY"]);
 }
 
-/// `radarr` with one change of its configuration.
 fn changed(change: Edit) -> Result<Recipe, Unfit> {
     let mut changed = image("radarr");
     change(&mut changed);

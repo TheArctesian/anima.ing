@@ -1,10 +1,4 @@
 //! What a Compose file from the hub may have (HOST-028; contract K10 Section 6.4.4).
-//!
-//! One check for the hub and for the applications program of a machine. It reads the file
-//! with its own reader, not with the reader of Compose: it permits only the keys of a fixed
-//! list, fills the variables itself from the environment file of the item, and applies the
-//! rules of the values to the result. It runs nothing, opens no file and reaches no machine.
-//! A refusal is a fixed code and the position of a service, never text of the file.
 
 mod declared;
 pub mod forms;
@@ -101,8 +95,7 @@ impl Refusal {
 /// A Compose file that passed each rule, with its variables filled.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Checked {
-    /// The file as a tree, after the variables are filled. The applications program writes
-    /// the final form from it.
+    /// The file as a tree, after the variables are filled.
     pub document: Node,
     /// The file as a tree before the variables are filled: the values that its author wrote,
     /// which no environment file changes.

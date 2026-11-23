@@ -1,5 +1,4 @@
-//! Private Windows database state. Refuse reparse points and writable ancestors before
-//! creating files, and apply the user/SYSTEM/administrator ACL before writing secrets.
+//! Private Windows database state: no reparse point or writable ancestor, and a private ACL before any secret.
 use std::{
     fs::{self, File, OpenOptions},
     io,

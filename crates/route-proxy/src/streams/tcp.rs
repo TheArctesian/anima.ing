@@ -1,6 +1,5 @@
-//! One listener of a TCP stream: each connection goes to the route through the hub, by the
-//! identifier of the application and the name of the route, with the limits of the proxy. A
-//! connection holds a place of its route until it ends, and each write to the client has its time.
+//! A TCP stream listener: each connection reaches its route through the hub and holds a place
+//! of the route until it ends.
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -17,7 +16,6 @@ use crate::{
     wire::{Dial, StreamRoute, Transport},
 };
 
-/// Accepts the connections of `stream` on `listener` until the task is stopped.
 pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, listener: TcpListener, stream: StreamRoute) {
     let stream = Arc::new(stream);
     loop {
@@ -33,7 +31,6 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, listener: TcpListener, stream: 
     }
 }
 
-/// One connection: its client cap, the limits of its route, the hub and the bytes both ways.
 async fn one<H: Hub>(
     proxy: &Proxy<H>,
     mut client: TcpStream,

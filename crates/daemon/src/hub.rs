@@ -26,7 +26,7 @@ use std::time::Duration;
 use bytes::Bytes;
 use daemon_core::wire::{
     Batch, DaemonToken, EnrolRequest, Enrolled, EnrolmentCode, FetchedKey, KeyFetch, PushAccepted,
-    RenewRequest, Renewed,
+    RenewRequest, Renewed, ThreadUpload, ThreadUploadReceipt,
 };
 use reqwest::{Client, Url, redirect};
 use zeroize::Zeroizing;
@@ -181,6 +181,21 @@ impl HubClient {
             Some((status == 200).then(|| read_json(body)).flatten())
         })
         .await
+    }
+
+    /// Publishes a bounded transcript batch (K8 Section 4.2).
+    pub async fn upload_thread(
+        &self,
+        token: &DaemonToken,
+        upload: &ThreadUpload,
+    ) -> Answer<ThreadUploadReceipt> {
+        let call = Call {
+            route: "daemon/v1/threads/entries",
+            bearer: Some(token),
+            body: json(upload),
+            ok: &[200],
+        };
+        self.post(call, |_, body| read_json(body)).await
     }
 
     /// `POST /daemon/v1/keys/fetch` (K-E5 Section 2.1).

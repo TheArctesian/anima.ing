@@ -1,11 +1,8 @@
-//! A client that redraws only what the screen copy reports always shows the screen.
-
 use anima_gateway::screen::{Area, BYTES_PER_PIXEL, Screen};
 use proptest::prelude::*;
 
 use crate::screen::whole;
 
-/// What a client holds: it starts black and draws only the areas it is told about.
 struct Client {
     width: usize,
     rgb: Vec<u8>,
@@ -19,8 +16,7 @@ impl Client {
         }
     }
 
-    /// Redraws every changed area from the screen. Returns how often the most-drawn pixel
-    /// was drawn in this round.
+    /// Returns how often the most-drawn pixel was drawn in this round.
     fn follow(&mut self, screen: &mut Screen) -> u8 {
         let changes = screen.take_changes();
         if changes.resized {
@@ -59,8 +55,6 @@ impl Client {
     }
 }
 
-/// One write a device may send: where, what colour pattern, and whether it only repeats
-/// what the screen already shows.
 #[derive(Clone, Debug)]
 pub(crate) struct Sent {
     corner: (usize, usize),
@@ -85,7 +79,6 @@ fn sent() -> impl Strategy<Value = Sent> {
 }
 
 impl Sent {
-    /// The write, fitted into `screen`.
     fn onto(&self, screen: &Screen) -> (Area, Vec<u8>) {
         let (x, y) = (
             self.corner.0 % screen.width(),
@@ -120,21 +113,12 @@ impl Sent {
     }
 }
 
-/// One thing a device may do to its screen.
 #[derive(Clone, Debug)]
 pub(crate) enum Step {
     Write(Sent),
-    /// Move the area of `from` so that its corner is at `to` (fitted into the screen).
-    Move {
-        from: Sent,
-        to: (usize, usize),
-    },
+    Move { from: Sent, to: (usize, usize) },
     Resize(usize, usize),
-    /// Send the area of `of` again with its rows moved up by `by` (fitted), as a scroll.
-    Scroll {
-        of: Sent,
-        by: usize,
-    },
+    Scroll { of: Sent, by: usize },
 }
 
 pub(crate) fn step() -> impl Strategy<Value = Step> {
@@ -146,7 +130,6 @@ pub(crate) fn step() -> impl Strategy<Value = Step> {
     ]
 }
 
-/// The screen as a plain picture, changed in the simplest way: what the copy must equal.
 pub(crate) struct Picture {
     width: usize,
     height: usize,
@@ -187,7 +170,6 @@ impl Picture {
     }
 }
 
-/// Does `step` to the screen copy and to the picture.
 pub(crate) fn apply(step: &Step, screen: &mut Screen, picture: &mut Picture) {
     match step {
         Step::Write(sent) => {
@@ -223,8 +205,6 @@ pub(crate) fn apply(step: &Step, screen: &mut Screen, picture: &mut Picture) {
 }
 
 proptest! {
-    /// Whatever a device does, the copy holds the device's picture, a client that redraws
-    /// only the reported areas shows it too, and no pixel is drawn twice in one round.
     #[test]
     fn a_client_that_follows_the_changes_shows_the_screen(
         (width, height) in (1..100usize, 1..100usize),
@@ -244,7 +224,6 @@ proptest! {
         }
     }
 
-    /// Sending what the screen already shows is never a change.
     #[test]
     fn repeating_the_screen_changes_nothing(
         (width, height) in (1..100usize, 1..100usize),

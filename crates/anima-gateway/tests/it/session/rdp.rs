@@ -1,6 +1,3 @@
-//! A whole RDP session through `serve`, against the RDP device of the tests: the picture,
-//! keys and the pointer, and each way the session ends.
-
 use anima_gateway::rdp::{Button, KeyEvent, PointerEvent};
 use anima_gateway::screen::Area;
 use anima_gateway::session::{Ended, Settings};
@@ -24,7 +21,6 @@ fn device(offered: Offered) -> Device {
     })
 }
 
-/// The accepted certificate as the hub sends it: `sha256:` and pairs of hex digits.
 fn accepted(fingerprint: [u8; 32]) -> String {
     let pairs: Vec<_> = fingerprint
         .iter()
@@ -119,7 +115,7 @@ async fn a_device_with_another_certificate_gets_no_credential_and_the_session_en
         .await
         .expect("ready");
 
-    // An upstream error: the hub ends the session `GATEWAY_ERROR` (K4 Section 6).
+    // 515 is `GATEWAY_ERROR`, an upstream error (K4 Section 6).
     assert_eq!(status(&hub.next_of("error").await), "515");
     assert_eq!(served.await.expect("served"), Ended::OtherCertificate);
     assert_eq!(device.next().await, Seen::Ended);
@@ -161,7 +157,6 @@ async fn a_missing_password_is_asked_for_before_an_nla_sign_in() {
     .await;
     hub.send(&Instruction::new("end", ["3"])).await;
 
-    // The session opens: the device's size comes as the first drawing.
     assert_eq!(hub.next_of("size").await.args, ["0", "640", "480"]);
 }
 
@@ -199,7 +194,6 @@ async fn a_device_that_changes_its_screen_gives_the_client_the_new_size() {
     device.resize(500, 400).await;
 
     assert_eq!(hub.next_of("size").await.args, ["0", "500", "400"]);
-    // The session goes on at the new size.
     let area = Area {
         x: 0,
         y: 0,
@@ -311,7 +305,7 @@ async fn keys_and_buttons_that_are_down_are_released_when_the_device_changes_its
 
     device.resize(500, 400).await;
 
-    // The device may have missed a release while it changed: nothing stays down.
+    // The device can miss a release while it changes, so nothing stays down.
     let shift_up = KeyEvent::Scancode {
         code: 0x2a,
         extended: false,

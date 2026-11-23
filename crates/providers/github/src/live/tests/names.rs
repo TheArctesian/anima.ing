@@ -1,6 +1,3 @@
-//! PRJ-030: a repository name or a ref that could move a request is refused before a path is
-//! built, and a reply that cannot be read is a problem, never a panic.
-
 use source_exchange::{Body, Response};
 
 use super::ok;

@@ -1,7 +1,3 @@
-//! What one copy does to bring the database up: take the lock, clear away what an earlier
-//! copy left, make the cluster and the roles at the first run, start the server and prove it
-//! ready.
-
 use std::process::ExitStatus;
 
 use crate::cluster::{self, ClusterError, Fit};
@@ -53,8 +49,7 @@ impl StartError {
     }
 }
 
-/// What happened to the Time Machine exclusion of a new cluster (macOS). A copy of the
-/// cluster's files while the server runs is not a backup; `backup` makes those.
+/// The Time Machine exclusion of a new cluster (macOS): a copy of files while the server runs is no backup.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackupExclusion {
     /// The cluster was there already, or this is not macOS.
@@ -65,7 +60,6 @@ pub enum BackupExclusion {
 }
 
 /// The line `anima-database serve` prints on standard error when [`Running::recovered`] is set.
-/// The program that runs the hub's group reads it (one-click plan S4).
 pub const RECOVERED_NOTICE: &str = "anima-database: recovered after an unclean stop";
 
 /// A database that is up: its server, and the lock that keeps other copies away.
@@ -80,10 +74,7 @@ pub struct Running {
 }
 
 /// Brings the database of `layout` up with the PostgreSQL in `tree`.
-///
-/// A cluster of another major version is refused before anything is read from it or written
-/// to it. This release has no upgrade step (decision D-6); the release that brings the next
-/// PostgreSQL carries it.
+/// A cluster of another major version is refused before it is read or written (decision D-6).
 ///
 /// # Errors
 /// [`StartError::is_another_copy`] when another copy runs it,
@@ -127,8 +118,7 @@ pub fn start(
     }
     #[cfg(windows)]
     if has_logins {
-        // A stopped hub root may have moved. Keep its passwords, but point each pinned
-        // certificate at this root instead of the former absolute Windows path.
+        // A stopped hub root may have moved: keep its passwords, and point each pinned certificate here.
         for role in [Role::Owner, Role::Hub] {
             if let Some(password) = urls::password(layout, role)? {
                 urls::write(layout, role, &password)?;
@@ -143,8 +133,7 @@ pub fn start(
     })
 }
 
-/// Marks the cluster folder as "not for Time Machine" (decision D-8). No administrator
-/// rights: `tmutil addexclusion` without `-p` writes an attribute on the folder.
+/// Decision D-8. Without `-p`, `tmutil addexclusion` writes an attribute and needs no administrator rights.
 fn exclude_from_time_machine(layout: &Layout) -> BackupExclusion {
     if !matches!(Platform::HOST, Platform::MacOs) {
         return BackupExclusion::NotDue;
