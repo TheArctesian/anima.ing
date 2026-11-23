@@ -34,6 +34,8 @@ async fn the_claim_names_only_the_built_model_types() {
             "model_report",
             "model_drain",
             "runtime_install",
+            "model_pull",
+            "copy_delete",
             "server_start",
             "server_stop"
         ])
@@ -125,4 +127,33 @@ async fn cap_013_a_model_drain_succeeds_within_its_seconds_and_stops_no_server()
     let reports = hub.seen("report");
     assert_eq!(reports[0].body["state"], json!("running"));
     assert_eq!(reports[1].body["state"], json!("succeeded"));
+}
+
+#[tokio::test]
+async fn pull_009_a_pulled_copy_is_downloaded_and_a_copy_delete_removes_it() {
+    let hub = FakeHub::start().await;
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
+    let root = tempfile::tempdir().expect("a folder");
+    let mut node = node(root.path());
+    let copy = "0192f6aa-0000-7000-8000-000000000003";
+    let folder = node.folders.models.join("copies").join(copy);
+    std::fs::create_dir_all(&folder).expect("the copy");
+    let file =
+        json!({ "name": "q4/Qwen3-8B-Q4_K_M.gguf", "sizeBytes": 5, "sha256": "b".repeat(64) });
+    let source = json!({ "organisation": "unsloth", "repository": "Qwen3-8B-GGUF", "revision": "a".repeat(40) });
+    let pull = json!({ "copy": copy, "variant": copy, "source": source, "format": "gguf", "files": [file], "gated": false });
+    hub.queue_claim(Reply::json(200, &item("model_pull", &pull)));
+    node.cycle(&client, &token()).await.expect("a cycle");
+    hub.queue_claim(Reply::json(
+        200,
+        &item("copy_delete", &json!({ "copy": copy })),
+    ));
+    node.cycle(&client, &token()).await.expect("a cycle");
+
+    let reports = hub.seen("report");
+    assert_eq!(reports[1].body["state"], json!("succeeded"));
+    let model = json!({ "copy": copy, "copyState": "downloaded", "bytes": 5, "files": 1 });
+    assert_eq!(reports[1].body["result"]["model"], model);
+    assert_eq!(reports[3].body["state"], json!("succeeded"));
+    assert!(!folder.exists());
 }

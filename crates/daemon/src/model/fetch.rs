@@ -14,7 +14,7 @@ use daemon_core::model_work::releases::fetch::follows;
 use reqwest::{Client, Url, redirect};
 use sha2::{Digest as _, Sha256};
 
-fn client(hosts: &'static [&'static str]) -> Result<Client, Cause> {
+pub(crate) fn client(hosts: &'static [&'static str]) -> Result<Client, Cause> {
     let policy = redirect::Policy::custom(move |attempt| {
         let url = attempt.url();
         if follows(

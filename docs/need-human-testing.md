@@ -57,6 +57,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-162 | A real Hugging Face copy with remote code, or with a long chat template, is refused before a server starts, and a clean copy starts in vLLM with `--load-format safetensors` (SF-298) | A daemon of this build in a test folder on `pop-os` with an NVIDIA GPU and vLLM | Open |
 | HT-160 | A crash or a stall of the child fetch process is reported as `fetch_failed`, and a source that does not answer as `source_failed` (R-406) | A daemon of this build in a test folder on the Mac, and a network that a person can cut | Open |
 | HT-NEW-launcher | The model launcher where AppArmor restricts user namespaces: the admin step of `anima-daemon install`, the checks of the daemon, the refusal of a runtime that is not signed, the runtime profile, and `anima-daemon uninstall` (task L1-6c; R-327, R-347) | An Ubuntu 24.04 computer (not `pop-os`, which has no restriction) with `kernel.apparmor_restrict_unprivileged_userns = 1`, sudo, and a daemon of this build in a test folder | Open |
+| HT-NEW-modelpull | A pull of a real Hugging Face copy from Hosting > Models, `anima model pull` and the MCP tools: the progress, a cut that continues, a wrong SHA-256, a full disk, and the removal (task L1-7) | A hub of the branch `compute/l1-7`, the desktop application of that build, and a daemon of that build in a test folder on `pop-os`; for steps 3 to 7, the claim loop in the running daemon (the wiring task of L1-6) | Open |
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
 | HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Open |
@@ -5184,6 +5185,38 @@ workflow, the launcher in the release files, and the dialog of the desktop appli
 8. Run `anima-daemon uninstall` and answer `y`.
    Expected: the profile is unloaded (not in `profiles` any more), and both files and the folder
    `/usr/local/libexec/anima` are gone.
+
+### HT-NEW-modelpull: a pull of a real copy, its progress, and its removal
+
+Built on the branch `compute/l1-7` (task L1-7; PULL-001 to PULL-011; contract K11 Sections 3, 7 and 10): the copy record
+and `pullModel`, `removeModelCopy` and `modelCopies` in the hub (`crates/hub/src/fleet/compute/copies/`), `anima model
+pull`, `anima model remove` and `anima model copies`, the MCP tools `anima_model_pull`, `anima_model_remove` and `anima_model_copies`, the
+section Models of Hosting (`apps/client/src/lib/model-copies/`), and in the daemon the pull process
+(`crates/daemon/src/model/pull/child.rs`, mode `__model-pull`), the checks before it and `copy_delete`
+(`crates/daemon/src/model/pull.rs`) and the reports each 15 seconds (`pull/watch.rs`). The tests use a fake hub and
+made files; the hosts of the pull are fixed to Hugging Face, so no test downloads a file, cuts a download or fills a disk.
+The running daemon does not claim model work yet (the wiring task of L1-6), so steps 3 to 7 wait for it. Do not use the
+installed daemon of the operator; set `ANIMA_DAEMON_HOME` to a new test folder.
+
+1. In the desktop application, open Hosting > Models with a library that has one GGUF variant (`anima model add`), and
+   press Pull a model. Choose `pop-os` and the variant, and press Pull.
+   Expected: a row for the variant in the group of `pop-os`, with the state Waiting. The same copy is in
+   `anima model copies` and in the MCP tool `anima_model_copies`.
+2. Remove that row with Remove before a daemon takes it.
+   Expected: the row goes at once, and the audit log has the request.
+3. With the claim loop running, pull the variant again.
+   Expected: the state becomes Downloading with a bar, the bytes, the rate and the time left, updated about each 15
+   seconds; at the end the state is Downloaded and `<cache>/copies/<copy>/` holds each file with its flat name, mode
+   0600, in a folder of mode 0700; `<cache>/partial/` has no folder of the copy.
+4. Pull a second variant and cut the network for one minute during the download, then restore it.
+   Expected: the download continues from a 16 MiB part (the bytes do not go back to 0) and ends Downloaded.
+5. Pull a variant whose SHA-256 in the library is wrong (change it in a test hub).
+   Expected: Failed with "A file did not match its SHA-256 value.", and the file is not in `partial/` or `copies/`.
+6. Set a reserve in the daemon configuration that is larger than the free disk, and pull a variant.
+   Expected: Failed with "The machine has no room for it in its disk share." before any byte is downloaded.
+7. Remove a Downloaded copy, then remove a copy while it downloads.
+   Expected: each row says Removing, then goes; the folders of each copy in `copies/` and `partial/` are gone, and the
+   download process has ended (`pgrep -f __model-pull` gives nothing).
 
 ### HT-167: Hosting > Applications lists the containers of each machine (task H42 stage 1; HSE-002, HSE-009)
 

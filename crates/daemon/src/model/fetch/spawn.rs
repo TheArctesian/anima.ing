@@ -19,8 +19,37 @@ pub async fn fetch_in_child(
     order: &FetchOrder,
     deadline: Duration,
 ) -> Result<(), Cause> {
-    let Some(mut child) = start(program) else {
+    let Ok(text) = serde_json::to_vec(order) else {
         return verdict(Ending::Fault);
+    };
+    let ended = run_child(program, FETCH_MODE, text, deadline).await;
+    verdict(ended.ending())
+}
+
+/// How a child of the daemon ended, with the reply that it wrote.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Ended {
+    Exited(String),
+    Fault,
+    Stalled,
+}
+
+impl Ended {
+    #[must_use]
+    pub fn ending(&self) -> Ending<'_> {
+        match self {
+            Self::Exited(text) => Ending::Exited(text),
+            Self::Fault => Ending::Fault,
+            Self::Stalled => Ending::Stalled,
+        }
+    }
+}
+
+/// Starts the program in `mode` with an empty environment, gives it `order` as one line, and
+/// ends it at `deadline`; dropping the future also ends it.
+pub async fn run_child(program: &Path, mode: &str, order: Vec<u8>, deadline: Duration) -> Ended {
+    let Some(mut child) = start(program, mode) else {
+        return Ended::Fault;
     };
     let ending = tokio::time::timeout(deadline, reply_of(&mut child, order)).await;
     if !matches!(ending, Ok(Some(_))) {
@@ -28,17 +57,17 @@ pub async fn fetch_in_child(
         let _ = child.kill().await;
     }
     match ending {
-        Err(_) => verdict(Ending::Stalled),
-        Ok(None) => verdict(Ending::Fault),
-        Ok(Some(text)) => verdict(Ending::Exited(&text)),
+        Err(_) => Ended::Stalled,
+        Ok(None) => Ended::Fault,
+        Ok(Some(text)) => Ended::Exited(text),
     }
 }
 
 /// Called on a worker of the async runtime, not in `spawn_blocking`: on Linux the parent-death
 /// signal of the child fires when the spawning thread exits.
-fn start(program: &Path) -> Option<Child> {
+fn start(program: &Path, mode: &str) -> Option<Child> {
     Command::new(program)
-        .arg(FETCH_MODE)
+        .arg(mode)
         .env_clear()
         .current_dir("/")
         .stdin(Stdio::piped())
@@ -49,8 +78,7 @@ fn start(program: &Path) -> Option<Child> {
         .ok()
 }
 
-async fn reply_of(child: &mut Child, order: &FetchOrder) -> Option<String> {
-    let mut text = serde_json::to_vec(order).ok()?;
+async fn reply_of(child: &mut Child, mut text: Vec<u8>) -> Option<String> {
     text.push(b'\n');
     // The input stays open while the child runs, as the child ends when it closes; a failed
     // write shows in the child's exit.

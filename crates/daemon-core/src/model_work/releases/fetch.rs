@@ -133,9 +133,15 @@ impl FetchOrder {
 
 #[must_use]
 pub fn reply(outcome: Result<(), Cause>) -> &'static str {
+    reply_in(outcome, &CHILD_CAUSES)
+}
+
+/// The reply word of a child whose own causes are `causes`; each other cause is `fetch_failed`.
+#[must_use]
+pub fn reply_in(outcome: Result<(), Cause>, causes: &[Cause]) -> &'static str {
     match outcome {
         Ok(()) => DONE,
-        Err(cause) if CHILD_CAUSES.contains(&cause) => cause.as_str(),
+        Err(cause) if causes.contains(&cause) => cause.as_str(),
         Err(_) => Cause::FetchFailed.as_str(),
     }
 }
@@ -157,6 +163,14 @@ pub enum Ending<'a> {
 /// # Errors
 /// The cause of the child, or `fetch_failed`.
 pub fn verdict(ending: Ending<'_>) -> Result<(), Cause> {
+    verdict_in(ending, &CHILD_CAUSES)
+}
+
+/// [`verdict`] for a child whose own causes are `causes`.
+///
+/// # Errors
+/// The cause of the child, or `fetch_failed`.
+pub fn verdict_in(ending: Ending<'_>, causes: &[Cause]) -> Result<(), Cause> {
     let Ending::Exited(text) = ending else {
         return Err(Cause::FetchFailed);
     };
@@ -164,8 +178,9 @@ pub fn verdict(ending: Ending<'_>) -> Result<(), Cause> {
     if word == DONE {
         return Ok(());
     }
-    Err(CHILD_CAUSES
-        .into_iter()
+    Err(causes
+        .iter()
+        .copied()
         .find(|cause| cause.as_str() == word)
         .unwrap_or(Cause::FetchFailed))
 }

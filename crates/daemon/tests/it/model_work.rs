@@ -3,6 +3,7 @@ mod fetch;
 mod files;
 mod install;
 mod kit;
+mod pull;
 mod servers;
 mod tree;
 mod zip;

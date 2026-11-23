@@ -10,6 +10,7 @@ pub mod loopback;
 pub mod machine;
 pub mod names;
 pub mod order;
+pub mod pull;
 pub mod releases;
 pub mod settings;
 pub mod supervision;

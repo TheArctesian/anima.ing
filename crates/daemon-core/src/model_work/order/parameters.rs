@@ -1,5 +1,6 @@
 //! The `parameters` object of each model work type (Section 2): exactly the members of its row.
 
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
@@ -15,14 +16,16 @@ use crate::wire::WorkType;
 
 type Object = Map<String, Value>;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PullSource {
     pub organisation: String,
     pub repository: String,
     pub revision: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PullFile {
     pub name: String,
     pub size_bytes: u64,

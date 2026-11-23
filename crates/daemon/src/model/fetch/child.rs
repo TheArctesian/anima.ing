@@ -29,14 +29,7 @@ fn work() -> Result<(), Cause> {
     if !environment_empty(std::env::vars_os().map(|(name, _)| name)) {
         return Err(Cause::FetchFailed);
     }
-    let mut input = BufReader::new(std::io::stdin());
-    let mut line = String::new();
-    input
-        .by_ref()
-        .take(MAX_ORDER_BYTES)
-        .read_line(&mut line)
-        .map_err(|_| Cause::RuntimeNotConfigured)?;
-    let order: FetchOrder = serde_json::from_str(&line).map_err(|_| Cause::RuntimeNotConfigured)?;
+    let (order, input) = read_order::<FetchOrder>().ok_or(Cause::RuntimeNotConfigured)?;
     watch_parent(input, order.parent);
     let checked = order.checked()?;
     let mut archive = tempfile::tempfile_in(&order.archive_folder).map_err(|_| Cause::LimitDisk)?;
@@ -55,7 +48,21 @@ fn work() -> Result<(), Cause> {
     within_deadline(move || finish(archive, &sha, &order, checked))
 }
 
-fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
+/// The order of a child: one line of JSON of at most [`MAX_ORDER_BYTES`] on its standard
+/// input, and that input, which stays open while the daemon lives.
+pub(crate) fn read_order<T: serde::de::DeserializeOwned>() -> Option<(T, BufReader<Stdin>)> {
+    let mut input = BufReader::new(std::io::stdin());
+    let mut line = String::new();
+    input
+        .by_ref()
+        .take(MAX_ORDER_BYTES)
+        .read_line(&mut line)
+        .ok()?;
+    Some((serde_json::from_str(&line).ok()?, input))
+}
+
+/// Ends this process when the daemon ends or closes its input.
+pub(crate) fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
     #[cfg(target_os = "linux")]
     {
         use rustix::process::{Signal, getppid, set_parent_process_death_signal};
@@ -86,7 +93,7 @@ fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
 }
 
 /// The timer is made inside the runtime; one made before `block_on` has no reactor and panics.
-fn within<T>(
+pub(crate) fn within<T>(
     runtime: &tokio::runtime::Runtime,
     deadline: std::time::Duration,
     work: impl Future<Output = T>,

@@ -8,6 +8,7 @@ pub mod folders;
 pub mod install;
 pub mod machine_files;
 pub mod modes;
+pub mod pull;
 pub mod ring;
 pub mod server;
 pub mod sockets;

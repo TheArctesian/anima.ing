@@ -18,16 +18,19 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 use super::install::{self, Place};
+use super::pull::watch::{self, Watched};
 use super::server::{self, Launch};
 use super::state;
 use super::supervise::{Server, ServerState, Servers};
 use crate::hub::HubClient;
 use crate::hub::answer::{Answer, Cause as HubCause};
 
-pub const BUILT: [WorkType; 5] = [
+pub const BUILT: [WorkType; 7] = [
     WorkType::ModelReport,
     WorkType::ModelDrain,
     WorkType::RuntimeInstall,
+    WorkType::ModelPull,
+    WorkType::CopyDelete,
     WorkType::ServerStart,
     WorkType::ServerStop,
 ];
@@ -233,6 +236,16 @@ impl Node {
                 super::drain::drain(*seconds, || 0).await;
                 Ok(None)
             }
+            Parameters::Pull { .. } => {
+                let cache = super::pull::Cache {
+                    models: &self.folders.models,
+                    reserve: self.reserve,
+                    program: &self.launcher,
+                    settings: &self.settings,
+                };
+                super::pull::pull(&order.parameters, &cache).await
+            }
+            Parameters::CopyDelete { copy } => super::pull::delete(&self.folders.models, *copy),
             Parameters::Stop { server } => {
                 if self.servers.stop(*server).await {
                     Ok(None)
@@ -273,7 +286,7 @@ impl Node {
         let body = match order::check(&item, &machine) {
             Checked::Drop => return Ok(None),
             Checked::Refuse { id, attempt, cause } => report(id, attempt, Err(cause), 0),
-            // TODO(L1-7, L1-8, L1-16): the types that this build does not do yet.
+            // TODO(L1-8, L1-16): the types that this build does not do yet.
             Checked::Start(order) if !BUILT.contains(&order.work_type) => {
                 report(order.id, order.attempt, Err(Cause::TypeUnknown), 0)
             }
@@ -283,8 +296,12 @@ impl Node {
                 if let Answer::Failed(cause) = client.report_work(token, &running).await {
                     return Err(cause);
                 }
-                let outcome = self.run(&order).await;
-                report(order.id, order.attempt, outcome, start.elapsed().as_secs())
+                let seconds = || start.elapsed().as_secs();
+                match super::pull::watch::run(self, &order, client, token).await {
+                    Watched::Ended(outcome) => report(order.id, order.attempt, outcome, seconds()),
+                    Watched::Stopped => watch::stopped(order.id, order.attempt, seconds()),
+                    Watched::Lost => return Ok(None),
+                }
             }
         };
         match client.report_work(token, &body).await {
