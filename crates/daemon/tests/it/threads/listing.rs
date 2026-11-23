@@ -236,3 +236,66 @@ async fn thr_041_a_refused_start_with_no_project_leaves_no_folder() {
         .count();
     assert_eq!(left, 0, "the folder of the refused start is removed");
 }
+
+#[tokio::test]
+async fn th61_a_thread_the_runner_started_is_listed_as_started_by_anima_after_a_restart() {
+    let mut kit = Kit::with(CLAUDE);
+    let mut client = kit.client().await;
+    // A thread of a session file that the person pinned: the runner did not start it.
+    let other = Uuid::now_v7();
+    change(&mut client, other, ListingChange::Pin { on: true }).await;
+    let start = client
+        .call(Action::Start {
+            program: Program::ClaudeCode,
+            folder: kit.path("work"),
+            mode: Mode::FullAccess,
+            model: None,
+            effort: None,
+            prompt: "Run the command".to_owned(),
+            program_path: None,
+            draft: None,
+            attachments: Vec::new(),
+        })
+        .await;
+    let Outcome::Started { thread, .. } = client.done(start).await else {
+        panic!("the thread started");
+    };
+    let mut marked = false;
+    for _ in 0..40 {
+        marked = listings(&mut client)
+            .await
+            .iter()
+            .any(|listing| listing.thread == thread && listing.started_by_anima);
+        if marked {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    }
+    assert!(marked, "the session the program said is marked");
+    // A change of the person keeps the mark.
+    change(&mut client, thread, ListingChange::Pin { on: true }).await;
+    // The thread leaves the runner, so only its listing can hold the mark across the restart.
+    stopped(&mut client, thread).await;
+    change(&mut client, thread, ListingChange::Remove).await;
+    assert_eq!(
+        state_of(&mut client, thread).await,
+        None,
+        "the runner forgot it"
+    );
+    drop(client);
+
+    kit.end_runner();
+    kit.start();
+    let mut client = kit.client().await;
+    let kept = listings(&mut client).await;
+    let started: Vec<Uuid> = kept
+        .iter()
+        .filter(|listing| listing.started_by_anima)
+        .map(|listing| listing.thread)
+        .collect();
+    assert_eq!(started, vec![thread], "only the thread the runner started");
+    assert!(
+        kept.iter()
+            .any(|listing| listing.thread == other && listing.pinned)
+    );
+}

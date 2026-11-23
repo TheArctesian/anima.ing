@@ -135,6 +135,8 @@ impl Runner {
             let id = thread.row.id;
             let steps = thread.settle_answering();
             self.threads.insert(id, thread);
+            // A thread of a record from before the mark gets it now (TH61).
+            self.mark_started(id);
             for step in steps {
                 if let Step::Change(change) = step {
                     self.publish(id, change);
