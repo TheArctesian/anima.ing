@@ -4881,6 +4881,26 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
 
 Result: Open.
 
+
+### HT-165-private-access: Automatic OS remote access and simple SSH setup (OS3-R11)
+
+State: Open
+
+Built on `access/automatic-setup`. Automated hub tests exercise authenticated announcements,
+private-address scope and owner overrides; the client test covers the minimal setup submission.
+Actual account/device and service startup timing remain for acceptance after deploying the matching
+hub and OS versions. This is not included in the already published 20261123013635 image.
+
+1. Upgrade an enrolled OS whose device has never had SSH/RDP configured. Keep the hub online.
+   Expected: both connections appear with user admin and standard ports without re-enrollment or editing settings.
+2. Connect from the CLI and GUI using the OS admin password and existing trust confirmation.
+   Expected: terminal and graphical sessions work through the private server; no LAN forwarding is needed.
+3. Disable SSH in the device settings, restart the OS, and wait for its next report.
+   Expected: SSH stays disabled. Custom RDP settings and saved credentials also remain unchanged.
+4. On another device with SSH available, choose Set up, enter its login name and optionally its password, then Enable SSH.
+   Expected: the connection is configured and tested; connection failures are shown. Advanced settings remain available for keys/nonstandard ports.
+5. For a device without an SSH server, run the same setup.
+   Expected: a connection failure, never a false claim that the server was installed. Installing/enabling host SSH on arbitrary operating systems is not implemented by this connection-settings change.
 ### HT-163: the Git actions of a thread, when a person can reach them (TC7, steps W1 to W4)
 
 Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` at `56e0132c6` and `6791fb123`). Nothing reaches it yet: this check cannot start before step W2 (the command) or W4 (the page) of Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md). The tests use made repositories in temporary folders, a launcher that stands in, and no remote on the network. They do not cover: a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.

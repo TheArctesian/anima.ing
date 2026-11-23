@@ -5,6 +5,11 @@ let
     exec /run/current-system/sw/bin/anima-console
   '';
 in {
+  environment.etc."anima/remote-access.json".text = builtins.toJSON {
+    sshUser = "admin";
+    rdpUser = "admin";
+  };
+  systemd.services.anima-daemon.after = [ "sshd.service" "xrdp.service" ];
   services.openssh = {
     enable = true;
     openFirewall = false;
