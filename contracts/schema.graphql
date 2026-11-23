@@ -3009,6 +3009,15 @@ type Project {
   group: ProjectGroup
 }
 
+"A stable device-group UUID with up to 200 project IDs to import (G3)."
+input ProjectGroupImportInput {
+  source: ID!
+  name: String!
+  projects: [ID!]!
+  "True imports an explicitly empty group; omitted or false keeps the earlier no-op. Never imports a foreign-only group."
+  includeEmpty: Boolean
+}
+
 """
 A group of projects: the operator's own label in the hub, never from GitHub (PRO-059 to PRO-064; ruling of
 2026-11-20 in projects-and-builds-plan.md, "Project groups"). A project is in at most one group; a group holds no group.
@@ -4453,6 +4462,8 @@ type Mutation {
   restoreRepository(id: ID!): Project!
   "CONFLICT when it is already confirmed, or while Projects is off. NOT_FOUND for an unknown ID."
   confirmProjectResource(id: ID!): ProjectResource!
+  "Imports a device group, reusing a matching name without replacing assigned projects. Returns only IDs known to this hub. Reuse source on retry: receipts preserve later user changes."
+  importProjectGroup(input: ProjectGroupImportInput!): [ID!]!
   "Makes a group and puts projects (Project.id, at most 200) in it; a project in a different group moves (PRO-060). VALIDATION on name; CONFLICT when a group has the name; NOT_FOUND for an unknown project. Writes an audit entry."
   createProjectGroup(name: String!, projects: [ID!]! = []): ProjectGroup!
   "VALIDATION on name; CONFLICT when a different group has the name; NOT_FOUND for an unknown ID (PRO-062). Writes an audit entry."

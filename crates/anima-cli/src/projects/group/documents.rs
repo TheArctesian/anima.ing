@@ -57,3 +57,13 @@ pub struct ProjectsGroupSet;
     variables_derives = "Debug"
 )]
 pub struct ProjectIdBySlug;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/projects/group/import.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct ProjectGroupImport;
