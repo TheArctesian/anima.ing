@@ -22,7 +22,6 @@ func ownedByRootOrThisUser(stat fs.FileInfo) bool {
 	return !known || owner.Uid == 0 || int(owner.Uid) == os.Getuid()
 }
 
-// ownerOnly reports whether only this user can reach the file.
 func ownerOnly(stat fs.FileInfo, _ string) bool {
 	owner, known := stat.Sys().(*syscall.Stat_t)
 	return stat.Mode().Perm()&0o077 == 0 && (!known || int(owner.Uid) == os.Getuid())

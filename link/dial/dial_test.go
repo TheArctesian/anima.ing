@@ -19,7 +19,6 @@ var (
 	another   = netip.MustParseAddr("fd41:4e49:4d41::8")
 )
 
-// listen makes a listener on loopback and gives each connection to serve.
 func listen(t *testing.T, serve func(net.Conn)) *net.TCPAddr {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -39,18 +38,12 @@ func listen(t *testing.T, serve func(net.Conn)) *net.TCPAddr {
 	return listener.Addr().(*net.TCPAddr)
 }
 
-// bench is a hub desk and one device, with a loopback listener in place of
-// the tunnel: the device's streams to the open port arrive at the desk
-// under the link address from.
+// bench is a hub desk and one device, with a loopback listener in place of the tunnel.
 type bench struct {
-	desk dial.Desk
-	// isOpen is the list of open ports of the device.
-	isOpen func(uint16) bool
-	// from is the link address that the hub sees for the device's streams.
-	from netip.Addr
-	// asked gets each line that the hub wrote to the device.
-	asked chan string
-	// delivered counts the streams that the desk gave back.
+	desk      dial.Desk
+	isOpen    func(uint16) bool
+	from      netip.Addr
+	asked     chan string
 	delivered atomic.Int32
 	openPort  *net.TCPAddr
 }
@@ -60,8 +53,7 @@ func newBench(t *testing.T, isOpen func(uint16) bool) *bench {
 	return newBenchFrom(t, theDevice, isOpen)
 }
 
-// newBenchFrom is a bench whose device answers under another link address
-// than the one that the hub asks.
+// newBenchFrom is a bench whose device answers under another link address than the one asked.
 func newBenchFrom(t *testing.T, from netip.Addr, isOpen func(uint16) bool) *bench {
 	t.Helper()
 	b := &bench{isOpen: isOpen, from: from, asked: make(chan string, 4)}
@@ -73,7 +65,6 @@ func newBenchFrom(t *testing.T, from netip.Addr, isOpen func(uint16) bool) *benc
 	return b
 }
 
-// ask is the reverse stream: the device reads the line and answers it.
 func (b *bench) ask(line string) error {
 	b.asked <- line
 	request, valid := dial.ParseRequest(strings.TrimSuffix(line, "\n"))
@@ -94,7 +85,6 @@ func (b *bench) open(port int, limit time.Duration) (net.Conn, func(), error) {
 	return b.desk.Open(ctx, theDevice, uint16(port), b.ask)
 }
 
-// echo is a local program of the device: it sends back what it reads.
 func echo(t *testing.T) (port int, connections *atomic.Int32) {
 	t.Helper()
 	connections = &atomic.Int32{}
@@ -151,7 +141,6 @@ func TestHMD049APortThatIsNotInTheListIsRefusedAndNotConnected(t *testing.T) {
 	if connections.Load() != 0 {
 		t.Fatal("the device connected to a port that is not in its list")
 	}
-	// A device that was given no list has no open port.
 	if _, _, err := newBench(t, nil).open(port, 10*time.Second); !errors.Is(err, dial.ErrRefused) {
 		t.Fatalf("a device with no list: %v, want ErrRefused", err)
 	}
@@ -191,7 +180,6 @@ func TestHMD048ADeviceWithNoStreamOrNoAnswerGivesNoConnection(t *testing.T) {
 	}
 }
 
-// A device cannot answer the request that the hub made to another device.
 func TestHMD048TheAnswerOfAnotherDeviceIsNotTaken(t *testing.T) {
 	port, connections := echo(t)
 	b := newBenchFrom(t, another, func(uint16) bool { return true })

@@ -6,12 +6,8 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// Revoke removes a device from the list and ends its open sessions
-// (LNK-004). It returns how many streams it closed. The order matters: the
-// key leaves the list first, so that the device cannot connect again; then
-// its streams are closed, so that the device sees its sessions end; then the
-// tunnel forgets it. If the hub link stops between the steps, the next
-// sweep after a restart does the rest.
+// Revoke removes a device from the list and ends its open sessions, and returns how many streams it closed (LNK-004).
+// The key leaves the list before its streams close, so the device cannot connect again; a sweep finishes a cut revocation.
 func (l *Link) Revoke(device tunnel.DeviceKey) (closed int, err error) {
 	revoked, err := l.devices.Revoke(device)
 	if err != nil {
@@ -25,11 +21,7 @@ func (l *Link) Revoke(device tunnel.DeviceKey) (closed int, err error) {
 	return closed, nil
 }
 
-// disconnect closes the streams of a key that is not admitted any more, and
-// makes the tunnel forget the key a moment later. The tunnel's own call
-// does not close streams: without the first step the sessions would stay
-// open with no traffic. The wait lets the close reach the device; this call
-// does not wait for it.
+// disconnect closes a key's streams itself, because the tunnel's call does not, and lets the close reach the device first.
 func (l *Link) disconnect(key tunnel.DeviceKey) (closed int) {
 	closed = l.streams.closeOf(key)
 	time.AfterFunc(closeGrace, func() {
@@ -42,9 +34,6 @@ func (l *Link) disconnect(key tunnel.DeviceKey) (closed int) {
 	return closed
 }
 
-// sweep disconnects each device that the tunnel still knows but that is
-// not admitted any more: its key expired, its invite ended, or a revocation
-// did not reach its disconnect.
 func (l *Link) sweep(every time.Duration) {
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
