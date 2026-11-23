@@ -144,7 +144,7 @@ it('UI-015: each item keeps its words as its name; the tooltip is set only when 
   ]);
 });
 
-it('UI-015, MOB-010: below bp-compact each item has its words as a tooltip, the status too, and Logs is a destination', () => {
+it('UI-015, MOB-010: below bp-compact each item has its words as a tooltip, the status too, and Code and Logs are destinations', () => {
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     value: (query: string) => ({ matches: query.includes('max-width'), addEventListener: () => undefined, removeEventListener: () => undefined }),
@@ -156,10 +156,12 @@ it('UI-015, MOB-010: below bp-compact each item has its words as a tooltip, the 
   const nav = show();
   expect([...nav.querySelectorAll('a')].map((link) => [link.querySelector('.words')?.textContent, link.getAttribute('title')])).toEqual([
     ['Devices', 'Devices'],
+    ['Code', 'Code'],
     ['Logs', 'Logs'],
     ['Settings', 'Settings'],
   ]);
   expect(nav.querySelector('.status')?.getAttribute('title')).toBe('Connected');
+  expect(nav.querySelector('.live')).toBeNull();
 });
 
 it('NET-004: when unreachable the banner has an icon besides its text, so the state is not colour alone', () => {

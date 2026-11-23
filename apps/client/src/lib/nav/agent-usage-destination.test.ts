@@ -38,7 +38,7 @@ it('AIS-020: a wide window has Agent usage between Devices and Settings', () => 
   expect(hrefs()).toEqual(['/devices', '/agents/usage', '/extensions', '/settings']);
 });
 
-it('AIS-020, MOB-010: the phone bar keeps its four destinations, so Agent usage is not in it', () => {
+it('AIS-020, MOB-010: the phone bar has Code and leaves Agent usage in the sidebar', () => {
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     value: (query: string) => ({ matches: query.includes('max-width'), addEventListener: () => undefined, removeEventListener: () => undefined }),
@@ -47,5 +47,5 @@ it('AIS-020, MOB-010: the phone bar keeps its four destinations, so Agent usage 
     Reflect.deleteProperty(window, 'matchMedia');
     document.documentElement.removeAttribute('data-nav');
   });
-  expect(hrefs()).toEqual(['/devices', '/logs', '/settings']);
+  expect(hrefs()).toEqual(['/devices', '/code', '/logs', '/settings']);
 });
