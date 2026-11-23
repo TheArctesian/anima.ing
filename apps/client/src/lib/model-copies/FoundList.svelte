@@ -13,23 +13,17 @@
   const groups = $derived(foundGroups(store.found, store.machine));
   let asking = $state(false);
   let using = $state('');
-  let failure = $state('');
 
   async function find(): Promise<void> {
     asking = true;
-    failure = '';
-    const result = await store.findAll();
+    await store.findAll();
     asking = false;
-    if (!result.ok) failure = result.error.message;
-    else if (result.value === 0) failure = 'No machine has asked this hub for work.';
   }
 
   async function use(row: FoundRow): Promise<void> {
     using = row.key;
-    failure = '';
-    const result = await store.use(row.model);
+    await store.use(row.model);
     using = '';
-    if (!result.ok) failure = result.error.message;
   }
 </script>
 
@@ -41,7 +35,7 @@
       <FormButton size="sm" icon="carbon:search" busy={asking || store.finding} onclick={() => void find()}>Find models</FormButton>
     </header>
     <p class="note">Models that Ollama, LM Studio or Hugging Face already keeps on a machine. Use one where it is: the machine checks each file and uses no more disk.</p>
-    {#if failure !== ''}<p class="failure" role="alert">{failure}</p>{/if}
+    {#if store.refusal !== ''}<p class="failure" role="alert">{store.refusal}</p>{/if}
     {#if store.status === 'ready' && groups.length === 0}
       <p class="empty">No machine lists a found model. Find models asks each machine to read its folders again.</p>
     {:else}

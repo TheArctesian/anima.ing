@@ -71,3 +71,26 @@ it('PULL-012: Find models asks each machine that has asked for work, and the pag
   expect(calls.finds).toEqual(['m-nas', 'm-pop']);
   expect(store.finding).toBe(true);
 });
+
+it('PULL-001: a refusal with a reason for a field gives that reason, not the general sentence', async () => {
+  const { calls, store } = make();
+  await store.load();
+  calls.pullFails = {
+    code: 'VALIDATION',
+    message: 'Some input is not valid.',
+    fields: [{ field: 'deviceId', message: 'the machine never asked this hub for work' }],
+  };
+  const result = await store.pull('m-nas', 'gemma3:4b-q8_0');
+  expect(result.ok ? '' : result.error.message).toBe('The machine never asked this hub for work.');
+});
+
+it('PULL-012: the refusal of Use stays on the page until the next action', async () => {
+  const { store } = make();
+  await store.load();
+  const model = store.found[0];
+  if (model === undefined) throw new Error('no found model');
+  await store.use({ ...model, found: 'c'.repeat(64) });
+  expect(store.refusal).toBe('The last model report of that machine lists no such model.');
+  await store.remove('c-pop-gemma');
+  expect(store.refusal).toBe('');
+});
