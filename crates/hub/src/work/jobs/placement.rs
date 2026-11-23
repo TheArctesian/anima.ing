@@ -158,10 +158,11 @@ pub(super) fn can_take(claim: &Claim) -> bool {
 }
 
 /// The model types that change the machine: it holds at most one at a time (K11 Section 3).
-const CHANGING: [WorkType; 7] = [
+const CHANGING: [WorkType; 8] = [
     WorkType::RuntimeInstall,
     WorkType::ModelPull,
     WorkType::CopyDelete,
+    WorkType::CopyAdopt,
     WorkType::ServerStart,
     WorkType::ServerStop,
     WorkType::ModelLoad,

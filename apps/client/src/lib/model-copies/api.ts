@@ -1,5 +1,5 @@
 import { graphql } from '$lib/hub/generated';
-import type { HostingModelCopiesQuery, ModelPullChoicesQuery } from '$lib/hub/generated/graphql';
+import type { HostingFoundModelsQuery, HostingModelCopiesQuery, ModelPullChoicesQuery } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult } from '$lib/hub/hub';
 
 // The fragment is only read by codegen, which inlines it into the documents that spread it.
@@ -12,6 +12,7 @@ void graphql(`
       name
     }
     address
+    origin
     format
     quantisation
     repository
@@ -73,8 +74,44 @@ const REMOVE = graphql(`
   }
 `);
 
+// The models that the machines found where Ollama, LM Studio, the Hugging Face cache or a folder keeps them (PULL-012).
+const FOUND = graphql(`
+  query HostingFoundModels {
+    foundModels {
+      found
+      place {
+        kind
+        id
+        name
+      }
+      tool
+      name
+      format
+      fileCount
+      sizeBytes
+      usable
+      readAt
+    }
+  }
+`);
+
+const FIND = graphql(`
+  mutation HostingFindModels($deviceId: ID!) {
+    findModels(deviceId: $deviceId)
+  }
+`);
+
+const USE = graphql(`
+  mutation HostingUseFoundModel($deviceId: ID!, $found: String!) {
+    useFoundModel(deviceId: $deviceId, found: $found) {
+      ...CopyFields
+    }
+  }
+`);
+
 export type ModelCopy = HostingModelCopiesQuery['modelCopies'][number];
 export type CopyState = ModelCopy['state'];
+export type FoundModel = HostingFoundModelsQuery['foundModels'][number];
 type Policy = ModelPullChoicesQuery['devicePolicies'][number];
 
 /** A machine that a pull can name, with why it takes no model work now (null when it takes it). */
@@ -95,7 +132,7 @@ export interface PullChoices {
   readonly variants: readonly PullVariant[];
 }
 
-/** What the section Models asks of the hub (HSE-013, PULL-001, PULL-007, PULL-009); its store and tests take this. */
+/** What the section Models asks of the hub (HSE-013, PULL-001, PULL-007, PULL-009, PULL-012); its store and tests take this. */
 export interface CopyCalls {
   /** Each copy that a machine has, pulls or removes. */
   list(): Promise<HubResult<readonly ModelCopy[]>>;
@@ -105,6 +142,12 @@ export interface CopyCalls {
   pull(deviceId: string, address: string): Promise<HubResult<ModelCopy>>;
   /** Removes a copy: what is left of it (state REMOVING), or null when it went at once. */
   remove(id: string): Promise<HubResult<ModelCopy | null>>;
+  /** The models that the machines found, from the last model report of each, with no copy that uses them (PULL-012). */
+  found(): Promise<HubResult<readonly FoundModel[]>>;
+  /** Asks one machine to read its found models again: the job. */
+  find(deviceId: string): Promise<HubResult<string>>;
+  /** Uses a found model where it is (R-444): the new copy. */
+  use(deviceId: string, found: string): Promise<HubResult<ModelCopy>>;
 }
 
 /** The copy calls of the hub. */
@@ -130,6 +173,18 @@ export function copiesApi(hub: Pick<Hub, 'request'>): CopyCalls {
     remove: async (id) => {
       const result = await hub.request(REMOVE, { id });
       return result.ok ? { ok: true, value: result.value.removeModelCopy ?? null } : result;
+    },
+    found: async () => {
+      const result = await hub.request(FOUND, {});
+      return result.ok ? { ok: true, value: result.value.foundModels } : result;
+    },
+    find: async (deviceId) => {
+      const result = await hub.request(FIND, { deviceId });
+      return result.ok ? { ok: true, value: result.value.findModels } : result;
+    },
+    use: async (deviceId, found) => {
+      const result = await hub.request(USE, { deviceId, found });
+      return result.ok ? { ok: true, value: result.value.useFoundModel } : result;
     },
   };
 }

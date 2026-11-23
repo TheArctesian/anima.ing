@@ -1,0 +1,15 @@
+# `anima model use`: uses a found model where it is (PULL-012, R-444).
+mutation UseFoundModel($deviceId: ID!, $found: String!) {
+  useFoundModel(deviceId: $deviceId, found: $found) {
+    id
+    address
+    state
+    origin
+    sizeBytes
+    place {
+      kind
+      id
+      name
+    }
+  }
+}

@@ -1,4 +1,4 @@
-//! The model items of a copy: `model_pull` and `copy_delete` for one machine (K11 Sections 2
+//! The model items of a copy: `model_pull`, `copy_adopt`, `copy_delete` and `model_report` for one machine (K11 Sections 2
 //! and 7). The hub checks the files by the rules of the machine before it asks, so a pull
 //! that a machine would refuse for its files is refused here first.
 
@@ -32,6 +32,15 @@ const PULL_LIMITS: Limits = Limits {
 const DELETE_LIMITS: Limits = Limits {
     seconds: 600,
     idle_seconds: 600,
+    memory_bytes: GIB,
+    disk_bytes: 1,
+    orphan_seconds: 600,
+};
+
+/// Reading every file of a found model may take long, and the daemon sends no progress then.
+const ADOPT_LIMITS: Limits = Limits {
+    seconds: 6 * 3600,
+    idle_seconds: 6 * 3600,
     memory_bytes: GIB,
     disk_bytes: 1,
     orphan_seconds: 600,
@@ -148,4 +157,21 @@ pub fn delete(copy: CopyId, (machine, actor): (DeviceId, Actor)) -> NewJob {
         (machine, actor),
         json!({ "copy": copy }),
     )
+}
+
+/// The `model_report` of `machine` (K11 Section 8): it changes nothing.
+#[must_use]
+pub fn report((machine, actor): (DeviceId, Actor)) -> NewJob {
+    model_job(WorkType::ModelReport, (machine, actor), json!({}))
+}
+
+/// The `copy_adopt` of `copy` on `machine`: the found model with the key `found` (K11
+/// Section 2.3).
+#[must_use]
+pub fn adopt(copy: CopyId, found: &str, (machine, actor): (DeviceId, Actor)) -> NewJob {
+    let parameters = json!({ "copy": copy, "found": found });
+    NewJob {
+        limits: ADOPT_LIMITS,
+        ..model_job(WorkType::CopyAdopt, (machine, actor), parameters)
+    }
 }

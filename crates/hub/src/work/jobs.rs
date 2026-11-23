@@ -233,6 +233,15 @@ pub async fn jobs_of(conn: &mut PgConnection, ids: &[JobId]) -> Result<Vec<Job>,
     store::jobs_of(conn, ids).await
 }
 
+/// The newest job of `work_type` that each machine ended `done`, for example the last model
+/// state of each machine (K11 Section 8).
+///
+/// # Errors
+/// `Database` when they cannot be read; `Unreadable` for a row this version does not read.
+pub async fn newest_done(conn: &mut PgConnection, work_type: WorkType) -> Result<Vec<Job>, Error> {
+    store::newest_done(conn, work_type).await
+}
+
 /// A queued job stops at once; a held job's holder gets it in its next report (K10 Section 7).
 ///
 /// # Errors

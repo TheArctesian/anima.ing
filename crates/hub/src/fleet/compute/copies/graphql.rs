@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use async_graphql::{Context, Error as GraphQlError, ID, Object, Result};
 use serde_json::json;
 
-pub use types::{HostPlace, HostPlaceKind, ModelCopyView, PullProgress};
+pub use types::{FoundModelView, FoundTool, HostPlace, HostPlaceKind, ModelCopyView, PullProgress};
 
 use super::{Copy, Error, Listed};
 use crate::{
@@ -33,6 +33,10 @@ fn to_graphql(error: Error) -> GraphQlError {
     let on_model = |words: &str| invalid(&[FieldError::new("model", words)]);
     match error {
         Error::NotFound => coded("No such model copy.", ErrorCode::NotFound),
+        Error::FoundUnknown => coded(
+            "The last model report of that machine lists no such model. Read its models again.",
+            ErrorCode::NotFound,
+        ),
         Error::Library(library::Error::NotFound(Missing::Model)) => {
             coded("No such model.", ErrorCode::NotFound)
         }
@@ -91,12 +95,7 @@ impl Query {
     async fn model_copies(&self, ctx: &Context<'_>) -> Result<Vec<ModelCopyView>> {
         let db = pool(ctx)?;
         let listed = super::list(db).await.map_err(to_graphql)?;
-        let names: HashMap<DeviceId, String> = devices::list(db)
-            .await
-            .map_err(internal)?
-            .into_iter()
-            .map(|device| (device.id, device.name))
-            .collect();
+        let names = device_names(db).await?;
         Ok(listed
             .into_iter()
             .map(|listed| {
@@ -105,6 +104,32 @@ impl Query {
             })
             .collect())
     }
+
+    /// Each model that a machine found where a different program keeps it (Ollama, LM Studio,
+    /// the Hugging Face cache, a folder of the owner), from its last model report, with no copy
+    /// that uses it (PULL-012), in the order of the machine and the name.
+    #[graphql(guard = "Authenticated")]
+    async fn found_models(&self, ctx: &Context<'_>) -> Result<Vec<FoundModelView>> {
+        let db = pool(ctx)?;
+        let found = super::found::list(db).await.map_err(to_graphql)?;
+        let names = device_names(db).await?;
+        Ok(found
+            .into_iter()
+            .map(|found| {
+                let name = names.get(&found.device).cloned().unwrap_or_default();
+                FoundModelView::new(found, name)
+            })
+            .collect())
+    }
+}
+
+async fn device_names(db: &sqlx::PgPool) -> Result<HashMap<DeviceId, String>> {
+    Ok(devices::list(db)
+        .await
+        .map_err(internal)?
+        .into_iter()
+        .map(|device| (device.id, device.name))
+        .collect())
 }
 
 #[derive(Default)]
@@ -141,6 +166,58 @@ impl Mutation {
             )
             .await
             .map_err(internal)?;
+        let listed = super::listed(&mut tx, copy).await.map_err(to_graphql)?;
+        commit(tx).await?;
+        let listed = listed.ok_or_else(|| coded("No such model copy.", ErrorCode::NotFound))?;
+        Ok(ModelCopyView::new(listed, device.name))
+    }
+
+    /// Asks the machine for its model state, so that its found models are read again
+    /// (PULL-012). Gives the job; `foundModels` lists the models when it is done.
+    #[graphql(guard = "Authenticated")]
+    async fn find_models(&self, ctx: &Context<'_>, device_id: ID) -> Result<ID> {
+        let device = device_of(ctx, &device_id).await?;
+        let asker = asker(ctx)?;
+        let now = Trail::from_context(ctx)?.now;
+        let mut tx = begin(ctx).await?;
+        let job = super::found::read(&mut tx, device.id, asker, now)
+            .await
+            .map_err(to_graphql)?;
+        commit(tx).await?;
+        Ok(ID(job.to_string()))
+    }
+
+    /// Uses a found model where it is (PULL-012, R-444): the machine reads each of its files
+    /// and keeps their sizes and SHA-256, and checks them again at each load. A model that is
+    /// not GGUF is refused; a found copy that failed is asked for again.
+    #[graphql(guard = "Authenticated")]
+    async fn use_found_model(
+        &self,
+        ctx: &Context<'_>,
+        device_id: ID,
+        found: String,
+    ) -> Result<ModelCopyView> {
+        if !daemon_core::model_work::names::is_lower_hex(&found, 64) {
+            return Err(invalid(&[FieldError::new(
+                "found",
+                "That key is not valid.",
+            )]));
+        }
+        let device = device_of(ctx, &device_id).await?;
+        let asker = asker(ctx)?;
+        let trail = Trail::from_context(ctx)?;
+        let now = trail.now;
+        let mut tx = begin(ctx).await?;
+        let copy = super::found::adopt(&mut tx, (device.id, &found), asker, now)
+            .await
+            .map_err(to_graphql)?;
+        let message = format!(
+            "Asked {} to use {} where it is.",
+            device.name,
+            copy.address()
+        );
+        let audit = entry(&device, &copy, (AuditAction::Create, message));
+        trail.write(&mut tx, audit).await.map_err(internal)?;
         let listed = super::listed(&mut tx, copy).await.map_err(to_graphql)?;
         commit(tx).await?;
         let listed = listed.ok_or_else(|| coded("No such model copy.", ErrorCode::NotFound))?;

@@ -106,11 +106,14 @@ type Documents = {
     "\n  mutation SetDaemonNeed($deviceId: ID!, $need: DaemonNeed) {\n    setDaemonNeed(deviceId: $deviceId, need: $need) {\n      id\n      daemonNeed\n    }\n  }\n": typeof types.SetDaemonNeedDocument,
     "\n  subscription BatteryChargesAdded {\n    metricsAdded(deviceId: null) {\n      deviceId\n      samples {\n        kind\n        label\n        value\n      }\n    }\n  }\n": typeof types.BatteryChargesAddedDocument,
     "\n  subscription ContainerSamplesAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      samples {\n        kind\n        label\n        value\n      }\n    }\n  }\n": typeof types.ContainerSamplesAddedDocument,
-    "\n  fragment CopyFields on ModelCopy {\n    id\n    place {\n      kind\n      id\n      name\n    }\n    address\n    format\n    quantisation\n    repository\n    sizeBytes\n    fileCount\n    state\n    progress {\n      bytes\n      totalBytes\n      bytesPerSecond\n      secondsLeft\n    }\n    reason\n    createdAt\n  }\n": typeof types.CopyFieldsFragmentDoc,
+    "\n  fragment CopyFields on ModelCopy {\n    id\n    place {\n      kind\n      id\n      name\n    }\n    address\n    origin\n    format\n    quantisation\n    repository\n    sizeBytes\n    fileCount\n    state\n    progress {\n      bytes\n      totalBytes\n      bytesPerSecond\n      secondsLeft\n    }\n    reason\n    createdAt\n  }\n": typeof types.CopyFieldsFragmentDoc,
     "\n  query HostingModelCopies {\n    modelCopies {\n      ...CopyFields\n    }\n  }\n": typeof types.HostingModelCopiesDocument,
     "\n  query ModelPullChoices {\n    devicePolicies {\n      device {\n        id\n        name\n      }\n      takesModelWork\n      stopReason\n    }\n    libraryModels {\n      variants {\n        address\n        sizeBytes\n      }\n    }\n  }\n": typeof types.ModelPullChoicesDocument,
     "\n  mutation HostingPullModel($deviceId: ID!, $model: String!) {\n    pullModel(deviceId: $deviceId, model: $model) {\n      ...CopyFields\n    }\n  }\n": typeof types.HostingPullModelDocument,
     "\n  mutation HostingRemoveModelCopy($id: ID!) {\n    removeModelCopy(id: $id) {\n      ...CopyFields\n    }\n  }\n": typeof types.HostingRemoveModelCopyDocument,
+    "\n  query HostingFoundModels {\n    foundModels {\n      found\n      place {\n        kind\n        id\n        name\n      }\n      tool\n      name\n      format\n      fileCount\n      sizeBytes\n      usable\n      readAt\n    }\n  }\n": typeof types.HostingFoundModelsDocument,
+    "\n  mutation HostingFindModels($deviceId: ID!) {\n    findModels(deviceId: $deviceId)\n  }\n": typeof types.HostingFindModelsDocument,
+    "\n  mutation HostingUseFoundModel($deviceId: ID!, $found: String!) {\n    useFoundModel(deviceId: $deviceId, found: $found) {\n      ...CopyFields\n    }\n  }\n": typeof types.HostingUseFoundModelDocument,
     "\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n": typeof types.DeliveryFieldsFragmentDoc,
     "\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n": typeof types.NotificationChannelFieldsFragmentDoc,
     "\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n": typeof types.NotificationSettingsFieldsFragmentDoc,
@@ -301,11 +304,14 @@ const documents: Documents = {
     "\n  mutation SetDaemonNeed($deviceId: ID!, $need: DaemonNeed) {\n    setDaemonNeed(deviceId: $deviceId, need: $need) {\n      id\n      daemonNeed\n    }\n  }\n": types.SetDaemonNeedDocument,
     "\n  subscription BatteryChargesAdded {\n    metricsAdded(deviceId: null) {\n      deviceId\n      samples {\n        kind\n        label\n        value\n      }\n    }\n  }\n": types.BatteryChargesAddedDocument,
     "\n  subscription ContainerSamplesAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      samples {\n        kind\n        label\n        value\n      }\n    }\n  }\n": types.ContainerSamplesAddedDocument,
-    "\n  fragment CopyFields on ModelCopy {\n    id\n    place {\n      kind\n      id\n      name\n    }\n    address\n    format\n    quantisation\n    repository\n    sizeBytes\n    fileCount\n    state\n    progress {\n      bytes\n      totalBytes\n      bytesPerSecond\n      secondsLeft\n    }\n    reason\n    createdAt\n  }\n": types.CopyFieldsFragmentDoc,
+    "\n  fragment CopyFields on ModelCopy {\n    id\n    place {\n      kind\n      id\n      name\n    }\n    address\n    origin\n    format\n    quantisation\n    repository\n    sizeBytes\n    fileCount\n    state\n    progress {\n      bytes\n      totalBytes\n      bytesPerSecond\n      secondsLeft\n    }\n    reason\n    createdAt\n  }\n": types.CopyFieldsFragmentDoc,
     "\n  query HostingModelCopies {\n    modelCopies {\n      ...CopyFields\n    }\n  }\n": types.HostingModelCopiesDocument,
     "\n  query ModelPullChoices {\n    devicePolicies {\n      device {\n        id\n        name\n      }\n      takesModelWork\n      stopReason\n    }\n    libraryModels {\n      variants {\n        address\n        sizeBytes\n      }\n    }\n  }\n": types.ModelPullChoicesDocument,
     "\n  mutation HostingPullModel($deviceId: ID!, $model: String!) {\n    pullModel(deviceId: $deviceId, model: $model) {\n      ...CopyFields\n    }\n  }\n": types.HostingPullModelDocument,
     "\n  mutation HostingRemoveModelCopy($id: ID!) {\n    removeModelCopy(id: $id) {\n      ...CopyFields\n    }\n  }\n": types.HostingRemoveModelCopyDocument,
+    "\n  query HostingFoundModels {\n    foundModels {\n      found\n      place {\n        kind\n        id\n        name\n      }\n      tool\n      name\n      format\n      fileCount\n      sizeBytes\n      usable\n      readAt\n    }\n  }\n": types.HostingFoundModelsDocument,
+    "\n  mutation HostingFindModels($deviceId: ID!) {\n    findModels(deviceId: $deviceId)\n  }\n": types.HostingFindModelsDocument,
+    "\n  mutation HostingUseFoundModel($deviceId: ID!, $found: String!) {\n    useFoundModel(deviceId: $deviceId, found: $found) {\n      ...CopyFields\n    }\n  }\n": types.HostingUseFoundModelDocument,
     "\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n": types.DeliveryFieldsFragmentDoc,
     "\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n": types.NotificationChannelFieldsFragmentDoc,
     "\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n": types.NotificationSettingsFieldsFragmentDoc,
@@ -789,7 +795,7 @@ export function graphql(source: "\n  subscription ContainerSamplesAdded($deviceI
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  fragment CopyFields on ModelCopy {\n    id\n    place {\n      kind\n      id\n      name\n    }\n    address\n    format\n    quantisation\n    repository\n    sizeBytes\n    fileCount\n    state\n    progress {\n      bytes\n      totalBytes\n      bytesPerSecond\n      secondsLeft\n    }\n    reason\n    createdAt\n  }\n"): (typeof documents)["\n  fragment CopyFields on ModelCopy {\n    id\n    place {\n      kind\n      id\n      name\n    }\n    address\n    format\n    quantisation\n    repository\n    sizeBytes\n    fileCount\n    state\n    progress {\n      bytes\n      totalBytes\n      bytesPerSecond\n      secondsLeft\n    }\n    reason\n    createdAt\n  }\n"];
+export function graphql(source: "\n  fragment CopyFields on ModelCopy {\n    id\n    place {\n      kind\n      id\n      name\n    }\n    address\n    origin\n    format\n    quantisation\n    repository\n    sizeBytes\n    fileCount\n    state\n    progress {\n      bytes\n      totalBytes\n      bytesPerSecond\n      secondsLeft\n    }\n    reason\n    createdAt\n  }\n"): (typeof documents)["\n  fragment CopyFields on ModelCopy {\n    id\n    place {\n      kind\n      id\n      name\n    }\n    address\n    origin\n    format\n    quantisation\n    repository\n    sizeBytes\n    fileCount\n    state\n    progress {\n      bytes\n      totalBytes\n      bytesPerSecond\n      secondsLeft\n    }\n    reason\n    createdAt\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -806,6 +812,18 @@ export function graphql(source: "\n  mutation HostingPullModel($deviceId: ID!, $
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation HostingRemoveModelCopy($id: ID!) {\n    removeModelCopy(id: $id) {\n      ...CopyFields\n    }\n  }\n"): (typeof documents)["\n  mutation HostingRemoveModelCopy($id: ID!) {\n    removeModelCopy(id: $id) {\n      ...CopyFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query HostingFoundModels {\n    foundModels {\n      found\n      place {\n        kind\n        id\n        name\n      }\n      tool\n      name\n      format\n      fileCount\n      sizeBytes\n      usable\n      readAt\n    }\n  }\n"): (typeof documents)["\n  query HostingFoundModels {\n    foundModels {\n      found\n      place {\n        kind\n        id\n        name\n      }\n      tool\n      name\n      format\n      fileCount\n      sizeBytes\n      usable\n      readAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation HostingFindModels($deviceId: ID!) {\n    findModels(deviceId: $deviceId)\n  }\n"): (typeof documents)["\n  mutation HostingFindModels($deviceId: ID!) {\n    findModels(deviceId: $deviceId)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation HostingUseFoundModel($deviceId: ID!, $found: String!) {\n    useFoundModel(deviceId: $deviceId, found: $found) {\n      ...CopyFields\n    }\n  }\n"): (typeof documents)["\n  mutation HostingUseFoundModel($deviceId: ID!, $found: String!) {\n    useFoundModel(deviceId: $deviceId, found: $found) {\n      ...CopyFields\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

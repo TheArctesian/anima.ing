@@ -7,6 +7,10 @@ use uuid::Uuid;
 
 use super::times;
 
+mod model;
+
+pub use model::{CopyOutcome, FileHash, FoundEntry, ModelOutcome, ModelState, Progress};
+
 /// The most bytes of the log part of one report (K10 Section 7).
 pub const MAX_LOG_PART_BYTES: usize = 64 * 1024;
 
@@ -116,6 +120,28 @@ pub enum WorkArchitecture {
     #[serde(rename = "x86_64")]
     X86_64,
     Aarch64,
+}
+
+impl WorkOs {
+    /// The word of the wire, also the word of a release source (K11 Section 6).
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Linux => "linux",
+            Self::Macos => "macos",
+        }
+    }
+}
+
+impl WorkArchitecture {
+    /// The word of the wire, also the word of a release source (K11 Section 6).
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::X86_64 => "x86_64",
+            Self::Aarch64 => "aarch64",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -251,30 +277,10 @@ pub struct WorkResult {
     pub cause: Option<String>,
     pub seconds: u64,
     pub cleanup: Cleanup,
-    /// The copy that a model item changed (K11 Section 3); only for the kind `model`.
+    /// The copy that a model item changed, or the model state of `model_report` (K11 Sections 3
+    /// and 8); only for the kind `model`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model: Option<CopyOutcome>,
-}
-
-/// The `model` member of the result of a model item (K11 Section 3): the copy, its state of
-/// K11 Section 11, its bytes and its file count. Codes and numbers only.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CopyOutcome {
-    pub copy: Uuid,
-    pub copy_state: String,
-    pub bytes: u64,
-    pub files: u32,
-}
-
-/// The progress of a running `model_pull` (K11 Section 3, PULL-007). The hub computes the
-/// time to completion.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Progress {
-    pub bytes: u64,
-    pub total_bytes: u64,
-    pub bytes_per_second: u64,
+    pub model: Option<ModelOutcome>,
 }
 
 /// `POST /work/v1/report` (K10 Section 7).

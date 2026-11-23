@@ -1,0 +1,18 @@
+# `anima model found`: the models that the machines found where a different program keeps them (PULL-012).
+query FoundModels {
+  foundModels {
+    found
+    place {
+      kind
+      id
+      name
+    }
+    tool
+    name
+    format
+    fileCount
+    sizeBytes
+    usable
+    readAt
+  }
+}

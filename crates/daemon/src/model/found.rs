@@ -9,7 +9,7 @@ pub mod walk;
 
 use std::os::fd::OwnedFd;
 use std::os::unix::fs::MetadataExt as _;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use daemon_core::model_work::cause::Cause;
 use daemon_core::model_work::found::record::{Observed, Record, RecordFile, named_hash_holds};
@@ -19,10 +19,26 @@ use uuid::Uuid;
 
 use open::{Folder, Opened, size_and_sha256};
 
-/// The list `found` of the result of `model_report` (Section 8).
-#[must_use]
-pub fn listed(roots: &[Root]) -> Vec<Value> {
-    walk::walk(roots).iter().map(FoundModel::to_json).collect()
+/// The list `found` of the result of `model_report` (Section 8), walked on a blocking thread.
+pub async fn listed(roots: Vec<Root>) -> Vec<Value> {
+    let walk = move || walk::walk(&roots).iter().map(FoundModel::to_json).collect();
+    tokio::task::spawn_blocking(walk).await.unwrap_or_default()
+}
+
+/// [`adopt_now`] on a blocking thread: it reads each file of the model.
+///
+/// # Errors
+/// As [`adopt_now`].
+pub async fn adopt(
+    roots: Vec<Root>,
+    state: PathBuf,
+    copy: Uuid,
+    found: String,
+) -> Result<Value, Cause> {
+    let adopt = move || adopt_now(&roots, &state, copy, &found);
+    tokio::task::spawn_blocking(adopt)
+        .await
+        .map_err(|_| Cause::CopyMissing)?
 }
 
 /// The file at `location` below the folder of Section 10.2, opened by the layout rules.
@@ -43,7 +59,7 @@ fn open_at(root: &Folder, location: &[String]) -> Result<Opened, Cause> {
 /// `found_unknown` when no walk finds the key; `file_type` for a model that is not GGUF
 /// (MW-P10); `copy_missing` for a file that is gone; `checksum` when a file is not the SHA-256
 /// that the tool names it by; `limit_disk` when the record cannot be written.
-pub fn adopt(roots: &[Root], state: &Path, copy: Uuid, found: &str) -> Result<Value, Cause> {
+pub fn adopt_now(roots: &[Root], state: &Path, copy: Uuid, found: &str) -> Result<Value, Cause> {
     let model = walk::walk(roots)
         .into_iter()
         .find(|model| model.key() == found)

@@ -2,7 +2,12 @@
 //! A machine, or a person with its daemon token, could otherwise put text of its choice where a screen or an MCP tool shows it.
 
 use daemon_core::model_work::cause::Cause;
-use daemon_core::wire::{Cleanup, CopyOutcome, WorkKind, WorkResult};
+use daemon_core::model_work::files::MAX_FILES;
+use daemon_core::model_work::found::{MAX_FOUND, Tool, is_shown_name};
+use daemon_core::model_work::names::{Word as _, is_lower_hex};
+use daemon_core::wire::{
+    Cleanup, CopyOutcome, FoundEntry, ModelOutcome, ModelState, WorkKind, WorkResult,
+};
 
 /// The outcomes of K10 Section 7.
 const OUTCOMES: [&str; 5] = ["succeeded", "failed", "idle", "stopped", "refused"];
@@ -58,11 +63,13 @@ pub(super) fn checked(result: &WorkResult, kind: WorkKind) -> Option<WorkResult>
         .iter()
         .all(|member| CLEANED.contains(&member.as_str()));
     let model = kind == WorkKind::Model;
-    let copy_fits = match &result.model {
-        None => true,
-        Some(CopyOutcome { copy_state, .. }) => model && COPY_STATES.contains(&copy_state.as_str()),
+    let outcome = match &result.model {
+        None => None,
+        Some(_) if !model => return None,
+        Some(ModelOutcome::Copy(copy)) => Some(ModelOutcome::Copy(checked_copy(copy)?)),
+        Some(ModelOutcome::State(state)) => Some(ModelOutcome::State(checked_state(state)?)),
     };
-    if !cleaned || !copy_fits || !OUTCOMES.contains(&result.outcome.as_str()) {
+    if !cleaned || !OUTCOMES.contains(&result.outcome.as_str()) {
         return None;
     }
     let cause = result.cause.as_deref().map(|cause| {
@@ -74,6 +81,48 @@ pub(super) fn checked(result: &WorkResult, kind: WorkKind) -> Option<WorkResult>
     });
     Some(WorkResult {
         cause,
+        model: outcome,
         ..result.clone()
     })
+}
+
+/// A copy outcome of a state of K11 Section 11, with at most one hash for each file.
+fn checked_copy(copy: &CopyOutcome) -> Option<CopyOutcome> {
+    let hashes_fit = copy.file_hashes.len() <= MAX_FILES
+        && copy
+            .file_hashes
+            .iter()
+            .all(|hash| is_lower_hex(&hash.sha256, 64));
+    (COPY_STATES.contains(&copy.copy_state.as_str()) && hashes_fit).then(|| copy.clone())
+}
+
+/// The found models of a state that keep the rules of K11 Section 8: the others are left out,
+/// so a machine cannot put text of its choice where the screen shows a found model. `None`
+/// when the time is not RFC 3339.
+fn checked_state(state: &ModelState) -> Option<ModelState> {
+    chrono::DateTime::parse_from_rfc3339(&state.at).ok()?;
+    let found = state
+        .found
+        .iter()
+        .filter(|entry| found_fits(entry))
+        .take(MAX_FOUND)
+        .cloned()
+        .collect();
+    Some(ModelState {
+        at: state.at.clone(),
+        found,
+    })
+}
+
+fn found_fits(entry: &FoundEntry) -> bool {
+    let format_fits = match entry.format.as_str() {
+        "gguf" => true,
+        "safetensors" => !entry.usable,
+        _ => false,
+    };
+    is_lower_hex(&entry.found, 64)
+        && Tool::parse(&entry.tool).is_some()
+        && is_shown_name(&entry.name)
+        && format_fits
+        && (1..=u32::try_from(MAX_FILES).unwrap_or(u32::MAX)).contains(&entry.files)
 }

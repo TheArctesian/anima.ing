@@ -50,3 +50,24 @@ it('HSE-013: the choice of a machine that has no copy any more goes back to all 
   await store.load(true);
   expect(store.machine).toBe('');
 });
+
+it('PULL-012: the list keeps the found models, and Use adds the copy and takes the model off the found list', async () => {
+  const { calls, store } = make();
+  await store.load();
+  expect(store.found.map((model) => model.name)).toEqual(['qwen3:8b', 'Qwen/Qwen3-8B/model.safetensors']);
+  const model = store.found[0];
+  if (model === undefined) throw new Error('no found model');
+  const result = await store.use(model);
+  expect(result.ok).toBe(true);
+  expect(calls.uses).toEqual([['m-pop', 'a'.repeat(64)]]);
+  expect(store.copies.find((copy) => copy.origin === 'FOUND')?.address).toBe('qwen3:8b');
+  expect(store.found.map((each) => each.found)).toEqual(['b'.repeat(64)]);
+});
+
+it('PULL-012: Find models asks each machine that has asked for work, and the page then reads again', async () => {
+  const { calls, store } = make();
+  const result = await store.findAll();
+  expect(result).toEqual({ ok: true, value: 2 });
+  expect(calls.finds).toEqual(['m-nas', 'm-pop']);
+  expect(store.finding).toBe(true);
+});

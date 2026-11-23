@@ -1,4 +1,4 @@
-//! SEL-005, PULL-001, PULL-007, PULL-009, CMD-030; the server cleans and caps each string from
+//! SEL-005, PULL-001, PULL-007, PULL-009, PULL-012, CMD-030; the server cleans and caps each string from
 //! Hugging Face (MCP-008). A pull and a removal are open to an API key; the hub records the
 //! actor (R-326).
 
@@ -15,6 +15,7 @@ use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
 use crate::model_copies::copies::fetch;
 use crate::model_copies::documents::{ModelCopyRemove, ModelPull, model_copy_remove, model_pull};
+use crate::model_copies::found;
 use crate::model_library::documents::{ModelList, ModelShow, model_list, model_show};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,6 +25,9 @@ pub enum ModelTool {
     Copies,
     Pull,
     Remove,
+    Found,
+    Find,
+    Use,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -49,6 +53,22 @@ pub struct CopyInput {
     model: String,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DeviceInput {
+    /// The device's ID or its exact name.
+    device: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UseInput {
+    /// The device's ID or its exact name.
+    device: String,
+    /// The found model: its key, or the name that its tool shows.
+    model: String,
+}
+
 const VARIANT_KEYS: [&str; 6] = [
     "address",
     "tag",
@@ -59,12 +79,15 @@ const VARIANT_KEYS: [&str; 6] = [
 ];
 
 impl ModelTool {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 8] = [
         Self::List,
         Self::Show,
         Self::Copies,
         Self::Pull,
         Self::Remove,
+        Self::Found,
+        Self::Find,
+        Self::Use,
     ];
 
     #[must_use]
@@ -123,6 +146,44 @@ impl ModelTool {
                 "object",
                 "What is left of the copy; null when gone.",
             )]),
+            Self::Found | Self::Find | Self::Use => self.found_definition(),
+        }
+    }
+
+    /// The tools of the found models (PULL-012, R-444).
+    fn found_definition(self) -> Definition {
+        match self {
+            Self::Found => Definition::new::<ListInput>(
+                "anima_model_found",
+                Access::Read,
+                Effect::Reads,
+                "The models that each machine found where Ollama, LM Studio, the Hugging Face \
+                 cache or a folder of its settings keeps them, from its last model report, with \
+                 no copy that uses them: the machine, the tool, the name that the tool shows, \
+                 the format, the size, whether it is usable (GGUF only) and its key. Never a \
+                 path. Next: anima_model_find, anima_model_use.",
+            )
+            .returns(&[("found", "array", "The found models.")]),
+            Self::Find => Definition::new::<DeviceInput>(
+                "anima_model_find",
+                Access::Write,
+                Effect::Adds,
+                "Asks one machine for its model state, so that it reads its found models again. \
+                 Returns the job; when it is done, anima_model_found lists the models. A machine \
+                 whose setting findModels is off lists none.",
+            )
+            .returns(&[("job", "string", "The ID of the job.")]),
+            Self::Use => Definition::new::<UseInput>(
+                "anima_model_use",
+                Access::Write,
+                Effect::Adds,
+                "Uses a found model of one machine where it is, by its key or the name that its \
+                 tool shows: the machine reads each file and keeps its size and SHA-256, checks \
+                 them again at each load, and never writes in the folder of the tool. Only a \
+                 GGUF model. Returns the copy; follow it with anima_model_copies.",
+            )
+            .returns(&[("copy", "object", "The copy that the hub asked for.")]),
+            _ => unreachable!("only the tools of the found models"),
         }
     }
 
@@ -137,6 +198,9 @@ impl ModelTool {
             Self::Copies => copies(hub, arguments).await,
             Self::Pull => pull(hub, arguments).await,
             Self::Remove => remove(hub, arguments).await,
+            Self::Found => found(hub, arguments).await,
+            Self::Find => find(hub, arguments).await,
+            Self::Use => use_found(hub, arguments).await,
         }
     }
 }
@@ -197,4 +261,20 @@ async fn remove(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolE
         .await?
         .remove_model_copy;
     Ok(json!({ "copy": json(&left) }))
+}
+
+async fn found(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let _: ListInput = parse(arguments)?;
+    Ok(json!({ "found": json(&found::fetch(hub).await?) }))
+}
+
+async fn find(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let input: DeviceInput = parse(arguments)?;
+    Ok(json!({ "job": found::find(hub, &input.device).await? }))
+}
+
+async fn use_found(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let input: UseInput = parse(arguments)?;
+    let copy = found::use_found(hub, &input.device, &input.model).await?;
+    Ok(json!({ "copy": json(&copy) }))
 }

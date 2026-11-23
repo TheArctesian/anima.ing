@@ -50,7 +50,7 @@ async fn seed_library(pool: &sqlx::PgPool) {
     .unwrap();
 }
 
-async fn copies(work: &Work) -> Vec<Value> {
+pub(super) async fn copies(work: &Work) -> Vec<Value> {
     let answer = work.daemons.operate(COPIES, json!({})).await;
     answer["data"]["modelCopies"]
         .as_array()
@@ -63,7 +63,7 @@ async fn pull(work: &Work, model: &str) -> Value {
     work.daemons.operate(PULL, variables).await
 }
 
-fn report(item: &Value, state: &str, extra: &Value) -> Value {
+pub(super) fn report(item: &Value, state: &str, extra: &Value) -> Value {
     let mut body = json!({ "id": item["id"], "attempt": item["attempt"], "state": state });
     if let (Some(body), Some(extra)) = (body.as_object_mut(), extra.as_object()) {
         body.extend(extra.clone());

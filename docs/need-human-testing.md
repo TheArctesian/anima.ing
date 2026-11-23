@@ -5289,6 +5289,38 @@ installed daemon of the operator; set `ANIMA_DAEMON_HOME` to a new test folder.
    Expected: each row says Removing, then goes; the folders of each copy in `copies/` and `partial/` are gone, and the
    download process has ended (`pgrep -f __model-pull` gives nothing).
 
+### HT-NEW-foundmodels: the models of Ollama, LM Studio and Hugging Face on `pop-os`, used where they are
+
+Built on the branch `compute/l1-22` (task L1-22; PULL-012, R-444; contract K11 Sections 2.3, 8 and 10.2): in the daemon
+the walk of the fixed folders and of `modelFolders` (`crates/daemon/src/model/found/`), the list `found` of
+`model_report`, `copy_adopt` with its record in the state folder, and the check of each file at a load; in the hub
+`foundModels`, `findModels` and `useFoundModel` (`crates/hub/src/fleet/compute/copies/found.rs`, migration 1043);
+`anima model found`, `anima model find` and `anima model use`, the MCP tools `anima_model_found`, `anima_model_find` and
+`anima_model_use`; and Found on the machines in Hosting > Models (`apps/client/src/lib/model-copies/FoundList.svelte`).
+The tests use made folders of each program in a temporary folder and a fake hub. They do not read the real folders of
+Ollama, LM Studio or Hugging Face, the system folder of Ollama, or a model of several gigabytes. The running daemon does
+not claim model work yet (the wiring task of L1-6), so steps 2 to 6 wait for it; no server starts with a copy before
+task L1-8, so step 5 also waits for L1-8.
+
+1. On `pop-os`, note the models that `ollama list`, LM Studio and `ls ~/.cache/huggingface/hub` show, and the modification
+   time of each of their folders (`stat -c %y`).
+2. With the claim loop running, open Hosting > Models in the desktop application and press Find models. Wait one minute.
+   Expected: Found on the machines has a group `pop-os` with each GGUF model of step 1 (an Ollama model as `name:tag`) and
+   Use, and each safetensors model with "GGUF only". No row shows a path. `anima model found` and the MCP tool
+   `anima_model_found` list the same models.
+3. Press Use on one Ollama model.
+   Expected: the model leaves the found list; a copy of it joins the group `pop-os` above with "where Ollama keeps it",
+   Waiting, then Downloaded, with no download (the network use of the machine does not rise). The disk use of the
+   machine does not rise.
+4. Run `ollama list` and `stat -c %y` again for each folder of step 1.
+   Expected: the same models and the same times: Anima wrote nothing in those folders.
+5. Run `ollama rm` for the model of step 3, then start a server with that copy.
+   Expected: the start fails with "A file of the found model is gone, or the machine no longer reads its folder."
+6. Remove the copy of step 3 with Remove.
+   Expected: the row goes; `ollama list` is the same as before step 5.
+
+Result: Open.
+
 ### HT-177: AMD UMA graphics do not show a dedicated VRAM warning (MET-007)
 
 Built on `fix/amd-integrated-vram`. Synthetic sysfs tests cover the daemon and SSH reader.

@@ -52,7 +52,7 @@ fn of_pull(pull: &Job) -> Status {
             let reported = pull
                 .result
                 .as_ref()
-                .and_then(|result| result.model.as_ref())
+                .and_then(|result| result.copy())
                 .and_then(|model| CopyState::from_reported(&model.copy_state));
             plain(reported.unwrap_or(CopyState::Downloaded), None)
         }

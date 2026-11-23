@@ -45,3 +45,9 @@ it('PULL-007: the section reads again only while a copy changes on its own', () 
 it('CMP-002: a machine that takes no model work now says why beside its name', () => {
   expect(CHOICES.machines.map(machineChoice)).toEqual(['nas (in its quiet hours)', 'new (never asked this hub for work)', 'pop-os']);
 });
+
+it('PULL-012: a found copy says where it is in place of a quantisation', () => {
+  const found = copy({ id: 'c-found', address: 'qwen3:8b', origin: 'FOUND', quantisation: '', repository: 'lm_studio' });
+  expect(machineGroups([found], '')[0]?.rows[0]?.what).toBe('GGUF · where LM Studio keeps it · 1 file · 5.0 GiB');
+  expect(reasonWords('copy_changed')).toBe('A file of the found model changed where it is.');
+});

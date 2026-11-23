@@ -8,7 +8,8 @@ use async_graphql::{Enum, ID, Object, SimpleObject};
 use chrono::{DateTime, Utc};
 use daemon_core::wire::Progress;
 
-use super::super::{CopyState, Listed};
+use super::super::found::Found;
+use super::super::{CopyState, Listed, Origin};
 use crate::fleet::compute::library::Format;
 
 /// A count as a GraphQL `Float`: exact up to 2^53, which no model size reaches.
@@ -139,6 +140,11 @@ impl ModelCopyView {
         self.listed.status.state
     }
 
+    /// Pulled from its source, or found on the machine and used where it is (K11 Section 2.3).
+    async fn origin(&self) -> Origin {
+        self.listed.copy.origin
+    }
+
     /// The progress of a pull that runs; null in each other state.
     async fn progress(&self) -> Option<PullProgress> {
         self.listed.status.progress.map(PullProgress)
@@ -152,5 +158,92 @@ impl ModelCopyView {
 
     async fn created_at(&self) -> DateTime<Utc> {
         self.listed.copy.created_at
+    }
+}
+
+/// The program that keeps a found model (K11 Section 8).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+#[graphql(name = "FoundModelTool")]
+pub enum FoundTool {
+    Ollama,
+    LmStudio,
+    Huggingface,
+    /// A folder that the owner of the machine named in `modelFolders`.
+    Folder,
+}
+
+impl FoundTool {
+    fn of_word(word: &str) -> Self {
+        match word {
+            "ollama" => Self::Ollama,
+            "lm_studio" => Self::LmStudio,
+            "huggingface" => Self::Huggingface,
+            _ => Self::Folder,
+        }
+    }
+}
+
+/// A model that a machine found where a different program keeps it, with no copy that uses it.
+pub struct FoundModelView {
+    found: Found,
+    place: String,
+}
+
+impl FoundModelView {
+    #[must_use]
+    pub const fn new(found: Found, place: String) -> Self {
+        Self { found, place }
+    }
+}
+
+#[Object(name = "FoundModel")]
+impl FoundModelView {
+    /// The key that the machine gave the model (K11 Section 2.3); never a path.
+    async fn found(&self) -> &str {
+        &self.found.entry.found
+    }
+
+    /// The machine that found it (HOST-052).
+    async fn place(&self) -> HostPlace {
+        HostPlace {
+            kind: HostPlaceKind::Machine,
+            id: ID(self.found.device.to_string()),
+            name: self.place.clone(),
+        }
+    }
+
+    async fn tool(&self) -> FoundTool {
+        FoundTool::of_word(&self.found.entry.tool)
+    }
+
+    /// The name that its tool shows.
+    async fn name(&self) -> &str {
+        &self.found.entry.name
+    }
+
+    async fn format(&self) -> Format {
+        if self.found.entry.format == "gguf" {
+            Format::Gguf
+        } else {
+            Format::Safetensors
+        }
+    }
+
+    async fn file_count(&self) -> u32 {
+        self.found.entry.files
+    }
+
+    async fn size_bytes(&self) -> f64 {
+        float(self.found.entry.bytes)
+    }
+
+    /// Whether a machine can use it where it is: only a GGUF model in this version (MW-P10).
+    async fn usable(&self) -> bool {
+        self.found.entry.usable
+    }
+
+    /// When the machine ended the report that listed it.
+    async fn read_at(&self) -> DateTime<Utc> {
+        self.found.read_at
     }
 }

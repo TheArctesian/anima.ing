@@ -1,18 +1,23 @@
 import type { HubResult } from '$lib/hub/hub';
-import type { CopyCalls, ModelCopy, PullChoices } from './api';
+import type { CopyCalls, FoundModel, ModelCopy, PullChoices } from './api';
 import { isMoving } from './rows';
 
 export type ReadStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
 /**
  * The copies of the models on the machines (HSE-013; PULL-001, PULL-007, PULL-009): the list, the choice of one machine,
- * and the pulls and removals that the operator asks for. The hub derives each state from the work of the machine.
+ * and the pulls and removals that the operator asks for. The hub derives each state from the work of the machine. Also
+ * the models that the machines found where a different program keeps them, and their use there (PULL-012, R-444).
  */
 export class CopiesStore {
   status = $state<ReadStatus>('idle');
   /** Why the list did not load, in the hub's words. */
   problem = $state('');
   copies = $state.raw<readonly ModelCopy[]>([]);
+  /** The found models that no copy uses. */
+  found = $state.raw<readonly FoundModel[]>([]);
+  /** True from the request to find models until the page has read again for a while: the machines answer later. */
+  finding = $state(false);
   /** The identifier of one machine, or empty for all. */
   machine = $state('');
 
@@ -33,14 +38,15 @@ export class CopiesStore {
   async load(quiet = false): Promise<void> {
     const generation = ++this.#generation;
     if (!quiet) this.status = 'loading';
-    const result = await this.calls.list();
+    const [result, found] = await Promise.all([this.calls.list(), this.calls.found()]);
     if (generation !== this.#generation) return;
-    if (!result.ok) {
-      this.problem = result.error.message;
+    if (!result.ok || !found.ok) {
+      this.problem = result.ok ? (found.ok ? '' : found.error.message) : result.error.message;
       this.status = 'failed';
       return;
     }
     this.copies = result.value;
+    this.found = found.value;
     this.problem = '';
     this.status = 'ready';
     if (this.machine !== '' && !this.copies.some((copy) => copy.place.id === this.machine)) this.machine = '';
@@ -78,6 +84,33 @@ export class CopiesStore {
       this.#generation += 1;
       const left = result.ok ? result.value : null;
       this.copies = left === null ? this.copies.filter((copy) => copy.id !== id) : this.copies.map((copy) => (copy.id === id ? left : copy));
+    }
+    return result;
+  }
+
+  /**
+   * PULL-012: asks each machine that has asked this hub for work to read its found models again. Gives the first refusal
+   * of the hub, else the number of machines asked; the page then reads again while `finding` is true.
+   */
+  async findAll(): Promise<HubResult<number>> {
+    await this.loadChoices();
+    if (this.choicesStatus === 'failed') return { ok: false, error: { code: 'unreachable', message: this.choicesProblem } };
+    const machines = this.choices.machines.filter((machine) => machine.stop !== 'NO_SWITCH');
+    const results = await Promise.all(machines.map((machine) => this.calls.find(machine.id)));
+    const refused = results.find((result) => !result.ok);
+    if (refused !== undefined && !refused.ok) return refused;
+    this.finding = machines.length > 0;
+    return { ok: true, value: machines.length };
+  }
+
+  /** R-444: uses a found model where it is; its copy joins the list and the model leaves the found list. */
+  async use(model: FoundModel): Promise<HubResult<ModelCopy>> {
+    const result = await this.calls.use(model.place.id, model.found);
+    if (result.ok) {
+      this.#generation += 1;
+      this.copies = [...this.copies.filter((copy) => copy.id !== result.value.id), result.value];
+      this.found = this.found.filter((each) => !(each.found === model.found && each.place.id === model.place.id));
+      this.status = 'ready';
     }
     return result;
   }

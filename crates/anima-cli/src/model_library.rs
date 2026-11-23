@@ -30,6 +30,12 @@ pub enum ModelCommand {
     Remove(crate::model_copies::RemoveArgs),
     /// List the copies on the machines, with their state and the progress of a pull.
     Copies(crate::model_copies::CopiesArgs),
+    /// List the models that the machines found where Ollama, LM Studio or Hugging Face keeps them.
+    Found(crate::model_copies::FoundArgs),
+    /// Ask a machine to read its found models again.
+    Find(crate::model_copies::FindArgs),
+    /// Use a found model where it is: the machine checks its files at each load.
+    Use(crate::model_copies::UseArgs),
 }
 
 impl ModelCommand {
@@ -47,6 +53,9 @@ impl ModelCommand {
             Self::Pull(args) => args.run(invocation).await,
             Self::Remove(args) => args.run(invocation).await,
             Self::Copies(args) => args.run(invocation).await,
+            Self::Found(args) => args.run(invocation).await,
+            Self::Find(args) => args.run(invocation).await,
+            Self::Use(args) => args.run(invocation).await,
         }
     }
 }

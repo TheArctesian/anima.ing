@@ -196,6 +196,23 @@ pub(super) async fn jobs_of(conn: &mut PgConnection, ids: &[JobId]) -> Result<Ve
     rows.into_iter().map(Job::try_from).collect()
 }
 
+/// The newest job of `work_type` that each machine ended `done`.
+pub(super) async fn newest_done(
+    conn: &mut PgConnection,
+    work_type: WorkType,
+) -> Result<Vec<Job>, Error> {
+    let sql = format!(
+        "{SELECT_JOB}WHERE id IN (SELECT DISTINCT ON (machine_id) id FROM jobs.jobs \
+         WHERE work_type = $1 AND state = 'done' AND machine_id IS NOT NULL \
+         ORDER BY machine_id, ended_at DESC NULLS LAST)"
+    );
+    let rows: Vec<JobRow> = sqlx::query_as(&sql)
+        .bind(word(&work_type)?)
+        .fetch_all(conn)
+        .await?;
+    rows.into_iter().map(Job::try_from).collect()
+}
+
 pub(super) async fn job_locked(conn: &mut PgConnection, id: JobId) -> Result<Option<Job>, Error> {
     let sql = format!("{SELECT_JOB}WHERE id = $1 FOR UPDATE");
     let row: Option<JobRow> = sqlx::query_as(&sql).bind(id).fetch_optional(conn).await?;

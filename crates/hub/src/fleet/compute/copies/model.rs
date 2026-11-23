@@ -17,7 +17,8 @@ use crate::ids::{CopyId, DeviceId, JobId};
 pub struct Copy {
     pub id: CopyId,
     pub device: DeviceId,
-    pub variant: Uuid,
+    /// The variant of the library that a pull took; `None` for a found copy.
+    pub variant: Option<Uuid>,
     pub model: String,
     pub tag: String,
     pub format: Format,
@@ -30,13 +31,46 @@ pub struct Copy {
     pub pull_job: JobId,
     pub delete_job: Option<JobId>,
     pub created_at: DateTime<Utc>,
+    pub origin: Origin,
+    /// The key of the found model (K11 Section 2.3); only for a found copy.
+    pub found: Option<String>,
 }
 
 impl Copy {
-    /// The address of the variant: `model:tag` (LIBM-006).
+    /// The address of the variant, `model:tag` (LIBM-006); for a found copy, the name that its
+    /// tool shows.
     #[must_use]
     pub fn address(&self) -> String {
-        format!("{}:{}", self.model, self.tag)
+        match self.origin {
+            Origin::Pulled => format!("{}:{}", self.model, self.tag),
+            Origin::Found => self.model.clone(),
+        }
+    }
+}
+
+/// How a copy came to its machine: pulled from its source, or found where a different program
+/// keeps it and used there (K11 Section 2.3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, async_graphql::Enum)]
+#[graphql(name = "ModelCopyOrigin")]
+pub enum Origin {
+    Pulled,
+    Found,
+}
+
+impl Origin {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Pulled => "pulled",
+            Self::Found => "found",
+        }
+    }
+
+    #[must_use]
+    pub fn from_stored(text: &str) -> Option<Self> {
+        [Self::Pulled, Self::Found]
+            .into_iter()
+            .find(|origin| origin.as_str() == text)
     }
 }
 

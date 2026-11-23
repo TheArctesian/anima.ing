@@ -88,39 +88,6 @@ fn api_key() -> Option<zeroize::Zeroizing<String>> {
     Some(zeroize::Zeroizing::new(super::fetch::hex(bytes.as_ref())))
 }
 
-fn os_word(os: WorkOs) -> &'static str {
-    match os {
-        WorkOs::Linux => "linux",
-        WorkOs::Macos => "macos",
-    }
-}
-
-fn architecture_word(architecture: WorkArchitecture) -> &'static str {
-    match architecture {
-        WorkArchitecture::X86_64 => "x86_64",
-        WorkArchitecture::Aarch64 => "aarch64",
-    }
-}
-
-/// The found models of a walk, on a blocking thread.
-async fn found_list(roots: Vec<Root>) -> Vec<Value> {
-    tokio::task::spawn_blocking(move || super::found::listed(&roots))
-        .await
-        .unwrap_or_default()
-}
-
-/// `copy_adopt` on a blocking thread: it reads each file of the model.
-async fn adopt(
-    roots: Vec<Root>,
-    state: PathBuf,
-    copy: Uuid,
-    found: String,
-) -> Result<Value, Cause> {
-    tokio::task::spawn_blocking(move || super::found::adopt(&roots, &state, copy, &found))
-        .await
-        .map_err(|_| Cause::CopyMissing)?
-}
-
 impl Node {
     /// Ends each server of an earlier run (R-331); the daemon calls it once at start, before any claim.
     ///
@@ -176,11 +143,9 @@ impl Node {
             return Err(Cause::IsolationFailed);
         }
         releases::accepted(release)?;
-        let entry = self.sources.find(
-            release,
-            os_word(self.os),
-            architecture_word(self.architecture),
-        )?;
+        let entry = self
+            .sources
+            .find(release, self.os.as_str(), self.architecture.as_str())?;
         if !install::installed(&self.folders, release, entry)
             || release.runtime != Runtime::LlamaServer
         {
@@ -228,8 +193,8 @@ impl Node {
         Place {
             folders: &self.folders,
             sources: &self.sources,
-            os: os_word(self.os),
-            architecture: architecture_word(self.architecture),
+            os: self.os.as_str(),
+            architecture: self.architecture.as_str(),
             reserve: self.reserve,
             program: &self.launcher,
         }
@@ -259,12 +224,12 @@ impl Node {
         }
         match &order.parameters {
             Parameters::Report => {
-                let found = found_list(self.found_roots()).await;
+                let found = super::found::listed(self.found_roots()).await;
                 Ok(Some(self.model_state(found)))
             }
             Parameters::Adopt { copy, found } => {
                 let state = self.folders.state.clone();
-                adopt(self.found_roots(), state, *copy, found.clone())
+                super::found::adopt(self.found_roots(), state, *copy, found.clone())
                     .await
                     .map(Some)
             }

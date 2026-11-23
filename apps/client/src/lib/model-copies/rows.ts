@@ -1,6 +1,7 @@
 import type { Tone } from '$lib/containers/rows';
 import { formatBytes, formatBytesPerSecond } from '$lib/metrics/units';
 import type { CopyState, ModelCopy, PullMachine } from './api';
+import { keptBy } from './found';
 
 /** One row of the section Models: one copy of a variant on its machine (HSE-013). */
 export interface CopyRow {
@@ -56,6 +57,9 @@ const REASONS: Readonly<Record<string, string>> = {
   copy_unknown: 'The machine does not have this copy.',
   actor_not_permitted: 'The machine does not take this work from who asked.',
   isolation_failed: 'The machine could not isolate the download.',
+  copy_changed: 'A file of the found model changed where it is.',
+  copy_missing: 'A file of the found model is gone, or the machine no longer reads its folder.',
+  found_unknown: 'The machine no longer finds the model.',
   unknown: 'The work ended with no reason.',
 };
 
@@ -92,12 +96,18 @@ function timeLeft(seconds: number): string {
 
 const plural = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`;
 
+/** "GGUF · Q4_K_M · 1 file · 4.7 GiB"; a found copy says where it is instead of its quantisation (PULL-012). */
+function whatOf(copy: ModelCopy): string {
+  const second = copy.origin === 'FOUND' ? keptBy(copy.repository) : copy.quantisation;
+  return [copy.format, second, plural(copy.fileCount, 'file'), formatBytes(copy.sizeBytes)].filter((part) => part !== '').join(' · ');
+}
+
 function row(copy: ModelCopy): CopyRow {
   const { word, tone } = STATES[copy.state];
   return {
     id: copy.id,
     address: copy.address,
-    what: [copy.format, copy.quantisation, plural(copy.fileCount, 'file'), formatBytes(copy.sizeBytes)].join(' · '),
+    what: whatOf(copy),
     state: word,
     tone,
     ...progressOf(copy),

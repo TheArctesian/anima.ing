@@ -4,6 +4,7 @@
 //! (K10). The hub never selects the variant or the machine here: the caller names both
 //! (PULL-002 waits for the runtime choice of task L1-8).
 
+pub mod found;
 pub mod graphql;
 mod model;
 mod order;
@@ -17,7 +18,7 @@ use daemon_core::wire::StopReason;
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
-pub use model::{Copy, CopyState, Status};
+pub use model::{Copy, CopyState, Origin, Status};
 pub use order::actor_of;
 
 use super::library::{self, PullSource};
@@ -31,6 +32,9 @@ use crate::{
 pub enum Error {
     #[error("no such copy")]
     NotFound,
+    /// The last model report of the machine lists no found model with that key.
+    #[error("no such found model")]
+    FoundUnknown,
     #[error("the library refused the variant: {0}")]
     Library(#[from] library::Error),
     /// The files of the variant are of a kind that a machine refuses; the text says why.
@@ -117,19 +121,51 @@ pub async fn pull(
 ) -> Result<Copy, Error> {
     let actor = actor_of(asker.0.actor.kind());
     let key = (source.model.as_str(), source.variant.tag.as_str());
-    let mut again = None;
-    if let Some(copy) = store::at_locked(conn, device, key).await? {
-        let (pull, delete) = jobs_of(conn, &copy).await?;
-        match rules::repull(pull.as_ref(), delete.as_ref()) {
-            rules::Repull::Taken(state) => return Err(Error::Taken(state)),
-            rules::Repull::Replace => store::forget(conn, copy.id).await?,
-            rules::Repull::Again => again = Some(copy),
+    let existing = store::at_locked(conn, device, key).await?;
+    let again = again_or_free(conn, existing).await?;
+    let wanted = |id| order::pull(id, source, (device, actor));
+    let fresh = |id, job| record(id, (device, source), job, now);
+    ask(conn, (again, wanted, fresh), (asker, now)).await
+}
+
+/// The copy to ask for again with its id, or `None` when the place is free: a copy whose
+/// removal is done is forgotten (K11 Section 11).
+///
+/// # Errors
+/// `Taken` when the machine has, pulls or removes the copy.
+async fn again_or_free(
+    conn: &mut PgConnection,
+    existing: Option<Copy>,
+) -> Result<Option<Copy>, Error> {
+    let Some(copy) = existing else {
+        return Ok(None);
+    };
+    let (pull, delete) = jobs_of(conn, &copy).await?;
+    match rules::repull(pull.as_ref(), delete.as_ref()) {
+        rules::Repull::Taken(state) => Err(Error::Taken(state)),
+        rules::Repull::Replace => {
+            store::forget(conn, copy.id).await?;
+            Ok(None)
         }
+        rules::Repull::Again => Ok(Some(copy)),
     }
+}
+
+/// Queues the job that brings the copy: for the copy `again` with its id, else for a new copy
+/// that `fresh` makes, which is written.
+async fn ask(
+    conn: &mut PgConnection,
+    (again, wanted, fresh): (
+        Option<Copy>,
+        impl FnOnce(CopyId) -> jobs::NewJob,
+        impl FnOnce(CopyId, JobId) -> Copy,
+    ),
+    (asker, now): (Asker, DateTime<Utc>),
+) -> Result<Copy, Error> {
     let id = again
         .as_ref()
         .map_or_else(|| CopyId::from(Uuid::now_v7()), |copy| copy.id);
-    let job = jobs::enqueue_in(conn, order::pull(id, source, (device, actor)), asker, now).await?;
+    let job = jobs::enqueue_in(conn, wanted(id), asker, now).await?;
     if let Some(copy) = again {
         store::set_jobs(conn, copy.id, (job.id, None)).await?;
         return Ok(Copy {
@@ -138,7 +174,7 @@ pub async fn pull(
             ..copy
         });
     }
-    let copy = record(id, (device, source), job.id, now);
+    let copy = fresh(id, job.id);
     store::insert(conn, &copy).await?;
     Ok(copy)
 }
@@ -153,7 +189,7 @@ fn record(
     Copy {
         id,
         device,
-        variant: source.variant_id,
+        variant: Some(source.variant_id),
         model: source.model.clone(),
         tag: variant.tag.clone(),
         format: variant.format,
@@ -165,6 +201,8 @@ fn record(
         pull_job: job,
         delete_job: None,
         created_at: now,
+        origin: Origin::Pulled,
+        found: None,
     }
 }
 

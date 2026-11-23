@@ -3,6 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import CopyList from '../CopyList.svelte';
+import FoundList from '../FoundList.svelte';
 import { CopiesStore } from '../store.svelte';
 import { fakeCopies, type FakeCopies } from './copies.fixture';
 
@@ -56,4 +57,24 @@ it('HSE-013: a hub with no copy says so and how to get one', async () => {
   calls.copies = [];
   await open();
   expect(text('p.empty')[0]).toContain('No machine has a model.');
+});
+
+async function openFound(): Promise<CopiesStore> {
+  const store = new CopiesStore(calls);
+  app = mount(FoundList, { target: document.body, props: { store } });
+  await store.load();
+  flushSync();
+  return store;
+}
+
+it('PULL-012: each found model says where it is, a GGUF model has Use, and Use asks for that model', async () => {
+  await openFound();
+  expect(text('tbody th[scope="row"]')).toEqual(['Qwen/Qwen3-8B/model.safetensors Hugging Face · SAFETENSORS · 1 file · 5.0 GiB', 'qwen3:8b Ollama · GGUF · 1 file · 5.0 GiB']);
+  expect(text('td.action')).toEqual(['GGUF only', 'Use']);
+  document.querySelector<HTMLButtonElement>('button[aria-label="Use qwen3:8b on pop-os where it is"]')?.click();
+  await Promise.resolve();
+  await Promise.resolve();
+  flushSync();
+  expect(calls.uses).toEqual([['m-pop', 'a'.repeat(64)]]);
+  expect(text('tbody th[scope="row"]')).toEqual(['Qwen/Qwen3-8B/model.safetensors Hugging Face · SAFETENSORS · 1 file · 5.0 GiB']);
 });

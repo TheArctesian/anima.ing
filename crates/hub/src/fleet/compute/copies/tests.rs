@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use daemon_core::{
     model_work::names::Actor,
-    wire::{Cleanup, CopyOutcome, Limits, Progress, WorkKind, WorkResult, WorkType},
+    wire::{Cleanup, CopyOutcome, Limits, ModelOutcome, Progress, WorkKind, WorkResult, WorkType},
 };
 use uuid::Uuid;
 
@@ -129,12 +129,13 @@ fn pull_007_only_a_running_pull_shows_its_progress() {
 fn pull_011_a_pull_that_succeeds_takes_the_state_that_the_machine_reports() {
     let mut done = pull(State::Done);
     done.result = Some(WorkResult {
-        model: Some(CopyOutcome {
+        model: Some(ModelOutcome::Copy(CopyOutcome {
             copy: Uuid::now_v7(),
             copy_state: "validated".to_owned(),
             bytes: 10,
             files: 1,
-        }),
+            file_hashes: Vec::new(),
+        })),
         outcome: "succeeded".to_owned(),
         cause: None,
         seconds: 1,

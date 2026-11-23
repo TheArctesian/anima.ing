@@ -2,6 +2,8 @@
 
 use graphql_client::GraphQLQuery;
 
+use crate::hub::scalars::DateTime;
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",
@@ -28,3 +30,30 @@ pub struct ModelPull;
     variables_derives = "Debug"
 )]
 pub struct ModelCopyRemove;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/model_copies/found.graphql",
+    response_derives = "Debug, Serialize, Clone",
+    variables_derives = "Debug"
+)]
+pub struct FoundModels;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/model_copies/find.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct FindModels;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/model_copies/use.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct UseFoundModel;

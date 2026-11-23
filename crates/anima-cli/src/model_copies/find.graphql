@@ -1,0 +1,4 @@
+# `anima model find`: asks a machine to read its found models again (PULL-012).
+mutation FindModels($deviceId: ID!) {
+  findModels(deviceId: $deviceId)
+}

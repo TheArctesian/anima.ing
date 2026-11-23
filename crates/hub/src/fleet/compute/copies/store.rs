@@ -6,18 +6,21 @@ use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
 use super::super::library::Format;
-use super::{Error, model::Copy};
+use super::{
+    Error,
+    model::{Copy, Origin},
+};
 use crate::ids::{CopyId, DeviceId, JobId};
 
 const SELECT: &str = "SELECT id, device_id, variant_id, model, tag, format, quantisation, \
-    repository, revision, size_bytes, files, pull_job_id, delete_job_id, created_at \
-    FROM compute.copies ";
+    repository, revision, size_bytes, files, pull_job_id, delete_job_id, created_at, origin, \
+    found FROM compute.copies ";
 
 #[derive(sqlx::FromRow)]
 struct CopyRow {
     id: CopyId,
     device_id: DeviceId,
-    variant_id: Uuid,
+    variant_id: Option<Uuid>,
     model: String,
     tag: String,
     format: String,
@@ -29,6 +32,8 @@ struct CopyRow {
     pull_job_id: JobId,
     delete_job_id: Option<JobId>,
     created_at: DateTime<Utc>,
+    origin: String,
+    found: Option<String>,
 }
 
 impl TryFrom<CopyRow> for Copy {
@@ -50,6 +55,8 @@ impl TryFrom<CopyRow> for Copy {
             pull_job: row.pull_job_id,
             delete_job: row.delete_job_id,
             created_at: row.created_at,
+            origin: Origin::from_stored(&row.origin).ok_or(Error::Unreadable)?,
+            found: row.found,
         })
     }
 }
@@ -74,7 +81,9 @@ pub(super) async fn at_locked(
     device: DeviceId,
     (model, tag): (&str, &str),
 ) -> Result<Option<Copy>, Error> {
-    let sql = format!("{SELECT}WHERE device_id = $1 AND model = $2 AND tag = $3 FOR UPDATE");
+    let sql = format!(
+        "{SELECT}WHERE device_id = $1 AND model = $2 AND tag = $3 AND origin = 'pulled' FOR UPDATE"
+    );
     let row: Option<CopyRow> = sqlx::query_as(&sql)
         .bind(device)
         .bind(model)
@@ -90,7 +99,8 @@ pub(super) async fn insert(conn: &mut PgConnection, copy: &Copy) -> Result<(), E
     sqlx::query(
         "INSERT INTO compute.copies (id, device_id, variant_id, model, tag, format, \
          quantisation, repository, revision, size_bytes, files, pull_job_id, delete_job_id, \
-         created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+         created_at, origin, found) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
     )
     .bind(copy.id)
     .bind(copy.device)
@@ -106,9 +116,28 @@ pub(super) async fn insert(conn: &mut PgConnection, copy: &Copy) -> Result<(), E
     .bind(copy.pull_job)
     .bind(copy.delete_job)
     .bind(copy.created_at)
+    .bind(copy.origin.as_str())
+    .bind(&copy.found)
     .execute(conn)
     .await?;
     Ok(())
+}
+
+/// The found copy of the model with the key `found` on the machine, locked until the
+/// transaction ends.
+pub(super) async fn found_locked(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    found: &str,
+) -> Result<Option<Copy>, Error> {
+    let sql =
+        format!("{SELECT}WHERE device_id = $1 AND found = $2 AND origin = 'found' FOR UPDATE");
+    let row: Option<CopyRow> = sqlx::query_as(&sql)
+        .bind(device)
+        .bind(found)
+        .fetch_optional(conn)
+        .await?;
+    row.map(Copy::try_from).transpose()
 }
 
 /// Sets the jobs of the copy: a new pull clears the removal that failed.

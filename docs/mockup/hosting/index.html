@@ -928,11 +928,29 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
         <span class="r"><button class="btn quiet sm" type="button">Remove</button></span>
       </li>
     </ul>
-    <p class="note">The list reads again by itself while a model waits, downloads or is removed.</div></div>
+    <p class="note">The list reads again by itself while a model waits, downloads or is removed.</p>
+    <div class="toolbar">
+      <b style="color: var(--text)">Found on the machines</b>
+      <span class="grow"></span>
+      <button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>Find models</button>
+    </div>
+    <p class="note">Models that Ollama, LM Studio or Hugging Face already keeps on a machine. Use one where it is: the machine checks each file and uses no more disk.</p>
+    <ul class="table">
+      <li class="tr th" style="grid-template-columns: minmax(0, 1fr) 96px"><span>Model</span><span></span></li>
+      <li class="tr group" style="grid-template-columns: minmax(0, 1fr) 96px"><span><b class="mono" style="color: var(--text)">pop-os</b></span><span></span></li>
+      <li class="tr" style="grid-template-columns: minmax(0, 1fr) 96px">
+        <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">Qwen/Qwen3-8B/model.safetensors</b><span class="sec">Hugging Face · SAFETENSORS · 4 files · 15.3 GiB</span></span>
+        <span class="r sec">GGUF only</span>
+      </li>
+      <li class="tr" style="grid-template-columns: minmax(0, 1fr) 96px">
+        <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">qwen3:8b</b><span class="sec">Ollama · GGUF · 1 file · 4.9 GiB</span></span>
+        <span class="r"><button class="btn quiet sm" type="button">Use</button></span>
+      </li>
+    </ul></div></div>
   </div>
 </main>
 </div>
-<figcaption>Frame 8, dark, 1280 px: Hosting, section Models (HSE-013, HSE-014; task L1-7 of compute-plan.md, PULL-001, PULL-007, PULL-009). The copies of the models in one group for each machine, as Applications: the header row has the machine, its number of models and their size. A row names the variant name:tag with its format, quantisation, files and size; its state (Waiting, Downloading, Downloaded, Checking, Ready, Failed, Removing); the progress of a pull that runs; the reason of a failure in words. Remove asks first; a pull that waits stops at once, else the machine deletes the files. Pull a model opens a dialog with a machine and a variant of the library; a machine that never asked the hub for work is not offered. The names, machines and numbers are examples.</figcaption>
+<figcaption>Frame 8, dark, 1280 px: Hosting, section Models (HSE-013, HSE-014; task L1-7 of compute-plan.md, PULL-001, PULL-007, PULL-009). The copies of the models in one group for each machine, as Applications: the header row has the machine, its number of models and their size. A row names the variant name:tag with its format, quantisation, files and size; its state (Waiting, Downloading, Downloaded, Checking, Ready, Failed, Removing); the progress of a pull that runs; the reason of a failure in words. Remove asks first; a pull that waits stops at once, else the machine deletes the files. Pull a model opens a dialog with a machine and a variant of the library; a machine that never asked the hub for work is not offered. Below the copies, Found on the machines (task L1-22, PULL-012, R-444): the models that each machine found where Ollama, LM Studio, the Hugging Face cache or a folder of its settings keeps them, with no copy that uses them, one group for each machine. A row names the model as its program shows it, with the program, the format, the files and the size. Use asks the machine to read each file and keep its SHA-256 where it is; the copy then joins the list above, its row says where the model is in place of its quantisation. Only a GGUF model has Use. Find models asks each machine to read its folders again. The names, machines and numbers are examples.</figcaption>
 </figure>
 </body>
 </html>

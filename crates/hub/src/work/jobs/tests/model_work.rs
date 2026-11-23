@@ -150,7 +150,7 @@ fn a_drain_that_this_machine_held_last_still_goes_before_a_job() {
 
 mod reports {
     use daemon_core::wire::{
-        Cleanup, CopyOutcome, Progress, WorkReport, WorkResult, WorkState, WorkType,
+        Cleanup, CopyOutcome, ModelOutcome, Progress, WorkReport, WorkResult, WorkState, WorkType,
     };
 
     use super::{PVE, at, device, model, queued};
@@ -182,11 +182,14 @@ mod reports {
                 secrets: "deleted".to_owned(),
                 keychain: "none".to_owned(),
             },
-            model: copy_state.map(|state| CopyOutcome {
-                copy: uuid::Uuid::now_v7(),
-                copy_state: state.to_owned(),
-                bytes: 10,
-                files: 1,
+            model: copy_state.map(|state| {
+                ModelOutcome::Copy(CopyOutcome {
+                    copy: uuid::Uuid::now_v7(),
+                    copy_state: state.to_owned(),
+                    bytes: 10,
+                    files: 1,
+                    file_hashes: Vec::new(),
+                })
             }),
         }
     }
@@ -237,7 +240,10 @@ mod reports {
         let finishing = holding(&model(WorkType::ModelPull), State::Finishing);
         let done = report(WorkState::Done, Some(result(None, Some("downloaded"))), 0);
         let kept = reported(&finishing, &done).unwrap();
-        assert_eq!(kept.result.unwrap().model.unwrap().copy_state, "downloaded");
+        assert_eq!(
+            kept.result.unwrap().copy().unwrap().copy_state,
+            "downloaded"
+        );
         let strange = report(WorkState::Done, Some(result(None, Some("loaded"))), 0);
         assert_eq!(reported(&finishing, &strange), Err(Refusal::Malformed));
         let build = holding(&queued(WorkType::Build), State::Finishing);
