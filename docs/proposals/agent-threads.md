@@ -1340,7 +1340,8 @@ prompt, not that the turn succeeded. A subsequent failure is the state of that
 thread; it never changes the launch receipt or causes a second launch.
 
 A command receipt has `requestId`, `commandId`, `threadId`, `processId`, `state`, nullable `cause`,
-and `updatedAt`; an answer also has `approvalId`. Its states are `queued`,
+`consumption`, nullable `consumptionCause`, and `updatedAt`; an answer also has
+`approvalId`. Its states are `queued`,
 `delivered`, `reconciling`, `recorded`, `refused`, `cancelled`. The last three are
 final. `delivered` means that the daemon took the envelope, not that the runner acted.
 `recorded` means that the runner durably accepted that command for the intended live
@@ -1350,6 +1351,13 @@ For a stop, the receipt also carries its target `turnId` when applicable; the
 transcript confirms when the turn or process actually ended. Acceptance into the
 holder's execution queue is distinct from consumption by the program: D2 defines
 that additional durable progress, including what bodies must remain after `recorded`.
+Both mutation receipts and `agentThreadCommand` expose the latest durable consumption
+progress and its fixed-code cause, independently of transcript sharing. Before holder
+acceptance, `consumption` is null; after acceptance it follows D2. A final acceptance
+state does not freeze consumption progress. Persist each progress update atomically
+with `updatedAt`; retries and late reports cannot regress it or replace a proven
+`consumed`/`discarded` result. After a lost response, querying the same request ID
+recovers the latest progress, including discard after `recorded`, without redispatch.
 
 An inaccessible device or thread is refused before queueing, using the existing
 access errors without returning another operator's receipt. Recheck device and
@@ -1556,15 +1564,21 @@ review in F; they are not inherited from a 10-second K8 request by accident.
 Proposed option A (recommended): `interrupt_turn` names the observed processId and
 turnId from agentThreadControl. It never means whichever turn happens to run later.
 A stale turn yields `refused/turn_ended`. `end_thread` names the process incarnation,
-not a future replacement. The hub atomically assigns the stop sequence and a barrier
-covering earlier commands of that process. The holder applies the same barrier
-before dispatching more queued prompts: an earlier prompt/positive answer not yet
+not a future replacement. The hub atomically assigns the stop sequence and provisionally holds
+earlier envelopes of that process. For an interrupt, the holder atomically validates
+the target turn and installs the barrier before dispatching more queued prompts.
+Only its confirmation permits the hub to finalize cancellation of held envelopes;
+a stale-target refusal releases the provisional hold without cancelling any command.
+A lost response keeps the hold pending reconciliation, not presumed cancellation.
+For `end_thread`, the holder validates the process incarnation and installs its
+barrier atomically; a refusal releases the hold without cancellation.
+For an accepted barrier, an earlier prompt/positive answer not yet
 consumed is discarded with cause `stopped_before_dispatch`, with its own receipt.
 If acceptance was not yet final, its state becomes `cancelled`. If it was already
 `recorded`, that acceptance stays final and its consumption becomes `discarded`
 with a separate `consumptionCause`; no terminal acceptance receipt is rewritten.
-The hub can cancel never-delivered entries immediately; a possibly delivered entry
-remains unresolved until the holder confirms consumption or cancellation. Entries already
+After barrier confirmation, the hub cancels held never-delivered entries; a possibly
+delivered entry remains unresolved until the holder confirms consumption or cancellation. Entries already
 consumed are not declared undone. Denials and earlier stops are not discarded.
 
 A stop can overtake a pending prompt only with this durable barrier. `recorded` for
@@ -1574,7 +1588,9 @@ positive answers for the affected process with visible `CONFLICT`. After interru
 is confirmed, new explicitly submitted prompts may proceed. After end, the process
 binding remains closed; no command can reopen it. Thus an older queued prompt cannot
 restart work after an acknowledged stop. A lost barrier receipt is reconciled, not
-bypassed. A stale interrupt installs no barrier and cancels nothing.
+bypassed. A stale interrupt installs no barrier and cancels nothing. The contract check must
+cover a turn ending after hub acceptance but before holder validation: the interrupt
+is refused, held prompts are released unchanged, and no cancellation receipt is emitted.
 
 Alternative B: keep strict FIFO, interrupt only the observed turn, and require a
 separate operator queue-clear action for unconsumed prompts before a stop can
