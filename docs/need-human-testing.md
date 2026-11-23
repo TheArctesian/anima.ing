@@ -51,6 +51,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
 | HT-124 | The child fetch process downloads a real `llama-server` release from GitHub, and a stall of the network ends only the child | A test hub that gives a `runtime_install` item, and a daemon of this build in a test folder on the Mac and on `pop-os` | Open |
+| HT-161 | A policy that stops a node ends its model servers within 60 seconds, and a machine that is off gets no model work (task L1-5) | A hub of this build with the hand-out of model work, and a daemon of this build in a test folder on `pop-os` | Open |
+| HT-162 | A real Hugging Face copy with remote code, or with a long chat template, is refused before a server starts, and a clean copy starts in vLLM with `--load-format safetensors` (SF-298) | A daemon of this build in a test folder on `pop-os` with an NVIDIA GPU and vLLM | Open |
+| HT-160 | A crash or a stall of the child fetch process is reported as `fetch_failed`, and a source that does not answer as `source_failed` (R-406) | A daemon of this build in a test folder on the Mac, and a network that a person can cut | Open |
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
 | HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Open |
@@ -130,7 +133,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 ### HT-149: reporting after an iPad update and the phone Code tab
 
 - State: Open.
-- On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
+- On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. Keep the app open for two samples and check that CPU also shows. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
 - On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
 
 ### HT-148: phone Devices, offline notice and Integrations (M2-5)
@@ -329,6 +332,43 @@ Needs HT-002.
 2. Ask the client to call `anima_capability_list`. Expected: the same devices and tools as
    `anima capability list`.
 3. Call it with `tool` set to `cargo`. Expected: the same devices as step 5 of HT-002.
+
+Result: Open.
+
+### HT-161: a stopped node drains its model servers
+
+Built: `crates/daemon-core/src/model_work/drain.rs` and `crates/daemon/src/model/drain.rs` (task L1-5; SF-366 to SF-369).
+The daemon counts no request in progress until the model address exists (L1-10), so this check waits for L1-10 and
+for the hand-out of model work by the hub. Do not use the installed daemon of the operator; set `ANIMA_DAEMON_HOME`
+to a new test folder.
+
+1. Start a model server on the node through a test hub. Set the device policy of the node to off with
+   `anima compute policy set`. Expected: the server stops within 60 seconds.
+2. Give the hub a model work item for that node. Expected: the node gets no item.
+
+Result: Open.
+
+### HT-162: the checks of the files of a copy on real copies
+
+Built: `crates/daemon-core/src/model_work/files/code.rs` and `classes.rs` (SF-298; task L1-6). The tests use small
+made files; no test reads a real copy from Hugging Face.
+
+1. Put a real copy that has `auto_map` in `config.json` in the copies folder of a test daemon. Expected: the copy is
+   refused with `remote_code`, and no server starts.
+2. Do the same with a copy whose chat template is more than 64 KiB. Expected: the copy is refused.
+3. Start a clean copy of a class on the vLLM list. Expected: the server starts, and its command line has
+   `--load-format safetensors`.
+
+Result: Open.
+
+### HT-160: a fault of the child fetch process has its own cause
+
+Built: `crates/daemon/src/model/fetch/child.rs` and `fetch/spawn.rs` (R-406; task L1-6b), in `dev` since
+merge 5c833b3b0.
+
+1. Start a `runtime_install` through a test hub, and cut the network during the download. Expected: the report is
+   `source_failed` only when the child ended with code 0 and wrote that word; else `fetch_failed`.
+2. End the child with a signal during the download. Expected: `fetch_failed`, and the daemon continues.
 
 Result: Open.
 
@@ -4841,6 +4881,38 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
 
 Result: Open.
 
+### HT-163: the Git actions of a thread, when a person can reach them (TC7, steps W1 to W4)
+
+Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` at `56e0132c6` and `6791fb123`). Nothing reaches it yet: this check cannot start before step W2 (the command) or W4 (the page) of Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md). The tests use made repositories in temporary folders, a launcher that stands in, and no remote on the network. They do not cover: a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.
+
+1. In a repository with a `pre-commit` hook, commit from a thread in Accept edits, then from a thread in Full access.
+   Expected: the first commit runs no hook and says in a short line that the hooks of the repository were skipped; the second runs the hook.
+2. Push a branch of a thread through Anima to a private remote. Then push one more commit with `git push` in a terminal, and look at the status of the thread.
+   Expected: no prompt for credentials that Anima shows; after the question to the remote the status says "pushed" for the commit that the remote has, however it came there; the upstream is not written into the settings of the repository.
+3. Remove a worktree that has files that are not committed, with one large file tracked by Git LFS.
+   Expected: the removal names the ref that keeps the work; `git show` of that ref in the repository has each file; the large file can be checked out.
+4. Start a thread in `/Users/Shared`, and one in the home folder.
+   Expected: the first is refused with words that say why; the second starts with the warning of THR-041.
+5. Open a project that was made with `git clone --shared`, and a project on Windows.
+   Expected: a refusal in plain words for the first; "not available on Windows yet" for the second.
+6. Look at the folder of the records (`/Users/Shared/anima-<uid>` on a Mac) as a different user of the same Mac.
+   Expected: that user cannot list it or read it.
+
+Result: Open. Not started: the steps W1 to W4 are not built.
+### HT-164-bootstrap: One-action local SSH setup (OS3-R12)
+
+Built on `access/ssh-bootstrap`. The shared helper is called by the desktop SSH switch and `anima link enable-ssh`. Native macOS and Windows installation and system authorization dialogs have not been verified. The operator waived the Mac-before-push check for this change.
+
+1. On an enrolled computer without an active SSH server, turn on SSH in Settings. Approve the operating system’s administrator prompt.
+   Expected: the server is installed if needed, the switch turns on after SSH is ready, and no router port forwarding is needed. The new server listens only on 127.0.0.1.
+2. Connect through the private hub with the local account and verify its host key. Restart the computer and reconnect.
+   Expected: login works and the host key stays the same.
+3. Turn SSH off, then on again. Cancel administrator authorization if requested.
+   Expected: turning off needs no elevation. A cancelled setup leaves the private port off and shows an error.
+4. Repeat setup on a computer with a working SSH service and custom configuration.
+   Expected: its configuration and host key remain intact.
+5. Run `anima link enable-ssh` from an interactive terminal on an enrolled computer.
+   Expected: native authorization, then the current username and Ready. Piped invocation is refused before setup.
 ### HT-156: the draft page of Code and the menu Add project (TC8, TC9)
 
 Built on the branch `code/draft-start` (R-394). New thread opens the draft page of T3 Code; the first send starts

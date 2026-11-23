@@ -45,6 +45,9 @@ pub enum GitAction {
     PullRequest,
     /// Saves the work to a private ref and removes the worktree. For the person only.
     Remove,
+    /// Removes the checkpoints of the turns before `before`, to free the disk that they use.
+    /// The files of the worktree and the later checkpoints stay. For the person only.
+    Forget { before: u32 },
     /// The person read what changed in who a commit is from and where a push goes
     /// ([`Status::changed`]) and accepts it for a commit and a push. For the person only.
     Trust {
@@ -72,6 +75,7 @@ impl GitAction {
             self,
             Self::Revert { .. }
                 | Self::Remove
+                | Self::Forget { .. }
                 | Self::Commit { .. }
                 | Self::Push { .. }
                 | Self::Trust { .. }
@@ -174,6 +178,9 @@ pub enum GitRefusal {
     /// The worktree of the thread is there, but the system removed its checkpoints and its
     /// record after a long time without use. The files of the worktree are as they were.
     Expired,
+    /// Worktrees, checkpoints and the other Git actions of a thread are not built for Windows
+    /// yet (ruling of the operator).
+    NotOnWindows,
     Failed {
         said: String,
     },

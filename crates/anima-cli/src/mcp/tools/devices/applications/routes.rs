@@ -58,8 +58,9 @@ impl RouteTool {
                 Effect::Reads,
                 "The routes of applications that the hub serves, of one application or of each: \
                  web names, redirects and streams of TCP or UDP, public or private, with the \
-                 state of the proof of each name, what it waits for and its counts. Only a person adds or removes a name, in the client or with `anima \
-                 route add`. Next: anima_route_get.",
+                 state of the proof of each name, what it waits for and its counts. A route is \
+                 added with `anima route add` or in the client, and removed with `anima route \
+                 remove`; no API key changes one. Next: anima_route_get.",
             )
             .returns(&[
                 ("routes", "array", ROUTE),
