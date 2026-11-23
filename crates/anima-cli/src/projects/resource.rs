@@ -1,5 +1,4 @@
-//! `anima project resource confirm <slug> <kind>`: the operator confirms a resource the hub
-//! found in the project's repositories (PRO-004).
+//! PRO-004.
 
 use super::documents::{ProjectGet, ResourceConfirm, project_get, resource_confirm};
 use super::render;

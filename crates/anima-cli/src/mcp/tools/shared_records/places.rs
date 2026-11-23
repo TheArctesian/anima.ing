@@ -1,5 +1,4 @@
-//! The place tools, in the `records` set: where things are, as every extension names them
-//! (PLC-001 to PLC-006). A place is the record `place:<id>`.
+//! The place tools of the `records` set (PLC-001 to PLC-006).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

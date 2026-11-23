@@ -1,6 +1,3 @@
-//! The `events` tool set: what happened (events), who changed what (the audit trail), and
-//! whether the audit trail is whole (its hash chain).
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

@@ -22,7 +22,6 @@ pub struct WebList;
 )]
 pub struct WebCurrent;
 
-// The input is built from flags as JSON (`fields.rs`), so its type derives `Deserialize` too.
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",

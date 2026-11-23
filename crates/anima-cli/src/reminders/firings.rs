@@ -1,4 +1,4 @@
-//! `anima reminder test|firings|snooze|ack` (REM-007).
+//! REM-007.
 
 use serde::Serialize;
 use serde_json::json;

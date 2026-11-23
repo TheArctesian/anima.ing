@@ -1,5 +1,5 @@
-//! The bearer token: a login token or an API key (CMD-010, CMD-011). It never prints: no
-//! `Display`, a `Debug` that hides it, and its memory is wiped when it drops (CMD-014, LOG-007).
+//! The bearer token: a login token or an API key (CMD-010, CMD-011). It never prints, and its
+//! memory is wiped when it drops (CMD-014, LOG-007).
 
 use std::fmt;
 
@@ -43,7 +43,7 @@ impl Token {
         Some(Self(Zeroizing::new(trimmed.to_owned())))
     }
 
-    /// The secret itself. Callers put it only in the `Authorization` header or the key store.
+    /// Callers put it only in the `Authorization` header or the key store.
     #[must_use]
     pub fn expose(&self) -> &str {
         &self.0
@@ -66,7 +66,6 @@ impl fmt::Debug for Token {
 }
 
 impl TokenKind {
-    /// The kind in words, for `auth status`.
     #[must_use]
     pub const fn describe(self) -> &'static str {
         match self {

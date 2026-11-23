@@ -1,5 +1,3 @@
-//! `anima project get <slug>`.
-
 use super::documents::{ProjectGet, project_get};
 use super::render;
 use crate::failure::{Failure, Hint};

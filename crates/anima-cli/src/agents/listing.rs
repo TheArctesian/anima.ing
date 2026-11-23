@@ -1,8 +1,5 @@
-//! `anima agents pin`, `archive`, `rename`, `remove`, `settle`, `snooze`, `wake` and `listings`:
-//! how the person lists the threads of this computer (TH46, TH61). The runner keeps it in its own record; no session file of
-//! Claude Code or Codex changes. No MCP tool does it: the runner refuses it from a process of
-//! an agent, so that an agent cannot hide a thread from the person.
-//! `anima agents projects`: the projects of this computer (TH107), changed by the person only.
+//! How the person lists threads (TH46, TH61) and projects (TH107). The runner refuses these from
+//! an agent's process, so that an agent cannot hide a thread; no MCP tool gives them.
 
 use std::collections::BTreeSet;
 

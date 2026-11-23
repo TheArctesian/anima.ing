@@ -2,12 +2,29 @@ use std::fs;
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
 use std::path::{Path, PathBuf};
 
+use super::super::access::{Groups, Listing, Member};
 use super::super::agents::State;
 use super::super::files::copy_path;
 use super::super::{Asked, change, listing};
 use super::{Action, Checked, Here, Step, check_command};
 
-/// A temporary home with a folder of programs on `PATH` and an `anima` in it.
+/// Groups whose every one lists `members`, by name and account number, besides no one else.
+pub(super) fn groups(members: &[(&str, Option<u32>)]) -> Groups {
+    let members: Vec<Member> = members
+        .iter()
+        .map(|(name, uid)| Member {
+            name: (*name).to_owned(),
+            uid: *uid,
+        })
+        .collect();
+    Groups::new(move |group| Listing {
+        name: format!("group{group}"),
+        members: Some(members.clone()),
+    })
+}
+
+/// A temporary home with a folder of programs on `PATH` and an `anima` in it. Each group lists
+/// only root.
 pub(super) fn computer() -> (tempfile::TempDir, Here, Checked) {
     let home = tempfile::tempdir().expect("a temporary home");
     let user = fs::metadata(home.path()).expect("owner").uid();
@@ -18,6 +35,7 @@ pub(super) fn computer() -> (tempfile::TempDir, Here, Checked) {
         home: home.path().to_path_buf(),
         path: vec![bin],
         user,
+        groups: groups(&[("root", Some(0))]),
         macos: false,
     };
     let anima = check_command(&anima, user).expect("a fixed program");
@@ -171,5 +189,6 @@ fn mcp_034_a_refused_file_is_named_and_not_changed_and_the_other_agents_go_on() 
     );
 }
 
+mod exact;
 mod own;
 mod review;

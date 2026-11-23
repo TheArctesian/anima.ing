@@ -1,5 +1,4 @@
-//! `anima repo releases <repository>`: the releases on GitHub, newest first, with pages
-//! (CMD-026).
+//! `anima repo releases`: releases on GitHub, newest first, with pages (CMD-026).
 
 use super::query::{History, Query};
 use super::render;

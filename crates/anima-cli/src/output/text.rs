@@ -1,12 +1,7 @@
-//! Text from the hub or a device goes to a terminal or an agent only after this: control
-//! characters could move the cursor, rewrite earlier lines or set the window title, and
-//! invisible characters could carry text that a person cannot see but an agent reads.
+//! Text from the hub or a device goes to a terminal or an agent only after this cleaning.
 
 use std::fmt::Write as _;
 
-/// `text` with every control character (escape sequences, line breaks, tabs) and the line and
-/// paragraph separators as a space; the invisible characters (format characters, private use,
-/// noncharacters) removed. Ordinary non-ASCII text stays.
 #[must_use]
 pub fn clean(text: &str) -> String {
     text.chars()
@@ -21,10 +16,7 @@ pub fn clean(text: &str) -> String {
         .collect()
 }
 
-/// `json` with DEL, the C1 controls, the line and paragraph separators and every invisible
-/// character written as `\uXXXX`: the same JSON value, but nothing in it can drive a terminal
-/// or hide text. Only for JSON `serde_json` wrote: it escapes the C0 controls in strings, and
-/// these characters can stand nowhere but in a string, so the layout's line breaks stay.
+/// Only for JSON that `serde_json` wrote, which escapes the C0 controls in strings.
 #[must_use]
 pub fn json_for_terminal(json: &str) -> String {
     let mut shown = String::with_capacity(json.len());
@@ -42,9 +34,6 @@ pub fn json_for_terminal(json: &str) -> String {
     shown
 }
 
-/// The text of a file for a terminal: line breaks and tabs stay, every other control character
-/// is a space and the invisible characters are removed, so the file cannot drive the terminal or
-/// hide text.
 #[must_use]
 pub fn clean_file(text: &str) -> String {
     text.chars()
@@ -60,22 +49,16 @@ pub fn clean_file(text: &str) -> String {
         .collect()
 }
 
-/// `text` cleaned line by line: line breaks stay, every other control character goes.
 #[must_use]
 pub fn clean_lines(text: &str) -> String {
     text.lines().map(clean).collect::<Vec<_>>().join("\n")
 }
 
-/// Whether `character` shows nothing a person can see, but can change what is shown or carry
-/// hidden text: a format character (Unicode category Cf), a private-use code point or a
-/// noncharacter. Cf is written out from Unicode 16 because the standard library has no table
-/// for it; a format character added later is not removed until it is listed here.
+/// Unicode 16 category Cf is written out because the standard library has no table for it; a
+/// format character added later is not removed until it is listed here.
 const fn is_invisible(character: char) -> bool {
     matches!(
         character,
-        // Cf: soft hyphen; Arabic number signs; Arabic letter mark; Arabic end of ayah;
-        // Syriac abbreviation mark; Arabic pound and piastre marks above; Arabic disputed
-        // end of ayah; Mongolian vowel separator.
         '\u{00AD}'
             | '\u{0600}'..='\u{0605}'
             | '\u{061C}'
@@ -84,19 +67,12 @@ const fn is_invisible(character: char) -> bool {
             | '\u{0890}'..='\u{0891}'
             | '\u{08E2}'
             | '\u{180E}'
-            // Cf: zero width space, non-joiner and joiner; left-to-right and right-to-left
-            // marks; embeddings and overrides; word joiner and invisible operators; isolates
-            // and the deprecated format characters; byte order mark (zero width no-break
-            // space); interlinear annotation.
             | '\u{200B}'..='\u{200F}'
             | '\u{202A}'..='\u{202E}'
             | '\u{2060}'..='\u{2064}'
             | '\u{2066}'..='\u{206F}'
             | '\u{FEFF}'
             | '\u{FFF9}'..='\u{FFFB}'
-            // Cf: Kaithi number signs; Egyptian hieroglyph format controls; shorthand format
-            // controls; musical symbol format controls; the whole tag block (language tag and
-            // tag characters).
             | '\u{110BD}'
             | '\u{110CD}'
             | '\u{13430}'..='\u{1343F}'
@@ -112,8 +88,6 @@ const fn is_invisible(character: char) -> bool {
     ) || (character as u32) & 0xFFFE == 0xFFFE
 }
 
-/// `word` as one shell word, in single quotes when it holds anything but plain characters, for a
-/// hint the operator can paste.
 #[must_use]
 pub fn shell_word(word: &str) -> String {
     let plain = !word.is_empty()
@@ -131,7 +105,6 @@ pub fn shell_word(word: &str) -> String {
     }
 }
 
-/// The K1 name of a generated enum value, such as `UP` or `MACOS`.
 #[must_use]
 pub fn enum_name<T: serde::Serialize>(value: &T) -> String {
     match serde_json::to_value(value) {
@@ -163,7 +136,6 @@ mod tests {
         assert_eq!(clean_lines("a\u{1b}b\nc\u{202E}d"), "a b\ncd");
     }
 
-    /// Every code point of `ranges`, whatever text stands around it.
     fn each_of(ranges: &[(u32, u32)]) -> impl Iterator<Item = char> + '_ {
         ranges
             .iter()

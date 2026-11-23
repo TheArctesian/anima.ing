@@ -1,6 +1,4 @@
-//! `anima agents sessions`: the single sessions of the AI agent programs, the newest use first,
-//! with their sums and estimate over a range of UTC days (AIS-025), and which were used in the
-//! last 30 minutes (AIS-026).
+//! `anima agents sessions` (AIS-025, AIS-026).
 
 use chrono::Utc;
 

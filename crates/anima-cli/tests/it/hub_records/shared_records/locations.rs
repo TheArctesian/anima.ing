@@ -1,4 +1,4 @@
-//! `anima location` against the scripted hub (K-E4 Sections 11 to 13; R-145, CMD-014).
+//! K-E4 Sections 11 to 13; R-145, CMD-014.
 
 use serde_json::{Value, json};
 

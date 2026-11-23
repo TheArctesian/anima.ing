@@ -1,5 +1,4 @@
-//! `anima device watch`: one line for each status change of any device, or of one (K1
-//! `deviceStatusChanged`).
+//! `anima device watch` (K1 `deviceStatusChanged`).
 
 use graphql_client::GraphQLQuery;
 

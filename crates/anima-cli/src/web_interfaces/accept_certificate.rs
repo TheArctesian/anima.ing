@@ -1,5 +1,4 @@
-//! `anima web accept-certificate`: pins the certificate of a web interface by its fingerprint
-//! and writes an audit entry (WEB-008, WEB-009). The operator always gives the fingerprint.
+//! WEB-008, WEB-009.
 
 use super::documents::{WebCertificateAccept, web_certificate_accept};
 use super::shown::Shown;

@@ -1,6 +1,4 @@
-//! The bytes of a file, outside GraphQL (K-E4 Section 9, FIL-005): `POST /files/v1/attachments`
-//! streams a file from the disk, and `GET /files/v1/attachments/<id>` streams the answer to a
-//! file. Neither holds the whole file in memory, and neither error holds a byte of it.
+//! File bytes outside GraphQL (K-E4 Section 9, FIL-005): no transfer holds the whole file, no error a byte of it.
 
 use std::{fmt::Write as _, time::Duration};
 
@@ -14,14 +12,11 @@ use tokio_util::io::ReaderStream;
 
 use super::{ACTOR_HEADER, AGENT, Hub, HubError, answer, bearer};
 
-/// How long one transfer may take: a file of 256 MB over a slow link.
+/// Long enough for a file of 256 MB over a slow link.
 const TRANSFER_TIMEOUT: Duration = Duration::from_hours(1);
-/// The largest refusal read.
 const MAX_REFUSAL: usize = 64 * 1024;
-/// The header that says whether the hub removed the location of the copy (FIL-003).
 const LOCATION_REMOVED: &str = "anima-location-removed";
 
-/// What an upload asks for.
 #[derive(Debug)]
 pub struct Upload<'a> {
     pub owner: &'a str,
@@ -31,7 +26,6 @@ pub struct Upload<'a> {
     pub keep_location: bool,
 }
 
-/// What a download wrote.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Downloaded {
@@ -61,11 +55,8 @@ impl Hub {
         Ok(request)
     }
 
-    /// Streams `file` (`length` bytes, of `media_type`) to the hub and returns the attachment.
-    ///
     /// # Errors
-    /// [`HubError::Refused`] with the hub's code (`VALIDATION` with its fields, `UNAVAILABLE`
-    /// with no file store, `VALIDATION` for a file over 256 MB); a failed request.
+    /// [`HubError::Refused`] (`VALIDATION`, or `UNAVAILABLE` with no file store); a failed request.
     pub async fn upload_attachment(
         &self,
         upload: &Upload<'_>,
@@ -95,8 +86,6 @@ impl Hub {
         Err(answer::refusal(status, &answer))
     }
 
-    /// Streams the plain bytes of attachment `id` into `to`.
-    ///
     /// # Errors
     /// [`HubError::Refused`] (`NOT_FOUND`, `UNAVAILABLE`); a failed request or write.
     pub async fn download_attachment(
@@ -139,7 +128,6 @@ impl Hub {
         })
     }
 
-    /// The body of a short answer, cut at [`MAX_REFUSAL`].
     async fn read_small(&self, mut response: reqwest::Response) -> Result<Vec<u8>, HubError> {
         let mut answer = Vec::new();
         while let Some(chunk) = response
@@ -156,7 +144,6 @@ impl Hub {
     }
 }
 
-/// `upload` as a URL query.
 fn query_text(upload: &Upload<'_>) -> Result<String, HubError> {
     let mut url = reqwest::Url::parse("http://query.invalid/").map_err(|_| HubError::Setup)?;
     {
@@ -174,8 +161,6 @@ fn query_text(upload: &Upload<'_>) -> Result<String, HubError> {
     Ok(url.query().unwrap_or_default().to_owned())
 }
 
-/// `id` with every byte that is not a letter, a digit or `-` percent-encoded, so that it stays
-/// one part of the path.
 fn path_part(id: &str) -> String {
     let mut part = String::with_capacity(id.len());
     for byte in id.bytes() {

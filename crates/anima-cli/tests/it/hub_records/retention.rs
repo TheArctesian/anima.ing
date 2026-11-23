@@ -1,4 +1,4 @@
-//! `anima retention list` and `set` against the scripted hub (HUB-005, D-25).
+//! HUB-005, D-25.
 
 use serde_json::{Value, json};
 

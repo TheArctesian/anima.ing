@@ -119,7 +119,7 @@ impl Secrets {
     ) -> Option<Self> {
         let present = wire.present();
         let (secrets, expected) = match settings {
-            Settings::Webhook(webhook) => {
+            Settings::Webhook(webhook) | Settings::Mobile(webhook) => {
                 if wire.headers.len() != webhook.header_names.len() {
                     return None;
                 }

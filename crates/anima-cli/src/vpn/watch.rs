@@ -1,5 +1,3 @@
-//! `anima vpn status --watch`: one line for each new VPN picture (K1 `vpnChanged`).
-
 use graphql_client::GraphQLQuery;
 
 use crate::failure::Failure;
@@ -18,9 +16,6 @@ use crate::output::text::enum_name;
 )]
 pub struct VpnChanged;
 
-/// Prints each picture as a line (time, fresh or stale, broker, nodes online, each site's
-/// state and path) or, with `--json`, as one K1 `VpnPicture` object per line.
-///
 /// # Errors
 /// [`Failure`] when the hub refuses the token or the connection is lost.
 pub async fn run(invocation: &Invocation) -> Result<(), Failure> {

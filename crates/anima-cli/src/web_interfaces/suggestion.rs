@@ -1,6 +1,4 @@
-//! `anima web suggestion accept|dismiss`: the hub suggests a web interface when an HTTP check
-//! passes (WEB-002); the operator takes it or turns it down. The argument is the check's ID,
-//! which `anima web list` prints beside each suggestion.
+//! `anima web suggestion` (WEB-002).
 
 use super::documents::{
     WebSuggestionAccept, WebSuggestionDismiss, web_suggestion_accept, web_suggestion_dismiss,

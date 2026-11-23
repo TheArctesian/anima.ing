@@ -221,6 +221,7 @@ mod tests {
             (LINK_SOCKET, SOCKET),
             (LINK_CONTROL, &host_path("/run/anima/link-control.sock")),
             (HOSTED_CLOUD_KEY_FILE, key),
+            ("ANIMA_PROBE_DENY", "10.130.6.0/24"),
         ]);
         assert_eq!(
             from_env(&hosted).unwrap().hosted_cloud_key_file,
@@ -229,5 +230,29 @@ mod tests {
         let alone = env(&[(LINK_SOCKET, SOCKET), (HOSTED_CLOUD_KEY_FILE, key)]);
         assert!(matches!(from_env(&alone), Err(Error::HostedWithoutLink)));
         assert_eq!(from_env(&env(&[])).unwrap().hosted_cloud_key_file, None);
+    }
+
+    #[test]
+    fn r_030_a_hosted_hub_does_not_start_with_no_networks_to_refuse() {
+        let key = &host_path("/run/secrets/anima/cloud_key");
+        let control = &host_path("/run/anima/link-control.sock");
+        for denied in [None, Some("")] {
+            let mut pairs = vec![
+                (LINK_SOCKET, SOCKET),
+                (LINK_CONTROL, control.as_str()),
+                (HOSTED_CLOUD_KEY_FILE, key.as_str()),
+            ];
+            pairs.extend(denied.map(|text| ("ANIMA_PROBE_DENY", text)));
+            assert!(
+                matches!(from_env(&env(&pairs)), Err(Error::HostedWithoutProbeDeny)),
+                "{denied:?}"
+            );
+        }
+        let local = env(&[(LINK_SOCKET, SOCKET)]);
+        assert_eq!(
+            from_env(&local).unwrap().probe_deny,
+            vec![],
+            "a hub that is not hosted"
+        );
     }
 }

@@ -1,5 +1,4 @@
-//! `anima capability list`: each device's tool inventory and hardware values, filtered by a
-//! usable tool or a build target (CAP-030, CAP-032). K1 has no pages for it.
+//! `anima capability list` (CAP-030, CAP-032); K1 has no pages for it.
 
 use super::documents::{CapabilityList, capability_list};
 use super::hint::{backend_hint, backend_repairable, hint};

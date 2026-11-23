@@ -1,4 +1,4 @@
-//! `anima builder list`: every builder; the hub has few and does not page them.
+//! The hub has few builders and does not page them.
 
 use super::documents::{BuilderList, builder_list};
 use crate::failure::Failure;

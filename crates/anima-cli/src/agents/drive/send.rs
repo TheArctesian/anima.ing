@@ -1,5 +1,4 @@
-//! `anima agents send`: a prompt to a thread that this computer runs, with files (TH111). Each
-//! file goes to the runner in parts, then the prompt names them.
+//! A prompt with files to a thread that this computer runs (TH111).
 
 use std::path::{Path, PathBuf};
 

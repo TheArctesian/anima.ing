@@ -2224,6 +2224,7 @@ enum ChannelKind {
   NTFY
   EMAIL
   APPRISE
+  MOBILE
 }
 
 enum NotificationKind {
@@ -2393,11 +2394,17 @@ input AppriseSettingsInput {
   tags: [String!] = []
 }
 
+input MobileRelayInput {
+  url: String
+  token: String
+}
+
 input ChannelSettingsInput @oneOf {
   webhook: WebhookSettingsInput
   ntfy: NtfySettingsInput
   email: EmailSettingsInput
   apprise: AppriseSettingsInput
+  mobile: MobileRelayInput
 }
 
 input NotificationTemplateInput {

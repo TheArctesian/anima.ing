@@ -1,6 +1,7 @@
 <script lang="ts">
   import CodeIcon from '../icons/CodeIcon.svelte';
   import ScrollArea from '../kit/ScrollArea.svelte';
+  import Shine from '../status/Shine.svelte';
   import Stamp from './meta/Stamp.svelte';
   import type { WorkEntry } from './turns';
   import { entryLabel, groupIcon, groupLabel, WORK_ICONS } from './words';
@@ -26,7 +27,8 @@
 <!--
   A group of the work log (03 section A.8.4). One entry shows as itself. While the turn runs, the group is one live line:
   its newest entry, which opens the whole group. After it, one line with the group's sentence. Open, a scrolling list.
-  Neither line has a chevron, as in T3 Code (fidelity 2).
+  Neither line has a chevron, as in T3 Code (fidelity 2). While its newest tool has not failed, T3 Code's shine crosses
+  the live line where motion may run (operator, 2026-11-23).
 -->
 {#if entries.length === 1 && newest !== undefined && !live}
   <WorkRow entry={newest} {now} />
@@ -34,7 +36,7 @@
   <div class="group">
     <button type="button" class="line" class:live aria-label={name} aria-expanded={open} aria-controls={open ? `${id}-list` : undefined} onclick={() => (open = !open)}>
       <span class="slot"><CodeIcon name={live ? WORK_ICONS[newest.kind] : groupIcon(entries)} /></span>
-      <span class="label">{label}</span>
+      <span class="label">{#if live && newest.tool?.failed !== true}<Shine text={label} />{:else}{label}{/if}</span>
       {#if !live && newest.at !== null}<span class="when"><Stamp at={newest.at} {now} /></span>{/if}
     </button>
     {#if open}

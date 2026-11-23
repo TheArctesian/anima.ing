@@ -11,6 +11,8 @@ import type { ChannelDraft, HeaderDraft, SecretDraft, Stored } from './draft';
 
 export type DraftField =
   | 'name'
+  | 'mobile.url'
+  | 'mobile.token'
   | 'webhook.url'
   | 'webhook.headers'
   | 'ntfy.server'
@@ -169,7 +171,17 @@ function appriseInput(draft: ChannelDraft, stored: Stored | null, problems: Prob
   return { apprise: { ...base, urls: null, key: secretValue(key, false) } };
 }
 
-const SETTINGS_INPUT = { WEBHOOK: webhookInput, NTFY: ntfyInput, EMAIL: emailInput, APPRISE: appriseInput };
+function mobileInput(draft: ChannelDraft, stored: Stored | null, problems: Problems): NotificationChannelInput['settings'] {
+  const { url, token } = draft.mobile;
+  if (url === '' && stored === null) refuse(problems, 'mobile.url', 'Enter the push relay URL.');
+  if (url !== '' && httpsOrigin(url) === null) refuse(problems, 'mobile.url', URL_WRONG);
+  if ((stored === null || url !== '' || token !== '') && !/^[!-~]+$/.test(token)) {
+    refuse(problems, 'mobile.token', 'Enter a relay token without spaces.');
+  }
+  return { mobile: { url: secretValue(url, false), token: secretValue(token, false) } };
+}
+
+const SETTINGS_INPUT = { WEBHOOK: webhookInput, NTFY: ntfyInput, EMAIL: emailInput, APPRISE: appriseInput, MOBILE: mobileInput };
 
 /**
  * The input to send, or every problem to show; nothing is sent while there is one. `stored` is `null` for a new

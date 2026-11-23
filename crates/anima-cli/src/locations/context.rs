@@ -1,6 +1,4 @@
-//! `anima location context <event>`: the roles of one file transfer and the evidence for
-//! where the operator was (K-E4 Section 12). The place of a device is configured; the place of
-//! the operator comes only from a sample at the time.
+//! The operator's place comes only from a sample at the time (K-E4 Section 12).
 
 use serde_json::Value;
 

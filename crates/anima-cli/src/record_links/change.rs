@@ -1,5 +1,3 @@
-//! `anima record-link add` and `anima record-link remove`.
-
 use super::documents::{RecordLinkAdd, RecordLinkRemove, record_link_add, record_link_remove};
 use super::list::shown;
 use crate::failure::Failure;

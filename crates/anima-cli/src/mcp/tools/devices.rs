@@ -1,7 +1,3 @@
-//! The `devices` tool set: the fleet, devices, their metrics and capabilities, the use of their
-//! AI agent programs and their single sessions, their containers, the text of a Compose file, the
-//! catalogue of applications, sites, wake, what a daemon waits for, and the changes.
-
 mod agent_sessions;
 mod agent_usage;
 mod applications;
@@ -14,8 +10,7 @@ mod daemon_need;
 mod metrics;
 pub mod models;
 mod read;
-/// The public names of applications (task H21): its own tool set, kept with the other
-/// application tools of a device.
+/// Its own tool set, kept with the other application tools of a device (H21).
 pub use applications::routes;
 
 use applications::catalogue_entries;
@@ -105,8 +100,6 @@ impl DeviceTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -135,7 +128,6 @@ impl DeviceTool {
         }
     }
 
-    /// Runs a tool of the use of the AI agent programs: the sums, or the single sessions.
     async fn agents(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         if matches!(self, Self::AgentSessions) {
             agent_sessions::sessions(hub, arguments).await

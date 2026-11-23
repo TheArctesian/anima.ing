@@ -112,15 +112,26 @@
     outline-offset: calc(var(--border-focus) * -1);
   }
 
+  /* Reduced motion follows the Settings choice (MOT-043): On reduces whatever the OS says, Off keeps full motion. */
   @media (prefers-reduced-motion: reduce) {
-    a.row .cells,
-    .go {
+    :global(:root:not([data-motion='full'])) a.row .cells,
+    :global(:root:not([data-motion='full'])) .go {
       transition: color var(--duration-fast) var(--ease-enter);
     }
 
-    a.row:hover .cells,
-    a.row:hover .go {
+    :global(:root:not([data-motion='full'])) a.row:hover .cells,
+    :global(:root:not([data-motion='full'])) a.row:hover .go {
       translate: none;
     }
+  }
+
+  :global(:root[data-motion='reduce']) a.row .cells,
+  :global(:root[data-motion='reduce']) .go {
+    transition: color var(--duration-fast) var(--ease-enter);
+  }
+
+  :global(:root[data-motion='reduce']) a.row:hover .cells,
+  :global(:root[data-motion='reduce']) a.row:hover .go {
+    translate: none;
   }
 </style>

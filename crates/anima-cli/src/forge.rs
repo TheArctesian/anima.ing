@@ -1,5 +1,5 @@
-//! What `anima pr`, `anima issue`, `anima workflow`, `anima code` and `anima repo` share: the rows a repository on GitHub
-//! gives (PRJ-030 to PRJ-035). The hub reads them live; the command line only asks and prints.
+//! GitHub repository nouns (PRJ-030 to PRJ-035): the hub reads GitHub; the command line only
+//! asks and prints.
 
 pub mod body;
 pub mod comments;

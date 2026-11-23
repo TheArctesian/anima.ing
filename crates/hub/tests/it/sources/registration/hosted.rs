@@ -31,6 +31,7 @@ fn hosted(origin: &str, folder: &tempfile::TempDir) -> Config {
         ("ANIMA_LINK_SOCKET".to_owned(), path("link.sock")),
         ("ANIMA_LINK_CONTROL".to_owned(), path("control.sock")),
         ("ANIMA_HOSTED_CLOUD_KEY_FILE".to_owned(), path("cloud_key")),
+        ("ANIMA_PROBE_DENY".to_owned(), "192.0.2.0/24".to_owned()),
         ("ANIMA_PUBLIC_ORIGIN".to_owned(), origin.to_owned()),
     ]);
     anima_hub::config::from_env(&env).unwrap()

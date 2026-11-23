@@ -1,4 +1,4 @@
-//! Which tools `anima mcp` lists for each token and flag (MCP-002, MCP-003, MCP-009).
+//! MCP-002, MCP-003, MCP-009.
 
 use serde_json::json;
 

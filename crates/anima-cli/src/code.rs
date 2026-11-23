@@ -1,5 +1,4 @@
 //! `anima code`: the files of a repository the hub reads live from GitHub (PRJ-039, PRJ-040).
-//! A directory listing gives names; a file's text needs a login (D-23).
 
 pub mod documents;
 pub mod ls;

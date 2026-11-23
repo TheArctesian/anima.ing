@@ -1,4 +1,4 @@
-//! `anima route list`: the public names of one application, or of each (HOST-046).
+//! `anima route list` (HOST-046).
 
 use super::documents::{RouteList, route_list};
 use super::shown;

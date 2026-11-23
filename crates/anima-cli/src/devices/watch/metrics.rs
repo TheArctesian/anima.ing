@@ -1,5 +1,4 @@
-//! `anima device metrics <device> --watch`: one line for each new reading of a device (K1
-//! `metricsAdded`).
+//! `anima device metrics --watch` (K1 `metricsAdded`).
 
 use graphql_client::GraphQLQuery;
 
@@ -20,12 +19,8 @@ use crate::output::stream::{self, Reader};
 )]
 pub struct MetricsAdded;
 
-/// Prints each reading of `device` (an ID or exact name) as a line (time, CPU, memory, disk)
-/// or, with `--json`, as one K1 `MetricsAdded` object per line.
-///
 /// # Errors
-/// [`Failure`] for an unknown device, or when the hub refuses the token or the connection is
-/// lost.
+/// [`Failure`] for an unknown device, a refused token or a lost connection.
 pub async fn run(device: &str, invocation: &Invocation) -> Result<(), Failure> {
     let hub = invocation.hub()?;
     let device_id = resolve(&hub, device).await?;

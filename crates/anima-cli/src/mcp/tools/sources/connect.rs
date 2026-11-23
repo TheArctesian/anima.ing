@@ -1,12 +1,7 @@
-//! The three Connect GitHub tools of the `sources` set (PRJ-041, MCP-004, MCP-005): start an
-//! attempt, read it, cancel it. Starting grants nothing: the operator presses Continue on the
-//! hub page with their own login, then Create and Install on GitHub.
-//!
-//! There is no tool for `openGithubConnect`, whose answer is the one-time link (MCP-004), and
-//! none for the change subscription. The server declares itself an AI agent to the hub on every
-//! call, so the hub would refuse `openGithubConnect` here too. Text from GitHub (the App's slug
-//! and owner, the account's label, the hub's sentence) is cleaned and cut (MCP-008), and a link
-//! from the answer is passed on only when it points at `github.com`.
+//! The Connect GitHub tools of the `sources` set (PRJ-041, MCP-005, MCP-008).
+//! Starting an attempt grants nothing: the operator finishes it on the hub page and on GitHub.
+//! No tool opens `openGithubConnect`: its answer is the one-time link (MCP-004).
+//! A link from an answer is passed on only when it points at `github.com`.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

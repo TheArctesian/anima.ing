@@ -1,5 +1,4 @@
-//! `anima notify` against the scripted hub (NOT-001..007, CMD-024, CMD-025): the shared fixtures;
-//! the tests are in `channels`, `channel_test` and `settings`.
+//! NOT-001..007, CMD-024, CMD-025.
 
 use serde_json::{Value, json};
 
@@ -15,8 +14,6 @@ pub fn fixtures() -> Value {
     serde_json::from_str(text).expect("fixtures")
 }
 
-/// The K6 channels as `ChannelList` nodes: each setting gets its `__typename`, and the
-/// webhook's last delivery is the first K6 delivery.
 pub fn channels() -> Vec<Value> {
     let fixtures = fixtures();
     let delivery = fixtures["deliveries"][0].clone();

@@ -1,5 +1,3 @@
-//! The `checks` tool set: one check with its heartbeats, and the changes.
-
 mod change;
 mod config;
 mod read;
@@ -81,8 +79,6 @@ impl CheckTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, a refused secret field or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

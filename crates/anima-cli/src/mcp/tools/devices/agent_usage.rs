@@ -1,8 +1,4 @@
-//! `anima_agents_usage`: the use of the AI agent programs on the devices, summed by the
-//! dimensions asked for, with the estimate of its cost (AIS-020, AIS-021, AIS-024). It takes no
-//! secret and returns none. Model, repository and device names come from the devices: they are
-//! in named fields, and the server cleans and caps each string before the agent sees it
-//! (MCP-008).
+//! AIS-020, AIS-021, AIS-024; the server cleans and caps each device string (MCP-008).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

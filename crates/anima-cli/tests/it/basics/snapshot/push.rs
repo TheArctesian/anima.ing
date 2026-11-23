@@ -1,10 +1,7 @@
-//! `anima snapshot push`: what is sent, what stays as it was, and what is refused (JOB-017,
-//! JOB-018).
+//! `anima snapshot push` (JOB-017, JOB-018).
 
 use super::repos::Repos;
 
-/// The working tree has a tracked change, a new file, an ignored file and a staged change
-/// that was changed again after `git add`.
 fn with_changes() -> Repos {
     let repos = Repos::new();
     repos.write("a.txt", "one, changed\n");

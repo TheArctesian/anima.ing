@@ -1,5 +1,3 @@
-//! `anima device wake`: a Wake-on-LAN packet from the site's relay.
-
 use super::documents::{DeviceWake, device_wake};
 use super::get::resolve;
 use crate::failure::Failure;

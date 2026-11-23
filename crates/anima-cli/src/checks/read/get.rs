@@ -1,5 +1,4 @@
-//! `anima check get <id-or-name>`: one check, its kind and settings. The only command that
-//! shows a push check's path, which holds its token.
+//! The only command that shows a push check's path, which holds its token.
 
 use super::documents::{CheckGet, check_get};
 use crate::checks::resolve::CheckRef;
