@@ -1,5 +1,4 @@
-//! The drives of a batch (K8 Section 4, MET-027): optional, so an older daemon's batch is taken
-//! as it was, and each drive held to the label and count rules.
+//! K8 Section 4, MET-027.
 
 use super::*;
 use crate::{

@@ -1,5 +1,4 @@
-//! `anima route`: the public names of applications, served by the hub (HOST-046, task H21).
-//! A name serves only after its proof, the consent of the machine and its certificate.
+//! `anima route`: the public names of applications, served by the hub (HOST-046).
 
 pub mod add;
 pub mod check;

@@ -2,12 +2,10 @@
 
 use super::{Kind, MAX_GPU_INDEX};
 
-/// The hottest GPU temperature kept, in °C: no working GPU reads above it, so a higher value is
-/// a broken or hostile reading.
+/// No working GPU reads above this, so a higher value is a broken or hostile reading.
 const MAX_GPU_TEMPERATURE_C: f64 = 1000.0;
 
-/// The highest GPU power draw kept, in watts: ten times any one GPU board, so a higher value is
-/// a broken or hostile reading.
+/// Ten times any one GPU board, so a higher value is a broken or hostile reading.
 const MAX_GPU_POWER_W: f64 = 10_000.0;
 
 /// One value of one series at one collection: the label is a mount point, an interface name
@@ -17,15 +15,13 @@ pub struct Sample {
     pub kind: Kind,
     pub label: String,
     pub value: f64,
-    /// The GPU of a GPU kind's sample, also its label; `None` for the other kinds (MET-009,
-    /// R-099).
+    /// Also the label; `None` for a kind that belongs to no GPU (MET-009, R-099).
     pub gpu_index: Option<u8>,
 }
 
 impl Sample {
-    /// A sample of `value` for a kind that belongs to no GPU, or `None` when `kind` is a GPU
-    /// kind (built only by [`Sample::gpu`], with its index, R-099) or `value` is not kept by
-    /// [`kept_value`]. Percent kinds are held to at most 100.
+    /// A sample for a kind that belongs to no GPU; `None` for a GPU kind (R-099) or a value
+    /// that [`kept_value`] does not keep.
     #[must_use]
     pub fn new(kind: Kind, label: &str, value: f64) -> Option<Self> {
         if kind.is_per_gpu() {
@@ -39,11 +35,9 @@ impl Sample {
         })
     }
 
-    /// A sample of `value` for the GPU numbered `gpu_index` on its device, labelled with the
-    /// index as decimal text, so each GPU has its own series (MET-009, R-099). `None` for a kind
-    /// that belongs to no GPU, for an index above [`MAX_GPU_INDEX`] (K8 Section 4), and for a
-    /// value [`kept_value`] does not keep: a temperature above [`MAX_GPU_TEMPERATURE_C`] or a
-    /// power above [`MAX_GPU_POWER_W`] among them (MET-002).
+    /// A sample labelled with its GPU's index, so each GPU has its own series (MET-009, R-099);
+    /// `None` for a kind that belongs to no GPU, an index above [`MAX_GPU_INDEX`] (K8 Section 4)
+    /// or a value that [`kept_value`] does not keep.
     #[must_use]
     pub fn gpu(kind: Kind, gpu_index: u8, value: f64) -> Option<Self> {
         if !kind.is_per_gpu() || gpu_index > MAX_GPU_INDEX {
@@ -58,9 +52,6 @@ impl Sample {
     }
 }
 
-/// The highest value of `kind` that is kept: [`MAX_GPU_TEMPERATURE_C`] for a GPU temperature,
-/// [`MAX_GPU_POWER_W`] for a GPU power, and no ceiling for the other kinds. A higher value is a
-/// broken or hostile reading, whether an SSH collection or a daemon's batch brought it.
 #[must_use]
 pub const fn ceiling(kind: Kind) -> f64 {
     match kind {
@@ -70,9 +61,7 @@ pub const fn ceiling(kind: Kind) -> f64 {
     }
 }
 
-/// The value a sample of `kind` keeps: `None` when `value` is not a finite number of at least
-/// zero (`-0` included) or is above the kind's [`ceiling`]; a percent is held to at most 100
-/// (MET-002, CR-17). An SSH collection, the daemon's window and a pushed batch share this rule.
+/// An SSH collection, the daemon's window and a pushed batch share this rule (MET-002, CR-17).
 pub(crate) fn kept_value(kind: Kind, value: f64) -> Option<f64> {
     if !value.is_finite() || value.is_sign_negative() || value > ceiling(kind) {
         return None;

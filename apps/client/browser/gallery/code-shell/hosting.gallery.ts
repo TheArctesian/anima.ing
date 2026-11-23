@@ -13,7 +13,7 @@ import { EVERY_STATE } from '../threads/scenario';
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-shell/', import.meta.url));
 const SHOTS = [
-  { name: 'hosting-1-applications', path: '/hosting', heading: 'Applications are not listed here yet' },
+  { name: 'hosting-1-applications', path: '/hosting', heading: 'Applications' },
   { name: 'hosting-2-catalogue', path: '/hosting/catalogue', heading: 'Catalogue' },
   { name: 'hosting-3-routes', path: '/hosting/routes', heading: 'Routes' },
   { name: 'hosting-4-machines', path: '/hosting/machines', heading: 'Machines are not listed here yet' },
@@ -58,6 +58,25 @@ for (const chosen of MODES.filter((mode) => !mode.dyslexic && mode.width === 128
       await page.goto(`${HUB_ORIGIN}/settings`);
       await expect(page.getByRole('link', { name: 'Routes in Hosting' })).toHaveAttribute('href', '/hosting/routes');
       await shot(page, `${FOLDER}${chosen.folder}/hosting-5-settings-index.png`);
+    });
+  });
+}
+
+// At 1440 px the section takes the page's width, so its content ends where the action of the header ends.
+for (const chosen of MODES.filter((mode) => !mode.dyslexic && mode.width === 1280)) {
+  const folder = chosen.folder.replace('1280', '1440');
+  test.describe(`hosting-wide-${folder}`, () => {
+    test.skip(process.env['GALLERY_CODE_SHELL'] !== '1', 'The pictures of the Code page are made only when asked.');
+    test.use({ viewport: { width: 1440, height: HEIGHT }, colorScheme: chosen.theme });
+    test.beforeAll(() => mkdirSync(`${FOLDER}${folder}`, { recursive: true }));
+
+    test('hosting-6-routes-wide.png', async ({ page }) => {
+      await opened(page, '/hosting/routes', storedSettings(chosen));
+      const action = page.locator('main header').getByRole('button', { name: 'Add a route' });
+      await expect(action).toBeVisible();
+      const [end, edge] = await Promise.all([action.evaluate((each) => each.getBoundingClientRect().right), page.getByRole('region', { name: 'Routes' }).evaluate((each) => each.getBoundingClientRect().right)]);
+      expect(Math.abs(end - edge)).toBeLessThan(2);
+      await shot(page, `${FOLDER}${folder}/hosting-6-routes-wide.png`);
     });
   });
 }

@@ -1,7 +1,4 @@
-//! The operator's terminal (K4 Section 8): the window size, standard input as a bounded
-//! stream, and the signals that end a session. The OS edge of `anima ssh`, with raw mode in
-//! [`crate::raw_mode`]; `crossterm` does the `unsafe` work, so this crate keeps `unsafe_code`
-//! forbidden.
+//! The OS edge of `anima ssh` (K4 Section 8); `crossterm` does the `unsafe` work, so this crate forbids `unsafe_code`.
 
 use std::io::{self, Read as _};
 use std::pin::Pin;
@@ -15,12 +12,9 @@ use super::codec::CellSize;
 
 /// The pixel range the hub takes for each side of `DisplayInput` (K4 Section 4).
 const PIXELS: std::ops::RangeInclusive<i64> = 1..=8192;
-/// The cell size assumed when the terminal gives no pixel size.
 const CELL_PIXELS: (i64, i64) = (8, 16);
-/// Input chunks waiting for the hub, at most.
 const QUEUED_INPUT: usize = 16;
 
-/// The window size in cells, or 80 by 24 when there is no terminal to ask.
 #[must_use]
 pub fn size() -> CellSize {
     terminal::size().map_or(CellSize::DEFAULT, |(cols, rows)| {
@@ -28,8 +22,7 @@ pub fn size() -> CellSize {
     })
 }
 
-/// The window in pixels for `DisplayInput` (required even for SSH): the terminal's own pixel
-/// size when it gives one, else `size` times a common cell.
+/// The window in pixels for `DisplayInput`, which the hub requires even for SSH.
 #[must_use]
 pub fn pixels(size: CellSize) -> (i64, i64) {
     let reported = terminal::window_size()
@@ -44,8 +37,7 @@ pub fn pixels(size: CellSize) -> (i64, i64) {
     (within(width), within(height))
 }
 
-/// Standard input as chunks, read on its own thread so a blocked read never holds the
-/// runtime; the channel closes at the end of input. The thread ends with the process.
+/// Reads on its own thread so a blocked read never holds the runtime.
 #[must_use]
 pub fn keys() -> mpsc::Receiver<Vec<u8>> {
     let (sender, receiver) = mpsc::channel(QUEUED_INPUT);
@@ -72,7 +64,6 @@ pub fn keys() -> mpsc::Receiver<Vec<u8>> {
     receiver
 }
 
-/// The window size now and after each change (`SIGWINCH`) when `follow`; else only now.
 #[must_use]
 pub fn sizes(follow: bool) -> watch::Receiver<CellSize> {
     let (sender, receiver) = watch::channel(size());
@@ -101,8 +92,7 @@ pub fn sizes(follow: bool) -> watch::Receiver<CellSize> {
     receiver
 }
 
-/// Resolves at the first `SIGINT`, `SIGTERM` or `SIGHUP`, so the session ends cleanly and raw
-/// mode is undone instead of the process dying in it.
+/// Resolves at the first ending signal, so raw mode is undone instead of the process dying in it.
 #[cfg(unix)]
 pub fn stop() -> Pin<Box<dyn Future<Output = ()> + Send>> {
     let kinds = (
@@ -122,7 +112,6 @@ pub fn stop() -> Pin<Box<dyn Future<Output = ()> + Send>> {
     })
 }
 
-/// Windows console control events end a remote session before raw mode is restored.
 #[cfg(windows)]
 pub fn stop() -> Pin<Box<dyn Future<Output = ()> + Send>> {
     Box::pin(async {

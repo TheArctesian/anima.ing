@@ -1,6 +1,4 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
-// deploy/bin/phone-build-number: the build number of the phone applications from the release
-// version (mobile plan M5-3, RLS-003).
+// Mobile plan M5-3, RLS-003.
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 

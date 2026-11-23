@@ -1,4 +1,3 @@
-// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -8,8 +7,7 @@ import { HARDEN_TIMEOUT_MS, fakeHost, removeHosts, VPN_SESSION, VPS_DIR, type Ho
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
 afterEach(removeHosts);
 
-// VPS-002, VPS-005: /etc/anima/firewall-allow keeps a port open for another service on the
-// VPS. It may add public tcp/udp accepts to the input chain and change nothing else.
+// VPS-002, VPS-005.
 const ALLOW = "etc/anima/firewall-allow";
 const vpn = { SSH_CONNECTION: VPN_SESSION };
 type Ruleset = ReturnType<typeof parseNftables>;

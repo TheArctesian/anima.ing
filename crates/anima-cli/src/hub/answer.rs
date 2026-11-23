@@ -1,6 +1,3 @@
-//! Reads a GraphQL answer: the first error decides the outcome; otherwise `data` must have the
-//! shape the document asked for. The HTTP status matters only when the body is not GraphQL.
-
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
@@ -28,8 +25,6 @@ struct Extensions {
     fields: Vec<FieldError>,
 }
 
-/// The `data` of an answer with no errors, read as `T`.
-///
 /// # Errors
 /// [`HubError::Refused`] for the first GraphQL error; [`HubError::Malformed`] for a body that
 /// is not a GraphQL answer of this shape.
@@ -46,8 +41,6 @@ pub fn read<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, HubError
     envelope.data.ok_or(HubError::Malformed { status })
 }
 
-/// The whole answer as JSON, for `anima api`, and the first GraphQL error in it, if any.
-///
 /// # Errors
 /// [`HubError::Malformed`] for a body that is not a JSON object.
 pub fn read_raw(
@@ -79,8 +72,7 @@ fn refused(error: GraphqlError) -> HubError {
     }
 }
 
-/// The refusal of a `/files/v1` route: its JSON `{ code, message, fields }`, or the status
-/// alone when the body is not that (an empty 401 or 403 of the bearer check).
+/// The refusal of a `/files/v1` route, or its status alone for an empty 401 or 403 of the bearer check.
 #[must_use]
 pub fn refusal(status: u16, body: &[u8]) -> HubError {
     #[derive(Deserialize)]
@@ -101,13 +93,10 @@ pub fn refusal(status: u16, body: &[u8]) -> HubError {
     }
 }
 
-/// What the command line says when the gateway of the hosted hubs answers in place of a hub
-/// (HMD-059, HM-T31): `https://hub.anima.ing` was the default address of a hub of one's own
-/// and is the hosted service now.
+/// The gateway of the hosted hubs answers in place of a hub (HMD-059, HM-T31).
 pub const HOSTED_ADDRESS: &str = "This address is the hosted Anima.ing hub in a browser. It does not answer the command line. For a hub of your own, give its address with --hub or ANIMA_HUB. For a hosted hub, open https://hub.anima.ing in a browser, or sign in with the Anima.ing application.";
 
-/// The refusal of the gateway of the hosted hubs, `{ "error": { "code", "message" } }`, as an
-/// error of the hub; `None` for each other body. The words of the gateway are not repeated.
+/// Each message is fixed: the gateway's own words are not repeated.
 fn gateway_refusal(body: &[u8]) -> Option<HubError> {
     #[derive(Deserialize)]
     struct Gateway {
@@ -134,8 +123,7 @@ fn gateway_refusal(body: &[u8]) -> Option<HubError> {
     })
 }
 
-/// A body that is not GraphQL: a refusal in front of the GraphQL layer (NET-002), a proxy's
-/// page, or a broken answer. Its status is the only thing to go by.
+/// A refusal in front of the GraphQL layer (NET-002) or a proxy's page: only its status counts.
 fn not_graphql(status: u16) -> HubError {
     let code = match status {
         401 => Code::Unauthenticated,
@@ -185,7 +173,6 @@ mod tests {
             read::<Me>(503, starting).expect_err("refused").code(),
             Code::Unavailable
         );
-        // A body of the same shape with a code that the gateway does not have goes by its status.
         let other = br#"{"error":{"code":"other","message":"x"}}"#;
         assert!(matches!(
             read::<Me>(200, other).expect_err("no data"),
@@ -237,8 +224,6 @@ mod tests {
         );
     }
 
-    /// Every prefix of an answer, and every one-byte change of it, reads to a result: the
-    /// reader trusts no length and never panics on a hostile body.
     #[test]
     fn cmd_003_no_cut_or_changed_answer_makes_the_reader_panic() {
         let body = br#"{"data":{"me":"op"},"errors":[{"message":"m","extensions":{"code":"CONFLICT","fields":[{"field":"f","message":"g"}]}}]}"#;

@@ -1,8 +1,4 @@
 //! Writes the unit file and starts it (MET-019, D-10): the only I/O of `anima-daemon install`.
-//! The decisions are in [`super::plan`], [`super::ready`], [`super::render`],
-//! [`super::sandbox`] and [`super::trust`]; the folders are made and checked in
-//! [`super::folders`], the system token in [`super::token_file`], the session bus found in
-//! [`super::session`] and the commands run by [`super::step`].
 
 use std::fs::{self, File};
 use std::io::{self, Write as _};
@@ -28,7 +24,6 @@ use crate::token_store::{TokenStore, TokenStoreError};
 /// A unit file is public text: the operator and the system manager read it.
 const UNIT_MODE: u32 = 0o644;
 
-/// Where accounts and groups are looked up.
 const PASSWD: &str = "/etc/passwd";
 const GROUP: &str = "/etc/group";
 
@@ -74,25 +69,15 @@ pub enum InstallError {
     },
 }
 
-/// This computer and this run: what `install` needs to know besides the target.
 pub struct Host<'a> {
     pub platform: Platform,
     pub uid: u32,
-    /// The running binary, as `std::env::current_exe` gives it.
     pub program: &'a Path,
-    /// The daemon's own folder as this shell finds it (where `enrol` stored the token).
     pub home: &'a Home,
-    /// Now: a token that expired by then is no token.
     pub now: DateTime<Utc>,
 }
 
-/// Writes the unit for `target` and starts it, running each command through `run`
-/// (`Ok(false)` is a command that exited with a failure). Returns the unit file's path.
-///
-/// Nothing is written until the binary and its folders, the enrolment, the daemon's folder and
-/// (for the system unit) the account are all in order; the unit's own folders are checked
-/// before the file goes in. An existing unit file is replaced whole, so a second run ends the
-/// same as the first.
+/// Nothing is written until every check passes; a second run ends the same as the first.
 ///
 /// # Errors
 /// [`InstallError`] for the first thing that is not in order or does not succeed.
@@ -137,7 +122,6 @@ pub fn install(
     Ok(plan.file)
 }
 
-/// The folders `unit`'s sandbox hides, each with its real path (`None` when it does not exist).
 fn hidden_roots(unit: Unit) -> Result<Vec<(&'static str, Option<PathBuf>)>, InstallError> {
     let mut roots = Vec::new();
     for root in sandbox::hidden_roots(unit) {
@@ -163,10 +147,7 @@ fn read_text(path: &Path) -> Result<String, InstallError> {
     })
 }
 
-/// The user unit's daemon must find a token that has not expired, in the folder this shell
-/// found: else it fails and restarts for ever. A read that waits for the person in the
-/// Keychain is no failure (R-322): the mark tells the app, the unit goes in, and
-/// its daemon waits for the person.
+/// Without an unexpired token here the daemon restarts for ever; a Keychain wait is no failure (R-322).
 fn check_user_ready(plan: &Plan, host: &Host<'_>) -> Result<(), InstallError> {
     ready::same_home(host.home.dir(), &plan.home)?;
     let loaded = TokenStore::open(host.home).load();
@@ -177,8 +158,6 @@ fn check_user_ready(plan: &Plan, host: &Host<'_>) -> Result<(), InstallError> {
     })
 }
 
-/// Whether the daemon will wait for the person in the Keychain, from what the read of the
-/// token gave (its expiry, `None` when there is no token) at `now`.
 fn token_found(
     loaded: Result<Option<DateTime<Utc>>, TokenStoreError>,
     now: DateTime<Utc>,
@@ -192,8 +171,6 @@ fn token_found(
     }
 }
 
-/// Writes `file` as `name` in `dir` (its folder's checked real path) through a temporary file
-/// there, renamed over the old one.
 fn replace_file(file: &Path, dir: &Path, text: &str) -> Result<(), InstallError> {
     let write = |source| InstallError::Write {
         path: file.to_owned(),
@@ -216,10 +193,6 @@ fn replace_file(file: &Path, dir: &Path, text: &str) -> Result<(), InstallError>
     File::open(dir).and_then(|d| d.sync_all()).map_err(write)
 }
 
-/// Runs each step in order; a failure stops the rest unless the step may fail. For a step that
-/// may not run (the two that retire the unit of the old program, R-126), a program that cannot
-/// start or that runs past its deadline is a failure too, so it never stops the install of the
-/// new one. Any other step that cannot run is [`InstallError::Run`].
 pub(super) fn run_steps(
     steps: &[Step],
     mut run: impl FnMut(&Step) -> io::Result<bool>,
@@ -242,10 +215,7 @@ pub(super) fn run_steps(
     Ok(())
 }
 
-/// The one place where an I/O error of a step is dropped: a step that may not run (the unit of
-/// the old program) says nothing to the operator when it does not run, because the old unit is
-/// most often not there, and the steps that follow install the new unit whatever became of it.
-/// This crate has no log; any other step's error is returned.
+/// A step that may not run retires the old program's unit, most often absent, so its error is dropped (R-126).
 fn tolerate(step: &Step, source: io::Error) -> Result<(), InstallError> {
     if step.may_not_run {
         Ok(())
@@ -269,8 +239,6 @@ mod tests {
             .steps
     }
 
-    /// Runs the macOS steps, `bootout` and `bootstrap` answering as given; returns the
-    /// result and the verbs that ran.
     fn run_macos(bootout: bool, bootstrap: bool) -> (Result<(), InstallError>, Vec<String>) {
         let mut ran = Vec::new();
         let result = run_steps(&macos(), |step| {

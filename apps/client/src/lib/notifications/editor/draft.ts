@@ -24,6 +24,7 @@ export interface ChannelDraft {
   /** False: the installation's default template (`template: null`, NOT-007). */
   ownTemplate: boolean;
   template: NotificationTemplateInput;
+  mobile: { url: string; token: string };
   webhook: { url: string; method: WebhookMethod; replaceHeaders: boolean; headers: HeaderDraft[] };
   ntfy: { server: string; topic: string; token: SecretDraft; priority: number };
   email: { host: string; port: string; security: SmtpSecurity; username: string; password: SecretDraft; from: string; to: string };
@@ -47,6 +48,7 @@ export const KINDS: readonly { readonly id: ChannelKind; readonly label: string 
   { id: 'NTFY', label: 'ntfy' },
   { id: 'EMAIL', label: 'Email' },
   { id: 'APPRISE', label: 'Apprise' },
+  { id: 'MOBILE', label: 'Mobile' },
 ];
 
 /** The K1 input defaults. */
@@ -66,6 +68,7 @@ export function newDraft(defaultTemplate: NotificationTemplateInput): ChannelDra
     onByDefault: false,
     ownTemplate: false,
     template: { title: defaultTemplate.title, body: defaultTemplate.body },
+    mobile: { url: '', token: '' },
     webhook: { url: '', method: 'POST', replaceHeaders: true, headers: [] },
     ntfy: { server: NTFY_SERVER, topic: '', token: emptySecret(), priority: NTFY_PRIORITY },
     email: { host: '', port: String(SMTP_PORT.STARTTLS), security: 'STARTTLS', username: '', password: emptySecret(), from: '', to: '' },
@@ -124,6 +127,8 @@ export function storedOf(channel: NotificationChannel): Stored {
  * Header names stay: they are not secret, and K1 returns them.
  */
 export function forgetSecrets(draft: ChannelDraft): void {
+  draft.mobile.url = '';
+  draft.mobile.token = '';
   draft.webhook.url = '';
   for (const header of draft.webhook.headers) header.value = '';
   draft.ntfy.topic = '';

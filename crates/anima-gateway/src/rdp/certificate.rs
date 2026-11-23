@@ -1,5 +1,5 @@
 //! TLS to an RDP device: no chain is checked, as the opening compares the certificate with the
-//! one the operator accepted (SEC-007).
+//! one the operator accepted (SEC-007). The handshake's signatures are checked.
 
 use std::sync::Arc;
 

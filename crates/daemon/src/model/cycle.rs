@@ -1,6 +1,4 @@
-//! One cycle of model work (Section 3, CAG-002, CAG-003): the claim through the work route of
-//! K10, the pure check of the item, the step, and the report. The daemon asks; the hub never
-//! opens a connection. The caller runs a cycle only while the switch at the machine is on.
+//! One cycle of model work (Section 3, CAG-002, CAG-003); the caller runs it only while the switch at the machine is on.
 
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -26,7 +24,6 @@ use super::supervise::{Server, ServerState, Servers};
 use crate::hub::HubClient;
 use crate::hub::answer::{Answer, Cause as HubCause};
 
-/// The model types that this build does; the claim names only these.
 pub const BUILT: [WorkType; 5] = [
     WorkType::ModelReport,
     WorkType::ModelDrain,
@@ -35,7 +32,6 @@ pub const BUILT: [WorkType; 5] = [
     WorkType::ServerStop,
 ];
 
-/// The model work of this node.
 pub struct Node {
     pub device: Uuid,
     pub os: WorkOs,
@@ -46,11 +42,9 @@ pub struct Node {
     pub servers: Servers,
     pub switch_on: bool,
     pub started: Instant,
-    /// The free disk that model work leaves ([`install::DEFAULT_RESERVE`] by default).
     pub reserve: u64,
     /// The daemon program: the launcher of a runtime on Linux (R-331).
     pub launcher: PathBuf,
-    /// The range of loopback ports of the daemon configuration ([`server::PORTS`] by default).
     pub ports: std::ops::RangeInclusive<u16>,
 }
 
@@ -102,8 +96,7 @@ fn architecture_word(architecture: WorkArchitecture) -> &'static str {
 }
 
 impl Node {
-    /// Ends the processes and the cgroups of each server of an earlier run, from their records
-    /// (R-331). The daemon calls it once when it starts, before any claim.
+    /// Ends each server of an earlier run (R-331); the daemon calls it once at start, before any claim.
     ///
     /// # Errors
     /// An I/O error of the state folder.
@@ -111,13 +104,11 @@ impl Node {
         super::tree::sweep(&self.folders.state.join("servers"))
     }
 
-    /// Seconds of the clock of this node.
     #[must_use]
     pub fn now(&self) -> u64 {
         self.started.elapsed().as_secs()
     }
 
-    /// The claim of model work.
     #[must_use]
     pub fn claim(&self) -> Claim {
         Claim {
@@ -149,8 +140,7 @@ impl Node {
         settings: &ServerSettings,
     ) -> Result<Server, Cause> {
         if self.settings.sandbox {
-            // TODO(L1-6 follow-up): the sandbox-exec profile (macOS) and Landlock or bubblewrap
-            // (Linux) are not built; with the setting on, no start (Section 9).
+            // TODO(L1-6 follow-up): the sandbox profiles are not built, so with the setting on no server starts (Section 9).
             return Err(Cause::IsolationFailed);
         }
         releases::accepted(release)?;
@@ -202,8 +192,6 @@ impl Node {
         })
     }
 
-    /// Does the step of `order`.
-    ///
     /// # Errors
     /// The cause of Section 5 of the step.
     pub async fn run(&mut self, order: &Order) -> Result<Option<Value>, Cause> {
@@ -256,7 +244,7 @@ impl Node {
         }
     }
 
-    /// One claim, and the report of the item that it got. `Ok(None)` when the hub had no item.
+    /// `Ok(None)` when the hub had no item.
     ///
     /// # Errors
     /// The cause of the hub when the claim or the report fails.
@@ -271,8 +259,7 @@ impl Node {
             Answer::Failed(cause) => return Err(cause),
         };
         let Some(item) = item else { return Ok(None) };
-        // TODO(L1-5): the memory share and the GPUs come from the device policy and the
-        // inventory; until then no `memoryShare` and no `gpu` pass.
+        // TODO(L1-5): take the memory share and GPUs from the device policy and inventory; until then none pass.
         let machine = ModelMachine {
             switch_on: self.switch_on,
             policy_permits: true,

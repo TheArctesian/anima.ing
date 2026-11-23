@@ -1,5 +1,4 @@
-//! The link documents, typed from K1 at build time (CMD-004). `LinkInvite` derives neither
-//! `Debug` nor `Serialize`: its answer holds an invite (CMD-014).
+//! `LinkInvite` derives neither `Debug` nor `Serialize`: its answer holds an invite (CMD-014).
 
 use graphql_client::GraphQLQuery;
 

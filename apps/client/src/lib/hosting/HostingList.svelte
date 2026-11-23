@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
+  import ContainerPane from '$lib/containers/ContainerPane.svelte';
+  import type { ContainerRow } from '$lib/containers/rows';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Input from '$lib/forms/input/Input.svelte';
   import Select from '$lib/forms/input/Select.svelte';
@@ -23,7 +26,15 @@
   ]);
   const count = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`;
   const sub = (row: ApplicationRow) => (row.what === 'Compose project' ? `Compose project · ${count(row.containers.length, 'container')}` : row.what);
-  const update = (row: ApplicationRow) => (row.newer === null ? '' : row.newer > 0 ? 'Newer image' : 'Up to date');
+  /** HOST-021: a row says Up to date only when the hub said so of each of its containers. */
+  function update(row: ApplicationRow): string {
+    if (row.newer === null) return '';
+    if (row.newer > 0) return 'Newer image';
+    if (row.containers.length === 1) return row.containers[0]?.update?.words ?? 'Not known';
+    return row.containers.every((container) => container.update?.words === 'Up to date') ? 'Up to date' : 'Not known';
+  }
+  /** Whether the pane below the list shows this container's log or its details. */
+  const pressed = (machineId: string, id: string, shown: 'log' | 'detail') => store.pane?.machineId === machineId && store.pane.containerId === id && store.pane.store.selected === id && store.pane.store.shown === shown;
 </script>
 
 {#if store.status === 'failed'}
@@ -31,31 +42,36 @@
 {:else}
   <header class="bar">
     <label class="hidden" for="hosting-search">Find an application or a container</label>
-    <Input id="hosting-search" type="search" icon="carbon:search" placeholder="Find on all machines" bind:value={store.search} />
-    <label class="machine">Machine
-      <Select bind:value={store.machine}>
-        <option value="">All machines</option>
-        {#each store.places as place (place.id)}<option value={place.id}>{place.name}</option>{/each}
-      </Select>
-    </label>
+    <Input id="hosting-search" type="search" icon="carbon:search" placeholder={store.only === null ? 'Find on all machines' : 'Find a container'} bind:value={store.search} />
+    {#if store.only === null}
+      <label class="machine">Machine
+        <Select bind:value={store.machine}>
+          <option value="">All machines</option>
+          {#each store.places as place (place.id)}<option value={place.id}>{place.name}</option>{/each}
+        </Select>
+      </label>
+    {/if}
     <Segmented label="Show" size="sm" {options} bind:value={store.show} />
     <span class="grow"></span>
     <FormButton size="sm" tone="ghost" icon="carbon:update-now" busy={store.updatesStatus === 'loading'} onclick={() => void store.checkUpdates()}>Look for newer images</FormButton>
     <FormButton size="sm" icon="carbon:renew" busy={store.status === 'loading'} onclick={() => void store.load()}>Refresh</FormButton>
   </header>
   <p class="note">The applications are the Compose projects that Anima reads on each machine. Anima installs nothing yet, so each row is read only.</p>
-  {#if store.updatesStatus === 'failed'}<p class="note" role="alert">Anima could not look for newer images on each machine.</p>{/if}
+  {#if store.updatesStatus === 'failed'}<p class="note problem" role="alert">{store.updatesProblem}</p>{/if}
   <table>
     <caption>The applications and the containers of each machine</caption>
     <thead>
-      <tr><th scope="col">Application or container</th><th scope="col">State</th><th scope="col">Updates</th></tr>
+      <tr><th scope="col">Application or container</th><th scope="col">State</th><th scope="col">Updates</th><th scope="col"><span class="hidden">Log and details</span></th></tr>
     </thead>
     {#each groups as group (group.id)}
       <tbody>
         <tr class="group">
-          <th scope="rowgroup" colspan="3">
+          <th scope="rowgroup" colspan="4">
             <span class="name">{group.name}</span>
-            {#if group.empty}· Nothing installed{:else if group.status === 'ready'}· {count(group.rows.length, 'item')} <span class="summary">{group.summary}</span>{/if}
+            {#if group.empty}· Nothing installed{:else if group.status === 'ready'}· {count(group.rows.length, 'item')}{/if}
+            <span class="summary state {group.tone}"><span class="dot" aria-hidden="true"></span>{group.state}</span>
+            {#if group.status === 'ready' && !group.empty}<span class="summary">{group.summary}</span>{/if}
+            {#if group.empty}<a class="summary to" href={resolve('/hosting/catalogue')}>Install from the catalogue</a>{/if}
             {#if group.status === 'loading'}<span class="summary">Reading…</span>{/if}
             {#if group.status === 'failed'}<span class="summary problem">{group.problem}</span>{/if}
           </th>
@@ -72,6 +88,7 @@
             </th>
             <td><span class="state {row.tone}"><span class="dot" aria-hidden="true"></span>{row.state}</span></td>
             <td class="sub">{row.managed ? update(row) : (update(row) || 'Read only')}</td>
+            <td class="action">{#if !opens && row.containers[0] !== undefined}{@render actions(group.id, row.containers[0])}{/if}</td>
           </tr>
           {#if opens && open}
             {#each row.containers as container (container.id)}
@@ -79,6 +96,7 @@
                 <th scope="row">{container.name} <span class="sub">Container of {row.name}</span></th>
                 <td title={container.status}><span class="state {container.tone}"><span class="dot" aria-hidden="true"></span>{container.state}</span></td>
                 <td class="sub">{container.update?.words ?? ''}</td>
+                <td class="action">{@render actions(group.id, container)}</td>
               </tr>
             {/each}
           {/if}
@@ -86,7 +104,14 @@
       </tbody>
     {/each}
   </table>
+  {#if store.pane !== null}<ContainerPane store={store.pane.store} name={store.pane.name} />{/if}
 {/if}
+
+<!-- HOST-001 and HOST-017: the log and the details of one container open in the pane below the list. -->
+{#snippet actions(machineId: string, container: ContainerRow)}
+  <FormButton size="sm" tone="ghost" aria-pressed={pressed(machineId, container.id, 'detail')} aria-label="Details of {container.name}" onclick={() => void store.openDetail(machineId, container.id, container.name)}>Details</FormButton>
+  <FormButton size="sm" tone="ghost" aria-pressed={pressed(machineId, container.id, 'log')} aria-label="Log of {container.name}" onclick={() => void store.openLog(machineId, container.id, container.name)}>Log</FormButton>
+{/snippet}
 
 <style>
   .bar {
@@ -149,7 +174,16 @@
 
   thead th:nth-child(2),
   thead th:nth-child(3) {
-    inline-size: 22%;
+    inline-size: 20%;
+  }
+
+  thead th:nth-child(4) {
+    inline-size: calc(var(--control-lg) * 3 + var(--space-6));
+  }
+
+  .action {
+    text-align: end;
+    white-space: nowrap;
   }
 
   .group th {
@@ -165,6 +199,10 @@
   .summary {
     margin-inline-start: var(--space-3);
     font-weight: var(--weight-regular);
+  }
+
+  .to {
+    color: var(--accent);
   }
 
   /* A row that needs the operator has the wash of its status, as in Routes (HSE-002). */

@@ -1,6 +1,3 @@
-//! The `lsblk` and `/proc/diskstats` readers (MET-027, MET-028), on the pop-os tree, old
-//! util-linux output and hostile text.
-
 use super::captures::*;
 use crate::readings::{Drive, DriveCounters, DriveKind, drives::drives, linux};
 
@@ -20,8 +17,7 @@ fn met_027_pop_os_lists_four_drives_with_root_through_crypt_and_lvm_on_its_nvme_
         found,
         [
             drive("nvme0n1", DriveKind::Nvme, 1_000_204_886_016, &[]),
-            // `/` sits on data-root (LVM) in cryptdata (LUKS) on nvme1n1p3; `/recovery` is a
-            // system image (D-5) and the swap is not a path.
+            // `/recovery` is a system image (D-5) and the swap is not a path.
             drive(
                 "nvme1n1",
                 DriveKind::Nvme,
@@ -51,7 +47,6 @@ fn met_027_old_util_linux_strings_and_one_mountpoint_are_read() {
         drives(LSBLK_OLD).expect("a document"),
         [
             drive("sda", DriveKind::Hdd, 500_107_862_016, &["/"]),
-            // No transport and an empty rotation: neither says, so it is a Disk.
             drive("vda", DriveKind::Disk, 21_474_836_480, &["/srv"]),
         ]
     );
@@ -193,7 +188,6 @@ mod properties {
     use super::*;
     use crate::points::MAX_LABELS;
 
-    /// What every drive list must be, whatever the device printed (MET-002, MET-027).
     fn assert_kept(found: &[Drive]) {
         assert!(found.len() <= MAX_LABELS);
         assert!(found.windows(2).all(|pair| pair[0].name < pair[1].name));

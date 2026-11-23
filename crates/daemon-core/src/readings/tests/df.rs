@@ -1,5 +1,3 @@
-//! The `df -P` reader (MET-002).
-
 use super::{captures::*, *};
 use crate::readings::df;
 
@@ -45,7 +43,6 @@ fn met_002_df_in_kibibyte_blocks_counts_bytes_in_1024s() {
             ..disk("/dev/disk3s1s1", "/", 512_000_000_000, 128_000_000_000)
         }
     );
-    // The "map auto_home" line has a space in its file system name and is skipped.
     assert_eq!(disks.len(), 4);
 }
 

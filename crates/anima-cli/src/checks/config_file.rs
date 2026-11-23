@@ -1,6 +1,4 @@
-//! A check's configuration as a JSON file (`--from-file`): the K1 `CheckConfigInput`, one key
-//! for the kind, such as `{"tcp": {"port": 22}}`. A file is the only way in because an SNMP
-//! community, a password or a bearer token must never be an argument (CMD-025).
+//! A check's configuration comes only from a file: a secret is never an argument (CMD-025).
 
 use std::path::Path;
 
@@ -10,7 +8,6 @@ use crate::failure::{Failure, Hint};
 use crate::input::{self, MAX_DOCUMENT};
 use crate::prompt::Prompter;
 
-/// The kinds of `CheckConfigInput`, by their K1 field names.
 const KINDS: [&str; 12] = [
     "icmp",
     "tcp",
@@ -26,12 +23,8 @@ const KINDS: [&str; 12] = [
     "domainExpiry",
 ];
 
-/// The configuration in `path` (`-` for standard input) as the generated `CheckConfigInput`
-/// of one operation.
-///
 /// # Errors
-/// [`Failure::Input`] for an unreadable file; [`Failure::Usage`] when the JSON is not one
-/// kind's settings. The message names the position, never the content.
+/// [`Failure::Input`] or [`Failure::Usage`]; the message names the position, never the content.
 pub fn read<T: DeserializeOwned>(prompter: Prompter, path: &Path) -> Result<T, Failure> {
     let bytes = input::read(prompter, path, "the check configuration", MAX_DOCUMENT)?;
     let value: serde_json::Value = input::json(

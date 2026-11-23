@@ -1,6 +1,4 @@
-//! The macOS hardware values: `sysctl`, `pmset` and `ioreg` with fixed arguments (CAP-001,
-//! CAP-004, CAP-005). The usable memory of Apple silicon is `iogpu.wired_limit_mb` when the
-//! operator set it, else the default share of macOS (`daemon_core::hardware::parse`).
+//! The macOS hardware values (CAP-001, CAP-004, CAP-005).
 
 use std::time::Duration;
 

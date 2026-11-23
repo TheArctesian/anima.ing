@@ -1,8 +1,6 @@
 //! From readings to pushed points (MET-002, MET-014, MET-015, K8 Sections 4 and 7).
 //!
-//! [`samples`] turns two readings and the time between them into [`Sample`]s, by the one rule
-//! the hub's SSH collector and the daemon share (R-092 D-3). A [`Window`] makes one [`Point`] of
-//! each 10 seconds of samples, and the [`Backlog`] keeps the points until the hub accepts them.
+//! [`samples`] applies the one rule that the hub's SSH collector shares (R-092 D-3).
 //! Nothing here reads the clock, sleeps or does I/O (CQ-021).
 
 mod activity;

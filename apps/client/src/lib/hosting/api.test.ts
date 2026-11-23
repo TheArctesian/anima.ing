@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import type { Hub, HubResult, Variables } from '$lib/hub/hub';
 import { hostingApi } from './api';
 
-const node = (id: string, enabled: boolean) => ({ node: { id, name: id, ssh: { enabled } } });
+const node = (id: string, enabled: boolean) => ({ node: { id, name: id, status: 'UP', ssh: { enabled } } });
 
 /** Two pages of devices; the second is asked with the cursor of the first. */
 const PAGES: Readonly<Record<string, unknown>> = {
@@ -22,7 +22,7 @@ function pagedHub(asked: (string | null)[]): Pick<Hub, 'request'> {
 it('HSE-002: the machines are the devices with SSH on, read over all the pages of the hub', async () => {
   const asked: (string | null)[] = [];
   const result = await hostingApi(pagedHub(asked)).machines();
-  expect(result).toEqual({ ok: true, value: [{ id: 'atlas', name: 'atlas' }, { id: 'nas', name: 'nas' }] });
+  expect(result).toEqual({ ok: true, value: [{ id: 'atlas', name: 'atlas', state: 'UP' }, { id: 'nas', name: 'nas', state: 'UP' }] });
   expect(asked).toEqual([null, 'c1']);
 });
 

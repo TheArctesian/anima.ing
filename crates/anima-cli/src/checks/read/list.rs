@@ -1,5 +1,3 @@
-//! `anima check list --device <id-or-name>`: the checks of one device with their key settings.
-
 use super::documents::{CheckList, check_list};
 use crate::checks::settings::one_line;
 use crate::devices::get::resolve;

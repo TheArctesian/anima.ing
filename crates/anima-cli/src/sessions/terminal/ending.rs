@@ -1,6 +1,4 @@
 //! How a terminal session ended, and what `anima ssh` makes of it (K4 Sections 8.4 and 8.6).
-//! Pure. The recorded `endReason` is authoritative; until it is known, the `end` message,
-//! then the close code. A connection this side lost counts as lost whatever the hub recorded.
 
 use crate::failure::Failure;
 use crate::hub::{Code, HubError};
@@ -35,7 +33,6 @@ const NAMES: [(&str, EndReason); 9] = [
 ];
 
 impl EndReason {
-    /// The reason K1 names `name`, or `None` for a name this program does not know.
     #[must_use]
     pub fn parse(name: &str) -> Option<Self> {
         NAMES
@@ -52,8 +49,7 @@ impl EndReason {
             .map_or("", |(name, _)| name)
     }
 
-    /// The single reason a close code stands for (K4 Section 8.6); 1000 and 1011 stand for
-    /// more than one, so they give none.
+    /// 1000 and 1011 stand for more than one reason, so they give none (K4 Section 8.6).
     #[must_use]
     pub const fn of_close(code: u16) -> Option<Self> {
         match code {
@@ -67,30 +63,20 @@ impl EndReason {
     }
 }
 
-/// Why this side's loop stopped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Stop {
-    /// The hub closed the socket.
     Closed,
-    /// Nothing came for 15 seconds, or a send stalled or failed.
     Lost,
-    /// This side ended it: a signal (`SIGTERM`, `SIGHUP`, `SIGINT`) or a closed output.
     Left,
 }
 
-/// What the link saw at the end.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Ending {
     pub stop: Stop,
-    /// The reason in the hub's `end` message, when one came.
     pub said: Option<EndReason>,
-    /// The hub's close code, when it sent one.
     pub close: Option<u16>,
 }
 
-/// What the run ends with, given the `recorded` reason (from `endSession`) and the link's
-/// `ending`, for the device named `device`.
-///
 /// # Errors
 /// A [`Failure`] for every end the operator did not choose and the shell did not make.
 pub fn verdict(recorded: Option<EndReason>, ending: Ending, device: &str) -> Result<(), Failure> {

@@ -14,6 +14,7 @@
 mod apprise;
 mod apprise_url;
 mod email;
+mod mobile;
 mod ntfy;
 mod outcome;
 mod rules;
@@ -53,6 +54,7 @@ pub(super) struct Template {
 /// The settings of one kind, as the operator sent them.
 pub(super) enum SettingsDraft {
     Webhook(WebhookDraft),
+    Mobile(WebhookDraft),
     Ntfy(NtfyDraft),
     Email(EmailDraft),
     Apprise(AppriseDraft),
@@ -87,6 +89,7 @@ pub(super) fn prepare_new(draft: Draft) -> Result<Prepared, Vec<FieldError>> {
     check_common(&mut problems, &draft);
     let outcome = match draft.settings {
         SettingsDraft::Webhook(input) => webhook::new(input),
+        SettingsDraft::Mobile(input) => mobile::prepare(webhook::new(input)),
         SettingsDraft::Ntfy(input) => ntfy::new(input),
         SettingsDraft::Email(input) => email::new(input),
         SettingsDraft::Apprise(input) => apprise::new(input),
@@ -115,6 +118,9 @@ pub(super) fn prepare_change(
     let outcome = match (before, draft.settings) {
         (Settings::Webhook(before), SettingsDraft::Webhook(input)) => {
             webhook::change(before, stored.map(Secrets::into_webhook), input)
+        }
+        (Settings::Mobile(before), SettingsDraft::Mobile(input)) => {
+            mobile::change(before, stored.map(Secrets::into_webhook), input)
         }
         (Settings::Ntfy(before), SettingsDraft::Ntfy(input)) => {
             ntfy::change(before, stored.map(Secrets::into_ntfy), input)

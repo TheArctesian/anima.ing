@@ -1,5 +1,3 @@
-//! The `maintenance` tool set: windows in which devices, checks or tags raise no alert.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

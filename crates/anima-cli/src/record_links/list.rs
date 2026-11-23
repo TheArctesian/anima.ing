@@ -1,5 +1,3 @@
-//! `anima record-link list <record>`.
-
 use super::documents::{RecordLinkList, record_link_list};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

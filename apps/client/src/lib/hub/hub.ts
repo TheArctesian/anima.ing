@@ -10,7 +10,7 @@ import { createRecentCopy } from './recent/recent';
 export type { HubAddress } from './address';
 export { NO_HUB_ADDRESS, isOnThisComputer, parseHubAddress } from './address';
 export type { FieldError, HubCode, HubError, HubResult } from './error';
-export { TOKEN_UNREADABLE, UNREACHABLE, noAnswer } from './error';
+export { TOKEN_UNREADABLE, UNREACHABLE, needsNewerHub, noAnswer } from './error';
 export { GATEWAY_ENTER_PATH, gatewayInFront, gatewaySignOut, mayEnterGatewayNow } from './gateway/gateway';
 export type { TokenProvider } from './request';
 export type { LiveStatus } from './status/connection';

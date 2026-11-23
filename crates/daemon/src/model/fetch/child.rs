@@ -1,9 +1,4 @@
-//! The child fetch process (Section 4): the daemon program in the mode [`FETCH_MODE`]. It
-//! refuses to work with any environment variable, reads its order as one line of JSON on its
-//! standard input, and ends when that input closes (the daemon ended) or, on Linux, when its
-//! parent changes. It downloads the archive into an unnamed file, verifies the SHA-256 before
-//! it opens the archive, unpacks it within a deadline into the folder that the daemon made, and
-//! writes one word on its standard output. It holds no token, no hub origin and no proxy.
+//! The child fetch process (Section 4): it holds no token, no hub origin and no proxy, and verifies the SHA-256 before it opens the archive.
 
 use std::fs::File;
 use std::io::{BufRead as _, BufReader, Read as _, Seek as _, SeekFrom, Stdin, Write as _};
@@ -20,10 +15,9 @@ use crate::model::{folders, unpack};
 /// The first argument of the program in this mode.
 pub const FETCH_MODE: &str = "__model-fetch";
 
-/// The exit code of a child that ends because the daemon ended.
 const PARENT_GONE: i32 = 3;
 
-/// Runs the child and exits: code 0 with a reply word, or another code at a fault.
+/// Exits 0 with a reply word, or another code at a fault.
 pub fn run() -> ! {
     let word = reply(work());
     let mut out = std::io::stdout().lock();
@@ -61,16 +55,12 @@ fn work() -> Result<(), Cause> {
     within_deadline(move || finish(archive, &sha, &order, checked))
 }
 
-/// Ends this process when the daemon ends: on Linux by the parent-death signal and a check of
-/// the parent, and on each system when the standard input of the daemon closes.
 fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
     #[cfg(target_os = "linux")]
     {
         use rustix::process::{Signal, getppid, set_parent_process_death_signal};
-        // The signal is set first, then the parent is checked, so a daemon that ends between
-        // the two is still seen. On Linux the signal fires when the THREAD that spawned this
-        // child exits, not the process: the daemon must spawn it from a long-lived worker of
-        // its async runtime, never from `spawn_blocking`.
+        // The signal is set before the parent check, so a daemon that ends between the two is still seen.
+        // The signal fires when the spawning thread ends, so the daemon spawns this from a long-lived worker.
         if set_parent_process_death_signal(Some(Signal::KILL)).is_err() {
             std::process::exit(PARENT_GONE);
         }
@@ -95,8 +85,7 @@ fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
     });
 }
 
-/// Runs `work` on `runtime` and gives up at `deadline`: `None` past it. The timer is made in
-/// the runtime; a timer made before `block_on` has no reactor and panics.
+/// The timer is made inside the runtime; one made before `block_on` has no reactor and panics.
 fn within<T>(
     runtime: &tokio::runtime::Runtime,
     deadline: std::time::Duration,
@@ -105,8 +94,7 @@ fn within<T>(
     runtime.block_on(async { tokio::time::timeout(deadline, work).await.ok() })
 }
 
-/// Runs `unpack` on a thread and waits at most [`UNPACK_DEADLINE`]; past it the child gives
-/// back `archive_rejected`, and its exit ends the thread.
+/// Past [`UNPACK_DEADLINE`] the child gives back `archive_rejected`, and its exit ends the thread.
 fn within_deadline(
     unpack: impl FnOnce() -> Result<(), Cause> + Send + 'static,
 ) -> Result<(), Cause> {
@@ -117,9 +105,6 @@ fn within_deadline(
         .map_err(|_| Cause::ArchiveRejected)?
 }
 
-/// Verifies the SHA-256 `sha` of a downloaded `archive`, then unpacks it into the folder of
-/// `order`. Blocking.
-///
 /// # Errors
 /// `checksum` when the SHA-256 differs; the causes of [`unpack::unpack`].
 pub fn finish(

@@ -259,7 +259,7 @@ that owns the area.
 | SF-325 | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
 | SF-330 | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (2026-11-22, relayed; R-384: a Full access agent adds a route with no approval, one rule for each caller). The rule of `bb0bce295` that only a browser token adds a public route goes; the consent at the machine (OD-HOST-43) stays |
 | SF-391 | The consent at the machine is the one guard left for a public route, and nothing sets it yet. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
-| SF-392 | On a hosted hub a route is added with no second factor. Medium | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (R-430) |
+| SF-392 | On a hosted hub a route is added with no second factor. Medium | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (R-430; option B, 2026-11-23) |
 | SF-331 | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-332 | The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-327 | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `68c9a7ab5`) |
@@ -304,6 +304,7 @@ that owns the area.
 | SF-240 | Behind the gateway each browser has the loopback address of the container. Low | The browser session of a hosted hub (task HM-T32) | Open |
 | SF-341 | An account with a known password at the first start, on a port that each local user reaches | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open, narrowed (R-371) |
 | SF-353 | Each local user of the machine reaches the port of the program on `127.0.0.1` | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open, narrowed (R-371) |
+| SF-393 | A hosted hub reaches the hubs of other accounts and the host of the pool. High | The hubs of the hosted pool (R-030, R-129) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -2508,11 +2509,13 @@ Where: `crates/hub/src/work/routes/graphql.rs` (`signed_in_for_routes`).
 
 Effect, and who can cause it: A person or an agent with the login or browser token of a hosted account. Effect: a route is added with the sign-in alone. A public route still waits for the consent at the machine, which nothing sets (SF-391). Since R-390 (branch `hosted/routes-private-consent`) a private route waits for no consent and reaches a port of a machine, also of a database (R-391), for each node of the network of Anima, guarded by the sign-in alone (SF-245).
 
-Severity: raised from Low to Medium by the review of R-390 and R-391 (2026-11-22): with them, the sign-in alone makes a database reachable from each node, containers included. The acceptance of R-430 named a private route guarded by the sign-in alone, not a database; the operator confirms it again.
+Severity: raised from Low to Medium by the review of R-390 and R-391 (2026-11-22): with them, the sign-in alone makes a database reachable from each node, containers included. The acceptance of R-430 named a private route guarded by the sign-in alone, not a database, so the operator was asked again.
+
+The ruling of the operator (2026-11-23): option B, accept as is. He did not choose option A (ask at the machine for a database port also on a private route) or option C (a private route answers only the devices of the account). The cost that he accepted: "on a hosted hub, the sign-in alone, including an agent's login token, makes a database reachable from every node of the Anima network, containers included, with no question at the machine". SF-245 stays Open.
 
 Mitigation now: The hub knows that it is hosted only from how it was started (`ANIMA_HOSTED_CLOUD_KEY_FILE`), never from a request. API keys and builder tokens stay refused. A public route still waits for the consent at the machine.
 
-State: Accepted by the operator (R-430, 2026-11-23).
+State: Accepted by the operator on 2026-11-23 (R-430, and option B for the database ports of R-390 and R-391). Severity stays Medium.
 
 ### SF-328: The protocol of a public stream was only a label that the person picked. Medium
 
@@ -4493,6 +4496,36 @@ Mitigation now: The words of the system are in each text.
 Three more from the reviews of step W1 (branch `threads/git-wired`): the copy of the packs of a thread looks at only the first 16 names, so an agent can push its own pack out; a pack run that fails early can leave its folder in the worktree; a repository whose path has `:` cannot make a pack (the refusal says so).
 
 State: Open. Found by separate reviewers on 2026-11-23 in the branch `threads/git-copy-limit` (commits `d44e975e4` to `13bd13b09`) and `threads/git-wired` (`188a196e0`).
+
+## The hubs of the hosted pool (2026-11-23)
+
+### SF-393: A hosted hub reaches the hubs of other accounts and the host of the pool. High
+
+Requirements: R-030; R-129; P3-003.
+
+What it is: The hubs of the pool start with no `ANIMA_PROBE_DENY`; their log says "ANIMA_PROBE_DENY is empty". The address policy of the hub (`AddressPolicy`) then permits each private range. On `pool-hil-1`, the hub containers are on the Incus bridge `incusbr0`: 10.130.6.0/24 and fd42:4b84:1ad:7923::/64, with the host at 10.130.6.1. A variable set in the unit of the hub does not help: `anima-local-hub` starts the hub with an empty environment of its own (`members::hosted`) and did not pass `ANIMA_PROBE_DENY`.
+
+Where: `crates/anima-local-hub/src/members.rs` (`hosted`), `crates/anima-local-hub/src/arguments.rs`; `crates/hub/src/fleet/targets.rs` (`AddressPolicy`); the unit `deploy/hub-image/anima-hub.service` of the repository of the cloud service.
+
+Effect, and who can cause it: Each signed-in account of a hosted hub, a person or an agent with its login token. Effect: a session tunnel gives raw TCP from the hub to the hubs of other accounts and to the host (its SSH, DNS and HTTPS on the bridge); a check, a webhook, a source or the target of a route sends requests there. Through the DNS of the bridge, a check learns the names and the addresses of the hubs of other accounts. The HTTP of each hub listens on its loopback only, so a hub does not reach the API of another hub, and the other hubs still ask for their own sign-in. Not tried on the live server.
+
+Severity: High. There is no wall between the accounts on the bridge, and R-030 names this case.
+
+The fix to make: Two parts, both needed.
+- Public repository, branch `hosted/local-hub-probe-deny`: `anima-local-hub run --probe-deny <networks>` passes the list to the hub as `ANIMA_PROBE_DENY`, and it refuses a blank list. A separate reviewer read it and found no finding of High or above.
+- Repository of the cloud service, pull request `probe-deny` (TheArctesian/anima-cloud#5): the script `probe-deny.sh` reads the networks of the bridge at each start and adds the addresses of the host from the profile key `environment.ANIMA_HOST_ADDRESSES`. The unit passes them with `--probe-deny`.
+- Existing hubs keep the unit and the programs of their image, so each one gets the new programs, the script and the unit, and a restart of the instance.
+
+- The server, in the same pull request (`deploy/bridge-wall/`): a program in the hub container that is not the hub (a Docker application of the account, `guacd`, the link) does not use the address policy. Port isolation on the network device of each hub stops traffic between containers. A table of nftables on the host takes only DNS, DHCP, DHCPv6 and ICMPv6 from the bridge. No hub runs Docker on 2026-11-23, so this part is not a live risk yet. The operator approves both parts in one deploy.
+- After the deploy, branch `hosted/hosted-hub-needs-probe-deny`: a hosted hub refuses to start with no networks to refuse (Low of the review of 2026-11-23). It merges only after the new unit is on each hub.
+
+A note from the review, not a change: a network written in the IPv6 form of an IPv4 address (`::ffff:10.130.6.0/120`) in `ANIMA_PROBE_DENY` does not refuse the IPv4 address. `AddressPolicy::permits` makes the target canonical but not the networks of the list. `probe-deny.sh` writes IPv4 networks in their IPv4 form. Write them so by hand too.
+
+The deploy (2026-11-23, by the orchestrating session with the approval of the operator, relayed): both hubs of `pool-hil-1` have the deny list and pass the checks of the deploy steps. One fault was found and corrected at the deploy. `probe-deny.sh` passed the route of the DHCP gateway, `10.130.6.1` with no prefix (`ip -o -4 route show dev eth0 scope link` lists it). The hub refused the whole list ("invalid configuration"), so the first hub was down about 2 minutes. Corrected on the server and in the repository of the cloud service: a bare address gets /32 or /128 (branch `probe-deny-bare-address`, `b524aa0`). The script now also names an entry that is not a network and stops, and a test runs it with the answers of `ip` on `pool-hil-1` (branch `probe-deny-checked`, `945111c`). Neither branch is merged; the operator decides.
+
+Mitigation now: the deny list of the hub on each hub of `pool-hil-1` since 2026-11-23. The ruling of the operator on 2026-11-23, relayed: "B: full fix only". There is no interim block on the server, by his choice; nothing on the server changes until the full fix is ready and he approves the deploy.
+
+State: Open. Found by the orchestrating session on 2026-11-23 from the start warning of the hubs; confirmed from the code on 2026-11-23.
 
 ## Closed
 

@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # Restore drill (DB-007). Usage: restore-check.sh <dump>
-# Restores the dump into anima_restore_check, compares its row counts with the manifest
-# <dump>.counts that backup.sh wrote from the same snapshot, checks the privileges of
-# anima_runtime on the logs, and drops the check database. It never reads the live database,
-# so it can run at any time. It prints table names and counts, never row contents.
+# It never reads the live database, so it can run at any time; it prints table names and counts, never rows.
 set -euo pipefail
 umask 077
 

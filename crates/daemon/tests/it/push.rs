@@ -1,4 +1,4 @@
-//! The push loop against the fake hub: every K8 Section 6 answer, the rhythm, the buffer.
+//! K8 Section 6.
 
 use std::time::Duration;
 
@@ -150,7 +150,6 @@ async fn k8_6_a_changed_token_store_ends_the_stop_at_once() {
     hub.queue_push([Reply::refuse(RefusalCode::TokenRefused)]);
     feed(&mut rig, 1, 2);
     rig.pusher.push_due(at(30)).await;
-    // The operator enrols again: another process stores a new token.
     let fresh = Credential {
         token: token(9),
         expires_at: at(0) + year(),
@@ -170,7 +169,6 @@ async fn met_020_a_token_bound_to_another_hub_is_never_adopted_and_never_sent() 
     hub.queue_push([Reply::refuse(RefusalCode::TokenRefused)]);
     feed(&mut rig, 1, 2);
     rig.pusher.push_due(at(30)).await;
-    // The store now holds a token that belongs to another hub.
     let foreign = Credential {
         token: token(9),
         expires_at: at(0) + year(),
@@ -216,7 +214,6 @@ async fn k8_7_after_a_failure_the_wait_is_2_seconds_doubling_to_60_then_the_rhyt
     );
 }
 
-/// T8a N1: the waits after failures move with the pusher's random source, 20 % either way.
 #[tokio::test]
 async fn k8_7_the_wait_after_a_failure_is_spread_by_the_random_source() {
     let hub = FakeHub::start().await;
@@ -232,7 +229,7 @@ async fn k8_7_the_wait_after_a_failure_is_spread_by_the_random_source() {
 
 #[tokio::test]
 async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
-    // Reserve the port while the hub is down. Connections are refused until it listens.
+    // The port is reserved but not listening, so connections are refused.
     let socket = TcpSocket::new_v4().expect("a socket");
     socket.bind(([127, 0, 0, 1], 0).into()).expect("a port");
     let address = socket.local_addr().expect("addr");
@@ -313,7 +310,6 @@ async fn met_014_a_point_older_than_59_minutes_is_dropped_before_a_send() {
     feed(&mut rig, 1, 2);
     rig.pusher.push_due(at(30)).await;
     feed(&mut rig, 3600, 1);
-    // Ten hours after the first two points, 10 s after the third.
     rig.pusher.push_due(at(36_000)).await;
     let last = hub.seen("push").pop().expect("a push");
     assert_eq!(pushed_times(&last.body), [36_000]);

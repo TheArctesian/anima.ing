@@ -1,4 +1,4 @@
-//! `anima vpn status`: the VPN as the hub's own node sees it (VPN-005, VPN-008).
+//! VPN-005, VPN-008.
 
 use std::fmt::Write as _;
 

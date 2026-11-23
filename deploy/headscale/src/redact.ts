@@ -1,8 +1,6 @@
 /**
- * Makes a captured Headscale or Tailscale JSON file safe to commit (vpn-build.md rule 0.6,
- * LOG-007). Pure. Node N gets `nodekey:`, `mkey:` and `discokey:` followed by N as 64 hex digits,
- * everywhere its keys appear (values and map keys). A pre-auth key becomes `REDACTED-PREAUTH-KEY`.
- * Anything that still looks like a key afterwards is an error: the capture fails, nothing leaks.
+ * Makes a captured Headscale or Tailscale JSON file safe to commit (LOG-007): node N's keys become N as 64 hex
+ * digits, and anything that still looks like a key afterwards is an error.
  */
 
 /** Node N is the position of its host name here; the harness joins its containers in this order. */
@@ -33,7 +31,6 @@ function numberOf(element: Tree): number {
   return index + 1;
 }
 
-// Each element that carries a key and a host name gives the real key a placeholder.
 function placeholders(value: unknown, found = new Map<string, string>()): Map<string, string> {
   if (Array.isArray(value)) value.forEach((entry) => placeholders(entry, found));
   else if (isTree(value)) {
@@ -63,7 +60,6 @@ function assertClean(text: string, allowed: ReadonlySet<string>): void {
   if (/hskey-|\/register\//.test(text)) throw new RedactError('a pre-auth key or auth ID is still in the output');
 }
 
-/** The captured JSON text with every key replaced; throws RedactError when a secret remains. */
 export function redact(text: string): string {
   const tree = JSON.parse(text) as Json;
   const found = placeholders(tree);

@@ -1,11 +1,7 @@
-//! The tunnel socket (K4 Sections 8 and 9, CMD-003): one WebSocket to the hub's `tunnelPath`,
-//! over rustls with the web PKI roots (as the GraphQL request), with the single-use ticket in
-//! its query and nowhere else.
-//!
-//! The ticket is the only secret here (API-009). It lives in a [`Ticket`] that never prints and
-//! in the request URL, which is built in a wiped buffer; no error holds the URL, the ticket or
-//! a library error's text (CMD-014, LOG-007). The hub's frames are untrusted: messages are
-//! bounded, and the caller parses every text message against K4's closed set.
+//! The tunnel socket (K4 Sections 8 and 9, CMD-003).
+//! The ticket is the only secret (API-009): it goes only into the query of the request URL,
+//! which is built in a wiped buffer, and no error holds it (CMD-014, LOG-007).
+//! The hub's frames are untrusted: the caller parses every text message against K4's closed set.
 
 use std::fmt;
 use std::time::Duration;
@@ -34,12 +30,9 @@ const CLOSE_WAIT: Duration = Duration::from_secs(2);
 /// The longest ticket token taken; K4's are 43 characters.
 const MAX_TOKEN: usize = 128;
 
-/// Which tunnel a ticket opens.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tunnel {
-    /// `/terminal`, subprotocol `anima-terminal` (K4 Section 8).
     Terminal,
-    /// `/files`, subprotocol `anima-files` (K4 Section 9).
     Files,
 }
 
@@ -58,8 +51,7 @@ impl Tunnel {
         }
     }
 
-    /// The largest message taken from the hub: terminal output comes in SSH packets of at
-    /// most 32 KiB; a listing of 10 000 entries with long names fits in 16 MiB.
+    /// SSH packets are at most 32 KiB; a listing of 10 000 entries with long names fits in 16 MiB.
     const fn max_message(self) -> usize {
         match self {
             Self::Terminal => 1024 * 1024,
@@ -75,11 +67,10 @@ pub struct Ticket {
 }
 
 impl Ticket {
-    /// The ticket `startSession` or `openFiles` gave, when its path is `tunnel`'s and its token
-    /// is base64url (so it goes into a query as it is).
+    /// The token must be base64url, so it goes into a query as it is.
     ///
     /// # Errors
-    /// [`TunnelError::BadTicket`] otherwise.
+    /// [`TunnelError::BadTicket`] for a token or a path that does not fit.
     pub fn new(token: String, tunnel_path: &str, tunnel: Tunnel) -> Result<Self, TunnelError> {
         let token = Zeroizing::new(token);
         let plain = token
@@ -99,18 +90,15 @@ impl fmt::Debug for Ticket {
     }
 }
 
-/// One message from the hub.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Frame {
     Text(String),
     Binary(Vec<u8>),
-    /// A WebSocket ping or pong: the hub is alive, nothing to act on.
     Alive,
-    /// The hub closed the socket, with its close code when it sent one.
     Closed(Option<u16>),
 }
 
-/// How a tunnel failed. No variant holds the URL, the ticket or a library's error text.
+/// No variant holds the URL, the ticket or a library's error text.
 #[derive(Debug, thiserror::Error)]
 pub enum TunnelError {
     #[error("The hub gave a tunnel ticket this program cannot use.")]
@@ -157,13 +145,12 @@ impl From<TunnelError> for HubError {
     }
 }
 
-/// An open tunnel. Dropping it drops the connection; [`Socket::close`] closes it cleanly.
 pub struct Socket {
     inner: WebSocketStream<Box<dyn Wire>>,
 }
 
 impl Hub {
-    /// Opens the tunnel `ticket` is for, within `wait` (the hub opens SSH before it answers).
+    /// `wait` covers the hub opening SSH before it answers.
     ///
     /// # Errors
     /// [`TunnelError`]: no connection, a refusal before the upgrade, or the wrong subprotocol.
@@ -187,7 +174,6 @@ impl Hub {
     }
 }
 
-/// The WebSocket upgrade with the ticket in the query and the tunnel's subprotocol.
 async fn upgrade(url: &Url, ticket: &Ticket, wire: Box<dyn Wire>) -> Result<Socket, TunnelError> {
     let scheme = if url.scheme() == "https" { "wss" } else { "ws" };
     // The origin has no user name (CMD-013), so the authority is the host and any port.
@@ -245,16 +231,12 @@ impl Socket {
         }
     }
 
-    /// Sends a text message.
-    ///
     /// # Errors
     /// [`TunnelError::Stalled`] after [`SEND_WAIT`]; [`TunnelError::Broken`].
     pub async fn send_text(&mut self, text: &str) -> Result<(), TunnelError> {
         self.send(Message::text(text)).await
     }
 
-    /// Sends a binary message.
-    ///
     /// # Errors
     /// As [`Socket::send_text`].
     pub async fn send_binary(&mut self, bytes: Vec<u8>) -> Result<(), TunnelError> {
@@ -269,7 +251,6 @@ impl Socket {
         }
     }
 
-    /// Closes with 1000 and waits briefly for the hub's close; best effort.
     pub async fn close(mut self) {
         let frame = CloseFrame {
             code: CloseCode::Normal,

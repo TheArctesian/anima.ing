@@ -1,5 +1,4 @@
-//! `config.json` in the configuration folder (CMD-015): the named contexts and the current one.
-//! It holds no secret; tokens live in the key store.
+//! `config.json` (CMD-015) holds no secret; tokens live in the key store.
 
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -26,10 +25,7 @@ pub struct Config {
     pub mcp: BTreeMap<String, McpPermissions>,
 }
 
-/// The state (`allow`, `ask` or `off`) of each `anima mcp` tool for one hub: the operator's
-/// explicit choices by tool name, and a default for each kind (`anima mcp permissions set`,
-/// MCP-002, MCP-012). A tool with no entry takes its kind's default; a kind with no default
-/// takes the built-in one (read `allow`, change `off`). Names and states only; no secret.
+/// A tool with no entry takes its kind's default, then the built-in one (MCP-002, MCP-012).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct McpPermissions {
     /// The default of the read tools.
@@ -41,8 +37,7 @@ pub struct McpPermissions {
     /// Explicit choices, by tool name.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub tools: BTreeMap<String, String>,
-    /// The form before MCP-012: the sets offered (empty: all). Read once and turned into
-    /// explicit choices; never written.
+    /// The form before MCP-012, read once into explicit choices and never written.
     #[serde(default, skip_serializing)]
     pub toolsets: Vec<String>,
     /// The form before MCP-012: the sets whose change tools were offered. As `toolsets`.
@@ -50,7 +45,6 @@ pub struct McpPermissions {
     pub write: Vec<String>,
 }
 
-/// One named hub.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Context {
     pub hub: String,
@@ -74,8 +68,6 @@ pub enum ConfigError {
 }
 
 impl Config {
-    /// The file in `dir`; an empty configuration when there is none.
-    ///
     /// # Errors
     /// [`ConfigError`] when it cannot be read or is not a configuration.
     pub fn load(dir: &Path) -> Result<Self, ConfigError> {
@@ -95,8 +87,6 @@ impl Config {
         serde_json::from_slice(&bytes).map_err(|_| ConfigError::Invalid { path })
     }
 
-    /// Writes the configuration to `dir`, whole, by rename.
-    ///
     /// # Errors
     /// [`ConfigError::Write`] when it cannot be written.
     ///
@@ -111,10 +101,8 @@ impl Config {
         })
     }
 
-    /// The hub of context `name`, or `None` when there is no such context.
-    ///
     /// # Errors
-    /// [`ConfigError::BadHub`] when its hub text is not an origin (the file was edited by hand).
+    /// [`ConfigError::BadHub`] when its hub text is not an origin.
     pub fn hub_of(&self, name: &str) -> Result<Option<Origin>, ConfigError> {
         let Some(context) = self.contexts.get(name) else {
             return Ok(None);

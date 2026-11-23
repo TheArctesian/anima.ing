@@ -1,5 +1,4 @@
-//! Output captured from a Linux 6.x host and a macOS 15 host. The GPU outputs say in their own
-//! comments which are captured and which are built from the documented format.
+//! Output captured from a Linux 6.x host and a macOS 15 host, unless an item says it is constructed.
 
 pub const PROC_STAT: &[u8] = b"cpu  4705 356 584 3699 23 23 0 0 0 0\n\
 cpu0 1393 87 149 982 5 12 0 0 0 0\n\
@@ -66,9 +65,6 @@ devfs                  215       215         0   100%    /dev\n\
 /dev/disk3s5     500000000 250000000 200000000    56%    /System/Volumes/Data\n\
 map auto_home            0         0         0   100%    /System/Volumes/Data/home\n";
 
-/// `df -P -k` of a Mac with one internal drive (container `disk3` with the system, data,
-/// recovery and `/nix` volumes, and the small container `disk1` of the system's boot files),
-/// an iOS app's wrapper, a simulator runtime, an external drive (`disk4`) and a network share.
 pub const DF_MACOS_APFS: &[u8] =
     b"Filesystem     1024-blocks      Used Available Capacity  Mounted on\n\
 /dev/disk3s1s1  1948404040   13484216   89763340    14%    /\n\
@@ -107,8 +103,7 @@ Load Avg: 1.23, 1.45, 1.67\n\
 CPU usage: 5.26% user, 10.52% sys, 84.22% idle\n\
 SharedLibs: 600M resident, 100M data, 50M linkedit.\n";
 
-/// Captured on pop-os (the operator's Linux machine, one RTX A5000) on 2026-11-07 with the
-/// design spec §6.6 `nvidia-smi` command, unedited.
+/// Captured on pop-os (one RTX A5000) on 2026-11-07 with the design spec §6.6 `nvidia-smi` command, unedited.
 pub const NVIDIA_SMI: &[u8] = b"0, NVIDIA RTX A5000, 12, 735, 24564, 61, 30.52\n";
 
 /// Constructed from the documented format: two GPUs, one with a comma in its name.
@@ -137,15 +132,13 @@ pub const INTEL_GPU_TOP_ARRAY: &[u8] = b"[\n\
 \"Video/0\": {\"busy\": 33.25, \"unit\": \"%\"}}\n\
 }\n]\n";
 
-/// Constructed from the documented format (older `intel_gpu_top -J`): objects separated by
-/// commas, no brackets, the last one cut off.
+/// Constructed from the documented format (older `intel_gpu_top -J`): no brackets, the last object cut off.
 pub const INTEL_GPU_TOP_STREAM_CUT: &[u8] =
     b"{\"engines\": {\"Render/3D/0\": {\"busy\": 10.0}}},\n\
 {\"engines\": {\"Render/3D/0\": {\"busy\": 60.0}}},\n\
 {\"engines\": {\"Render/3D/0\": {\"bus";
 
-/// Constructed from the documented format: two accelerators, as `ioreg -r -d 1 -c
-/// IOAccelerator` prints them (properties trimmed to the ones read and a few neighbours).
+/// Constructed from the documented format of `ioreg -r -d 1 -c IOAccelerator`, properties trimmed.
 pub const IOREG_ACCELERATOR: &[u8] = b"+-o AGXAcceleratorG14X  <class AGXAcceleratorG14X, id 0x100000436, registered, matched, active, busy 0 (0 ms), retain 28>\n\
   {\n\
     \"IOClass\" = \"AGXAcceleratorG14X\"\n\
@@ -161,10 +154,7 @@ pub const IOREG_ACCELERATOR: &[u8] = b"+-o AGXAcceleratorG14X  <class AGXAcceler
   }\n\
 \n";
 
-/// Constructed from the operator's `lsblk` on pop-os (2026-11-12) in the form of util-linux 2.39
-/// `lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINTS`: a 22 TB and an 8 TB disk with one
-/// unmounted partition each, compressed swap, an unmounted `NVMe` drive, and the system `NVMe` drive
-/// with `/` on LVM in a LUKS container and swap in another (MET-027).
+/// Constructed from the operator's `lsblk` on pop-os (2026-11-12) in the form of util-linux 2.39 (MET-027).
 pub const LSBLK_POP_OS: &[u8] = br#"{
    "blockdevices": [
       {"name":"sda", "type":"disk", "size":24000277250048, "rota":true, "tran":"sata", "mountpoints":[null],
@@ -207,8 +197,7 @@ pub const LSBLK_POP_OS: &[u8] = br#"{
    ]
 }"#;
 
-/// Constructed from the documented format of util-linux before 2.33, `-o ...,MOUNTPOINT`:
-/// every value a string, one mount point per device.
+/// Constructed from the documented format of util-linux before 2.33: every value a string, one mount point.
 pub const LSBLK_OLD: &[u8] = br#"{
    "blockdevices": [
       {"name": "sda", "type": "disk", "size": "500107862016", "rota": "1", "tran": "sata", "mountpoint": null,
@@ -221,8 +210,7 @@ pub const LSBLK_OLD: &[u8] = br#"{
    ]
 }"#;
 
-/// Constructed from the documented format of `/proc/diskstats` (kernel 5.5 and later, 20
-/// columns): two drives, a partition, a device-mapper volume and a loop device.
+/// Constructed from the documented format of `/proc/diskstats` (kernel 5.5 and later, 20 columns).
 pub const PROC_DISKSTATS: &[u8] = b"   7       0 loop0 52 0 2180 11 0 0 0 0 0 40 11 0 0 0 0 0 0\n\
  259       0 nvme1n1 120000 3000 9000000 40000 80000 9000 6000000 70000 0 50000 110000 0 0 0 0 900 300\n\
  259       1 nvme1n1p1 300 0 20000 100 2 0 16 1 0 120 101 0 0 0 0 0 0\n\

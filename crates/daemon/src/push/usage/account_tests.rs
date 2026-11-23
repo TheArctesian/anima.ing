@@ -1,6 +1,3 @@
-//! The accounts of a batch (AIS-022 as THR-149 changed it): a key, the address, a plan and
-//! limit windows leave the machine, never the identifier of an account.
-
 use agent_threads::drive::AccountFacts;
 use base64::Engine as _;
 use daemon_core::agent_usage::account::{Address, account_key};
@@ -40,8 +37,6 @@ fn salt_text() -> String {
     base64::engine::general_purpose::STANDARD.encode(SALT)
 }
 
-/// A daemon whose setting `sendAccounts` is false reports no accounts: its batches carry no
-/// accounts member at all, so the hub neither gets keys nor sends its salt.
 #[test]
 fn ais_022_with_no_accounts_reported_a_batch_has_no_accounts_member() {
     let mut backlog = UsageBacklog::default();
@@ -88,7 +83,7 @@ fn thr_149_the_address_leaves_and_the_identifier_never() {
     assert!(!text.contains("user-"), "{text}");
 }
 
-/// Codex gives the name of a workspace when it has no address: that name stays at the machine.
+/// Codex gives the name of a workspace when it has no address.
 #[test]
 fn thr_149_a_name_that_is_not_an_address_never_leaves() {
     let mut backlog = UsageBacklog::default();
@@ -102,7 +97,6 @@ fn thr_149_a_name_that_is_not_an_address_never_leaves() {
     assert!(!text.contains("7f3a9c"), "{text}");
 }
 
-/// THR-149 point 7: what the pusher could log of a batch, its `Debug`, holds no address.
 #[test]
 fn thr_149_the_debug_of_a_batch_holds_no_address() {
     let mut backlog = UsageBacklog::default();
@@ -171,8 +165,7 @@ fn ais_022_a_salt_that_does_not_read_is_ignored() {
     );
 }
 
-/// With `sendAccounts` false the task reports an empty list: one batch says so, and the hub
-/// deletes what it had of the device (THR-149); then nothing more goes.
+/// THR-149: one empty list makes the hub delete what it had of the device.
 #[test]
 fn thr_149_turned_off_an_empty_list_goes_once() {
     let mut backlog = UsageBacklog::default();

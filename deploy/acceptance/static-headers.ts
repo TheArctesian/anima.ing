@@ -1,6 +1,5 @@
-// The K7 static file headers of the web client (K7 "HTTP surface", SEC-001, D-2), as pure verdicts on the
-// headers of one answer. A verdict is `undefined` when the rule holds, else a fixed reason: it may name a header
-// or a CSP directive K7 lists, never a value the hub sent.
+// Verdicts on the K7 static file headers of the web client (SEC-001, D-2): `undefined` when the rule holds.
+// A reason names a header or a CSP directive, never a value the hub sent.
 
 /** The CSP directives whose sources K7 fixes, in its order; `script-src` and `connect-src` are checked apart. */
 const FIXED_DIRECTIVES: Readonly<Record<string, readonly string[]>> = {
@@ -16,7 +15,7 @@ const FIXED_DIRECTIVES: Readonly<Record<string, readonly string[]>> = {
 const DIRECTIVE_COUNT = Object.keys(FIXED_DIRECTIVES).length + 2;
 const SCRIPT_HASH = /^'sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}'$/;
 
-/** The headers whose value K7 fixes on every web client answer (the frame rule is CSP `frame-ancestors`). */
+/** The frame rule is CSP `frame-ancestors`, not a header. */
 const FIXED_HEADERS: readonly [string, string][] = [
   ["x-content-type-options", "nosniff"],
   ["referrer-policy", "no-referrer"],
@@ -28,7 +27,6 @@ const FIXED_HEADERS: readonly [string, string][] = [
 export const NO_CACHE = "no-cache";
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 
-/** The WebSocket form of an origin, as the hub writes it into `connect-src` (`wss://` for `https://`). */
 function websocketOrigin(origin: URL): string {
   return `${origin.protocol === "https:" ? "wss:" : "ws:"}//${origin.host}`;
 }
@@ -37,7 +35,6 @@ function websocketOrigin(origin: URL): string {
 const ASCII_SPACE = /[\t\n\f\r ]+/;
 const DIRECTIVE_NAME = /^[A-Za-z0-9-]+$/;
 
-/** The directives of a policy by name, or the reason it cannot be read: a name repeats or is malformed. */
 function directives(policy: string): Map<string, string[]> | string {
   const found = new Map<string, string[]>();
   for (const part of policy.split(";")) {
@@ -60,7 +57,6 @@ function same(actual: readonly string[] | undefined, expected: readonly string[]
   return actual?.length === expected.length && expected.every((source, index) => actual[index] === source);
 }
 
-/** `script-src 'self'` and one or more script hashes, nothing else. */
 function scriptsVerdict(sources: readonly string[] | undefined): string | undefined {
   if (sources?.[0] !== "'self'" || sources.length < 2) {
     return "the CSP directive script-src is not 'self' and the page's script hashes";
@@ -70,7 +66,6 @@ function scriptsVerdict(sources: readonly string[] | undefined): string | undefi
     : "the CSP directive script-src allows a source that is not a script hash";
 }
 
-/** The `Content-Security-Policy` of a web client answer is the K7 policy for the hub at `origin`. */
 export function policyVerdict(headers: Headers, origin: URL): string | undefined {
   const policy = headers.get("content-security-policy");
   if (policy === null) {
@@ -95,7 +90,6 @@ export function policyVerdict(headers: Headers, origin: URL): string | undefined
   return found.size === DIRECTIVE_COUNT ? undefined : "the CSP has a directive K7 does not list";
 }
 
-/** The fixed K7 headers are each present once with their K7 value. */
 export function fixedHeadersVerdict(headers: Headers): string | undefined {
   for (const [name, value] of FIXED_HEADERS) {
     const actual = headers.get(name);
@@ -106,7 +100,6 @@ export function fixedHeadersVerdict(headers: Headers): string | undefined {
   return undefined;
 }
 
-/** `Cache-Control` is exactly `expected`. */
 export function cacheVerdict(headers: Headers, expected: string): string | undefined {
   const actual = headers.get("cache-control");
   if (actual === null) {
@@ -115,11 +108,9 @@ export function cacheVerdict(headers: Headers, expected: string): string | undef
   return actual.trim().toLowerCase() === expected ? undefined : `the cache-control header is not ${expected}`;
 }
 
-// A path the page names under `_app/immutable/`, relative or from the root; only path characters, so the probe
-// never leaves the hub's origin.
+// Only path characters match, so the probe never leaves the hub's origin.
 const ASSET_REFERENCE = /(?:^|["'(=\s,])((?:\.{1,2}\/|\/)*_app\/immutable\/[A-Za-z0-9._\-/]+\.(?:js|css|woff2?))\b/;
 
-/** The root path of the first hashed asset `index.html` names, or undefined when it names none. */
 export function immutableAssetPath(html: string): string | undefined {
   const reference = ASSET_REFERENCE.exec(html)?.[1];
   if (reference === undefined) {

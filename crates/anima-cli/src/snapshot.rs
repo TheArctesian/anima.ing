@@ -1,6 +1,5 @@
-//! `anima snapshot`: a commit of the working tree on a scratch ref of the forge, so a second
-//! machine can build changes that are not committed (JOB-017, JOB-018). It runs git on this
-//! computer and makes no hub request, so it needs no context and no sign-in.
+//! `anima snapshot` runs git on this computer and makes no hub request, so it needs no sign-in
+//! (JOB-017, JOB-018).
 
 mod forge;
 mod git;

@@ -1,8 +1,6 @@
 //! The machine's own log of the work that it took (K10 Section 9, SF-012): one entry for each
-//! item, also for each item that it refused, written before the state `preparing`. An entry
-//! holds no secret: it names the purposes of the secrets, never a value, and no member of the
-//! item that this file does not name. Where the log is kept, so that a job cannot write it, is
-//! the design of task W2.
+//! item, also each refused one, written before the state `preparing`. An entry holds no secret,
+//! and no member of the item that this file does not name.
 
 use chrono::{DateTime, Utc};
 use daemon_core::wire::WorkJob;
@@ -10,16 +8,13 @@ use serde::Serialize;
 use serde_json::Value;
 use uuid::Uuid;
 
-/// What the machine did with the item.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Outcome {
-    /// The checks passed and the machine starts the item.
     Taken,
     Refused,
 }
 
-/// One line of the log.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Entry {
@@ -30,7 +25,6 @@ pub struct Entry {
     pub work_type: Option<String>,
     pub kind: Option<String>,
     pub project: Option<String>,
-    /// `owner/name`.
     pub repository: Option<String>,
     pub commit: Option<String>,
     pub recipe: Option<String>,
@@ -39,20 +33,17 @@ pub struct Entry {
     /// The purposes of the secrets, never a value.
     pub secrets: Vec<String>,
     pub outcome: Outcome,
-    /// The cause of a refusal.
     pub cause: Option<&'static str>,
 }
 
-/// The most characters of one value of an entry: an item that the machine refused can hold a
-/// value of each length.
+/// A refused item can hold a value of any length.
 const MOST: usize = 128;
 
 fn short(value: Option<&Value>) -> Option<String> {
     Some(value?.as_str()?.chars().take(MOST).collect())
 }
 
-/// The entry for the answer `item` of the hub, which the machine may have refused: each value
-/// is read from the answer as it came, and cut.
+/// Each value is read from the answer as it came, since the machine may have refused it.
 #[must_use]
 pub fn entry(
     item: &Value,
@@ -89,7 +80,6 @@ pub fn entry(
     }
 }
 
-/// The entry of a job that passed each check.
 #[must_use]
 pub fn taken(job: &WorkJob, at: DateTime<Utc>) -> Entry {
     let item = serde_json::to_value(job).unwrap_or(Value::Null);

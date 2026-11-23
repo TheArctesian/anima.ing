@@ -1,5 +1,4 @@
-//! `anima check notifications set <id-or-name>`: which channels a check tells, and how often it
-//! repeats while Down (NOT-005). The channels are given by ID (see `anima notify channel list`).
+//! `anima check notifications set` (NOT-005).
 
 use super::documents::{CheckNotificationsSet, check_notifications_set};
 use crate::checks::resolve::CheckRef;

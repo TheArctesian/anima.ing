@@ -1,8 +1,5 @@
-//! The token at the start of `run`, when the Keychain makes the daemon wait for the person
-//! (R-322): the daemon does not end, so the service manager does not start it
-//! again and again. It logs one line, puts the mark for the app, and reads again on the
-//! schedule of [`keychain_wait::next_try`] until the read answers. Each read runs off the async
-//! loop; the runner of the agent threads runs on beside it.
+//! The token at the start of `run` while the Keychain waits for the person (R-322).
+//! The daemon waits instead of ending, so the service manager does not start it again and again.
 
 use std::time::Duration;
 
@@ -11,8 +8,6 @@ use crate::keychain_wait;
 use crate::report;
 use crate::token_store::{Credential, TokenStore, TokenStoreError};
 
-/// The stored credential of the daemon in `home`, once the Keychain answers.
-///
 /// # Errors
 /// [`TokenStoreError`] other than [`TokenStoreError::KeychainWaits`].
 pub async fn credential(home: &Home) -> Result<Option<Credential>, TokenStoreError> {
@@ -28,8 +23,6 @@ pub async fn credential(home: &Home) -> Result<Option<Credential>, TokenStoreErr
     answered(read, tokio::time::sleep, mark).await
 }
 
-/// Reads with `read` until it gives anything but [`TokenStoreError::KeychainWaits`], with
-/// `pause` between two reads. `mark` gets `true` at the first wait and `false` at the end.
 async fn answered<T, R, P>(
     mut read: impl FnMut() -> R,
     mut pause: impl FnMut(Duration) -> P,
@@ -67,8 +60,6 @@ mod tests {
 
     use super::*;
 
-    /// Runs [`answered`] with reads that wait `waits` times, then give 7; returns the result,
-    /// the pauses and the marks.
     async fn after(waits: usize) -> (Result<u8, TokenStoreError>, Vec<Duration>, Vec<bool>) {
         let reads = RefCell::new(0_usize);
         let pauses = RefCell::new(Vec::new());

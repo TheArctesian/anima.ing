@@ -3,14 +3,10 @@
 use super::{GpuReading, GpuVendor};
 use crate::readings::{label, lines, number};
 
-/// The name of a GPU whose entry has no usable `model`.
 const FALLBACK_NAME: &str = "Apple GPU";
 
-/// One reading per `IOAccelerator` entry, indexed in the order they print. From each entry:
-/// `"Device Utilization %"` is busy, `"In use system memory"` is the memory the GPU holds, and
-/// `"model"` is the name; a number is read up to its first character that is not a digit or
-/// a point, so `1e3` gives 1. There is no VRAM: the GPU shares system memory (MET-007). An entry
-/// with none of the three is skipped.
+/// One reading per `IOAccelerator` entry, in print order. There is no VRAM: the GPU shares
+/// system memory (MET-007).
 #[must_use]
 pub fn gpus(output: &[u8]) -> Vec<GpuReading> {
     let mut entries: Vec<Entry<'_>> = Vec::new();
@@ -64,7 +60,6 @@ impl<'a> Entry<'a> {
     }
 }
 
-/// The text after `"key" =` in `line`, without the spaces before it.
 fn value<'a>(line: &'a str, key: &str) -> Option<&'a str> {
     let after = line.match_indices(key).find_map(|(at, _)| {
         let before = line.get(..at)?;

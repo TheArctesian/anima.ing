@@ -1,4 +1,4 @@
-//! `anima repo branches <repository>`: branches by name, with pages (CMD-026).
+//! Branches by name, with pages (CMD-026).
 
 use super::query::{History, Query};
 use super::render;

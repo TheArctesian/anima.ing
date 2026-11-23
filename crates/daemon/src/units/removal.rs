@@ -1,10 +1,4 @@
-//! `anima-daemon uninstall` (HMD-056): stops the user unit or `LaunchAgent` of the daemon,
-//! deletes its file, then has the caller forget the token and the key cache. Each part that is
-//! not there is not an error, so a second run ends the same as the first. The file is the one
-//! `install` writes ([`super::plan`]); the commands are run by the caller's `run`.
-//!
-//! `anima-daemon stop` (HMD-055) only stops the unit: the desktop app runs it before it replaces
-//! the copy of the daemon, so that no daemon of before runs once the new copy is in place.
+//! `anima-daemon uninstall` (HMD-056) and `stop` (HMD-055); a part that is not there is not an error, so a second run ends as the first.
 
 use std::fs;
 use std::io;
@@ -42,21 +36,18 @@ pub enum UninstallError {
     Keys(#[from] KeyStoreError),
 }
 
-/// The user whose unit is taken out, on this platform.
 #[derive(Clone, Copy, Debug)]
 pub struct Leaving {
     pub platform: Platform,
     pub uid: u32,
 }
 
-/// What `uninstall` did: the unit file it looked at, and whether that file was there.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Uninstalled {
     pub file: PathBuf,
     pub was_installed: bool,
 }
 
-/// The commands around the deletion of the unit file: `stop` before, `reload` after.
 #[derive(Debug, PartialEq, Eq)]
 struct Removal {
     file: PathBuf,
@@ -64,8 +55,7 @@ struct Removal {
     reload: Vec<Step>,
 }
 
-/// The removal for the user unit of `user`; `env` looks up environment variables. A unit that
-/// is not loaded makes the stop fail, which is fine.
+/// A unit that is not loaded makes the stop fail, which is fine.
 fn removal(user: Leaving, env: impl Fn(&str) -> Option<String>) -> Result<Removal, PlanError> {
     let install = plan::plan(Target::User, user.platform, user.uid, env)?;
     let (stop, reload) = if install.unit == Unit::LaunchAgent {
@@ -92,16 +82,12 @@ fn removal(user: Leaving, env: impl Fn(&str) -> Option<String>) -> Result<Remova
     })
 }
 
-/// `launchctl bootout` of the `LaunchAgent` of the daemon of user `uid`.
 fn bootout(uid: u32) -> Step {
     let mut bootout = Step::new("/bin/launchctl", &["bootout"]);
     bootout.args.push(format!("gui/{uid}/ing.anima.daemon"));
     bootout
 }
 
-/// Stops the user unit of the user of this process, with the commands of this computer
-/// (`anima-daemon stop`, HMD-055). The unit file, the token and the key cache stay.
-///
 /// # Errors
 /// [`UninstallError::Run`] when the user of this process cannot be read; else as [`stop`].
 #[cfg(unix)]
@@ -122,10 +108,7 @@ pub fn stop_here() -> Result<(), UninstallError> {
     )
 }
 
-/// Stops the user unit of the daemon and leaves its file, the token and the key cache: the next
-/// `install` starts it again. Only the unit is stopped (`launchctl bootout`, or
-/// `systemctl --user stop`); no other process is signalled. A unit that is not loaded makes the
-/// stop fail, which is fine; on Linux, with no session bus there is no user manager to stop.
+/// Stops only the user unit and leaves its file, the token and the key cache; no other process is signalled.
 ///
 /// # Errors
 /// [`UninstallError`] when there is no home folder, or the command could not run to its end.
@@ -152,13 +135,10 @@ pub fn stop(
     run_all(&[step], &mut run)
 }
 
-/// Stops and deletes the user unit of the daemon, then calls `forget` (the token and the key
-/// cache). Each command goes through `run` (`Ok(false)` is a failure exit). On Linux the
-/// commands get the session bus; with no bus and no unit file there is no unit to stop.
+/// Forgets the token only once the unit is out, so a daemon that still runs never loses its token from under it.
 ///
 /// # Errors
-/// [`UninstallError`] for the first part that does not succeed; the token is forgotten only
-/// once the unit is out, so a daemon that still runs never loses its token from under it.
+/// [`UninstallError`] for the first part that does not succeed.
 pub fn uninstall(
     user: Leaving,
     env: impl Fn(&str) -> Option<String>,
@@ -195,7 +175,6 @@ pub fn uninstall(
     })
 }
 
-/// Deletes `file` (a link is deleted, not followed); a file that is not there is not an error.
 fn delete(file: &Path) -> Result<(), UninstallError> {
     match fs::remove_file(file) {
         Ok(()) => Ok(()),

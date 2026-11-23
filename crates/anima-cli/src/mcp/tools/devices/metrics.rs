@@ -1,5 +1,3 @@
-//! `anima_device_metrics`: a device's metric series, short by default.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::Deserialize;

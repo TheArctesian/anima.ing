@@ -1,35 +1,27 @@
-//! Reader of `lsblk -J -b`: the drives of a Linux device, their kind and the mounts on each
-//! (MET-002, MET-027).
-//!
-//! The output is the device's text: a document that does not parse gives `None`, and each
-//! name and mount point must pass the series label rule. The tree is walked at most
-//! [`DEPTH`] levels down, so a hostile document cannot make the walk deep.
+//! Reader of `lsblk -J -b`: the drives of a Linux device and their mounts (MET-002, MET-027).
 
 use serde::Deserialize;
 
 use super::label;
 use crate::points::{MAX_LABELS, is_operator_mount};
 
-/// The arguments of the `lsblk` command (util-linux 2.37 and later, which has `MOUNTPOINTS`).
+/// For util-linux 2.37 and later, which has `MOUNTPOINTS`.
 pub const LSBLK_ARGS: [&str; 4] = ["-J", "-b", "-o", "NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINTS"];
 
-/// The arguments for an older util-linux, which refuses `MOUNTPOINTS`: one mount per device.
+/// For an older util-linux, which refuses `MOUNTPOINTS`.
 pub const LSBLK_OLD_ARGS: [&str; 4] = ["-J", "-b", "-o", "NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINT"];
 
-/// How many levels below a drive its mounts are looked for: partition, crypt, LVM and RAID
-/// stack a few levels at most.
+/// Partition, crypt, LVM and RAID stack a few levels at most; the bound stops a hostile document.
 const DEPTH: usize = 8;
 
-/// Kernel devices that are not drives: loop images, RAM disks and compressed swap in memory.
 const NOT_DRIVES: [&str; 3] = ["loop", "ram", "zram"];
 
-/// What a drive is made of, read from its transport and rotation, never entered (MET-027).
+/// Read from the transport and rotation, never entered (MET-027).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DriveKind {
     Nvme,
     Ssd,
     Hdd,
-    /// Neither the transport nor the rotation said.
     Disk,
 }
 
@@ -45,7 +37,6 @@ impl DriveKind {
         }
     }
 
-    /// The kind stored as `text`; `None` for text no kind has.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         [Self::Nvme, Self::Ssd, Self::Hdd, Self::Disk]
@@ -53,7 +44,6 @@ impl DriveKind {
             .find(|kind| kind.as_str() == text)
     }
 
-    /// `NVMe` for transport `nvme`, else SSD or HDD by rotation, else Disk.
     fn of(transport: Option<&str>, rotational: Option<bool>) -> Self {
         match (transport, rotational) {
             (Some("nvme"), _) => Self::Nvme,
@@ -69,10 +59,8 @@ impl DriveKind {
 pub struct Drive {
     pub name: String,
     pub kind: DriveKind,
-    /// At most `i64::MAX`, so the hub can store it.
     pub size_bytes: u64,
-    /// The mount points on the drive and on what sits on it, sorted bytewise, each once, at
-    /// most [`MAX_LABELS`]; empty when it is not mounted.
+    /// The mounts on the drive and on what sits on it, sorted bytewise, each once, at most [`MAX_LABELS`].
     pub mounts: Vec<String>,
 }
 
@@ -81,8 +69,7 @@ struct Listing {
     blockdevices: Vec<Node>,
 }
 
-/// One device of the tree. Every member may be missing or `null`; util-linux before 2.33
-/// printed numbers and flags as strings, later versions as numbers and booleans.
+/// Every member may be missing or `null`; util-linux before 2.33 printed numbers and flags as strings.
 #[derive(Deserialize)]
 struct Node {
     name: Option<String>,
@@ -97,7 +84,6 @@ struct Node {
     children: Vec<Node>,
 }
 
-/// A value as any util-linux version prints it.
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum Loose {
@@ -130,8 +116,7 @@ impl Loose {
     }
 }
 
-/// The drives in `lsblk -J -b` output, by name (bytewise), each once, at most
-/// [`MAX_LABELS`]. `None` when the output is not such a document.
+/// The drives by name (bytewise), each once, at most [`MAX_LABELS`]; `None` when the output does not parse.
 #[must_use]
 pub fn drives(output: &[u8]) -> Option<Vec<Drive>> {
     let listing: Listing = serde_json::from_slice(output).ok()?;
@@ -142,7 +127,6 @@ pub fn drives(output: &[u8]) -> Option<Vec<Drive>> {
     Some(drives)
 }
 
-/// The drive `node` is: a top-level `disk` with a usable name and a size above zero.
 fn drive(node: &Node) -> Option<Drive> {
     let name = label(node.name.as_deref()?)?;
     let is_drive = node.kind.as_deref() == Some("disk")
@@ -167,7 +151,6 @@ fn drive(node: &Node) -> Option<Drive> {
     })
 }
 
-/// Adds the operator's mounts of `node` and of what sits on it, to [`DEPTH`] levels.
 fn collect_mounts(node: &Node, depth: usize, mounts: &mut Vec<String>) {
     let listed = node.mountpoints.iter().flatten().flatten();
     for mount in listed.chain(&node.mountpoint) {
@@ -182,7 +165,7 @@ fn collect_mounts(node: &Node, depth: usize, mounts: &mut Vec<String>) {
     }
 }
 
-/// A path the operator's files live under; swap's `[SWAP]` is not a path.
+/// Swap's `[SWAP]` is not a path.
 fn wanted(mount: &str) -> bool {
     mount.starts_with('/') && is_operator_mount(mount)
 }

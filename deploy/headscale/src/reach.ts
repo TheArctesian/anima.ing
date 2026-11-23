@@ -1,13 +1,8 @@
-/**
- * The reachability table (VPN-004, VPN-012): for each pair of parties, each probed port and
- * each protocol, whether the policy allows the connection. Pure. It adds no evaluator: every
- * row is one `allows` call. A diff of two tables shows what a policy edit changed.
- */
+/** The reachability table (VPN-004, VPN-012); each row is one `allows` call, so it adds no evaluator. */
 
 import { contains, MAX_PORT, parseIpv4, type Policy } from './policy.ts';
 import { allows, type Connection, type TailnetNode } from './tailnet.ts';
 
-/** One class of node or LAN address that VPN-004 names. */
 export type Party =
   | { readonly kind: 'client'; readonly node: string }
   | { readonly kind: 'hub'; readonly node: string }
@@ -27,15 +22,12 @@ export interface Reach {
 const PROTOCOLS = ['tcp', 'udp'] as const;
 const LAN_HOST_OFFSET = 5;
 
-/** The ports that the table probes: 1, 65535, and for each grant `PortRule` its `first`, `last`,
- *  `first − 1` and `last + 1` (kept inside 1–65535), without repeats, sorted. */
 export function probedPorts(policy: Policy): readonly number[] {
   const edges = policy.grants.flatMap((grant) => grant.ip.flatMap((rule) => [rule.first - 1, rule.first, rule.last, rule.last + 1]));
   const inside = [1, MAX_PORT, ...edges].filter((port) => port >= 1 && port <= MAX_PORT);
   return [...new Set(inside)].sort((a, b) => a - b);
 }
 
-/** Every party, from the nodes and the policy's site hosts. */
 export function parties(policy: Policy, nodes: readonly TailnetNode[]): readonly Party[] {
   const hosts = [...policy.scope.hosts];
   const deviceNets = hosts.filter(([name]) => name.startsWith('device-')).map(([, prefix]) => prefix);
@@ -61,7 +53,6 @@ function roleOf(node: TailnetNode): Party | undefined {
   return tags.includes('tag:daemon') ? { kind: 'daemon', node: node.name } : undefined;
 }
 
-/** The full table: each pair of different parties, each probed port, tcp and udp. */
 export function reachTable(policy: Policy, nodes: readonly TailnetNode[]): readonly Reach[] {
   const everyone = parties(policy, nodes);
   const ports = probedPorts(policy);
@@ -81,7 +72,6 @@ function connection(from: Party, to: Party, port: number, proto: string): Connec
   };
 }
 
-/** The table as Markdown rows, sorted, one row for each allowed pair and protocol; for a diff. */
 export function reachMarkdown(table: readonly Reach[]): string {
   const ports = new Map<string, number[]>();
   for (const row of table.filter((entry) => entry.allowed)) {
@@ -103,12 +93,10 @@ function dotted(ip: number): string {
 
 const allowedRows = (table: readonly Reach[]): readonly Reach[] => table.filter((row) => row.allowed);
 
-/** Allowed rows from a router of one site to a LAN of another site (VPN-012). */
 export function crossSiteRows(table: readonly Reach[]): readonly Reach[] {
   return allowedRows(table).filter((row) => row.from.kind === 'router' && row.to.kind === 'lan' && row.from.site !== row.to.site);
 }
 
-/** Allowed rows from a LAN to a client (VPN-012). */
 export function lanToClientRows(table: readonly Reach[]): readonly Reach[] {
   return allowedRows(table).filter((row) => row.from.kind === 'lan' && row.to.kind === 'client');
 }

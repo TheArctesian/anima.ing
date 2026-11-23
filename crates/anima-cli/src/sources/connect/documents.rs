@@ -1,6 +1,4 @@
-//! The Connect GitHub documents, typed from K1 at build time (CMD-004, CMD-031). The answer of
-//! `GithubConnectOpen` holds the ONE-TIME link, so its types derive no `Debug` and no
-//! `Serialize`: nothing can print it by accident (MCP-004, LOG-007).
+//! `GithubConnectOpen` holds a one-time link, so it derives no `Debug` or `Serialize` (MCP-004, LOG-007).
 
 use graphql_client::GraphQLQuery;
 
@@ -48,7 +46,7 @@ pub struct GithubConnectCancel;
 )]
 pub struct GithubConnectChanged;
 
-/// The variables hold the API key, so they derive no `Debug`; the caller wipes them after the
+/// The variables hold the API key, so they derive no `Debug`, and the caller wipes them after the
 /// request (CMD-014, LOG-007).
 #[derive(GraphQLQuery)]
 #[graphql(

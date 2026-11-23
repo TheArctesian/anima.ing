@@ -1,5 +1,4 @@
-//! What the command and the MCP tools ask of the hub about places. Both call these, so the two
-//! make the same requests (CMD-030). Each answer is the K1 `Place` as JSON.
+//! The command and the MCP tools both call these, so both make the same requests (CMD-030).
 
 use graphql_client::{GraphQLQuery, QueryBody};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -130,8 +129,7 @@ pub async fn set(hub: &Hub, id: String, change: Change) -> Result<Value, Failure
     if input.is_empty() {
         return Err(usage("Give at least one field to change."));
     }
-    // The variables are written here, not through the generated type, because that type
-    // cannot say "null" and "left out" apart, and K1 reads them differently.
+    // The generated type cannot tell null from left out, and K1 reads them differently.
     let body = QueryBody {
         variables: serde_json::json!({ "id": id, "input": input }),
         query: place_set::QUERY,

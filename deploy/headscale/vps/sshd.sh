@@ -1,10 +1,6 @@
 # shellcheck shell=bash
-# The `ssh` command and the checks of the admin account and the effective sshd values
-# (VPS-001). Sourced by harden.sh; needs its say, refuse, fail, dry, path, write_file,
-# save_previous and require_root, and ROOT, SSHD, SYSTEMCTL, GETENT, ID, SSHD_DROPIN, STATE_DIR,
-# ADMIN_GROUP, USER_NAME_PATTERN, KEY_LINE_PATTERN and HERE.
+# The `ssh` command of harden.sh (VPS-001).
 
-# Print why a path would make sshd (StrictModes) ignore the keys, or nothing.
 strict_modes_problem() {
   if [ -n "$(find "$1" -prune \( -perm -020 -o -perm -002 \) -print)" ]; then
     say "$1 is group- or world-writable; sshd would ignore the keys"
@@ -13,15 +9,12 @@ strict_modes_problem() {
   fi
 }
 
-# VP-13: the hub's unprivileged user, allowed only from the hub container's address. The
-# address is `hub_source` in nftables.conf and ANIMA_HUB_IP in deploy/compose.yaml; the drop-in
-# (sshd-anima.conf) holds the same entry. No other user and no other host part is accepted.
+# VP-13: the address is also `hub_source` in nftables.conf, ANIMA_HUB_IP in compose.yaml and sshd-anima.conf.
 PROBE_USER=anima-probe
 PROBE_ALLOW=$PROBE_USER@172.30.0.10
-# The admin's host part: the tailnet range, so the admin logs in only over the VPN (VP-13 F5).
+# The admin logs in only over the VPN (VP-13 F5).
 ADMIN_HOSTS=100.64.0.0/10
 
-# Print why ANIMA_ADMIN_USER cannot be the admin SSH login, or nothing when it can.
 admin_problem() {
   local user=${ANIMA_ADMIN_USER:-} entry uid home keys problem
   [ -n "$user" ] || { say "set ANIMA_ADMIN_USER to the admin account"; return; }
@@ -48,18 +41,14 @@ admin_problem() {
 }
 
 SSHD_CONFIG=/etc/ssh/sshd_config
-# Includes nest at most this deep; sshd itself stops at 16.
+# sshd itself stops at 16.
 SSHD_INCLUDE_DEPTH=16
 # At most this many files are read, so no include pattern can make the walk run long.
 SSHD_FILE_LIMIT=256
 SSHD_FILES_SEEN=$'\n'
 SSHD_FILES_READ=0
 
-# Print, for one sshd config file, "I<tab>PATTERN" for each pattern of a plain Include
-# line and "P<tab>PROBLEM" for each Match line and each Include the walk cannot follow.
-# Each line is read as sshd reads it: leading blanks dropped, the keyword ends at a blank
-# or "=", may be quoted, and is not case-sensitive. Only `Include PATTERN...` with no
-# quotes, "=" or backslash is followed; any other Include form is reported instead.
+# Prints "I<tab>PATTERN" per plain Include pattern and "P<tab>PROBLEM" per Match line or Include it cannot follow.
 sshd_scan() {
   awk -v name="${1#"${ROOT%/}"}" '{
     line = $0
@@ -82,8 +71,6 @@ sshd_scan() {
   }' "$1"
 }
 
-# Print FILE (a path under ROOT) and every file it includes, depth first, each once. A
-# relative Include is relative to /etc/ssh, as sshd reads it.
 sshd_files() {
   local file=$1 depth=$2 kind pattern included
   [ -f "$file" ] || return 0
@@ -104,10 +91,7 @@ sshd_files() {
   done < <(sshd_scan "$file")
 }
 
-# Print each Match line, in any form, in sshd_config and the files it includes, and each
-# Include the walk cannot follow. A Match block overrides the global values for the
-# connections it matches, so it can turn passwords or root logins back on past the
-# drop-in; sshd -T without -C does not show it.
+# A Match block can turn passwords or root logins back on past the drop-in, and sshd -T without -C does not show it.
 match_problems() {
   local file kind problem
   while IFS= read -r file; do
@@ -118,8 +102,6 @@ match_problems() {
   done < <(sshd_files "$(path "$SSHD_CONFIG")" 0)
 }
 
-# Print each value in the output of sshd -T (with the -C arguments given, if any) that
-# differs from the drop-in for admin user $1.
 sshd_effective_mismatches() {
   local effective line label="sshd -T${2:+ -C $2}" admin_allow="$1@$ADMIN_HOSTS"
   effective=$($SSHD -T ${2:+-C "$2"}) || { say "$label failed"; return; }
@@ -138,19 +120,12 @@ logingracetime 30
 allowusers $admin_allow
 allowusers $PROBE_ALLOW
 EOF
-  # AllowUsers adds up across drop-ins: any other user, or the admin or the probe user from
-  # another host, is a second way in.
   awk -v admin="allowusers $admin_allow" -v probe="allowusers $PROBE_ALLOW" -v label="$label" \
     'tolower($1) == "allowusers" && tolower($0) != admin && tolower($0) != probe {
     print label ": unexpected \"" $0 "\" (AllowUsers adds up across drop-ins)" }' <<<"$effective"
 }
 
-# Print each effective sshd value that differs from the drop-in: first the global values,
-# then, once they are right, the values for root and the admin user from a public address,
-# for the admin user from the VPN and for the probe user from the hub, which a Match block
-# could change. sshd -T -C prints the AllowUsers entries but does not apply them: the admin's
-# login from the public address is refused by its host part (ADMIN_HOSTS), and is still checked
-# here for the values a Match block could weaken.
+# sshd -T -C does not apply AllowUsers, so each connection is checked for values a Match block could weaken.
 sshd_mismatches() {
   local user=$1 public=${VPS_PUBLIC_IPV4:-198.51.100.7} global connection
   global=$(sshd_effective_mismatches "$user")

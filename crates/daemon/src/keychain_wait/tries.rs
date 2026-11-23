@@ -1,6 +1,5 @@
-//! When a Keychain call that waited for the person is tried again (R-322): every 30 s for the
-//! first 10 minutes, so that a person who allows the daemon sees it work soon; then every 5
-//! minutes, so that a computer with nobody at it is not busy.
+//! Tries of a Keychain call that waited (R-322): quick at first, so a person who allows the
+//! daemon sees it work soon, then slow, so a computer with nobody at it is not busy.
 
 use std::time::Duration;
 
@@ -10,13 +9,11 @@ const QUICK_TRIES: u32 = 20;
 const QUICK: Duration = Duration::from_secs(30);
 const SLOW: Duration = Duration::from_mins(5);
 
-/// The pause before the next try, after `waited` tries that waited.
 #[must_use]
 pub const fn next_try(waited: u32) -> Duration {
     if waited < QUICK_TRIES { QUICK } else { SLOW }
 }
 
-/// The tries of one call that waited: how many waited, and when the next one is due.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Tries {
     waited: u32,
@@ -24,7 +21,6 @@ pub struct Tries {
 }
 
 impl Tries {
-    /// After the first call that waited, at `now`.
     #[must_use]
     pub fn first(now: DateTime<Utc>) -> Self {
         Self {
@@ -33,7 +29,6 @@ impl Tries {
         }
     }
 
-    /// After one more call that waited, at `now`.
     #[must_use]
     pub fn again(self, now: DateTime<Utc>) -> Self {
         Self {
@@ -42,7 +37,6 @@ impl Tries {
         }
     }
 
-    /// Whether the next try is due at `now`.
     #[must_use]
     pub fn due(&self, now: DateTime<Utc>) -> bool {
         now >= self.next_at

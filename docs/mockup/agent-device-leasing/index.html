@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent device leasing mockups</title>
+<style>
+/* Layout: a review board for agent device leasing (agent-threads.md Section 4.16,
+   THR-165 to THR-184, tasks TH144, TH141 and TH149). Frame 1 is a Code thread with the device tab
+   (dark). Frame 2 is the device picker with the stages of a queued request (light). Frame 3 is
+   the lease list with a phone that waits for the person to confirm its wipe (dark). Frame 4 is the command line (dark).
+   Direction decided (R-439), not approved as a whole. No font, script or image comes from a third party. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, status roles, sizes, type), as in the other mockups.
+   A frame is dark (.gd) or light (.gl). */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-sunken: #141618; --surface-hover: #2A2D33;
+  --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0; --on-accent: #1B1D21;
+  --status-up: #A3BE8C; --status-down: #BF616A; --status-degraded: #EBCB8B; --status-unknown: #7B8089;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-sunken: #ECEEF0; --surface-hover: #ECEEF0;
+  --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80; --on-accent: #FFFFFF;
+  --status-up: #4F7A3A; --status-down: #A8424C; --status-degraded: #9A7215; --status-unknown: #7B8089;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 32px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+.frame { max-inline-size: 1040px; border: var(--border-thin) solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); }
+.app { display: grid; grid-template-columns: 13rem 1fr; min-block-size: 30rem; }
+.side { border-inline-end: var(--border-thin) solid var(--border-subtle); padding: var(--space-6) var(--space-4); display: grid; gap: var(--space-2); align-content: start; }
+.nav { color: var(--text-secondary); } .nav.on { color: var(--text); font-weight: var(--weight-medium); }
+.group { font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-block-start: var(--space-3); }
+.main { display: grid; grid-template-rows: auto auto 1fr auto; min-block-size: 30rem; }
+.tabs { display: flex; gap: var(--space-1); padding: var(--space-3) var(--space-4) 0; border-block-end: var(--border-thin) solid var(--border-subtle); }
+.tab { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: var(--border-thin) solid transparent; border-block-end: 0; border-radius: var(--radius-md) var(--radius-md) 0 0; color: var(--text-secondary); font-size: var(--text-sm); }
+.tab.on { background: var(--surface-raised); color: var(--text); border-color: var(--border-subtle); margin-block-end: -1px; padding-block-end: calc(var(--space-2) + 1px); }
+.banner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-raised); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.muted { color: var(--text-secondary); font-size: var(--text-sm); }
+.chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-subtle); font-size: 0.75rem; color: var(--text-secondary); }
+.dot { inline-size: 0.5rem; block-size: 0.5rem; border-radius: 50%; background: var(--status-up); flex: none; }
+.btn { display: inline-flex; align-items: center; block-size: var(--control-sm); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); font-size: var(--text-sm); }
+.btn.pri { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.term { margin: 0; padding: var(--space-4); background: var(--surface-sunken); color: var(--text); font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.45; white-space: pre-wrap; overflow: auto; }
+.term .dim { color: var(--text-secondary); }
+.cursor { display: inline-block; width: 0.5ch; height: 1em; background: var(--accent); vertical-align: text-bottom; }
+.bar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-4); border-block-start: var(--border-thin) solid var(--border-subtle); font-size: var(--text-sm); color: var(--text-secondary); }
+.list { display: grid; gap: var(--space-1); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2); border-radius: var(--radius-md); }
+.row.on { background: var(--surface-hover); }
+.phone { width: 24rem; margin: var(--space-6); border: var(--border-thin) solid var(--border-strong); border-radius: 24px; overflow: hidden; background: var(--surface-base); }
+.phone-top { text-align: center; padding: var(--space-3); font-size: var(--text-sm); color: var(--text-secondary); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.phone .main { min-block-size: 28rem; grid-template-columns: 1fr; }
+.phone-nav { display: flex; justify-content: space-around; padding: var(--space-3); border-block-start: var(--border-thin) solid var(--border-subtle); font-size: var(--text-sm); color: var(--text-secondary); }
+.phone-nav .on { color: var(--text); font-weight: var(--weight-medium); }
+.cli { margin: 0; padding: var(--space-6); background: var(--surface-sunken); font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.5; white-space: pre-wrap; }
+.cli .cmt { color: var(--text-secondary); }
+.cli .ok { color: var(--status-up); }
+.screen { inline-size: 15rem; block-size: 26rem; margin: var(--space-6) auto; border: 2px solid var(--border-strong); border-radius: 28px; background: var(--surface-sunken); display: grid; place-items: center; color: var(--text-secondary); font-size: var(--text-sm); position: relative; }
+.touch { position: absolute; inset-block-start: 55%; inset-inline-start: 40%; inline-size: 1.5rem; block-size: 1.5rem; border-radius: 50%; border: 2px solid var(--accent); }
+.devbody { display: grid; grid-template-columns: 1fr 16rem; }
+.devside { border-inline-start: var(--border-thin) solid var(--border-subtle); padding: var(--space-4); display: grid; gap: var(--space-3); align-content: start; font-size: var(--text-sm); }
+.dialog { max-inline-size: 34rem; margin: var(--space-8) auto; background: var(--surface-raised); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-6); display: grid; gap: var(--space-3); }
+.pick { display: flex; justify-content: space-between; padding: var(--space-2) var(--space-3); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); }
+.pick.on { border-color: var(--accent); }
+.stages { display: flex; gap: var(--space-2); flex-wrap: wrap; font-size: var(--text-sm); color: var(--text-secondary); }
+.stages .now { color: var(--text); font-weight: var(--weight-medium); }
+.dot.warn { background: var(--status-degraded); } .dot.down { background: var(--status-down); } .dot.idle { background: var(--status-unknown); }
+table.leases { inline-size: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+table.leases th, table.leases td { text-align: start; padding: var(--space-2) var(--space-4); border-block-end: var(--border-thin) solid var(--border-subtle); }
+table.leases th { color: var(--text-secondary); font-weight: var(--weight-medium); }
+</style>
+</head>
+<body>
+<h1 class="board">Agent device leasing</h1>
+<p class="about">Each hub token holds one simulator, emulator or enrolled test phone, alone. A lease lasts 15 minutes and is renewed every 2 minutes. A returned simulator or emulator is deleted; a returned phone goes back only after you confirm its wipe. You and the agent can both tap. Direction decided (R-439; agent-threads.md Section 4.16).</p>
+<div class="frames">
+
+<figure>
+  <div class="frame gd">
+    <div class="app">
+      <aside class="side">
+        <div class="nav">Devices</div>
+        <div class="nav on">Code</div>
+        <div class="group">Threads</div>
+        <div class="list">
+          <div class="row on"><span>auth flow</span><span class="chip"><span class="dot"></span> device</span></div>
+          <div class="row"><span>login fix</span><span class="chip"><span class="dot"></span> device</span></div>
+          <div class="row"><span>onboarding copy</span><span class="chip"><span class="dot warn"></span> waiting</span></div>
+        </div>
+        <div class="group">studio-mac</div>
+        <div class="muted">2 leased · 1 waiting</div>
+      </aside>
+      <div class="main">
+        <div class="tabs">
+          <span class="tab">Diff</span>
+          <span class="tab">Files</span>
+          <span class="tab on">Device</span>
+        </div>
+        <div class="banner">
+          <span><span class="chip"><span class="dot"></span> iPhone 16 · iOS 18 · studio-mac</span> <span class="muted">held by token “studio CLI” (used by this thread) · ends in 14 min unless renewed</span></span>
+          <span><span class="btn">Float over chat</span> <span class="btn pri">Return device to the pool</span></span>
+        </div>
+        <div class="devbody">
+          <div class="screen">live screen<span class="touch"></span></div>
+          <div class="devside">
+            <div><strong>Controls</strong></div>
+            <div><span class="btn">Home</span> <span class="btn">Lock</span> <span class="btn">Screenshot</span></div>
+            <div class="muted">Your taps and the agent's both go to this device (R-439).</div>
+            <div><strong>Agent</strong></div>
+            <div class="muted">anima_device_open · bound to this lease · no command line</div>
+            <div class="muted">Last: installed AuthDemo.app from this worktree · tapped "Sign in"</div>
+          </div>
+        </div>
+        <div class="bar"><span>Only this visible tab streams</span><span>renewed 40 s ago · every 2 min</span></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>Frame 1. A Code thread with its device tab. The thread's hub token holds one simulator; agents that share the token share it. The person can tap it; Return ends the lease and the simulator is deleted. Dark appearance.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gl">
+    <div class="dialog">
+      <strong>Get a device for this thread</strong>
+      <div class="pick on"><span>iPhone 16 · iOS 18</span><span class="muted">studio-mac · free</span></div>
+      <div class="pick"><span>Pixel 9 · Android 15</span><span class="muted">studio-mac · will be made</span></div>
+      <div class="pick"><span>Test Pixel 8 · enrolled phone</span><span class="muted">USB on studio-mac · free</span></div>
+      <div class="pick"><span>iPad Air · iOS 18</span><span class="muted">no machine fits · Why?</span></div>
+      <div style="display:flex;justify-content:flex-end"><span class="btn pri">Get one</span></div>
+      <hr style="border:0;border-block-start:1px solid var(--border-subtle);inline-size:100%">
+      <div class="stages"><span>queued</span>›<span class="now">reclaiming</span>›<span>provisioning</span>›<span>booting</span>›<span>ready</span></div>
+      <div class="muted">Waiting for a device that another thread returned to be deleted · about 40 s</div>
+    </div>
+  </div>
+  <figcaption>Frame 2. The picker and the stages of a request. A device returns to the pool only after it is clean. An enrolled test phone is listed beside the models. A model that no machine can make says why. A request waits at most 10 minutes. Light appearance.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gd">
+    <div class="app">
+      <aside class="side">
+        <div class="nav on">Devices</div>
+        <div class="nav">Code</div>
+        <div class="group">studio-mac</div>
+        <div class="list">
+          <div class="row">Overview</div>
+          <div class="row on">Leases</div>
+        </div>
+      </aside>
+      <div class="main" style="grid-template-rows:auto 1fr">
+        <div class="banner"><span>Leases on studio-mac</span><span class="muted">Only devices Anima made, and phones you enrolled, are listed</span></div>
+        <table class="leases">
+          <tr><th>Device</th><th>Holder</th><th>State</th><th>Ends</th><th></th></tr>
+          <tr><td>iPhone 16 · iOS 18</td><td>token: studio CLI</td><td><span class="chip"><span class="dot"></span> ready</span></td><td>14 min</td><td><span class="btn">Return</span></td></tr>
+          <tr><td>Pixel 9 · Android 15</td><td>token: laptop CLI</td><td><span class="chip"><span class="dot"></span> ready</span></td><td>11 min</td><td><span class="btn">Return</span></td></tr>
+          <tr><td>—</td><td>token: ci-mac login</td><td><span class="chip"><span class="dot warn"></span> queued</span></td><td>—</td><td><span class="btn">Cancel</span></td></tr>
+          <tr><td>Test Pixel 8 · phone</td><td>—</td><td><span class="chip"><span class="dot warn"></span> confirm wipe</span></td><td>3 apps removed</td><td><span class="btn pri">Confirm wipe</span></td></tr>
+          <tr><td>iPhone 15 · iOS 17</td><td>—</td><td><span class="chip"><span class="dot down"></span> needs attention</span></td><td>—</td><td><span class="btn">Delete</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <figcaption>Frame 3. The leases of one machine, by holder token. A returned phone waits until you confirm its wipe; an agent cannot confirm it, and an unconfirmed phone stays "Needs attention" (THR-187). A device whose wipe failed is "Needs attention" and is never leased again until it is deleted (THR-170). Dark appearance.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gd">
+    <pre class="cli"><span class="cmt"># CMD-030: hub API, then this command, then the MCP tool (after review TH145)</span>
+$ anima device lease request --platform ios --model "iPhone 16"
+lease l-7f2c  queued → booting → <span class="ok">ready</span>  iPhone 16  studio-mac  (renews every 2 min)
+
+$ anima device lease list
+l-7f2c  ready   iPhone 16   studio-mac   14m left   token: studio CLI
+
+$ anima device lease release l-7f2c
+released · reclaiming (delete) · <span class="ok">clean</span>
+
+<span class="cmt"># one lease per token; an API key cannot hold one until OD-THR83 (INT-003)
+# a renew after the lease ended is refused; it never revives the lease</span></pre>
+  </div>
+  <figcaption>Frame 4. The command line. Names are proposed.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>

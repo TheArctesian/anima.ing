@@ -1,5 +1,4 @@
-//! `anima place`: where things are, as every extension names them (PLC-001 to PLC-006). A place
-//! is the record `place:<id>`; the operator's name is its title.
+//! `anima place` (PLC-001 to PLC-006).
 
 pub mod calls;
 pub mod documents;

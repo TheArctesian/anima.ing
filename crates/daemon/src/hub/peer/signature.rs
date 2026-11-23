@@ -1,10 +1,4 @@
-//! The code signature of a process on macOS, as `/usr/bin/codesign` reads it: of the daemon
-//! itself, and of the peer at the socket of the link.
-//!
-//! `codesign -d <pid>` reads the file at the path of the process, which a program of the user can
-//! replace while the process runs. So each answer of `-d` is checked again by
-//! `codesign --verify -R=<requirement> <pid>`, which fails when the file is not the program that
-//! runs, or when the requirement does not hold.
+//! Code signatures on macOS through `codesign`; each `-d` answer is checked again by `--verify`, as the file of a running process can be replaced.
 
 use super::{PeerError, Program};
 #[cfg(target_os = "macos")]
@@ -14,29 +8,25 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// `codesign` of the system, by its full path: the daemon runs it with an empty environment.
+/// By its full path, as the daemon runs it with an empty environment.
 #[cfg(target_os = "macos")]
 const CODESIGN: &str = "/usr/bin/codesign";
 
-/// The longest one run of `codesign` may take.
 #[cfg(target_os = "macos")]
 const SIGNATURE_LIMIT: Duration = Duration::from_secs(5);
 
-/// The signing identifier of the link program, alone or with the suffix that the signature of a
-/// program with no bundle can add (`anima-link-<hex>`).
+/// The link program's signing identifier, alone or with the `-<hex>` suffix that a signature with no bundle can add.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
 )]
 const LINK: &str = "anima-link";
 
-/// The team of a Developer ID signature: ten capital letters and digits.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TeamId(String);
 
 impl TeamId {
-    /// `text` when it has the form of a Team ID; `None` else, so that no other text goes into a
-    /// code requirement.
+    /// Only the form of a Team ID, so that no other text goes into a code requirement.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         let valid = text.len() == 10
@@ -46,8 +36,7 @@ impl TeamId {
         valid.then(|| Self(text.to_owned()))
     }
 
-    /// The code requirement of a Developer ID Application certificate of this team: the same
-    /// requirement that the builder of a release verifies (BLD-083).
+    /// The same Developer ID requirement that the builder of a release verifies (BLD-083).
     #[must_use]
     pub fn requirement(&self) -> String {
         format!(
@@ -59,10 +48,7 @@ impl TeamId {
     }
 }
 
-/// The program that this daemon expects at the socket: `anima-link` of the team of its own
-/// Developer ID signature, or any program of the user when it has none. The answer of
-/// `codesign -d` is accepted only when `codesign --verify` of the running daemon agrees with it:
-/// a file put in the place of the daemon makes an error, not a daemon with no signature.
+/// Accepted only when `codesign --verify` of the running daemon agrees, so a replaced file is an error, not an unsigned daemon.
 #[cfg(target_os = "macos")]
 pub(super) fn own_program() -> Result<Program, PeerError> {
     let me = std::process::id().to_string();
@@ -77,8 +63,6 @@ pub(super) fn own_program() -> Result<Program, PeerError> {
     }
 }
 
-/// Whether the running process `process` is `anima-link` with a valid Developer ID signature of
-/// `team`, with its file the program that runs. A run of `codesign` that takes too long is a no.
 #[cfg(target_os = "macos")]
 pub(super) async fn is_the_link(process: i32, team: &TeamId) -> Result<bool, PeerError> {
     if process <= 0 {
@@ -97,15 +81,13 @@ pub(super) async fn is_the_link(process: i32, team: &TeamId) -> Result<bool, Pee
         .is_some_and(|(verified, _)| verified))
 }
 
-/// No signature is read outside macOS: [`Program::SignedBy`] admits nothing there.
+/// No signature is read outside macOS, so [`Program::SignedBy`] admits nothing there.
 #[cfg(not(target_os = "macos"))]
 #[expect(clippy::unused_async, reason = "the same signature as the macOS check")]
 pub(super) async fn is_the_link(_process: i32, _team: &TeamId) -> Result<bool, PeerError> {
     Ok(false)
 }
 
-/// One run of `codesign` with `args`, for a request: its success and its standard error, `None`
-/// when it took longer than [`SIGNATURE_LIMIT`] (it is then ended).
 #[cfg(target_os = "macos")]
 async fn codesign(args: &[&str]) -> io::Result<Option<(bool, String)>> {
     let mut command = tokio::process::Command::new(CODESIGN);
@@ -126,8 +108,6 @@ async fn codesign(args: &[&str]) -> io::Result<Option<(bool, String)>> {
     }
 }
 
-/// One run of `codesign` with `args` at the start of the daemon, outside a request: its success
-/// and its standard error; an error when it took longer than [`SIGNATURE_LIMIT`].
 #[cfg(target_os = "macos")]
 fn codesign_now(args: &[String]) -> io::Result<(bool, String)> {
     let mut child = std::process::Command::new(CODESIGN)
@@ -147,8 +127,7 @@ fn codesign_now(args: &[String]) -> io::Result<(bool, String)> {
             return Ok((status.success(), text));
         }
         if Instant::now() >= end {
-            // The time limit is the error that the caller gets; a failed kill or wait of a
-            // program that is already ending adds nothing to it.
+            // The time limit is the caller's error; a failed kill or wait of an ending program adds nothing.
             let _ = child.kill();
             let _ = child.wait();
             return Err(io::ErrorKind::TimedOut.into());
@@ -157,9 +136,7 @@ fn codesign_now(args: &[String]) -> io::Result<(bool, String)> {
     }
 }
 
-/// The program to expect from what `codesign -d --verbose=2` showed of this daemon (its lines
-/// are on standard error): [`Program::OfTheUser`] for no Developer ID signature (none at all, ad
-/// hoc, or no team), `None` when the output does not say.
+/// `codesign -d` prints on standard error; no Developer ID signature (none, ad hoc, no team) is [`Program::OfTheUser`].
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
@@ -180,9 +157,7 @@ fn shown_program(success: bool, shown: &str) -> Option<Program> {
     TeamId::parse(team).map(Program::SignedBy)
 }
 
-/// What `codesign --verify` of the running daemon must find for `program`: the Developer ID of
-/// the team, or no Apple anchor at all. The second fails for a daemon with a Developer ID
-/// signature whose file shows none, and for a daemon with no valid signature.
+/// With no Developer ID, no Apple anchor at all, which fails for a signed daemon whose file shows none.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
@@ -194,7 +169,6 @@ fn own_requirement(program: &Program) -> String {
     }
 }
 
-/// The signing identifier that `codesign -d` showed, when it is the one of the link program.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
@@ -214,7 +188,6 @@ fn link_identifier(shown: &str) -> Option<&str> {
     named.then_some(identifier)
 }
 
-/// The requirement of the link program with `identifier` and a Developer ID signature of `team`.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")

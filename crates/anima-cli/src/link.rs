@@ -1,6 +1,6 @@
-//! `anima link`: the devices of the hub's link (`anima-link`), their invites, the install code of
-//! a computer with no application, and their revocation (FRN-009, LNK-003, LNK-004, HM-T33). An
-//! invite, an install code and a revocation need a login token (D-23).
+//! `anima link`: the devices of the hub's link, their invites, install codes and revocation
+//! (FRN-009, LNK-003, LNK-004, HM-T33). An invite, an install code and a revocation need a login
+//! token (D-23).
 
 pub mod devices;
 pub mod documents;

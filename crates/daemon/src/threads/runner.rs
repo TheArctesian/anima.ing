@@ -11,6 +11,7 @@ mod accounts;
 mod attachments;
 mod calls;
 pub mod codex;
+mod git;
 mod holder_events;
 pub mod launcher;
 mod listings;
@@ -137,6 +138,8 @@ pub struct Runner {
     attached: attachments::Attachments,
     /// What the launcher of the Git engine knows of the threads that run.
     rights: launcher::SharedRights,
+    /// The Git engine of the threads (TH116).
+    git: git::Gits,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -172,6 +175,7 @@ pub async fn run(
     let _lock = record::lock(&dir)?;
     let saved = record::read(&dir)?;
     let env = login::environment(&daemon_env).await;
+    let (rights, gits) = git::Gits::make(&env, &daemon_env, &dir);
     tokio::pin!(stop);
     let link = tokio::select! {
         link = link::reach_patiently(program, &dir) => link,
@@ -206,7 +210,8 @@ pub async fn run(
         said: accounts::Said::default(),
         model_asks: models::Asks::default(),
         attached: attachments::Attachments::at(&dir),
-        rights: launcher::SharedRights::default(),
+        rights,
+        git: gits,
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -225,56 +230,42 @@ impl Runner {
         let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
         tokio::pin!(stop);
         let mut look = tokio::time::interval(Duration::from_secs(10));
-        let Some(mut asked) = self.asks.receiver.take() else {
-            return;
-        };
-        let Some(mut listed) = self.model_asks.receiver.take() else {
+        let (Some(mut asked), Some(mut listed), Some(mut made)) = (
+            self.asks.receiver.take(),
+            self.model_asks.receiver.take(),
+            self.asks.made.take(),
+        ) else {
             return;
         };
         loop {
             tokio::select! {
-                event = self.link.events.recv() => match event {
-                    Some(event) => self.holder_event(event).await,
-                    None => self.reconnect().await,
-                },
+                event = self.link.events.recv() => self.heard_holder(event).await,
                 Some(call) = incoming.recv() => self.call(call).await,
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
                 Some((program, models)) = listed.recv() => self.models_asked(program, models),
-                _ = look.tick() => {
-                    self.end_the_silent().await;
-                    self.attached.expire(std::time::Instant::now());
-                    self.replace_older_holder().await;
-                }
+                Some(worktree) = made.recv() => self.worktree_made(worktree).await,
+                _ = look.tick() => self.look_around().await,
                 () = &mut stop => break,
             }
         }
         accepting.abort();
     }
 
-    /// A new link to the holder. The commands that the holder did not answer go again with
-    /// their own IDs, so that a line the holder already wrote is not written twice and each call
-    /// that waits gets its answer; a start waits for the holder to say what it holds.
-    async fn reconnect(&mut self) {
-        tracing::warn!("the link to the holder closed; connecting again");
-        self.holder.fits = false;
-        self.holder.newer = false;
-        // Until the next hello nothing is known of the holder: no Quit goes to a new one.
-        self.holder.older = false;
-        let next = self.link.next_id();
-        self.link = link::reach_patiently(&self.program, &self.dir).await;
-        self.link.go_on_from(next);
-        self.send_again().await;
+    /// An event of the holder, or a new link when the old one closed.
+    async fn heard_holder(&mut self, event: Option<crate::threads::wire::Event>) {
+        match event {
+            Some(event) => self.holder_event(event).await,
+            None => self.reconnect().await,
+        }
     }
 
-    /// Sends each command that the holder did not answer again, in the order it went first.
-    async fn send_again(&mut self) {
-        let again: Vec<Command> = self.unanswered.values().cloned().collect();
-        for command in again {
-            if let Err(error) = self.link.resend(&command).await {
-                tracing::warn!(%error, "the holder did not take a command sent again");
-                return;
-            }
-        }
+    /// What the runner looks at every ten seconds: the silent starts, the old files of prompts,
+    /// an older holder, and the records of the Git engine.
+    async fn look_around(&mut self) {
+        self.end_the_silent().await;
+        self.attached.expire(std::time::Instant::now());
+        self.replace_older_holder().await;
+        self.git_touch();
     }
 
     /// Does a step of a thread that is not a command to the holder.
@@ -330,6 +321,7 @@ impl Runner {
             let Some(action) = step.command(&key) else {
                 if step == Step::Workspace {
                     self.look_at_workspace(id).await;
+                    self.git_turn_ended(id);
                 }
                 self.own_step(id, step, last_write);
                 continue;

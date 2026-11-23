@@ -7,6 +7,7 @@
   import { KINDS, type ChannelDraft, type Stored } from './draft';
   import EmailFields from './kinds/EmailFields.svelte';
   import type { DraftField } from './input';
+  import SecretField from './SecretField.svelte';
   import NtfyFields from './kinds/NtfyFields.svelte';
   import WebhookFields from './kinds/WebhookFields.svelte';
 
@@ -58,6 +59,9 @@
       <legend>{kindLabel}</legend>
       {#if draft.kind === 'WEBHOOK'}
         <WebhookFields bind:webhook={draft.webhook} {stored} {problemOf} />
+      {:else if draft.kind === 'MOBILE'}
+        <SecretField label="Push relay URL" bind:value={draft.mobile.url} problem={problemOf('mobile.url')} stored={stored !== null} />
+        <SecretField label="Relay token" shape="hidden" bind:value={draft.mobile.token} problem={problemOf('mobile.token')} stored={stored !== null} />
       {:else if draft.kind === 'NTFY'}
         <NtfyFields bind:ntfy={draft.ntfy} {stored} {problemOf} />
       {:else if draft.kind === 'EMAIL'}

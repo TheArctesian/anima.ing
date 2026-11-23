@@ -1,5 +1,3 @@
-//! `anima key revoke <id-or-name>`: the key stops working at once.
-
 use super::documents::{KeyList, KeyRevoke, key_list, key_revoke};
 use crate::failure::{Failure, Hint};
 use crate::hub::Hub;

@@ -1,5 +1,3 @@
-//! Tests of what the daemon decides before it starts an item (K10 Sections 3 to 6 and 9).
-
 use chrono::{TimeZone as _, Utc};
 use daemon_core::wire::{WorkKind, WorkRepository, WorkState};
 use serde_json::{Value, json};
@@ -162,7 +160,6 @@ fn r_185_a_machine_with_no_list_refuses_each_item_and_a_list_refuses_what_is_not
     let mut gitlab = named("example", "app");
     gitlab.forge = "gitlab".to_owned();
     assert!(!listed.permits(&gitlab));
-    // A list with a fault permits nothing: it is not read in part.
     assert_eq!(
         Repositories::parse("example/app\n*/*\n").unwrap_err().line,
         2

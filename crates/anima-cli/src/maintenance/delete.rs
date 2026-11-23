@@ -1,4 +1,4 @@
-//! `anima maintenance delete <id-or-name>`: asks first, or takes `--yes` (CMD-024).
+//! CMD-024.
 
 use super::documents::{MaintenanceDelete, maintenance_delete};
 use super::list::find;

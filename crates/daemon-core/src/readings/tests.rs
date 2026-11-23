@@ -1,5 +1,3 @@
-//! Tests of the device-output readers on captured and hostile output.
-
 use super::{Cpu, Disk, Interface, Load, Memory, captures};
 
 mod apfs;
@@ -11,7 +9,6 @@ mod gpu;
 mod linux;
 mod macos;
 
-/// Asserts two floats are the same number, apart from rounding of the last digits.
 fn assert_close(actual: f64, expected: f64) {
     assert!(
         (actual - expected).abs() < 1e-9,

@@ -1,5 +1,4 @@
-//! One call of each change tool T7 left without a test, with `--allow-write` and the login
-//! token, against the scripted hub (MCP-007, MCP-009, MCP-017).
+//! One call of each change tool with `--allow-write` (MCP-007, MCP-009, MCP-017).
 
 use serde_json::{Value, json};
 
@@ -25,7 +24,6 @@ fn sent(hub: &FakeHub, operation: &str) -> Value {
         .map_or_else(|| panic!("no {operation}"), |seen| seen.variables)
 }
 
-/// A `CheckGet` answer for the TCP check "SSH port".
 fn check_get() -> Value {
     data(json!({ "check": {
         "id": CHECK, "name": "SSH port", "type": "TCP", "status": "UP", "paused": false,

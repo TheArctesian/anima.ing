@@ -1,5 +1,4 @@
-//! The hardware values in a batch: sent once after they changed, kept until a 204, as the K8
-//! JSON of the optional member `hardware` (CAP-032, R-165).
+//! CAP-032, R-165.
 
 use anima_daemon::push::Event;
 use daemon_core::hardware::{

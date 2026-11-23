@@ -1,10 +1,8 @@
-//! When an API key stops working: a time, or a number of days from now. Every key expires and
-//! none lasts longer than a year (INT-003, D-23).
+//! When an API key stops working (INT-003, D-23).
 
 use chrono::{DateTime, Duration, SecondsFormat, Utc};
 
-/// The most days a key may last. One day more than a year, so a key made on 29 February can
-/// still last until the same date next year; the hub decides the exact limit.
+/// One day over a year, for a key made on 29 February; the hub decides the exact limit.
 const MAX_DAYS: i64 = 366;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -17,8 +15,6 @@ pub enum ExpiryError {
     TooLong,
 }
 
-/// `text` as an RFC 3339 time in UTC, counted from `now` when it is `<days>d`.
-///
 /// # Errors
 /// [`ExpiryError`] for text that is no time, a time that has passed or one over a year away.
 pub fn parse(text: &str, now: DateTime<Utc>) -> Result<String, ExpiryError> {

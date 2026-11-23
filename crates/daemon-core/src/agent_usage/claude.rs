@@ -1,10 +1,5 @@
-//! The lines of a Claude Code session file (`~/.claude/projects/<project>/<id>.jsonl` and its
-//! sub-agents' `<id>/subagents/**/*.jsonl`): a prompt is a `user` line the operator typed, not
-//! a sub-agent's; the tool calls and tokens are in the `assistant` lines, the sub-agents' too.
-//!
-//! Claude Code writes one `assistant` line for each block of a reply, each with the usage of
-//! the whole reply, so the tokens of a reply count once, by its `message.id`. Only the fields
-//! named below are read; serde skips the rest, the text included.
+//! The lines of a Claude Code session file; a prompt is a `user` line the operator typed, not a sub-agent's.
+//! Each `assistant` line of a reply carries the whole reply's usage, so its tokens count once, by `message.id`.
 
 use std::collections::VecDeque;
 use std::hash::{DefaultHasher, Hash as _, Hasher as _};
@@ -15,19 +10,16 @@ use super::Tokens;
 use super::content::Content;
 use super::tally::{Counts, time};
 
-/// How many reply IDs a file remembers: the lines of one reply follow each other, so a few
-/// suffice, and memory stays bounded however long the file.
+/// The lines of one reply follow each other, so a few reply IDs suffice.
 const REMEMBERED: usize = 16;
 
 /// The model Claude Code names on a reply it made itself, with no model call and no tokens.
 const SYNTHETIC: &str = "<synthetic>";
 
-/// The hashes of the replies whose tokens were counted last.
 #[derive(Clone, Debug, Default)]
 pub(super) struct Recent(VecDeque<u64>);
 
 impl Recent {
-    /// Whether the reply `id` is new; remembers it.
     fn first(&mut self, id: &str) -> bool {
         let mut hasher = DefaultHasher::new();
         id.hash(&mut hasher);
@@ -104,8 +96,6 @@ pub(super) fn read(recent: &mut Recent, counts: &mut Counts, line: &[u8]) {
     }
 }
 
-/// The tool calls of one `assistant` line, and the tokens of its reply the first time the
-/// reply is seen.
 fn reply(
     recent: &mut Recent,
     counts: &mut Counts,

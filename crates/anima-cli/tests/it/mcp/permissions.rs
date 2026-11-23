@@ -1,5 +1,4 @@
-//! Per-tool states saved per hub, the bulk forms, and the flags at start that combine with
-//! them (MCP-002, MCP-003, MCP-012, MCP-014, MCP-015).
+//! Per-tool states and the flags at start (MCP-002, MCP-003, MCP-012, MCP-014, MCP-015).
 
 use serde_json::{Value, json};
 
@@ -7,7 +6,6 @@ use super::session::{API_KEY, Desk, LOGIN_TOKEN, hub};
 
 const ORIGIN: &str = "https://hub.example";
 
-/// `anima mcp permissions <args> --hub https://hub.example`.
 async fn permissions(desk: &Desk, args: &[&str]) -> (i32, String, String) {
     let mut all = vec!["mcp", "permissions"];
     all.extend_from_slice(args);
@@ -15,7 +13,6 @@ async fn permissions(desk: &Desk, args: &[&str]) -> (i32, String, String) {
     desk.run(LOGIN_TOKEN, &all).await
 }
 
-/// Each tool's state in `permissions show --json`.
 async fn states(desk: &Desk) -> Value {
     let (code, stdout, stderr) = permissions(desk, &["show", "--json"]).await;
     assert_eq!(code, 0, "{stderr}");

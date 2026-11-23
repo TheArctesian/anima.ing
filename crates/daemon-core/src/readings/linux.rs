@@ -2,9 +2,7 @@
 
 use super::{Cpu, DriveCounters, Interface, Load, Memory, label, lines, load, number};
 
-/// The aggregate `cpu` line of `/proc/stat`: `total` is user, nice, system, idle, iowait, irq,
-/// softirq and steal (guest time is already in user); `idle` is idle plus iowait. Fields an
-/// old kernel lacks count as zero; fewer than four fields, or a bad one, gives `None`.
+/// `/proc/stat`'s `cpu` line: guest time is already in user, and iowait counts as idle.
 #[must_use]
 pub fn cpu(output: &[u8]) -> Option<Cpu> {
     lines(output).find_map(|line| {
@@ -26,8 +24,6 @@ pub fn cpu(output: &[u8]) -> Option<Cpu> {
     })
 }
 
-/// `/proc/meminfo`: used is `MemTotal` less `MemAvailable`, or less `MemFree + Buffers +
-/// Cached` when the kernel has no `MemAvailable`. `None` without a non-zero total.
 #[must_use]
 pub fn memory(output: &[u8]) -> Option<Memory> {
     let (mut total, mut available) = (None, None);
@@ -57,7 +53,6 @@ pub fn memory(output: &[u8]) -> Option<Memory> {
     })
 }
 
-/// The bytes of a `/proc/meminfo` value such as `  16384000 kB`.
 fn kibibytes(value: &str) -> Option<u64> {
     value
         .split_whitespace()
@@ -67,8 +62,6 @@ fn kibibytes(value: &str) -> Option<u64> {
         .checked_mul(1024)
 }
 
-/// `/proc/net/dev`: received and sent bytes per interface. A line that does not read is
-/// skipped, as is an interface with an unusable name.
 #[must_use]
 pub fn interfaces(output: &[u8]) -> Vec<Interface> {
     lines(output)
@@ -87,21 +80,17 @@ pub fn interfaces(output: &[u8]) -> Vec<Interface> {
         .collect()
 }
 
-/// `/proc/uptime`: seconds since boot, the first number.
 #[must_use]
 pub fn uptime_seconds(output: &[u8]) -> Option<f64> {
     number(lines(output).next()?.split_whitespace().next()?)
 }
 
-/// `/proc/loadavg`: the 1, 5 and 15 minute averages, the first three numbers.
 #[must_use]
 pub fn load_average(output: &[u8]) -> Option<Load> {
     load(lines(output).next()?.split_whitespace())
 }
 
-/// `/proc/diskstats`: the read and written sectors and the busy milliseconds of each block
-/// device (MET-028). A line with fewer than the 13 columns of kernel 2.6, a counter that does
-/// not read or an unusable name is skipped.
+/// `/proc/diskstats` (MET-028); a line with fewer than the 13 columns of kernel 2.6 is skipped.
 #[must_use]
 pub fn drive_counters(output: &[u8]) -> Vec<DriveCounters> {
     lines(output)

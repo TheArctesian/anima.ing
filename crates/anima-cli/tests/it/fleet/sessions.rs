@@ -1,6 +1,4 @@
-//! `anima session`, `anima ssh` and `anima files` against a scripted hub with tunnels (K4).
-//! The interactive path (raw mode, window changes) needs a real terminal and is not run here;
-//! `ssh` is tested with standard input from a pipe, which takes the same relay.
+//! The interactive path needs a real terminal; `ssh` runs here with standard input from a pipe.
 
 mod files;
 mod list;
@@ -15,7 +13,6 @@ pub const LOGIN_TOKEN: &str = "login-token-for-session-tests";
 pub const DEVICE: &str = "0190a000-0000-7000-8002-000000000001";
 pub const SESSION: &str = "0190a000-0000-7000-8009-000000000001";
 
-/// A K1 `Session` as the documents select it.
 pub fn session(reason: Option<&str>) -> Value {
     json!({
         "id": SESSION, "deviceId": DEVICE, "deviceName": "web-1", "protocol": "SSH",
@@ -25,7 +22,6 @@ pub fn session(reason: Option<&str>) -> Value {
     })
 }
 
-/// The `startSession` answer with the terminal ticket.
 pub fn started(wake_sent: bool) -> Value {
     data(json!({ "startSession": {
         "sessionId": SESSION, "token": TERMINAL_TICKET, "tunnelPath": "/terminal",
@@ -33,12 +29,10 @@ pub fn started(wake_sent: bool) -> Value {
     }}))
 }
 
-/// The `openFiles` answer with the files ticket.
 pub fn files_opened() -> Value {
     data(json!({ "openFiles": { "token": FILES_TICKET, "tunnelPath": "/files" } }))
 }
 
-/// The `endSession` answer, ended with `reason`.
 pub fn ended(reason: &str) -> Value {
     data(json!({ "endSession": session(Some(reason)) }))
 }

@@ -1,5 +1,4 @@
-//! `anima key create`: makes an API key and prints its secret. This is the one place the
-//! secret is shown (INT-003); the hub keeps only its hash.
+//! `anima key create`: the one place an API key's secret is shown (INT-003).
 
 use chrono::Utc;
 use serde_json::json;

@@ -1,5 +1,3 @@
-//! The trust documents: a host key or certificate fingerprint the operator accepts.
-
 use graphql_client::GraphQLQuery;
 
 use crate::hub::scalars::DateTime;

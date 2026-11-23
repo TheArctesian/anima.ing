@@ -1,6 +1,4 @@
-// The gates of a release (BLD-042, R-190): the release calls the workflow `gates`, does not
-// call it for a content that passed it on `dev` (deploy/bin/gated-run), and runs the tests
-// that only a Mac runs (deploy/bin/macos-tests). Nothing here runs a workflow.
+// BLD-042, R-190.
 import { beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -91,7 +89,6 @@ describe("the gates jobs of the release", () => {
   });
 });
 
-/** A repository with two commits of one tree (as `dev` and its merge into `main`) and one of another tree. */
 function repository(): { folder: string; dev: string; main: string; other: string } {
   const folder = mkdtempSync(join(tmpdir(), "gated-run-"));
   const git = (...args: string[]): string => {
@@ -136,7 +133,6 @@ function gated(folder: string, commit: string, runs: unknown): { exitCode: numbe
   return { exitCode: done.exitCode, printed: done.stdout.toString().trim() };
 }
 
-// gated-run is a Unix release script; retain the workflow checks on every platform.
 describe.skipIf(process.platform === "win32")("gated-run: which run of the gates counts for a commit", () => {
   let folder: string, dev: string, main: string, other: string;
   beforeAll(() => { ({ folder, dev, main, other } = repository()); });
@@ -190,7 +186,6 @@ describe.skipIf(process.platform === "win32")("gated-run: which run of the gates
   });
 });
 
-/** The packages of the workspace that hold Rust code for macOS only, by the name in their Cargo.toml. */
 function packagesWithMacCode(): string[] {
   const holds = (folder: string): boolean =>
     readdirSync(folder, { withFileTypes: true }).some((entry) => {

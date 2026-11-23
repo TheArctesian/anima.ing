@@ -1,12 +1,5 @@
 //! The use of the AI agent programs on a device (AIS-018 to AIS-024, K8 Section 4): counts of
-//! prompts, tool calls and tokens of each session, by UTC day and by model.
-//!
-//! Pure: [`Tally`] reads the lines of one session file of Claude Code or Codex and keeps only
-//! the counts, the times, the working folder and the IDs that link a sub-agent to its session;
-//! never the text of a line (AIS-018, AIS-022). [`Session`] adds the tallies of one session's
-//! files and gives its [`SessionDay`]s. [`repository`] reads the name of a repository from a git
-//! configuration. The daemon reads the files (I/O); the hub checks what arrives
-//! (`wire::BatchAgentUsage`).
+//! prompts, tool calls and tokens, never the text of a line (AIS-018, AIS-022).
 
 pub mod account;
 mod claude;
@@ -40,7 +33,6 @@ pub const MAX_COUNT: u64 = (1 << 53) - 1;
 /// of a day that has more than [`MAX_MODELS`].
 pub const OTHER_MODEL: &str = "other";
 
-/// The AI agent program a session comes from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Source {
     ClaudeCode,
@@ -48,7 +40,6 @@ pub enum Source {
 }
 
 impl Source {
-    /// The source of a K8 `source` text; `None` for one this side does not know.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         match text {
@@ -70,7 +61,6 @@ impl Source {
 /// What a daemon can read of the sessions on its computer (AIS-024, K8 Section 4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum UsageState {
-    /// It reads the session files of its user.
     Reading,
     /// It runs as the systemd system unit, which cannot see the files of a user.
     SystemUnit,
@@ -79,7 +69,6 @@ pub enum UsageState {
 }
 
 impl UsageState {
-    /// The state of a K8 `state` text; `None` for one this side does not know.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         match text {
@@ -100,8 +89,7 @@ impl UsageState {
     }
 }
 
-/// The tokens of one model: the input not read from or written to the cache, the output
-/// (reasoning included), and the input read from and written to the cache.
+/// `input` leaves out the cache reads and writes; `output` includes reasoning.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Tokens {
     pub input: u64,
@@ -111,7 +99,6 @@ pub struct Tokens {
 }
 
 impl Tokens {
-    /// These tokens and `more`, each count held at [`MAX_COUNT`].
     #[must_use]
     pub fn plus(self, more: Self) -> Self {
         let add = |a: u64, b: u64| a.saturating_add(b).min(MAX_COUNT);
@@ -123,7 +110,6 @@ impl Tokens {
         }
     }
 
-    /// Whether each count is at most [`MAX_COUNT`].
     #[must_use]
     pub const fn fits(self) -> bool {
         self.input <= MAX_COUNT
@@ -133,7 +119,6 @@ impl Tokens {
     }
 }
 
-/// The tokens of one model on one session day.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModelTokens {
     pub model: String,

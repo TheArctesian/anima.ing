@@ -1,17 +1,15 @@
-//! How commits, branches and releases read in a table. The commit documents select different
-//! parts of the K1 `Commit`, so each is rendered from its JSON.
+//! The commit documents select different parts of the K1 `Commit`, so each is rendered from its
+//! JSON.
 
 use serde::Serialize;
 
 use crate::forge::render::{checks, flag, many, text};
 use crate::output::Table;
 
-/// The first seven digits of a commit.
 fn short(sha: &str) -> &str {
     sha.get(..7).unwrap_or(sha)
 }
 
-/// The commits of a page as rows: short sha, title, author, date, checks.
 #[must_use]
 pub fn commits<T: Serialize>(commits: &T) -> Table {
     let commits = serde_json::to_value(commits).unwrap_or_default();
@@ -36,7 +34,6 @@ pub fn commits<T: Serialize>(commits: &T) -> Table {
     table
 }
 
-/// The branches of a page as rows: name, short sha, whether it is the default, protected.
 #[must_use]
 pub fn branches<T: Serialize>(branches: &T) -> Table {
     let branches = serde_json::to_value(branches).unwrap_or_default();
@@ -58,7 +55,6 @@ pub fn branches<T: Serialize>(branches: &T) -> Table {
     table
 }
 
-/// The releases of a page as rows: tag, name, kind, author, date.
 #[must_use]
 pub fn releases<T: Serialize>(releases: &T) -> Table {
     let releases = serde_json::to_value(releases).unwrap_or_default();

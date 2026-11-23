@@ -1,4 +1,4 @@
-//! `anima maintenance` against the scripted hub (CMD-020, CMD-024).
+//! CMD-020, CMD-024.
 
 use serde_json::{Value, json};
 

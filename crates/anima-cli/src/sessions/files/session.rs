@@ -1,7 +1,4 @@
-//! The SSH session a files tunnel needs (K4 Section 9): `openFiles` takes only a live SSH
-//! session of the same operator and client address whose terminal tunnel is open. So: start
-//! one, open its terminal and keep it alive (its output is dropped), open the files tunnel,
-//! do the work, then close both and end the session, whatever the work's outcome.
+//! `openFiles` takes only a live SSH session of this operator whose terminal tunnel is open (K4 Section 9).
 
 use std::time::Duration;
 
@@ -18,14 +15,11 @@ use crate::sessions::terminal::console::pixels;
 use crate::sessions::terminal::ending::verdict;
 use crate::sessions::terminal::link::{Streams, relay};
 
-/// How long opening the files tunnel may take (the hub opens its own SSH connection).
+/// Opening the files tunnel waits for the hub's own SSH connection.
 const FILES_OPENING: Duration = Duration::from_secs(30);
 
-/// Runs `work` on a files tunnel to `device` (ID or exact name).
-///
 /// # Errors
-/// The hub's refusals, a tunnel that fails, or the session ending under the work, as a
-/// [`FilesError`] for `describe` to word; `work`'s own failure.
+/// The hub's refusals, a failed tunnel, the session ending under the work, or `work`'s failure.
 pub async fn with_files<T>(
     invocation: &Invocation,
     device: &str,
@@ -80,7 +74,7 @@ pub async fn with_files<T>(
     done
 }
 
-/// No input, a fixed 80 by 24 size, and output dropped: the terminal only keeps the session.
+/// The terminal only keeps the session alive.
 fn quiet() -> (
     mpsc::Receiver<Vec<u8>>,
     watch::Receiver<CellSize>,

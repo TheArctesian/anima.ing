@@ -1,5 +1,4 @@
-//! `anima mcp` driven over standard input and output with JSON-RPC lines, against the scripted
-//! hub (MCP-001..017).
+//! `anima mcp` over JSON-RPC lines against the scripted hub (MCP-001..017).
 
 mod asking;
 mod calls;

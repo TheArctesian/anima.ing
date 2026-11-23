@@ -1,5 +1,3 @@
-//! The GPU readers (MET-016, MET-007).
-
 use super::{assert_close, captures::*};
 use crate::readings::gpu::{amd, apple, intel, nvidia};
 use crate::readings::{GpuVendor, Vram};
@@ -68,7 +66,6 @@ x, Name, 1, 2, 3, 4, 5\n\
 4, Good, 1, 2, 3, 4, 5\n\
 \n";
     let gpus = nvidia::gpus(output);
-    // A name with a control character or bad bytes keeps its GPU under the fixed name.
     let names: Vec<(u32, &str)> = gpus.iter().map(|g| (g.index, g.name.as_str())).collect();
     assert_eq!(names, [(2, "NVIDIA GPU"), (4, "Good")]);
 }
@@ -255,7 +252,6 @@ fn met_016_ioreg_reads_hostile_values_without_failing() {
     \"PerformanceStatistics\" = {\"Device Utilization %\"=-5,\"In use system memory\"=99999999999999999999999}\n";
     let gpus = apple::gpus(output);
     assert_eq!(gpus.len(), 1);
-    // Entries with nothing usable are skipped; the unusable name of the first is dropped.
     assert_eq!((gpus[0].index, gpus[0].name.as_str()), (0, "Apple M9"));
     assert_eq!(gpus[0].busy_percent, None);
     assert_eq!(gpus[0].shared_memory_bytes, None);

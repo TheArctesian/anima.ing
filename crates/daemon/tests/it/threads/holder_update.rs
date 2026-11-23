@@ -7,19 +7,11 @@ use std::time::Duration;
 use agent_threads::control::{Action, Outcome};
 use agent_threads::drive::{Mode, Program};
 
-use super::runner::{CLAUDE, Client, Kit};
+use super::runner::{CLAUDE, Client, Kit, holders_of};
 
-/// The process ID of the holder of `dir`, from `ps`.
+/// The process ID of the holder of `dir`.
 fn holder_pid(dir: &Path) -> Option<u32> {
-    let output = std::process::Command::new("/bin/ps")
-        .args(["-axww", "-o", "pid=,command="])
-        .output()
-        .ok()?;
-    let mark = format!(" holder {}", dir.display());
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .find(|line| line.trim_end().ends_with(&mark))
-        .and_then(|line| line.split_whitespace().next()?.parse().ok())
+    holders_of(dir).first().copied()
 }
 
 /// A copy of the daemon at `path`, as an update writes it: a new file put in place.
@@ -49,19 +41,7 @@ async fn th98_an_older_holder_is_named_kept_while_a_thread_runs_and_replaced_aft
         None,
         "the holder of this build"
     );
-    let start = client
-        .call(Action::Start {
-            program: Program::ClaudeCode,
-            folder: kit.path("work"),
-            mode: Mode::FullAccess,
-            model: None,
-            effort: None,
-            prompt: "Run the command".to_owned(),
-            program_path: None,
-            draft: None,
-            attachments: Vec::new(),
-        })
-        .await;
+    let start = client.call(start_action(&kit)).await;
     let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
@@ -114,6 +94,8 @@ fn start_action(kit: &Kit) -> Action {
         program_path: None,
         draft: None,
         attachments: Vec::new(),
+        worktree: false,
+        base: None,
     }
 }
 

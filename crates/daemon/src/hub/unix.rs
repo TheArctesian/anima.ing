@@ -1,5 +1,4 @@
-//! HTTP on the Unix socket of `anima-link`, one connection for each request, written only after
-//! the peer of the connection passed its check ([`super::peer`]).
+//! Nothing is written to the `anima-link` socket before its peer passes [`super::peer`].
 use super::{
     Call,
     answer::{Answer, Cause, answer},
@@ -81,7 +80,6 @@ impl Local {
     }
 }
 
-/// A connection to `socket` whose peer `expected` admits; nothing is written to it yet.
 pub(super) async fn checked(socket: &Path, expected: &Expected) -> Result<UnixStream, Cause> {
     let stream = UnixStream::connect(socket)
         .await
@@ -95,7 +93,6 @@ pub(super) async fn checked(socket: &Path, expected: &Expected) -> Result<UnixSt
     Ok(stream)
 }
 
-/// The meaning of the answer to one request, with at most [`super::body::LIMIT`] bytes read.
 async fn read<T>(
     sent: hyper::Result<hyper::Response<hyper::body::Incoming>>,
     ok: &[u16],

@@ -1,6 +1,4 @@
-//! The file tools of the `records` set (K-E4 Section 9; FIL-001, FIL-004). No tool takes or
-//! gives the bytes of a file: `anima file upload` and `anima file download` have no tool
-//! (CMD-030, Section 7 of the command line plan).
+//! K-E4 Section 9, FIL-001, FIL-004; no tool takes or gives the bytes of a file (CMD-030).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

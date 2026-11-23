@@ -1,5 +1,4 @@
-//! The object of each work type and the secrets that it can name (K10 Section 6): `build` and
-//! `runner`. The list is fixed in this program; the hub cannot add a type.
+//! The object and secrets of each work type (K10 Section 6); the list is fixed here and the hub cannot add a type.
 
 use serde_json::{Map, Value};
 
@@ -15,7 +14,6 @@ pub const RECIPES: [&str; 1] = ["desktop_release"];
 pub struct Version(pub u64, pub u64, pub u64);
 
 impl Version {
-    /// Reads `major.minor.patch`, each a number with no sign and no other character.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         let mut parts = text.split('.').map(|part| {
@@ -31,7 +29,6 @@ fn is_hex(text: &str, length: usize) -> bool {
     text.len() == length && text.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-/// A short word of a release: a target, a version or a label.
 fn is_word(text: &str) -> bool {
     (1..=64).contains(&text.len())
         && text
@@ -39,8 +36,7 @@ fn is_word(text: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-' | b'+'))
 }
 
-/// Whether `parameters` is the object of a `build` and its secrets are permitted for its
-/// origin: an item whose origin is `other` names no `project_secret` (SF-009).
+/// An item whose origin is `other` names no `project_secret` (SF-009).
 pub(super) fn build_holds(parameters: &Object, secrets: &[&str]) -> bool {
     const MEMBERS: [&str; 6] = ["recipe", "commit", "target", "version", "trigger", "origin"];
     let origin = text(parameters, "origin");
@@ -55,8 +51,6 @@ pub(super) fn build_holds(parameters: &Object, secrets: &[&str]) -> bool {
         && !(origin == Some("other") && secrets.contains(&"project_secret"))
 }
 
-/// The version of the runner program of a `runner` item; `None` when `parameters` is not the
-/// object of that type.
 pub(super) fn runner_version(parameters: &Object) -> Option<Version> {
     const MEMBERS: [&str; 3] = ["runnerVersion", "runnerSha256", "labels"];
     let labels = parameters.get("labels")?.as_array()?;

@@ -1,6 +1,3 @@
-//! Sign-in, contexts, `api`, completion, the version, snapshots, and the exit codes and errors of
-//! every command.
-
 mod api;
 mod auth;
 mod completion;

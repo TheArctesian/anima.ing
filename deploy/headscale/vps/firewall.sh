@@ -1,11 +1,5 @@
 # shellcheck shell=bash
-# The `firewall` and `confirm` commands: apply nftables.conf with a 180 s rollback that only
-# a new SSH session over the VPN can cancel, then install it for boot and mask firewalld
-# (VPS-002, DNS-005, D-10). Sourced by harden.sh after open-ports.sh; needs harden.sh's
-# say, refuse, fail, dry, path, write_file, save_previous, require_root and
-# docker_version_problem, NFT, SYSTEMCTL,
-# SYSTEMD_RUN, IP, SS, STATE_DIR, CONSOLE, HERE and SELF, and open-ports.sh's
-# is_vpn_address, local_accepts, refuse_closing and LOCAL_ALLOW.
+# The `firewall` and `confirm` commands: a rollback that only a new SSH session over the VPN cancels (VPS-002, DNS-005, D-10).
 
 NFT_RULES=/etc/nftables/anima.nft
 NFT_SYSCONFIG=/etc/sysconfig/nftables.conf
@@ -20,12 +14,9 @@ ROLLED_BACK=$STATE_DIR/firewall-rolled-back
 SESSION=$STATE_DIR/firewall-session
 PEERS=$STATE_DIR/firewall-peers
 FIREWALLD_WAS_ACTIVE=$STATE_DIR/firewalld-was-active
-# Under SELinux a unit's /bin/sh runs as initrc_t and its nft as iptables_t, and the
-# targeted policy lets iptables_t read no var_lib_t file, so the rollback could not read
-# /var/lib/anima. The rollback unit therefore runs unconfined, as the backup unit does.
+# SELinux lets a unit's nft (iptables_t) read no var_lib_t file, so the rollback unit runs unconfined.
 ROLLBACK_CONTEXT=system_u:system_r:unconfined_service_t:s0
 
-# Print each problem with the live and boot firewall state.
 firewall_problems() {
   local listing
   $IP link show tailscale0 >/dev/null 2>&1 || say "tailscale0 is missing"
@@ -48,15 +39,11 @@ firewall_problems() {
   (local_accepts >/dev/null) 2>/dev/null || say "$LOCAL_ALLOW has a line that is not one PORT/PROTO"
 }
 
-# The value of `define NAME = VALUE` in the nftables.conf beside this script.
 nft_define() {
   sed -n "s/^define $1 = \(.*\)\$/\1/p" "$HERE/nftables.conf"
 }
 
-# VP-13: print what the live table (`nft list table inet anima_filter`, in $1) lacks of the
-# hub's rules: the two exceptions in prerouting and in input, each with its reverse-path test,
-# the drop of the Anima container range from tailscale0, and the output chain that confines
-# anima-probe. An older table without them leaves the hub's address open to forgery.
+# VP-13: a table without the hub's rules leaves the hub's address open to forgery.
 hub_rule_problems() {
   local listing=$1 source vpn networks uid count
   source=$(nft_define hub_source)
@@ -74,10 +61,7 @@ hub_rule_problems() {
   fi
 }
 
-# Print nftables.service's settings as systemd has loaded them, one "Exec...=ARGV" line per
-# command, its arguments up to systemd's " ; ignore_errors=" (/usr/sbin/nft written as
-# /sbin/nft), and the FragmentPath and DropInPaths lines.
-# systemd prints no line for a command list that is empty.
+# systemd prints no line for an empty command list.
 nft_unit_settings() {
   $SYSTEMCTL show -p "$NFT_UNIT_PROPERTIES" nftables.service | awk '
     /^Exec/ {
@@ -92,9 +76,7 @@ nft_unit_settings() {
     { print }'
 }
 
-# Print each part of nftables.service the Anima drop-in cannot override: a unit file other
-# than the package's (an override in /etc or /run), another drop-in, and an enabled
-# iptables or ip6tables service, any of which could flush Docker's tables.
+# An override unit, another drop-in or an enabled iptables service could flush Docker's tables.
 nft_unit_foreign() {
   local settings dropin unit
   settings=$(nft_unit_settings) || { say "systemctl show nftables.service failed"; return; }
@@ -108,9 +90,6 @@ nft_unit_foreign() {
   done
 }
 
-# Print each problem with nftables.service once the Anima drop-in is in place: anything
-# nft_unit_foreign finds, and any command other than `nft -f` of the boot file at start
-# and reload.
 nft_unit_problems() {
   local settings line
   nft_unit_foreign
@@ -131,9 +110,6 @@ nft_unit_problems() {
   done <<<"$settings"
 }
 
-# Print each interface other than lo, tailscale0, docker0 and br-* that holds an IPv4
-# address in Docker's range 172.16.0.0/12 (a provider private network, for example): the
-# table's prerouting drop for that range would cut it off, so the operator decides first.
 docker_range_problems() {
   local addresses
   addresses=$($IP -o -4 addr show) || { say "ip -o -4 addr show failed"; return; }
@@ -144,9 +120,7 @@ docker_range_problems() {
   }' <<<"$addresses"
 }
 
-# Print each active line of the boot file other than the Anima include. EL ships it as
-# comments only; a rule or an include there could flush Docker's and tailscaled's tables
-# at boot, which no check of this file alone can rule out.
+# EL ships the boot file as comments; a rule there could flush Docker's and tailscaled's tables at boot.
 sysconfig_extra_lines() {
   local conf
   conf=$(path "$NFT_SYSCONFIG")
@@ -155,15 +129,12 @@ sysconfig_extra_lines() {
     { print name ":" FNR ": only the Anima include may be active in this file" }' "$conf"
 }
 
-# Refuse while the boot file holds anything but comments and the Anima include.
 refuse_sysconfig_extras() {
   local extras
   extras=$(sysconfig_extra_lines)
   [ -z "$extras" ] || refuse "$extras; move those rules into a file of their own, or comment them out, first"
 }
 
-# Print "ADDRESS PORT" for an address and port as ss or SSH_CONNECTION print them: no
-# brackets, no IPv4-mapped prefix, no scope, lower case.
 peer_key() {
   local address=${1#[}
   address=${address%]}
@@ -172,7 +143,6 @@ peer_key() {
   printf '%s %s\n' "$(tr 'A-F' 'a-f' <<<"$address")" "$2"
 }
 
-# Print "ADDRESS PORT" for each SSH connection established now.
 ssh_peers() {
   local sockets peer
   sockets=$($SS -Htn state established '( sport = :22 )') || return 1
@@ -182,16 +152,12 @@ ssh_peers() {
   done <<<"$sockets"
 }
 
-# True when this SSH session runs over the VPN at both ends.
 vpn_session() {
   local client server
   read -r client _ server _ <<<"${SSH_CONNECTION:-}"
   is_vpn_address "${client:-}" && is_vpn_address "${server:-}"
 }
 
-# Print nftables.conf with the ports of LOCAL_ALLOW as public accepts after the marker line
-# in the input chain. Nothing else changes; the VPN, prerouting and forward rules stay as
-# reviewed.
 render_rules() {
   local rules="" port
   for port in $(local_accepts); do
@@ -201,26 +167,22 @@ render_rules() {
     "$HERE/nftables.conf"
 }
 
-# Write the rollback script: remove our table, then restore its previous version if any.
 write_rollback() {
   printf 'table inet anima_filter\ndelete table inet anima_filter\n' >"$2"
   awk '/^table inet anima_filter \{$/ { keep = 1 } keep { print } keep && /^\}$/ { keep = 0 }' \
     "$1" >>"$2"
 }
 
-# Prove, before anything changes, that a systemd unit with the rollback's context can read
-# the rollback rules; otherwise the rollback would fail only when it is needed.
+# Otherwise the rollback would fail only when it is needed.
 probe_rollback() {
   $SYSTEMD_RUN --wait --pipe --quiet --property=SELinuxContext="$ROLLBACK_CONTEXT" \
     /bin/sh -c "'$1' -c -f '$STATE_DIR/nftables.rollback'" \
     || fail "a systemd unit cannot read the rollback rules (SELinux?); nothing applied"
 }
 
-# Arm the rollback before applying, so a session cut by the new rules still gets it.
-# The marker comes first, so confirm can tell that the rollback has started.
+# Armed before applying, so a session cut by the new rules still rolls back; the marker tells confirm it started.
 arm_rollback() {
-  # A rollback left from an earlier run would restore older rules; it may not exist,
-  # and if its name is still taken systemd-run below fails before anything is applied.
+  # A rollback left from an earlier run would restore older rules.
   $SYSTEMCTL stop "$ROLLBACK_UNIT.timer" >/dev/null 2>&1 || true
   $SYSTEMCTL reset-failed "$ROLLBACK_UNIT.service" >/dev/null 2>&1 || true
   $SYSTEMD_RUN --unit="$ROLLBACK_UNIT" --on-active="$ROLLBACK_SECONDS" --timer-property=AccuracySec=1s \
@@ -270,7 +232,6 @@ cmd_firewall() {
   say "If the new session cannot connect, do nothing: the previous rules come back."
 }
 
-# Refuse unless a new SSH session over the VPN (not the one that ran firewall) confirms.
 require_new_vpn_session() {
   if [ "$CONSOLE" -eq 1 ]; then
     say "WARNING: --console skips the check that SSH over the VPN works with the new rules."
@@ -289,15 +250,12 @@ require_new_vpn_session() {
     || refuse "this SSH connection was open before firewall ran; confirm from a NEW SSH session over the VPN"
 }
 
-# Refuse unless nft accepts the boot file as it will be once confirm installs the rules:
-# what the file holds now, without the Anima include, then the pending rules.
 check_boot_candidate() {
   { grep -vxF "$NFT_INCLUDE" "$(path "$NFT_SYSCONFIG")" 2>/dev/null || true
     printf 'include "%s"\n' "$(path "$1")"; } | $NFT -c -f /dev/stdin \
     || refuse "nft -c rejects the boot file with the new rules; nothing installed"
 }
 
-# Make EL's nftables.service load the Anima rules at boot, keeping what the file holds.
 install_boot_include() {
   local conf
   conf=$(path "$NFT_SYSCONFIG")
@@ -307,10 +265,8 @@ install_boot_include() {
     | write_file "$NFT_SYSCONFIG" 0600
 }
 
-# firewalld would filter beside the Anima table, outside the rollback; the Anima table is
-# the only host firewall (D-10). Docker keeps its own rules without firewalld.
-# firewalld may not be installed at all (the AlmaLinux 10 VPS image of R-050): the mask still
-# keeps a later install from starting it, and there is nothing to stop.
+# The Anima table is the only host firewall: firewalld would filter outside the rollback (D-10).
+# The mask also keeps a later install from starting firewalld (R-050).
 mask_firewalld() {
   local active=0
   if $SYSTEMCTL is-active --quiet firewalld.service; then active=1; : >"$(path "$FIREWALLD_WAS_ACTIVE")"; fi

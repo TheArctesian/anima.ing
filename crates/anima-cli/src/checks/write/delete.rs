@@ -1,4 +1,4 @@
-//! `anima check delete <id-or-name>`: asks first, or takes `--yes` (CMD-024).
+//! `anima check delete` asks first, or takes `--yes` (CMD-024).
 
 use super::documents::{CheckDelete, check_delete};
 use crate::checks::resolve::CheckRef;

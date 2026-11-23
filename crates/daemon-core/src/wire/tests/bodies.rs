@@ -1,4 +1,4 @@
-//! Every K8 example body reads and writes back unchanged (K8 Sections 1, 3 to 6).
+//! K8 Sections 1, 3 to 6.
 
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
@@ -8,7 +8,6 @@ use crate::wire::{
     DEVICE_NAME_CHARS, EnrolRequest, Enrolled, Refusal, RenewRequest, Renewed, is_device_name,
 };
 
-/// Reads `fixture` as `T`, writes it back, and compares the two as JSON values.
 fn round_trip<T: Serialize + DeserializeOwned>(fixture: &str) -> T {
     let body: T = serde_json::from_str(fixture).unwrap();
     let written = serde_json::to_value(&body).unwrap();
@@ -154,7 +153,6 @@ fn k8_1_a_time_is_read_only_in_the_form_k8_writes() {
 
 #[test]
 fn met_012_a_device_name_is_1_to_64_characters_of_any_width() {
-    // 64 three-byte characters: 192 bytes, a name the hub's device rule takes.
     assert!(is_device_name(&"漢".repeat(DEVICE_NAME_CHARS)));
     assert!(is_device_name(&"🖥".repeat(DEVICE_NAME_CHARS)));
     assert!(is_device_name("a"));

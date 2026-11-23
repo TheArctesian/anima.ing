@@ -1,6 +1,4 @@
-// deploy/acceptance/log-scan.ts (criterion 22, LOG-007, SEC-009, A-3). Every value here is synthetic and built at
-// run time, so no secret shape sits in the repository. Each kind has a leaking line that is caught and near misses
-// that are not; spawned runs prove the output holds only line numbers and kinds.
+// deploy/acceptance/log-scan.ts (criterion 22, LOG-007, SEC-009, A-3); values are built at run time so no secret shape sits in the repository.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,7 +9,6 @@ import { finish } from "./finished-process.ts";
 const SCRIPT = join(import.meta.dir, "..", "acceptance", "log-scan.ts");
 const ESC = String.fromCharCode(0x1b);
 
-/** A synthetic base64url run of this length with upper case, lower case, digits, `_` and `-`. */
 function fake(length: number, seed = "qR7_vK2-mZ9xT4"): string {
   return seed.repeat(Math.ceil(length / seed.length)).slice(0, length);
 }
@@ -22,7 +19,6 @@ const enrolmentCode = `anima_enrol_${fake(22, "Ue6-Ji1_Ok4")}`;
 const bearer = fake(43, "Gh5sD2-Fj8_kQw");
 const ntfyToken = `tk_${fake(29, "a9B8c7D6e5F4")}`;
 
-// Each kind: lines that leak it, then near misses that must stay clean of every kind.
 const CASES: [LeakKind, string[], string[]][] = [
   ["api-key", [`{"level":"INFO","fields":{"key":"${apiKey}"}}`, `Bearer ${apiKey}.`],
     [`anima_${fake(42)}`, `anima_${fake(44)}`, "anima_check_up 1", `anima_${fake(6)} (display prefix)`]],
@@ -192,7 +188,6 @@ describe("property: an embedded API key is found whatever surrounds it", () => {
 });
 
 describe("hostile lines", () => {
-  // Patterns start at a literal or a run boundary and bound their repeats, so time grows with the line, not its square.
   test("long adversarial lines scan in linear time", () => {
     const units = ["x", "http://", "a://b:", "x:", "AUTH PLAIN ", "password=", "anima_", "https://ntfy", `${ESC}[`, "a+"]
       .concat(["\\\\", "\\u{", "%25", '\\"', "authorization: ", "secret:  "]);
@@ -279,7 +274,7 @@ describe("spawned scan", () => {
   test("a large log streams through", async () => {
     const big = `${"hub-1 | {\"level\":\"INFO\",\"route\":\"/graphql\"}\n".repeat(100_000)}${apiKey}\n`;
     expect(await run([], big)).toEqual({ code: 1, out: "line 100001: api-key\nscanned 100001 lines, 1 hits\n", err: "" });
-    // About 2 s on an idle machine; the default 5 s is too tight when run alone under load.
+    // About 2 s when idle; the default 5 s is too tight under load.
   }, 30_000);
 
 });

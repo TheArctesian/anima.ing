@@ -52,3 +52,23 @@ test('PRJ-039: GitHub connection guidance and actions fit at narrow and medium w
     }
   }
 });
+
+test('MOT-043: a switch follows the Reduce motion choice of Settings, also against the OS', async ({ page }) => {
+  await page.route('**/graphql', async (route) => {
+    const request = route.request().postDataJSON() as { query: string };
+    if (!request.query.startsWith('query Extensions ')) return route.fallback();
+    await route.fulfill({ json: { data: { extensions: [{ key: 'projects', name: 'Projects', built: true, fixed: false, on: false, needs: [], worksWith: [], neededBy: [] }] } } });
+  });
+  const choose = async (choice: 'On' | 'Off'): Promise<number> => {
+    await page.goto('/settings');
+    await page.getByRole('radiogroup', { name: 'Reduce motion' }).getByRole('radio', { name: choice }).click();
+    await page.goto('/extensions');
+    // The knob's slide: the transition of the switch's ::after.
+    const seconds = await page.getByRole('switch', { name: /Projects/u }).evaluate((node) => getComputedStyle(node, '::after').transitionDuration);
+    return Number.parseFloat(seconds);
+  };
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  expect(await choose('On')).toBe(0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await choose('Off')).toBeGreaterThan(0);
+});

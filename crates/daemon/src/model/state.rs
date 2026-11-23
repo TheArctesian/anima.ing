@@ -1,6 +1,4 @@
-//! The model state of the node (Section 8): the object of `model_report` and, later, of the
-//! member `runtimes` of the push batch. It holds no prompt, no output, no file name of a copy
-//! and no address (SEC-C-010).
+//! The model state of the node (Section 8); it holds no prompt, output, file name of a copy or address (SEC-C-010).
 
 use chrono::{SecondsFormat, Utc};
 use daemon_core::model_work::folders::Folders;
@@ -11,11 +9,9 @@ use serde_json::{Value, json};
 
 use super::supervise::Servers;
 
-/// The most installed runtimes and servers in the object.
 const MAX_LISTED: usize = 16;
 
-/// The installed releases: the folders `runtimes/<runtime>/<version>-<backend>/` whose names
-/// read. A folder of an unpack in progress starts with `.` and does not read.
+/// A folder of an unpack in progress starts with `.` and does not read, so it is not listed.
 #[must_use]
 pub fn installed(folders: &Folders) -> Vec<Release> {
     let mut found = Vec::new();
@@ -43,8 +39,6 @@ pub fn installed(folders: &Folders) -> Vec<Release> {
     found
 }
 
-/// The object of Section 8, with the settings of the machine (Section 10.1). Copies come with
-/// the pull of task L1-7; until then the list is empty.
 #[must_use]
 pub fn model_state(folders: &Folders, servers: &Servers, settings: &MachineSettings) -> Value {
     let installed: Vec<Value> = installed(folders)

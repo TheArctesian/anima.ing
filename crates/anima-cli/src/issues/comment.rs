@@ -1,5 +1,4 @@
-//! `anima issue comment <repository> <number>`: adds a comment to an issue or a pull request
-//! on GitHub through the hub (OD-E14, PRJ-028).
+//! OD-E14, PRJ-028.
 
 use std::path::PathBuf;
 

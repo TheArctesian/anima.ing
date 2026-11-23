@@ -1,4 +1,4 @@
-//! `anima agents set`: the person changes the model, the effort or the mode of a thread (TH110). A program that cannot change one of them refuses with words.
+//! `anima agents set` (TH110).
 
 use agent_threads::control::Action;
 use agent_threads::drive::Effort;

@@ -28,6 +28,8 @@ pub enum Kind {
     Change,
     /// A file for a prompt came whole (TH111).
     Attach,
+    /// The person asked the Git engine to change a worktree, its history or a remote (TH116).
+    Git,
 }
 
 /// One line: the time, the kind, the thread, what the runner could see of the source, and a

@@ -1,5 +1,4 @@
-//! The batteries of a batch (K8 Section 4; MET-032, CAP-004): their wire form and the hub's
-//! check of them.
+//! The batteries of a batch (K8 Section 4; MET-032, CAP-004).
 
 use std::collections::BTreeSet;
 
@@ -11,8 +10,7 @@ use crate::readings::{self, Battery, batteries::MAX_BATTERIES};
 /// The longest time left a batch may carry, in seconds (K8 Section 4).
 const MAX_SECONDS_LEFT: u32 = i32::MAX.unsigned_abs();
 
-/// A battery that powers the device. Its charge is the series `battery_percent` with its name
-/// as the label, not a member here.
+/// A battery's charge is not a member: it is the series `battery_percent`, labelled by its name.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchBattery {
@@ -26,8 +24,7 @@ pub struct BatchBattery {
     pub health_percent: Option<u8>,
 }
 
-/// What a battery is doing, as a batch spells it. A state a newer daemon knows and this hub
-/// does not reads as `unknown`, so the batch is not refused for it.
+/// A state this hub does not know reads as `unknown`, so a newer daemon's batch is not refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BatteryState {
@@ -74,8 +71,6 @@ impl From<&Battery> for BatchBattery {
     }
 }
 
-/// At most [`MAX_BATTERIES`] batteries with unique names, each a label, a time left of at most
-/// `i32::MAX` and a health of at most 100 (K8 Section 4).
 pub(super) fn batteries_fit(batteries: Option<&[BatchBattery]>) -> bool {
     let batteries = batteries.unwrap_or_default();
     let names: BTreeSet<&str> = batteries.iter().map(|one| one.name.as_str()).collect();

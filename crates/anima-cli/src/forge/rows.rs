@@ -1,5 +1,4 @@
-//! A page of a K1 connection as JSON, so one pager and one renderer serve a connection that
-//! two documents select differently (with and without checks, with and without jobs).
+//! One pager and one renderer serve a K1 connection that two documents select differently.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -11,7 +10,7 @@ use crate::paging::Page;
 pub struct Rows(Value);
 
 impl Rows {
-    /// The page `connection` holds; a generated K1 answer always serialises.
+    /// A generated K1 answer always serialises.
     #[must_use]
     pub fn new(connection: &impl Serialize) -> Self {
         Self(serde_json::to_value(connection).unwrap_or(Value::Null))

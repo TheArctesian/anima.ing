@@ -1,5 +1,4 @@
-// The register verb when its step is cut off or names a node the broker may not take
-// (vpn-plan.md Section 5.1, VP-7, H1, L2), against a fake Headscale.
+// vpn-plan.md Section 5.1, VP-7, H1, L2.
 import { afterEach, describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { serve, type Served } from '../broker/serve.ts';
@@ -19,7 +18,6 @@ function world(): { fake: FakeHeadscale; files: BrokerFiles } {
   return { fake, files: brokerFiles() };
 }
 
-/** `auth register` runs in the container, then the docker CLI is killed (8 s) before it answers. */
 function cutOff(fake: FakeHeadscale): void {
   fake.afterStep = (step) => {
     if (step[0] === 'auth') throw new Error('killed');
@@ -58,7 +56,6 @@ describe('register: a step cut off after Headscale registered the node (H1)', ()
     fake.afterStep = (step) => {
       if (step[0] !== 'auth') return;
       saved = JSON.parse(readFileSync(files.state, 'utf8'));
-      // The process dies here: this step and every later one (the audit) fail.
       fake.afterStep = () => {
         throw new Error('killed');
       };

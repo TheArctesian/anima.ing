@@ -1,6 +1,5 @@
-//! An SSH session's tickets and its recorded end (K4 Sections 1, 8 and 9): `startSession`,
-//! `openFiles` and `endSession`. Each token goes straight into a [`Ticket`], which never
-//! prints; the answers that hold one derive neither `Debug` nor `Serialize` (CMD-014).
+//! Each session token goes straight into a [`Ticket`]; the answers that hold one derive neither
+//! `Debug` nor `Serialize` (CMD-014).
 
 use std::time::Duration;
 
@@ -16,7 +15,6 @@ use crate::output::text::enum_name;
 /// K1's `DisplayInput.dpi` default; the terminal tunnel does not use it (K4 Section 8.4).
 const DPI: i64 = 96;
 
-/// A started SSH session and the ticket for its terminal tunnel.
 #[derive(Debug)]
 pub struct Started {
     pub session: String,
@@ -26,8 +24,7 @@ pub struct Started {
 }
 
 impl Started {
-    /// How long opening the terminal tunnel may take: the hub's opening limit (8 seconds, or
-    /// 120 after a wake) with room for the network.
+    /// The hub's opening limit (8 seconds, or 120 after a wake) with room for the network.
     #[must_use]
     pub const fn opening_wait(&self) -> Duration {
         if self.wake_sent {
@@ -38,8 +35,6 @@ impl Started {
     }
 }
 
-/// Starts an SSH session on `device_id` with a display of `pixels` (width, height).
-///
 /// # Errors
 /// The hub's refusal; FORBIDDEN, for an API key, says to sign in.
 pub async fn start_ssh(
@@ -87,8 +82,7 @@ pub async fn open_files(hub: &Hub, session: &str) -> Result<Ticket, Failure> {
     Ok(Ticket::new(answer.token, &answer.tunnel_path, Tunnel::Files).map_err(HubError::from)?)
 }
 
-/// Ends `session` (a session already ended comes back unchanged) and returns the reason the
-/// hub recorded, which is authoritative (K4 Section 8.4); `None` when the hub cannot say.
+/// The end reason the hub recorded is authoritative (K4 Section 8.4); `None` when it cannot say.
 pub async fn end(hub: &Hub, session: &str) -> Option<EndReason> {
     let variables = session_end::Variables {
         id: session.to_owned(),

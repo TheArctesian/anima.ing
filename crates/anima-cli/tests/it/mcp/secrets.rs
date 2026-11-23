@@ -1,5 +1,4 @@
-//! No tool takes or returns a secret (MCP-004), and a read-scope key's refusal says what the
-//! key lacks (MCP-003, MCP-010).
+//! Secrets and read-scope refusals in the MCP tools (MCP-003, MCP-004, MCP-010).
 
 use serde_json::{Value, json};
 
@@ -92,7 +91,6 @@ async fn mcp_004_check_get_never_returns_the_push_path() {
     );
 }
 
-/// A K1 check on [`DEVICE`] with this `config`.
 fn check_with(config: &Value) -> Value {
     json!({
         "id": CHECK, "name": "probe", "type": "HTTP", "status": "UP", "paused": false,

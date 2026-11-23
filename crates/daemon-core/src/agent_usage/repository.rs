@@ -1,19 +1,12 @@
-//! The name of a session's repository (AIS-002, R-134): the `url` of the remote `origin` in the
-//! git configuration of its working folder, written `host/owner/name` with no scheme, user,
-//! password, token, port or `.git`. A remote that is a local path has no name, so no folder
-//! path is ever sent (AIS-018).
-//!
-//! Pure: the daemon reads the files (`.git`, `commondir`, `config`) and gives their text.
+//! The name of a session's repository (AIS-002, R-134). A remote that is a local path has no
+//! name, so no folder path is ever sent (AIS-018). Pure: the daemon reads the files.
 
 use std::path::{Component, Path};
 
 use super::is_repository;
 
-/// The schemes of a remote that names a host.
 const SCHEMES: [&str; 6] = ["https", "http", "ssh", "git", "git+ssh", "ssh+git"];
 
-/// The `url` of the remote `origin` in the text of a git `config` file: the first one, in a
-/// `[remote "origin"]` (or `[remote.origin]`) section, without quotes or a comment.
 #[must_use]
 pub fn origin_url(config: &str) -> Option<&str> {
     let mut in_origin = false;
@@ -36,7 +29,6 @@ pub fn origin_url(config: &str) -> Option<&str> {
     None
 }
 
-/// Whether a section header (after its `[`) is the remote `origin`.
 fn is_origin_header(header: &str) -> bool {
     let Some((inside, _)) = header.split_once(']') else {
         return false;
@@ -51,7 +43,6 @@ fn is_origin_header(header: &str) -> bool {
     section.eq_ignore_ascii_case("remote") && subsection.trim() == "\"origin\""
 }
 
-/// A value without its comment and its quotes.
 fn value_text(value: &str) -> &str {
     let value = value.trim();
     if let Some(quoted) = value.strip_prefix('"') {
@@ -60,11 +51,8 @@ fn value_text(value: &str) -> &str {
     value.split(['#', ';']).next().unwrap_or_default().trim()
 }
 
-/// The `host/owner/name` of a remote URL: `https://user:token@host:8443/owner/name.git`,
-/// `ssh://git@host/owner/name`, `git@host:owner/name.git` and the like. `None` for a local
-/// path, a `file://` URL, an scp path that starts with `/`, or a name that breaks the K8 rule
-/// ([`is_repository`]: more than 4 segments, or a first segment that is a root folder), so a
-/// folder path on the host is never sent (AIS-018).
+/// `None` for a local path, a `file://` URL, an scp path that starts with `/`, or a name that
+/// breaks [`is_repository`], so a folder path on the host is never sent (AIS-018).
 #[must_use]
 pub fn remote_name(url: &str) -> Option<String> {
     let url = url.trim();
@@ -97,16 +85,14 @@ pub fn remote_name(url: &str) -> Option<String> {
     is_repository(&name).then_some(name)
 }
 
-/// The folder a `.git` file of a worktree points to (`gitdir: <folder>`), as written.
 #[must_use]
 pub fn gitdir_link(text: &str) -> Option<&str> {
     let folder = text.trim().strip_prefix("gitdir:")?.trim();
     (!folder.is_empty()).then_some(folder)
 }
 
-/// The main folder of a Claude Code worktree: the folder above `.claude/worktrees/<name>` in
-/// `cwd`; `None` when `cwd` is not in one. The worktree may be gone when the daemon reads the
-/// session, the main folder seldom is.
+/// The folder above `.claude/worktrees/<name>`: the worktree may be gone when the daemon reads
+/// the session, the main folder seldom is.
 #[must_use]
 pub fn claude_worktree_main(cwd: &Path) -> Option<&Path> {
     let parts: Vec<Component> = cwd.components().collect();

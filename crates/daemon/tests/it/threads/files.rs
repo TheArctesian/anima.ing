@@ -31,6 +31,8 @@ async fn started(client: &mut Client, work: std::path::PathBuf) -> Uuid {
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
     let Outcome::Started { thread, .. } = client.done(start).await else {

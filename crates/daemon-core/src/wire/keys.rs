@@ -1,7 +1,5 @@
-//! The operational keys between a daemon and its hub (K-E5 Section 2.1, R-147): the versions a
-//! daemon holds and the hub's current ones, which ride on a push, and the fetch of one key.
-//!
-//! A [`KeyValue`] is the one type that holds a value. It implements neither `Debug`, `Display`,
+//! The operational keys between a daemon and its hub (K-E5 Section 2.1, R-147).
+//! [`KeyValue`] is the one type that holds a value: it implements neither `Debug`, `Display`,
 //! `Clone` nor `PartialEq`, and wipes on drop (LOG-007). It leaves only through
 //! [`KeyValue::expose`], and through the `value` member of [`FetchedKey`] as base64.
 
@@ -20,11 +18,9 @@ pub const MAX_VALUE_BYTES: usize = 16 * 1024;
 /// The most keys one daemon reports or is told of in one body.
 pub const MAX_KEYS: usize = 256;
 
-/// The longest key name, in bytes: `^[a-z][a-z0-9_.-]{0,79}$` (K-E5 Section 2).
 const MAX_NAME_BYTES: usize = 80;
 
-/// Whether `text` is the name of an operational key: a lower-case letter, then at most 79
-/// lower-case letters, digits, `_`, `.` or `-` (K-E5 Section 2).
+/// Whether `text` is the name of an operational key (K-E5 Section 2).
 #[must_use]
 pub fn is_key_name(text: &str) -> bool {
     let bytes = text.as_bytes();
@@ -35,7 +31,7 @@ pub fn is_key_name(text: &str) -> bool {
             .all(|byte| matches!(byte, b'a'..=b'z' | b'0'..=b'9' | b'_' | b'.' | b'-'))
 }
 
-/// One key and one of its version numbers. It names a value; it never holds one.
+/// It names a value; it never holds one.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct KeyVersion {
     pub name: String,
@@ -96,11 +92,9 @@ pub struct FetchedKey {
     pub value: KeyValue,
 }
 
-/// The bytes of one version of an operational key, wiped on drop.
 pub struct KeyValue(Zeroizing<Vec<u8>>);
 
 impl KeyValue {
-    /// The value of `bytes`; `None` unless it has 1 to [`MAX_VALUE_BYTES`] bytes.
     #[must_use]
     pub fn new(bytes: Zeroizing<Vec<u8>>) -> Option<Self> {
         (1..=MAX_VALUE_BYTES)
@@ -108,14 +102,13 @@ impl KeyValue {
             .then_some(Self(bytes))
     }
 
-    /// The bytes, for the one place that uses them: the cache, or the standard output of
-    /// `anima-daemon key read`. Never log them (LOG-007).
+    /// For the cache or the standard output of `anima-daemon key read` only; never logged
+    /// (LOG-007).
     #[must_use]
     pub fn expose(&self) -> &[u8] {
         &self.0
     }
 
-    /// The value as standard base64, in a buffer wiped on drop.
     #[must_use]
     pub fn to_base64(&self) -> Zeroizing<String> {
         let mut text = Zeroizing::new(String::with_capacity(
@@ -142,14 +135,12 @@ fn write_value<S: Serializer>(value: &KeyValue, out: S) -> Result<S::Ok, S::Erro
     out.serialize_str(&value.to_base64())
 }
 
-/// Reads a value from a body. The error never holds the text.
+/// The error never holds the text.
 fn read_value<'de, D: Deserializer<'de>>(input: D) -> Result<KeyValue, D::Error> {
     let text = Zeroizing::new(String::deserialize(input)?);
     KeyValue::from_base64(&text).ok_or_else(|| D::Error::custom("not a key value"))
 }
 
-/// Whether a list of versions is one a daemon or a hub may send: at most [`MAX_KEYS`] keys,
-/// each a key name, no name twice, each version at least 1.
 #[must_use]
 pub fn versions_fit(list: &[KeyVersion]) -> bool {
     let names: BTreeSet<&str> = list.iter().map(|one| one.name.as_str()).collect();

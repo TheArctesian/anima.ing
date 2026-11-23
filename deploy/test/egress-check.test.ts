@@ -1,7 +1,4 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
-// deploy/bin/egress-check against local listeners (NOT-002, D-17). A fake `docker` first on PATH
-// checks the `compose exec -T hub` prefix, records the call, and runs the rest on this machine, so
-// the real bash /dev/tcp command runs. macOS has no `timeout`, so the same temp dir holds a shim.
+// NOT-002, D-17. macOS has no `timeout`, so the temp folder holds a shim.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,7 +15,6 @@ beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), "egress-"));
   calls = join(dir, "calls");
   timeouts = join(dir, "timeouts");
-  // Records every argument after the prefix, one per line, ended by a "--" line.
   writeFileSync(
     join(dir, "docker"),
     `#!/bin/sh
@@ -33,7 +29,7 @@ fi
 exec "$@"
 `,
   );
-  // Records the seconds, can pretend to time out (exit 124), else enforces them like coreutils.
+  // Can pretend to time out (exit 124), else enforces the seconds like coreutils.
   writeFileSync(
     join(dir, "timeout"),
     `#!/bin/sh
@@ -65,7 +61,6 @@ async function run(args: string[], env: Record<string, string> = {}) {
     code: result.exitCode,
     out: result.stdout,
     err: result.stderr,
-    // Calls that test a target; the first call of a run is the `true` probe.
     calls: all.filter((call) => call[0] !== "true"),
     probed: all.some((call) => call[0] === "true"),
     timeouts: readFileSync(timeouts, "utf8").split("\n").filter(Boolean),
