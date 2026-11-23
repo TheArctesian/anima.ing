@@ -108,12 +108,16 @@ impl Engine {
     }
 }
 
+/// The names of the login environment that name a temporary folder of each program of the
+/// person, and so of each agent while agents get them from the login.
+const TEMPS: [&str; 4] = ["TMPDIR", "TMP", "TEMP", "XDG_RUNTIME_DIR"];
+
 /// The records at `records` are in a temporary folder that each agent can write while agents
-/// get the `TMPDIR` of the login: `/tmp`, or each `TMPDIR` that `login` sets.
+/// get the ones of the login: `/tmp`, or each folder that `login` names in [`TEMPS`].
 fn in_temp(records: &Path, login: &[(OsString, OsString)]) -> bool {
     let tmpdirs = login
         .iter()
-        .filter(|(name, value)| name == "TMPDIR" && !value.is_empty())
+        .filter(|(name, value)| TEMPS.iter().any(|temp| name == temp) && !value.is_empty())
         .map(|(_, value)| PathBuf::from(value));
     let temps: Vec<_> = std::iter::once(PathBuf::from("/tmp"))
         .chain(tmpdirs)

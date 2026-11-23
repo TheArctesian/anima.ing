@@ -197,12 +197,13 @@ fn records_in_a_temporary_folder_are_refused_until_each_agent_has_its_own() {
     let keep_home = tempfile::tempdir().expect("a folder");
     let home = std::fs::canonicalize(keep_home.path()).expect("its real path");
     let path = std::env::var_os("PATH").unwrap_or_default();
-    let login = |tmpdir: &Path| {
+    let login_with = |name: &str, tmpdir: &Path| {
         [
             (OsString::from("PATH"), path.clone()),
-            (OsString::from("TMPDIR"), tmpdir.as_os_str().to_owned()),
+            (OsString::from(name), tmpdir.as_os_str().to_owned()),
         ]
     };
+    let login = |tmpdir: &Path| login_with("TMPDIR", tmpdir);
     let places = |records: &Path| Places {
         anima: home.as_path().join("anima"),
         records: Some(records.to_owned()),
@@ -229,7 +230,13 @@ fn records_in_a_temporary_folder_are_refused_until_each_agent_has_its_own() {
     let shared = home.as_path().join("shared");
     std::fs::create_dir(&shared).expect("a folder");
     let in_tmpdir = shared.join("anima-501");
-    refused(engine(login(&shared), &places(&in_tmpdir), nothing()));
+    for name in ["TMPDIR", "TMP", "TEMP", "XDG_RUNTIME_DIR"] {
+        refused(engine(
+            login_with(name, &shared),
+            &places(&in_tmpdir),
+            nothing(),
+        ));
+    }
     // When the runner gives each agent its own `TMPDIR`, the root check of each thread holds.
     let private = Places {
         private_tmp: true,
