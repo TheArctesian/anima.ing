@@ -1,5 +1,5 @@
 import { graphql } from '$lib/hub/generated';
-import { containersApi, type Container, type ImageUpdate } from '$lib/containers/api';
+import { containersApi, type Container, type ContainerCalls, type ImageUpdate } from '$lib/containers/api';
 import type { HostingMachinesQuery } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult } from '$lib/hub/hub';
 
@@ -39,6 +39,8 @@ export interface HostingCalls {
   containers(machineId: string): Promise<HubResult<readonly Container[]>>;
   /** HOST-021: whether a newer image exists for each container of one machine. */
   updates(machineId: string): Promise<HubResult<readonly ImageUpdate[]>>;
+  /** HOST-001 and HOST-017: the log and the details of the containers of one machine. */
+  machine(machineId: string): Pick<ContainerCalls, 'log' | 'detail'>;
 }
 
 /** The calls of the section Applications: the device list of the hub, then the container calls of each machine (task H42). */
@@ -58,5 +60,6 @@ export function hostingApi(hub: Pick<Hub, 'request'>): HostingCalls {
     },
     containers: (machineId) => containersApi(hub, machineId).list(),
     updates: (machineId) => containersApi(hub, machineId).updates(),
+    machine: (machineId) => containersApi(hub, machineId),
   };
 }

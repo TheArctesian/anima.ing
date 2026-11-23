@@ -5138,3 +5138,24 @@ containers of each through the hub. The tests use a fake hub; nobody has seen th
    Expected: the column Updates says "Up to date" or "Newer image" for each row of a machine that answered.
 
 Result: Open.
+
+### HT-NEW-hostingtab: Log and Details in the one list, and the device tab Containers narrowed to its machine (task H42; HSE-008)
+
+Built on the branch `hosted/h42-device-tab`. The tests use a fake hub; nobody has read a real log or real details from the
+list, or seen the tab of a real device.
+
+1. In the desktop application of this build, signed in to a hub with a machine that has SSH on, an accepted host key and
+   Docker with a Compose project, open Hosting. Open the project with its arrow and press Log on one of its containers.
+   Expected: the log of that container shows below the list, with the 200 last lines; Log on that row is pressed.
+2. Press Details on a different container of a different machine.
+   Expected: the log closes and the details of that container show below the list, with the names of its environment
+   variables and no value.
+3. Open the device page of the machine of step 1, tab Containers.
+   Expected: the list has one group, that machine, with no choice Machine, and the link View in Hosting; the choices of the
+   tab are Containers, Images, Volumes and Networks, with no Catalogue.
+4. Press Log on a container in the tab, choose 1000 lines, then Details in the pane.
+   Expected: the same log tools and details as in HT-042.
+5. Press View in Hosting.
+   Expected: Hosting opens on Applications with all machines.
+
+Result: Open.
