@@ -131,13 +131,15 @@ sh "$ROOT/link/build-phone.sh" aarch64-apple-ios
 cd "$HERE/.."
 # Xcode runs Tauri's Cargo build in a child process, which can otherwise find a system Rust.
 RUST_CARGO=$(rustup which cargo) || refuse "install the Rust toolchain of the repository with rustup"
-export PATH="$(dirname "$RUST_CARGO"):$PATH"
+PATH="$(dirname "$RUST_CARGO"):$PATH"
+export PATH
 export CI=true
 # A new project each time, so that no setting of an earlier run stays in it.
 rm -rf "$PROJECT/anima-app.xcodeproj" "$PROJECT/project.yml" "$ARCHIVE" "$IPA"
 bunx tauri ios init --ci
 grep -q '^      PRODUCT_BUNDLE_IDENTIFIER: ' "$PROJECT/project.yml" || refuse "project.yml of Tauri has no group of settings where the script looks for it"
 cp -R "$HERE/ios/AnimaAppIcon.appiconset" "$PROJECT/Assets.xcassets/"
+cp "$HERE/ios/PrivacyInfo.xcprivacy" "$PROJECT/anima-app_iOS/PrivacyInfo.xcprivacy"
 {
     signature_settings
     echo '      ASSETCATALOG_COMPILER_APPICON_NAME: AnimaAppIcon'
@@ -156,6 +158,7 @@ bunx tauri ios build --target aarch64 --ci --archive-only --config "$CONFIG"
 
 APP=$ARCHIVE/Products/Applications/Anima.ing.app
 [ -d "$APP" ] || refuse "the build made no archive at $ARCHIVE"
+[ -f "$APP/PrivacyInfo.xcprivacy" ] || refuse "the archive does not contain the app privacy manifest"
 [ "$(plist CFBundleIdentifier "$APP/Info.plist")" = "$APP_ID" ] || refuse "the application of the archive is not $APP_ID"
 [ "$(plist CFBundleShortVersionString "$APP/Info.plist")" = "$VERSION" ] || refuse "the archive does not have the version $VERSION"
 [ "$(plist CFBundleVersion "$APP/Info.plist")" = "$BUILD" ] || refuse "the archive does not have the build number $BUILD"
