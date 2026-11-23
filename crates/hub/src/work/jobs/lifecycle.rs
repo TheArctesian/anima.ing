@@ -2,7 +2,9 @@
 //! ended, a stop and a time limit make of it. The time is a parameter (CQ-021).
 
 use chrono::{DateTime, TimeDelta, Utc};
-use daemon_core::wire::{MAX_LOG_PART_BYTES, StopReason, WorkReport, WorkState, WorkType};
+use daemon_core::wire::{
+    MAX_LOG_PART_BYTES, StopReason, WorkKind, WorkReport, WorkResult, WorkState, WorkType,
+};
 
 use super::{
     model::{Job, State},
@@ -84,16 +86,16 @@ pub(super) fn reported(
     if !holds || !permitted(job.state, report.state) {
         return Err(Refusal::NotHolder);
     }
-    if report.state.is_final() != report.result.is_some() {
+    if report.state.is_final() != report.result.is_some() || !progress_fits(job, report) {
         return Err(Refusal::Malformed);
     }
     // Only codes of the fixed lists are kept: a result is never text of the machine.
     let result = match &report.result {
-        Some(sent) => Some(results::checked(sent).ok_or(Refusal::Malformed)?),
+        Some(sent) => Some(results::checked(sent, job.asked.kind).ok_or(Refusal::Malformed)?),
         None => None,
     };
     let Some(state) = State::reported(report.state) else {
-        return Ok(refused(job, device, now));
+        return Ok(refused(job, device, result.as_ref(), now));
     };
     let mut next = Job {
         state,
@@ -107,8 +109,19 @@ pub(super) fn reported(
         next.ended_at = Some(now);
     } else {
         next.lease_ends_at = Some(lease::end(now));
+        next.progress = report.progress.or(job.progress);
     }
     Ok(next)
+}
+
+/// Whether the `progress` of a report is absent, or is that of a running `model_pull` with no
+/// more bytes than its total (K11 Section 3).
+fn progress_fits(job: &Job, report: &WorkReport) -> bool {
+    report.progress.is_none_or(|progress| {
+        job.asked.work_type == WorkType::ModelPull
+            && report.state == WorkState::Running
+            && progress.bytes <= progress.total_bytes
+    })
 }
 
 /// Takes the job from its holder.
@@ -120,7 +133,20 @@ fn release(job: &mut Job) {
 
 /// The job that `device` refused: back in the queue, and not for that machine again. A refusal
 /// is not an attempt that was lost (K10 Section 5).
-fn refused(job: &Job, device: DeviceId, now: DateTime<Utc>) -> Job {
+///
+/// A model item is for one machine, as a container item is (K10 Section 5): it ends, failed,
+/// with the cause as its reason. Only `policy` and `switch_off`, which change with the time,
+/// put it back in the queue for the same machine.
+fn refused(job: &Job, device: DeviceId, result: Option<&WorkResult>, now: DateTime<Utc>) -> Job {
+    if job.asked.kind == WorkKind::Model {
+        let cause = result.and_then(|result| result.cause.as_deref());
+        if matches!(cause, Some("policy" | "switch_off")) {
+            return queued_again(job, now);
+        }
+        let mut next = failed(job, cause.unwrap_or(results::UNKNOWN_CAUSE), now);
+        next.result = result.cloned();
+        return next;
+    }
     let mut next = queued_again(job, now);
     if !next.refused_by.contains(&device) {
         next.refused_by.push(device);

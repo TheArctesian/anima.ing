@@ -67,6 +67,7 @@ fn queued(work_type: WorkType) -> Job {
         reason: None,
         result: None,
         log_end: 0,
+        progress: None,
         created_at: at(0),
         changed_at: at(0),
         ended_at: None,

@@ -147,3 +147,125 @@ fn a_drain_that_this_machine_held_last_still_goes_before_a_job() {
     let chosen = placement::choose(&queue, &fits, device(PVE)).map(|job| job.asked.work_type);
     assert_eq!(chosen, Some(WorkType::ModelDrain));
 }
+
+mod reports {
+    use daemon_core::wire::{
+        Cleanup, CopyOutcome, Progress, WorkReport, WorkResult, WorkState, WorkType,
+    };
+
+    use super::{PVE, at, device, model, queued};
+    use crate::work::jobs::{
+        lifecycle::{self, Refusal},
+        model::{Job, State},
+    };
+
+    fn holding(job: &Job, state: State) -> Job {
+        Job {
+            state,
+            ..lifecycle::claimed(job, device(PVE), at(0))
+        }
+    }
+
+    fn result(cause: Option<&str>, copy_state: Option<&str>) -> WorkResult {
+        WorkResult {
+            outcome: if cause.is_some() {
+                "failed"
+            } else {
+                "succeeded"
+            }
+            .to_owned(),
+            cause: cause.map(str::to_owned),
+            seconds: 3,
+            cleanup: Cleanup {
+                isolation: "deleted".to_owned(),
+                checkout: "deleted".to_owned(),
+                secrets: "deleted".to_owned(),
+                keychain: "none".to_owned(),
+            },
+            model: copy_state.map(|state| CopyOutcome {
+                copy: uuid::Uuid::now_v7(),
+                copy_state: state.to_owned(),
+                bytes: 10,
+                files: 1,
+            }),
+        }
+    }
+
+    fn report(state: WorkState, result: Option<WorkResult>, bytes: u64) -> WorkReport {
+        WorkReport {
+            id: super::super::JOB.parse().unwrap(),
+            attempt: 1,
+            state,
+            log: None,
+            result,
+            progress: (bytes > 0).then_some(Progress {
+                bytes,
+                total_bytes: 100,
+                bytes_per_second: 10,
+            }),
+        }
+    }
+
+    fn reported(job: &Job, sent: &WorkReport) -> Result<Job, Refusal> {
+        lifecycle::reported(job, device(PVE), sent, at(10))
+    }
+
+    #[test]
+    fn pull_007_a_running_pull_keeps_its_last_progress() {
+        let running = holding(&model(WorkType::ModelPull), State::Running);
+        let first = reported(&running, &report(WorkState::Running, None, 40)).unwrap();
+        assert_eq!(first.progress.map(|progress| progress.bytes), Some(40));
+        let next = reported(&first, &report(WorkState::Running, None, 0)).unwrap();
+        assert_eq!(next.progress, first.progress);
+    }
+
+    #[test]
+    fn pull_007_progress_is_only_for_a_running_pull_within_its_total() {
+        let running = holding(&model(WorkType::ModelPull), State::Running);
+        let over = reported(&running, &report(WorkState::Running, None, 101));
+        assert_eq!(over, Err(Refusal::Malformed));
+        let build = holding(&queued(WorkType::Build), State::Running);
+        let on_build = reported(&build, &report(WorkState::Running, None, 40));
+        assert_eq!(on_build, Err(Refusal::Malformed));
+        let preparing = holding(&model(WorkType::ModelPull), State::Preparing);
+        let early = reported(&preparing, &report(WorkState::Preparing, None, 40));
+        assert_eq!(early, Err(Refusal::Malformed));
+    }
+
+    #[test]
+    fn k11_3_a_model_result_has_a_copy_state_of_the_list_and_only_on_a_model_item() {
+        let finishing = holding(&model(WorkType::ModelPull), State::Finishing);
+        let done = report(WorkState::Done, Some(result(None, Some("downloaded"))), 0);
+        let kept = reported(&finishing, &done).unwrap();
+        assert_eq!(kept.result.unwrap().model.unwrap().copy_state, "downloaded");
+        let strange = report(WorkState::Done, Some(result(None, Some("loaded"))), 0);
+        assert_eq!(reported(&finishing, &strange), Err(Refusal::Malformed));
+        let build = holding(&queued(WorkType::Build), State::Finishing);
+        let on_build = report(WorkState::Done, Some(result(None, Some("downloaded"))), 0);
+        assert_eq!(reported(&build, &on_build), Err(Refusal::Malformed));
+    }
+
+    #[test]
+    fn k11_5_a_model_item_ends_with_the_cause_of_its_refusal_but_policy_and_switch_off() {
+        let claimed = holding(&model(WorkType::ModelPull), State::Claimed);
+        let full = report(
+            WorkState::Refused,
+            Some(result(Some("disk_share"), None)),
+            0,
+        );
+        let failed = reported(&claimed, &full).unwrap();
+        assert_eq!(failed.state, State::Failed);
+        assert_eq!(failed.reason.as_deref(), Some("disk_share"));
+        assert!(failed.refused_by.is_empty());
+        for cause in ["policy", "switch_off"] {
+            let later = report(WorkState::Refused, Some(result(Some(cause), None)), 0);
+            let again = reported(&claimed, &later).unwrap();
+            assert_eq!(
+                (again.state, again.holder),
+                (State::Queued, None),
+                "{cause}"
+            );
+            assert!(again.refused_by.is_empty(), "{cause}");
+        }
+    }
+}

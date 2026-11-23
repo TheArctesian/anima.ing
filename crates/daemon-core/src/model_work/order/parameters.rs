@@ -190,7 +190,7 @@ fn pull(object: &Object, machine: &ModelMachine<'_>) -> Result<Parameters, Cause
         .collect::<Result<Vec<_>, _>>()?;
     let mut names: Vec<String> = files
         .iter()
-        .map(|file| file.name.to_ascii_lowercase())
+        .map(|file| files::flat_name(&file.name).to_ascii_lowercase())
         .collect();
     names.sort_unstable();
     names.dedup();

@@ -22,7 +22,7 @@ mod trail;
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{Reported, StopReason, WorkType};
 use futures_util::future::BoxFuture;
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 pub use claiming::claim;
@@ -199,6 +199,22 @@ pub async fn enqueue(
     asker: Asker,
     now: DateTime<Utc>,
 ) -> Result<Job, Error> {
+    let mut tx = queue.db.begin().await?;
+    let outcome = enqueue_in(&mut tx, wanted, asker, now).await;
+    ended(tx, outcome).await
+}
+
+/// [`enqueue`] in the caller's transaction, so that the record of the function that makes the
+/// work and its job are written together (the copies of the compute domain).
+///
+/// # Errors
+/// As [`enqueue`].
+pub async fn enqueue_in(
+    conn: &mut PgConnection,
+    wanted: NewJob,
+    asker: Asker,
+    now: DateTime<Utc>,
+) -> Result<Job, Error> {
     validate(&wanted)?;
     let job = Job {
         id: JobId::from(Uuid::now_v7()),
@@ -215,18 +231,23 @@ pub async fn enqueue(
         reason: None,
         result: None,
         log_end: 0,
+        progress: None,
         created_at: now,
         changed_at: now,
         ended_at: None,
     };
-    let mut tx = queue.db.begin().await?;
-    let outcome = async {
-        pinning::named_can_run(&mut tx, &job, now).await?;
-        store::insert(&mut tx, &job).await?;
-        trail::queued(&mut tx, &job, asker, now).await
-    }
-    .await;
-    ended(tx, outcome).await.map(|()| job)
+    pinning::named_can_run(conn, &job, now).await?;
+    store::insert(conn, &job).await?;
+    trail::queued(conn, &job, asker, now).await?;
+    Ok(job)
+}
+
+/// The jobs with these ids; an id with no job is left out.
+///
+/// # Errors
+/// `Database` when they cannot be read; `Unreadable` for a row this version does not read.
+pub async fn jobs_of(conn: &mut PgConnection, ids: &[JobId]) -> Result<Vec<Job>, Error> {
+    store::jobs_of(conn, ids).await
 }
 
 /// Asks for the stop of a job at `now` (K10 Section 7). A queued job stops at once; the holder
@@ -242,19 +263,30 @@ pub async fn stop(
     now: DateTime<Utc>,
 ) -> Result<Option<Job>, Error> {
     let mut tx = queue.db.begin().await?;
-    let outcome = async {
-        let Some(job) = store::job_locked(&mut tx, id).await? else {
-            return Ok(None);
-        };
-        let Some(next) = lifecycle::stop_asked(&job, reason, now) else {
-            return Ok(None);
-        };
-        store::save(&mut tx, &next).await?;
-        trail::stop_asked(&mut tx, &next, reason, (asker, now)).await?;
-        Ok(Some(next))
-    }
-    .await;
+    let outcome = stop_in(&mut tx, (id, reason), asker, now).await;
     ended(tx, outcome).await
+}
+
+/// [`stop`] in the caller's transaction, so that a copy and the stop of its pull are written
+/// together (the copies of the compute domain).
+///
+/// # Errors
+/// As [`stop`].
+pub async fn stop_in(
+    conn: &mut PgConnection,
+    (id, reason): (JobId, StopReason),
+    asker: Asker,
+    now: DateTime<Utc>,
+) -> Result<Option<Job>, Error> {
+    let Some(job) = store::job_locked(conn, id).await? else {
+        return Ok(None);
+    };
+    let Some(next) = lifecycle::stop_asked(&job, reason, now) else {
+        return Ok(None);
+    };
+    store::save(conn, &next).await?;
+    trail::stop_asked(conn, &next, reason, (asker, now)).await?;
+    Ok(Some(next))
 }
 
 /// The job and the log that the hub holds of it; `None` when there is no such job.

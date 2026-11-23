@@ -21,6 +21,7 @@ mod variants;
 
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
+use uuid::Uuid;
 
 use crate::api_errors::{FieldError, field_names};
 
@@ -74,6 +75,60 @@ pub async fn get(db: &PgPool, name: &str) -> Result<Model, Error> {
         .await?
         .pop()
         .ok_or(Error::NotFound(Missing::Model))
+}
+
+/// A variant as a pull takes it (task L1-7): its identifier, the name of its model and the
+/// variant with its files.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PullSource {
+    pub variant_id: Uuid,
+    pub model: String,
+    pub variant: Variant,
+}
+
+/// The variant `name:tag` that a pull takes (PULL-001); an alias names its model. A name with
+/// no tag is refused with the tags of the model: the hub selects no variant until the runtime
+/// choice of task L1-8 exists (PULL-002).
+///
+/// # Errors
+/// `NotFound` when no model has the name; `Validation` on `model` for no tag or a tag that the
+/// model does not have; `Database` when a query fails.
+pub async fn pull_source(db: &PgPool, address: &str) -> Result<PullSource, Error> {
+    let (name, tag) = address
+        .trim()
+        .split_once(':')
+        .map_or((address.trim(), None), |(name, tag)| (name, Some(tag)));
+    let model = get(db, name).await?;
+    let tags: Vec<&str> = model
+        .variants
+        .iter()
+        .map(|each| each.tag.as_str())
+        .collect();
+    let named = tag.and_then(|tag| model.variants.iter().find(|each| each.tag == tag));
+    let Some(variant) = named else {
+        let what = if tag.is_some() {
+            "has no variant of that tag"
+        } else {
+            "needs a tag"
+        };
+        return Err(invalid(FieldError::new(
+            "model",
+            format!(
+                "{} {what}: name one of {}:{}.",
+                model.name,
+                model.name,
+                tags.join(", :")
+            ),
+        )));
+    };
+    let variant_id = store::variant_id(db, &model.name, &variant.tag)
+        .await?
+        .ok_or(Error::NotFound(Missing::Model))?;
+    Ok(PullSource {
+        variant_id,
+        variant: variant.clone(),
+        model: model.name,
+    })
 }
 
 /// The approved organisations in name order (LIBM-003).

@@ -1,0 +1,8 @@
+# `anima model remove`: removes a copy from its machine (PULL-009).
+mutation ModelCopyRemove($id: ID!) {
+  removeModelCopy(id: $id) {
+    id
+    address
+    state
+  }
+}

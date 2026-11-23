@@ -1711,6 +1711,63 @@ type ModelAlias {
   model: String!
 }
 
+# The copies of the model variants on the machines (compute plan task L1-7; K11 Sections 7 and 11; PULL-001, PULL-007, PULL-009, PULL-011, CMP-006).
+"The kind of a place where a thing runs: a machine today, a cluster later (HOST-052)."
+enum HostPlaceKind {
+  MACHINE
+}
+
+"The place where a thing runs (HOST-052): its kind, its identifier and its name. For MACHINE, id is the device id."
+type HostPlace {
+  kind: HostPlaceKind!
+  id: ID!
+  name: String!
+}
+
+"Where a copy is. QUEUED waits for its machine; REMOVING waits for its copy_delete. The others are the states of K11 Section 11."
+enum ModelCopyState {
+  QUEUED
+  DOWNLOADING
+  DOWNLOADED
+  VALIDATING
+  VALIDATED
+  FAILED
+  REMOVING
+}
+
+"The progress of a pull that runs (PULL-007)."
+type PullProgress {
+  bytes: Float!
+  totalBytes: Float!
+  bytesPerSecond: Float!
+  "The seconds until the pull ends at this rate; null when the rate is 0."
+  secondsLeft: Float
+}
+
+"One copy of a variant on one place (CMP-006). Its state comes from the jobs of its pull and its removal."
+type ModelCopy {
+  id: ID!
+  "Where the copy is (HOST-052)."
+  place: HostPlace!
+  "name:tag (LIBM-006)."
+  address: String!
+  model: String!
+  tag: String!
+  format: ModelFormat!
+  quantisation: String!
+  "organisation/name on Hugging Face, at revision."
+  repository: String!
+  revision: String!
+  sizeBytes: Float!
+  fileCount: Int!
+  state: ModelCopyState!
+  "The progress of a pull that runs; null in each other state."
+  progress: PullProgress
+  "Why the copy failed, or why its removal failed: a fixed code (K11 Section 5) or a fixed sentence of the hub."
+  reason: String
+  createdAt: DateTime!
+}
+
 # The use of the AI agent programs (R-135; AIS-018 to AIS-024; K8 Section 4 agentUsage).
 "The AI agent program a session comes from (AIS-018)."
 enum AgentSource {
@@ -4179,6 +4236,10 @@ type Query {
   "The device policy of each device, by device name (byte order), with whether it takes model work now and why not. A device with no policy of its own has the defaults. Open to a read key."
   devicePolicies: [DevicePolicy!]!
 
+  # The copies of the model variants on the machines (PULL-001, PULL-009; compute plan task L1-7).
+  "Each copy that a machine has, pulls or removes, in the order of the machine, the model and the tag. Open to a read key."
+  modelCopies: [ModelCopy!]!
+
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
   agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
@@ -4396,6 +4457,12 @@ type Mutation {
   # The device policy of a compute node (CAP-010 to CAP-012). Waits for a ruling: R-335.
   "Replaces the device policy of a device. It sets no switch: the one switch \"takes work\" stays at the machine (USE-004, OD-C8). VALIDATION names the field out of range; NOT_FOUND for an unknown device. Login or browser token only (R-335), until a key permission for the device policy exists."
   setDevicePolicy(deviceId: ID!, input: DevicePolicyInput!): DevicePolicy!
+
+  # The copies of the model variants on the machines (PULL-001, PULL-009; compute plan task L1-7). An API key or an agent may ask, with its actor (R-326).
+  "Pulls the variant name:tag to the machine (PULL-001). VALIDATION on model for a name with no tag (with the tags of the model; PULL-002 waits for task L1-8), a tag that the model does not have, files that a machine refuses, or a copy that the machine has, pulls or removes; on deviceId for a machine that can never run it. NOT_FOUND for an unknown device or model. A copy that failed is pulled again."
+  pullModel(deviceId: ID!, model: String!): ModelCopy!
+  "Removes the copy (PULL-009). A pull that waits in the queue stops and the copy goes (null). Else a running pull stops, the machine deletes the files, and the copy is REMOVING until that is done. NOT_FOUND for an unknown copy."
+  removeModelCopy(id: ID!): ModelCopy
 
   # Phase 3: builds (WP-36, R-107)
   "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002). Login or browser token only (D-23, R-107)."

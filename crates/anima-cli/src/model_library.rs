@@ -1,4 +1,5 @@
-//! `anima model`: the model library of the hub (LIBM-001 to LIBM-008, SEL-003, SEL-005).
+//! `anima model`: the model library of the hub (LIBM-001 to LIBM-008, SEL-003, SEL-005), and
+//! the copies on the machines (`crate::model_copies`).
 
 pub mod add;
 pub mod alias;
@@ -23,6 +24,12 @@ pub enum ModelCommand {
     /// The approved organisations of the sources (list, add, mode).
     #[command(subcommand)]
     Source(source::SourceCommand),
+    /// Pull a variant name:tag to a machine: it downloads and verifies the files.
+    Pull(crate::model_copies::PullArgs),
+    /// Remove the copy of a variant from a machine.
+    Remove(crate::model_copies::RemoveArgs),
+    /// List the copies on the machines, with their state and the progress of a pull.
+    Copies(crate::model_copies::CopiesArgs),
 }
 
 impl ModelCommand {
@@ -37,6 +44,9 @@ impl ModelCommand {
             Self::Add(args) => args.run(invocation).await,
             Self::Alias(args) => args.run(invocation).await,
             Self::Source(command) => command.run(invocation).await,
+            Self::Pull(args) => args.run(invocation).await,
+            Self::Remove(args) => args.run(invocation).await,
+            Self::Copies(args) => args.run(invocation).await,
         }
     }
 }

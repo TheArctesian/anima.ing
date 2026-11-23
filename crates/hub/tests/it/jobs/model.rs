@@ -29,7 +29,7 @@ fn model(work_type: WorkType, parameters: Value) -> NewJob {
 }
 
 /// The claim of a Linux machine that takes model items and holds `holds`.
-fn model_claim(holds: &Value) -> Value {
+pub(super) fn model_claim(holds: &Value) -> Value {
     let mut claim = claim_of(PVE_01, holds);
     claim["kinds"] = json!(["container", "model"]);
     let mut types = vec![json!("build"), json!("runner")];

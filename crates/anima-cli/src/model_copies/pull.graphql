@@ -1,0 +1,14 @@
+# `anima model pull`: pulls a variant name:tag to a machine (PULL-001).
+mutation ModelPull($deviceId: ID!, $model: String!) {
+  pullModel(deviceId: $deviceId, model: $model) {
+    id
+    address
+    state
+    sizeBytes
+    place {
+      kind
+      id
+      name
+    }
+  }
+}

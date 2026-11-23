@@ -1,5 +1,7 @@
-//! The `models` tool set: the model library, read only (SEL-005, CMD-030). Names and tags
-//! come from Hugging Face repositories: the server cleans and caps each string (MCP-008).
+//! The `models` tool set: the model library (SEL-005) and the copies on the machines
+//! (PULL-001, PULL-007, PULL-009; CMD-030). Names and tags come from Hugging Face
+//! repositories: the server cleans and caps each string (MCP-008). A pull and a removal are
+//! open to an API key and to an agent: the hub records the actor (R-326).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -11,12 +13,18 @@ use crate::mcp::arguments::{json, object, parse, short};
 use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
+use crate::devices::get::resolve;
+use crate::model_copies::copies::fetch;
+use crate::model_copies::documents::{ModelCopyRemove, ModelPull, model_copy_remove, model_pull};
 use crate::model_library::documents::{ModelList, ModelShow, model_list, model_show};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ModelTool {
     List,
     Show,
+    Copies,
+    Pull,
+    Remove,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -33,6 +41,15 @@ pub struct ShowInput {
     detail: bool,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CopyInput {
+    /// The device's ID or its exact name.
+    device: String,
+    /// The variant, name:tag, such as qwen3:8b-q4_k_m.
+    model: String,
+}
+
 const VARIANT_KEYS: [&str; 6] = [
     "address",
     "tag",
@@ -43,7 +60,13 @@ const VARIANT_KEYS: [&str; 6] = [
 ];
 
 impl ModelTool {
-    pub const ALL: [Self; 2] = [Self::List, Self::Show];
+    pub const ALL: [Self; 5] = [
+        Self::List,
+        Self::Show,
+        Self::Copies,
+        Self::Pull,
+        Self::Remove,
+    ];
 
     #[must_use]
     pub fn definition(self) -> Definition {
@@ -68,6 +91,35 @@ impl ModelTool {
                  such model.",
             )
             .returns(&[("model", "object", "The model; null when unknown.")]),
+            Self::Copies => Definition::new::<ListInput>(
+                "anima_model_copies",
+                Access::Read,
+                Effect::Reads,
+                "Each copy of a model that a machine has, pulls or removes: its machine, its \
+                 address name:tag, its size, its state (QUEUED, DOWNLOADING, DOWNLOADED, \
+                 VALIDATING, VALIDATED, FAILED, REMOVING), the progress of a running pull and \
+                 the reason of a failure. Next: anima_model_pull, anima_model_remove.",
+            )
+            .returns(&[("copies", "array", "The copies.")]),
+            Self::Pull => Definition::new::<CopyInput>(
+                "anima_model_pull",
+                Access::Write,
+                Effect::Adds,
+                "Asks one machine to download a variant name:tag of the library from its source \
+                 and verify each file. A name with no tag is refused with the tags of the model. \
+                 A machine that has the variant, or pulls or removes it, refuses a second pull. \
+                 Returns the copy; follow it with anima_model_copies.",
+            )
+            .returns(&[("copy", "object", "The copy that the hub asked for.")]),
+            Self::Remove => Definition::new::<CopyInput>(
+                "anima_model_remove",
+                Access::Write,
+                Effect::Removes,
+                "Removes the copy of a variant name:tag from one machine. A pull that waits \
+                 stops and the copy goes at once; else the machine deletes the files. Returns \
+                 the copy in state REMOVING, or null when it is gone.",
+            )
+            .returns(&[("copy", "object", "What is left of the copy; null when gone.")]),
         }
     }
 
@@ -79,6 +131,9 @@ impl ModelTool {
         match self {
             Self::List => list(hub, arguments).await,
             Self::Show => show(hub, arguments).await,
+            Self::Copies => copies(hub, arguments).await,
+            Self::Pull => pull(hub, arguments).await,
+            Self::Remove => remove(hub, arguments).await,
         }
     }
 }
@@ -104,4 +159,39 @@ async fn show(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolErr
         }
     }
     Ok(json!({ "model": model }))
+}
+
+async fn copies(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let _: ListInput = parse(arguments)?;
+    Ok(json!({ "copies": json(&fetch(hub).await?) }))
+}
+
+async fn pull(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let input: CopyInput = parse(arguments)?;
+    let device_id = resolve(hub, &input.device).await?;
+    let copy = hub
+        .run::<ModelPull>(model_pull::Variables {
+            device_id,
+            model: input.model,
+        })
+        .await?
+        .pull_model;
+    Ok(json!({ "copy": json(&copy) }))
+}
+
+async fn remove(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let input: CopyInput = parse(arguments)?;
+    let device_id = resolve(hub, &input.device).await?;
+    let found = fetch(hub)
+        .await?
+        .into_iter()
+        .find(|copy| copy.place.id == device_id && copy.address == input.model);
+    let Some(copy) = found else {
+        return Ok(json!({ "copy": null }));
+    };
+    let left = hub
+        .run::<ModelCopyRemove>(model_copy_remove::Variables { id: copy.id })
+        .await?
+        .remove_model_copy;
+    Ok(json!({ "copy": json(&left) }))
 }

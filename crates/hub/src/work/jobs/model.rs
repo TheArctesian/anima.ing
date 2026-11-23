@@ -4,8 +4,8 @@
 use chrono::{DateTime, Utc};
 use daemon_core::model_work::names::Actor;
 use daemon_core::wire::{
-    Limits, StopReason, Switch, WorkArchitecture, WorkKind, WorkOs, WorkRepository, WorkResult,
-    WorkState, WorkType,
+    Limits, Progress, StopReason, Switch, WorkArchitecture, WorkKind, WorkOs, WorkRepository,
+    WorkResult, WorkState, WorkType,
 };
 
 use crate::ids::{DeviceId, JobId, ProjectId};
@@ -136,6 +136,8 @@ pub struct Job {
     pub result: Option<WorkResult>,
     /// The count of bytes of the log that the hub accepted.
     pub log_end: u64,
+    /// The last progress of a running `model_pull` (K11 Section 3, PULL-007).
+    pub progress: Option<Progress>,
     pub created_at: DateTime<Utc>,
     pub changed_at: DateTime<Utc>,
     pub ended_at: Option<DateTime<Utc>>,

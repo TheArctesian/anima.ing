@@ -83,6 +83,22 @@ pub(super) async fn resolve(
     .await?)
 }
 
+/// The identifier of the variant `tag` of the model `name` (task L1-7).
+pub(super) async fn variant_id(
+    db: impl PgExecutor<'_>,
+    name: &str,
+    tag: &str,
+) -> Result<Option<Uuid>, Error> {
+    Ok(sqlx::query_scalar(
+        "SELECT v.id FROM compute.variants v JOIN compute.models m ON m.id = v.model_id \
+         WHERE m.name = $1 AND v.tag = $2",
+    )
+    .bind(name)
+    .bind(tag)
+    .fetch_optional(db)
+    .await?)
+}
+
 #[derive(sqlx::FromRow)]
 struct ModelRow {
     id: Uuid,

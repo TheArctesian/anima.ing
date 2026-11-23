@@ -198,3 +198,13 @@ fn an_answer_with_no_id_is_dropped() {
         Checked::Drop
     );
 }
+
+#[test]
+fn r_408_two_files_that_flatten_to_one_name_are_refused() {
+    let file = |name: &str| json!({ "name": name, "sizeBytes": 5, "sha256": "b".repeat(64) });
+    let mut both = pull("unsloth", "a/Q4.gguf");
+    both["parameters"]["files"] = json!([file("a/Q4.gguf"), file("b/q4.GGUF")]);
+    assert_eq!(cause_of(&both), Some(Cause::MemberUnknown));
+    both["parameters"]["files"] = json!([file("a/Q4.gguf"), file("b/Q5.gguf")]);
+    assert_eq!(cause_of(&both), None);
+}

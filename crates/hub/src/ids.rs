@@ -82,6 +82,8 @@ entity_id! {
     BuilderId,
     /// A job of the work route: what the hub gives to the daemon of a machine (K10).
     JobId,
+    /// A copy of a model variant on one machine (K11 Section 11).
+    CopyId,
     /// A connection to an outside source, such as one GitHub App installation.
     SourceAccountId,
     /// The sealed credential of a source account.

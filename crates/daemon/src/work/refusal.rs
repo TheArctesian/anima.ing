@@ -45,6 +45,7 @@ pub fn report(id: Uuid, attempt: u32, cause: Cause) -> WorkReport {
         attempt,
         state: WorkState::Refused,
         log: None,
+        progress: None,
         result: Some(WorkResult {
             outcome: "refused".to_owned(),
             cause: Some(cause.as_str().to_owned()),
@@ -55,6 +56,7 @@ pub fn report(id: Uuid, attempt: u32, cause: Cause) -> WorkReport {
                 secrets: none(),
                 keychain: none(),
             },
+            model: None,
         }),
     }
 }

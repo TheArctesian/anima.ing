@@ -1,0 +1,21 @@
+# `anima model copies`: the copies of the model variants on the machines (PULL-007, PULL-009).
+query ModelCopies {
+  modelCopies {
+    id
+    address
+    state
+    reason
+    sizeBytes
+    place {
+      kind
+      id
+      name
+    }
+    progress {
+      bytes
+      totalBytes
+      bytesPerSecond
+      secondsLeft
+    }
+  }
+}

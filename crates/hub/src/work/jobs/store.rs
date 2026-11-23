@@ -32,7 +32,7 @@ const SELECT_JOB: &str = "SELECT id, work_type, kind, os, architecture, project_
      name, parameters, secrets, limit_seconds, limit_idle_seconds, limit_memory_bytes, \
      limit_disk_bytes, limit_orphan_seconds, state, attempt, lost, device_id, last_device_id, \
      refused_by, lease_ends_at, claimed_at, stop_reason, reason, result, log_end, created_at, \
-     state_changed_at, ended_at, machine_id, actor FROM jobs.jobs ";
+     state_changed_at, ended_at, machine_id, actor, progress FROM jobs.jobs ";
 
 #[derive(sqlx::FromRow)]
 struct JobRow {
@@ -69,6 +69,7 @@ struct JobRow {
     ended_at: Option<DateTime<Utc>>,
     machine_id: Option<DeviceId>,
     actor: Option<String>,
+    progress: Option<serde_json::Value>,
 }
 
 /// A word of the contract as the database holds it: the JSON string of its type.
@@ -164,6 +165,11 @@ impl TryFrom<JobRow> for Job {
                 .transpose()
                 .map_err(|_| Error::Unreadable)?,
             log_end: count(row.log_end)?,
+            progress: row
+                .progress
+                .map(serde_json::from_value)
+                .transpose()
+                .map_err(|_| Error::Unreadable)?,
             created_at: row.created_at,
             changed_at: row.state_changed_at,
             ended_at: row.ended_at,
@@ -183,6 +189,13 @@ async fn jobs_where(
         .bind(device)
         .fetch_all(conn)
         .await?;
+    rows.into_iter().map(Job::try_from).collect()
+}
+
+/// The jobs with these ids, unlocked.
+pub(super) async fn jobs_of(conn: &mut PgConnection, ids: &[JobId]) -> Result<Vec<Job>, Error> {
+    let sql = format!("{SELECT_JOB}WHERE id = ANY($1)");
+    let rows: Vec<JobRow> = sqlx::query_as(&sql).bind(ids).fetch_all(conn).await?;
     rows.into_iter().map(Job::try_from).collect()
 }
 
@@ -283,7 +296,7 @@ pub(super) async fn save(conn: &mut PgConnection, job: &Job) -> Result<(), Error
         "UPDATE jobs.jobs SET state = $2, attempt = $3, lost = $4, device_id = $5, \
          last_device_id = $6, refused_by = $7, lease_ends_at = $8, claimed_at = $9, \
          stop_reason = $10, reason = $11, result = $12, log_end = $13, state_changed_at = $14, \
-         ended_at = $15 WHERE id = $1",
+         ended_at = $15, progress = $16 WHERE id = $1",
     )
     .bind(job.id)
     .bind(job.state.as_str())
@@ -300,6 +313,7 @@ pub(super) async fn save(conn: &mut PgConnection, job: &Job) -> Result<(), Error
     .bind(stored(job.log_end)?)
     .bind(job.changed_at)
     .bind(job.ended_at)
+    .bind(job.progress.map(|progress| serde_json::json!(progress)))
     .execute(conn)
     .await?;
     Ok(())

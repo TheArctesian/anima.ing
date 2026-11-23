@@ -199,4 +199,52 @@ impl Cause {
                 | Self::RuntimeNotSigned
         )
     }
+
+    /// Each cause once, for the reader of a code; `containment_failed` with any one step.
+    const ALL: [Self; 38] = [
+        Self::TypeUnknown,
+        Self::KindNotPermitted,
+        Self::MemberUnknown,
+        Self::SecretUnknown,
+        Self::SwitchOff,
+        Self::Policy,
+        Self::FlagOwned,
+        Self::RuntimeNotConfigured,
+        Self::RuntimeNotInstalled,
+        Self::RuntimeAdvisory,
+        Self::SourceNotPermitted,
+        Self::CopyUnknown,
+        Self::CopyNotReady,
+        Self::RemoteCode,
+        Self::FileRejected,
+        Self::DiskShare,
+        Self::MemoryShare,
+        Self::FileType,
+        Self::GpuUnknown,
+        Self::RuntimeTooOld,
+        Self::ActorNotPermitted,
+        Self::RevisionTooNew,
+        Self::Checksum,
+        Self::Size,
+        Self::SourceFailed,
+        Self::FetchFailed,
+        Self::Listener,
+        Self::IsolationFailed,
+        Self::LimitMemory,
+        Self::LoadCrash,
+        Self::HashMismatch,
+        Self::StartFailed,
+        Self::ProbeFailed,
+        Self::LimitDisk,
+        Self::ProgramMismatch,
+        Self::ArchiveRejected,
+        Self::ContainmentFailed(Containment::NoDelegation),
+        Self::RuntimeNotSigned,
+    ];
+
+    /// Whether `code` is the code of a cause, as a report spells it.
+    #[must_use]
+    pub fn is_code(code: &str) -> bool {
+        Self::ALL.iter().any(|cause| cause.as_str() == code)
+    }
 }

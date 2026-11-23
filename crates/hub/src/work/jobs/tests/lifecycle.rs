@@ -21,6 +21,7 @@ fn report(state: WorkState) -> WorkReport {
             secrets: "deleted".to_owned(),
             keychain: "none".to_owned(),
         },
+        model: None,
     });
     WorkReport {
         id: JOB.parse().unwrap(),
@@ -28,6 +29,7 @@ fn report(state: WorkState) -> WorkReport {
         state,
         log: None,
         result,
+        progress: None,
     }
 }
 

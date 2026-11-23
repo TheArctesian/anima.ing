@@ -29,6 +29,13 @@ pub fn is_file_path(name: &str) -> bool {
     name.len() <= MAX_NAME && !name.is_empty() && name.split('/').all(is_source_name)
 }
 
+/// The name of a file in the folder of its copy: the last part of its path, as the pull
+/// flattens it (Section 7, R-408). Two files of one copy must not have one flat name.
+#[must_use]
+pub fn flat_name(name: &str) -> &str {
+    name.rsplit('/').next().unwrap_or(name)
+}
+
 /// `name` is already a valid path.
 #[must_use]
 pub fn permitted(format: Format, name: &str) -> bool {

@@ -1,6 +1,7 @@
 //! The work route through the hub's routes (K10, `contracts/work-route.md`; task W3): a daemon
 //! claims a job with its token, reports it, and the hub ends what a machine lost.
 
+mod copies;
 mod flow;
 mod model;
 mod placement;

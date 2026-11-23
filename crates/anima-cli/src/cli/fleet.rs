@@ -29,7 +29,7 @@ pub enum FleetCommand {
         #[command(subcommand)]
         command: web_interfaces::WebCommand,
     },
-    /// The model library (list, show, add, alias, source).
+    /// The model library (list, show, add, alias, source) and the copies on the machines (pull, remove, copies).
     Model {
         #[command(subcommand)]
         command: model_library::ModelCommand,

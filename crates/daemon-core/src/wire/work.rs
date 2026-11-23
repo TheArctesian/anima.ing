@@ -247,6 +247,30 @@ pub struct WorkResult {
     pub cause: Option<String>,
     pub seconds: u64,
     pub cleanup: Cleanup,
+    /// The copy that a model item changed (K11 Section 3); only for the kind `model`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<CopyOutcome>,
+}
+
+/// The `model` member of the result of a model item (K11 Section 3): the copy, its state of
+/// K11 Section 11, its bytes and its file count. Codes and numbers only.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CopyOutcome {
+    pub copy: Uuid,
+    pub copy_state: String,
+    pub bytes: u64,
+    pub files: u32,
+}
+
+/// The progress of a running `model_pull` (K11 Section 3, PULL-007). The hub computes the
+/// time to completion.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Progress {
+    pub bytes: u64,
+    pub total_bytes: u64,
+    pub bytes_per_second: u64,
 }
 
 /// `POST /work/v1/report` (K10 Section 7).
@@ -259,6 +283,9 @@ pub struct WorkReport {
     pub log: Option<LogPart>,
     #[serde(default)]
     pub result: Option<WorkResult>,
+    /// Only in a report of a running `model_pull` (K11 Section 3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progress: Option<Progress>,
 }
 
 /// Why the hub tells a machine to stop a job (K10 Section 7).
