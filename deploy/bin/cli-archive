@@ -13,7 +13,7 @@ refuse() { echo "cli-archive: $1" >&2; exit 1; }
 echo "$3" | grep -Eq '^[0-9]+$' || refuse "the time is not a number of seconds"
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 STAGE=$(mktemp -d)
-trap 'rm -rf "$STAGE"' EXIT
+trap 'rm -rf "$STAGE" "$STAGE.tar"' EXIT
 
 cp "$1/anima" "$STAGE/anima"
 chmod 0755 "$STAGE/anima"
@@ -25,5 +25,8 @@ while read -r source name; do
     chmod 0644 "$STAGE/$name"
     names="$names $name"
 done < "$ROOT/deploy/release/licences.txt"
+# Two steps, not a pipe: sh has no pipefail, and a failed tar must fail the script.
 # shellcheck disable=SC2086 # $names is a list of plain names.
-tar --sort=name --mtime="@$3" --owner=0 --group=0 --numeric-owner -cf - -C "$STAGE" $names | gzip -n > "$2"
+tar --sort=name --mtime="@$3" --owner=0 --group=0 --numeric-owner -cf "$STAGE.tar" -C "$STAGE" $names
+gzip -n < "$STAGE.tar" > "$2"
+rm -f "$STAGE.tar"

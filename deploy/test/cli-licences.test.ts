@@ -66,13 +66,16 @@ describe("the licence files of a copy of anima", () => {
     expect(text).toContain(`    prefix.install ${LICENCES.map(({ name }) => `"${name}"`).join(", ")}\n`);
   });
 
-  test("the release packs each archive of anima with cli-archive, and the Windows zip with the list", () => {
+  test("the release packs each archive of anima with cli-archive, and the Windows zips of the release and the trial with the list", () => {
     const release = readFileSync(join(ROOT, ".github", "workflows", "release.yml"), "utf8");
     expect(release).toContain('sh deploy/bin/cli-archive "$mac" out/anima-darwin-universal.tar.gz "$TIME"');
     expect(release).toContain('sh deploy/bin/cli-archive "$linux" out/anima-linux-x86_64.tar.gz "$TIME"');
     expect(release).not.toMatch(/-C "\$1" anima \|/);
     expect(release).toContain("foreach ($line in Get-Content deploy/release/licences.txt)");
     expect(release).toContain("Compress-Archive -Path cli-stage/* -DestinationPath out-cli/anima-windows-x86_64.zip");
+    const trial = readFileSync(join(ROOT, ".github", "workflows", "windows-trial.yml"), "utf8");
+    expect(trial).toContain("foreach ($line in Get-Content deploy/release/licences.txt)");
+    expect(trial).toContain("Compress-Archive -Path cli-stage/* -DestinationPath out-cli/anima-windows-x86_64.zip");
   });
 
   // Windows: in the file that only the bundle step reads (windows-bundle.ps1), beside the tree of the database.
