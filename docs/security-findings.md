@@ -3512,7 +3512,7 @@ Where: [model-work.md](../contracts/compute/model-work.md) Section 2 and Section
 
 What it is: `revision` had no exact form, and a file name could hold `/`, so a hub that is taken over could choose a branch name or a path that leaves the folder of the copy or meets a link.
 
-The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name from the list of Section 2.2, with no `/`, `..`, `%` or control character. The daemon writes it with `openat`, `O_NOFOLLOW` and `O_EXCL` under a folder of mode 0700, and refuses two names that are equal in lower case, as the unpack does.
+The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name, or one sub-folder and a flat name joined by one `/` (R-NEW-subfolders); each of the two parts is checked as a flat name, with no `/`, `..`, `%`, control character or character outside ASCII (SF-NEW-k11f), and the file part is from the list of Section 2.2. The daemon opens each part with `openat` and `O_NOFOLLOW`, flattens the file on write into `copies/<copy>/` with `O_EXCL` under a folder of mode 0700, and refuses two files whose flattened names are equal in lower case, as the unpack does; it never overwrites one.
 
 State: Open. Fixed in the text of K11 (2026-11-22); no code. Found by a separate reviewer on 2026-11-22 (SEC-C-012).
 

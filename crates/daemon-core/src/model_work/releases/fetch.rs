@@ -23,7 +23,7 @@ pub const MAX_REPLY_BYTES: u64 = 64;
 /// The reply of a child that did all the work.
 pub const DONE: &str = "done";
 
-/// The causes that a child may give back. Each other word reads as `source_failed`.
+/// The causes that a child may give back. Each other word reads as `fetch_failed`.
 pub const CHILD_CAUSES: [Cause; 6] = [
     Cause::Checksum,
     Cause::Size,
@@ -161,7 +161,8 @@ pub fn reply(outcome: Result<(), Cause>) -> &'static str {
     match outcome {
         Ok(()) => DONE,
         Err(cause) if CHILD_CAUSES.contains(&cause) => cause.as_str(),
-        Err(_) => Cause::SourceFailed.as_str(),
+        // Not on the list, so the daemon reads it as `fetch_failed`.
+        Err(_) => Cause::FetchFailed.as_str(),
     }
 }
 
@@ -177,13 +178,15 @@ pub enum Ending<'a> {
 }
 
 /// The outcome of the work from the way the child ended. A fault or a stall of the child is
-/// `source_failed`, and so is a reply that does not read (R-348).
+/// `fetch_failed`, and so is a reply that is not a word of [`CHILD_CAUSES`] (R-NEW-fetchcause).
+/// Only the word `source_failed` from a child that exited with code 0 is `source_failed`: the
+/// source refused or did not answer. No text of the child goes into the cause.
 ///
 /// # Errors
-/// The cause of the child, or `source_failed`.
+/// The cause of the child, or `fetch_failed`.
 pub fn verdict(ending: Ending<'_>) -> Result<(), Cause> {
     let Ending::Exited(text) = ending else {
-        return Err(Cause::SourceFailed);
+        return Err(Cause::FetchFailed);
     };
     let word = text.strip_suffix('\n').unwrap_or(text);
     if word == DONE {
@@ -192,5 +195,5 @@ pub fn verdict(ending: Ending<'_>) -> Result<(), Cause> {
     Err(CHILD_CAUSES
         .into_iter()
         .find(|cause| cause.as_str() == word)
-        .unwrap_or(Cause::SourceFailed))
+        .unwrap_or(Cause::FetchFailed))
 }

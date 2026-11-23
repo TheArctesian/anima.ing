@@ -83,10 +83,13 @@ a command, an argument, a flag or an environment variable.
   repository, never a branch name: a branch can change after the hub read its file list. It is exactly 40
   lower-case hexadecimal characters (`0-9`, `a-f`); each other value is refused (`member_unknown`)
   (SEC-C-012, SF-NEW-k11c).
-- `files[].name` is a flat file name at the root of the repository, permitted by the list of Section 2.2 for
-  the format: only the characters above, no `/`, no `..`, no `%`, no control character, at most 256 characters,
-  at most 64 files. Two names that are equal when they are in lower case are refused (as in the unpack of
-  Section 6) (SEC-C-012, SF-NEW-k11c). `sizeBytes` is above 0. The daemon makes each
+- `files[].name` is a flat file name at the root of the repository, or one sub-folder and a flat file name
+  joined by one `/` (R-NEW-subfolders: the GGUF repositories of Unsloth and others keep one folder for each
+  quantisation). Each part is a flat name: only the characters above, no `/`, no `..`, no `%`, no control
+  character, no character outside ASCII (SF-NEW-k11f); the file part is permitted by the list of Section 2.2 for
+  the format; at most 256 characters, at most 64 files. The daemon flattens each file on write into
+  `copies/<copy>/` under its file part. Two names whose flattened names are equal when they are in lower case are
+  refused, never overwritten (as in the unpack of Section 6) (SEC-C-012, SF-NEW-k11c). `sizeBytes` is above 0. The daemon makes each
   address from a fixed pattern (Section 7).
 - `probe` is a word of a fixed list in the daemon. Today: `text_short` (one fixed prompt, a fixed answer check)
   and `vision_short` (one fixed image in the daemon program). The hub sends no prompt.
@@ -148,11 +151,13 @@ daemon, and the daemon refuses each other file of `files` (`file_type`) before i
 | `gguf` | `*.gguf` |
 | `safetensors`, `mlx` | `*.safetensors`, `*.safetensors.index.json`, `config.json`, `generation_config.json`, `tokenizer.json`, `tokenizer_config.json`, `special_tokens_map.json`, `*.model` (a SentencePiece file), `chat_template.jinja`, `preprocessor_config.json` |
 
-- Each `.bin`, `.pt`, `.pth`, `.pkl`, `.py`, `.npz`, `.ckpt` and `.h5` file is refused (`file_type`). A name in a
-  sub-folder is refused too (Section 2).
+- Each `.bin`, `.pt`, `.pth`, `.pkl`, `.py`, `.npz`, `.ckpt` and `.h5` file is refused (`file_type`). A name in more than
+  one sub-folder is refused (Section 2, R-NEW-subfolders).
 - Before a load, the daemon reads `config.json` and `tokenizer_config.json` of the copy with a JSON parser. It
   refuses the copy (`remote_code`) when one of them has the member `auto_map` or `custom_pipelines`, or names a
-  class that is not in the list of the runtime.
+  class that is not in the list of the runtime. A file refused for another reason, such as a chat template over
+  64 KiB, a JSON file that does not parse or is not an object, or a file over its size cap, is `file_rejected`
+  (R-NEW-filecause).
 - A chat template comes only from `tokenizer_config.json`, `chat_template.jinja` or the GGUF metadata of the
   copy, and is at most 64 KiB. The daemon gives no template of the hub and no template file from outside the
   copy. The runtime renders it in its own sandboxed Jinja form; a runtime version that renders a template with
@@ -246,7 +251,8 @@ the causes of K10 Section 5, and these:
 | `source_not_permitted` | The organisation is not in the approved list of the machine (Section 7) |
 | `copy_unknown` | The copy, the server or the variant is not on this node |
 | `copy_not_ready` | `model_load` or `model_measure` names a copy that is not `downloaded` or `validated` |
-| `remote_code` | The copy needs remote code to load (SEC-C-008) |
+| `remote_code` | The copy needs remote code to load: `auto_map`, `custom_pipelines`, or a class that is not on the list of the runtime (SEC-C-008) |
+| `file_rejected` | A file of the copy is refused for a reason that is not remote code: a chat template over 64 KiB, a JSON file that does not parse or is not an object, a file over its size cap (Section 2.2; R-NEW-filecause). Not retryable with the same copy; the operator and the actor see it |
 | `disk_share` | The copy does not fit in the disk share of the device policy after the removal that the hub permitted (PULL-008) |
 | `memory_share` | The load does not fit in the memory share of the device policy |
 | `file_type` | `files` names a file that the format does not permit (Section 2.2) |
@@ -256,7 +262,9 @@ the causes of K10 Section 5, and these:
 | `revision_too_new` | The commit of the source is newer than the lowest age that the machine holds (Section 7) |
 
 Causes after `preparing`, reported with the state `failed`: `checksum` (a SHA-256 is different), `size` (a file is
-larger than `sizeBytes`), `source_failed` (the source refused or did not answer after the retries), `listener`
+larger than `sizeBytes`), `source_failed` (the source refused or did not answer after the retries), `fetch_failed` (the child fetch
+process of Section 4 itself failed: a stall past its deadline, an end by a signal, an exit with a code that is not 0,
+or a reply that is not one of its fixed words; it carries no detail of the child; retryable; R-NEW-fetchcause), `listener`
 (Section 9), `isolation_failed` (the daemon cannot make the isolation of Section 9), `limit_memory` (Section 9),
 `load_crash` (the server ended while it loaded a copy), `hash_mismatch` (Section 7), `start_failed` (the server did not become ready in 120 seconds), `probe_failed` (the fixed request got
 no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime file), `archive_rejected` (a
@@ -306,9 +314,9 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
   go through the hub (PULL-004). The address is
   `https://huggingface.co/<organisation>/<repository>/resolve/<revision>/<file>`, made by the fetch process from
   the parameters; each part is encoded as a path segment. `revision` and each file name are checked by the
-  rules of Section 2 before the address is made. The daemon writes each file with `openat` relative to the
-  folder of the copy, a folder of mode 0700, with `O_NOFOLLOW` and `O_EXCL`, so a name never leaves that folder
-  and never opens a file that is there (SEC-C-012, SF-NEW-k11c).
+  rules of Section 2 before the address is made. The daemon writes each file, flattened to its file part, with
+  `openat` relative to the folder of the copy, a folder of mode 0700, with `O_NOFOLLOW` and `O_EXCL`, so a name
+  never leaves that folder and never opens a file that is there (SEC-C-012, SF-NEW-k11c, R-NEW-subfolders).
 - **The approved organisations.** The hub holds the approved list (LIBM-003). The machine holds its own list too,
   and refuses a pull from an organisation that is not in it (`source_not_permitted`). By R-342, the default list of the machine (the setting `organisations`, Section 10.1) is `unsloth`,
   `mlx-community` and the publishers that the release of the daemon names; the owner of the machine changes it

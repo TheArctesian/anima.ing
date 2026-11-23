@@ -21,6 +21,9 @@ pub enum Cause {
     CopyUnknown,
     CopyNotReady,
     RemoteCode,
+    /// A file of a copy is refused for a reason that is not remote code: a chat template over
+    /// 64 KiB, a JSON file that does not read or is not an object, a file over its size cap.
+    FileRejected,
     DiskShare,
     MemoryShare,
     FileType,
@@ -32,6 +35,10 @@ pub enum Cause {
     Checksum,
     Size,
     SourceFailed,
+    /// The child fetch process itself failed: a stall past its deadline, an end by a signal,
+    /// a nonzero exit, or a reply word not on its fixed list (R-NEW-fetchcause). It carries
+    /// nothing of the child.
+    FetchFailed,
     Listener,
     IsolationFailed,
     LimitMemory,
@@ -134,6 +141,7 @@ impl Cause {
             Self::CopyUnknown => "copy_unknown",
             Self::CopyNotReady => "copy_not_ready",
             Self::RemoteCode => "remote_code",
+            Self::FileRejected => "file_rejected",
             Self::DiskShare => "disk_share",
             Self::MemoryShare => "memory_share",
             Self::FileType => "file_type",
@@ -144,6 +152,7 @@ impl Cause {
             Self::Checksum => "checksum",
             Self::Size => "size",
             Self::SourceFailed => "source_failed",
+            Self::FetchFailed => "fetch_failed",
             Self::Listener => "listener",
             Self::IsolationFailed => "isolation_failed",
             Self::LimitMemory => "limit_memory",
@@ -176,6 +185,7 @@ impl Cause {
             Self::Checksum
                 | Self::Size
                 | Self::SourceFailed
+                | Self::FetchFailed
                 | Self::Listener
                 | Self::IsolationFailed
                 | Self::LimitMemory
