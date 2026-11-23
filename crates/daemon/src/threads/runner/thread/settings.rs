@@ -9,6 +9,7 @@ use agent_threads::control::{Refusal, RunState};
 use agent_threads::drive::{ClaudeInput, DriveEvent, Effort, Mode, Model, ProgramRequestId};
 use serde::{Deserialize, Serialize};
 
+use super::super::accounts::STANDARD;
 use super::{Driver, Step, Thread, said};
 
 /// The first words of the ID of a control request of a change.
@@ -162,7 +163,8 @@ impl Thread {
             self.row.mode = mode;
         }
         if let Some(speed) = changes.speed {
-            self.row.speed = Some(speed);
+            // The standard speed is no speed of the row: a start again sends none.
+            self.row.speed = Some(speed).filter(|speed| speed != STANDARD);
         }
     }
 }

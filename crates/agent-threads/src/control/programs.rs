@@ -34,6 +34,10 @@ pub struct ProgramState {
     /// When the running ask started, or when the last ask failed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub since: Option<chrono::DateTime<chrono::Utc>>,
+    /// Why the last ask failed: fixed words of the runner, with no path, token or text of the
+    /// program.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

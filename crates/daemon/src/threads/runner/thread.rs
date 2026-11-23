@@ -119,6 +119,8 @@ pub struct Thread {
     asked: settings::Asked,
     /// The commands and the skills that the program last named (TH117). In memory only.
     lists: Option<agent_threads::drive::CommandLists>,
+    /// When a call last asked Codex for its skills again (TH117).
+    lists_asked: Option<std::time::Instant>,
 }
 
 impl Thread {
@@ -145,6 +147,7 @@ impl Thread {
             pending: 0,
             asked: settings::Asked::default(),
             lists: None,
+            lists_asked: None,
         }
     }
 

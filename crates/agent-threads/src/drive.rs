@@ -33,7 +33,7 @@ pub use codex_in::{CodexInput, CodexMethod, CodexPlace, CodexTurn, KeptFolder, T
 pub use codex_out::CodexDecoder;
 pub use launch::{Effort, Invocation, Launch, Mode, Model, Program, SessionStart};
 pub use lists::commands::{
-    CommandLists, CommandRow, MOST_ROWS, SkillRow, claude_commands, claude_file, codex_skills,
+    CommandLists, CommandRow, MOST_ROWS, Run, SkillRow, claude_commands, claude_file, codex_skills,
 };
 pub use lists::models::{EffortWords, ModelChoice, SpeedChoice, claude_models, codex_models};
 pub use prompt::{Attached, Attachment, ChosenSkill, Prompt};

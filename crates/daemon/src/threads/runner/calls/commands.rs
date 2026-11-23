@@ -38,7 +38,7 @@ impl Runner {
         let Some(thread) = self.threads.get_mut(&id) else {
             return refused(Refusal::UnknownThread);
         };
-        let (lists, again) = thread.commands();
+        let (lists, again) = thread.commands(std::time::Instant::now());
         // A failed ask leaves the list pending: the next call asks again.
         let _ = self.apply(id, again).await;
         answer(lists)

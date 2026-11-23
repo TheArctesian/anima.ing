@@ -10,6 +10,7 @@ use serde_json::Value;
 
 use super::{key, line, list};
 use crate::drive::DriveEvent;
+use crate::marks::is_hidden_mark;
 
 /// The most rows of one list.
 pub const MOST_ROWS: usize = 200;
@@ -19,7 +20,7 @@ const MOST_PATH: usize = 1024;
 /// `plugin:command`.
 const NAME_MORE: &[u8] = b":";
 
-/// A command of the program that the person sends as the text `/name args`.
+/// A command of the program, or of the runner for the program.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandRow {
     pub name: String,
@@ -28,9 +29,38 @@ pub struct CommandRow {
     /// What the command takes after its name, such as `[file]`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hint: Option<String>,
+    pub run: Run,
+    /// It sends data of the thread off this computer: the client asks the person first.
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub leaves_computer: bool,
 }
 
-/// A skill of the program that a prompt names (Codex).
+/// How a command runs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Run {
+    /// The person sends it as the text `/name args` of a prompt (Claude Code).
+    Text,
+    /// A call of the runner of its own, named as the command (Codex `compact`).
+    Call,
+}
+
+impl CommandRow {
+    /// The command `compact` of a Codex thread: the call `compact` (TH117).
+    #[must_use]
+    pub fn compact() -> Self {
+        Self {
+            name: "compact".to_owned(),
+            description: Some("Compact the context of the thread".to_owned()),
+            hint: None,
+            run: Run::Call,
+            leaves_computer: false,
+        }
+    }
+}
+
+/// A skill of the program that a prompt names (Codex). Claude Code lists no skill here: it names
+/// its skills and the commands of the person as commands.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SkillRow {
     pub name: String,
@@ -43,7 +73,8 @@ pub struct SkillRow {
     pub scope: String,
     /// The file of the skill, as the program names it: a prompt names the skill with it.
     pub path: String,
-    /// Only the person can use it: the agent does not choose it by itself.
+    /// Only the person can use it: the agent does not choose it by itself (`userInvocationOnly`
+    /// of Codex, when Codex gives it; Codex 0.170 does not).
     #[serde(default, skip_serializing_if = "Not::not")]
     pub user_only: bool,
 }
@@ -67,6 +98,8 @@ pub fn claude_commands(answer: &Value) -> Option<DriveEvent> {
                 name: key(&command["name"], NAME_MORE)?,
                 description: line(&command["description"]),
                 hint: line(&command["argumentHint"]),
+                run: Run::Text,
+                leaves_computer: false,
             })
         })
         .take(MOST_ROWS)
@@ -106,7 +139,9 @@ fn codex_skill(skill: &Value) -> Option<SkillRow> {
     let path = skill["path"].as_str()?;
     let fits = path.starts_with('/')
         && path.len() <= MOST_PATH
-        && !path.chars().any(|each| each.is_control());
+        && !path
+            .chars()
+            .any(|each| each.is_control() || is_hidden_mark(each));
     fits.then_some(())?;
     Some(SkillRow {
         name: key(&skill["name"], NAME_MORE)?,
@@ -115,7 +150,7 @@ fn codex_skill(skill: &Value) -> Option<SkillRow> {
             .or_else(|| line(&skill["shortDescription"])),
         scope: key(&skill["scope"], b"")?,
         path: path.to_owned(),
-        user_only: false,
+        user_only: skill["userInvocationOnly"].as_bool() == Some(true),
     })
 }
 
@@ -141,6 +176,8 @@ pub fn claude_file(name: &str, text: &str) -> Option<CommandRow> {
         name: key(&Value::from(named), NAME_MORE)?,
         description,
         hint: field("argument-hint"),
+        run: Run::Text,
+        leaves_computer: false,
     })
 }
 

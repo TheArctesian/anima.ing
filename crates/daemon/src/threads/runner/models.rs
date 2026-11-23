@@ -17,7 +17,10 @@ use super::socket::Caller;
 use super::{Runner, login};
 
 pub(super) mod asking;
-use asking::Heard;
+use asking::{Fault, Heard};
+
+/// The list of a program, or why the ask gave none.
+pub(super) type Listed = Result<Vec<ModelChoice>, Fault>;
 
 /// How long a program that gave no list is not asked again.
 const ASK_AGAIN: Duration = Duration::from_secs(60);
@@ -26,12 +29,12 @@ const MOST_WAITING: usize = 64;
 
 /// The asks that run, and the calls that wait for them.
 pub(super) struct Asks {
-    pub sender: tokio::sync::mpsc::Sender<(Program, Option<Vec<ModelChoice>>)>,
-    pub receiver: Option<tokio::sync::mpsc::Receiver<(Program, Option<Vec<ModelChoice>>)>>,
+    pub sender: tokio::sync::mpsc::Sender<(Program, Listed)>,
+    pub receiver: Option<tokio::sync::mpsc::Receiver<(Program, Listed)>>,
     /// The programs being asked.
     open: Vec<Program>,
-    /// When each program last gave no list.
-    failed: Vec<(Program, Instant)>,
+    /// When each program last gave no list, and why.
+    failed: Vec<(Program, Instant, Fault)>,
     /// When the running ask or the last failed ask of each program started or ended, for the
     /// person (TH117).
     since: Vec<(Program, DateTime<Utc>)>,
@@ -72,7 +75,7 @@ impl Runner {
                 .model_asks
                 .failed
                 .iter()
-                .any(|(failed, at)| *failed == program && at.elapsed() < ASK_AGAIN);
+                .any(|(failed, at, _)| *failed == program && at.elapsed() < ASK_AGAIN);
             let asked = known.contains(&program) || self.model_asks.open.contains(&program);
             if !of_the_person || asked || failed {
                 continue;
@@ -91,8 +94,9 @@ impl Runner {
             self.model_asks.open.push(program);
             tokio::spawn(async move {
                 let models = ask(program, path, env).await;
-                if models.is_none() {
-                    tracing::info!(?program, "a program gave no list of its models");
+                if let Err(fault) = models {
+                    let why = fault.words();
+                    tracing::info!(?program, why, "a program gave no list of its models");
                 }
                 // A runner that ended does not need the answer.
                 let _ = sender.send((program, models)).await;
@@ -107,15 +111,17 @@ impl Runner {
 
     /// The end of one ask: its list is kept, and when no ask runs each waiting call gets the
     /// lists.
-    pub(super) fn models_asked(&mut self, program: Program, models: Option<Vec<ModelChoice>>) {
+    pub(super) fn models_asked(&mut self, program: Program, models: Listed) {
         self.model_asks.open.retain(|open| *open != program);
         self.model_asks
             .failed
-            .retain(|(failed, _)| *failed != program);
+            .retain(|(failed, _, _)| *failed != program);
         match models {
-            Some(models) => self.said.models.note(program, models, Utc::now()),
-            None => {
-                self.model_asks.failed.push((program, Instant::now()));
+            Ok(models) => self.said.models.note(program, models, Utc::now()),
+            Err(fault) => {
+                self.model_asks
+                    .failed
+                    .push((program, Instant::now(), fault));
                 self.model_asks.noted(program);
             }
         }
@@ -137,7 +143,7 @@ impl Runner {
                     ListState::Listed
                 } else if asks.open.contains(&program) {
                     ListState::Asking
-                } else if asks.failed.iter().any(|(failed, _)| *failed == program) {
+                } else if asks.failed.iter().any(|(failed, _, _)| *failed == program) {
                     ListState::Failed
                 } else if asks.missing.contains(&program) {
                     ListState::Missing
@@ -148,10 +154,16 @@ impl Runner {
                     .then(|| asks.since.iter().find(|(of, _)| *of == program))
                     .flatten()
                     .map(|(_, at)| *at);
+                let reason = asks
+                    .failed
+                    .iter()
+                    .find(|(failed, _, _)| *failed == program && state == ListState::Failed)
+                    .map(|(_, _, fault)| fault.words().to_owned());
                 ProgramState {
                     program,
                     state,
                     since,
+                    reason,
                 }
             })
             .collect();
@@ -183,16 +195,13 @@ pub(super) fn environment(
 }
 
 /// Asks the program for its list of models: `None` when it gives none.
-async fn ask(
-    program: Program,
-    path: PathBuf,
-    env: Vec<(String, String)>,
-) -> Option<Vec<ModelChoice>> {
+async fn ask(program: Program, path: PathBuf, env: Vec<(String, String)>) -> Listed {
     let first = match program {
         Program::ClaudeCode => ClaudeInput::initialize("models"),
         Program::Codex => CodexInput::initialize(1),
     };
-    asking::ask(program, path, env, first, |value| {
+    let asked = asking::Asked { program, path, env };
+    asking::ask(asked, first, |value| {
         match (program, list_in(program, value)) {
             (_, Some(models)) => Heard::Done(models),
             (Program::Codex, None) if asking::initialized(value) => {

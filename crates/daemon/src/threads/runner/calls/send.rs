@@ -79,7 +79,8 @@ impl Runner {
         else {
             return Err(Refusal::BadValue);
         };
-        if !person && !(attachments.is_empty() && skills.is_empty()) {
+        let has_more = !attachments.is_empty() || !skills.is_empty();
+        if !person && has_more {
             return Err(Refusal::FromAnAgent);
         }
         self.threads

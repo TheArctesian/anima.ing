@@ -85,14 +85,19 @@ impl FolderSkills {
         tokio::spawn(async move {
             let first = CodexInput::initialize(1);
             let wanted = folder.clone();
-            let lists = asking::ask(Program::Codex, path, env, first, move |value| {
-                heard(value, &wanted)
-            })
-            .await;
-            if lists.is_none() {
-                tracing::info!("Codex gave no list of the skills of a folder");
+            let asked = asking::Asked {
+                program: Program::Codex,
+                path,
+                env,
+            };
+            let lists = asking::ask(asked, first, move |value| heard(value, &wanted)).await;
+            if let Err(fault) = lists {
+                tracing::info!(
+                    why = fault.words(),
+                    "Codex gave no list of the skills of a folder"
+                );
             }
-            skills.asked(&folder, lists);
+            skills.asked(&folder, lists.ok());
         });
     }
 }

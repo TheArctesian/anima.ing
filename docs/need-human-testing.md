@@ -5232,12 +5232,14 @@ real account.
    `--model` and `--speed` of a model of step 1 that has a speed.
    Expected: the thread starts and the turn ends well; Codex shows the speed in its own session file for the turn.
 3. Run `anima agents set <thread> --speed default`, then send a prompt.
-   Expected: the turn ends well at the standard speed.
+   Expected: Codex takes the speed `default` with no error, and the turn ends well at the standard speed.
 4. Put a skill in `<the repository>/.codex/skills/hello/SKILL.md`, start a new Codex thread there, and run
    `anima agents commands --thread <thread>`.
    Expected: the skill `hello` is listed with its words.
 5. Run `anima agents commands --program codex --folder <the repository>`, wait 30 seconds, and run it again.
    Expected: the first run says that the program has not named its commands yet; the second lists `hello`.
+   While the first run asks, run `ps -ax -o pid,ppid,command` and look below the `codex app-server` of the runner.
+   Expected: Codex starts no MCP server of the person to list the skills of the folder.
 6. Run `anima agents compact <the thread of step 4>`.
    Expected: the answer says that Codex is compacting; the thread shows that its context was compacted.
 7. Start a Claude Code thread in a folder that has `.claude/commands/deploy.md`, and run

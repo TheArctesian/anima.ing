@@ -149,7 +149,7 @@ pub async fn commands(args: CommandsArgs, invocation: &Invocation) -> Result<(),
             .message("The program has not named its commands yet: ask again soon.");
         return Ok(());
     }
-    invocation.output.data(&lists, |lists| command_table(lists))
+    invocation.output.data(&lists, command_table)
 }
 
 fn command_table(lists: &CommandLists) -> Table {

@@ -6,6 +6,7 @@ use agent_threads::control::{RunState, ThreadRow, Workspace};
 use agent_threads::drive::{Effort, Launch, Mode, Model, Program, SessionStart};
 use uuid::Uuid;
 
+use super::super::accounts::STANDARD;
 use super::super::{Runner, login};
 use super::chosen_folder;
 use crate::threads::wire;
@@ -120,7 +121,7 @@ impl Runner {
             queued: Vec::new(),
             last_turn: None,
             effort: new.effort,
-            speed: new.speed.clone(),
+            speed: new.speed.clone().filter(|speed| speed != STANDARD),
             workspace: Some(Workspace::of(&folder)),
             usage: None,
         };

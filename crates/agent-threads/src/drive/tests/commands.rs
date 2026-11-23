@@ -25,6 +25,11 @@ fn th117_the_claude_commands_come_from_initialize_and_a_bad_name_is_left_out() {
         Some("Review the changes")
     );
     assert_eq!(lists.commands[0].hint.as_deref(), Some("[file]"));
+    assert!(lists.commands.iter().all(|row| row.run == Run::Text));
+    assert!(
+        lists.skills.is_empty(),
+        "Claude Code names its skills as commands"
+    );
     assert_eq!(lists.commands[1].description, None, "a blank description");
     assert!(!format!("{events:?}").contains("someone@example.com"));
 }
@@ -46,11 +51,11 @@ fn th117_a_description_is_cut_to_two_hundred_characters_and_the_list_to_two_hund
 
 #[test]
 fn th117_the_codex_skills_leave_out_a_skill_that_is_off_or_has_no_plain_path() {
-    let line = r#"{"id":12,"result":{"data":[{"cwd":"/w","errors":[],"skills":[{"name":"review","description":"Review code","shortDescription":"Review","interface":{"shortDescription":"Reviews"},"enabled":true,"path":"/w/.codex/skills/review/SKILL.md","scope":"repo"},{"name":"off","description":"x","enabled":false,"path":"/s/off/SKILL.md","scope":"user"},{"name":"relative","description":"x","enabled":true,"path":"skills/x/SKILL.md","scope":"user"},{"name":"bad scope","description":"x","enabled":true,"path":"/s/x/SKILL.md","scope":"user"}]}]}}"#;
+    let line = r#"{"id":12,"result":{"data":[{"cwd":"/w","errors":[],"skills":[{"name":"review","description":"Review code","shortDescription":"Review","interface":{"shortDescription":"Reviews"},"enabled":true,"path":"/w/.codex/skills/review/SKILL.md","scope":"repo"},{"name":"off","description":"x","enabled":false,"path":"/s/off/SKILL.md","scope":"user"},{"name":"relative","description":"x","enabled":true,"path":"skills/x/SKILL.md","scope":"user"},{"name":"bad scope","description":"x","enabled":true,"path":"/s/x/SKILL.md","scope":"user"},{"name":"marked","description":"x","enabled":true,"path":"/s/\u202ex/SKILL.md","scope":"user"}]}]}}"#;
     let events = codex(line);
     assert!(matches!(events[0], DriveEvent::Reply { ok: true, .. }));
     let lists = lists(&events);
-    assert!(lists.commands.is_empty());
+    assert!(lists.commands.is_empty(), "Codex lists only skills");
     assert_eq!(lists.skills.len(), 1);
     let skill = &lists.skills[0];
     assert_eq!(skill.name, "review");

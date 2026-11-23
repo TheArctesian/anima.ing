@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 13 | 45 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 13 | 44 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -180,7 +180,6 @@ Added 2026-11-23. From task TH117 of [agent-threads.md](proposals/agent-threads.
 - [ ] Claude Code has a fast mode for some models (`supportsFastMode` in its answer to `initialize`), but only a hidden flag `--fast-mode` and its settings turn it on. The runner gives Claude Code no `--settings` and no flag outside the closed list (THR-040), so Claude Code lists no speed. It waits for a documented flag or a ruling of the operator.
 - [ ] The programs of access of a Codex model (`cyber`) are only listed: Codex 0.170 takes no choice of one on `thread/start` or `turn/start`.
 - [ ] After a restart of the runner, a Claude Code thread that still runs lists no commands until it starts again: the runner does not send `initialize` a second time. The composer can ask with the program and the folder instead.
-- [ ] A change of the model keeps the speed of the thread; Codex refuses the turn when the new model does not have that speed.
 - [ ] The commands of Claude Code that come from plugins are listed only when a thread runs: the files of the plugins are not read for a folder.
 
 ## 3. Ideas from other products

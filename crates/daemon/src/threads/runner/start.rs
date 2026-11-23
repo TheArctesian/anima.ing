@@ -128,6 +128,10 @@ impl Runner {
             chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         }
         self.draft_ready(new)?;
+        // Only Codex takes a speed from the runner (TH117).
+        if new.speed.is_some() && new.program != Program::Codex {
+            return Err(Refusal::BadValue);
+        }
         let asked = Asked {
             model: new.model.as_deref(),
             effort: new.effort,

@@ -71,18 +71,6 @@ fn changes() -> Vec<Action> {
             thread,
             change: ListingChange::Remove,
         },
-        Action::Models,
-        Action::Commands {
-            thread: Some(thread),
-            program: None,
-            folder: None,
-        },
-        Action::Commands {
-            thread: None,
-            program: Some(Program::Codex),
-            folder: Some(PathBuf::from("/work")),
-        },
-        Action::Compact { thread },
         Action::Earlier {
             thread,
             before: 9,
@@ -123,6 +111,25 @@ fn changes() -> Vec<Action> {
             mode: Some(Mode::Ask),
             speed: None,
         },
+    ]
+}
+
+/// One of each call of the lists of the composer (TH117).
+fn lists() -> Vec<Action> {
+    let thread = Uuid::from_u128(7);
+    vec![
+        Action::Models,
+        Action::Commands {
+            thread: Some(thread),
+            program: None,
+            folder: None,
+        },
+        Action::Commands {
+            thread: None,
+            program: Some(Program::Codex),
+            folder: Some(PathBuf::from("/work")),
+        },
+        Action::Compact { thread },
     ]
 }
 
@@ -211,7 +218,12 @@ const KINDS: usize = 30;
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {
     let mut named = [false; KINDS];
-    for action in reads().into_iter().chain(changes()).chain(files()) {
+    for action in reads()
+        .into_iter()
+        .chain(changes())
+        .chain(lists())
+        .chain(files())
+    {
         named[kind(&action)] = true;
         let call = Call {
             id: 42,

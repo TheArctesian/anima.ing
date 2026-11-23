@@ -17,6 +17,34 @@ const MOST_LINE: usize = 1 << 20;
 /// The most lines that the ask reads before it gives up.
 const MOST_LINES: usize = 200;
 
+/// Why an ask gave no answer, in fixed words that hold no path, token or text of the program.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Fault {
+    NotStarted,
+    Ended,
+    TooMuch,
+    Slow,
+}
+
+impl Fault {
+    #[must_use]
+    pub const fn words(self) -> &'static str {
+        match self {
+            Self::NotStarted => "The program did not start.",
+            Self::Ended => "The program ended before it answered.",
+            Self::TooMuch => "The program wrote too much before it answered.",
+            Self::Slow => "The program did not answer within two minutes.",
+        }
+    }
+}
+
+/// The program to ask: its path, found as a thread finds it, and the environment of a thread.
+pub struct Asked {
+    pub program: Program,
+    pub path: PathBuf,
+    pub env: Vec<(String, String)>,
+}
+
 /// What one line of the program asks of the ask.
 pub enum Heard<T> {
     /// The answer: the ask ends.
@@ -32,14 +60,15 @@ pub fn initialized(value: &Value) -> bool {
 }
 
 /// Starts `program`, writes `first`, and reads its lines into `heard` until it gives the answer.
-/// `None` when the program ends, says too much, or is too slow.
+///
+/// # Errors
+/// The [`Fault`] when the program does not start, ends, says too much, or is too slow.
 pub async fn ask<T>(
-    program: Program,
-    path: PathBuf,
-    env: Vec<(String, String)>,
+    asked: Asked,
     first: String,
     heard: impl FnMut(&Value) -> Heard<T>,
-) -> Option<T> {
+) -> Result<T, Fault> {
+    let Asked { program, path, env } = asked;
     let args: &[&str] = match program {
         Program::ClaudeCode => &[
             "-p",
@@ -68,7 +97,7 @@ pub async fn ask<T>(
         .process_group(0)
         .kill_on_drop(true)
         .spawn()
-        .ok()?;
+        .map_err(|_| Fault::NotStarted)?;
     crate::threads::priority::lift_async(&mut child).await;
     let group = child
         .id()
@@ -76,8 +105,7 @@ pub async fn ask<T>(
         .and_then(rustix::process::Pid::from_raw);
     let answer = tokio::time::timeout(ASK_WAIT, talk(&mut child, &first, heard))
         .await
-        .ok()
-        .flatten();
+        .unwrap_or(Err(Fault::Slow));
     if let Some(group) = group {
         // A group that already ended is what this wants: the error is not a fault.
         let _ = rustix::process::kill_process_group(group, rustix::process::Signal::KILL);
@@ -91,34 +119,36 @@ async fn talk<T>(
     child: &mut tokio::process::Child,
     first: &str,
     mut heard: impl FnMut(&Value) -> Heard<T>,
-) -> Option<T> {
-    let mut input = child.stdin.take()?;
-    let output = child.stdout.take()?;
+) -> Result<T, Fault> {
+    let mut input = child.stdin.take().ok_or(Fault::NotStarted)?;
+    let output = child.stdout.take().ok_or(Fault::NotStarted)?;
     let mut lines = tokio::io::BufReader::new(output);
     let most_line = u64::try_from(MOST_LINE).unwrap_or(u64::MAX);
-    write_line(&mut input, first).await?;
+    write_line(&mut input, first).await.ok_or(Fault::Ended)?;
     let mut line = String::new();
     for _ in 0..MOST_LINES {
         line.clear();
         // A line longer than the limit is never held whole.
         let mut one = (&mut lines).take(most_line + 1);
-        if one.read_line(&mut line).await.ok()? == 0 || line.len() > MOST_LINE {
-            return None;
+        match one.read_line(&mut line).await {
+            Ok(0) | Err(_) => return Err(Fault::Ended),
+            Ok(_) if line.len() > MOST_LINE => return Err(Fault::TooMuch),
+            Ok(_) => {}
         }
         let Ok(value) = serde_json::from_str::<Value>(&line) else {
             continue;
         };
         match heard(&value) {
-            Heard::Done(answer) => return Some(answer),
+            Heard::Done(answer) => return Ok(answer),
             Heard::Write(more) => {
                 for each in more {
-                    write_line(&mut input, &each).await?;
+                    write_line(&mut input, &each).await.ok_or(Fault::Ended)?;
                 }
             }
             Heard::Nothing => {}
         }
     }
-    None
+    Err(Fault::TooMuch)
 }
 
 async fn write_line(input: &mut tokio::process::ChildStdin, line: &str) -> Option<()> {

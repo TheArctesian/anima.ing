@@ -1,23 +1,41 @@
 //! The commands and the skills of a thread (TH117): what its program last named, a skill that a
 //! prompt names, and a compact of the context. Pure.
 
+use std::time::{Duration, Instant};
+
 use agent_threads::control::Refusal;
-use agent_threads::drive::{ChosenSkill, CommandLists};
+use agent_threads::drive::{ChosenSkill, CommandLists, CommandRow};
 
 use super::{Driver, Step, Thread};
 
+/// How long the skills of a Codex thread stay fresh, and how soon a thread with none asks again.
+const FRESH: Duration = Duration::from_secs(60);
+const AGAIN: Duration = Duration::from_secs(10);
+
 impl Thread {
-    /// The lists that the program last named, or `None` while it named none. A Codex thread
-    /// with none asks again; the line is in the steps.
-    pub fn commands(&mut self) -> (Option<CommandLists>, Vec<Step>) {
-        if let Some(lists) = &self.lists {
-            return (Some(lists.clone()), Vec::new());
-        }
+    /// The lists that the program last named at `now`, with the commands that the runner runs
+    /// for it (Codex `compact`), or `None` while it named none. A Codex thread asks again for
+    /// its skills when it has none for 10 seconds, or a list older than a minute; the line is in
+    /// the steps, and the list comes with a later call.
+    pub fn commands(&mut self, now: Instant) -> (Option<CommandLists>, Vec<Step>) {
+        let wait = if self.lists.is_some() { FRESH } else { AGAIN };
+        let due = self
+            .lists_asked
+            .is_none_or(|asked| now.saturating_duration_since(asked) >= wait);
         let again = match &mut self.driver {
-            Driver::Codex(codex) if self.held => vec![Step::Write(codex.skills_again())],
+            Driver::Codex(codex) if self.held && due => {
+                self.lists_asked = Some(now);
+                vec![Step::Write(codex.skills_again())]
+            }
             Driver::Codex(_) | Driver::Claude(_) => Vec::new(),
         };
-        (None, again)
+        let lists = self.lists.clone().map(|mut lists| {
+            if matches!(self.driver, Driver::Codex(_)) {
+                lists.commands.insert(0, CommandRow::compact());
+            }
+            lists
+        });
+        (lists, again)
     }
 
     /// Whether each skill is one that the program of the thread listed, by its name and its path:
