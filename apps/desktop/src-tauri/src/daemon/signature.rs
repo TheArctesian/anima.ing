@@ -5,7 +5,7 @@
 //! hash of its own code, so each build is a new program, and its first read of the token waits
 //! for the person to allow it: after an update to such a build, the Keychain asks the person once
 //! (R-NEW-updateall). Linux has no Keychain: there it always keeps its identity. The seal of
-//! the bundle and of the new copy is checked here too ([`sealed`], [`sealed_by`]).
+//! the bundle and of the new copy is checked here too ([`sealed_by`]).
 
 use std::path::Path;
 
@@ -63,14 +63,8 @@ pub fn of_program(program: &Path) -> Identity {
 /// Whether the seal of `path` (an app bundle, or a program) verifies: its code and its
 /// resources did not change since it was signed. An ad hoc seal says nothing of who signed it.
 #[cfg(target_os = "macos")]
-pub fn sealed(path: &Path) -> bool {
+fn sealed(path: &Path) -> bool {
     codesign(&["--verify", "--strict"], path).is_some_and(|(success, _)| success)
-}
-
-/// No seals outside macOS: the package manager of the system checks the files of the app.
-#[cfg(not(target_os = "macos"))]
-pub const fn sealed(_path: &Path) -> bool {
-    true
 }
 
 /// Who signed the app that runs, as the code in memory shows it: a program put in the bundle
