@@ -6,7 +6,6 @@
   import { storeHubAddress } from '$lib/desktop/address';
   import { checkHubListener } from '$lib/desktop/hub-listener/shell';
   import { readLocalHub } from '$lib/desktop/local-hub/shell';
-  import { writeTokenAndCommandLine } from '$lib/desktop/command-line/sign-in';
   import { writeAccessToken } from '$lib/desktop/token';
   import FormButton from '$lib/forms/FormButton.svelte';
   import { createRequestHub, type HubAddress, type RequestHub } from '$lib/hub/hub';
@@ -68,7 +67,7 @@
     busy = true;
     problem = null;
     const hub = createRequestHub({ address: target, token: tokenFor(target, true) });
-    const outcome = await signInFirst(accessApi(hub), (token) => writeTokenAndCommandLine(writeAccessToken)(target, token), { ...signer, code });
+    const outcome = await signInFirst(accessApi(hub), (token) => writeAccessToken(target, token), { ...signer, code });
     busy = false;
     if (outcome.ok) {
       signer = null;
