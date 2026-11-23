@@ -10,6 +10,10 @@ pub enum LinkError {
         "SSH setup failed or administrator authorization was cancelled; the private port was not opened"
     )]
     SshSetup,
+    #[error(
+        "Desktop sharing is not ready. Use Set up remote access for installation or system settings."
+    )]
+    DesktopSetup,
     #[error("this build of the app does not carry the device link")]
     NotCarried,
     #[error("a join or a leave is already running")]
@@ -30,9 +34,10 @@ pub enum LinkError {
 
 impl LinkError {
     #[cfg(all(test, unix))]
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Caller,
         Self::SshSetup,
+        Self::DesktopSetup,
         Self::NotCarried,
         Self::Busy,
         Self::NoHome,
@@ -48,6 +53,7 @@ impl LinkError {
         match self {
             Self::Caller => "caller",
             Self::SshSetup => "ssh-setup",
+            Self::DesktopSetup => "desktop-setup",
             Self::NotCarried => "not-carried",
             Self::Busy => "busy",
             Self::NoHome => "no-home",

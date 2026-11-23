@@ -10,6 +10,7 @@
   import HubRows from '$lib/hub-address/HubRows.svelte';
   import HubLinkRow from '$lib/link/HubLinkRow.svelte';
   import LinkDevicesSection from '$lib/link/LinkDevicesSection.svelte';
+  import AccessSetup from '$lib/link/ports/AccessSetup.svelte';
   import OpenPortRows from '$lib/link/ports/OpenPortRows.svelte';
   import { desktopLocalHubShell, LocalHubWatch } from '$lib/local-hub/local-hub.svelte';
   import LocalHubSection from '$lib/local-hub/LocalHubSection.svelte';
@@ -45,6 +46,7 @@
   const { updates, commandLine, processLog, builds, keyStore, mcpPermissions, stayAwake, localHub, runnerReport } = capabilities();
   // The hub on this computer: its section, and its origin for the Stay awake notice (FRN-006, AWK-005, FRN-008).
   // A hub that Anima.ing hosts has no VPN, so the page has no VPN section for it (R-222).
+  let accessVersion = $state(0);
   const hub = useHub();
   const vpnShown = !hubIsHosted(hub.address.origin);
   const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
@@ -88,7 +90,7 @@
   {:else if keyStore}
     <SettingsSection {...SECTIONS.hub}>
       <HubRows />
-      {#if localHub}<HubLinkRow /><OpenPortRows />{/if}
+      {#if localHub}<HubLinkRow /><AccessSetup onSaved={() => { accessVersion += 1; }} />{#key accessVersion}<OpenPortRows />{/key}{/if}
     </SettingsSection>
   {/if}
 

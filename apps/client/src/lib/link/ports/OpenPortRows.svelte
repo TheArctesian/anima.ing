@@ -5,7 +5,7 @@
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { portRows, systemOf, type PortRow } from './ports';
 
-  // HMD-048, HMD-049: a port is off until the person turns it on; the hub cannot change them.
+  // HMD-048, HMD-049: saved choices are never reset by the setup defaults; the hub cannot change them.
   const system = systemOf(navigator.userAgent);
   let rows = $state<readonly PortRow[] | null>(null);
   let busy = $state(false);

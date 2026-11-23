@@ -58,6 +58,7 @@ const APP_COMMANDS: &[&str] = &[
     "link_status",
     "link_leave",
     "link_ports",
+    "link_access",
     "hub_listener_check",
     "command_line_read",
     "command_line_install",
