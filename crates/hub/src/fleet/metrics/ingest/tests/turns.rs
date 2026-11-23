@@ -111,7 +111,7 @@ const SHORT: Duration = Duration::from_millis(200);
 
 fn router_within(pool: &PgPool, now: DateTime<Utc>, deadlines: Deadlines) -> Router {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
-    daemon_router_within(pool.clone(), Bus::new(1024), clock, deadlines)
+    daemon_router_within((pool.clone(), Bus::new(1024), clock), deadlines)
 }
 
 fn router(pool: &PgPool, now: DateTime<Utc>) -> Router {
