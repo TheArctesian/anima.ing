@@ -34,12 +34,12 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md. The standbys: the hosted launch. Nothing for an agent |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
-| 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Operator: OD-AXT25 to OD-AXT30 and the approval of AXT-054 to AXT-078 (task AX21, the shared project folder). Agent: tasks AX0 and AX20 in agent-tools-as-extensions.md Section 10 (records only); AX2 to AX16 wait for AX1; AX22 to AX38 wait for AX21 |
+| 4.21 | Agent tools as extensions (Hermes Agent in a pane; Code replaces Herdr and T3 Code) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Operator: OD-AXT25 to OD-AXT30 and the approval of AXT-054 to AXT-078 (task AX21, the shared project folder). Operator: OD-AXT35 (the hand-over from Hermes Agent to Code) and OD-AXT36 (the place of Hermes Agent in the registry). Agent: tasks AX0 and AX20 in agent-tools-as-extensions.md Section 10 (records only); AX2 to AX16 wait for AX1; AX22 to AX38 wait for AX21 |
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (244)
+## 2. Open decisions (243)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -57,8 +57,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C26 | What may Anima copy from LM Studio and Unsloth Studio (R-380)? Open, not decided. | Copy only what the screens and documents of LM Studio show, with our own code and none of its assets; copy the design of Unsloth Studio only, and nobody reads S… | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C27 | How does a coding agent of Anima Code reach a local model (R-380)? Open, put to the operator, not decided. | (C) in steps, `/v1/messages` first. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-ROL-17 | A machine that is connected and busy (it runs a job, a build or a job of a runner) does not start its update (ROL-028). Does its step wait for it? ROL-039 lets… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -162,7 +160,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AGL9 | Is the layer on for a hub that Anima.ing runs? | B until HM-T23 | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL10 | Does the alert reach the phone application? | A. The phone application is on a branch | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL11 | When does the build start? | B. AL0 is a record of one day and tells if the core of the layer can work | [proposals/agent-layer.md](proposals/agent-layer.md) |
-| OD-AGL12 | Which Herdr does Anima host (R-196), now that there are two? | A, and it is a question for the owner of AXT-020; it does not block this layer | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL13 | Can a kept session be reached through a hub of Anima.ing? (SF-114) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL14 | How does a start of a kept session reach the machine? (SF-115) | A first; B when the device key exists (task W7). Not C: a person who controls the hub then starts an agent in each repository of each machine whose setting is o… | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL15 | Is a unit with no sandbox, beside the daemon, accepted for the kept sessions? (SF-116) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
@@ -199,6 +196,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AXT32 | Which path reaches a loopback port? (one choice: the SSH `direct-tcpip` channel of AXT-009 (OD-AXT6, R-250 point 1); a new tunnel through the daemon that works… | Open. Recommendation: the SSH channel. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT33 | Which ports can be previewed? (one choice: any loopback port except Anima.ing's own, with a switch for each device and the hub; only ports that an agent session… | Open. Recommendation: any loopback port except Anima.ing's own. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT34 | Which origin does the preview pane use? (one choice: the real `http://localhost:<port>` through a proxy for each web view, with the listener of AXT-011 where a… | Open. Recommendation: the real origin. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT35 | How does Hermes Agent hand a coding task over to Code (R-389, AXT-089)? (one choice: Hermes Agent asks, and the operator starts the thread of Code with one clic… | Open. Recommendation: decide after the record AX49; until then the hand-over needs the click of the operator. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT36 | "the hermes plugin set up in the configs" (R-389): is Hermes Agent a row of its own in the registry of extensions (K-E7), or a manifest under the one switch "Ag… | Open. Recommendation: a manifest under the one switch "Agent tools" (OD-AXT8). | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
@@ -224,7 +223,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PNL2 | What does "runner" mean in "add runners on easily": an agent runner (BOT-039), a build runner of GitHub Actions (PRO-027), or both? | Proposed, not ruled: both, in one choice on "Add runner" (PNL-005). The two flows stay separate. | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL3 | Which features move out of the foundation as extensions? | Proposed, not ruled: none. Bookshelf (Library, Section 4.14), Maps (Map, Section 4.1) and the others are extensions already. The map canvas component stays shar… | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL4 | Does the first-start question of EXT-008 stay, with Devices, Agents and Projects already selected, or is it removed? | Proposed, not ruled: keep it for a local and a self-hosted first run, and leave it out of the hosted first run (HMD-037). | [proposals/default-panels.md](proposals/default-panels.md) |
-| OD-PNL5 | Is the Agents page a new extension, or the extension "AI coding sessions" with its panes and its usage? The text of sessions (AIS-001 to AIS-008) needs the vaul… | Proposed, not ruled: one default-on extension "Agents" with the agent tools (Herdr and Hermes Agent, agent-tools-as-extensions.md; AIS-009 to AIS-017 and the na… | [proposals/default-panels.md](proposals/default-panels.md) |
+| OD-PNL5 | Is the Agents page a new extension, or the extension "AI coding sessions" with its panes and its usage? The text of sessions (AIS-001 to AIS-008) needs the vaul… | Proposed, not ruled: one default-on extension "Agents" with the agent tools (Hermes Agent; Herdr left the tools by R-389; agent-tools-as-extensions.md; AIS-009… | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL6 | Does the phone layout show the same three panels? It has four destinations: Devices, Sessions, Logs and Settings (MOB-010). | Proposed, not ruled: not in the first version. Show Agents and Projects on the phone later. | [proposals/default-panels.md](proposals/default-panels.md) |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D2 | Where does the usage line sit? | Set it after the load test of shared-pool-hosting.md. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
@@ -324,10 +323,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (117)
+## 4. Checks that only the operator can do (118)
 
 | Check | What |
 | --- | --- |
+| HT-149 | reporting after an iPad update and the phone Code tab |
 | HT-148 | phone Devices, offline notice and Integrations (M2-5) |
 | HT-146 | a process that an agent detached cannot answer an approval (R-315, THR-031) |
 | HT-069 | Anima OS preview hardware and enrollment |

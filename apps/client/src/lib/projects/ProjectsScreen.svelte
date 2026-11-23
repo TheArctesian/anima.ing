@@ -14,8 +14,10 @@
   import type { ProjectsStore } from './store.svelte';
   import { GROUP_ORDER, GROUP_TITLES, groupOf, type TileGroup } from './tile';
   import { SvelteSet } from 'svelte/reactivity';
+  import ShareDeviceGroups from './groups/ShareDeviceGroups.svelte';
   import GroupHead from './groups/GroupHead.svelte';
   import SelectBar from './groups/SelectBar.svelte';
+  import { SharedProjectGroups } from './groups/shared.svelte';
   import { ProjectGroups } from './groups/groups.svelte';
   import { sectionsByGroup, storedClosed, storedShowBy, storeView, type ShowBy } from './groups/view';
 
@@ -26,11 +28,12 @@
      * on this computer): GitHub cannot open such a hub in a browser, so only the key file of a GitHub App connects it.
      */
     keyFileOnly?: boolean;
-    /** The operator's groups of cards, kept on this computer (PRO-059). */
-    projectGroups?: ProjectGroups;
+    /** Groups of cards for the active hub (PRO-059, G2). */
+    projectGroups?: ProjectGroups | SharedProjectGroups;
   }
 
   const { store, keyFileOnly = false, projectGroups = new ProjectGroups(localStorage) }: Props = $props();
+  const shared = $derived(projectGroups instanceof SharedProjectGroups ? projectGroups : null);
   let showing = $state<'main' | 'leftOut'>('main');
   const projects = $derived(showing === 'main' ? store.main : store.leftOut);
   /** The one group the operator chose to see, or all of them (R-224). */
@@ -105,8 +108,14 @@
       {/if}
     </div>
   {/if}
+  {#if shared?.problem}
+    <ErrorState message={`Project groups did not sync. ${shared.problem}`} onRetry={() => void shared?.refresh()} />
+  {/if}
+  {#if byOwnGroup && shared?.ready}
+    <ShareDeviceGroups groups={shared} />
+  {/if}
   {#if selecting}
-    <SelectBar groups={projectGroups} {selected} shown={shownIds} onDone={toggleSelecting} />
+    <SelectBar groups={projectGroups} canEdit={shared === null || shared.ready} {selected} shown={shownIds} onDone={toggleSelecting} />
   {/if}
   {#if store.refusal !== null}
     <Notice tone="error" title="The hub refused" line={store.refusal.message} />
