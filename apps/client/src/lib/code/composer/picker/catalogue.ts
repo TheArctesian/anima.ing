@@ -75,6 +75,8 @@ export interface ModelsNotice {
   readonly words: string;
   /** The models could not load: the picker offers to ask again. */
   readonly failed: boolean;
+  /** Still waiting: when the first unanswered ask went out, in milliseconds since the epoch. */
+  readonly since?: number;
 }
 
 /** All that the picker offers. The order of `providers` and of `models` is the order shown. */
