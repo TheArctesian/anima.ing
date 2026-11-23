@@ -4816,3 +4816,23 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
    Expected: the hub denies access before remote login. Restore your intended permissions afterwards.
 
 Result: Open.
+
+### HT-NEW-codexrollout: a Codex thread of the new form reads as it ran (R-NEW-codexrollout)
+
+Built on the branch `threads/codex-rollout-items`. The tests read rollouts that were made by hand in the shapes of Codex
+0.13x; nobody has read a real rollout of the new form in the application.
+
+1. With Codex 0.13x or later, start a Codex thread in a test folder with the prompt `run pwd, then create a file named
+   codex.txt that holds the word hi, then reply with the word ok`. Let the turn end.
+   Expected: the turn shows the command `pwd` (or `pwd -P`) with its output, a change of `codex.txt` with the line `+hi`,
+   and the reply `ok`.
+2. Close the thread and open it again from the list of threads (so that it is read from its rollout file).
+   Expected: the same steps as in step 1, in the same order, and no row named `exec` or `wait`.
+3. Start a Codex thread with the prompt `run sleep 20 && echo done`. Let the turn end, then open the thread again from
+   the list.
+   Expected: one command row `sleep 20 && echo done` with the output `done`; no separate rows for its waits.
+4. On the page of a new thread, choose a Codex model whose efforts list Ultra, and choose Ultra.
+   Expected: the thread starts. A model whose list has no Ultra does not offer it.
+
+Result: Open.
+
