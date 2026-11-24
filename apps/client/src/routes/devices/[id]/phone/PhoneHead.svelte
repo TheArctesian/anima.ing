@@ -7,6 +7,7 @@
   import { statusLabel } from '$lib/devices/card/card';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { sharedItem } from '$lib/motion/shared/shared';
   import { statusReason } from '../header/header';
 
   interface Props {
@@ -35,7 +36,7 @@
   </div>
   <div class="title-row">
     <div class="identity">
-      <h1 class="name">{device.name}</h1>
+      <h1 class="name" {@attach sharedItem(`device-name:${device.id}`)}>{device.name}</h1>
       <p class="host">
         <span class="mono">{device.host}</span>
         <button type="button" class="iconbtn" aria-label={copied ? 'Address copied' : 'Copy address'} onclick={() => void copyHost()} {@attach press()}><Icon name="carbon:copy" size="sm" /></button>
