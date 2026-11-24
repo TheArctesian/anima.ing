@@ -132,7 +132,10 @@ where
                     self.resized = true;
                     self.replace_monitors(Vec::new());
                 }
-                Event::Displays(monitors) => self.replace_monitors(monitors),
+                Event::Displays { monitors, resized } => {
+                    self.resized |= resized;
+                    self.replace_monitors(monitors);
+                }
                 Event::Updated => {
                     let all = std::mem::take(&mut self.resized);
                     self.ask_for_update(!all).await?;

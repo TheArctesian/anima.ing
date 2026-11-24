@@ -49,7 +49,10 @@ pub enum Event {
     Updated,
     /// The device's screen has a new size and is black: the next request asks for all of it.
     Resized,
-    Displays(Vec<Monitor>),
+    Displays {
+        monitors: Vec<Monitor>,
+        resized: bool,
+    },
     Clipboard(String),
     Bell,
 }
@@ -160,11 +163,12 @@ impl Device {
             Body::Layout(monitors) => Some(monitors.clone()),
             _ => None,
         };
-        if self.inflaters.draw(&[rect], screen)? && layout.is_none() {
+        let resized = self.inflaters.draw(&[rect], screen)?;
+        if resized && layout.is_none() {
             events.push(Event::Resized);
         }
         if let Some(monitors) = layout {
-            events.push(Event::Displays(monitors));
+            events.push(Event::Displays { monitors, resized });
         }
         update.rects_left -= 1;
         if update.rects_left == 0 {

@@ -65,7 +65,10 @@ fn apple_layout_uses_the_backing_pixel_bounds_of_an_offset_monitor() {
     assert_eq!(
         events,
         [
-            Event::Displays(vec![anima_gateway::vnc::Monitor { id: 12, area }]),
+            Event::Displays {
+                monitors: vec![anima_gateway::vnc::Monitor { id: 12, area }],
+                resized: true,
+            },
             Event::Updated
         ]
     );
