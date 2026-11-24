@@ -343,7 +343,7 @@ the causes of K10 Section 5, and these:
 | `file_rejected` | A file of the copy is refused for a reason that is not remote code: a chat template over 64 KiB, a JSON file that does not parse or is not an object, a file that a content check finds too large (Section 2.2; R-407; a downloaded size that differs from `sizeBytes` is `size`, SF-383). Not retryable with the same copy; the operator and the actor see it |
 | `disk_share` | The copy does not fit in the disk share of the device policy after the removal that the hub permitted (PULL-008) |
 | `memory_share` | The load does not fit in the memory share of the device policy, also with no other copy loaded: the copy is too large for this runtime and this hardware (FIT-026, the second case) |
-| `memory_busy` | The load fits in the memory share, but the reservations of the copies that cannot unload now (`loading`, `active` or `unloading`, or `ready` and idle for less than 30 seconds) fill it at this time (FIT-026, the first case). The daemon unloaded nothing for this load. Retryable |
+| `memory_busy` | The load fits in the memory share, but the reservations of the copies that cannot unload now (`loading`, `active` or `unloading`, or `ready` and idle for less than 30 seconds and not loaded by a return and unused since) fill it at this time (FIT-026, the first case). The daemon unloaded nothing for this load. Retryable |
 | `file_type` | `files` names a file that the format does not permit (Section 2.2) |
 | `gpu_unknown` | `gpu` is not a GPU of the inventory of the machine |
 | `runtime_too_old` | The version is lower than the lowest version of that runtime that the daemon program holds |
@@ -809,7 +809,7 @@ them into one word.
 **The reservation of a copy (FIT-024).** Each copy that is `loading`, `ready`, `active` or `unloading` holds a
 reservation of memory, in bytes. The daemon's own lower estimate is the sum of the `sizeBytes` of the files of the
 copy and 25 % of that sum, for the cache and the runtime; for a runtime that takes a share of a GPU at its start
-(vLLM), it is at least `memoryShare` times the usable memory of that GPU. The reservation is the larger of that
+(vLLM), it is at least `memoryShare` times the size of the memory of that GPU. The reservation is the larger of that
 estimate and `reserveBytes`. The hub gives `reserveBytes` from its fit estimate (task L1-2) for the settings of the
 load (the context, the cache type, the parallel slots). Thus a wrong hub can make the daemon too careful, never
 too bold. The reservation of an active request is in the reservation of its copy: the parallel slots of Section
@@ -817,21 +817,23 @@ too bold. The reservation of an active request is in the reservation of its copy
 
 **The memories of a load.** The node counts its reservations for each memory apart: `main` (the main memory) and
 `gpu` with the index of each GPU of its inventory that has its own memory (`gpu0`, `gpu1`). The usable memory of
-each is its size times the memory share of the device policy (RTC-003). A load counts its full reservation
-against each memory that it uses:
+each is its size times the memory share of the device policy (RTC-003). A load puts a part of its reservation on
+each memory that it uses:
 
-- `vllm`: the GPU of `gpu`.
-- `llama_server` with layers on a GPU of its own memory: each such GPU that the runtime can see. Unless
-  `gpuLayers` is `all`, also `main`, because the layers that stay on the processor are in main memory. (This is too
-  careful on a machine with several GPUs; a later version can split the reservation.)
-- Each other load, and each load on a machine whose GPU shares the main memory (Metal): `main`.
+- `vllm`: all of it on the GPU of `gpu`.
+- `llama_server` with layers on a GPU of its own memory: the part on the GPUs is the reservation times
+  `gpuLayers` divided by the layers of the copy (all of it for `all`), split in equal parts over the GPUs that
+  the runtime can see; the rest is on `main`. When the daemon does not know the layers of the copy, the whole
+  reservation counts against each of those GPUs and against `main` (too careful, never too bold).
+- Each other load, and each load on a machine whose GPU shares the main memory (Metal): all of it on `main`.
 
 **Room for a load (FIT-020, FIT-021, FIT-024).** Before the daemon loads a copy, it takes the lock of each memory
 of the load, then:
 
-1. If the reservation of the copy is larger than the usable memory of one of its memories, it refuses with
+1. If a part of the reservation is larger than the usable memory of its memory, it refuses with
    `memory_share` and changes nothing. No unload can make room.
-2. If, on each of its memories, the reservations with the new one are not more than the usable memory, it loads.
+2. If, on each of its memories, the parts that count against it with the new part are not more than the usable
+   memory, it loads.
 3. Else it selects copies to unload, from the copies that count against a memory that is too full: only copies
    that are `ready`, and that are idle for at least 30 seconds or were loaded by a return and not used since. It
    never selects a copy that is `loading`, `active` or `unloading`, and it never stops a request. It takes copies
@@ -844,7 +846,8 @@ of the load, then:
 For a runtime that cannot unload (vLLM), a `model_load` on a server that has a copy replaces that copy: that copy
 is selected as in step 3, so a load on a server whose copy is not `ready` and idle is refused with `memory_busy`.
 
-The locks make one load at a time on each memory, so that two loads cannot count the same free memory. A second
+The daemon takes the locks of the memories in one order: `main`, then the GPUs by their index. The locks make
+one load at a time on each memory, so that two loads cannot count the same free memory. A second
 `model_load` for the same memory waits for the first, at most 120 seconds (the limit of `start_failed`), then is
 refused with `memory_busy`. A `model_load` that arrives while a return loads on one of its memories ends that
 return (the copy stays `displaced`) and goes first.
@@ -863,7 +866,7 @@ itself when all of these are true:
   for a `model_load` passes (a check that fails ends the mark);
 - no load runs on its memories, and no `model_load` was refused with `memory_busy` on them in the last 60
   seconds (a return does not hold back a request that waits);
-- its reservation fits on each of its memories with no unload (a return never unloads a copy);
+- each part of its reservation fits on its memory with no unload (a return never unloads a copy);
 - the server that it was displaced from is `ready`; for a runtime that cannot unload, that server has no copy;
 - the interval since its last return has passed. The interval is 10 minutes. It doubles, to at most 4 hours,
   each time a copy is displaced again less than 10 minutes after its return (no loop of loads). It goes back to
@@ -884,7 +887,8 @@ and the switch rules of `model_keep`.
 then moved into place with `renameat` (Section 10). It holds `keep`, the mark `displaced`, the server and the
 settings of the last load, `reserveBytes`, the time of the last return and the interval. A `copy_delete` deletes
 the file. When the daemon reads a file, it checks each member by Sections 2.1 and 11.1; it deletes a file that
-fails a check and uses the defaults. There is at most one file for each copy of the node (at most 64, Section 8).
+fails a check and uses the defaults. There is at most one file for each copy, and at most 64 files: when the node holds 64, a `keep` for a
+different copy is refused (`member_unknown`).
 After a restart of the daemon, it loads nothing by itself: the hub sends `server_start` again (MW-P5). The daemon
 marks each pinned copy that was loaded before the restart as `displaced`, so that it returns by the rules above.
 
