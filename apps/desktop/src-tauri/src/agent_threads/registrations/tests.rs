@@ -1,4 +1,7 @@
+use super::folders::open;
 use super::*;
+use nix::sys::stat::Mode;
+use std::os::unix::fs::MetadataExt as _;
 use std::{fs, os::unix::fs::symlink};
 
 #[test]

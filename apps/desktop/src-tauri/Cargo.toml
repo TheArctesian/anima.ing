@@ -109,7 +109,7 @@ notify = { version = "9", default-features = false, features = ["macos_kqueue"] 
 # user ID the daemon's install folder must belong to (MET-019). `fs`: whether this user may write a
 # folder for the command line tool (INS-009).
 [target.'cfg(all(unix, not(any(target_os = "android", target_os = "ios"))))'.dependencies]
-nix = { version = "0.31", default-features = false, features = ["signal", "process", "user", "fs"] }
+nix = { version = "0.31", default-features = false, features = ["signal", "process", "user", "fs", "dir"] }
 
 # pidfd_open and pidfd_send_signal for the reaper (D-20): nix 0.31 has neither. `fs`: the POSIX
 # ACL read on the daemon's install folders (MET-019), as the daemon's own check reads it.

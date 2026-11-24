@@ -5593,7 +5593,9 @@ On a headless Linux machine, only SSH must be selected. Turn every protocol off 
 State: Open. Built on `t3/session-folder-watcher` (TH7, THR-058).
 
 The shell watches session paths with bounded native registrations. Synthetic tests cover folder creation,
-file changes, replacement, safe path opening and client subscription lifetime. They do not prove the
+file changes, replacement, safe path opening and client subscription lifetime. Discovery enumerates pinned
+directory descriptors and reads entry metadata without following links. A synthetic replacement between
+validation and enumeration is refused; removing the pinned-open guard makes that regression fail. Tests do not prove the
 installed application window lifecycle or OS permissions on a person's Mac and Linux desktop.
 
 1. In a test OS account on each platform, open Code with one made Claude Code or Codex session. Change
