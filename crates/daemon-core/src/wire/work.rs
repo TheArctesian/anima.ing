@@ -9,7 +9,9 @@ use super::times;
 
 mod model;
 
-pub use model::{CopyOutcome, FileHash, FoundEntry, ModelOutcome, ModelState, Progress};
+pub use model::{
+    CopyOutcome, FileHash, FoundEntry, LoadEntry, ModelOutcome, ModelState, Progress, ServerLoads,
+};
 
 /// The most bytes of the log part of one report (K10 Section 7).
 pub const MAX_LOG_PART_BYTES: usize = 64 * 1024;

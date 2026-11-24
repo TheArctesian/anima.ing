@@ -112,3 +112,27 @@ pub struct Status {
     /// A fixed code of K11 Section 5 or a fixed sentence of the hub; never text of a machine.
     pub reason: Option<String>,
 }
+
+/// Where a copy is in the memory of its machine (K11 Section 11.1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, async_graphql::Enum)]
+#[graphql(name = "ModelLoadState")]
+pub enum LoadState {
+    Loading,
+    Ready,
+    Active,
+    Unloading,
+}
+
+impl LoadState {
+    /// The state that a machine reports in `servers[].models[].state`.
+    #[must_use]
+    pub fn from_reported(text: &str) -> Option<Self> {
+        match text {
+            "loading" => Some(Self::Loading),
+            "ready" => Some(Self::Ready),
+            "active" => Some(Self::Active),
+            "unloading" => Some(Self::Unloading),
+            _ => None,
+        }
+    }
+}

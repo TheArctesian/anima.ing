@@ -6,6 +6,7 @@
 
 pub mod found;
 pub mod graphql;
+pub mod loads;
 mod model;
 mod order;
 mod rules;
@@ -43,6 +44,9 @@ pub enum Error {
     /// The machine has the copy, pulls it or removes it.
     #[error("the machine already has the copy")]
     Taken(CopyState),
+    /// The machine does not have the copy now: it waits, downloads, failed or is removed.
+    #[error("the machine does not have the copy")]
+    NotOnMachine(CopyState),
     #[error("the work route refused the job: {0}")]
     Jobs(#[from] jobs::Error),
     #[error("database error")]

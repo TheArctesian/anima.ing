@@ -1,15 +1,18 @@
 //! `anima model pull`, `anima model remove` and `anima model copies`: the copies of the model
 //! variants on the machines (task L1-7; PULL-001, PULL-007, PULL-009); `anima model found`,
-//! `find` and `use`: the models that a machine found where they are (task L1-22, PULL-012).
+//! `find` and `use`: the models that a machine found where they are (task L1-22, PULL-012); `anima model
+//! pin` and `unpin`: how long a machine keeps a copy loaded (task L1-16, FIT-023).
 
 pub mod copies;
 pub mod documents;
 pub mod found;
+pub mod keep;
 pub mod pull;
 pub mod remove;
 
 pub use copies::CopiesArgs;
 pub use found::{FindArgs, FoundArgs, UseArgs};
+pub use keep::KeepArgs;
 pub use pull::PullArgs;
 pub use remove::RemoveArgs;
 

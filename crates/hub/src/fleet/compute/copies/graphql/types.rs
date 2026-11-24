@@ -9,12 +9,14 @@ use chrono::{DateTime, Utc};
 use daemon_core::wire::Progress;
 
 use super::super::found::Found;
+use super::super::loads::Load;
 use super::super::{CopyState, Listed, Origin};
+use super::load::ModelLoad;
 use crate::fleet::compute::library::Format;
 
 /// A count as a GraphQL `Float`: exact up to 2^53, which no model size reaches.
 #[expect(clippy::cast_precision_loss, reason = "exact below 2^53")]
-fn float(value: u64) -> f64 {
+pub(super) fn float(value: u64) -> f64 {
     value as f64
 }
 
@@ -74,12 +76,23 @@ impl PullProgress {
 pub struct ModelCopyView {
     listed: Listed,
     place: String,
+    load: Option<Load>,
 }
 
 impl ModelCopyView {
     #[must_use]
     pub const fn new(listed: Listed, place: String) -> Self {
-        Self { listed, place }
+        Self {
+            listed,
+            place,
+            load: None,
+        }
+    }
+
+    /// The copy with its load, from the last model report of its machine.
+    #[must_use]
+    pub fn with_load(self, load: Option<Load>) -> Self {
+        Self { load, ..self }
     }
 }
 
@@ -154,6 +167,12 @@ impl ModelCopyView {
     /// sentence of the hub.
     async fn reason(&self) -> Option<&str> {
         self.listed.status.reason.as_deref()
+    }
+
+    /// The copy in the memory of its machine, from the last model report of the machine (K11 Section 11.1); null
+    /// when that report did not list it as loaded.
+    async fn load(&self) -> Option<ModelLoad> {
+        self.load.clone().map(ModelLoad)
     }
 
     async fn created_at(&self) -> DateTime<Utc> {

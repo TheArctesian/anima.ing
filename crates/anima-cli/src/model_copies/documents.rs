@@ -57,3 +57,12 @@ pub struct FindModels;
     variables_derives = "Debug"
 )]
 pub struct UseFoundModel;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/model_copies/keep.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct ModelCopyKeep;

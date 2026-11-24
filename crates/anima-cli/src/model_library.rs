@@ -36,6 +36,10 @@ pub enum ModelCommand {
     Find(crate::model_copies::FindArgs),
     /// Use a found model where it is: the machine checks its files at each load.
     Use(crate::model_copies::UseArgs),
+    /// Pin a copy: its machine keeps it loaded, and loads it again when it gets the memory back.
+    Pin(crate::model_copies::KeepArgs),
+    /// Unpin a copy: its machine unloads it after its idle seconds with no use.
+    Unpin(crate::model_copies::KeepArgs),
 }
 
 impl ModelCommand {
@@ -56,6 +60,8 @@ impl ModelCommand {
             Self::Found(args) => args.run(invocation).await,
             Self::Find(args) => args.run(invocation).await,
             Self::Use(args) => args.run(invocation).await,
+            Self::Pin(args) => args.run(invocation, true).await,
+            Self::Unpin(args) => args.run(invocation, false).await,
         }
     }
 }

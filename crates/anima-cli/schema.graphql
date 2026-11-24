@@ -1800,7 +1800,42 @@ type ModelCopy {
   progress: PullProgress
   "Why the copy failed, or why its removal failed: a fixed code (K11 Section 5) or a fixed sentence of the hub."
   reason: String
+  "The copy in the memory of its machine, from the last model report of the machine (K11 Section 11.1); null when that report did not list it as loaded."
+  load: ModelLoad
   createdAt: DateTime!
+}
+
+"Where a copy is in the memory of its machine (K11 Section 11.1)."
+enum ModelLoadState {
+  LOADING
+  READY
+  ACTIVE
+  UNLOADING
+}
+
+"A copy that a server of its machine holds, as the last model report of the machine gave it (L1-16)."
+type ModelLoad {
+  "The model server that holds the copy."
+  server: ID!
+  state: ModelLoadState!
+  "The memory that the machine reserved for the copy."
+  reservedBytes: Float!
+  "The machine unloads the copy after this many seconds with no use, unless it is pinned (FIT-022)."
+  idleSeconds: Int!
+  "A pinned copy stays loaded, and comes back when other work took its memory (FIT-023)."
+  pinned: Boolean!
+  "The seconds since its last use, rounded down to a minute; 0 while it is ACTIVE or LOADING."
+  usedSecondsAgo: Float!
+  "When the machine made the report."
+  readAt: DateTime!
+}
+
+"What a copy keeps on its machine (K11 Section 11.1)."
+input ModelKeepInput {
+  "A pinned copy stays loaded, and comes back when other work took its memory (FIT-023)."
+  pinned: Boolean!
+  "The seconds with no use before the machine unloads the copy, from 60 to 86400; 900 when not given (FIT-022)."
+  idleSeconds: Int
 }
 
 # The use of the AI agent programs (R-135; AIS-018 to AIS-024; K8 Section 4 agentUsage).
@@ -4519,6 +4554,8 @@ type Mutation {
   pullModel(deviceId: ID!, model: String!): ModelCopy!
   "Removes the copy (PULL-009). A pull that waits in the queue stops and the copy goes (null). Else a running pull stops, the machine deletes the files, and the copy is REMOVING until that is done. NOT_FOUND for an unknown copy."
   removeModelCopy(id: ID!): ModelCopy
+  "Keeps the copy loaded on its machine for keep.idleSeconds after its last use, and pins it or ends its pin (FIT-022, FIT-023; K11 Section 11.1). Gives the job of the machine (a model_keep). VALIDATION on idleSeconds out of 60 to 86400, or on id for a copy that its machine does not have now. NOT_FOUND for an unknown copy."
+  keepModelCopy(id: ID!, keep: ModelKeepInput!): ID!
   # The models that a machine finds where a different program keeps them (PULL-012, R-444; compute plan task L1-22). An API key or an agent may ask, with its actor (R-326).
   "Asks the machine for its model state, so that its found models are read again (PULL-012). Gives the job; foundModels lists the models when it is done. NOT_FOUND for an unknown device; VALIDATION on deviceId for a machine that can never run it."
   findModels(deviceId: ID!): ID!

@@ -1,10 +1,11 @@
-//! The model items of a copy: `model_pull`, `copy_adopt`, `copy_delete` and `model_report` for one machine (K11 Sections 2
+//! The model items of a copy: `model_pull`, `copy_adopt`, `copy_delete`, `model_keep` and `model_report` for one machine (K11 Sections 2
 //! and 7). The hub checks the files by the rules of the machine before it asks, so a pull
 //! that a machine would refuse for its files is refused here first.
 
 use daemon_core::{
     model_work::{
         files::{self, MAX_FILES},
+        memory::keep::Keep,
         names::{self, Actor, is_lower_hex, is_source_name},
     },
     wire::{Limits, WorkKind, WorkType},
@@ -157,6 +158,16 @@ pub fn delete(copy: CopyId, (machine, actor): (DeviceId, Actor)) -> NewJob {
         (machine, actor),
         json!({ "copy": copy }),
     )
+}
+
+/// The `model_keep` of `copy` on `machine` (K11 Section 11.1).
+#[must_use]
+pub fn keep(copy: CopyId, keep: Keep, (machine, actor): (DeviceId, Actor)) -> NewJob {
+    let parameters = json!({
+        "copy": copy,
+        "keep": { "idleSeconds": keep.idle_seconds, "pinned": keep.pinned },
+    });
+    model_job(WorkType::ModelKeep, (machine, actor), parameters)
 }
 
 /// The `model_report` of `machine` (K11 Section 8): it changes nothing.

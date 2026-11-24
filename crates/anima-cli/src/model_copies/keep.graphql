@@ -1,0 +1,4 @@
+# `anima model pin` and `anima model unpin`: how long a machine keeps a copy loaded (FIT-022, FIT-023).
+mutation ModelCopyKeep($id: ID!, $keep: ModelKeepInput!) {
+  keepModelCopy(id: $id, keep: $keep)
+}

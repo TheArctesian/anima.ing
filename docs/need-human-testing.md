@@ -5476,8 +5476,10 @@ displaced pin and its interval, the keep file), the preset and the answers of th
 `crates/daemon-core/src/model_work/router.rs`, and the loads in `crates/daemon/src/model/load/` (`model_load`,
 `model_unload`, `model_keep`, the check each 15 seconds, and the members `models` and `memory` of the report). The tests
 cover the rules with a test clock and a keep for a copy with no server. They do not run a real `llama-server` router, a
-real load in memory, a wait of 15 minutes, or a restart of the daemon with a pin. The hub does not send `model_load`,
-`model_unload` or `model_keep` yet (the hub part of L1-16), so a test hub sends them.
+real load in memory, a wait of 15 minutes, or a restart of the daemon with a pin. The hub sends `model_keep` for
+`keepModelCopy` (`anima model pin`, `anima model unpin`, the MCP tool `anima_model_keep`) and shows the load of a copy
+from the last model report (`ModelCopy.load`, the column LOAD of `anima model copies`); a hub test covers both with a
+written report. The hub does not send `model_load` or `model_unload` yet (the router, L1-17), so a test hub sends them.
 
 1. On `pop-os`, start a `llama_server` server with `server_start`, then send `model_load` for copy A with
    `"keep": { "idleSeconds": 120, "pinned": true }`.
@@ -5491,8 +5493,10 @@ real load in memory, a wait of 15 minutes, or a restart of the daemon with a pin
    Expected: A is unloaded first (it is pinned but idle), B loads, and `memory` of `main` lists A in `displaced`.
 4. Wait until B has been idle for its idle time (900 seconds by default), and 15 seconds more.
    Expected: B is unloaded, then A loads again by itself, and `displaced` is empty.
-5. Send `model_keep` for A with `"pinned": false` and `"idleSeconds": 120`, then wait 3 minutes.
-   Expected: A is unloaded; `<A>.json` holds `"pinned": false`.
+5. On a hub of the branch, run `anima model copies`, then `anima model unpin pop-os <address of A> --idle-seconds 120`,
+   and wait 3 minutes.
+   Expected: before the unpin, the column LOAD of A says `READY, pinned` (after a `model_report`). The unpin prints a
+   job; A is unloaded; `<A>.json` holds `"pinned": false`; after the next `model_report`, LOAD of A is empty.
 6. Load A again with a pin, then restart the daemon (`systemctl --user restart anima-daemon.service`) and send
    `server_start` again.
    Expected: no copy loads by itself at the start of the server; within one minute after the server is ready, A loads

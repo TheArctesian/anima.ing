@@ -195,3 +195,69 @@ async fn pull_009_the_removal_of_a_found_copy_deletes_its_record_on_its_machine(
     let again = use_found(&work, &key('a')).await;
     assert_eq!(again["data"]["useFoundModel"]["state"], "QUEUED", "{again}");
 }
+
+/// L1-16 (K11 Section 11.1): `keepModelCopy` sends a `model_keep` to the machine of the copy, and `modelCopies` shows
+/// the load of a copy from the last model report of its machine; a load of a copy of a different machine, or in a
+/// state that the contract does not name, is left out.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn fit_023_a_pin_goes_to_the_machine_of_the_copy_and_its_load_comes_from_the_report(
+    pool: sqlx::PgPool,
+) {
+    const KEEP: &str =
+        "mutation($id: ID!, $keep: ModelKeepInput!) { keepModelCopy(id: $id, keep: $keep) }";
+    const LOADS: &str =
+        "{ modelCopies { id load { state pinned idleSeconds reservedBytes usedSecondsAgo } } }";
+    let work = Work::new(&pool).await;
+    let token = work.daemons.token_for(PVE_01).await;
+    work.claim(&token, &model_claim(&json!([]))).await;
+    work.daemons
+        .operate(FIND, json!({ "deviceId": PVE_01 }))
+        .await;
+    finish(&work, &token, "model_report", &state()).await;
+    let used = use_found(&work, &key('a')).await;
+    let copy = used["data"]["useFoundModel"]["id"].clone();
+
+    let keep = |pinned: bool, idle: u32| json!({ "id": copy, "keep": { "pinned": pinned, "idleSeconds": idle } });
+    let early = work.daemons.operate(KEEP, keep(true, 600)).await;
+    assert_eq!(
+        early["errors"][0]["extensions"]["code"], "VALIDATION",
+        "not on the machine yet: {early}"
+    );
+    finish(&work, &token, "copy_adopt", &adopted(&copy)).await;
+    let short = work.daemons.operate(KEEP, keep(true, 30)).await;
+    assert_eq!(
+        short["errors"][0]["extensions"]["code"], "VALIDATION",
+        "{short}"
+    );
+
+    let asked = work.daemons.operate(KEEP, keep(true, 600)).await;
+    assert!(asked["data"]["keepModelCopy"].is_string(), "{asked}");
+    let done = json!({ "result": { "outcome": "succeeded", "cause": null, "seconds": 0, "cleanup": cleanup() } });
+    let item = finish(&work, &token, "model_keep", &done).await;
+    assert_eq!(
+        item["parameters"],
+        json!({ "copy": copy, "keep": { "idleSeconds": 600, "pinned": true } })
+    );
+
+    let entry = |copy: &Value, state: &str| {
+        json!({ "copy": copy, "state": state, "reservedBytes": 4096, "idleSeconds": 600, "pinned": true,
+            "usedSecondsAgo": 120 })
+    };
+    let mut loaded = state();
+    loaded["result"]["model"]["servers"] = json!([{ "server": "0192f6aa-0000-7000-8000-000000000001",
+        "runtime": "llama_server", "state": "ready",
+        "models": [entry(&copy, "ready"), entry(&json!("0192f6aa-0000-7000-8000-0000000000ff"), "flying")] }]);
+    work.daemons
+        .operate(FIND, json!({ "deviceId": PVE_01 }))
+        .await;
+    finish(&work, &token, "model_report", &loaded).await;
+    let listed = work.daemons.operate(LOADS, json!({})).await;
+    assert_eq!(
+        listed["data"]["modelCopies"][0]["load"],
+        json!({ "state": "READY", "pinned": true, "idleSeconds": 600, "reservedBytes": 4096.0, "usedSecondsAgo": 120.0 }),
+        "{listed}"
+    );
+}

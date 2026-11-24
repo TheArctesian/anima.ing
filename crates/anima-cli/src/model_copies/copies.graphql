@@ -17,5 +17,10 @@ query ModelCopies {
       bytesPerSecond
       secondsLeft
     }
+    load {
+      state
+      pinned
+      idleSeconds
+    }
   }
 }
