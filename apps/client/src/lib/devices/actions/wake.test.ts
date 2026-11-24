@@ -58,7 +58,7 @@ it('RA-031: Wake asks the hub to wake this device', () => {
   expect(api.wakeDevice).toHaveBeenCalledWith('a');
 });
 
-it('MOT-007: a row of the list has one line: a small Wake only while the device is not Up, and icons alone for more than two ways in', () => {
+it('MOT-007: a row of the list has one line: a small Wake only while the device is not Up, and named icons alone for every connection count', () => {
   const row = (over: Partial<CardDevice>): HTMLElement | null => {
     document.body.replaceChildren();
     const table = mount(DeviceTable, {
@@ -73,10 +73,11 @@ it('MOT-007: a row of the list has one line: a small Wake only while the device 
   const on = { enabled: true, username: null };
   const two = row({ status: 'UP', rdp: on, vnc: on });
   expect(two?.textContent).not.toContain('Wake');
-  expect([...(two?.querySelectorAll('.device-action') ?? [])].map((button) => button.textContent.trim())).toEqual(['RDP', 'VNC']);
+  expect([...(two?.querySelectorAll('.device-action') ?? [])].map((button) => [button.textContent.trim(), button.getAttribute('title')])).toEqual([['', 'RDP'], ['', 'VNC']]);
   const down = row({ status: 'DOWN', rdp: on });
   expect(down?.querySelector('button.small')?.getAttribute('title')).toBe('Wake');
-  expect(down?.querySelector('.device-action')?.textContent.trim()).toBe('RDP');
+  expect(down?.querySelector('.device-action')?.textContent.trim()).toBe('');
+  expect(down?.querySelector('.device-action')?.getAttribute('title')).toBe('RDP');
   const three = row({ status: 'DOWN', rdp: on, vnc: on, ssh: { enabled: true, hostKey: { fingerprintSha256: 'SHA256:abc' } } });
   expect([...(three?.querySelectorAll('.device-action') ?? [])].map((button) => [button.textContent.trim(), button.getAttribute('title')])).toEqual([
     ['', 'SSH'],
