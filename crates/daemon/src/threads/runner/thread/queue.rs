@@ -119,7 +119,7 @@ impl Thread {
         };
         let mut steps: Vec<Step> = lines.into_iter().map(Step::Write).collect();
         steps.push(went);
-        steps.push(self.row_change());
+        steps.push(self.state_change().unwrap_or_else(|| self.row_change()));
         steps
     }
 
@@ -130,9 +130,13 @@ impl Thread {
     }
 
     /// The holder did not take a prompt: a turn that it counted will not come.
-    pub const fn not_sent(&mut self, counted: bool) {
+    pub fn not_sent(&mut self, counted: bool) {
         if counted {
             self.pending = self.pending.saturating_sub(1);
+            if let super::Driver::Grok(grok) = &mut self.driver {
+                grok.saved.turn = None;
+                self.program = Some(ProgramState::Idle);
+            }
         }
     }
 

@@ -13,6 +13,7 @@ mod calls;
 pub mod codex;
 mod completed;
 mod git;
+mod grok;
 mod holder_events;
 pub mod launcher;
 mod listings;
@@ -34,6 +35,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use agent_threads::control::{Change, Limits, Reply};
+use agent_threads::drive::Program;
 use uuid::Uuid;
 
 use super::link::{self, HolderLink, LinkError};
@@ -273,6 +275,7 @@ impl Runner {
     /// [`NotSent::Held`] when a line was held back.
     async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, NotSent> {
         let key = id.to_string();
+        let grok = self.threads.get(&id).map(Thread::program) == Some(Program::Grok);
         let mut last_write = None;
         let (mut held, mut put_back) = (false, false);
         for step in steps {
@@ -286,9 +289,8 @@ impl Runner {
                 put_back |= self.waits_first(id, queued);
                 continue;
             }
-            // The row of the queue after the prompt left it is not true now: the row of the
-            // put back is.
-            if put_back && matches!(step, Step::Change(Change::State { .. })) {
+            // A refused dispatch has already published the corrected state.
+            if (put_back || (held && grok)) && matches!(step, Step::Change(Change::State { .. })) {
                 continue;
             }
             let Some(action) = step.command(&key) else {

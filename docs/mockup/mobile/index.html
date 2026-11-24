@@ -323,6 +323,7 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .ssh { background: var(--surface-sunken); }
 .ssh .body { padding-inline: 0; padding-bottom: 0; }
 .sesbar { display: flex; align-items: center; gap: 4px; block-size: 48px; padding: 0 6px; border-bottom: 1px solid var(--border-subtle); background: var(--surface-base); }
+.sesbar select { min-block-size: 44px; padding-inline: 6px; background-color: var(--surface-raised); color: var(--text); }
 .sesbar .t { flex: 1; min-inline-size: 0; line-height: 1.25; }
 .sesbar .t b { display: block; font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sesbar .t small { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 12px; }
@@ -661,11 +662,11 @@ Failed with result 'exit-code'.
     <header><span class="n">8</span><h2>Remote desktop</h2><p>MOB-021, RA-050</p></header>
     <div class="row">
       <figure class="shot"><div class="phone gd ios"><div class="screen ssh"><div class="body">
-        <div class="sesbar"><button class="btn">Keys</button><button class="btn">Fit</button><div class="t"><b>Test desktop</b><small>RDP</small></div></div>
+        <div class="sesbar"><button class="iconbtn" aria-label="Back to app"><svg class="i"><use href="#i-left"/></svg></button><button class="btn">Keys</button><button class="btn">Fit</button><select aria-label="Displays"><option>All displays</option><option>Display 1</option><option>Display 2</option><option>Display 3</option></select><div class="t"><b>Test desktop</b><small>VNC</small></div></div>
         <input class="entry" aria-label="Type on remote computer" placeholder="Type on remote computer">
         <div class="remote-sample"><div class="code-note"><b>Desktop files</b><p>Documents</p><p>Downloads</p></div></div>
       </div></div></div>
-      <figcaption><b>Remote desktop with touch</b><span class="tag">dark, iOS</span><p>Move the pointer with one finger. Pinch on the display, or use Fit to return to the original view. Tap the text field to open the keyboard.</p></figcaption></figure>
+      <figcaption><b>Remote desktop with touch</b><span class="tag">dark, iOS</span><p>On iPad, the session uses the screen with a small margin. Back returns to the app. Choose one VNC monitor or All displays. Move the pointer with one finger. Pinch to zoom and use Fit to reset the selected view. Tap the text field to open the keyboard.</p></figcaption></figure>
     </div>
   </section>
 

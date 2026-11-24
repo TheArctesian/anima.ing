@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SessionTunnel } from '../../tunnel/guacamole/tunnel';
+  import type { DisplayChoices, SessionTunnel } from '../../tunnel/guacamole/tunnel';
   import type { Size } from '../display';
   import { showDisplay } from '../guacamole/input';
   import { boundViewport, FIT_VIEWPORT, touchRemote } from './touch/input';
@@ -11,10 +11,11 @@
     remote: Size;
     scale: number;
     mobile: boolean;
+    fitKey?: DisplayChoices | undefined;
     interactive: boolean;
   }
 
-  const { client, pane, paneSize, remote, scale, mobile, interactive }: Props = $props();
+  const { client, pane, paneSize, remote, scale, mobile, fitKey, interactive }: Props = $props();
   let zoom = $state(FIT_VIEWPORT);
   const viewport = $derived(boundViewport(zoom, paneSize, remote, scale));
   const renderedScale = $derived(scale * zoom.zoom);
@@ -26,6 +27,10 @@
   export function zoomed(): boolean {
     return viewport.zoom !== 1;
   }
+
+  $effect(() => {
+    if (fitKey !== undefined) fit();
+  });
 
   $effect(() => {
     client.getDisplay().scale(renderedScale);

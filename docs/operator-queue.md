@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (231)
+## 2. Open decisions (232)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -150,6 +150,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | D-8 | Time Machine copies the cluster while the server runs. Such a copy restores, at best, as a crash recovery. Exclude `<root>/cluster` from Time Machine (`tmutil a… | Yes. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| OD-MOT-1 | Under reduced motion the opacity fades of 150 to 200 ms (`duration-fast`, `duration-base`) stay; only movement and scale stop. Does "reduce" also make the fades… | Keep the fades: a short fade moves nothing, and it shows that the content changed (MOT-041) | [plans/ui-site-language-plan.md](plans/ui-site-language-plan.md) |
 | OD-AGL1 | Where is the list? | A. One place for agents; the mockup of v2 already asks this question. It changes AXT-046 | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL2 | Does the hub hold a row for each live agent (a state and times), where today it holds only sums? | A. It is the layer itself. It is the dashed box of the v2 mockup | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL3 | Does a branch name leave a device? | A. The limit of characters of AGL-017 stops an injection, not a disclosure: a name such as `fix/acme-breach-ticket-812` passes whole, and each agent that reads… | [proposals/agent-layer.md](proposals/agent-layer.md) |
@@ -313,11 +314,12 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (125)
+## 4. Checks that only the operator can do (126)
 
 | Check | What |
 | --- | --- |
 | HT-181 | the runner relay with real agent programs (TH118) |
+| HT-186 | one VNC monitor at a time on iPad |
 | HT-149 | reporting after an iPad update and the phone Code tab |
 | HT-183 | Device Overview and tabs on iPad |
 | HT-148 | phone Devices, offline notice and Integrations (M2-5) |
