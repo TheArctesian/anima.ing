@@ -118,7 +118,14 @@ async fn k_e5_rotate_says_recorded_unless_the_provider_changed_and_names_the_hol
     );
     let run = signed_in()
         .run_with_input(
-            &["secret", "rotate", "cloudflare-dns", "--hub", &hub.origin],
+            &[
+                "secret",
+                "rotate",
+                "cloudflare-dns",
+                "--yes",
+                "--hub",
+                &hub.origin,
+            ],
             VALUE,
         )
         .await;
