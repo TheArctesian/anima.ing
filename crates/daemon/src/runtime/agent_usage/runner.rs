@@ -32,9 +32,11 @@ pub(super) async fn accounts(env: impl Fn(&str) -> Option<String>) -> Option<Vec
     Some(
         accounts
             .into_iter()
-            .map(|row| ProgramAccount {
-                source: source_of(row.program),
-                facts: row.facts,
+            .filter_map(|row| {
+                Some(ProgramAccount {
+                    source: source_of(row.program)?,
+                    facts: row.facts,
+                })
             })
             .collect(),
     )
@@ -86,10 +88,11 @@ async fn ask(socket: &Path, action: Action, limit: u64) -> Option<Outcome> {
     None
 }
 
-const fn source_of(program: Program) -> Source {
+const fn source_of(program: Program) -> Option<Source> {
     match program {
-        Program::ClaudeCode => Source::ClaudeCode,
-        Program::Codex => Source::Codex,
+        Program::ClaudeCode => Some(Source::ClaudeCode),
+        Program::Codex => Some(Source::Codex),
+        Program::Grok => None,
     }
 }
 

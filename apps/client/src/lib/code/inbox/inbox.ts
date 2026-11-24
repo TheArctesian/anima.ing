@@ -102,9 +102,9 @@ function startedOutside(row: ListedRow, started: ReadonlySet<string> | null | un
   return started != null && !started.has(row.id);
 }
 
-/** Code and imported history each show their own rows. */
-export function shownRows(rows: readonly ListedRow[], started: ReadonlySet<string>, outsideShown: boolean): readonly ListedRow[] {
-  return rows.filter((row) => started.has(row.id) !== outsideShown);
+/** Code exposes only IDs identified by this computer's runner as Anima-started (TC2L). */
+export function shownRows(rows: readonly ListedRow[], started: ReadonlySet<string>): readonly ListedRow[] {
+  return rows.filter((row) => started.has(row.id));
 }
 
 /**

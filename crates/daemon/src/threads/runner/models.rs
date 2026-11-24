@@ -70,7 +70,7 @@ impl Runner {
             .iter()
             .map(|row| row.program)
             .collect();
-        for program in [Program::ClaudeCode, Program::Codex] {
+        for program in [Program::ClaudeCode, Program::Codex, Program::Grok] {
             let failed = self
                 .model_asks
                 .failed
@@ -136,7 +136,7 @@ impl Runner {
     fn models_outcome(&self) -> Outcome {
         let models = self.said.models.rows();
         let asks = &self.model_asks;
-        let programs = [Program::ClaudeCode, Program::Codex]
+        let programs = [Program::ClaudeCode, Program::Codex, Program::Grok]
             .into_iter()
             .map(|program| {
                 let state = if models.iter().any(|row| row.program == program) {
@@ -199,6 +199,7 @@ async fn ask(program: Program, path: PathBuf, env: Vec<(String, String)>) -> Lis
     let first = match program {
         Program::ClaudeCode => ClaudeInput::initialize("models"),
         Program::Codex => CodexInput::initialize(1),
+        Program::Grok => agent_threads::drive::grok::initialize(),
     };
     let asked = asking::Asked { program, path, env };
     asking::ask(asked, first, |value| {
@@ -223,6 +224,9 @@ fn list_in(program: Program, value: &Value) -> Option<Vec<ModelChoice>> {
             claude_models(&value["response"]["response"])
         }
         Program::Codex if value["id"] == 2 => codex_models(&value["result"]),
+        Program::Grok if value["id"] == "grok-initialize" => {
+            agent_threads::drive::grok::models(&value["result"]["_meta"]["modelState"])
+        }
         _ => None,
     };
     match event {

@@ -6,7 +6,7 @@ use agent_threads::control::{Change, Refusal, RunState};
 use agent_threads::drive::{Answer, ClaudeInput, CodexInput, Request};
 use uuid::Uuid;
 
-use super::{Driver, Open, Step, Thread, closed};
+use super::{Open, Step, Thread, closed};
 
 impl Thread {
     /// A request of the program. A request whose program ID is already open (a line that the
@@ -46,16 +46,18 @@ impl Thread {
         if self.row.state == RunState::Stopped || !self.held {
             return Err(Refusal::RequestGone);
         }
-        let claude = matches!(self.driver, Driver::Claude(_));
+        let program = self.row.program;
         let open = self
             .open
             .get_mut(&id)
             .filter(|open| !open.answering)
             .ok_or(Refusal::RequestGone)?;
-        let line = if claude {
-            ClaudeInput::answer(&open.request, answer)
-        } else {
-            CodexInput::answer(&open.request, answer)
+        let line = match program {
+            agent_threads::drive::Program::ClaudeCode => ClaudeInput::answer(&open.request, answer),
+            agent_threads::drive::Program::Codex => CodexInput::answer(&open.request, answer),
+            agent_threads::drive::Program::Grok => {
+                agent_threads::drive::grok::answer(&open.request, answer)
+            }
         }
         .map_err(|_| Refusal::AnswerDoesNotFit)?;
         open.answering = true;
