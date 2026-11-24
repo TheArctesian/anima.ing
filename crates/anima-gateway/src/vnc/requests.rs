@@ -1,5 +1,6 @@
 //! The client's messages (RFC 6143 Section 7.5), as bytes to send to the device.
 
+use super::layout::APPLE_LAYOUT;
 use super::messages::ENCODINGS;
 
 /// Guacamole's `key` and `mouse` carry X11 keysyms and button masks, so input passes as is.
@@ -25,9 +26,10 @@ pub(super) fn pixel_format() -> Vec<u8> {
     message
 }
 
-pub(super) fn encodings() -> Vec<u8> {
-    let mut message = vec![2, 0, 0, 5];
-    for encoding in ENCODINGS {
+pub(super) fn encodings(apple: bool) -> Vec<u8> {
+    let count = u8::try_from(ENCODINGS.len()).unwrap_or_default() + u8::from(apple);
+    let mut message = vec![2, 0, 0, count];
+    for encoding in ENCODINGS.into_iter().chain(apple.then_some(APPLE_LAYOUT)) {
         message.extend_from_slice(&encoding.to_be_bytes());
     }
     message

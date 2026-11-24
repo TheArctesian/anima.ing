@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Switch from '$lib/forms/switch/Switch.svelte';
   import { popover } from '$lib/motion/roles/transitions';
   import { press } from '$lib/motion/roles/press';
   import CodeIcon from '../../icons/CodeIcon.svelte';
@@ -12,13 +11,11 @@
     projects: readonly Project[];
     chosen: ReadonlySet<string | null>;
     onChoose: (next: ReadonlySet<string | null>) => void;
-    /** The switch for the sessions that Anima did not start; none when no such session is listed. */
-    outside?: { readonly shown: boolean; readonly onShow: (shown: boolean) => void } | undefined;
     /** Open from the start, for the specimen and the gallery. */
     open?: boolean;
   }
 
-  let { projects, chosen, onChoose, outside, open = $bindable(false) }: Props = $props();
+  let { projects, chosen, onChoose, open = $bindable(false) }: Props = $props();
   const id = $props.id();
   let trigger = $state<HTMLButtonElement>();
   let panel = $state<HTMLElement>();
@@ -48,9 +45,6 @@
     if (event.key === 'ArrowDown') at = at >= last ? 0 : at + 1;
     else if (event.key === 'ArrowUp') at = at <= 0 ? last : at - 1;
     else if (event.key === 'Enter') choose(at, event.shiftKey, true);
-    // Tab goes on to the switch under the list; otherwise Tab and Escape close the menu and give focus back to the
-    // trigger, so it never stays open behind the focus (09 finding 18).
-    else if (event.key === 'Tab' && !event.shiftKey && outside !== undefined) return;
     else if (event.key === 'Escape' || event.key === 'Tab') close(true);
     else return;
     event.preventDefault();
@@ -150,21 +144,7 @@
       {/each}
     </ul>
     {#if shown.length === 0}<p class="none">No matching projects.</p>{/if}
-    {#if outside !== undefined}
-      <!-- Sessions that Anima did not start are hidden until the person asks for them (operator, 2026-11-23). -->
-      <div
-        class="outside"
-        role="presentation"
-        onkeydown={(event) => {
-          if (event.key !== 'Escape' && (event.key !== 'Tab' || event.shiftKey)) return;
-          event.preventDefault();
-          close(true);
-        }}
-      >
-        <span id="{id}-outside">Browse imported history</span>
-        <Switch checked={outside.shown} labelledby="{id}-outside" onchange={(next) => { outside?.onShow(next); }} />
-      </div>
-    {/if}
+
   </div>
 {/if}
 
@@ -207,16 +187,7 @@
     margin-inline-start: calc(var(--space-1) * -1.5);
   }
 
-  .outside {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    border-block-start: var(--border-thin) solid var(--border-strong);
-    color: var(--code-quiet-text);
-    font-size: var(--code-text-meta);
-  }
+
 
   .panel {
     position: fixed;

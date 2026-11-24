@@ -12,11 +12,11 @@ export interface Source {
 }
 
 /**
- * T3's order: New project, Local folder, Git URL, then the forges. Only "Local folder" works now: the runner lists the
- * folders of a folder (`folders`, TH113). The others wait for a runner call, named in their `needs`.
+ * T3's order: New project, Local folder, Git URL, then the forges. "New project" creates through TH60A; "Local folder" lists the
+ * folders of a folder (`folders`, TH113). Cloning waits for a runner call, named in `needs`.
  */
 export const SOURCES: readonly Source[] = [
-  { id: 'new', title: 'New project', line: 'Start a new Git repository from a name', icon: 'folder-git-2', needs: 'Needs a runner call that makes a folder and runs git init in it.' },
+  { id: 'new', title: 'New project', line: 'Start a new Git repository from a name', icon: 'folder-git-2', needs: null },
   { id: 'local', title: 'Local folder', line: 'Browse a folder on disk', icon: 'folder-plus', needs: null },
   { id: 'url', title: 'Git URL', line: 'Clone from a remote URL', icon: 'link-2', needs: 'Needs a runner call that clones a URL into a folder.' },
   { id: 'github', title: 'GitHub repository', line: 'Clone GitHub owner/repo', icon: 'git-fork', needs: 'Needs a runner call that clones owner/repo from GitHub into a folder.' },

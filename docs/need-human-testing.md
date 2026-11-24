@@ -30,8 +30,10 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
+| HT-186 | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
@@ -193,6 +195,14 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 6. Inspect `runner.log` and the thread list. Expect only the route selection and fixed relay
    lifecycle words, never a relay secret URL, a provider credential, or a request body.
    Record the program versions, outcomes, and whether renewal and tool search were tested.
+
+### HT-186: one VNC monitor at a time on iPad
+
+- State: Open.
+- Connect from the iPad to the Mac with three monitors. Check that VNC uses the iPad viewport with a small margin in portrait and landscape. Open Displays. Check that it lists All displays and three numbered displays.
+- Choose each display. Check that its picture fits the session area and that there is no part of a different monitor. Tap a harmless spot on each display, and confirm the pointer moves there on the Mac.
+- Pinch to zoom on one display. Use Fit and check that the selected display fills the available space again.
+- Select All displays and check that the combined desktop returns. Use Back, then reopen the session from its tab. Check that it stayed connected. Check that the picker is absent in an ordinary single-display VNC session.
 
 ### HT-171-touch: VNC and RDP with touch on iPadOS and Android
 
@@ -5166,9 +5176,17 @@ page over a made-up runner in the real order of its answers; nobody has tried it
 4. Stop the Anima daemon, press New thread, type a prompt and send it.
    Expected: a line under the composer says why the thread did not start, with Retry; the text stays in the editor. Start the daemon and press Retry: the thread starts.
 5. Press New thread, click the project name, and choose "Add project".
-   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. Three of them are grey and say which call of the runner they need; nothing happens when you press them.
+   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. New project and Local folder are enabled. Git URL and GitHub repository remain disabled.
 6. Choose Local folder, go into a folder with Enter, go back with Backspace, then choose "Add this folder".
    Expected: the folders of your home folder, then of the chosen folder; Backspace goes up one folder; the draft now names the added folder.
+7. Choose Add project, then New project. Enter a name and the absolute path of an existing parent folder. Check the destination, then press Create project.
+   Expected: progress while the runner creates the folder and Git repository; repeated presses cannot submit twice. The confirmed project is selected without starting an agent. Reopen Code: the empty project remains in the picker.
+8. Try a name with a slash and a relative location, then an existing destination or a parent without write permission.
+   Expected: invalid fields are identified before submission. Runner refusals retain the fields and explain the failure; correct them and retry. An uncertain result never selects an unconfirmed project and advises checking the folder before retrying.
+9. Use the New project dialog by keyboard, in light and dark themes, a narrow window and enlarged text.
+   Expected: focus stays in the dialog, labels identify both fields, the destination wraps, and errors and buttons remain readable. Cancel closes an idle dialog; an in-flight request cannot be dismissed or duplicated.
+
+The New project slice is built on `code/new-project-ui` over TH60A. Synthetic tests exercise the real client response parser and draft UI; real filesystem creation and rendered desktop checks remain open.
 
 Result: Open.
 
@@ -5193,7 +5211,7 @@ Result: Open.
 What the sidebar of Code shows in the installed application. The gallery pictures are made over a made-up runner.
 
 1. Open Code with threads in each state, including threads that you started in a terminal with `claude` or `codex`.
-   Expected: no settled thread and no ended terminal session is in the main list; the shelf Settled at the foot holds them, with their count.
+   Expected: only local Anima-started threads appear. Settled Anima threads are in the Settled shelf; terminal-started/imported sessions are absent from every shelf, search and history surface (TC2L; HT-187).
 2. Look at the rows of the main list.
    Expected: each row shows the mark of its program (Claude or OpenAI), not its name, in the text colour.
 3. Open the model picker of the composer.
@@ -5658,3 +5676,19 @@ The hub, CLI and desktop invoke the signed OS updater over pinned private SSH. A
 3. Choose Restart to update, then Cancel. Expect no restart. Repeat and confirm. Expect the connection to drop and the applied version to appear only after reconnection and startup checks.
 4. Request Restore previous OS and confirm. Expect the prior OS and retained owner data after reconnecting.
 5. Verify SSH and RDP on the same physical device, including a locked local screen. The earlier reported automatic setup and RDP reachability failures remain unverified.
+
+
+## HT-187 — Local Anima-started sessions only (TC2L)
+
+State: Open. Built on `code/local-anima-sessions-only`. Synthetic tests mount the actual Code page over local runner listing responses and retained imported records. They do not prove the installed desktop or a real daemon restart.
+
+1. On this computer, have one session started by Anima and one started outside Anima. Open Code, its project filter, search and command palette.
+   Expected: only the Anima-started session and its project appear. There is no imported-history control. Imported sessions do not contribute to the Code attention badge.
+2. Open the local Anima session, leave Code, reopen it, then restart the app and reopen the persisted session.
+   Expected: the Anima session remains available. An old selected/imported session or history entry never reveals its title, messages, details or composer.
+3. Open Code on a client that cannot read this computer's local runner, including the phone client.
+   Expected: an explanation that Code currently shows Anima-started threads on this computer; no remote computer/session chooser is exposed.
+4. Confirm existing ingestion and session records are retained by the normal ingestion workflow.
+   Expected: records remain available for future use; this UI change deletes no sessions and does not stop the watcher.
+
+Parent-worker/device authority, TH30, remote session enablement and live SDK probes are outside this check.
