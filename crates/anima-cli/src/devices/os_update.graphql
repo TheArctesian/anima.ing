@@ -1,0 +1,7 @@
+query DeviceOsUpdate($deviceId: ID!) {
+  deviceOsUpdate(deviceId: $deviceId)
+}
+
+mutation RequestDeviceOsUpdate($deviceId: ID!, $action: OsUpdateAction!, $confirmed: Boolean!) {
+  requestDeviceOsUpdate(deviceId: $deviceId, input: { action: $action, confirmed: $confirmed })
+}

@@ -203,6 +203,7 @@ are private to `events`.
 | `credentials` | — |
 | `access` | `events`, `credentials` (Vault only, for TOTP secrets) |
 | `devices` | `events`, `credentials` (`Vault`, `Secret`, `SshSecret`, `Error`, `has_ssh`, `with_ssh`, `store_ssh`, `clear_ssh`, and in Phase 2 `PasswordKind`, `store_password`, `clear_password`, `with_password`; R-010, R-017, R-026, WP-21) |
+| `os_updates` (OS5-R1) | `access`, `devices`, `credentials`, `events`, `ssh`; private pinned SSH only, no store imports |
 | `maintenance` | `events` (R-029; audit and events for window changes, LOG-005) |
 | `checks` | `devices`, `maintenance`, `events`, `credentials` (`Vault`, `Secret`, `Sealed` only; R-028) |
 | `sessions` | `access`, `devices`, `credentials`, `events` |

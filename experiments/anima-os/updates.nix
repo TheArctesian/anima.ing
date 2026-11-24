@@ -10,6 +10,7 @@ let
     '';
   };
 in {
+  imports = [ (import ./remote-updates.nix { inherit lib updater; }) ];
   options.services.anima-os-updates.automatic = lib.mkOption {
     type = lib.types.bool;
     default = true;
