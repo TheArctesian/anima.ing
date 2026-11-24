@@ -1,17 +1,17 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Version 4 (2026-11-22): R-428 names the entry Hosting, keeps Routes under it, and makes Storage and Machines sections (HSE-015, HSE-016); clusters are designed now in [clusters.md](clusters.md). Version 3 (2026-11-22): R-426 puts the containers and the applications in one list, gives the section a list of sections as in Settings (Applications, Models, Routes), and makes the place where a thing runs a notion of its own (HOST-052 of the plan); OD-HSE4 and OD-HSE5 are decided by R-428. Version 2 (2026-11-22): R-427 decides OD-HSE1 to OD-HSE3 (Hosting directly below Code; Routes leaves Settings; one group for each machine). Version 1 (2026-11-22). From the direction of the operator about Routes, relayed by the orchestrating session: "I also think this wouldn't be bad to be in a hosting tab along with the rest of the coolify/arcane thing". The requirements HSE-001 to HSE-012 are not approved as a whole, and no code exists. The mockup is docs/mockup/hosting/index.html.
+evidence: Version 5 (2026-11-23): Section 8 proposes ten changes SV1 to SV10 from a comparison with the panel of ServerOS ([serveros-comparison.md](../research/hosting/serveros-comparison.md)); OD-HSE6 asks the operator which to take; none is approved. Version 4 (2026-11-22): R-428 names the entry Hosting, keeps Routes under it, and makes Storage and Machines sections (HSE-015, HSE-016); clusters are designed now in [clusters.md](clusters.md). Version 3 (2026-11-22): R-426 puts the containers and the applications in one list, gives the section a list of sections as in Settings (Applications, Models, Routes), and makes the place where a thing runs a notion of its own (HOST-052 of the plan); OD-HSE4 and OD-HSE5 are decided by R-428. Version 2 (2026-11-22): R-427 decides OD-HSE1 to OD-HSE3 (Hosting directly below Code; Routes leaves Settings; one group for each machine). Version 1 (2026-11-22). From the direction of the operator about Routes, relayed by the orchestrating session: "I also think this wouldn't be bad to be in a hosting tab along with the rest of the coolify/arcane thing". The requirements HSE-001 to HSE-012 are not approved as a whole, and no code exists. The mockup is docs/mockup/hosting/index.html.
 ---
 
 # Proposal: one Hosting section for the applications and their routes
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this proposal (PLN-005).
 
-Version: 4. Date: 2026-11-22. Version 4 writes the answers of R-428: the five sections and HSE-015 and HSE-016. Version 3 writes the answers of R-426 into HSE-001 to HSE-004 and HSE-008, adds HSE-013 and HSE-014, and draws the list of sections and the one list of applications and containers. Version 2 writes the answers of R-427 into HSE-001, HSE-002 and HSE-010 and draws Frame 1 in groups.
+Version: 5. Date: 2026-11-23. Version 5 adds Section 8, the changes proposed from a comparison with the panel of ServerOS, and the open decision OD-HSE6. Version 4 writes the answers of R-428: the five sections and HSE-015 and HSE-016. Version 3 writes the answers of R-426 into HSE-001 to HSE-004 and HSE-008, adds HSE-013 and HSE-014, and draws the list of sections and the one list of applications and containers. Version 2 writes the answers of R-427 into HSE-001, HSE-002 and HSE-010 and draws Frame 1 in groups.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md) (hosted applications). The plan that this proposal changes when it is approved is [hosted-applications-plan.md](../plans/hosted-applications-plan.md).
-Identifiers: HSE-001 to HSE-016, OD-HSE1 to OD-HSE5.
+Identifiers: HSE-001 to HSE-016, OD-HSE1 to OD-HSE6.
 Mockup: [hosting/index.html](../mockup/hosting/index.html).
 
 ## 1. Goal
@@ -94,9 +94,27 @@ This proposal changes no document of another owner. When it is approved, these c
 | OD-HSE3 | How does the tab Applications group the applications of several machines? A: one list of all machines, with a Machine column and a filter, as Arcane. B: one group for each machine, as the Servers of Coolify. C: projects and environments, as Coolify. | Decided (R-427): B, one group for each machine; the search stays across all machines, a machine with no applications is a short empty row, and each row keeps Reached at. The recommendation was A. |
 | OD-HSE4 | What is the name of the entry in the main bar? A: Hosting. B: Server. C: Self-hosted. D: Apps. | Decided (R-428): A, Hosting. |
 | OD-HSE5 | Do Storage (the volumes) and Machines become sections of Hosting? A: not now; volumes stay in the tab Containers of the device page and the machines stay in Devices. B: Storage becomes a section, Machines does not. C: both become sections. | Decided (R-428): C, both are sections of Hosting (HSE-015, HSE-016). The recommendation was A. |
+| OD-HSE6 | Which of the changes SV1 to SV10 of Section 8 does Hosting take? A: all ten, in the order of Section 8. B: only the ones that need no new data from the hub (SV1, SV2, SV4, SV6, SV7, SV9) now, and SV3, SV5, SV8 and SV10 with the tasks that give their data (H6, H8, stage 2). C: a choice of the operator. D: none. | Open. Recommendation: B. The mockup and the screens do not change before the decision. The facts are in [serveros-comparison.md](../research/hosting/serveros-comparison.md). |
 
 ## 7. Not in this proposal
 
 - No hub API. The list of applications needs the record of task H6; until then HSE-009 applies.
 - No change to the rules of a route, a certificate, the catalogue or the install.
 - No requirement of the Containers tab other than HSE-008.
+
+## 8. Proposed: changes from a comparison with ServerOS
+
+The operator named ServerOS a main competitor of Hosting on 2026-11-23. The record [serveros-comparison.md](../research/hosting/serveros-comparison.md) compares its panel with Frames 1 to 9 of the mockup and with the screens of Hosting. Anima takes design ideas only: no code, text or asset of ServerOS (AGPL-3.0; its name and logo are trademarks). These changes are not approved. OD-HSE6 asks which to take. When the operator chooses, the changes that the operator takes become requirements of this proposal and frames of the mockup.
+
+| Change | What changes | Requirement that it changes | Data now |
+| --- | --- | --- | --- |
+| SV1 | Machines shows, for each machine, its state, processor, memory, disk and VRAM as meters with the percentage, the number of its applications, models and volumes, and the time of the last read. The meters and their colour levels are those of the Devices list. | HSE-016 | Yes |
+| SV2 | A Hosting page of one machine: tiles of its load with the last hour and its peak, then its applications, models, volumes and routes, with Install here and Pull a model here, and a link to its device page. | New, below HSE-016 | Yes |
+| SV3 | The Catalogue gives, for each machine, whether an entry can run there and the reason in words, as the Library does for a model (Frame 9). Install chooses the machine with the best fit. | HSE-004 | In part (tasks H6, H8) |
+| SV4 | An overview at the top of Hosting: machines up, applications running, routes proven, models ready, each a link to its section with Needs you chosen, then the list of what needs the operator, with one action each. | HSE-001, HSE-002 | Yes |
+| SV5 | Applications shows the processor, the memory, the uptime with restarts and the ports of each application and container; a group row adds up its rows. | HSE-002 | No (task H8) |
+| SV6 | A catalogue entry and an application row have the brand mark of the program (Simple Icons, CC0) in the accent colour, with the first letter when no mark exists, as in Frame 9. | HSE-002, HSE-004 | Yes |
+| SV7 | Each list of Hosting has one toolbar in one order: pills with counts, search that `/` opens, Machine, Sort, the main action. A sort stays when the list reads again. The time of the last read is shown. | HSE-002, HSE-013, HSE-015, HSE-016, HSE-005 | Yes |
+| SV8 | An install that runs is a row of its machine group (Waiting, Pulling, Starting, or Failed with its reason and log), as a pull of a model in Frame 8. | HSE-002 | No (task H6) |
+| SV9 | The Catalogue is a list of rows as the Library of Frame 9, not a grid of cards. The same picker opens from Install here on a machine. | HSE-004 | Yes |
+| SV10 | Remove of an application, and of a volume with data, asks for the name and says what is lost, with different text for a Not managed application. | HSE-003, HSE-015 | Stage 2 |

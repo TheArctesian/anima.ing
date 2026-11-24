@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (229)
+## 2. Open decisions (230)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -220,6 +220,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the fir… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D20 | Which address does the web client of a hosted hub give for the download of the application, and are the words of its two new texts right? | A link to the download page of the account site, when the operator names its address; the words as built until he changes them. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| OD-HSE6 | Which of the changes SV1 to SV10 of Section 8 does Hosting take? A: all ten, in the order of Section 8. B: only the ones that need no new data from the hub (SV1… | Open. Recommendation: B. The mockup and the screens do not change before the decision. The facts are in serveros-comparison.md. | [proposals/hosting-section.md](proposals/hosting-section.md) |
 | OD-ROU10 | Does LOG-007 get a written, narrow exception for the redacted command text of a routed command line? (yes/no) | Open. Recommendation: yes. LOG-007 stays in force for a password, a private key, an access token, and the content of a session (output and prompt stay out of th… | [proposals/jobs.md](proposals/jobs.md) |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
 | Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). | [proposals/power-health.md](proposals/power-health.md) |
