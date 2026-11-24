@@ -10,13 +10,17 @@
   // The channels and the settings load apart, so one failing leaves the other working (F-3).
   interface Props {
     clock?: LoadingClock;
+    /** Called with true once the channels and the settings both have an answer. */
+    onSettled?: (settled: boolean) => void;
   }
 
-  const { clock }: Props = $props();
+  const { clock, onSettled = () => undefined }: Props = $props();
   const api = notificationsApi(useHub());
   /** `null` while loading or after a failed load. */
   let settings = $state<NotificationSettings | null>(null);
   let settingsFailed = $state(false);
+  let channelsSettled = $state(false);
+  $effect(() => onSettled(channelsSettled && (settings !== null || settingsFailed)));
 
   async function loadSettings(): Promise<void> {
     const result = await api.settings();
@@ -42,6 +46,7 @@
   defaultTemplate={settings?.template ?? { title: '', body: '' }}
   placeholders={settings?.placeholders ?? D21_PLACEHOLDERS}
   {clock}
+  onSettled={(settled) => (channelsSettled = settled)}
 />
 <h3>Expiry and default template</h3>
 <SettingsForm {settings} loadFailed={settingsFailed} onRetry={loadSettings} {save} />

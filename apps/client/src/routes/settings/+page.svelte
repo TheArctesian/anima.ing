@@ -46,6 +46,18 @@
   // The hub on this computer: its section, and its origin for the Stay awake notice (FRN-006, AWK-005, FRN-008).
   // A hub that Anima.ing hosts has no VPN, so the page has no VPN section for it (R-222).
   let linkDevicesShown = $state(false);
+  // The sections from "Devices on the link" on wait, hidden in their places, until the two loads that change
+  // their heights have answered, so that nothing under the reader moves (MOT-007, MA-2 of the
+  // site-language plan). A hub that does not answer cannot hold the page longer than HOLD_LIMIT_MS.
+  const HOLD_LIMIT_MS = 2000;
+  let linkSettled = $state(false);
+  let notificationsSettled = $state(false);
+  let holdOver = $state(false);
+  $effect(() => {
+    const timer = setTimeout(() => (holdOver = true), HOLD_LIMIT_MS);
+    return () => clearTimeout(timer);
+  });
+  const held = $derived(!holdOver && !(linkSettled && notificationsSettled));
   const hub = useHub();
   const vpnShown = !hubIsHosted(hub.address.origin);
   const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
@@ -93,10 +105,11 @@
     </SettingsSection>
   {/if}
 
-  <LinkDevicesSection section={SECTIONS.linkDevices} onVisibility={(shown) => { linkDevicesShown = shown; }} />
+  <div class="held" class:waiting={held} inert={held} aria-busy={held}>
+  <LinkDevicesSection section={SECTIONS.linkDevices} onVisibility={(shown) => { linkDevicesShown = shown; }} onSettled={(settled) => { linkSettled = settled; }} />
 
   <SettingsSection {...SECTIONS.notifications}>
-    <NotificationsSection />
+    <NotificationsSection onSettled={(settled) => { notificationsSettled = settled; }} />
   </SettingsSection>
 
   <SettingsSection {...SECTIONS.checkDefaults}>
@@ -184,6 +197,7 @@
       <PhoneLeave />
     </SettingsSection>
   {/if}
+  </div>
 </div>
 </div>
 </div>
@@ -231,6 +245,15 @@
     align-items: center;
     min-block-size: var(--target-min-touch);
     color: var(--accent);
+  }
+
+  /* The wrapper takes no box: the sections keep the gap of .page. Hidden boxes keep their places. */
+  .held {
+    display: contents;
+  }
+
+  .held.waiting {
+    visibility: hidden;
   }
 
   .page {
