@@ -15,12 +15,13 @@
     icon?: IconName | undefined;
     choices: readonly SplitChoice[];
     menuLabel: string;
+    menuText?: string;
     tone?: 'primary' | 'secondary';
     onMain: (button: HTMLElement) => void;
     onChoose: (choice: SplitChoice, button: HTMLElement) => void;
   }
 
-  const { label, mainLabel, icon, choices, menuLabel, tone = 'secondary', onMain, onChoose }: Props = $props();
+  const { label, mainLabel, icon, choices, menuLabel, menuText, tone = 'secondary', onMain, onChoose }: Props = $props();
   const id = $props.id();
   let open = $state(false);
   let root: HTMLElement | undefined;
@@ -78,7 +79,7 @@
   </button>
   <button
     type="button"
-    class="chevron"
+    class="chevron" class:labelled={menuText !== undefined}
     tabindex="0"
     aria-label={menuLabel}
     aria-haspopup="menu"
@@ -92,7 +93,7 @@
     onkeydown={onChevronKey}
     {@attach press()}
   >
-    <Icon name="carbon:chevron-down" size="sm" />
+    {menuText ?? ''}<Icon name="carbon:chevron-down" size="sm" />
   </button>
   {#if open}
     <div class="menu" id="{id}-menu" role="menu" aria-label={menuLabel} tabindex="-1" onkeydown={onMenuKey} transition:popover={{ from: chevron }} {@attach place}>
@@ -140,6 +141,12 @@
     border-end-end-radius: var(--radius-md);
   }
 
+  .chevron.labelled {
+    inline-size: auto;
+    padding-inline: var(--space-2);
+    white-space: nowrap;
+  }
+
   .main:hover,
   .chevron:hover {
     background: var(--surface-overlay);
@@ -156,6 +163,14 @@
   .primary .chevron:hover {
     background: var(--accent-hover);
   }
+
+  .primary .chevron.labelled {
+    border-inline-start-color: var(--border-subtle);
+    background: var(--surface-raised);
+    color: var(--text);
+  }
+
+  .primary .chevron.labelled:hover { background: var(--surface-overlay); }
 
   .main:focus-visible,
   .chevron:focus-visible,

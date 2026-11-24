@@ -169,6 +169,15 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 button, .v2 input { font: inherit; color: inherit; }
 .v2 .mono { font-family: var(--font-mono); font-size: var(--t-sm); }
 .v2 .num { font-variant-numeric: tabular-nums; }
+.v2 .health { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--space-5); }
+.v2 .health > section { border-top: var(--border-thin) solid var(--border-subtle); padding-block: var(--space-4); font-size: 0.875rem; line-height: 1.5; }
+.v2 .health h3 { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); font-size: inherit; font-weight: 500; }
+.v2 .health h3 .ic { width: 1em; height: 1em; color: var(--text-secondary); }
+.v2 .health dl { display: grid; gap: var(--space-1); margin: 0; }
+.v2 .health dl div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
+.v2 .health dt, .v2 .health p { color: var(--text-secondary); }
+.v2 .health dd { margin: 0; font-variant-numeric: tabular-nums; text-align: end; }
+.v2 .health p { margin: 0; }
 .v2 .sec { color: var(--text-secondary); }
 .v2 .ter { color: var(--text-tertiary); }
 .v2 .ic { width: var(--icon-sm); height: var(--icon-sm); flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -205,7 +214,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .head .actions { margin-left: auto; display: flex; gap: var(--space-2); align-items: center; }
 .v2 .body { padding: 0 var(--space-8) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); flex: 1; min-height: 0; }
 .v2 .toolbar { display: flex; align-items: center; gap: var(--space-2); }
-.v2 .card { background: var(--surface-raised); border-radius: var(--radius-lg); }
+.v2 .card { background: transparent; border-top: var(--border-thin) solid var(--border-subtle); }
 
 /* ---------- Controls ---------- */
 .v2 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--text); white-space: nowrap; cursor: pointer; }
@@ -244,7 +253,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .tag.planned { background: var(--status-maintenance-tint); color: var(--planned); }
 
 /* ---------- Table: one pattern for every list ---------- */
-.v2 .table { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius-lg); overflow: hidden; }
+.v2 .table { display: flex; flex-direction: column; background: transparent; border-top: var(--border-thin) solid var(--border-subtle); overflow: hidden; }
 .v2 .tr { display: grid; align-items: center; column-gap: var(--space-4); padding: 0 var(--space-4); min-height: var(--space-12); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
 .v2 .tr.th { min-height: var(--control-md); border-top: 0; color: var(--text-secondary); font-size: var(--t-sm); font-weight: 500; letter-spacing: 0.01em; }
 .v2 .tr.group { min-height: var(--control-md); background: var(--surface-base); color: var(--text-secondary); font-weight: 500; display: flex; gap: var(--space-3); }
@@ -274,13 +283,16 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .meter u i.hot { background: var(--status-degraded); }
 
 /* ---------- Detail page ---------- */
-.v2 .bar { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-8) 0; background: var(--surface-base); }
-.v2 .bar .row1 { display: flex; align-items: center; gap: var(--space-4); }
+.v2 .bar { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-8) 0; border-bottom: var(--border-thin) solid var(--border-subtle); background: var(--surface-sunken); }
+.v2 .bar .row1 { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3) var(--space-5); }
+.v2 .bar .identity { display: grid; flex: 1 1 14rem; gap: var(--space-1); }
+.v2 .bar .device-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); font-size: var(--t-sm); }
 .v2 .crumb { display: flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); }
-.v2 .crumb h1 { font-size: var(--t-xl); font-weight: 500; line-height: 1.2; color: var(--text); }
+.v2 .identity h1 { margin: 0; font-size: 1.5rem; font-weight: 500; line-height: 1.2; color: var(--text); }
+.v2 .crumb a { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--t-sm); }
 .v2 .reason { display: flex; align-items: center; gap: var(--space-2); font-size: var(--t-sm); color: var(--text-secondary); }
-.v2 .tabs { display: flex; gap: var(--space-6); }
-.v2 .tabs a { display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control-lg); color: var(--text-secondary); border-bottom: var(--border-focus) solid var(--surface-base); }
+.v2 .tabs { display: flex; gap: var(--space-1); margin-inline: calc(var(--space-3) * -1); }
+.v2 .tabs a { display: inline-flex; align-items: center; gap: var(--space-2); height: var(--space-10); padding-inline: var(--space-3); color: var(--text-secondary); border-bottom: var(--border-focus) solid transparent; }
 .v2 .tabs a.on { color: var(--text); font-weight: 500; border-bottom-color: var(--accent); }
 .v2 .tabs .n { font-size: var(--t-xs); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .v2 .split { display: grid; gap: var(--space-4); flex: 1; min-height: 0; }
@@ -304,7 +316,15 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .note { font-size: var(--t-sm); color: var(--text-secondary); }
 
 /* ---------- Forms and settings ---------- */
-.v2 .cols { display: grid; gap: var(--space-8); }
+.v2 .body { container-type: inline-size; }
+.v2 .cols { display: grid; row-gap: var(--space-4); }
+.v2 .overview-access { display: grid; align-content: start; }
+@container (42rem <= inline-size < 68rem) {
+  .v2 .overview-access { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4) var(--space-5); }
+}
+@container (min-inline-size: 68rem) {
+  .v2 .cols { grid-template-columns: minmax(0, 1fr) 288px; column-gap: var(--space-6); }
+}
 .v2 .subnav { display: flex; flex-direction: column; gap: var(--space-1); }
 .v2 .subnav a { display: flex; align-items: center; height: var(--control-md); padding: 0 var(--space-3); border-radius: var(--radius-md); color: var(--text-secondary); }
 .v2 .subnav a.on { background: var(--surface-raised); color: var(--text); font-weight: 500; }
@@ -356,6 +376,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </head>
 <body>
 <h1 class="board">Device overview v2</h1>
+<p class="board"><a href="overview-redesign.html">Approved Overview layout with resource selection and expanded Storage</a></p>
 <p class="about">The tab Overview of a device after the interface review of 2026-11-19 (R-224). The facts of the device (checks, uptime, how it is reached, the host key) are one strip, so the resources start higher. A card steps from the page by its surface and has no border. Beside them, a card lists each way in with its button, and a card gives what the device is. The storage table lists each drive of the machine, also one that is not mounted: it has its kind and its size, the words "Not mounted" where the mount point would be, and no used value and no read and write (operator, 2026-11-19: "i do also want unmounted drives to appear there"). A drive with several mounted partitions has one line for each mount under its name.</p>
 <figure>
 <div class="v2" data-theme="dark" style="width: 1280px; height: 860px;">
@@ -370,8 +391,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <main class="page">
   <header class="bar">
     <div class="row1">
-      <nav class="crumb" aria-label="Breadcrumb"><a href="#">Devices</a><span aria-hidden="true">/</span><h1>pop-os</h1></nav>
-      <span class="st warn">Warning</span><span class="mono sec">pop-os.lan</span>
+      <div class="identity"><nav class="crumb" aria-label="Breadcrumb"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>Devices</a></nav><h1>pop-os</h1><div class="device-meta"><span class="st warn">Warning</span><span class="mono sec">pop-os.lan</span></div></div>
       <div class="actions" style="margin-left: auto; display: flex; gap: var(--space-2)">
         <button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>Connect with SSH</button>
         <button class="btn icon" type="button" aria-label="Other ways to connect" style="width: var(--control-md)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
@@ -379,35 +399,50 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
       </div>
     </div>
     <p class="reason"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 10.5H2zM8 6.5v3M8 11.5h.01"/></svg><span>The TLS certificate of the Grafana web interface expires in 9 days. Every check passes.</span><a class="link" href="#">Review</a></p>
-    <nav class="tabs" aria-label="Device"><a href="#" class="on" aria-current="page">Overview</a><a href="#">Checks<span class="n">1</span></a><a href="#">Containers<span class="n">4</span></a><a href="#">Sessions</a><a href="#">Logs</a><a href="#">Settings</a></nav>
+    <nav class="tabs" aria-label="Device"><a href="#" class="on" aria-current="page">Overview</a><a href="#">Checks</a><a href="#">Containers</a><a href="#">Sessions</a><a href="#">Logs</a><a href="#">Settings</a></nav>
   </header>
   <div class="body" style="padding-top: var(--space-4)">
-    <div class="cols" style="grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-4)">
+    <div class="cols">
       <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
-        <section class="card" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))" aria-label="Health">
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span><span class="st up">1 of 1 up</span></span><span class="note">Ping, every 60 s</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num">100%</span></span><span class="note">97.7% in 7 d and 30 d</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Reached by</span><span>The link, direct</span><span class="note">Last seen 4 s ago</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Host key</span><span><span class="st up">Trusted</span></span><span class="note">Checked at the last session</span></div>
+        <section class="health" aria-label="Health">
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M1 9h3l2-5 3 8 2-5h4"/></svg>Status</h3>
+            <dl>
+              <div><dt>Status</dt><dd><span class="st up">Up</span></dd></div>
+              <div><dt>Maintenance</dt><dd>Off</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><circle cx="8" cy="9" r="5"/><path d="M6 2h4M8 4V2m0 7V6m4-1 1-1"/></svg>Uptime</h3>
+            <dl>
+              <div><dt>24 hours</dt><dd>100%</dd></div>
+              <div><dt>7 days</dt><dd>97.7%</dd></div>
+              <div><dt>30 days</dt><dd>97.7%</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M10 14H3V3h3m4 0h3v5M6 2h4v3H6zm3 9 2 2 4-4"/></svg>Checks</h3>
+            <dl><div><dt><span class="st up">Up</span></dt><dd>1</dd></div></dl>
+          </section>
         </section>
         <div class="toolbar"><span class="label grow">Resources</span>
           <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>
         <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-4)">
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">CPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">3%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,26 15,25 30,27 45,18 60,24 75,26 90,25 105,27 120,26" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">16 cores · peak 41%</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,26 15,25 30,27 45,18 60,24 75,26 90,25 105,27 120,26" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">16 cores · peak 41%</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Memory</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">28%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,22 20,22 40,21 60,22 80,21 100,22 120,22" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">17.9 of 64 GB</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,22 20,22 40,21 60,22 80,21 100,22 120,22" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">17.9 of 64 GB</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Disk /</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">82%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,8 30,8 60,7 90,7 120,6" fill="none" stroke="var(--status-degraded)" stroke-width="1.5"/></svg><span class="note">820 GB of 1 TB · over 80%</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><path d="M0 4.8h120" stroke="var(--chart-threshold)" stroke-opacity=".5" stroke-dasharray="4 4" fill="none"/><polyline points="0,8 30,8 60,7 90,7 120,6" fill="none" stroke="var(--status-degraded)" stroke-width="1.5"/></svg><span class="note">820 GB of 1 TB · over 80%</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">GPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">26%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)" role="meter" aria-label="Battery" aria-valuetext="18 %, low, on battery">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Battery</span><b class="num bat low" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="4.5" width="11" height="7" rx="1"/><path d="M14.5 7v2M4 7v2"/></svg>18%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,10 30,14 60,18 90,22 120,26" fill="none" stroke="var(--status-warning)" stroke-width="1.5"/></svg><span class="note">On battery · low</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,10 30,14 60,18 90,22 120,26" fill="none" stroke="var(--status-warning)" stroke-width="1.5"/></svg><span class="note">On battery · low</span></figure>
         </div>
         <div class="toolbar"><span class="label grow">Storage</span><span class="note">4 drives · 6.5 TB · 1 not mounted</span></div>
         <ul class="table">
@@ -421,7 +456,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <li class="tr dense" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span class="cell2"><b class="mono sec" style="font-weight: 500">sdc</b></span><span class="sec nowrap">Hard disk · 500 GB</span><span class="sec">Not mounted</span><span></span><span></span></li>
         </ul>
       </div>
-      <aside style="display: flex; flex-direction: column; gap: var(--space-4)">
+      <aside class="overview-access">
         <section class="card" aria-label="Connect">
           <div class="pane-head"><span class="label">Connect</span></div>
           <div class="setrow"><div><b style="font-weight: 500">SSH</b><p class="mono">okita · port 22</p></div><button class="btn sm primary" type="button">Open</button></div>
@@ -457,8 +492,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <main class="page">
   <header class="bar">
     <div class="row1">
-      <nav class="crumb" aria-label="Breadcrumb"><a href="#">Devices</a><span aria-hidden="true">/</span><h1>pop-os</h1></nav>
-      <span class="st warn">Warning</span><span class="mono sec">pop-os.lan</span>
+      <div class="identity"><nav class="crumb" aria-label="Breadcrumb"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>Devices</a></nav><h1>pop-os</h1><div class="device-meta"><span class="st warn">Warning</span><span class="mono sec">pop-os.lan</span></div></div>
       <div class="actions" style="margin-left: auto; display: flex; gap: var(--space-2)">
         <button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>Connect with SSH</button>
         <button class="btn icon" type="button" aria-label="Other ways to connect" style="width: var(--control-md)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
@@ -466,35 +500,50 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
       </div>
     </div>
     <p class="reason"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 10.5H2zM8 6.5v3M8 11.5h.01"/></svg><span>The TLS certificate of the Grafana web interface expires in 9 days. Every check passes.</span><a class="link" href="#">Review</a></p>
-    <nav class="tabs" aria-label="Device"><a href="#" class="on" aria-current="page">Overview</a><a href="#">Checks<span class="n">1</span></a><a href="#">Containers<span class="n">4</span></a><a href="#">Sessions</a><a href="#">Logs</a><a href="#">Settings</a></nav>
+    <nav class="tabs" aria-label="Device"><a href="#" class="on" aria-current="page">Overview</a><a href="#">Checks</a><a href="#">Containers</a><a href="#">Sessions</a><a href="#">Logs</a><a href="#">Settings</a></nav>
   </header>
   <div class="body" style="padding-top: var(--space-4)">
-    <div class="cols" style="grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-4)">
+    <div class="cols">
       <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
-        <section class="card" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))" aria-label="Health">
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span><span class="st up">1 of 1 up</span></span><span class="note">Ping, every 60 s</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num">100%</span></span><span class="note">97.7% in 7 d and 30 d</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Reached by</span><span>The link, direct</span><span class="note">Last seen 4 s ago</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Host key</span><span><span class="st up">Trusted</span></span><span class="note">Checked at the last session</span></div>
+        <section class="health" aria-label="Health">
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M1 9h3l2-5 3 8 2-5h4"/></svg>Status</h3>
+            <dl>
+              <div><dt>Status</dt><dd><span class="st up">Up</span></dd></div>
+              <div><dt>Maintenance</dt><dd>Off</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><circle cx="8" cy="9" r="5"/><path d="M6 2h4M8 4V2m0 7V6m4-1 1-1"/></svg>Uptime</h3>
+            <dl>
+              <div><dt>24 hours</dt><dd>100%</dd></div>
+              <div><dt>7 days</dt><dd>97.7%</dd></div>
+              <div><dt>30 days</dt><dd>97.7%</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M10 14H3V3h3m4 0h3v5M6 2h4v3H6zm3 9 2 2 4-4"/></svg>Checks</h3>
+            <dl><div><dt><span class="st up">Up</span></dt><dd>1</dd></div></dl>
+          </section>
         </section>
         <div class="toolbar"><span class="label grow">Resources</span>
           <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>
         <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-4)">
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">CPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">3%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,26 15,25 30,27 45,18 60,24 75,26 90,25 105,27 120,26" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">16 cores · peak 41%</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,26 15,25 30,27 45,18 60,24 75,26 90,25 105,27 120,26" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">16 cores · peak 41%</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Memory</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">28%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,22 20,22 40,21 60,22 80,21 100,22 120,22" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">17.9 of 64 GB</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,22 20,22 40,21 60,22 80,21 100,22 120,22" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">17.9 of 64 GB</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Disk /</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">82%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,8 30,8 60,7 90,7 120,6" fill="none" stroke="var(--status-degraded)" stroke-width="1.5"/></svg><span class="note">820 GB of 1 TB · over 80%</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><path d="M0 4.8h120" stroke="var(--chart-threshold)" stroke-opacity=".5" stroke-dasharray="4 4" fill="none"/><polyline points="0,8 30,8 60,7 90,7 120,6" fill="none" stroke="var(--status-degraded)" stroke-width="1.5"/></svg><span class="note">820 GB of 1 TB · over 80%</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">GPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">26%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)" role="meter" aria-label="Battery" aria-valuetext="18 %, low, on battery">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Battery</span><b class="num bat low" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="4.5" width="11" height="7" rx="1"/><path d="M14.5 7v2M4 7v2"/></svg>18%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,10 30,14 60,18 90,22 120,26" fill="none" stroke="var(--status-warning)" stroke-width="1.5"/></svg><span class="note">On battery · low</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,10 30,14 60,18 90,22 120,26" fill="none" stroke="var(--status-warning)" stroke-width="1.5"/></svg><span class="note">On battery · low</span></figure>
         </div>
         <div class="toolbar"><span class="label grow">Storage</span><span class="note">4 drives · 6.5 TB · 1 not mounted</span></div>
         <ul class="table">
@@ -508,7 +557,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <li class="tr dense" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span class="cell2"><b class="mono sec" style="font-weight: 500">sdc</b></span><span class="sec nowrap">Hard disk · 500 GB</span><span class="sec">Not mounted</span><span></span><span></span></li>
         </ul>
       </div>
-      <aside style="display: flex; flex-direction: column; gap: var(--space-4)">
+      <aside class="overview-access">
         <section class="card" aria-label="Connect">
           <div class="pane-head"><span class="label">Connect</span></div>
           <div class="setrow"><div><b style="font-weight: 500">SSH</b><p class="mono">okita · port 22</p></div><button class="btn sm primary" type="button">Open</button></div>
@@ -544,30 +593,46 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <main class="page">
   <header class="bar">
     <div class="row1">
-      <nav class="crumb" aria-label="Breadcrumb"><a href="#">Devices</a><span aria-hidden="true">/</span><h1>Hub</h1></nav>
-      <span class="st up">Up</span><span class="mono sec">container</span>
+      <div class="identity"><nav class="crumb" aria-label="Breadcrumb"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>Devices</a></nav><h1>Hub</h1><div class="device-meta"><span class="st up">Up</span><span class="mono sec">container</span></div></div>
     </div>
     <nav class="tabs" aria-label="Device"><a href="#" class="on" aria-current="page">Overview</a><a href="#">Checks</a><a href="#">Sessions</a><a href="#">Logs</a><a href="#">Settings</a></nav>
   </header>
   <div class="body" style="padding-top: var(--space-4)">
-    <div class="cols" style="grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-4)">
+    <div class="cols">
       <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
-        <section class="card" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr))" aria-label="Health">
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span class="note">None</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num">100%</span></span><span class="note">100% in 7 d and 30 d</span></div>
+        <section class="health" aria-label="Health">
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M1 9h3l2-5 3 8 2-5h4"/></svg>Status</h3>
+            <dl>
+              <div><dt>Status</dt><dd><span class="st up">Up</span></dd></div>
+              <div><dt>Maintenance</dt><dd>Off</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><circle cx="8" cy="9" r="5"/><path d="M6 2h4M8 4V2m0 7V6m4-1 1-1"/></svg>Uptime</h3>
+            <dl>
+              <div><dt>24 hours</dt><dd>100%</dd></div>
+              <div><dt>7 days</dt><dd>100%</dd></div>
+              <div><dt>30 days</dt><dd>100%</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M10 14H3V3h3m4 0h3v5M6 2h4v3H6zm3 9 2 2 4-4"/></svg>Checks</h3>
+            <p>No checks yet</p>
+          </section>
         </section>
         <div class="toolbar"><span class="label grow">Resources</span>
           <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>
         <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4)">
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)" role="meter" aria-label="CPU" aria-valuetext="4 %" title="CPU: the share of the processors that the hub may use">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">CPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">4%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,29 20,28 40,29 60,26 80,29 100,28 120,29" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">Of its processors: the share of the processors that the hub may use</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,29 20,28 40,29 60,26 80,29 100,28 120,29" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">Of its processors: the share of the processors that the hub may use</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)" role="meter" aria-label="Memory" aria-valuetext="0.8 of 2.0 GiB, 40 %">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Memory</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">0.8 of 2.0 GiB</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,20 20,20 40,19 60,19 80,20 100,19 120,19" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">40% of the limit of the hub</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,20 20,20 40,19 60,19 80,20 100,19 120,19" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">40% of the limit of the hub</span></figure>
         </div>
       </div>
-      <aside style="display: flex; flex-direction: column; gap: var(--space-4)">
+      <aside class="overview-access">
         <section class="card" aria-label="Connect">
           <div class="pane-head"><span class="label">Connect</span></div>
           <div class="setrow"><div><b style="font-weight: 500" class="sec">SSH, RDP and VNC</b><p>No session reaches the container of the hub</p></div></div>
@@ -608,7 +673,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <main class="page">
   <header class="bar" style="padding: var(--space-6) var(--space-6) 0">
     <div class="row1" style="flex-wrap: wrap; gap: var(--space-2) var(--space-4)">
-      <nav class="crumb" aria-label="Breadcrumb"><a href="#">Devices</a><span aria-hidden="true">/</span><h1>win-legacy</h1></nav>
+      <div class="identity"><nav class="crumb" aria-label="Breadcrumb"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>Devices</a></nav><h1>win-legacy</h1></div>
       <span class="st up">Up</span>
       <span style="position: relative; display: inline-flex">
         <button class="tag warn" type="button" aria-expanded="true" aria-label="Warning: A way into this device is not well protected. The device itself can be up and working." style="border: 0; border-radius: var(--radius-pill); font: inherit; font-size: var(--t-sm); gap: var(--space-1); outline: var(--border-focus) solid var(--accent); outline-offset: var(--border-thin)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 10.5H2zM8 6.5v3M8 11.5h.01"/></svg>Warning</button>
@@ -631,7 +696,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   </div>
 </main>
 </div>
-<figcaption>Frame 4, dark, 800 px: a narrow window. The tabs do not fit with their icons, so the icons go and the words stay; when the words still do not fit, the far end fades and an arrow there scrolls the tabs (NAV-005; an arrow at the start shows the same way). At 800 px the words fit and no arrow shows; the frame draws the arrow of a narrower strip. The Warning badge opens its tip on hover, focus or a click: what Warning means, then each warning (RA-020). Under the tabs, the open tab's skeleton while the device loads: the cards of the loaded tab without their text (D-9). Made overnight on 2026-11-21, not yet confirmed by the operator.</figcaption>
+<figcaption>Frame 4, dark, 800 px: a narrow window. The tabs use text labels. When the labels run out of room, the far end fades and an arrow there scrolls the tabs (NAV-005; an arrow at the start shows the same way). At 800 px the words fit and no arrow shows; the frame draws the arrow of a narrower strip. The Warning badge opens its tip on hover, focus or a click: what Warning means, then each warning (RA-020). Under the tabs, the open tab's skeleton while the device loads: the cards of the loaded tab without their text (D-9). Made overnight on 2026-11-21, not yet confirmed by the operator.</figcaption>
 </figure>
 <figure>
 <div class="v2" data-theme="dark" style="width: 1280px; height: 420px;">
@@ -642,7 +707,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <main class="page">
   <header class="bar">
     <div class="row1">
-      <nav class="crumb" aria-label="Breadcrumb"><a href="#">Devices</a><span aria-hidden="true">/</span><h1>studio-mac</h1></nav>
+      <div class="identity"><nav class="crumb" aria-label="Breadcrumb"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>Devices</a></nav><h1>studio-mac</h1></div>
       <span class="st up">Up</span><span class="tag warn">Needs you</span><span class="sec">This computer</span>
     </div>
     <p class="reason" role="status"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7" width="8" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg><span>The daemon of this computer needs you: macOS asks whether it may read its key in the Keychain. Type your password in that window and click Always Allow. Metrics and counts appear here some minutes later.</span></p>
