@@ -7,6 +7,7 @@ pub mod documents;
 pub mod get;
 pub mod list;
 pub mod metrics;
+pub mod os_update;
 pub mod saved;
 pub mod settings;
 pub mod test;
@@ -21,6 +22,8 @@ use crate::invocation::Invocation;
 
 #[derive(Debug, clap::Subcommand)]
 pub enum DeviceCommand {
+    /// Check, stage, activate or roll back a signed Anima OS update.
+    OsUpdate(os_update::OsUpdateArgs),
     /// List devices, with filters and pages.
     List(list::ListArgs),
     /// Show one device by ID or exact name.
@@ -56,6 +59,7 @@ impl DeviceCommand {
     /// [`Failure`] for a refusal, an unknown device or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
+            Self::OsUpdate(args) => args.run(invocation).await,
             Self::List(args) => args.run(invocation).await,
             Self::Get(args) => args.run(invocation).await,
             Self::Create(args) => args.run(invocation).await,

@@ -1,0 +1,12 @@
+[package]
+name = "anima-rdp-loopback-probe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ironrdp-server = { version = "=0.13.0", default-features = false, features = ["helper"] }
+tokio = { version = "1", features = ["macros", "rt"] }
+async-trait = "0.1"
+anyhow = "1"
+
+[workspace]
