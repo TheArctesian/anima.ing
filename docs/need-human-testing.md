@@ -5588,8 +5588,15 @@ Synthetic output and filesystem tests do not prove real Xcode behaviour, SDK lay
 absence of tool-side cache writes, or a blocked filesystem on each host platform.
 Windows collection is not implemented; no positive Windows inventory is claimed.
 
-After implementation review approves real probe enablement, on a disposable enrolled
-Mac with an existing Xcode and Android SDK installation:
+Independent review of `00e1cc235` found no blocking code findings for default-off CI.
+Before real-probe enablement, TH135 must add synthetic tests through the parent
+collection boundary for a blocked worker and a descendant retaining stdout. The tests
+must prove the five-second deadline, bounded return and descendant cleanup, and run
+with `mobile-inventory` enabled. Direct worker-dispatch tests do not establish these
+properties. This validation follow-up remains open; review did not authorize probes.
+
+After that validation, implementation review and operator authorization for real
+probes, use a disposable enrolled Mac with an existing Xcode and Android SDK installation:
 
 1. Build the daemon with `cargo build -p anima-daemon --features mobile-inventory`.
    Use a test hub with the mobile-inventory migration and this branch's CLI. Do not
