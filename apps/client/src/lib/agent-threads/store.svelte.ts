@@ -1,6 +1,6 @@
 import type { LiveThreads } from './live/live.svelte';
 import { listed, type Listing } from './listing/listing';
-import { mergedRows } from './live/rows';
+import { mergedRows, startedThreadIds } from './live/rows';
 import type { SentPrompt } from './live/timeline';
 import { markSeen, needsYouCount, storedSeen, type Seen } from './state';
 import type { Thread, ThreadRow, ThreadsShell } from './thread';
@@ -45,8 +45,13 @@ export class ThreadsStore {
 
   readonly liveThread = $derived.by(() => (this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null)));
 
-  /** An archived or removed thread is not counted: the person put it away (THR-057, TH46). */
-  readonly needsYou = $derived.by(() => needsYouCount(this.allRows === null ? [] : listed(this.allRows, this.live?.listings ?? NO_LISTINGS, false), this.readAt, this.seen));
+  /** The Code badge counts Anima threads in the inbox (THR-057, TH46). */
+  readonly needsYou = $derived.by(() => {
+    const listings = this.live?.listings ?? NO_LISTINGS;
+    const started = startedThreadIds(listings.values(), this.live?.threads.values() ?? []);
+    const rows = listed(this.allRows ?? [], listings, false).filter((row) => started.has(row.id));
+    return needsYouCount(rows, this.readAt, this.seen);
+  });
 
   async loadList(): Promise<void> {
     try {

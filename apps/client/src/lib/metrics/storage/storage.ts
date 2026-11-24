@@ -42,9 +42,10 @@ export function summaryText(drives: readonly StorageDrive[]): string {
 function mountView(mount: StorageDrive['mounts'][number]): MountView {
   const { percent, sizeBytes, usedBytes } = mount;
   const shown = percent === null ? null : Math.min(100, Math.max(0, percent));
-  const text = [usedBytes === null ? null : `${formatBytes(usedBytes)} used`, shown === null ? null : formatPercent(shown)].filter((part) => part !== null).join(' · ');
+  const free = sizeBytes !== null && usedBytes !== null && sizeBytes >= usedBytes ? `${formatBytes(sizeBytes - usedBytes)} free` : null;
   const used = usedBytes === null ? null : `${formatBytes(usedBytes)} used${sizeBytes === null ? '' : ` of ${formatBytes(sizeBytes)}`}`;
-  const spoken = [mount.path, used, shown === null ? 'no reading' : formatPercent(shown)].filter((part) => part !== null).join(', ');
+  const text = [used, free, shown === null ? null : formatPercent(shown)].filter((part) => part !== null).join(' · ');
+  const spoken = [mount.path, used, free, shown === null ? 'no reading' : formatPercent(shown)].filter((part) => part !== null).join(', ');
   return { path: mount.path, percent: shown, text: text === '' ? '—' : text, spoken, degraded: shown !== null && shown > DEGRADED_ABOVE };
 }
 

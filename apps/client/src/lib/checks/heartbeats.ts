@@ -87,9 +87,10 @@ export function shiftedByNewBeat(was: readonly Beat[], now: readonly Beat[]): bo
 }
 
 /** Rounding never shows "100.00 %" for an uptime below 1. */
-export function uptimeText(ratio: number | null): string {
+export function uptimeText(ratio: number | null, compact = false): string {
   if (ratio === null || Number.isNaN(ratio)) return NO_UPTIME;
   const percent = Math.min(Math.max(ratio, 0), 1) * 100;
-  const text = percent.toFixed(2);
-  return text === '100.00' && percent < 100 ? '99.99 %' : `${text} %`;
+  const rounded = percent.toFixed(2);
+  const text = rounded === '100.00' && percent < 100 ? '99.99' : rounded;
+  return compact ? `${Number(text)}%` : `${text} %`;
 }

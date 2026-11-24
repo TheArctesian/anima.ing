@@ -60,6 +60,12 @@ pub struct ProjectsArgs {
 
 #[derive(Debug, clap::Subcommand)]
 enum ProjectCommand {
+    /// Create a new folder, initialize Git and add it as a project. The parent must exist.
+    Create {
+        folder: std::path::PathBuf,
+        #[arg(long)]
+        name: Option<String>,
+    },
     /// Add a folder of this computer as a project.
     Add {
         folder: std::path::PathBuf,
@@ -84,19 +90,25 @@ pub async fn projects(args: ProjectsArgs, invocation: &Invocation) -> Result<(),
     let absolute = |folder: std::path::PathBuf| std::path::absolute(&folder).unwrap_or(folder);
     let action = match args.change {
         None => Action::Projects,
-        Some(command) => Action::ChangeProject {
-            change: match command {
-                ProjectCommand::Add { folder, name } => ProjectChange::Add {
-                    folder: absolute(folder),
-                    name,
-                },
-                ProjectCommand::Rename { folder, name } => ProjectChange::Rename {
-                    folder: absolute(folder),
-                    name,
-                },
-                ProjectCommand::Remove { folder } => ProjectChange::Remove {
-                    folder: absolute(folder),
-                },
+        Some(ProjectCommand::Create { folder, name }) => Action::CreateProject {
+            folder: absolute(folder),
+            name,
+        },
+        Some(ProjectCommand::Add { folder, name }) => Action::ChangeProject {
+            change: ProjectChange::Add {
+                folder: absolute(folder),
+                name,
+            },
+        },
+        Some(ProjectCommand::Rename { folder, name }) => Action::ChangeProject {
+            change: ProjectChange::Rename {
+                folder: absolute(folder),
+                name,
+            },
+        },
+        Some(ProjectCommand::Remove { folder }) => Action::ChangeProject {
+            change: ProjectChange::Remove {
+                folder: absolute(folder),
             },
         },
     };
