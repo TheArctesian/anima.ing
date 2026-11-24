@@ -22,17 +22,21 @@ pub(super) async fn acquire(dir: &Path) -> Result<File, Failure> {
         use std::os::unix::fs::OpenOptionsExt as _;
         options.custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed());
     }
-    let file = options
-        .open(path)
-        .map_err(|_| ended("The credential lock could not be opened."))?;
     let deadline = Instant::now() + Duration::from_secs(40);
     loop {
-        match file.try_lock() {
-            Ok(()) => return Ok(file),
-            Err(std::fs::TryLockError::WouldBlock) if Instant::now() < deadline => {
+        // On Windows a second process can find the file still held by the one that creates it.
+        let opened = options.open(&path);
+        let waits = Instant::now() < deadline;
+        match opened.map(|file| (file.try_lock(), file)) {
+            Ok((Ok(()), file)) => return Ok(file),
+            Ok((Err(std::fs::TryLockError::WouldBlock), _)) if waits => {
                 tokio::time::sleep(Duration::from_millis(50)).await;
             }
-            _ => {
+            Err(_) if waits && cfg!(windows) => {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+            Err(_) => return Err(ended("The credential lock could not be opened.")),
+            Ok(_) => {
                 return Err(ended(
                     "Another sign-in is still finishing. Try again shortly.",
                 ));
