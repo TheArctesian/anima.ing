@@ -4,9 +4,11 @@
 use daemon_core::model_work::cause::Cause;
 use daemon_core::model_work::files::MAX_FILES;
 use daemon_core::model_work::found::{MAX_FOUND, Tool, is_shown_name};
+use daemon_core::model_work::memory::keep::IDLE_SECONDS;
 use daemon_core::model_work::names::{Word as _, is_lower_hex};
 use daemon_core::wire::{
-    Cleanup, CopyOutcome, FoundEntry, ModelOutcome, ModelState, WorkKind, WorkResult,
+    Cleanup, CopyOutcome, FoundEntry, LoadEntry, ModelOutcome, ModelState, ServerLoads, WorkKind,
+    WorkResult,
 };
 
 /// The outcomes of K10 Section 7.
@@ -96,9 +98,16 @@ fn checked_copy(copy: &CopyOutcome) -> Option<CopyOutcome> {
     (COPY_STATES.contains(&copy.copy_state.as_str()) && hashes_fit).then(|| copy.clone())
 }
 
-/// The found models of a state that keep the rules of K11 Section 8: the others are left out,
-/// so a machine cannot put text of its choice where the screen shows a found model. `None`
-/// when the time is not RFC 3339.
+/// The states of a copy in the memory of a server (K11 Section 11.1).
+const LOAD_STATES: [&str; 4] = ["loading", "ready", "active", "unloading"];
+
+/// The most servers of a node, and the most copies of a server, that the hub keeps (K11 Section 11.1).
+const MAX_SERVERS: usize = 16;
+const MAX_LOADS: usize = 16;
+
+/// The found models and the loads of a state that keep the rules of K11 Sections 8 and 11.1: the
+/// others are left out, so a machine cannot put text of its choice where the screen shows them.
+/// `None` when the time is not RFC 3339.
 fn checked_state(state: &ModelState) -> Option<ModelState> {
     chrono::DateTime::parse_from_rfc3339(&state.at).ok()?;
     let found = state
@@ -108,10 +117,30 @@ fn checked_state(state: &ModelState) -> Option<ModelState> {
         .take(MAX_FOUND)
         .cloned()
         .collect();
+    let servers = state
+        .servers
+        .iter()
+        .take(MAX_SERVERS)
+        .map(|server| ServerLoads {
+            server: server.server,
+            models: server
+                .models
+                .iter()
+                .filter(|entry| load_fits(entry))
+                .take(MAX_LOADS)
+                .cloned()
+                .collect(),
+        })
+        .collect();
     Some(ModelState {
         at: state.at.clone(),
         found,
+        servers,
     })
+}
+
+fn load_fits(entry: &LoadEntry) -> bool {
+    LOAD_STATES.contains(&entry.state.as_str()) && IDLE_SECONDS.contains(&entry.idle_seconds)
 }
 
 fn found_fits(entry: &FoundEntry) -> bool {

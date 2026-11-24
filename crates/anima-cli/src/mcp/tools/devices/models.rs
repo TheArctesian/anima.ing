@@ -30,6 +30,7 @@ pub enum ModelTool {
     Find,
     Use,
     Fit,
+    Keep,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -53,6 +54,19 @@ pub struct CopyInput {
     device: String,
     /// The variant, name:tag, such as qwen3:8b-q4_k_m.
     model: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct KeepInput {
+    /// The device's ID or its exact name.
+    device: String,
+    /// The variant, name:tag, such as qwen3:8b-q4_k_m.
+    model: String,
+    /// A pinned copy stays loaded, and comes back when other work took its memory.
+    pinned: bool,
+    /// Seconds with no use before the machine unloads the copy, 60 to 86400; 900 when not given.
+    idle_seconds: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -92,7 +106,7 @@ const VARIANT_KEYS: [&str; 6] = [
 ];
 
 impl ModelTool {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::List,
         Self::Show,
         Self::Copies,
@@ -102,6 +116,7 @@ impl ModelTool {
         Self::Find,
         Self::Use,
         Self::Fit,
+        Self::Keep,
     ];
 
     #[must_use]
@@ -160,6 +175,7 @@ impl ModelTool {
                 "object",
                 "What is left of the copy; null when gone.",
             )]),
+            Self::Keep => keep_definition(),
             Self::Found | Self::Find | Self::Use => self.found_definition(),
             Self::Fit => fit_definition(),
         }
@@ -217,6 +233,7 @@ impl ModelTool {
             Self::Find => find(hub, arguments).await,
             Self::Use => use_found(hub, arguments).await,
             Self::Fit => fit(hub, arguments).await,
+            Self::Keep => keep(hub, arguments).await,
         }
     }
 }
@@ -235,6 +252,20 @@ fn fit_definition() -> Definition {
          Next: anima_model_pull.",
     )
     .returns(&[("fits", "array", "One fit for each variant on each machine.")])
+}
+
+/// The tool of the keep of a copy (L1-16, FIT-022, FIT-023).
+fn keep_definition() -> Definition {
+    Definition::new::<KeepInput>(
+        "anima_model_keep",
+        Access::Write,
+        Effect::Sets,
+        "Sets whether one machine keeps its copy of a variant name:tag loaded: pinned, it \
+         stays loaded and comes back when other work took its memory; else the machine \
+         unloads it after idleSeconds with no use. Only a copy on its machine \
+         (DOWNLOADED or VALIDATED). Returns the job; anima_model_copies shows the load.",
+    )
+    .returns(&[("job", "string", "The ID of the job.")])
 }
 
 async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -319,4 +350,15 @@ async fn fit(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolErro
         context: input.context,
     };
     Ok(json!({ "fits": json(&model_fits::fetch(hub, asked).await?) }))
+}
+
+async fn keep(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let input: KeepInput = parse(arguments)?;
+    let asked = crate::model_copies::keep::Keep {
+        device: &input.device,
+        model: &input.model,
+        pinned: input.pinned,
+        idle_seconds: input.idle_seconds,
+    };
+    Ok(json!({ "job": crate::model_copies::keep::keep(hub, &asked).await? }))
 }

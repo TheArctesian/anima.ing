@@ -9,10 +9,12 @@ pub mod found;
 pub mod launcher;
 pub mod loopback;
 pub mod machine;
+pub mod memory;
 pub mod names;
 pub mod order;
 pub mod pull;
 pub mod releases;
+pub mod router;
 pub mod settings;
 pub mod supervision;
 #[cfg(test)]

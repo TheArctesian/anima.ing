@@ -144,16 +144,16 @@ impl Server {
     }
 }
 
+/// The servers of the node, shared by the claims and the 15-second check (SF-259).
+pub type Shared = std::sync::Arc<tokio::sync::Mutex<Servers>>;
+
 impl Servers {
+    /// Starts `server` and waits until it listens; the caller holds no lock meanwhile, so the
+    /// check of the other servers goes on.
+    ///
     /// # Errors
     /// `listener`, `start_failed` or `limit_disk`.
-    pub async fn start(
-        &mut self,
-        id: Uuid,
-        mut server: Server,
-        clock: impl Fn() -> u64,
-    ) -> Result<(), Cause> {
-        self.stop(id).await;
+    pub async fn ready(mut server: Server, clock: impl Fn() -> u64) -> Result<Server, Cause> {
         server.record.started();
         server.launch_now(clock()).await?;
         loop {
@@ -162,7 +162,7 @@ impl Servers {
                 server.state = ServerState::Failed(Cause::StartFailed);
             }
             match server.state {
-                ServerState::Ready => break,
+                ServerState::Ready => return Ok(server),
                 ServerState::Failed(cause) => return Err(cause),
                 _ if now.saturating_sub(server.since) > READY_SECONDS => {
                     server.end(ServerState::Failed(Cause::StartFailed)).await;
@@ -171,8 +171,6 @@ impl Servers {
                 _ => tokio::time::sleep(Duration::from_millis(200)).await,
             }
         }
-        self.map.insert(id, server);
-        Ok(())
     }
 
     /// `false` when no such server is on this node.

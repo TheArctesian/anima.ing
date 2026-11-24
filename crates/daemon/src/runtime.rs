@@ -3,6 +3,8 @@
 mod agent_usage;
 mod link_wait;
 #[cfg(unix)]
+pub mod model_work;
+#[cfg(unix)]
 pub mod old_origin;
 #[cfg(unix)]
 pub(crate) mod thread_sync;
@@ -102,6 +104,8 @@ pub async fn run(
     let (pusher, device, link) = prepare(home, credential).await?;
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
     let refusal_ends = hosted_hub.is_some();
+    #[cfg(unix)]
+    let model = model_work::begin(home, refusal_ends, device, pusher.thread_sync_target());
     let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
     let stopping = Arc::new(AtomicBool::new(false));
     let usage = tokio::spawn(count(
@@ -145,6 +149,8 @@ pub async fn run(
     usage.abort();
     #[cfg(unix)]
     publishing.abort();
+    #[cfg(unix)]
+    model_work::end(model).await;
     outcome
 }
 

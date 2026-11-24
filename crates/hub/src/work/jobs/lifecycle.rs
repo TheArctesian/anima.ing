@@ -46,20 +46,14 @@ pub(super) fn claimed(job: &Job, device: DeviceId, now: DateTime<Utc>) -> Job {
 
 /// The diagram of K10 Section 7. The same state is a report that only holds the lease.
 const fn permitted(from: State, to: WorkState) -> bool {
-    use State::{Claimed, Finishing, Preparing, Running};
-    matches!(
-        (from, to),
-        (
-            Claimed,
-            WorkState::Claimed | WorkState::Preparing | WorkState::Refused
-        ) | (Preparing, WorkState::Preparing | WorkState::Running)
-            | (Running, WorkState::Running | WorkState::Finishing)
-            | (Finishing, WorkState::Finishing | WorkState::Done)
-            | (
-                Preparing | Running | Finishing,
-                WorkState::Failed | WorkState::Stopped
-            )
-    )
+    let from = match from {
+        State::Claimed => WorkState::Claimed,
+        State::Preparing => WorkState::Preparing,
+        State::Running => WorkState::Running,
+        State::Finishing => WorkState::Finishing,
+        State::Queued | State::Done | State::Failed | State::Stopped => return false,
+    };
+    from.may_become(to)
 }
 
 /// The log part is not applied here: see [`log_fits`].

@@ -1,6 +1,7 @@
 //! Found models through the hub's routes (task L1-22; K11 Sections 2.3 and 8; PULL-012, R-444):
 //! `findModels` asks the machine for a `model_report`, `foundModels` lists the found models of
-//! its result, and `useFoundModel` makes a found copy and its `copy_adopt`.
+//! its result, `useFoundModel` makes a found copy and its `copy_adopt`, and `removeModelCopy`
+//! of a found copy asks its machine for a `copy_delete` (PULL-009).
 
 use axum::http::StatusCode;
 use serde_json::{Value, json};
@@ -14,6 +15,7 @@ const FOUND: &str = "{ foundModels { found tool name format fileCount sizeBytes 
 const FIND: &str = "mutation($deviceId: ID!) { findModels(deviceId: $deviceId) }";
 const USE: &str = "mutation($deviceId: ID!, $found: String!) {
     useFoundModel(deviceId: $deviceId, found: $found) { id address origin state } }";
+const REMOVE: &str = "mutation($id: ID!) { removeModelCopy(id: $id) { id state } }";
 
 fn key(letter: char) -> String {
     letter.to_string().repeat(64)
@@ -21,6 +23,12 @@ fn key(letter: char) -> String {
 
 fn cleanup() -> Value {
     json!({ "isolation": "none", "checkout": "none", "secrets": "none", "keychain": "none" })
+}
+
+fn adopted(copy: &Value) -> Value {
+    json!({ "result": { "outcome": "succeeded", "cause": null, "seconds": 2, "cleanup": cleanup(),
+        "model": { "copy": copy, "copyState": "downloaded", "bytes": 100, "files": 1, "origin": "found",
+            "fileHashes": [{ "sizeBytes": 100, "sha256": key('d') }] } } })
 }
 
 /// The result of a `model_report` that lists a GGUF model of Ollama, a safetensors model of
@@ -126,10 +134,7 @@ async fn pull_012_a_found_model_is_listed_and_used_where_it_is(pool: sqlx::PgPoo
         "a used model is not listed"
     );
 
-    let adopted = json!({ "result": { "outcome": "succeeded", "cause": null, "seconds": 2, "cleanup": cleanup(),
-        "model": { "copy": copy["id"], "copyState": "downloaded", "bytes": 100, "files": 1, "origin": "found",
-            "fileHashes": [{ "sizeBytes": 100, "sha256": key('d') }] } } });
-    let item = finish(&work, &token, "copy_adopt", &adopted).await;
+    let item = finish(&work, &token, "copy_adopt", &adopted(&copy["id"])).await;
     assert_eq!(
         item["parameters"],
         json!({ "copy": copy["id"], "found": key('a') })
@@ -140,5 +145,119 @@ async fn pull_012_a_found_model_is_listed_and_used_where_it_is(pool: sqlx::PgPoo
     assert!(
         again["errors"][0]["extensions"]["code"].is_string(),
         "a used model is not used twice: {again}"
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn pull_009_the_removal_of_a_found_copy_deletes_its_record_on_its_machine(
+    pool: sqlx::PgPool,
+) {
+    let work = Work::new(&pool).await;
+    let token = work.daemons.token_for(PVE_01).await;
+    let (status, _) = work.claim(&token, &model_claim(&json!([]))).await;
+    assert_eq!(status, StatusCode::NO_CONTENT, "the hub learns the machine");
+    work.daemons
+        .operate(FIND, json!({ "deviceId": PVE_01 }))
+        .await;
+    finish(&work, &token, "model_report", &state()).await;
+    let used = use_found(&work, &key('a')).await;
+    let copy = used["data"]["useFoundModel"]["id"].clone();
+    finish(&work, &token, "copy_adopt", &adopted(&copy)).await;
+
+    let removed = work.daemons.operate(REMOVE, json!({ "id": copy })).await;
+    assert_eq!(
+        removed["data"]["removeModelCopy"]["state"], "REMOVING",
+        "{removed}"
+    );
+    // The daemon sends no `model` for a `copy_delete` (it deletes only its record of the copy).
+    let done = json!({ "result": { "outcome": "succeeded", "cause": null, "seconds": 0, "cleanup": cleanup() } });
+    let item = finish(&work, &token, "copy_delete", &done).await;
+    assert_eq!(item["parameters"], json!({ "copy": copy }));
+    assert!(
+        copies(&work).await.is_empty(),
+        "a removed copy is not listed"
+    );
+
+    let listed = work.daemons.operate(FOUND, json!({})).await;
+    let names: Vec<&str> = listed["data"]["foundModels"]
+        .as_array()
+        .expect("a list")
+        .iter()
+        .filter_map(|each| each["name"].as_str())
+        .collect();
+    assert!(
+        names.contains(&"qwen3:8b"),
+        "the model is found again when no copy uses it: {listed}"
+    );
+    let again = use_found(&work, &key('a')).await;
+    assert_eq!(again["data"]["useFoundModel"]["state"], "QUEUED", "{again}");
+}
+
+/// L1-16 (K11 Section 11.1): `keepModelCopy` sends a `model_keep` to the machine of the copy, and `modelCopies` shows
+/// the load of a copy from the last model report of its machine; a load of a copy of a different machine, or in a
+/// state that the contract does not name, is left out.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn fit_023_a_pin_goes_to_the_machine_of_the_copy_and_its_load_comes_from_the_report(
+    pool: sqlx::PgPool,
+) {
+    const KEEP: &str =
+        "mutation($id: ID!, $keep: ModelKeepInput!) { keepModelCopy(id: $id, keep: $keep) }";
+    const LOADS: &str =
+        "{ modelCopies { id load { state pinned idleSeconds reservedBytes usedSecondsAgo } } }";
+    let work = Work::new(&pool).await;
+    let token = work.daemons.token_for(PVE_01).await;
+    work.claim(&token, &model_claim(&json!([]))).await;
+    work.daemons
+        .operate(FIND, json!({ "deviceId": PVE_01 }))
+        .await;
+    finish(&work, &token, "model_report", &state()).await;
+    let used = use_found(&work, &key('a')).await;
+    let copy = used["data"]["useFoundModel"]["id"].clone();
+
+    let keep = |pinned: bool, idle: u32| json!({ "id": copy, "keep": { "pinned": pinned, "idleSeconds": idle } });
+    let early = work.daemons.operate(KEEP, keep(true, 600)).await;
+    assert_eq!(
+        early["errors"][0]["extensions"]["code"], "VALIDATION",
+        "not on the machine yet: {early}"
+    );
+    finish(&work, &token, "copy_adopt", &adopted(&copy)).await;
+    let short = work.daemons.operate(KEEP, keep(true, 30)).await;
+    assert_eq!(
+        short["errors"][0]["extensions"]["code"], "VALIDATION",
+        "{short}"
+    );
+
+    let asked = work.daemons.operate(KEEP, keep(true, 600)).await;
+    assert!(asked["data"]["keepModelCopy"].is_string(), "{asked}");
+    let done = json!({ "result": { "outcome": "succeeded", "cause": null, "seconds": 0, "cleanup": cleanup() } });
+    let item = finish(&work, &token, "model_keep", &done).await;
+    assert_eq!(
+        item["parameters"],
+        json!({ "copy": copy, "keep": { "idleSeconds": 600, "pinned": true } })
+    );
+
+    let entry = |copy: &Value, state: &str| {
+        json!({ "copy": copy, "state": state, "reservedBytes": 4096, "idleSeconds": 600, "pinned": true,
+            "usedSecondsAgo": 120 })
+    };
+    let mut loaded = state();
+    loaded["result"]["model"]["servers"] = json!([{ "server": "0192f6aa-0000-7000-8000-000000000001",
+        "runtime": "llama_server", "state": "ready",
+        "models": [entry(&copy, "ready"), entry(&json!("0192f6aa-0000-7000-8000-0000000000ff"), "flying")] }]);
+    work.daemons
+        .operate(FIND, json!({ "deviceId": PVE_01 }))
+        .await;
+    finish(&work, &token, "model_report", &loaded).await;
+    let listed = work.daemons.operate(LOADS, json!({})).await;
+    assert_eq!(
+        listed["data"]["modelCopies"][0]["load"],
+        json!({ "state": "READY", "pinned": true, "idleSeconds": 600, "reservedBytes": 4096.0, "usedSecondsAgo": 120.0 }),
+        "{listed}"
     );
 }

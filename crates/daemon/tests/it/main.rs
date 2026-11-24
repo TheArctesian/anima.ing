@@ -10,6 +10,8 @@ mod fake_hub;
 mod kit;
 #[cfg(target_os = "linux")]
 mod log;
+#[cfg(target_os = "linux")]
+mod model_wiring;
 #[cfg(unix)]
 mod model_work;
 #[cfg(target_os = "linux")]

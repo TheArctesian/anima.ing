@@ -9,7 +9,9 @@ use super::times;
 
 mod model;
 
-pub use model::{CopyOutcome, FileHash, FoundEntry, ModelOutcome, ModelState, Progress};
+pub use model::{
+    CopyOutcome, FileHash, FoundEntry, LoadEntry, ModelOutcome, ModelState, Progress, ServerLoads,
+};
 
 /// The most bytes of the log part of one report (K10 Section 7).
 pub const MAX_LOG_PART_BYTES: usize = 64 * 1024;
@@ -32,13 +34,15 @@ pub enum WorkType {
     ModelLoad,
     ModelUnload,
     ModelMeasure,
+    /// The idle time and the pin of a copy (Section 11.1).
+    ModelKeep,
     ModelDrain,
     #[serde(other)]
     Unknown,
 }
 
-/// The eleven model work types, in the order of the table of the model work contract.
-pub const MODEL_TYPES: [WorkType; 11] = [
+/// The twelve model work types, in the order of the table of the model work contract.
+pub const MODEL_TYPES: [WorkType; 12] = [
     WorkType::ModelReport,
     WorkType::RuntimeInstall,
     WorkType::ModelPull,
@@ -49,6 +53,7 @@ pub const MODEL_TYPES: [WorkType; 11] = [
     WorkType::ModelLoad,
     WorkType::ModelUnload,
     WorkType::ModelMeasure,
+    WorkType::ModelKeep,
     WorkType::ModelDrain,
 ];
 
@@ -68,6 +73,7 @@ impl WorkType {
             Self::ModelLoad => "model_load",
             Self::ModelUnload => "model_unload",
             Self::ModelMeasure => "model_measure",
+            Self::ModelKeep => "model_keep",
             Self::ModelDrain => "model_drain",
             Self::Unknown => "unknown",
         }
@@ -231,6 +237,21 @@ pub enum WorkState {
 }
 
 impl WorkState {
+    /// Whether a report may change an item from `self` to `to` (K10 Section 7): the diagram of the
+    /// states, or the same state again. A refusal is final only from `claimed`.
+    #[must_use]
+    pub const fn may_become(self, to: Self) -> bool {
+        use WorkState::{Claimed, Done, Failed, Finishing, Preparing, Refused, Running, Stopped};
+        matches!(
+            (self, to),
+            (Claimed, Claimed | Preparing | Refused)
+                | (Preparing, Preparing | Running)
+                | (Running, Running | Finishing)
+                | (Finishing, Finishing | Done)
+                | (Preparing | Running | Finishing, Failed | Stopped)
+        )
+    }
+
     #[must_use]
     pub const fn is_final(self) -> bool {
         matches!(

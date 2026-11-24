@@ -205,3 +205,18 @@ fn met_012_at_most_256_bytes_are_read_and_300_without_a_newline_are_not_a_code()
     assert_eq!(read_code(&mut input).err(), Some(CliError::NotACode));
     assert_eq!(input.position(), 256, "the rest was never read");
 }
+
+#[test]
+fn use_004_work_takes_on_or_off() {
+    assert!(matches!(
+        parse(args("work on")),
+        Ok(Command::Work { on: true })
+    ));
+    assert!(matches!(
+        parse(args("work off")),
+        Ok(Command::Work { on: false })
+    ));
+    for line in ["work", "work On", "work on now", "work toggle"] {
+        assert!(matches!(parse(args(line)), Err(CliError::Usage)), "{line}");
+    }
+}

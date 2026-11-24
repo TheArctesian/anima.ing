@@ -40,6 +40,10 @@ pub enum ModelCommand {
     /// Whether each variant fits each machine: on its GPU, partly in its system memory, or on
     /// its CPU, and at which context.
     Fit(crate::model_fits::FitArgs),
+    /// Pin a copy: its machine keeps it loaded, and loads it again when it gets the memory back.
+    Pin(crate::model_copies::KeepArgs),
+    /// Unpin a copy: its machine unloads it after its idle seconds with no use.
+    Unpin(crate::model_copies::KeepArgs),
 }
 
 impl ModelCommand {
@@ -54,13 +58,28 @@ impl ModelCommand {
             Self::Add(args) => args.run(invocation).await,
             Self::Alias(args) => args.run(invocation).await,
             Self::Source(command) => command.run(invocation).await,
+            Self::Fit(args) => args.run(invocation).await,
+            copies => copies.run_on_copies(invocation).await,
+        }
+    }
+
+    /// Runs a command of the copies on the machines (`crate::model_copies`).
+    async fn run_on_copies(self, invocation: &Invocation) -> Result<(), Failure> {
+        match self {
             Self::Pull(args) => args.run(invocation).await,
             Self::Remove(args) => args.run(invocation).await,
             Self::Copies(args) => args.run(invocation).await,
             Self::Found(args) => args.run(invocation).await,
             Self::Find(args) => args.run(invocation).await,
             Self::Use(args) => args.run(invocation).await,
-            Self::Fit(args) => args.run(invocation).await,
+            Self::Pin(args) => args.run(invocation, true).await,
+            Self::Unpin(args) => args.run(invocation, false).await,
+            Self::List(_)
+            | Self::Show(_)
+            | Self::Add(_)
+            | Self::Alias(_)
+            | Self::Source(_)
+            | Self::Fit(_) => unreachable!("run gives the commands of the library"),
         }
     }
 }

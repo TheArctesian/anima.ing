@@ -2,7 +2,7 @@
 //! order.
 
 use daemon_core::model_work::names::Actor;
-use daemon_core::wire::{Switch, WorkKind, WorkType};
+use daemon_core::wire::{Free, Switch, WorkKind, WorkType};
 
 use super::placement::{offer, verdicts};
 use super::{MAC, PVE, at, claim_of, device, queued};
@@ -39,6 +39,42 @@ fn model_offer(policy_permits: bool) -> Offer {
     }
 }
 
+/// The claim of a daemon that offers only model work, as `Node::claim` of the daemon writes it: no
+/// job slot and no room (K11 Section 3).
+fn model_only_offer() -> Offer {
+    let mut claim = claim_of(PVE);
+    claim.kinds = vec![WorkKind::Model];
+    claim.types = daemon_core::wire::MODEL_TYPES.to_vec();
+    claim.free = Free {
+        slots: 0,
+        memory_bytes: 0,
+        disk_bytes: 0,
+    };
+    Offer {
+        policy_permits: true,
+        ..offer(&claim)
+    }
+}
+
+#[test]
+fn k11_3_each_model_item_goes_to_a_daemon_that_offers_no_room_of_free() {
+    let daemon = model_only_offer();
+    for work_type in daemon_core::wire::MODEL_TYPES {
+        let job = model(work_type);
+        assert!(job.asked.limits.memory_bytes > 0 && job.asked.limits.disk_bytes > 0);
+        let decided = verdicts(&[job], &daemon, &[], at(3600));
+        assert_eq!(decided, [Verdict::Fits], "{work_type:?}");
+    }
+}
+
+#[test]
+fn a_job_of_k10_still_needs_the_room_that_it_asks() {
+    let mut claim = claim_of(PVE);
+    claim.free.memory_bytes = 0;
+    let decided = verdicts(&[queued(WorkType::Build)], &offer(&claim), &[], at(3600));
+    assert_eq!(decided, [Verdict::Memory]);
+}
+
 #[test]
 fn cap_010_a_policy_that_stops_the_node_stops_each_model_item_but_the_reducing_ones() {
     let stopped = model_offer(false);
@@ -68,6 +104,19 @@ fn cap_010_a_policy_that_stops_the_node_stops_each_model_item_but_the_reducing_o
     // The policy is of model work only: a job of K10 still goes to the node.
     let build = verdicts(&[queued(WorkType::Build)], &stopped, &[], at(3600));
     assert_eq!(build, [Verdict::Fits]);
+}
+
+#[test]
+fn a_keep_that_ends_a_pin_passes_a_stopping_policy_and_a_keep_that_sets_one_does_not() {
+    for (pinned, verdict) in [(false, Verdict::Fits), (true, Verdict::Policy)] {
+        let mut job = model(WorkType::ModelKeep);
+        job.asked.parameters =
+            serde_json::json!({ "keep": { "idleSeconds": 900, "pinned": pinned } });
+        assert_eq!(
+            verdicts(&[job], &model_offer(false), &[], at(3600)),
+            [verdict]
+        );
+    }
 }
 
 #[test]

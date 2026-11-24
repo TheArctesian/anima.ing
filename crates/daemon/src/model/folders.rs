@@ -1,13 +1,13 @@
 //! The folders of model work (Section 10): made with mode 0700, and refused when a different
 //! user owns one or a link replaces it.
 
-use std::fs::DirBuilder;
-use std::io;
+use std::fs::{DirBuilder, File};
+use std::io::{self, Read as _, Write as _};
 use std::os::fd::OwnedFd;
 use std::os::unix::fs::{DirBuilderExt as _, MetadataExt as _};
 use std::path::{Component, Path};
 
-use rustix::fs::{Mode, OFlags};
+use rustix::fs::{AtFlags, Mode, OFlags};
 
 use daemon_core::model_work::folders::Folders;
 
@@ -82,6 +82,66 @@ pub fn private_below(root: &Path, relative: &Path) -> io::Result<OwnedFd> {
         dir = next;
     }
     Ok(dir)
+}
+
+/// Writes `bytes` to the file `name` of the private folder `folder` below `root`, mode 0600: a new temporary
+/// file, then moved over `name` with `renameat`, so a reader sees the old file or the new one (Section 10).
+///
+/// # Errors
+/// An I/O error, or as [`private_below`].
+pub fn write_private(root: &Path, folder: &str, name: &str, bytes: &[u8]) -> io::Result<()> {
+    let folder = private_below(root, Path::new(folder))?;
+    let temporary = format!(".{name}");
+    let _ = rustix::fs::unlinkat(&folder, temporary.as_str(), AtFlags::empty());
+    let flags = OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::NOFOLLOW | OFlags::CLOEXEC;
+    let fd = rustix::fs::openat(
+        &folder,
+        temporary.as_str(),
+        flags,
+        Mode::from_raw_mode(0o600),
+    )?;
+    let mut file = File::from(fd);
+    file.write_all(bytes).and_then(|()| file.sync_all())?;
+    Ok(rustix::fs::renameat(
+        &folder,
+        temporary.as_str(),
+        &folder,
+        name,
+    )?)
+}
+
+/// The bytes of the file `name` of the private folder `folder`: a plain file of this user of at most `max` bytes,
+/// opened with no link followed.
+///
+/// # Errors
+/// An I/O error, or `InvalidData` for a file of a different form.
+pub fn read_private(root: &Path, folder: &str, name: &str, max: u64) -> io::Result<Vec<u8>> {
+    let folder = private_below(root, Path::new(folder))?;
+    let flags = OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC;
+    let file = File::from(rustix::fs::openat(&folder, name, flags, Mode::empty())?);
+    let meta = file.metadata()?;
+    let own = meta.uid() == rustix::process::geteuid().as_raw();
+    if !meta.is_file() || !own || meta.len() > max {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "not a file of model work",
+        ));
+    }
+    let mut bytes = Vec::new();
+    file.take(max).read_to_end(&mut bytes)?;
+    Ok(bytes)
+}
+
+/// Removes the file `name` of the private folder `folder`; a file that is not there is no error.
+///
+/// # Errors
+/// An I/O error.
+pub fn remove_private(root: &Path, folder: &str, name: &str) -> io::Result<()> {
+    let folder = private_below(root, Path::new(folder))?;
+    match rustix::fs::unlinkat(&folder, name, AtFlags::empty()) {
+        Ok(()) | Err(rustix::io::Errno::NOENT) => Ok(()),
+        Err(error) => Err(error.into()),
+    }
 }
 
 /// # Errors

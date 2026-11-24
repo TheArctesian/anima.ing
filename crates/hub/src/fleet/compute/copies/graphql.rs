@@ -3,6 +3,7 @@
 //! writes the copy, its job, the audit entry of the job and one audit entry and event of the
 //! copy in one transaction. An API key or an agent may ask, with its actor (R-326).
 
+mod load;
 mod types;
 
 use std::collections::HashMap;
@@ -10,6 +11,7 @@ use std::collections::HashMap;
 use async_graphql::{Context, Error as GraphQlError, ID, Object, Result};
 use serde_json::json;
 
+pub use load::ModelLoad;
 pub use types::{FoundModelView, FoundTool, HostPlace, HostPlaceKind, ModelCopyView, PullProgress};
 
 use super::{Copy, Error, Listed};
@@ -46,6 +48,13 @@ fn to_graphql(error: Error) -> GraphQlError {
             "That machine already has this variant ({}). Remove it first to pull it again.",
             types::state_words(state)
         )),
+        Error::NotOnMachine(state) => invalid(&[FieldError::new(
+            "id",
+            format!(
+                "The machine does not have this copy now ({}).",
+                types::state_words(state)
+            ),
+        )]),
         Error::Jobs(jobs::Error::NoFit(reason)) => invalid(&[FieldError::new("deviceId", reason)]),
         other => internal(other),
     }
@@ -96,11 +105,13 @@ impl Query {
         let db = pool(ctx)?;
         let listed = super::list(db).await.map_err(to_graphql)?;
         let names = device_names(db).await?;
+        let mut loads = super::loads::by_copy(db).await.map_err(to_graphql)?;
         Ok(listed
             .into_iter()
             .map(|listed| {
                 let name = names.get(&listed.copy.device).cloned().unwrap_or_default();
-                ModelCopyView::new(listed, name)
+                let load = loads.remove(&(listed.copy.device, listed.copy.id));
+                ModelCopyView::new(listed, name).with_load(load)
             })
             .collect())
     }
@@ -130,6 +141,15 @@ async fn device_names(db: &sqlx::PgPool) -> Result<HashMap<DeviceId, String>> {
         .into_iter()
         .map(|device| (device.id, device.name))
         .collect())
+}
+
+/// What a copy keeps on its machine (K11 Section 11.1).
+#[derive(async_graphql::InputObject)]
+pub struct ModelKeepInput {
+    /// A pinned copy stays loaded, and comes back when other work took its memory (FIT-023).
+    pinned: bool,
+    /// The seconds with no use before the machine unloads the copy, from 60 to 86400; 900 when not given (FIT-022).
+    idle_seconds: Option<u32>,
 }
 
 #[derive(Default)]
@@ -222,6 +242,49 @@ impl Mutation {
         commit(tx).await?;
         let listed = listed.ok_or_else(|| coded("No such model copy.", ErrorCode::NotFound))?;
         Ok(ModelCopyView::new(listed, device.name))
+    }
+
+    /// Keeps the copy loaded on its machine for `idleSeconds` after its last use (default 900), and pins it or
+    /// ends its pin (FIT-022, FIT-023; K11 Section 11.1). Gives the job of the machine.
+    #[graphql(guard = "Authenticated")]
+    async fn keep_model_copy(&self, ctx: &Context<'_>, id: ID, keep: ModelKeepInput) -> Result<ID> {
+        use daemon_core::model_work::memory::keep::{DEFAULT_IDLE_SECONDS, IDLE_SECONDS, Keep};
+        let ModelKeepInput {
+            pinned,
+            idle_seconds,
+        } = keep;
+        let id: CopyId = id
+            .parse()
+            .map_err(|_| invalid(&[FieldError::new("id", "That id is not valid.")]))?;
+        let idle_seconds = idle_seconds.unwrap_or(DEFAULT_IDLE_SECONDS);
+        if !IDLE_SECONDS.contains(&idle_seconds) {
+            let words = "Give from 60 seconds to 86400 seconds (one day).";
+            return Err(invalid(&[FieldError::new("idleSeconds", words)]));
+        }
+        let keep = Keep {
+            idle_seconds,
+            pinned,
+        };
+        let asker = asker(ctx)?;
+        let trail = Trail::from_context(ctx)?;
+        let now = trail.now;
+        let mut tx = begin(ctx).await?;
+        let (copy, job) = super::loads::keep(&mut tx, (id, keep), asker, now)
+            .await
+            .map_err(to_graphql)?;
+        let device = devices::get(pool(ctx)?, copy.device)
+            .await
+            .map_err(internal)?;
+        let pin = if pinned { "pin" } else { "not pin" };
+        let message = format!(
+            "Asked {} to {pin} {} and keep it loaded for {idle_seconds} seconds after its last use.",
+            device.name,
+            copy.address()
+        );
+        let audit = entry(&device, &copy, (AuditAction::Update, message));
+        trail.write(&mut tx, audit).await.map_err(internal)?;
+        commit(tx).await?;
+        Ok(ID(job.to_string()))
     }
 
     /// Removes the copy (PULL-009): a pull that waits stops and the copy goes (null); else the

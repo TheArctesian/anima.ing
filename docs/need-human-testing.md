@@ -65,6 +65,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-160 | A crash or a stall of the child fetch process is reported as `fetch_failed`, and a source that does not answer as `source_failed` (R-406) | A daemon of this build in a test folder on the Mac, and a network that a person can cut | Open |
 | HT-NEW-launcher | The model launcher where AppArmor restricts user namespaces: the admin step of `anima-daemon install`, the checks of the daemon, the refusal of a runtime that is not signed, the runtime profile, and `anima-daemon uninstall` (task L1-6c; R-327, R-347) | An Ubuntu 24.04 computer (not `pop-os`, which has no restriction) with `kernel.apparmor_restrict_unprivileged_userns = 1`, sudo, and a daemon of this build in a test folder | Open |
 | HT-NEW-modelpull | A pull of a real Hugging Face copy from Hosting > Models, `anima model pull` and the MCP tools: the progress, a cut that continues, a wrong SHA-256, a full disk, and the removal (task L1-7) | A hub of the branch `compute/l1-7`, the desktop application of that build, and a daemon of that build in a test folder on `pop-os`; for steps 3 to 7, the claim loop in the running daemon (the wiring task of L1-6) | Open |
+| HT-NEW-modelloading | Loads, unloads, the idle time and the pin of real copies in one `llama-server` router on `pop-os`: the room for a load, an idle unload, a displaced pin and its return, the keep file across a restart (task L1-16; K11 Section 11.1) | A daemon of the branch `compute/l1-15` in a test folder on `pop-os`, a test hub that gives model items, and two pulled GGUF copies whose sizes together are larger than half of the main memory | Open |
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
 | HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Passed |
@@ -5447,6 +5448,41 @@ no test shows that a model that the page says fits does load and run in that mem
 7. Load a variant that the page says fits on the GPU of `pop-os`, at the context of step 4, in llama.cpp or Ollama on
    that machine.
    Expected: the model loads with all its layers on the GPU and does not run out of memory.
+### HT-NEW-modelwiring: the running daemon claims model work on `pop-os`, and the switch at the machine stops it
+
+Built on the branch `compute/l1-6d` (task L1-6d of compute-plan.md; USE-004, CAG-002, CAG-003; SF-259, SF-294, SF-317;
+K10 Sections 3 and 4): the switch at the machine (`crates/daemon/src/work/switch.rs`, the file `work-switch` in the
+daemon folder, set with `anima-daemon work on` and `anima-daemon work off`); the model work of `anima-daemon run`
+(`crates/daemon/src/runtime/model_work.rs`): the end of the servers and of the runtime installs of an earlier run, a
+claim each 10 seconds while the switch is on and one each hour while it is off, the check of the servers each 15
+seconds, and the stop of each server at the stop of the daemon; and the refresh of the unit of a Linux user at the start
+of `run` (`crates/daemon/src/units/refresh.rs`). The tests use a fake hub and temporary folders; on `pop-os` the test of
+the stop of a server is skipped, because AppArmor needs the root launcher of L1-6c. The tests do not run the unit of
+systemd, the real hub, or a wait of an hour.
+
+1. On `pop-os`, build the daemon of the branch and put it where the unit starts it, then run
+   `systemctl --user restart anima-daemon.service`.
+   Expected: `journalctl --user -u anima-daemon -n 20` has no line "the unit file is older than this daemon". If the
+   unit file was older, the log of the first start says nothing of it, and the daemon starts again by itself with the
+   new unit (`systemctl --user show anima-daemon -p Delegate` says `Delegate=yes`).
+2. In the desktop application, open Hosting > Models and press Find models.
+   Expected: within one minute Found on the machines has a group `pop-os`.
+3. Run `anima-daemon work off`, wait 20 seconds, and press Find models again.
+   Expected: the command says that the machine takes no work. No new row comes; the hub shows the switch of `pop-os` as
+   off. `ls -l ~/.config/anima-daemon/work-switch` shows mode `-rw-------` and the user of the daemon.
+4. Run `anima-daemon work on`, wait 20 seconds, and press Find models again.
+   Expected: the found list comes again, with no restart of the daemon.
+5. With a server running (after L1-8), run `systemctl --user stop anima-daemon.service`.
+   Expected: within 15 seconds no process of the runtime runs (`pgrep -a llama-server` prints nothing).
+6. Adopt a found model of more than 20 GB (Found on the machines > Use in Anima).
+   Expected: the item stays Running while the daemon reads the file, with a report about each 15 seconds in the log of
+   the hub, and ends Done; it is not lost after 90 seconds and given to a second claim.
+7. From a network outside the United States (a VPN in Europe or Asia is enough), pull a variant of 1 GB or more.
+   Expected: the pull ends Downloaded. If it fails with "fetch failed", note the host of the redirect
+   (`curl -sI https://huggingface.co/<repository>/resolve/main/<file> | grep -i location`): the fixed list of hosts in
+   K11 Section 7 has only `us.aws.cdn.hf.co` for the Xet store, and each region may need its own host.
+
+Result: Open.
 
 ### HT-NEW-foundmodels: the models of Ollama, LM Studio and Hugging Face on `pop-os`, used where they are
 
@@ -5457,9 +5493,9 @@ the walk of the fixed folders and of `modelFolders` (`crates/daemon/src/model/fo
 `anima model found`, `anima model find` and `anima model use`, the MCP tools `anima_model_found`, `anima_model_find` and
 `anima_model_use`; and Found on the machines in Hosting > Models (`apps/client/src/lib/model-copies/FoundList.svelte`).
 The tests use made folders of each program in a temporary folder and a fake hub. They do not read the real folders of
-Ollama, LM Studio or Hugging Face, the system folder of Ollama, or a model of several gigabytes. The running daemon does
-not claim model work yet (the wiring task of L1-6), so steps 2 to 6 wait for it; no server starts with a copy before
-task L1-8, so step 5 also waits for L1-8. A probe of the library of the daemon on the real folders of `pop-os` (2026-11-23)
+Ollama, LM Studio or Hugging Face, the system folder of Ollama, or a model of several gigabytes. The running daemon
+claims model work from task L1-6d (branch `compute/l1-6d`; HT-NEW-modelwiring), so steps 2 to 6 wait for that branch on
+`pop-os`; no server starts with a copy before task L1-8, so step 5 also waits for L1-8. A probe of the library of the daemon on the real folders of `pop-os` (2026-11-23)
 did the walk and `copy_adopt` of steps 2 and 3 with no hub: see the row of L1-22. It found the models of the Hugging Face
 cache only after the corrections of R-NEW-privategroup (umask 002) and of the shared store of Unsloth Studio.
 
@@ -5480,6 +5516,44 @@ cache only after the corrections of R-NEW-privategroup (umask 002) and of the sh
    Expected: the start fails with "A file of the found model is gone, or the machine no longer reads its folder."
 6. Remove the copy of step 3 with Remove.
    Expected: the row goes; `ollama list` is the same as before step 5.
+
+Result: Open.
+
+### HT-NEW-modelloading: the loads, the idle time and the pin of real copies on `pop-os`
+
+Built on the branch `compute/l1-15` (task L1-16 of compute-plan.md; FIT-020 to FIT-025; K11 Section 11.1): the rules of
+the memory in `crates/daemon-core/src/model_work/memory/` (the room for a load, the idle copies, the return of a
+displaced pin and its interval, the keep file), the preset and the answers of the router in
+`crates/daemon-core/src/model_work/router.rs`, and the loads in `crates/daemon/src/model/load/` (`model_load`,
+`model_unload`, `model_keep`, the check each 15 seconds, and the members `models` and `memory` of the report). The tests
+cover the rules with a test clock and a keep for a copy with no server. They do not run a real `llama-server` router, a
+real load in memory, a wait of 15 minutes, or a restart of the daemon with a pin. The hub sends `model_keep` for
+`keepModelCopy` (`anima model pin`, `anima model unpin`, the MCP tool `anima_model_keep`) and shows the load of a copy
+from the last model report (`ModelCopy.load`, the column LOAD of `anima model copies`); a hub test covers both with a
+written report. The hub does not send `model_load` or `model_unload` yet (the router, L1-17), so a test hub sends them.
+
+1. On `pop-os`, start a `llama_server` server with `server_start`, then send `model_load` for copy A with
+   `"keep": { "idleSeconds": 120, "pinned": true }`.
+   Expected: the item ends Done within 2 minutes. `model_report` lists A in `models` of the server as `ready`, with
+   `pinned` true, and `memory` gives `reservedBytes` for `main` at least the size of the files of A.
+   `ls -l ~/.local/share/anima-daemon/model-state/keep/` (or the state folder of the test) shows `<A>.json`, mode
+   `-rw-------`.
+2. Send one chat request to A on the port of the server.
+   Expected: while it runs, `model_report` shows A as `active`; after it, `usedSecondsAgo` is 0, then grows.
+3. Send `model_load` for copy B, where A and B together do not fit in the main memory.
+   Expected: A is unloaded first (it is pinned but idle), B loads, and `memory` of `main` lists A in `displaced`.
+4. Wait until B has been idle for its idle time (900 seconds by default), and 15 seconds more.
+   Expected: B is unloaded, then A loads again by itself, and `displaced` is empty.
+5. On a hub of the branch, run `anima model copies`, then `anima model unpin pop-os <address of A> --idle-seconds 120`,
+   and wait 3 minutes.
+   Expected: before the unpin, the column LOAD of A says `READY, pinned` (after a `model_report`). The unpin prints a
+   job; A is unloaded; `<A>.json` holds `"pinned": false`; after the next `model_report`, LOAD of A is empty.
+6. Load A again with a pin, then restart the daemon (`systemctl --user restart anima-daemon.service`) and send
+   `server_start` again.
+   Expected: no copy loads by itself at the start of the server; within one minute after the server is ready, A loads
+   again as a return, because its keep file marked it displaced.
+7. Send `model_load` for a found copy (an Ollama model that Use in Anima adopted).
+   Expected: the item is refused with `copy_not_ready` (MW-P15 of K11).
 
 Result: Open.
 

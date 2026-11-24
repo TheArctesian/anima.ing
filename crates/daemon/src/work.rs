@@ -6,6 +6,7 @@ pub mod permitted;
 pub mod record;
 pub mod refusal;
 mod shape;
+pub mod switch;
 #[cfg(test)]
 mod tests;
 pub mod types;

@@ -7,6 +7,7 @@ use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::model_library::gib;
 use crate::output::Table;
+use crate::output::text::enum_name;
 
 pub type Copy = model_copies::ModelCopiesModelCopies;
 
@@ -43,7 +44,9 @@ impl CopiesArgs {
 }
 
 fn table(copies: &[Copy]) -> Table {
-    let mut table = Table::new(vec!["MACHINE", "ADDRESS", "SIZE", "STATE", "REASON", "ID"]);
+    let mut table = Table::new(vec![
+        "MACHINE", "ADDRESS", "SIZE", "STATE", "LOAD", "REASON", "ID",
+    ]);
     for copy in copies {
         let progress = copy
             .progress
@@ -54,9 +57,23 @@ fn table(copies: &[Copy]) -> Table {
             copy.address.as_str().into(),
             gib(copy.size_bytes).into(),
             state_cell(&copy.state, progress).into(),
+            load_cell(copy.load.as_ref()).into(),
             copy.reason.as_deref().unwrap_or("").into(),
             copy.id.as_str().into(),
         ]);
     }
     table
+}
+
+/// Where the copy is in the memory of its machine: its state, and "pinned" for a pinned copy.
+fn load_cell(load: Option<&model_copies::ModelCopiesModelCopiesLoad>) -> String {
+    let Some(load) = load else {
+        return String::new();
+    };
+    let state = enum_name(&load.state);
+    if load.pinned {
+        format!("{state}, pinned")
+    } else {
+        state
+    }
 }

@@ -14,7 +14,7 @@ fn the_machine_settings_have_the_defaults_of_the_operator() {
     assert!(!settings.sandbox && !settings.second_hash);
     assert_eq!(settings.revision_age_days, 0);
     assert_eq!(settings.organisations, ["unsloth", "mlx-community"]);
-    assert_eq!(settings.agent_types.len(), 11);
+    assert_eq!(settings.agent_types.len(), 12);
     let strict = MachineSettings::parse(
         r#"{"sandbox":true,"agentTypes":["model_report"],"organisations":["unsloth"]}"#,
     )
@@ -46,9 +46,16 @@ fn the_lists_of_the_program_refuse_old_releases() {
 
 #[test]
 fn the_command_line_binds_loopback_and_holds_no_key() {
-    let words = llama_arguments(&ServerSettings::default(), 41000);
+    let words = llama_arguments(
+        &ServerSettings::default(),
+        41000,
+        &PathBuf::from("/s/preset.ini"),
+    );
     assert_eq!(&words[..4], ["--host", "127.0.0.1", "--port", "41000"]);
     assert!(words.iter().all(|word| !word.contains("key")));
+    // The daemon loads: a request never loads a copy by itself (K11 Section 11.1).
+    assert!(words.windows(2).any(|pair| pair == ["--models-max", "0"]));
+    assert!(words.iter().any(|word| word == "--no-models-autoload"));
     let env = environment(&PathBuf::from("/s/tmp"), &PathBuf::from("/r/bin"), "k");
     let names: Vec<&str> = env.iter().map(|(name, _)| name.as_str()).collect();
     assert_eq!(

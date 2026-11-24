@@ -3028,7 +3028,7 @@ What it is: The 15-second loopback check, the restarts, the limit of the tempora
 
 The correction: A drop of a running server, and so a drop of the node or of the daemon, ends the whole tree. The loop is still not wired: the switch at the machine (USE-004) does not exist in the daemon, so no claim is made and no server can start in the running daemon. The second read (2026-11-20, commit `df8aca4fc`) confirmed that nothing outside `src/model/` builds a `Node`. The wiring task must: call `Node::sweep` when the daemon starts, before any claim; call `Servers::cycle` every 15 seconds; call `stop_all` when the daemon stops; refresh the unit: when the unit file on disk differs from the unit that this version renders, write it again and run `install` again (the decision of the orchestrating session, not a ruling of the operator; the wiring may take this code from task U6 of the update plan if U6 has it by then, or build the small check itself, and it does not ship without it; until then, HT-119 step 9 is the manual step); and start servers from a worker of the async runtime, never from `spawn_blocking` (SF-294). No server can start before that wiring: the branch is not runnable as a server host until then. The plan row of L1-6 records this. Test: `the_whole_group_ends_when_the_node_drops`.
 
-State: Open. The drop is fixed on the branch `compute/l1-6`; the wiring waits for USE-004. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+State: Open. The drop is fixed on the branch `compute/l1-6`. The wiring with the switch of USE-004 is built on the branch `compute/l1-6d` (task L1-6d, 2026-11-23): the sweep, the check each 15 seconds, `stop_all` at the stop and the refresh of the unit; a separate read decides the state. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
 
 ### SF-260: The install blocks the async runtime and has no total time limit. Medium
 
@@ -3220,7 +3220,7 @@ What it is: When the daemon ended, the child went on until its own download dead
 
 The correction: The order carries the process id of the daemon. On Linux the child sets the parent-death signal to SIGKILL and then checks that its parent is that process; if not, it exits. On each system the daemon keeps the standard input of the child open while it runs, and a thread of the child exits when that input closes. The unpack runs on a thread with the deadline `UNPACK_DEADLINE` (25 minutes); past it the child gives back `archive_rejected`. The daemon waits the download, the unpack and 5 minutes. A child that is killed can leave a folder `.unpack-*` below `runtimes/<runtime>/`: the wiring task must remove such stale folders when the daemon starts (not wired in this task). Tests: `the_child_ends_when_its_parent_is_not_the_daemon_of_the_order` (Linux), `the_child_ends_when_its_input_closes_before_the_whole_order`, `the_deadlines_grow_with_the_size_and_stop_at_a_limit`. The thread that watches the input is not tested apart, because a test cannot hold the child after its order without a connection; HT-124 step 3 covers it.
 
-State: Closed in `04679df6a`; the same separate reviewer read it again and closed it on 2026-11-21 (the second read). The sweep of `.unpack-*` waits for the wiring task. Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+State: Closed in `04679df6a`; the same separate reviewer read it again and closed it on 2026-11-21 (the second read). The sweep of `.unpack-*` is built on the branch `compute/l1-6d` (task L1-6d, `install::clear_unpacks`). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
 
 ### SF-318: The unpack folder was opened by path only. Note
 
@@ -3352,7 +3352,7 @@ What it is: The loopback check read `/proc/<pid>/net/*` of the first process of 
 
 The correction: The daemon reads the tables of each distinct network namespace (`/proc/<pid>/ns/net`) of the members and merges them. A member that still runs but whose `fd` or `ns` files do not read (it made itself not dumpable) fails the read, so the check fails closed. Linux code, not compiled on the Mac of the build; HT-119.
 
-State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+State: Open. Built on the branch `compute/l1-6` (not pushed). From task L1-6d (branch `compute/l1-6d`) the running daemon starts each server from a task of the async runtime, never from `spawn_blocking`. Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 
 ### SF-283: An unreadable cgroup or an empty tree passed the loopback check. Medium
 
@@ -3364,7 +3364,7 @@ What it is: `members` read `cgroup.procs` with a default of nothing, and an empt
 
 The correction: `members` gives an I/O error, `poll` refuses an empty tree while the main process runs, and the socket table of an empty tree is an error. Each of these ends the server with `listener`. Test: `an_empty_tree_of_a_running_server_does_not_read_as_a_safe_table` (the Linux read is not compiled on the Mac).
 
-State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+State: Open. Built on the branch `compute/l1-6` (not pushed). From task L1-6d (branch `compute/l1-6d`) the running daemon starts each server from a task of the async runtime, never from `spawn_blocking`. Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 
 ### SF-286: One large entry could write past the disk reserve. Low
 
@@ -3376,7 +3376,7 @@ What it is: The free disk was asked before each entry only, so one entry of up t
 
 The correction: The copy of an entry asks the disk again after each 64 MiB. Test: `the_disk_is_asked_again_while_one_large_entry_is_written`.
 
-State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+State: Open. Built on the branch `compute/l1-6` (not pushed). From task L1-6d (branch `compute/l1-6d`) the running daemon starts each server from a task of the async runtime, never from `spawn_blocking`. Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 
 ### SF-294: Races in the launcher of a server. Low
 
@@ -3388,7 +3388,7 @@ What it is: If the daemon ended between the fork and the parent-death signal, th
 
 The correction: The daemon gives its process id to the launcher, which exits with code 125 when its parent is no longer the daemon after the signal is set. The documentation of `spawn` and `launch` says that a start must come from a thread that lives as long as the daemon. No test: Linux only, and a thread rule (HT-119).
 
-State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+State: Open. Built on the branch `compute/l1-6` (not pushed). From task L1-6d (branch `compute/l1-6d`) the running daemon starts each server from a task of the async runtime, never from `spawn_blocking`. Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 
 ### SF-295: A cgroup that did not empty blocked the next start, with no log, and no process limit; blocking calls on async threads. Low
 
@@ -3400,7 +3400,7 @@ What it is: The end of a cgroup gave up after 1 second with no log, and the next
 
 The correction: A cgroup that does not empty is logged and left; each start has a cgroup of its own name. `pids.max` is 512 when the controller is delegated (a placeholder value in the contract, Section 9). The end and the signals of `kill` and `stop`, and the read of `cgroup.procs`, run on a blocking thread; `lsof` was already a child process with a timeout. The drop of a running server still ends its tree on its own thread, because a drop cannot wait. No test on the Mac for the cgroup part (HT-119).
 
-State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+State: Open. Built on the branch `compute/l1-6` (not pushed). From task L1-6d (branch `compute/l1-6d`) the running daemon starts each server from a task of the async runtime, never from `spawn_blocking`. Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 
 ### SF-296: The sweep trusted the cgroup path in a record that the runtime can write. Low
 
@@ -3412,7 +3412,7 @@ What it is: A forged `tree.json` could make the daemon write `cgroup.kill` in an
 
 The correction: The daemon ends only a cgroup named `anima-model-` directly below its own cgroup. The identities in the record are still trusted (accepted risk while the sandbox is off; with the sandbox, keep the records out of reach of the runtime). Linux code, not compiled on the Mac (HT-119).
 
-State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+State: Open. Built on the branch `compute/l1-6` (not pushed). From task L1-6d (branch `compute/l1-6d`) the running daemon starts each server from a task of the async runtime, never from `spawn_blocking`. Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 
 ### SF-278: With a delegated cgroup, a runtime can leave the cgroup of its server. Medium
 
@@ -3594,7 +3594,7 @@ What it is: A CRC that does not match, or a cut stream, came through `io::copy` 
 
 The correction: The copy tells a read error (`archive_rejected`) from a write error (`limit_disk`). Test: `an_entry_whose_bytes_break_their_check_is_a_rejected_archive`.
 
-State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+State: Open. Built on the branch `compute/l1-6` (not pushed). From task L1-6d (branch `compute/l1-6d`) the running daemon starts each server from a task of the async runtime, never from `spawn_blocking`. Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 
 ### SF-275: The three root folders were made with a recursive create. Low
 
@@ -3606,7 +3606,7 @@ What it is: `private_folder` made the roots and their missing parents in one rec
 
 The correction: It makes each missing part on its own with mode 0700 and checks each part that it made, and the root: a plain folder of this user, not a link. A parent that was already there is used as it is. Test: `the_missing_parents_of_a_folder_of_model_work_are_made_private`.
 
-State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+State: Open. Built on the branch `compute/l1-6` (not pushed). From task L1-6d (branch `compute/l1-6d`) the running daemon starts each server from a task of the async runtime, never from `spawn_blocking`. Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 ## The security review of the model work contract K11 (SEC-C-012, 2026-11-22)
 
 A separate reviewer reviewed contract K11, [model-work.md](../contracts/compute/model-work.md), version 0.3, against `origin/dev` on 2026-11-22. This is the review SEC-C-012 that R-344 put after the acceptance. "Severity" is the word of the reviewer. By the operator's relayed direction, the Medium findings are tightening inside the contract that R-344 permits, with no new ruling; the text of K11 now states each correction as its rule, and the pull (task L1-7) is built to the tightened text. Each entry stays Open until code exists and the operator closes it.

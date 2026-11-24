@@ -3,7 +3,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use anima_daemon::model::cycle::Node;
-use anima_daemon::model::supervise::Servers;
+use anima_daemon::model::supervise::Shared;
 use daemon_core::model_work::folders::Folders;
 use daemon_core::model_work::machine::MachineSettings;
 use daemon_core::model_work::names::{Backend, Runtime};
@@ -213,12 +213,41 @@ pub fn node_on(root: &Path, ports: std::ops::RangeInclusive<u16>) -> Node {
             sources: vec![entry()],
         },
         settings: MachineSettings::default(),
-        servers: Servers::default(),
+        servers: Shared::default(),
+        loads: std::sync::Arc::new(anima_daemon::model::load::Shared::open(folders(root))),
         switch_on: true,
         started: Instant::now(),
         reserve: 0,
         launcher: std::path::PathBuf::from(env!("CARGO_BIN_EXE_anima-daemon")),
         ports,
         tool_folders: Vec::new(),
+        report_every: anima_daemon::model::pull::watch::EVERY,
     }
+}
+
+/// The reports of one attempt, from its claim: each change is one that the hub permits (K10
+/// Section 7, `WorkState::may_become`, which the hub checks), the last one is final, and its
+/// outcome is the word of its final state.
+pub fn assert_k10_states<'a>(bodies: impl IntoIterator<Item = &'a serde_json::Value>) {
+    use daemon_core::wire::WorkState;
+    let mut from = WorkState::Claimed;
+    let mut last = &serde_json::Value::Null;
+    for body in bodies {
+        let to: WorkState =
+            serde_json::from_value(body["state"].clone()).expect("a state of K10 Section 7");
+        assert!(from.may_become(to), "{from:?} to {to:?}: {body}");
+        (from, last) = (to, body);
+    }
+    let outcome = match from {
+        WorkState::Done => "succeeded",
+        WorkState::Refused => "refused",
+        WorkState::Stopped => "stopped",
+        WorkState::Failed => "failed",
+        other => panic!("the attempt ends in {other:?}, not a final state"),
+    };
+    assert_eq!(
+        last["result"]["outcome"],
+        serde_json::json!(outcome),
+        "{last}"
+    );
 }

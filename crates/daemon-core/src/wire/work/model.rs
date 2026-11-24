@@ -23,6 +23,15 @@ impl WorkResult {
             _ => None,
         }
     }
+
+    /// The copies that each server holds, of a `model_report` (K11 Section 11.1); `None` for each other result.
+    #[must_use]
+    pub fn servers(&self) -> Option<&[ServerLoads]> {
+        match &self.model {
+            Some(ModelOutcome::State(state)) => Some(&state.servers),
+            _ => None,
+        }
+    }
 }
 
 /// The `model` member of a result: a copy outcome (K11 Section 3), or the model state that
@@ -34,12 +43,37 @@ pub enum ModelOutcome {
     State(ModelState),
 }
 
-/// The model state of `model_report` as the hub keeps it (K11 Section 8).
+/// The model state of `model_report` as the hub keeps it (K11 Section 8): the time, `found`, and the
+/// copies that each server holds (Section 11.1).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModelState {
     pub at: String,
     #[serde(default)]
     pub found: Vec<FoundEntry>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub servers: Vec<ServerLoads>,
+}
+
+/// The copies that one server holds in memory (K11 Section 11.1, `servers[].models`); the hub keeps
+/// no other member of a server here.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServerLoads {
+    pub server: Uuid,
+    #[serde(default)]
+    pub models: Vec<LoadEntry>,
+}
+
+/// One copy that a server holds (K11 Section 11.1).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoadEntry {
+    pub copy: Uuid,
+    /// `loading`, `ready`, `active` or `unloading`.
+    pub state: String,
+    pub reserved_bytes: u64,
+    pub idle_seconds: u32,
+    pub pinned: bool,
+    pub used_seconds_ago: u64,
 }
 
 /// A model that a different program keeps on the machine (K11 Sections 2.3 and 8): its key,
