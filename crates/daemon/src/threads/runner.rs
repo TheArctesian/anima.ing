@@ -33,6 +33,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use agent_threads::control::{Change, Limits, Reply};
+use agent_threads::drive::Program;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -304,6 +305,7 @@ impl Runner {
     /// [`NotSent::Held`] when a line was held back.
     async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, NotSent> {
         let key = id.to_string();
+        let grok = self.threads.get(&id).map(Thread::program) == Some(Program::Grok);
         let mut last_write = None;
         let (mut held, mut put_back) = (false, false);
         for step in steps {
@@ -318,13 +320,7 @@ impl Runner {
                 continue;
             }
             // A refused dispatch has already published the corrected state.
-            if (put_back
-                || (held
-                    && self.threads.get(&id).is_some_and(|thread| {
-                        thread.program() == agent_threads::drive::Program::Grok
-                    })))
-                && matches!(step, Step::Change(Change::State { .. }))
-            {
+            if (put_back || (held && grok)) && matches!(step, Step::Change(Change::State { .. })) {
                 continue;
             }
             let Some(action) = step.command(&key) else {
