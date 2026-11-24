@@ -41,17 +41,20 @@
 <div class="sentinel" aria-hidden="true" bind:this={sentinel}></div>
 <header class:stuck>
   <div class="top">
-    <nav class="crumb" aria-label="Breadcrumb">
-      <a href={resolve(back.to)}>{back.label}</a>
-      {#if title === null}
-        <span class="placeholder" aria-hidden="true"></span>
+    <div class="identity">
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href={resolve(back.to)}><Icon name="carbon:chevron-left" size="sm" />{back.label}</a>
+      </nav>
+      {#if title !== null}
+        <div class="name">
+          <span class="mark"><Icon name={icon} size="lg" /></span>
+          <h1 {title} {@attach shared === undefined ? undefined : sharedItem(shared)}>{title}</h1>
+        </div>
+        {#if meta}<div class="meta">{@render meta()}</div>{/if}
       {:else}
-        <span class="slash" aria-hidden="true">/</span>
-        <span class="mark"><Icon name={icon} size="md" /></span>
-        <h1 {title} {@attach shared === undefined ? undefined : sharedItem(shared)}>{title}</h1>
+        <span class="placeholder" aria-hidden="true"></span>
       {/if}
-    </nav>
-    {#if meta}<div class="meta">{@render meta()}</div>{/if}
+    </div>
     {#if actions}<div class="actions">{@render actions()}</div>{/if}
   </div>
   {#if reason}
@@ -72,10 +75,10 @@
     z-index: var(--layer-sticky);
     display: flex;
     flex-direction: column;
-    margin: calc(var(--space-3) * -1) calc((var(--page-gutter, var(--space-6)) + var(--page-room, 0px)) * -1) var(--space-4);
+    margin: calc(var(--space-3) * -1) calc((var(--page-gutter, var(--space-6)) + var(--page-room, 0px)) * -1) var(--space-3);
     padding: var(--space-3) calc(var(--page-gutter, var(--space-6)) + var(--page-room, 0px)) 0;
     border-block-end: var(--border-thin) solid var(--border-subtle);
-    background: var(--surface-base);
+    background: var(--surface-sunken);
   }
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the bar pins under it. */
@@ -92,20 +95,32 @@
     container-type: inline-size;
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2) var(--space-4);
+    align-items: end;
+    gap: var(--space-3) var(--space-5);
     min-block-size: var(--control-md);
   }
 
-  .crumb {
+  .identity {
+    display: grid;
+    flex: 1 1 14rem;
+    gap: var(--space-1);
+    min-inline-size: 0;
+  }
+
+  .name {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: var(--space-2);
     min-inline-size: 0;
   }
 
   .crumb a {
-    color: var(--text-tertiary);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-inline-start: calc(var(--space-1) * -1);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
     text-decoration: none;
     transition: color var(--duration-fast) var(--ease-enter);
   }
@@ -120,36 +135,37 @@
     border-radius: var(--radius-sm);
   }
 
-  .slash {
-    color: var(--text-quiet);
-  }
-
   .mark {
     display: inline-flex;
-    color: var(--accent);
-  }
-
-  /* The name's place while it loads: as tall as the name, and empty, so nothing flashes (D-13, MOT-007). */
-  .placeholder {
-    block-size: calc(var(--text-xl) * var(--leading-tight));
+    align-self: start;
+    padding-block-start: var(--space-1);
+    color: var(--text-secondary);
   }
 
   h1 {
+    display: -webkit-box;
+    min-inline-size: 0;
     margin: 0;
     overflow: hidden;
-    font-size: var(--text-xl);
+    font-size: var(--text-2xl);
     font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
     letter-spacing: var(--tracking-display);
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .placeholder {
+    block-size: calc(var(--text-2xl) * var(--leading-tight) + var(--control-sm) + var(--space-1));
   }
 
   .meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2) var(--space-4);
+    gap: var(--space-1) var(--space-3);
     min-inline-size: 0;
     color: var(--text-tertiary);
   }
@@ -192,6 +208,7 @@
 
   .tabs {
     margin-block-start: var(--space-3);
+    margin-inline: calc(var(--space-3) * -1);
   }
 
   /* The strip sits on the bar's own rule; `header` outweighs the strip's own margin, whichever stylesheet loads last. */
@@ -201,6 +218,17 @@
 
   .tabs :global([role='tablist']) {
     box-shadow: none;
+  }
+
+  .tabs :global([role='tab']) {
+    min-block-size: var(--space-10);
+  }
+
+  @media (pointer: coarse) {
+    .tabs :global([role='tab']),
+    .actions :global(button) {
+      min-block-size: var(--target-min-touch);
+    }
   }
 
   /* Reduced motion follows the Settings choice (MOT-043): On reduces whatever the OS says, Off keeps full motion. */

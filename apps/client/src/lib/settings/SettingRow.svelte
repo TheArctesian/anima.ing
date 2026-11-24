@@ -183,6 +183,12 @@
 
     .control {
       justify-content: start;
+      flex-wrap: wrap;
+      min-inline-size: 0;
+    }
+
+    .control :global(select) {
+      max-inline-size: 100%;
     }
   }
 </style>

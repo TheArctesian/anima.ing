@@ -31,9 +31,11 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
+| HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
+| HT-183 | Check the Overview and device tabs for the Hub and Pop!_OS (M2-7) | iPad with a current build, and a linked Linux device with several metric types | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
 | HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
 | HT-176 | On Linux the person starts a thread and answers a request through the installed daemon, and an agent still cannot (DEF-015, R-315) | The Linux computer `pop-os` with `claude` signed in, and a build of the branch `fix/peer-environ-userns` installed as the user unit | Open |
@@ -213,6 +215,15 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - State: Open.
 - On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. Keep the app open for two samples and check that CPU also shows. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
 - On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
+
+### HT-183: Device Overview and tabs on iPad
+
+- State: Open.
+- Open the Hub and Pop!_OS Overview pages in landscape and portrait. Check that the charts have room and the Connect explanation stays within the page.
+- Check that the device name, address and connection actions fit above the tabs in both orientations. Switch tabs and return to Overview. On a phone, verify that the health summary appears before Metrics and its Details disclosure holds the check history.
+- Select each time range. Check that the charts keep their values and that axis labels fit. Check that percent charts have a subtle dashed threshold guide. Check that uptime shows one row per time window, with the labels and values at the same size and the timer icon sized to the heading. 100% appears without decimal zeros. On the health strip, Status, Uptime, and Checks use matching spacing. Maintenance reads On or Off.
+- Check that the latest reading and the peak of the selected range are labeled separately. Check that the lines for read and write are distinguishable.
+- On a short phone and an iPad, switch resources and ranges, expand All resource charts, and follow View storage on a device with a full volume. Confirm Storage is already expanded and shows each volume's usage and free capacity when known. Open Settings by a direct link and verify the selected destination is visible in the phone tab row or More.
 
 ### HT-148: phone Devices, offline notice and Integrations (M2-5)
 
@@ -5681,9 +5692,37 @@ existing assignments and client retries. They do not cover two real devices or a
 5. Open Projects on a device that holds an empty earlier group. Expected: the group appears on
    this hub and on the second device, even though it has no projects. If the hub is too old to
    import empty groups, the name stays stored locally until the hub is updated.
+6. Open Projects with earlier device groups against a hub that supports shared groups but not
+   their import. Expected: a quiet note says that earlier groups need a newer hub. Shared groups
+   and project cards still work. Keep Projects visible through two refreshes. Expected: the client
+   does not repeat the unsupported import. After the hub is updated, leave Projects and open it
+   again. Expected: the earlier groups import; only acknowledged memberships leave device storage.
+   This compatibility repair is built on `t3/fix-project-group-sync-compatibility`. Synthetic
+   client tests cover the old schema responses, errors and retries; the installed app and the
+   hub update still need this check.
 
 The old device storage has no hub address. Unknown or foreign-hub memberships remain stored
 on the device; they are not imported into another hub or deleted. The operator chose B on
 2026-11-23: empty earlier groups move to the next hub opened.
 
 Result: Open.
+
+## HT-182: Default-on remote setup (HM-T41, R-449)
+
+State: Open.
+
+Reported failure (2026-11-23): the operator showed Screen Sharing on, but installed commit `0a806e307` rejected authentication and still directed them to turn it on. The build owner supplied an Apple 3.889 banner with methods 30, 33, 36, 35. The compatibility correction was built and verified with synthetic fixtures, then delivered for the Mac retest below. The overall check remains Open.
+
+Operator retest (2026-11-23): after installing 0.12.47 (`aa3237c76`), the operator said "okay that works now" about the corrected setup. They separately reported an existing working VNC connection from their iPad; that does not establish a new authenticated session through Anima. After installing 0.12.49 (`3cd1955a`), which corrected the Enable in Anima label and saved registration status, the operator said "thats good" and moved on to Settings layout feedback. This confirms the reported Mac setup issue is resolved for the operator, but does not individually verify keyboard/accessibility, opt-outs across restart, error paths, an authenticated Anima session, or any Windows/Linux case.
+
+Settings layout follow-up (2026-11-23): verify Remote access appears separately from Hub; its enable/off actions update only the selected protocol and persist on reopening. Check a failed hub update can be retried without re-enabling a closed protocol. Verify category names in the narrow Jump to section menu, conditional section links, keyboard reach to the bottom of the desktop index, light/dark themes and enlarged text. Local synthetic rendering does not substitute for real OS permission prompts or authenticated sessions.
+
+Retest with Screen Sharing already on: the recognized Apple offer must permit setup without changing system permissions. Complete a real authenticated screen session from another enrolled computer. If Anima cannot verify the listening server's authentication, it must say Server detected · authentication not verified, retain blocked access, and offer Check again without claiming the service is off.
+
+On a newly joined desktop, open Devices. SSH and the desktop protocols supported by that platform must be selected. Turn one off before Continue. It must remain closed. Cancel an administrator prompt; that protocol must remain closed and show a retry path.
+
+For the HM-T41 refinement, use the keyboard to reach each row action. Click Enable on SSH: only SSH starts preparation, the row reports progress, and a cancelled authorization stays actionable without a Ready result. Enable requires the native administrator prompt when a server must be installed. Verify that focus remains usable and the status is announced.
+
+On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing, then return to Anima: only Screen Sharing is checked and opened through Anima after its server replies. Return without enabling it: the row must stay not ready, with the settings action available. If no focus event arrives, use Check again. Resize the dialog and check light and dark appearance and enlarged text. Verify an authenticated SSH and VNC session from another enrolled computer. macOS has no bundled RDP server. On Windows Pro, verify RDP with NLA and existing firewall policy; Windows Home must not be presented as a working RDP host. Windows VNC needs an existing authenticated server. On Debian/Ubuntu, verify xrdp installation and authenticated sessions; confirm newly installed servers bind only loopback. Automatic x11vnc installation is suspended: a unixpw screen login cannot be established by the RFB security-type check. A preexisting VNC listener with None, unknown or mixed unauthenticated methods must remain closed through Anima, with an authentication-verification explanation. A server that requires VNC password or Apple account authentication must still complete a real authenticated session; the probe alone does not prove this. On Wayland, verify the manual sharing path. Linux package installation and Windows UAC have not been exercised on this Mac.
+
+On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.

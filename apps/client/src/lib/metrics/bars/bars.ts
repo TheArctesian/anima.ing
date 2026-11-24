@@ -6,6 +6,7 @@ import type { BatteryBar } from '../battery/battery';
 
 /** The readings the bars draw. Structural, so a hub `CardReadings` fragment fits without this folder knowing devices. */
 export interface BarReadings {
+  readonly at?: string;
   readonly cpuPercent: number | null;
   readonly memoryPercent: number | null;
   readonly diskPercent: number | null;

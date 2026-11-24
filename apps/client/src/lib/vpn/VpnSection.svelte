@@ -3,6 +3,7 @@
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
   import SettingRow from '$lib/settings/SettingRow.svelte';
+  import HelpTip from '$lib/overlay/helptip/HelpTip.svelte';
   import { vpnApi, type SitePath, type VpnNode } from './api';
   import { enrolApi } from './enrol/api';
   import EnrolModal from './enrol/EnrolModal.svelte';
@@ -73,12 +74,11 @@
 {:else if picture === null}
   <SettingRow label="VPN status">
     {#snippet hint()}
-      <p class="hint">
-        Not available. The hub has no LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI), or it has not answered since the hub
-        started.
-      </p>
+      <p class="hint">VPN status is not available. The hub cannot reach the VPN service.</p>
     {/snippet}
-    Off
+    <HelpTip label="VPN availability">
+      The hub has no LocalAPI proxy (<code>ANIMA_TAILSCALE_LOCALAPI</code>), or it has not answered since the hub started.
+    </HelpTip>
   </SettingRow>
 {:else}
   <SitePaths sites={picture.sites} broker={picture.broker} onEnrol={(siteId) => { enrolling = siteId; }} approve={enrol.approve} reasonId={REASON_ID} />

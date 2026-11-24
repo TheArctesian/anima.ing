@@ -33,11 +33,14 @@
 <style>
   .slider {
     display: inline-flex;
+    min-inline-size: 0;
+    max-inline-size: 100%;
     align-items: center;
     gap: var(--space-3);
   }
 
   .chip {
+    flex: none;
     box-sizing: border-box;
     min-inline-size: var(--space-12);
     padding: var(--space-1) var(--space-2);
@@ -53,6 +56,7 @@
 
   /* The row's shared input look gives a border and a fixed width; a range takes neither. */
   .slider input {
+    min-inline-size: 0;
     inline-size: calc(var(--space-16) * 3.25);
     block-size: var(--target-min-touch);
     padding: 0;

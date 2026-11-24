@@ -10,12 +10,13 @@
     format?: (value: number) => string;
     threshold?: number;
     timeAxis?: boolean;
+    quiet?: boolean;
     legend?: readonly { readonly label: string; readonly colour: SeriesColour }[];
   }
 
-  const { span, axis, format, threshold, timeAxis = true, legend = [] }: Props = $props();
+  const { span, axis, format, threshold, timeAxis = true, quiet = false, legend = [] }: Props = $props();
   const scale = $derived(valueScale(axis, 0));
 </script>
 
 <!-- Show it through `skeletonDelay` and swap it for `LineChart` with `transition:crossFade` in one grid cell (MOT-007). -->
-<ChartFrame {span} {scale} format={axis === 'percent' ? format : undefined} {threshold} {timeAxis} {legend} />
+<ChartFrame {span} {scale} format={axis === 'percent' ? format : undefined} {threshold} {timeAxis} {quiet} {legend} />

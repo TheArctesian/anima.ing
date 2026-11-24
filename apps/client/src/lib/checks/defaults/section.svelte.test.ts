@@ -82,6 +82,7 @@ it('D-26: one Save sends all four values as numbers and then shows the values th
     { operation: 'SetCheckDefaults', variables: { input: { intervalSeconds: 240, retries: 2, retryIntervalSeconds: 45, degradedThresholdMs: 2500 } } },
   ]);
   expect(values(target)).toEqual(['300', '2', '30', '4000']);
+  expect(save(target).getAttribute('aria-disabled')).toBe('true');
 });
 
 it.each([
@@ -126,12 +127,13 @@ it('D-26, LOG-007: a failed save shows a fixed message, never the hub text, and 
   expect(save(target).getAttribute('aria-disabled')).toBe('false');
 });
 
-it('SET-002: Save keeps its label while busy, sends once, uses aria-disabled and is free again after', async () => {
+it('SET-005: Save changes keeps focus while busy, sends once and becomes clean after success', async () => {
   let release: (result: ReturnType<typeof ok>) => void = () => undefined;
   const answer = new Promise<ReturnType<typeof ok>>((resolve) => {
     release = resolve;
   });
   const target = await open({ CheckDefaults: ok({ checkDefaults: STORED }), SetCheckDefaults: answer });
+  typeInto(field(target, 'Interval (seconds)'), '240');
   const button = save(target);
   const label = button.textContent;
   button.click();
@@ -144,11 +146,12 @@ it('SET-002: Save keeps its label while busy, sends once, uses aria-disabled and
   expect(hub.sent.filter((each) => each.operation === 'SetCheckDefaults')).toHaveLength(1);
   release(ok({ setCheckDefaults: SAVED }));
   await settled();
-  expect(button.getAttribute('aria-disabled')).toBe('false');
+  expect(button.getAttribute('aria-disabled')).toBe('true');
 });
 
 it('D-26: a failed save frees Save for the next try', async () => {
   const target = await open({ CheckDefaults: ok({ checkDefaults: STORED }), SetCheckDefaults: failure('unreachable') });
+  typeInto(field(target, 'Interval (seconds)'), '240');
   save(target).click();
   await settled();
   save(target).click();
@@ -247,4 +250,17 @@ it('UI-015: when Retry succeeds focus moves to the first field, never to the pag
   await settled();
   await settled();
   expect(document.activeElement).toBe(field(target, 'Interval (seconds)'));
+});
+
+
+it('SET-005: unchanged defaults cannot be saved, including after reverting an edit', async () => {
+  const target = await open({ CheckDefaults: ok({ checkDefaults: STORED }) });
+  expect(save(target).getAttribute('aria-disabled')).toBe('true');
+  target.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await settled();
+  expect(hub.sent.map((each) => each.operation)).toEqual(['CheckDefaults']);
+  typeInto(field(target, 'Interval (seconds)'), '240');
+  expect(save(target).getAttribute('aria-disabled')).toBe('false');
+  typeInto(field(target, 'Interval (seconds)'), '120');
+  expect(save(target).getAttribute('aria-disabled')).toBe('true');
 });
