@@ -28,7 +28,7 @@ pub enum ForgeCommand {
         #[command(subcommand)]
         command: workflows::WorkflowCommand,
     },
-    /// The code of a repository (ls, show).
+    /// Repository files (ls, show) and local thread worktrees (git).
     Code {
         #[command(subcommand)]
         command: code::CodeCommand,
