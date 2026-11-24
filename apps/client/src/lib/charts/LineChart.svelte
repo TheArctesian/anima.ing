@@ -18,6 +18,7 @@
     /** A wider gap between two points, in the `at` unit, breaks the line. */
     gap?: number;
     timeAxis?: boolean;
+    quiet?: boolean;
     empty?: string;
     preference?: MotionPreference;
   }
@@ -31,6 +32,7 @@
     threshold,
     gap,
     timeAxis = true,
+    quiet = false,
     empty,
     preference = motionPreference(),
   }: Props = $props();
@@ -55,10 +57,10 @@
   });
 </script>
 
-<div class="chart">
+<div class="chart" class:quiet>
   {#key length}
     <div class="layer" transition:crossFade={{ preference }}>
-      <ChartFrame {span} {scale} {format} {threshold} {timeAxis} legend={series} {label}>
+      <ChartFrame {span} {scale} {format} {threshold} {timeAxis} {quiet} legend={series} {label}>
         <svg class="lines" aria-hidden="true" viewBox="0 0 {PLOT.width} {PLOT.height}" preserveAspectRatio="none">
           <g bind:this={lines}>
             {#each plots as plot, index (index)}
@@ -115,6 +117,8 @@
   .dot polyline {
     stroke-dasharray: var(--border-focus) var(--space-1);
   }
+
+  .quiet polygon { opacity: var(--opacity-disabled); }
 
   polygon {
     fill: var(--series);

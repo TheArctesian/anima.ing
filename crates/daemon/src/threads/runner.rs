@@ -11,6 +11,7 @@ mod accounts;
 mod attachments;
 mod calls;
 pub mod codex;
+mod completed;
 mod git;
 mod grok;
 mod holder_events;
@@ -20,7 +21,9 @@ pub mod log;
 pub mod login;
 mod models;
 pub mod peer;
+mod projects;
 pub mod record;
+mod serving;
 mod silence;
 pub mod socket;
 mod start;
@@ -30,11 +33,9 @@ pub mod thread;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use agent_threads::control::{Change, Limits, Reply};
 use agent_threads::drive::Program;
-use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use super::link::{self, HolderLink, LinkError};
@@ -134,6 +135,7 @@ pub struct Runner {
     /// only.
     said: accounts::Said,
     model_asks: models::Asks,
+    project_creations: projects::Creations,
     /// The skills of Codex in the folders of new threads (TH117): in memory only.
     folder_skills: calls::FolderSkills,
     /// The last walk of the folder of each thread, for the `@` list (TH108): in memory only.
@@ -213,49 +215,17 @@ pub async fn run(
         walked: calls::Walked::default(),
         said: accounts::Said::default(),
         model_asks: models::Asks::default(),
+        project_creations: projects::Creations::default(),
         folder_skills: calls::FolderSkills::default(),
         attached: attachments::Attachments::at(&dir),
         rights,
         git: gits,
     };
     runner.restore(saved.threads);
-    let listener = socket::bind(&dir)?;
-    runner.serve(listener, &mut stop).await;
-    if let Err(error) = std::fs::remove_file(dir.join(agent_threads::control::SOCKET)) {
-        tracing::warn!(%error, "the socket of the runner was not removed");
-    }
-    runner.save();
-    Ok(())
+    runner.listen(&mut stop).await
 }
 
 impl Runner {
-    /// The loop of the runner: the holder, the clients, and the stop.
-    async fn serve(&mut self, listener: tokio::net::UnixListener, stop: impl Future<Output = ()>) {
-        let (sender, mut incoming) = mpsc::channel(256);
-        let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
-        tokio::pin!(stop);
-        let mut look = tokio::time::interval(Duration::from_secs(10));
-        let (Some(mut asked), Some(mut listed), Some(mut made)) = (
-            self.asks.receiver.take(),
-            self.model_asks.receiver.take(),
-            self.asks.made.take(),
-        ) else {
-            return;
-        };
-        loop {
-            tokio::select! {
-                event = self.link.events.recv() => self.heard_holder(event).await,
-                Some(call) = incoming.recv() => self.call(call).await,
-                Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
-                Some((program, models)) = listed.recv() => self.models_asked(program, models),
-                Some(worktree) = made.recv() => self.worktree_made(worktree).await,
-                _ = look.tick() => self.look_around().await,
-                () = &mut stop => break,
-            }
-        }
-        accepting.abort();
-    }
-
     /// An event of the holder, or a new link when the old one closed.
     async fn heard_holder(&mut self, event: Option<crate::threads::wire::Event>) {
         match event {

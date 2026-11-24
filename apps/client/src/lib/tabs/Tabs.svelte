@@ -37,6 +37,23 @@
     animate(indicator, { translate: { x: tab.offsetLeft, y: 0 }, scale: { x: tab.offsetWidth / base, y: 1 } }, motion);
   }
 
+  function revealSelected(): void {
+    const tab = tabAt(items.findIndex((entry) => entry.id === selected));
+    if (!list || !tab) return;
+    const padding = Number.parseFloat(getComputedStyle(list).scrollPaddingInlineStart) || 0;
+    list.scrollLeft = scrolledToShow(
+      { start: list.scrollLeft, size: list.clientWidth },
+      { start: tab.offsetLeft, size: tab.offsetWidth },
+      padding,
+    );
+  }
+
+  $effect(() => {
+    void list;
+    void selected;
+    untrack(revealSelected);
+  });
+
   /** Spec 5.7.3: `spring-snappy`; instant on first paint and under reduced motion. */
   $effect(() => {
     void selected;
@@ -51,6 +68,7 @@
     if (list === undefined || typeof ResizeObserver !== 'function') return;
     const observer = new ResizeObserver(() => {
       place({ type: 'instant' });
+      revealSelected();
     });
     observer.observe(list);
     return () => {

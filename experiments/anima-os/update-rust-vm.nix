@@ -37,6 +37,7 @@ in pkgs.testers.runNixOSTest {
     boot.loader.efi.efiSysMountPoint = "/boot";
     boot.loader.grub.enable = false;
     users.users.observer.isNormalUser = true;
+    users.users.admin.isNormalUser = true;
     environment.systemPackages = [ pkgs.python3 pkgs.openssl pkgs.jq pkgs.util-linux pkgs.nix pkgs.xz pkgs.dosfstools pkgs.cloud-utils pkgs.e2fsprogs ];
   };
   testScript = ''
@@ -76,6 +77,19 @@ in pkgs.testers.runNixOSTest {
     machine.succeed("test ! -e /boot/loader/entries/anima-candidate+2.conf; cp /run/system.nar.xz " + artifact)
     machine.succeed("mkdir -p /run/systemd/system/anima-update-check.service.d")
     machine.succeed("printf '[Service]\nEnvironment=SSL_CERT_FILE=/run/update-origin/ca.pem\n' > /run/systemd/system/anima-update-check.service.d/test.conf; systemctl daemon-reload")
+    machine.succeed("mkdir -p /run/systemd/system/anima-update-remote-download.service.d")
+    machine.succeed("cp /run/systemd/system/anima-update-check.service.d/test.conf /run/systemd/system/anima-update-remote-download.service.d/test.conf; systemctl daemon-reload")
+    remote = "su -s /bin/sh admin -c 'sudo -n /run/current-system/sw/bin/anima-os-update remote-"
+    machine.fail("su -s /bin/sh observer -c 'sudo -n /run/current-system/sw/bin/anima-os-update remote-status'")
+    machine.fail(remote + "download-run'")
+    machine.fail(remote + "download extra'")
+    assert json.loads(machine.succeed(remote + "download'"))["value"]["requested"]
+    machine.wait_until_succeeds("test -f /persist/anima-updates/state.json && jq -e '.phase == \"staged\"' /persist/anima-updates/state.json", timeout=120)
+    remote_state = json.loads(machine.succeed(remote + "status'"))["value"]
+    assert remote_state["phase"] == "staged"
+    assert remote_state["system"] == "${candidate}"
+    machine.wait_until_fails("systemctl is-active --quiet anima-update-remote-download.service")
+    machine.succeed("rm /persist/anima-updates/state.json /boot/loader/entries/anima-candidate+2.conf")
     machine.succeed("systemctl start anima-update-check.service", timeout=120)
     staged = json.loads(machine.succeed(prefix + "status"))
     assert staged["ok"] and staged["value"]["phase"] == "staged"

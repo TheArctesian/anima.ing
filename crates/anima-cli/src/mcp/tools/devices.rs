@@ -9,6 +9,7 @@ mod containers;
 mod daemon_need;
 mod metrics;
 pub mod models;
+mod os_update;
 mod read;
 /// Its own tool set, kept with the other application tools of a device (H21).
 pub use applications::routes;
@@ -24,6 +25,7 @@ use crate::mcp::outcome::ToolError;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DeviceTool {
+    OsUpdate,
     FleetOverview,
     Search,
     Get,
@@ -51,7 +53,8 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 24] = [
+    pub const ALL: [Self; 25] = [
+        Self::OsUpdate,
         Self::FleetOverview,
         Self::Search,
         Self::Get,
@@ -81,6 +84,7 @@ impl DeviceTool {
     #[must_use]
     pub fn definition(self) -> Definition {
         match self {
+            Self::OsUpdate => os_update::definition(),
             Self::Metrics => metrics::definition(),
             Self::CapabilityList => capabilities::definition(),
             Self::ComputePolicyList | Self::ComputePolicySet => compute_policy::definition_of(self),
@@ -104,6 +108,7 @@ impl DeviceTool {
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
+            Self::OsUpdate => os_update::call(hub, arguments).await,
             Self::FleetOverview => read::overview(hub).await,
             Self::Search => read::search(hub, arguments).await,
             Self::Get => read::get(hub, arguments).await,
