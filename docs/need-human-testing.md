@@ -5249,18 +5249,20 @@ Result: Open.
 
 ### HT-151: `anima auth login` by a one-time code (cli-mcp T16 and T17, HM-T40; R-381)
 
-Built locally on `cli/account-signin`, with site commit `e20c129` and cloud commit `de308a5` on their isolated `cli/browser-signin` branches. Not deployed. The gates cannot prove a browser on a second device, live WorkOS approval, or a real VPS. Run after a coordinated test release. Rich status provenance remains planned; `auth sessions` supplies approval/last-use/expiry metadata.
+Built locally at `f20798363` (test follow-up `61ee68a98`) on `cli/account-signin`, with site commit `e20c129` and cloud commit `de308a5` on their isolated `cli/browser-signin` branches. Not deployed. The gates cannot prove a browser on a second device, live WorkOS approval, or a real VPS. Run after a coordinated test release. Rich status provenance remains planned; `auth sessions` supplies approval/last-use/expiry metadata.
 
-1. On a computer with only `anima`, run `anima auth login`, choose "Self-hosted" and give the address of your hub.
-   Expected: the command shows a code `XXXX-XXXX`, the address of the page `/device`, and "It ends in 10 minutes"; no password is asked.
+Local validation (2026-11-24): 6,015 client tests, 826 deployment tests and 753 Headscale tests passed. The site and cloud suites passed, as did Rust lint, client build and the focused authentication and installer checks. The full Rust run passed 7,893 of 7,898 executed tests. Two GitHub URL expectations were corrected for the fixture's actual public origin and passed on rerun. Three tests still fail serially in code unchanged from `origin/dev`: `stay_awake::tests::holds::a_hold_program_that_ends_at_once_was_refused`, `this_machine::tests::vpn_client::the_vpn_address_is_the_one_the_anima_client_reports_even_beside_a_lower_overlay_address`, and `run::tests::stopping::a_migration_that_runs_past_its_limit_is_stopped_and_the_run_fails`. These remain validation blockers; no all-gates pass or release acceptance is claimed.
+
+1. On a computer with only `anima`, run `anima auth login`, choose "A hub of your own" and give the address of your hub.
+   Expected: the command shows a short code, the address of the page `/device`, and its ten-minute lifetime; no password is asked.
 2. Open the page in a browser where you are signed in, and type the code.
-   Expected: the page shows the name of the computer, its address, the time and the plain words of what the command line will get; after Approve the terminal prints `✓ Signed in to <hub> as <user> (command line on <computer>)`.
+   Expected: the page shows the name of the computer, its address, the time and the plain words of what the command line will get; after Approve the terminal confirms the hub and user without printing the credential.
 3. Run `anima auth status`.
-   Expected: the hub, the user, "approved on <day> from <device>", and no token, not even masked.
-4. Repeat step 1 with "Hosted by Anima.ing", and approve at `anima.ing/device`.
+   Expected: the hub, the user and credential source, with no token, not even masked. `anima auth sessions` shows approval, last-use and expiry metadata; richer status provenance remains planned.
+4. Repeat step 1 with "Anima account", and approve at `anima.ing/device`.
    Expected: no address is asked; the command signs in to the hub of the account.
-5. Type a wrong code 6 times in the page.
-   Expected: the sixth is refused for 10 minutes.
+5. Type five wrong codes in the page, then try again.
+   Expected: further attempts are refused during the ten-minute lockout.
 6. Run `anima auth logout`, then `anima auth status`.
    Expected: signed out, exit code 4; the list of sign-ins in the app no longer shows that computer.
 
