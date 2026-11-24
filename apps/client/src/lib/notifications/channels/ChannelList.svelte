@@ -19,9 +19,11 @@
     defaultTemplate: NotificationTemplateInput;
     placeholders: readonly string[];
     clock?: LoadingClock;
+    /** Called with true once the first load has an answer, success or failure. */
+    onSettled?: (settled: boolean) => void;
   }
 
-  const { api, defaultTemplate, placeholders, clock }: Props = $props();
+  const { api, defaultTemplate, placeholders, clock, onSettled = () => undefined }: Props = $props();
   let channels = $state<readonly NotificationChannel[] | null>(null);
   let loadFailed = $state(false);
   let retrying = $state(false);
@@ -34,6 +36,7 @@
   // The clock is fixed for the life of the list.
   // svelte-ignore state_referenced_locally
   const skeleton = skeletonDelay(() => loading, clock);
+  $effect(() => onSettled(!loading));
 
   async function load(): Promise<void> {
     const result = await api.channels();
