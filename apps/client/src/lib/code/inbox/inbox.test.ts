@@ -243,15 +243,13 @@ describe('the sessions Anima did not start (T3 Code\'s import)', () => {
     expect(arranged(rows, { ...at, started: null }).settled).toEqual([]);
   });
 
-  it('hides each session Anima did not start until the filter shows them, pinned, working, asking, waiting or snoozed too (operator, 2026-11-23)', () => {
+  it('keeps imported sessions out of Code even when pinned, working, asking, waiting or snoozed (TC2L)', () => {
     const snoozed = { ...NO_MARKS, snoozedUntil: new Date(NOW.getTime() + DAY * MINUTE) };
     const rows = [row('ours', 'turn_ended', 5), row('ended', 'turn_ended', 5), row('runs', 'running', 0), row('asks', 'asks', 5), row('waits', 'open_tool', 5), row('pin', 'turn_ended', 5, { pinned: true }), row('later', 'turn_ended', 5)];
     const at: Arranging = { ...AT, marks: new Map([['later', snoozed]]), started: new Set(['ours']) };
     const every = (parts: ReturnType<typeof arranged>) => [...parts.pinned, ...parts.active, ...parts.working, ...parts.snoozed, ...parts.settled].map((item) => item.row.id).sort();
-    expect(every(arranged(shownRows(rows, new Set(['ours']), false), at))).toEqual(['ours']);
-    expect(every(arranged(shownRows(rows, new Set(['ours']), true), at))).toEqual(rows.slice(1).map((each) => each.id).sort());
-    expect(shownRows(rows, new Set(), false)).toEqual([]);
-    expect(shownRows(rows, new Set(), true)).toEqual(rows);
+    expect(every(arranged(shownRows(rows, new Set(['ours'])), at))).toEqual(['ours']);
+    expect(shownRows(rows, new Set())).toEqual([]);
   });
 
   it('counts the threads the runner drives as Anima\'s, by its ID and the program\'s, even before a listing is marked', () => {

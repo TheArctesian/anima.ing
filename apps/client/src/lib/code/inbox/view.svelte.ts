@@ -29,8 +29,6 @@ export class InboxView {
   projects = $state(NO_PROJECTS);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each change, never changed in place
   shelves = $state<ReadonlySet<ShelfKey>>(new Set());
-  /** Whether the sessions that Anima did not start show; set it with `showOutside`. */
-  outsideShown = $state(false);
   #selection = $state<Selection>(NO_SELECTION);
 
   constructor(
@@ -60,10 +58,8 @@ export class InboxView {
     }
     return prompts;
   });
-  readonly codeRows = $derived.by(() => shownRows(this.rows, this.engine.started, false));
-  readonly historyRows = $derived.by(() => shownRows(this.rows, this.engine.started, true));
-  readonly shown = $derived(this.outsideShown ? this.historyRows : this.codeRows);
-  readonly outsideExist = $derived(this.historyRows.length > 0);
+  readonly codeRows = $derived.by(() => shownRows(this.rows, this.engine.started));
+  readonly shown = $derived(this.codeRows);
   readonly allProjects = $derived(projectsOf(this.shown));
   readonly parts = $derived.by(() =>
     arranged(inProjects(this.shown, this.projects), { now: this.moment, seen: this.store.seen, marks: this.engine.marks, started: this.engine.started, prompted: this.prompted }),
@@ -114,14 +110,4 @@ export class InboxView {
     }
   }
 
-  /** Opens the requested list with filters and the open chat cleared. */
-  showOutside(shown: boolean): void {
-    if (shown === this.outsideShown) return;
-    this.outsideShown = shown;
-    this.projects = NO_PROJECTS;
-    this.search = '';
-    this.store.chosen = null;
-    this.store.threadProblem = null;
-    this.store.loadingThread = false;
-  }
 }
