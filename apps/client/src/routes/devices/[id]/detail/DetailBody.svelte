@@ -14,6 +14,7 @@
   import { HostingStore } from '$lib/hosting/store.svelte';
   import { thisComputerShell } from '$lib/desktop/daemon/shell';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
+  import { osUpdatesApi } from '$lib/os-updates/api';
   import { readKept } from '$lib/hosted/kept/api';
   import { metricsApi } from '$lib/metrics/api';
   import { useHub } from '$lib/hub/context';
@@ -36,7 +37,10 @@
   import Tabs from '$lib/tabs/Tabs.svelte';
   import { TAB_ITEMS, isTab, placeSearch, readPlace, type SettingsSection, type TabPlace } from '../tabs/tabs';
   import { phoneLayout } from '$lib/nav/phone/layout.svelte';
+  import { responseText } from '../phone/phone';
   import PhoneChecks from '../phone/PhoneChecks.svelte';
+  import PhoneDeviceTabs from '../tabs/PhoneDeviceTabs.svelte';
+  import HeartbeatBar from '$lib/checks/HeartbeatBar.svelte';
   import PhoneConnect from '../phone/PhoneConnect.svelte';
   import PhoneHead from '../phone/PhoneHead.svelte';
   import '../phone/device.css';
@@ -49,6 +53,7 @@
 
   // The panels take data and callbacks; `Detail` and `detailCalls` reach the hub (D-1).
   const hub = useHub();
+  const osUpdates = osUpdatesApi(hub);
   const sessions = useSessions();
   const screenSharing = { calls: screenSharingCalls(hub), onEnabled: (next: DeviceDetail) => { detail.setDevice(next); } };
   const now = () => new Date();
@@ -114,9 +119,9 @@
     detail.showMetrics(place.tab, place.range);
   });
 
-  // The phone layout's head shows the last 50 heartbeats and the checks' reason on every tab (mockup 5).
+  // The phone Overview shows heartbeat history in Health details.
   $effect(() => {
-    if (phone && device !== null) untrack(() => void Promise.all([detail.loadBeats(), detail.loadChecks()]));
+    if (phone && device !== null && place.tab === 'overview') untrack(() => void detail.loadBeats());
   });
 
   /** D-9: the tab and section go to the URL, so Back and a reload restore them. */
@@ -129,6 +134,10 @@
   function daemonPanel(): void {
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); only the query and hash are added
     void goto(`${resolve('/devices')}/${encodeURIComponent(id)}${placeSearch({ tab: 'settings', section: null, range: 'HOUR' })}#daemon`, { keepFocus: true, noScroll: true });
+  }
+
+  function selectDeviceTab(tab: string): void {
+    if (isTab(tab)) go({ tab, section: null, range: 'HOUR' });
   }
 
   function settings(section: SettingsSection | null): void {
@@ -156,17 +165,29 @@
 {/snippet}
 
 {#snippet deviceTabs()}
-  <Tabs items={TAB_ITEMS} selected={place.tab} label="Device" idPrefix="device" onSelect={(tab) => { if (isTab(tab)) go({ tab, section: null, range: 'HOUR' }); }} />
+  <Tabs items={TAB_ITEMS} selected={place.tab} label="Device" idPrefix="device" onSelect={selectDeviceTab} />
+{/snippet}
+
+{#snippet phoneChecks()}
+  <p>Response · {responseText(detail.beats ?? [])}</p>
+  <HeartbeatBar beats={detail.beats ?? []} />
+  <PhoneChecks checks={detail.checks ?? []} />
+{/snippet}
+
+{#snippet overviewChecksNotice()}
+  {#if detail.checksError !== null}{@render checksFailure(detail.checksError.message)}{/if}
 {/snippet}
 
 {#snippet overviewSkeleton()}
-  <OverviewSkeleton range={place.range} source={metricsSource ?? 'NONE'} ssh={device?.ssh ?? null} {now} />
+  <OverviewSkeleton range={place.range} source={metricsSource ?? 'NONE'} {now} />
 {/snippet}
 
-<section class="detail" class:phone-device-page={phone && device !== null}>
+<section class="detail">
   {#if phone && device !== null}
-    <PhoneHead {device} checks={detail.checks} beats={detail.beats} onSettings={() => { settings(null); }} />
-    <div class="phone-device-tabs">{@render deviceTabs()}</div>
+    <PhoneHead {device} checks={detail.checks} overview={place.tab === 'overview'} onSettings={() => { settings(null); }}>
+      {#snippet actions()}<PhoneConnect {device} onConnect={connect} onSettings={settings} />{/snippet}
+    </PhoneHead>
+    <div class="phone-device-tabs"><PhoneDeviceTabs selected={place.tab} onSelect={selectDeviceTab} /></div>
   {:else}
     <DeviceBar {device} checks={detail.checks} onConnect={connect} onOpenWeb={openWeb} {screenSharing} onSettings={settings} tabs={device !== null || loading ? deviceTabs : undefined} />
   {/if}
@@ -183,16 +204,15 @@
     <!-- D-9: while the device loads, the open tab's panel is busy and shows its skeleton under the tabs; one panel for
          each tab, so the skeleton cross-fades into the content (MOT-007). -->
     {#if device !== null}<LiveNotice message={detail.liveError?.message ?? null} gap="end" />{/if}
-    {#if phone && device !== null}<PhoneConnect {device} showSetup={place.tab === 'overview'} onConnect={connect} onSettings={settings} />{/if}
     {#if place.tab === 'overview'}
-      <TabPanel name="overview" loading={loading || checksLoading} skeleton={overviewSkeleton}>
-        {#if detail.checksError !== null}
-          {@render checksFailure(detail.checksError.message)}
-        {:else if device !== null}
-          {#if phone}<PhoneChecks checks={detail.checks ?? []} />{/if}
+      <TabPanel name="overview" {loading} skeleton={overviewSkeleton}>
+        {#if device !== null}
           <OverviewPanel
             {device}
             checks={detail.checks ?? []}
+            checksPending={checksLoading}
+            checksNotice={detail.checksError === null ? undefined : overviewChecksNotice}
+            onReviewChecks={() => selectDeviceTab('checks')}
             {metrics}
             range={place.range}
             {vpn}
@@ -204,6 +224,8 @@
             onOpenWeb={openWeb}
             onSection={settings}
             readKept={() => readKept(hub)}
+            osUpdates={device.os === 'LINUX' && device.host.toLowerCase().startsWith('fd41:4e49:4d41:') ? osUpdates : undefined}
+            checksSummary={phone ? phoneChecks : undefined}
           />
         {/if}
       </TabPanel>

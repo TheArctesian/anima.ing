@@ -1325,3 +1325,7 @@ answered. Its new findings, each Low, were corrected in the next commit: a relat
 that `env` runs refused the agent (the check now stops at that program); glibc ends the name of a
 database also at the other blanks. The entries of a folder that passes, other than the program that
 `env` runs, are not read (the limits above).
+
+### Anima OS update controls (OS5-R1)
+
+`anima device os-update <device> [status|check|download|activate|rollback]` uses the authenticated hub API. Activation and rollback need `--confirm-restart`. The MCP tool `anima_device_os_update` exposes status, check and download; activation and rollback are excluded because they require the person's disruptive-action confirmation in the desktop or CLI. This does not add an arbitrary remote command tool.

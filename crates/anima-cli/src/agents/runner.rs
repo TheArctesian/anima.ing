@@ -183,6 +183,7 @@ pub fn refusal(why: &Refusal) -> Failure {
         | Refusal::HolderOlder { said }
         | Refusal::CannotChange { said }
         | Refusal::TooLarge { said }
+        | Refusal::CannotCreateProject { said }
         | Refusal::CannotAttach { said }
         | Refusal::ProviderAddress { said }
         | Refusal::FolderShared { said } => {

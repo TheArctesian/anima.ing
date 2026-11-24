@@ -31,11 +31,13 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-NEW-mobileinventory | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
+| HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
+| HT-183 | Check the Overview and device tabs for the Hub and Pop!_OS (M2-7) | iPad with a current build, and a linked Linux device with several metric types | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
 | HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
 | HT-176 | On Linux the person starts a thread and answers a request through the installed daemon, and an agent still cannot (DEF-015, R-315) | The Linux computer `pop-os` with `claude` signed in, and a build of the branch `fix/peer-environ-userns` installed as the user unit | Open |
@@ -213,6 +215,15 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - State: Open.
 - On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. Keep the app open for two samples and check that CPU also shows. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
 - On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
+
+### HT-183: Device Overview and tabs on iPad
+
+- State: Open.
+- Open the Hub and Pop!_OS Overview pages in landscape and portrait. Check that the charts have room and the Connect explanation stays within the page.
+- Check that the device name, address and connection actions fit above the tabs in both orientations. Switch tabs and return to Overview. On a phone, verify that the health summary appears before Metrics and its Details disclosure holds the check history.
+- Select each time range. Check that the charts keep their values and that axis labels fit. Check that percent charts have a subtle dashed threshold guide. Check that uptime shows one row per time window, with the labels and values at the same size and the timer icon sized to the heading. 100% appears without decimal zeros. On the health strip, Status, Uptime, and Checks use matching spacing. Maintenance reads On or Off.
+- Check that the latest reading and the peak of the selected range are labeled separately. Check that the lines for read and write are distinguishable.
+- On a short phone and an iPad, switch resources and ranges, expand All resource charts, and follow View storage on a device with a full volume. Confirm Storage is already expanded and shows each volume's usage and free capacity when known. Open Settings by a direct link and verify the selected destination is visible in the phone tab row or More.
 
 ### HT-148: phone Devices, offline notice and Integrations (M2-5)
 
@@ -5558,6 +5569,25 @@ on the device; they are not imported into another hub or deleted. The operator c
 
 Result: Open.
 
+
+## HT-185-create — Create a local Code project (TH60A)
+
+State: Open. Built on `code/project-create`; the TC9 New project UI is owned separately.
+
+Security correction: Git initializes only in Anima’s private staging folder. An exclusive, handle-relative rename publishes the completed repository, and registration checks its identity. A destination on another filesystem is refused without changing it; initialize that folder with Git and add it as an existing local project. Human checks do not claim this fallback was exercised on a second volume.
+Automated checks exercise repository creation, preservation of existing files, rejected paths,
+and registration across a runner restart. This check covers the installed CLI and system Git.
+
+1. Choose an existing writable parent and an unused child path. Run `anima agents projects create /absolute/parent/new-project --name "New project"`.
+   Expected: the command lists the new project; `git -C /absolute/parent/new-project status` shows an empty repository on `main`.
+2. Run the same create command again.
+   Expected: a refusal, with the original repository unchanged.
+3. Restart the daemon, then run `anima agents projects`.
+   Expected: New project remains listed once.
+4. Open Code and choose that local project for a new thread.
+   Expected: the thread uses the new folder. This task does not enable the New project palette action.
+
+Result: Open.
 ## HT-182: Default-on remote setup (HM-T41, R-449)
 
 State: Open.
@@ -5622,3 +5652,14 @@ probes, use a disposable enrolled Mac with an existing Xcode and Android SDK ins
 
 Database migration/replacement tests are reserved for CI in this session: no local
 PostgreSQL was started. Passing fixture tests is not a Passed result for this entry.
+## HT-184-remote-update — Hosted desktop OS updates
+
+Status: Open. Owner: OS5-R1 in [spare-computer-os.md](proposals/spare-computer-os.md).
+
+The hub, CLI and desktop invoke the signed OS updater over pinned private SSH. Automated checks cover restart confirmation and the OS service boundary; they do not prove a deployed hosted account, physical reboot or the installed desktop bundle.
+
+1. Install the matching hub, desktop and OS versions. Open the enrolled OS device's Overview and choose View OS update status. Expect its retained update state, or a specific SSH/trust/version error.
+2. Check and download a signed newer release. Close the desktop during download, then reopen the device page. Expect progress or the verified staged release, without starting another download.
+3. Choose Restart to update, then Cancel. Expect no restart. Repeat and confirm. Expect the connection to drop and the applied version to appear only after reconnection and startup checks.
+4. Request Restore previous OS and confirm. Expect the prior OS and retained owner data after reconnecting.
+5. Verify SSH and RDP on the same physical device, including a locked local screen. The earlier reported automatic setup and RDP reachability failures remain unverified.
