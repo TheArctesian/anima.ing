@@ -159,6 +159,11 @@ pub enum Action {
     },
     /// The projects of this computer (TH107).
     Projects,
+    /// Create and register a new local Git project (TH60A); only the person.
+    CreateProject {
+        folder: PathBuf,
+        name: Option<String>,
+    },
     /// A change of the projects (TH107): only the person makes it.
     ChangeProject { change: ProjectChange },
     /// The files and folders of the working folder of a thread that match `query`, at most
