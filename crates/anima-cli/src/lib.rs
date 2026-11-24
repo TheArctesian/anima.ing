@@ -48,6 +48,7 @@ pub mod repositories;
 pub mod retention;
 pub mod routes;
 pub mod sealed_records;
+pub mod secrets;
 pub mod sessions;
 pub mod shortening;
 pub mod sites;

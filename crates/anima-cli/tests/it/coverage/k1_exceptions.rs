@@ -1,9 +1,5 @@
 //! The K1 root fields the command line never uses, each with its reason (CMD-031).
 
-const NO_KEY_NOUN: &str = "no command yet: K-E5 Section 2.2 names the noun `anima key`, which is \
-    already the API key noun (INT-003, `key list|create|revoke`); the noun waits for a ruling \
-    (E0-6 T3)";
-
 pub const EXCEPTIONS: &[(&str, &str)] = &[
     (
         "Mutation.hostedDeviceInvite",
@@ -61,13 +57,4 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "client work: a client adds a client by QR code; no command takes part in a key offer \
          (K-E5 Section 3, a trust decision)",
     ),
-    ("Query.operationalKeys", NO_KEY_NOUN),
-    ("Query.operationalKey", NO_KEY_NOUN),
-    ("Mutation.createOperationalKey", NO_KEY_NOUN),
-    ("Mutation.updateOperationalKey", NO_KEY_NOUN),
-    ("Mutation.removeOperationalKey", NO_KEY_NOUN),
-    ("Mutation.rotateOperationalKey", NO_KEY_NOUN),
-    ("Mutation.revokeOperationalKey", NO_KEY_NOUN),
-    ("Mutation.grantOperationalKey", NO_KEY_NOUN),
-    ("Mutation.ungrantOperationalKey", NO_KEY_NOUN),
 ];
