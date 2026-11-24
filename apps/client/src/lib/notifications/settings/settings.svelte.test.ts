@@ -43,7 +43,7 @@ async function open(answers: Parameters<typeof fakeHub>[0]): Promise<void> {
 
 const days = () => field('Certificate expiry days', form) as HTMLInputElement;
 const title = () => field('Title', form) as HTMLInputElement;
-const save = () => button('Save', form);
+const save = () => button('Save changes', form);
 const problemOf = (control: HTMLElement) => document.getElementById(control.getAttribute('aria-describedby')?.split(' ').at(-1) ?? '')?.textContent;
 const outcome = () => form.querySelector('.outcome')?.textContent;
 const sentOperations = () => hub.sent.map((request) => request.operation);
@@ -105,6 +105,7 @@ it('NOT-006, NOT-007: Save sends the days and the template, and says Saved', asy
   await settled();
   expect(hub.sent.at(-1)).toEqual({ operation: 'SetNotificationSettings', variables: { input: { certificateDays: [30, 7], template: FIXTURE_SETTINGS.template } } });
   expect([outcome(), days().value]).toEqual(['Saved.', '30, 7']);
+  expect(save().getAttribute('aria-disabled')).toBe('true');
 });
 
 it('NOT-006: Save pressed twice while the hub saves sends the settings once', async () => {
@@ -113,6 +114,7 @@ it('NOT-006: Save pressed twice while the hub saves sends the settings once', as
     release = resolve;
   });
   await open(loaded({ SetNotificationSettings: answer as Promise<never> }));
+  typeInto(days(), '30, 7');
   save().click();
   save().click();
   flushSync();
@@ -130,6 +132,7 @@ it('LOG-007: a refused save says so in a fixed sentence and keeps what was typed
   save().click();
   await settled();
   expect([outcome(), days().value]).toEqual(['The hub refused: Certificate expiry days.', '30, 7']);
+  expect(save().getAttribute('aria-disabled')).toBe('false');
 });
 
 it('F-3, MOT-007: while loading the fields wait, empty; a failed load offers Retry in the outcome\'s place', async () => {
@@ -162,4 +165,17 @@ it('MOT-007, NAV-005: Retry stays mounted and keeps focus while it retries and w
   await settled();
   await settled();
   expect(document.activeElement).toBe(days());
+});
+
+
+it('SET-005: unchanged notification settings cannot be saved, including after reverting an edit', async () => {
+  await open(loaded());
+  expect(save().getAttribute('aria-disabled')).toBe('true');
+  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await settled();
+  expect(sentOperations()).not.toContain('SetNotificationSettings');
+  typeInto(days(), '30, 7');
+  expect(save().getAttribute('aria-disabled')).toBe('false');
+  typeInto(days(), '21, 14, 7');
+  expect(save().getAttribute('aria-disabled')).toBe('true');
 });
