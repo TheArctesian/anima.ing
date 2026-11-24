@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-sessionwatch | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
@@ -5586,3 +5587,22 @@ For the HM-T41 refinement, use the keyboard to reach each row action. Click Enab
 On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing, then return to Anima: only Screen Sharing is checked and opened through Anima after its server replies. Return without enabling it: the row must stay not ready, with the settings action available. If no focus event arrives, use Check again. Resize the dialog and check light and dark appearance and enlarged text. Verify an authenticated SSH and VNC session from another enrolled computer. macOS has no bundled RDP server. On Windows Pro, verify RDP with NLA and existing firewall policy; Windows Home must not be presented as a working RDP host. Windows VNC needs an existing authenticated server. On Debian/Ubuntu, verify xrdp installation and authenticated sessions; confirm newly installed servers bind only loopback. Automatic x11vnc installation is suspended: a unixpw screen login cannot be established by the RFB security-type check. A preexisting VNC listener with None, unknown or mixed unauthenticated methods must remain closed through Anima, with an authentication-verification explanation. A server that requires VNC password or Apple account authentication must still complete a real authenticated session; the probe alone does not prove this. On Wayland, verify the manual sharing path. Linux package installation and Windows UAC have not been exercised on this Mac.
 
 On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
+
+## HT-NEW-sessionwatch — Native session list refresh
+
+State: Open. Built on `t3/session-folder-watcher` (TH7, THR-058).
+
+The shell watches session paths with bounded native registrations. Synthetic tests cover folder creation,
+file changes, replacement, safe path opening and client subscription lifetime. They do not prove the
+installed application window lifecycle or OS permissions on a person's Mac and Linux desktop.
+
+1. In a test OS account on each platform, open Code with one made Claude Code or Codex session. Change
+   its session file. Expect the visible list and count to update promptly, without changing the held order.
+2. Hide the window, change the made session, then show the window. Expect no hidden list reads and one
+   refresh when shown. Navigate away from and back to Code several times. Expect no duplicate updates.
+3. Remove and recreate the made session directories, then change a file there. Expect the list to recover.
+4. Close and reopen the application. Expect file changes to update the list again.
+5. Use a test home with more than 1,024 session paths, or a filesystem without native notifications.
+   Expect the visible list to refresh within 30 seconds of silence. Expect no error containing session paths.
+
+No result is recorded yet. Only the operator sets this check to Passed or Failed.
