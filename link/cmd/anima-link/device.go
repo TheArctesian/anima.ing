@@ -72,6 +72,15 @@ func listenForDaemon(path string) (net.Listener, error) {
 	return statedir.ListenOwned(path)
 }
 
+func dialBundledRDP(dir *statedir.Dir) func(time.Duration) (net.Conn, error) {
+	if runtime.GOOS != "darwin" {
+		return nil
+	}
+	return func(limit time.Duration) (net.Conn, error) {
+		return dir.DialOwned(ports.RDPSocket, limit)
+	}
+}
+
 func runDevice(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("device")
 	listen := flags.String("listen", "127.0.0.1:0", "the local loopback address, host:port")
@@ -95,14 +104,8 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	if err != nil {
 		return err
 	}
-	var rdp func(time.Duration) (net.Conn, error)
-	if runtime.GOOS == "darwin" {
-		rdp = func(limit time.Duration) (net.Conn, error) {
-			return dir.DialOwned(ports.RDPSocket, limit)
-		}
-	}
 	link, err := devicelink.Start(devicelink.Config{
-		Identity: device, Listen: *listen, DaemonSocket: forDaemon, RDP: rdp,
+		Identity: device, Listen: *listen, DaemonSocket: forDaemon, RDP: dialBundledRDP(dir),
 		Save:     func(renewed identity.Device) error { return renewed.Save(dir) },
 		OpenPort: func(port uint16) bool { return ports.IsOpen(dir, port) },
 	})
