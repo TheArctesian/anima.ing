@@ -137,6 +137,24 @@ Draft for review, 2026-11-15. This proposal extends the palette model in UI-005,
 | G | Labels in sentence case (R-279): no label of the client is in capitals or has the wide tracking. The column heads, the day heads and the section labels are `text-sm`, weight 500 and `text-secondary`; the head of a group of rows ("Needs a look 1") has the text colour. The component `QuietLabel` replaces `SmallCaps`. Each mockup loses its capitals in the same commit. State: built on the branch `ui/no-capitals`; the look in a desktop window is HT-073 | `bun run gates:fast`; pictures of the Devices list before and after |
 | I | The icons of the Devices list (R-393, R-395): each metric of a row has its icon and its word again; a Pop!_OS mark (Simple Icons) and a mark of Anima OS (our drawing; he chooses one of three candidates), in the text colour (UI-014). The mockup devices-v2 changes in the same commit. State: Not started in this plan; a branch `devices/metric-labels` exists and has no claim. The look in a desktop window is HT-155 | `bun run gates:fast`; pictures of the list and the grid before and after |
 
+## 3a. Motion audit tasks (2026-11-23)
+
+The record is [client-2026-11-23.md](../research/motion/client-2026-11-23.md). Each task obeys reduced motion (MOT-040, MOT-041) and uses only `$lib/motion/` and the tokens. Hosting and Code belong to other sessions now: their rows name the owner, and this plan does not build them.
+
+| Task | Content | Needs | State |
+| --- | --- | --- | --- |
+| MA-1 | The name of a device in a List row (`DeviceTable`) and in a phone row (`PhoneRows`) travels to the title of its page, as a Grid card does (`sharedItem`, `device-name:<id>`). Back travels it home. Under reduced motion: no travel | Nothing | Not started |
+| MA-2 | Settings holds its place while it loads: a late section ("Devices on the link") does not push the sections under it, and the skeleton of Notifications takes the geometry of its rows (MOT-007). Acceptance: CLS under 0.01 at 390 and 1280 px with a 400 ms API delay, in both motion modes | Nothing | Not started |
+| MA-3 | On a phone the status tally of Devices keeps its line from the first frame, so search and the list do not move 44 px when the devices come; the counts fade in place | Nothing | Not started |
+| MA-4 | On a phone the skeleton of the device page's detail block takes the height of the loaded block (310 to 511 px today) | Nothing | Not started |
+| MA-5 | Hosting overview: a block moves 20 to 39 px when its data comes. Owner: the Hosting screens (serveros-hosting-ui session); not built by this plan | The owner of Hosting | Not started |
+| MA-6 | Code: `ChatHeader` and `ChatColumn` animate `padding-inline-*` with a spring (layout on each frame); use a transform or no animation. Owner: [agent-threads.md](../proposals/agent-threads.md) (the Threads session); not built by this plan | The owner of Code | Not started |
+| MA-7 | Apply the answer to OD-MOT-1 | OD-MOT-1 | Not started |
+
+| Decision | Question | Recommendation |
+| --- | --- | --- |
+| OD-MOT-1 | Under reduced motion the opacity fades of 150 to 200 ms (`duration-fast`, `duration-base`) stay; only movement and scale stop. Does "reduce" also make the fades instant? | Keep the fades: a short fade moves nothing, and it shows that the content changed (MOT-041) |
+
 ## 4. Risks
 
 - **OpenDyslexic.** It has two weights. The light display title and the medium labels must still
