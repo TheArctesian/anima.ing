@@ -17,10 +17,21 @@ export async function checkAccessHub(hub: Hub): Promise<string> {
 }
 
 export async function publishAccess(hub: Hub, access: Access, target?: number): Promise<void> {
-  return publishForKey(hub, access, await checkAccessHub(hub), target);
+  const { api, id, device } = await linkedDevice(hub);
+  const result = await api.update(id, connectionChanges(device, access, target));
+  if (!result.ok) throw new Error(result.error.message);
 }
 
-async function publishForKey(hub: Hub, access: Access, key: string, target?: number): Promise<void> {
+/** Reads hub registration without changing local services or saved choices. */
+export async function publishedAccess(hub: Hub): Promise<readonly number[]> {
+  const { device } = await linkedDevice(hub);
+  return ([[22, device.ssh], [3389, device.rdp], [5900, device.vnc]] as const)
+    .filter(([port, connection]) => connection?.enabled && connection.port === port)
+    .map(([port]) => port);
+}
+
+async function linkedDevice(hub: Hub) {
+  const key = await checkAccessHub(hub);
   const linked = await linkApi(hub).devices();
   if (!linked.ok) throw new Error('The hub could not find this computer. Retry.');
   const host = linked.value.find((device) => device.key === key)?.address;
@@ -30,8 +41,7 @@ async function publishForKey(hub: Hub, access: Access, key: string, target?: num
   if (id === undefined) throw new Error('Enroll this computer in Devices, then retry remote access setup.');
   const found = await api.get(id);
   if (!found.ok || found.value === null) throw new Error('The hub could not read this computer. Retry.');
-  const result = await api.update(id, connectionChanges(found.value, access, target));
-  if (!result.ok) throw new Error(result.error.message);
+  return { api, id, device: found.value };
 }
 
 function connectionChanges(device: DeviceDetail, access: Access, target?: number) {

@@ -26,6 +26,8 @@
   let retrying = $state(false);
   let form: HTMLFormElement | undefined = $state();
   const waiting = $derived(settings === null);
+  const dirty = $derived(settings !== null && (days !== thresholdsText(settings.certificateDays)
+    || template.title !== settings.template.title || template.body !== settings.template.body));
   const placeholders = $derived(settings?.placeholders ?? D21_PLACEHOLDERS);
 
   // A refused save leaves what the operator typed.
@@ -38,7 +40,7 @@
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    if (waiting || busy) return;
+    if (waiting || busy || !dirty) return;
     const checked = checkThresholds(days);
     const found = templateProblems(template, placeholders);
     daysProblem = checked.ok ? '' : checked.message;
@@ -72,7 +74,7 @@
   }
 </script>
 
-<form bind:this={form} class="settings" novalidate onsubmit={submit} aria-busy={waiting}>
+<form bind:this={form} class="settings" novalidate onsubmit={submit} oninput={() => { outcome = ''; }} aria-busy={waiting}>
   <fieldset disabled={waiting || busy}>
     <SettingRow label="Certificate expiry days" for="{id}-days">
       {#snippet hint()}
@@ -95,13 +97,13 @@
       {/snippet}
     </SettingRow>
     <h4>Default template</h4>
-    <SettingRow label="Title" for="{id}-title">
+    <SettingRow label="Title" for="{id}-title" stacked>
       {#snippet hint()}
         <p class="hint" id="{id}-title-hint">Placeholders: {placeholders.join(' ')}</p>
       {/snippet}
       <input
         id="{id}-title"
-        class="wide"
+        class="wide template"
         type="text"
         bind:value={template.title}
         autocomplete="off"
@@ -112,10 +114,10 @@
         <p id="{id}-title-problem" role="alert">{problems.title}</p>
       {/snippet}
     </SettingRow>
-    <SettingRow label="Body" for="{id}-body">
+    <SettingRow label="Body" for="{id}-body" stacked>
       <textarea
         id="{id}-body"
-        class="wide"
+        class="wide template"
         bind:value={template.body}
         rows="3"
         autocomplete="off"
@@ -140,7 +142,7 @@
     {#if loadFailed}
       <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Retry</FormButton>
     {:else}
-      <FormButton tabindex={0} type="submit" tone="primary" aria-disabled={waiting || busy} aria-busy={busy}>Save</FormButton>
+      <FormButton tabindex={0} type="submit" tone="primary" aria-disabled={waiting || busy || !dirty} aria-busy={busy}>Save changes</FormButton>
     {/if}
   </SettingRow>
 </form>
@@ -170,6 +172,10 @@
     inline-size: calc(var(--space-8) * 8);
     max-inline-size: 100%;
     text-align: start;
+  }
+
+  .settings .template {
+    inline-size: 100%;
   }
 
   .settings textarea.wide {

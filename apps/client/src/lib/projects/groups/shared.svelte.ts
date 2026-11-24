@@ -10,6 +10,8 @@ export class SharedProjectGroups {
   ready = $state(false);
   /** True when the hub is older than project groups (PRO-059). */
   unserved = $state(false);
+  /** Import support is separate from shared groups; reopening Projects checks it again. */
+  importUnserved = $state(false);
   readonly groups = $derived(this.#clusters.groups);
 
   constructor(private readonly hub: Pick<Hub, 'request'>, private readonly storage?: Storage) {}
@@ -51,7 +53,7 @@ export class SharedProjectGroups {
   }
 
   async #importDeviceGroups(): Promise<boolean> {
-    if (this.storage === undefined) return false;
+    if (this.storage === undefined || this.importUnserved) return false;
     const local = storedClusters(this.storage);
     let imported = false;
     for (const group of local.groups) {
@@ -62,9 +64,11 @@ export class SharedProjectGroups {
         const input = { source: group.id, name: group.name, projects, ...(empty ? { includeEmpty: true } : {}) };
         const result = await this.hub.request(IMPORT, { input });
         if (!result.ok) {
-          this.problem ||= needsNewerHub(result.error)
-            ? 'Sharing earlier groups needs a newer hub. Your device groups are kept.'
-            : result.error.message;
+          if (needsNewerHub(result.error)) {
+            this.importUnserved = true;
+            return imported;
+          }
+          this.problem ||= result.error.message;
           if (result.error.code === 'VALIDATION') break;
           return imported;
         }
