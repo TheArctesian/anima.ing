@@ -28,11 +28,18 @@ fn kind(stat: &Stat) -> FileType {
     FileType::from_raw_mode(stat.st_mode)
 }
 
+#[cfg_attr(
+    not(target_os = "macos"),
+    expect(
+        clippy::useless_conversion,
+        reason = "`st_mode` is 32 bits on Linux and 16 on macOS"
+    )
+)]
 fn entry(stat: &Stat) -> Entry {
     Entry {
         owner: stat.st_uid,
         group: stat.st_gid,
-        mode: stat.st_mode,
+        mode: u32::from(stat.st_mode),
     }
 }
 
