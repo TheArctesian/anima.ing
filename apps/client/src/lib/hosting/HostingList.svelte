@@ -7,6 +7,7 @@
   import Select from '$lib/forms/input/Select.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
+  import ApplicationName from './ApplicationName.svelte';
   import { needingYou, placeGroups, type ApplicationRow, type Show, type View } from './list';
   import type { HostingStore } from './store.svelte';
 
@@ -30,7 +31,6 @@
     { value: 'not-managed' as Show, label: 'Not managed', count: all.filter((row) => !row.managed).length },
   ]);
   const count = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`;
-  const sub = (row: ApplicationRow) => (row.what === 'Compose project' ? `Compose project · ${count(row.containers.length, 'container')}` : row.what);
   /** HOST-021: a row says Up to date only when the hub said so of each of its containers. */
   function update(row: ApplicationRow): string {
     if (row.newer === null) return '';
@@ -86,12 +86,7 @@
           {@const opens = row.containers.length > 1 || row.what === 'Compose project'}
           {@const open = store.open.includes(row.key)}
           <tr class:wash={row.needsYou} class={row.tone}>
-            <th scope="row">
-              {#if opens}
-                <button type="button" class="open" aria-expanded={open} onclick={() => store.toggle(row.key)}><span aria-hidden="true">{open ? '▾' : '▸'}</span> {row.name}</button>
-              {:else}<span class="lone">{row.name}</span>{/if}
-              {#if !row.managed} <span class="mark">Not managed</span>{/if} <span class="sub">{sub(row)}</span>
-            </th>
+            <th scope="row"><ApplicationName {row} {open} ontoggle={() => { store.toggle(row.key); }} /></th>
             <td><span class="state {row.tone}"><span class="dot" aria-hidden="true"></span>{row.state}</span></td>
             <td class="sub">{row.managed ? update(row) : (update(row) || 'Read only')}</td>
             <td class="action">{#if !opens && row.containers[0] !== undefined}{@render actions(group.id, row.containers[0])}{/if}</td>
@@ -231,21 +226,6 @@
     background: var(--status-degraded-wash);
   }
 
-  .open,
-  .lone {
-    padding: 0;
-    background: none;
-    border: 0;
-    color: var(--text);
-    font: inherit;
-    font-weight: var(--weight-medium);
-    cursor: pointer;
-  }
-
-  .lone {
-    cursor: auto;
-  }
-
   .inner th {
     padding-inline-start: var(--space-6);
   }
@@ -274,15 +254,6 @@
 
   td.sub {
     display: table-cell;
-  }
-
-  /* The mark is a word with a border that repeats it (MAT-005). */
-  .mark {
-    margin-inline-start: var(--space-2);
-    padding: 0 var(--space-2);
-    border: var(--border-thin) solid var(--border-subtle);
-    border-radius: var(--radius-pill);
-    color: var(--text-secondary);
   }
 
   .state {

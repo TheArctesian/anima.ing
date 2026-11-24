@@ -1,9 +1,10 @@
 <script lang="ts">
+  import BrandMark from '$lib/brands/BrandMark.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Switch from '$lib/forms/switch/Switch.svelte';
   import Icon from '$lib/icons/Icon.svelte';
   import type { CatalogueEntry } from './api';
-  import { SHELL_REASON, TIER_LABELS, UNREVIEWED_NOTE, enumWords, markWords, partState, protocolWords, reviewFact, tierFact, unreviewed } from './entry';
+  import { SHELL_REASON, TIER_LABELS, UNREVIEWED_NOTE, entryMark, enumWords, markWords, partState, protocolWords, reviewFact, tierFact, unreviewed } from './entry';
 
   /**
    * Tasks H38 and H39: the description of one entry. The install button is present and refused with the hub's fixed
@@ -15,6 +16,7 @@
 
 <section class="pane" aria-label="About {entry.name}">
   <header class="bar">
+    <BrandMark mark={entryMark(entry)} />
     <h3>{entry.name}</h3>
     <span class="mark">{TIER_LABELS[entry.tier]}</span>
     {#if entry.class === 'SHELL'}<span class="mark">Shell</span>{/if}

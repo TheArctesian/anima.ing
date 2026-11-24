@@ -1,10 +1,11 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import BrandMark from '$lib/brands/BrandMark.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Input from '$lib/forms/input/Input.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
-  import { SHELL_REASON, TIER_LABELS, rowLine, unreviewed, type TierChoice } from './entry';
+  import { SHELL_REASON, TIER_LABELS, entryMark, rowLine, unreviewed, type TierChoice } from './entry';
   import type { CatalogueStore } from './store.svelte';
 
   /**
@@ -50,6 +51,7 @@
             {#each group.entries as entry (entry.id)}
               <li>
                 <button type="button" class="entry" aria-pressed={entry.id === store.selected} onkeydown={(event) => void arrow(event)} onclick={() => { store.select(entry.id === store.selected ? null : entry.id); }}>
+                  <BrandMark mark={entryMark(entry)} />
                   <span class="lines">
                     <span class="name">{entry.name}{#if entry.class === 'SHELL'}<span class="mark">Shell</span>{/if}{#if unreviewed(entry)}<span class="mark">Not reviewed</span>{/if}</span>
                     <span class="line">{rowLine(entry)}</span>
@@ -134,7 +136,7 @@
 
   .entry {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--space-3);
     inline-size: 100%;
