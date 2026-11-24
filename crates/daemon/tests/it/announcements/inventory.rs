@@ -116,7 +116,10 @@ async fn thr_172_an_inventory_too_large_alone_never_drops_metrics_or_is_announce
     rig.pusher.accept(Event::Inventory(mac()));
     rig.pusher.push_due(at(50)).await;
     assert_eq!(inventories_of(&hub), [None, Some(sent())]);
-    assert!(crate::kit::pushed_times(&hub.seen("push")[1].body).is_empty());
+    assert_eq!(
+        crate::kit::pushed_times(&hub.seen("push")[1].body),
+        [] as [i64; 0]
+    );
     rig.pusher.push_due(at(60)).await;
     assert_eq!(
         hub.seen("push").len(),
