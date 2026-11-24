@@ -93,8 +93,12 @@ pub fn refusal(status: u16, body: &[u8]) -> HubError {
     }
 }
 
-/// The gateway of the hosted hubs answers in place of a hub (HMD-059, HM-T31).
-pub const HOSTED_ADDRESS: &str = "This address is the hosted Anima.ing hub in a browser. It does not answer the command line. For a hub of your own, give its address with --hub or ANIMA_HUB. For a hosted hub, open https://hub.anima.ing in a browser, or sign in with the Anima.ing application.";
+/// What the command line says when the gateway of the hosted hubs answers in place of a hub
+/// (HMD-059, HM-T31): `https://hub.anima.ing` was the default address of a hub of one's own
+/// and is the hosted service now. The command line reaches a hosted hub through the link of
+/// the Anima app, which signs it in (R-383, `anima auth adopt`); with no app it cannot yet
+/// (HM-T40).
+pub const HOSTED_ADDRESS: &str = "This address is the hosted Anima.ing hub for a browser. It does not answer the command line. For a hosted hub, sign in to the Anima.ing application on this computer: it signs in anima too, and the context app is your hub (see anima context list). For a hub of your own, give its address with --hub or ANIMA_HUB.";
 
 /// Each message is fixed: the gateway's own words are not repeated.
 fn gateway_refusal(body: &[u8]) -> Option<HubError> {

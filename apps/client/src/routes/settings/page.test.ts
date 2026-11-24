@@ -115,7 +115,7 @@ it('SET-001, UI-005, MOT-043, R-224: the page is the title, then Account, Notifi
     'Interface font', 'IBM Plex Sans', ...fonts, 'Monospace font', 'IBM Plex Mono', ...fonts,
   ]);
   const controls = '[role="switch"], img, input, textarea, a, [tabindex]:not(button)';
-  expect(sections(target).flatMap((section) => [...section.querySelectorAll(controls)]).map((control) => control.id)).toEqual(['code-contrast']);
+  expect(sections(target).flatMap((section) => [...section.querySelectorAll(controls)]).map((control) => control.getAttribute('href') ?? control.id)).toEqual(['/device', 'code-contrast']);
 });
 
 it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section after Appearance, holding the update, log folder and Builds rows', async () => {

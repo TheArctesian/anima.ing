@@ -161,7 +161,7 @@ impl Hub {
             reason,
         };
         let opening = async {
-            let wire = wire::connect(&url).await.map_err(unreachable)?;
+            let wire = wire::connect(self.origin()).await.map_err(unreachable)?;
             upgrade(&url, &ticket, wire).await
         };
         match timeout(wait, opening).await {

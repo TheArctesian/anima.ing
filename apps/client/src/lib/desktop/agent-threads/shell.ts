@@ -1,3 +1,4 @@
+import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { rowsFrom, threadFrom, type ThreadsShell } from '$lib/agent-threads/thread';
 
@@ -39,3 +40,17 @@ export const desktopThreadsShell: ThreadsShell = {
   list: (program) => ask('agent_threads_list', { program, limit: 200 }, rowsFrom),
   read: (id) => ask('agent_thread_read', { id }, threadFrom),
 };
+
+/** The event contains only watch health, never a session path or text. */
+export async function watchThreadFiles(changed: (status: 'ready' | 'changed' | 'unavailable') => void): Promise<() => void> {
+  const stop = await listen<unknown>('agent-threads:changed', (event) => {
+    if (event.payload === 'ready' || event.payload === 'changed' || event.payload === 'unavailable') changed(event.payload);
+  });
+  try {
+    await invoke('agent_threads_watch');
+    return stop;
+  } catch (reason) {
+    stop();
+    throw reason;
+  }
+}

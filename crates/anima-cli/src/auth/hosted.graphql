@@ -1,0 +1,3 @@
+mutation ClaimCommandLineToken($claim: String!) {
+  claimCommandLineToken(claim: $claim) { token expiresAt operator { username } }
+}

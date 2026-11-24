@@ -1,6 +1,7 @@
 //! The only code that talks to the hub (CMD-003). It follows no redirect, ignores proxy variables
 //! and keeps no cookie. It logs nothing, and no error it returns holds the token or the body (CMD-014).
 
+pub mod account;
 pub mod answer;
 pub mod attachments;
 pub mod error;
@@ -50,12 +51,16 @@ impl Hub {
     /// # Errors
     /// [`HubError::Setup`] when the TLS roots cannot be loaded.
     pub fn new(origin: Origin, token: Option<Token>) -> Result<Self, HubError> {
-        let http = Client::builder()
+        let builder = Client::builder()
             .redirect(redirect::Policy::none())
             .no_proxy()
-            .timeout(TIMEOUT)
-            .build()
-            .map_err(|_| HubError::Setup)?;
+            .timeout(TIMEOUT);
+        #[cfg(unix)]
+        let builder = match origin.socket_path() {
+            Some(path) => builder.unix_socket(path),
+            None => builder,
+        };
+        let http = builder.build().map_err(|_| HubError::Setup)?;
         Ok(Self {
             origin,
             token,

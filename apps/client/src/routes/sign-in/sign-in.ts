@@ -1,5 +1,6 @@
 import type { AccessApi } from '$lib/access/api';
 import { storeHubAddress } from '$lib/desktop/address';
+import { startCommandLineSignIn } from '$lib/desktop/command-line/sign-in';
 import { AccessTokenError } from '$lib/desktop/token';
 import type { HubAddress, HubError } from '$lib/hub/hub';
 import { checkLogin, failureMessage, fieldMessages, type FieldMessages, type LoginForm } from './form';
@@ -58,6 +59,7 @@ export async function signIn({ api, address, desktop, writeToken }: SignIn, form
     // The key store's error is fixed text chosen by the client; anything else gets the generic sentence.
     return refused(reason instanceof AccessTokenError ? reason.message : NOT_KEPT_MESSAGE);
   }
+  await startCommandLineSignIn(address, result.value);
   return { signedIn: true };
 }
 
