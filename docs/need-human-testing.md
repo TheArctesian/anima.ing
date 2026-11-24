@@ -5192,9 +5192,17 @@ page over a made-up runner in the real order of its answers; nobody has tried it
 4. Stop the Anima daemon, press New thread, type a prompt and send it.
    Expected: a line under the composer says why the thread did not start, with Retry; the text stays in the editor. Start the daemon and press Retry: the thread starts.
 5. Press New thread, click the project name, and choose "Add project".
-   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. Three of them are grey and say which call of the runner they need; nothing happens when you press them.
+   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. New project and Local folder are enabled. Git URL and GitHub repository remain disabled.
 6. Choose Local folder, go into a folder with Enter, go back with Backspace, then choose "Add this folder".
    Expected: the folders of your home folder, then of the chosen folder; Backspace goes up one folder; the draft now names the added folder.
+7. Choose Add project, then New project. Enter a name and the absolute path of an existing parent folder. Check the destination, then press Create project.
+   Expected: progress while the runner creates the folder and Git repository; repeated presses cannot submit twice. The confirmed project is selected without starting an agent. Reopen Code: the empty project remains in the picker.
+8. Try a name with a slash and a relative location, then an existing destination or a parent without write permission.
+   Expected: invalid fields are identified before submission. Runner refusals retain the fields and explain the failure; correct them and retry. An uncertain result never selects an unconfirmed project and advises checking the folder before retrying.
+9. Use the New project dialog by keyboard, in light and dark themes, a narrow window and enlarged text.
+   Expected: focus stays in the dialog, labels identify both fields, the destination wraps, and errors and buttons remain readable. Cancel closes an idle dialog; an in-flight request cannot be dismissed or duplicated.
+
+The New project slice is built on `code/new-project-ui` over TH60A. Synthetic tests exercise the real client response parser and draft UI; real filesystem creation and rendered desktop checks remain open.
 
 Result: Open.
 
@@ -5595,6 +5603,46 @@ on the device; they are not imported into another hub or deleted. The operator c
 Result: Open.
 
 
+## HT-188-code — Grok in Code (TH119)
+
+State: Open. Operator check required.
+
+Built: the local Grok ACP adapter, its model picker, Ask and Full access, streamed tool and reply
+entries, interruption, queued turns and changes of model or effort while idle. Protocol tests
+use synthetic frames. Local checks on Linux (2026-11-23, agent, c07e8fe11): the installed
+app lists Grok models, a prompt and follow-up show replies, and navigation away from Code
+and back keeps the thread current. An isolated runner continued after a daemon restart.
+These checks do not close the operator check or prove macOS behavior.
+
+1. Open Code on a machine signed in with `grok`. Select Grok: its installed model list and
+   reasoning levels appear, without Max or Ultra unless Grok reports them.
+2. Start a harmless prompt in a disposable folder in Ask. The reply streams and remains after
+   the turn ends. Request a file change: any approval Grok asks for is shown with its input;
+   Deny does not run it, and Allow grants only that request.
+3. Queue a second prompt during a turn: it goes only after the first turn succeeds. Stop a
+   running turn: no queued prompt goes automatically after the interruption.
+4. Between turns, change the model or effort: the row changes only after Grok accepts it.
+5. Restart the daemon while the Grok thread is idle: the thread remains usable.
+6. Navigate from Code to Devices and back. Open the thread and send another prompt: its title,
+   reply and completed state update; the page does not stay at “Working” after the reply.
+7. Repeat on macOS and Linux. Sessions started outside Anima and hub synchronization of Grok
+   threads are not included in this local slice.
+
+## HT-189-pointer — Linux tiled-window pointer alignment
+
+State: Open. The operator reported wrong hover and click targets on 2026-11-23.
+
+Built: the Linux main window no longer imposes a 960 by 600 minimum on a tiling
+compositor. In the reported arrangement the compositor allocated 863 pixels across,
+but WebKit rendered 960; the displayed buttons were compressed while input used
+the larger layout. Other platforms keep their existing minimum window sizes.
+
+1. Tile Anima beside another window on a fractionally scaled Linux display, narrower
+   than 960 logical pixels. Hover New thread and the adjacent project filter. Each
+   button highlights only when the pointer is over that button.
+2. Click each button. New thread opens a draft; the folder button opens the project
+   filter. Resize the tiled window and repeat, including a short window.
+3. Maximize and restore the window. Hover and clicks still match the drawn controls.
 ## HT-185-create — Create a local Code project (TH60A)
 
 State: Open. Built on `code/project-create`; the TC9 New project UI is owned separately.

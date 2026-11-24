@@ -1,3 +1,4 @@
+import GrokMark from './GrokMark.svelte';
 import AlarmClock from '@lucide/svelte/icons/alarm-clock';
 import AlarmClockOff from '@lucide/svelte/icons/alarm-clock-off';
 import ArrowDown from '@lucide/svelte/icons/arrow-down';
@@ -147,6 +148,7 @@ import OpenAiMark from './OpenAiMark.svelte';
 export const CODE_ICONS = {
   claude: ClaudeMark,
   openai: OpenAiMark,
+  grok: GrokMark,
   'rows-3': Rows3,
   'columns-2': Columns2,
   'pilcrow': Pilcrow,

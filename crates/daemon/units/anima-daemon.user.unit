@@ -20,7 +20,8 @@ PrivateTmp=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=%E/anima-daemon
+# Local agent programs write their own state and the projects of this user (THR-041).
+ReadWritePaths=%h %E/anima-daemon
 LimitCORE=0
 SocketBindDeny=any
 # The cgroup of this unit is delegated to the daemon, which makes one cgroup for each model server

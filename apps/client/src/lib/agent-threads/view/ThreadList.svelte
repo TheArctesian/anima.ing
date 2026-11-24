@@ -34,6 +34,7 @@
     { value: 'all', label: 'All' },
     { value: 'claude_code', label: 'Claude Code' },
     { value: 'codex', label: 'Codex' },
+    { value: 'grok', label: 'Grok' },
   ];
   /** While the pointer is on the list a row keeps its place; a search or a choice of a program applies at once (5.7.3, Reorder). */
   const held = new HeldOrder<StatedRow>(
