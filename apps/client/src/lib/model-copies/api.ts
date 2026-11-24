@@ -26,6 +26,11 @@ void graphql(`
       secondsLeft
     }
     reason
+    load {
+      state
+      idleSeconds
+      pinned
+    }
     createdAt
   }
 `);
@@ -74,6 +79,13 @@ const REMOVE = graphql(`
   }
 `);
 
+// FIT-022, FIT-023: the hub gives the job of the machine; the load shows the keep in the next model report.
+const KEEP = graphql(`
+  mutation HostingKeepModelCopy($id: ID!, $keep: ModelKeepInput!) {
+    keepModelCopy(id: $id, keep: $keep)
+  }
+`);
+
 // The models that the machines found where Ollama, LM Studio, the Hugging Face cache or a folder keeps them (PULL-012).
 const FOUND = graphql(`
   query HostingFoundModels {
@@ -111,6 +123,7 @@ const USE = graphql(`
 
 export type ModelCopy = HostingModelCopiesQuery['modelCopies'][number];
 export type CopyState = ModelCopy['state'];
+export type CopyLoad = NonNullable<ModelCopy['load']>;
 export type FoundModel = HostingFoundModelsQuery['foundModels'][number];
 type Policy = ModelPullChoicesQuery['devicePolicies'][number];
 
@@ -132,7 +145,7 @@ export interface PullChoices {
   readonly variants: readonly PullVariant[];
 }
 
-/** What the section Models asks of the hub (HSE-013, PULL-001, PULL-007, PULL-009, PULL-012); its store and tests take this. */
+/** What the section Models asks of the hub (HSE-013, PULL-001, PULL-007, PULL-009, PULL-012, FIT-023); its store and tests take this. */
 export interface CopyCalls {
   /** Each copy that a machine has, pulls or removes. */
   list(): Promise<HubResult<readonly ModelCopy[]>>;
@@ -148,6 +161,8 @@ export interface CopyCalls {
   find(deviceId: string): Promise<HubResult<string>>;
   /** Uses a found model where it is (R-444): the new copy. */
   use(deviceId: string, found: string): Promise<HubResult<ModelCopy>>;
+  /** Pins a copy or ends its pin, with its idle seconds (null: the default of the hub); the job (FIT-022, FIT-023). */
+  keep(id: string, pinned: boolean, idleSeconds: number | null): Promise<HubResult<string>>;
 }
 
 /** The copy calls of the hub. */
@@ -185,6 +200,10 @@ export function copiesApi(hub: Pick<Hub, 'request'>): CopyCalls {
     use: async (deviceId, found) => {
       const result = await hub.request(USE, { deviceId, found });
       return result.ok ? { ok: true, value: result.value.useFoundModel } : result;
+    },
+    keep: async (id, pinned, idleSeconds) => {
+      const result = await hub.request(KEEP, { id, keep: { pinned, idleSeconds } });
+      return result.ok ? { ok: true, value: result.value.keepModelCopy } : result;
     },
   };
 }

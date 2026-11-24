@@ -9,11 +9,12 @@
   /**
    * HSE-013: the copies of the models in one list, one group for each machine as HSE-002; each row names its place
    * (HSE-014). A row has its state, the progress of a pull that runs (PULL-007), the reason of a failure, and Remove
-   * (PULL-009).
+   * (PULL-009). A copy that a server holds says so, with its pin or idle time; Pin and Unpin keep it loaded or end that
+   * (FIT-022, FIT-023).
    */
   const { store }: { store: CopiesStore } = $props();
 
-  const groups = $derived(machineGroups(store.copies, store.machine));
+  const groups = $derived(machineGroups(store.copies, store.machine, store.asked));
   const places = $derived(machineGroups(store.copies, ''));
   let removing = $state.raw<{ readonly id: string; readonly address: string; readonly machine: string } | null>(null);
 </script>
@@ -31,13 +32,14 @@
     <span class="grow"></span>
     <FormButton size="sm" icon="carbon:renew" busy={store.status === 'loading'} onclick={() => void store.load()}>Refresh</FormButton>
   </header>
+  {#if store.keepRefusal !== ''}<p class="failure" role="alert">{store.keepRefusal}</p>{/if}
   {#if store.status === 'ready' && groups.length === 0}
     <p class="empty">No machine has a model. Pull one: the machine downloads it from its source and checks each file.</p>
   {:else}
     <table>
       <caption>The models on each machine</caption>
       <thead>
-        <tr><th scope="col">Model</th><th scope="col">State</th><th scope="col"><span class="hidden">Remove</span></th></tr>
+        <tr><th scope="col">Model</th><th scope="col">State</th><th scope="col"><span class="hidden">Actions</span></th></tr>
       </thead>
       {#each groups as group (group.id)}
         <tbody>
@@ -49,6 +51,9 @@
               <th scope="row"><span class="address">{row.address}</span> <span class="sub">{row.what}</span></th>
               <td>{@render state(row)}</td>
               <td class="action">
+                {#if row.keepable}
+                  <FormButton size="sm" tone="ghost" aria-label="{row.pinned ? 'Unpin' : 'Pin'} {row.address} on {group.name}" onclick={() => void store.keep(row.id, !row.pinned, row.idleSeconds)}>{row.pinned ? 'Unpin' : 'Pin'}</FormButton>
+                {/if}
                 {#if !row.removing}
                   <FormButton size="sm" tone="ghost" aria-label="Remove {row.address} from {group.name}" onclick={() => { removing = { id: row.id, address: row.address, machine: group.name }; }}>Remove</FormButton>
                 {/if}
@@ -68,6 +73,7 @@
     <span class="sub">{row.progress}</span>
   {/if}
   {#if row.reason !== ''}<span class="sub reason">{row.reason}</span>{/if}
+  {#if row.load !== ''}<span class="sub load">{row.load}</span>{/if}
 {/snippet}
 
 <ConfirmModal
@@ -148,7 +154,7 @@
   }
 
   thead th:nth-child(3) {
-    inline-size: calc(var(--control-lg) * 2);
+    inline-size: calc(var(--control-lg) * 4);
   }
 
   .action {
@@ -181,8 +187,14 @@
     color: var(--text-secondary);
   }
 
-  .reason {
+  .reason,
+  .failure {
     color: var(--status-down);
+  }
+
+  .failure {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-sm);
   }
 
   /* A copy that failed has the wash of its status, as in Applications (HSE-002). */

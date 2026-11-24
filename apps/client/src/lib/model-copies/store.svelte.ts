@@ -21,6 +21,10 @@ export class CopiesStore {
   finding = $state(false);
   /** Why the last Find models or Use did not complete; each later Pull, Remove, Find models or Use clears it. */
   refusal = $state('');
+  /** The pins (true) and unpins (false) asked for, by copy, until the machine reports them (FIT-023). */
+  asked = $state.raw<Readonly<Record<string, boolean>>>({});
+  /** Why the last Pin or Unpin did not complete; the next one clears it. */
+  keepRefusal = $state('');
   /** The identifier of one machine, or empty for all. */
   machine = $state('');
 
@@ -49,6 +53,7 @@ export class CopiesStore {
       return;
     }
     this.copies = result.value;
+    this.asked = unreported(this.asked, result.value);
     this.found = found.value;
     this.problem = '';
     this.status = 'ready';
@@ -116,6 +121,18 @@ export class CopiesStore {
     return { ok: true, value: machines.length };
   }
 
+  /**
+   * FIT-022, FIT-023: pins the copy or ends its pin, and keeps its idle seconds. The machine keeps the pin; the row says
+   * that it is asked until the next model report of the machine shows it.
+   */
+  async keep(id: string, pinned: boolean, idleSeconds: number | null): Promise<HubResult<string>> {
+    this.keepRefusal = '';
+    const result = withReasons(await this.calls.keep(id, pinned, idleSeconds));
+    if (result.ok) this.asked = { ...this.asked, [id]: pinned };
+    else this.keepRefusal = result.error.message;
+    return result;
+  }
+
   /** R-444: uses a found model where it is; its copy joins the list and the model leaves the found list. */
   async use(model: FoundModel): Promise<HubResult<ModelCopy>> {
     this.refusal = '';
@@ -129,4 +146,14 @@ export class CopiesStore {
     }
     return result;
   }
+}
+
+/** The pins and unpins that the machines have not reported yet: a copy that is gone, or whose load shows it, leaves. */
+function unreported(asked: Readonly<Record<string, boolean>>, copies: readonly ModelCopy[]): Readonly<Record<string, boolean>> {
+  return Object.fromEntries(
+    Object.entries(asked).filter(([id, pinned]) => {
+      const load = copies.find((copy) => copy.id === id)?.load;
+      return load !== undefined && (load === null || load.pinned !== pinned);
+    }),
+  );
 }

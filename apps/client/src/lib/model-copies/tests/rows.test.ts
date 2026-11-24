@@ -51,3 +51,22 @@ it('PULL-012: a found copy says where it is in place of a quantisation', () => {
   expect(machineGroups([found], '')[0]?.rows[0]?.what).toBe('GGUF · where LM Studio keeps it · 1 file · 5.0 GiB');
   expect(reasonWords('copy_changed')).toBe('A file of the found model changed where it is.');
 });
+
+it('FIT-022, FIT-023: a copy that a server holds says so, with its pin or the idle time before its unload', () => {
+  const ready = machineGroups(COPIES, 'm-pop')[0]?.rows[0];
+  expect([ready?.load, ready?.pinned, ready?.idleSeconds, ready?.keepable]).toEqual(['In memory · unloads after 15 min with no use', false, 900, true]);
+  const pinned = copy({ id: 'p', load: { state: 'ACTIVE', idleSeconds: 3600, pinned: true } });
+  expect(machineGroups([pinned], '')[0]?.rows[0]?.load).toBe('In memory, answering · pinned');
+  const loading = machineGroups([copy({ id: 'q', state: 'DOWNLOADING' })], '')[0]?.rows[0];
+  expect([loading?.load, loading?.keepable]).toEqual(['', false]);
+});
+
+it('FIT-023: a pin that the machine has not reported yet says that it is asked', () => {
+  const asked = { 'c-pop-gemma': true, 'c-off': true };
+  const rows = machineGroups([...COPIES, copy({ id: 'c-off', address: 'phi4:14b' })], 'm-pop', asked)[0]?.rows;
+  expect(rows?.map((row) => [row.address, row.load, row.pinned])).toEqual([
+    ['gemma3:4b-q8_0', 'In memory · pin asked', true],
+    ['phi4:14b', 'Pin asked', true],
+    ['qwen3:8b-q4_k_m', '', false],
+  ]);
+});

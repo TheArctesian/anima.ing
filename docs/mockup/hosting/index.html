@@ -928,20 +928,20 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
       <button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v2.5h-2.5"/></svg>Refresh</button>
     </div>
     <ul class="table">
-      <li class="tr th" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 96px"><span>Model</span><span>State</span><span></span></li>
-      <li class="tr group" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 96px"><span><b class="mono" style="color: var(--text)">nas</b> · 1 model · 5.0 GiB</span><span></span><span></span></li>
-      <li class="tr need" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 96px">
+      <li class="tr th" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 160px"><span>Model</span><span>State</span><span></span></li>
+      <li class="tr group" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 160px"><span><b class="mono" style="color: var(--text)">nas</b> · 1 model · 5.0 GiB</span><span></span><span></span></li>
+      <li class="tr need" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 160px">
         <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">qwen3:8b-q4_k_m</b><span class="sec">GGUF · Q4_K_M · 1 file · 5.0 GiB</span></span>
         <span class="cell2" style="gap: var(--space-1)"><span class="st down">Failed</span><span class="sec">A file did not match its SHA-256 value.</span></span>
         <span class="r"><button class="btn quiet sm" type="button">Remove</button></span>
       </li>
-      <li class="tr group" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 96px"><span><b class="mono" style="color: var(--text)">pop-os</b> · 2 models · 9.0 GiB</span><span></span><span></span></li>
-      <li class="tr" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 96px">
+      <li class="tr group" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 160px"><span><b class="mono" style="color: var(--text)">pop-os</b> · 2 models · 9.0 GiB</span><span></span><span></span></li>
+      <li class="tr" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 160px">
         <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">gemma3:4b-q8_0</b><span class="sec">GGUF · Q8_0 · 1 file · 4.0 GiB</span></span>
-        <span class="st up">Ready</span>
-        <span class="r"><button class="btn quiet sm" type="button">Remove</button></span>
+        <span class="cell2" style="gap: var(--space-1)"><span class="st up">Ready</span><span class="sec">In memory · unloads after 15 min with no use</span></span>
+        <span class="r"><button class="btn quiet sm" type="button">Pin</button><button class="btn quiet sm" type="button">Remove</button></span>
       </li>
-      <li class="tr" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 96px">
+      <li class="tr" style="grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 160px">
         <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">qwen3:8b-q4_k_m</b><span class="sec">GGUF · Q4_K_M · 1 file · 5.0 GiB</span></span>
         <span class="cell2" style="gap: var(--space-1)"><span class="st deg">Downloading</span><span style="display: block; height: 4px; border-radius: 2px; background: var(--border-subtle)"><span style="display: block; width: 40%; height: 100%; border-radius: 2px; background: var(--accent)"></span></span><span class="sec">40 % · 2.0 GiB of 5.0 GiB · 10.0 MiB/s · 5 min left</span></span>
         <span class="r"><button class="btn quiet sm" type="button">Remove</button></span>
@@ -969,7 +969,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   </div>
 </main>
 </div>
-<figcaption>Frame 8, dark, 1280 px: Hosting, section Models (HSE-013, HSE-014; task L1-7 of compute-plan.md, PULL-001, PULL-007, PULL-009). The copies of the models in one group for each machine, as Applications: the header row has the machine, its number of models and their size. A row names the variant name:tag with its format, quantisation, files and size; its state (Waiting, Downloading, Downloaded, Checking, Ready, Failed, Removing); the progress of a pull that runs; the reason of a failure in words. Remove asks first; a pull that waits stops at once, else the machine deletes the files. Pull a model opens a dialog with a machine and a variant of the library; a machine that never asked the hub for work is not offered. Below the copies, Found on the machines (task L1-22, PULL-012, R-444): the models that each machine found where Ollama, LM Studio, the Hugging Face cache or a folder of its settings keeps them, with no copy that uses them, one group for each machine. A row names the model as its program shows it, with the program, the format, the files and the size. Use asks the machine to read each file and keep its SHA-256 where it is; the copy then joins the list above, its row says where the model is in place of its quantisation. Only a GGUF model has Use. Find models asks each machine to read its folders again. The names, machines and numbers are examples.</figcaption>
+<figcaption>Frame 8, dark, 1280 px: Hosting, section Models (HSE-013, HSE-014; task L1-7 of compute-plan.md, PULL-001, PULL-007, PULL-009). The copies of the models in one group for each machine, as Applications: the header row has the machine, its number of models and their size. A row names the variant name:tag with its format, quantisation, files and size; its state (Waiting, Downloading, Downloaded, Checking, Ready, Failed, Removing); the progress of a pull that runs; the reason of a failure in words. Remove asks first; a pull that waits stops at once, else the machine deletes the files. A copy that a model server of its machine holds has a second line under its state (task L1-20, FIT-022, FIT-023; K11 Section 11.1): Loading into memory, In memory, In memory, answering, or Unloading from memory, with "pinned" or the idle time after which the machine unloads it. Pin, on a copy that the machine has all of the files of, keeps it loaded and loads it again when the machine gets the memory back; Unpin ends that. Until the next model report of the machine shows the pin, the line says "pin asked". Pull a model opens a dialog with a machine and a variant of the library; a machine that never asked the hub for work is not offered. Below the copies, Found on the machines (task L1-22, PULL-012, R-444): the models that each machine found where Ollama, LM Studio, the Hugging Face cache or a folder of its settings keeps them, with no copy that uses them, one group for each machine. A row names the model as its program shows it, with the program, the format, the files and the size. Use asks the machine to read each file and keep its SHA-256 where it is; the copy then joins the list above, its row says where the model is in place of its quantisation. Only a GGUF model has Use. Find models asks each machine to read its folders again. The names, machines and numbers are examples.</figcaption>
 </figure>
 <figure>
 <div class="v2" data-theme="dark" style="width: 1280px; height: 760px;">

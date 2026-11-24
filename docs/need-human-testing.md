@@ -5420,7 +5420,9 @@ installed daemon of the operator; set `ANIMA_DAEMON_HOME` to a new test folder.
 Built on the branch `compute/l1-20` (task L1-20; FIT-001, FIT-004, FIT-005, CAP-011): `Query.modelFits` in the hub
 (`crates/hub/src/fleet/compute/graphql/fits.rs`, over the estimate of `crates/hub/src/fleet/compute/placement/machine.rs`),
 `anima model fit`, the MCP tool `anima_model_fit`, and the page Hosting > Models > Library
-(`apps/client/src/lib/model-library/`, Frame 9 of `docs/mockup/hosting/index.html`). The tests use made hardware values of
+(`apps/client/src/lib/model-library/`, Frame 9 of `docs/mockup/hosting/index.html`); and, on Hosting > Models
+(`apps/client/src/lib/model-copies/`, Frame 8), the load of a copy and Pin and Unpin (FIT-022, FIT-023, over
+`keepModelCopy` of task L1-16). The tests of the page use a fake hub: no test pins a copy on a real machine. The tests use made hardware values of
 two machines and a fake hub. They do not read the hardware values that a real daemon sends, and no test loads a model, so
 no test shows that a model that the page says fits does load and run in that memory.
 
@@ -5448,6 +5450,13 @@ no test shows that a model that the page says fits does load and run in that mem
 7. Load a variant that the page says fits on the GPU of `pop-os`, at the context of step 4, in llama.cpp or Ollama on
    that machine.
    Expected: the model loads with all its layers on the GPU and does not run out of memory.
+8. With a copy loaded by a model server of `pop-os` (step 3 of HT-NEW-modelloading), open Hosting > Models.
+   Expected: the row of the copy has a second line under its state, "In memory · unloads after 15 min with no use" (or
+   the idle time that it has), and the buttons Pin and Remove; a copy that downloads has no Pin.
+9. Press Pin on that row, then Refresh after the next model report of `pop-os` (Find models asks for one).
+   Expected: the line says "In memory · pin asked" and the button says Unpin at once; after the report the line says
+   "In memory · pinned", and `anima model copies --device pop-os` shows the same pin in its column LOAD. Press Unpin.
+   Expected: the same steps back to the idle time, which stays what it was.
 ### HT-NEW-modelwiring: the running daemon claims model work on `pop-os`, and the switch at the machine stops it
 
 Built on the branch `compute/l1-6d` (task L1-6d of compute-plan.md; USE-004, CAG-002, CAG-003; SF-259, SF-294, SF-317;

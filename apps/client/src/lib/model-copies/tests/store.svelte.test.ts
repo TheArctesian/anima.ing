@@ -94,3 +94,24 @@ it('PULL-012: the refusal of Use stays on the page until the next action', async
   await store.remove('c-pop-gemma');
   expect(store.refusal).toBe('');
 });
+
+it('FIT-023: Pin keeps the idle seconds of the load, and the row says it is asked until the machine reports the pin', async () => {
+  const { calls, store } = make();
+  await store.load();
+  await store.keep('c-pop-gemma', true, 900);
+  expect(calls.keeps).toEqual([['c-pop-gemma', true, 900]]);
+  expect(store.asked).toEqual({ 'c-pop-gemma': true });
+  await store.load();
+  expect(store.asked).toEqual({ 'c-pop-gemma': true });
+  calls.copies = calls.copies.map((each) => (each.id === 'c-pop-gemma' ? { ...each, load: { state: 'READY', idleSeconds: 900, pinned: true } } : each));
+  await store.load();
+  expect(store.asked).toEqual({});
+});
+
+it('FIT-023: a Pin that the hub refuses changes no row and gives the words of the hub', async () => {
+  const { calls, store } = make();
+  await store.load();
+  calls.keepFails = { code: 'VALIDATION', message: 'The machine does not have this copy now.', fields: [] };
+  await store.keep('c-pop-gemma', true, 900);
+  expect([store.asked, store.keepRefusal]).toEqual([{}, 'The machine does not have this copy now.']);
+});

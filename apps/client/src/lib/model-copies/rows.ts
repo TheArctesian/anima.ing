@@ -1,6 +1,6 @@
 import type { Tone } from '$lib/containers/rows';
 import { formatBytes, formatBytesPerSecond } from '$lib/metrics/units';
-import type { CopyState, ModelCopy, PullMachine } from './api';
+import type { CopyLoad, CopyState, ModelCopy, PullMachine } from './api';
 import { keptBy } from './found';
 
 /** One row of the section Models: one copy of a variant on its machine (HSE-013). */
@@ -19,6 +19,14 @@ export interface CopyRow {
   readonly reason: string;
   /** A removal is asked for already: the row offers no second one. */
   readonly removing: boolean;
+  /** "In memory · pinned" while a server of the machine holds the copy (FIT-022, FIT-023); empty when none does. */
+  readonly load: string;
+  /** The copy is pinned, or a pin is asked for and the machine has not reported it yet. */
+  readonly pinned: boolean;
+  /** The idle seconds of the load, which a pin keeps; null when no server holds the copy. */
+  readonly idleSeconds: number | null;
+  /** The machine has all of the files of the copy: it can pin it (K11 Section 11.1). */
+  readonly keepable: boolean;
 }
 
 /** The copies of one machine (HSE-013 as HSE-002): its header, then its rows. */
@@ -102,7 +110,32 @@ function whatOf(copy: ModelCopy): string {
   return [copy.format, second, plural(copy.fileCount, 'file'), formatBytes(copy.sizeBytes)].filter((part) => part !== '').join(' · ');
 }
 
-function row(copy: ModelCopy): CopyRow {
+const LOADS: Readonly<Record<CopyLoad['state'], string>> = {
+  LOADING: 'Loading into memory',
+  READY: 'In memory',
+  ACTIVE: 'In memory, answering',
+  UNLOADING: 'Unloading from memory',
+};
+
+function idleWords(seconds: number): string {
+  if (seconds < 120) return `${String(seconds)} s`;
+  if (seconds < 7200) return `${String(Math.round(seconds / 60))} min`;
+  return `${String(Math.round(seconds / 3600))} h`;
+}
+
+/** The load of a copy in words, with a pin or an unpin that the machine has not reported yet (`asked`). */
+function loadOf(copy: ModelCopy, asked: boolean | undefined): Pick<CopyRow, 'load' | 'pinned' | 'idleSeconds'> {
+  const load = copy.load;
+  const reported = load?.pinned ?? false;
+  const pinned = asked ?? reported;
+  const parts = load === null ? [] : [LOADS[load.state]];
+  if (asked !== undefined && asked !== reported) parts.push(asked ? 'pin asked' : 'unpin asked');
+  else if (load !== null) parts.push(load.pinned ? 'pinned' : `unloads after ${idleWords(load.idleSeconds)} with no use`);
+  const words = parts.join(' · ');
+  return { load: words.charAt(0).toUpperCase() + words.slice(1), pinned, idleSeconds: load?.idleSeconds ?? null };
+}
+
+function row(copy: ModelCopy, asked: Readonly<Record<string, boolean>>): CopyRow {
   const { word, tone } = STATES[copy.state];
   return {
     id: copy.id,
@@ -113,11 +146,16 @@ function row(copy: ModelCopy): CopyRow {
     ...progressOf(copy),
     reason: reasonWords(copy.reason),
     removing: copy.state === 'REMOVING',
+    ...loadOf(copy, asked[copy.id]),
+    keepable: copy.state === 'DOWNLOADED' || copy.state === 'VALIDATED',
   };
 }
 
-/** HSE-013: the copies in one group for each machine, the machines by name, the copies by address; `machine` narrows to one. */
-export function machineGroups(copies: readonly ModelCopy[], machine: string): readonly MachineGroup[] {
+/**
+ * HSE-013: the copies in one group for each machine, the machines by name, the copies by address; `machine` narrows to
+ * one. `asked` holds the pins and unpins that the machines have not reported yet, by copy.
+ */
+export function machineGroups(copies: readonly ModelCopy[], machine: string, asked: Readonly<Record<string, boolean>> = {}): readonly MachineGroup[] {
   const byPlace = new Map<string, { name: string; copies: ModelCopy[] }>();
   for (const copy of copies) {
     if (machine !== '' && copy.place.id !== machine) continue;
@@ -129,7 +167,7 @@ export function machineGroups(copies: readonly ModelCopy[], machine: string): re
     .map(([id, group]) => {
       const sorted = group.copies.toSorted((a, b) => a.address.localeCompare(b.address));
       const bytes = sorted.reduce((sum, copy) => sum + copy.sizeBytes, 0);
-      return { id, name: group.name, summary: `${plural(sorted.length, 'model')} · ${formatBytes(bytes)}`, rows: sorted.map(row) };
+      return { id, name: group.name, summary: `${plural(sorted.length, 'model')} · ${formatBytes(bytes)}`, rows: sorted.map((copy) => row(copy, asked)) };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }

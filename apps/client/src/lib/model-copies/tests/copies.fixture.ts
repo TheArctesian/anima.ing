@@ -18,6 +18,7 @@ export function copy(change: Partial<ModelCopy> & Pick<ModelCopy, 'id'>): ModelC
     state: 'DOWNLOADED',
     progress: null,
     reason: null,
+    load: null,
     createdAt: '2026-11-23T10:00:00Z',
     ...change,
   };
@@ -25,7 +26,7 @@ export function copy(change: Partial<ModelCopy> & Pick<ModelCopy, 'id'>): ModelC
 
 export const COPIES: readonly ModelCopy[] = [
   copy({ id: 'c-pop-qwen', state: 'DOWNLOADING', progress: { bytes: 2 * GIB, totalBytes: 5 * GIB, bytesPerSecond: 10 * 1024 * 1024, secondsLeft: 300 } }),
-  copy({ id: 'c-pop-gemma', address: 'gemma3:4b-q8_0', quantisation: 'Q8_0', sizeBytes: 4 * GIB, state: 'VALIDATED' }),
+  copy({ id: 'c-pop-gemma', address: 'gemma3:4b-q8_0', quantisation: 'Q8_0', sizeBytes: 4 * GIB, state: 'VALIDATED', load: { state: 'READY', idleSeconds: 900, pinned: false } }),
   copy({ id: 'c-nas-qwen', place: { kind: 'MACHINE', id: 'm-nas', name: 'nas' }, state: 'FAILED', reason: 'checksum' }),
 ];
 
@@ -67,6 +68,9 @@ export interface FakeCopies extends CopyCalls {
   readonly uses: [string, string][];
   readonly pulls: [string, string][];
   readonly removals: string[];
+  readonly keeps: [string, boolean, number | null][];
+  /** The answer of the next Pin or Unpin; the default is a job. */
+  keepFails: HubError | null;
   listAsked: number;
   /** The answer of the next pull and removal; the default is a new copy and REMOVING. */
   pullFails: HubError | null;
@@ -81,6 +85,8 @@ export function fakeCopies(): FakeCopies {
     uses: [],
     pulls: [],
     removals: [],
+    keeps: [],
+    keepFails: null,
     listAsked: 0,
     pullFails: null,
     removeAnswer: null,
@@ -104,6 +110,10 @@ export function fakeCopies(): FakeCopies {
       const model = fake.foundModels.find((each) => each.found === key);
       if (model === undefined) return refused({ code: 'NOT_FOUND', message: 'The last model report of that machine lists no such model.' });
       return ok(copy({ id: `c-${key.slice(0, 4)}`, place: model.place, address: model.name, origin: 'FOUND', quantisation: '', repository: 'ollama', state: 'QUEUED' }));
+    },
+    keep: (id, pinned, idleSeconds) => {
+      fake.keeps.push([id, pinned, idleSeconds]);
+      return fake.keepFails === null ? ok(`job-keep-${id}`) : refused(fake.keepFails);
     },
     remove: (id) => {
       fake.removals.push(id);

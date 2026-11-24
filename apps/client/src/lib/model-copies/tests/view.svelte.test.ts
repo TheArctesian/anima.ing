@@ -35,7 +35,7 @@ it('HSE-013 and HSE-014: one group for each machine, and each row has its model,
   await open();
   expect(text('tr.group th')).toEqual(['nas 1 model · 5.0 GiB', 'pop-os 2 models · 9.0 GiB']);
   expect(text('tbody th[scope="row"]')).toEqual(['qwen3:8b-q4_k_m GGUF · Q4_K_M · 1 file · 5.0 GiB', 'gemma3:4b-q8_0 GGUF · Q8_0 · 1 file · 4.0 GiB', 'qwen3:8b-q4_k_m GGUF · Q4_K_M · 1 file · 5.0 GiB']);
-  expect(text('tbody td:nth-of-type(1)')).toEqual(['Failed A file did not match its SHA-256 value.', 'Ready', 'Downloading 40 % · 2.0 GiB of 5.0 GiB · 10.0 MiB/s · 5 min left']);
+  expect(text('tbody td:nth-of-type(1)')).toEqual(['Failed A file did not match its SHA-256 value.', 'Ready In memory · unloads after 15 min with no use', 'Downloading 40 % · 2.0 GiB of 5.0 GiB · 10.0 MiB/s · 5 min left']);
   expect(document.querySelector('progress')?.getAttribute('value')).toBe('40');
 });
 
@@ -49,8 +49,20 @@ it('PULL-009: Remove asks first, then the row says Removing and offers no second
   await Promise.resolve();
   flushSync();
   expect(calls.removals).toEqual(['c-pop-gemma']);
-  expect(text('tbody td:nth-of-type(1)')).toContain('Removing');
+  expect(text('tbody td:nth-of-type(1)').some((cell) => cell.startsWith('Removing'))).toBe(true);
   expect(document.querySelector('button[aria-label="Remove gemma3:4b-q8_0 from pop-os"]')).toBeNull();
+});
+
+it('FIT-023: Pin on a copy that the machine has asks the hub, and the button then offers Unpin', async () => {
+  await open();
+  expect(document.querySelector('button[aria-label="Pin qwen3:8b-q4_k_m on pop-os"]')).toBeNull();
+  document.querySelector<HTMLButtonElement>('button[aria-label="Pin gemma3:4b-q8_0 on pop-os"]')?.click();
+  await Promise.resolve();
+  await Promise.resolve();
+  flushSync();
+  expect(calls.keeps).toEqual([['c-pop-gemma', true, 900]]);
+  expect(text('tbody td:nth-of-type(1)')).toContain('Ready In memory · pin asked');
+  expect(document.querySelector('button[aria-label="Unpin gemma3:4b-q8_0 on pop-os"]')).not.toBeNull();
 });
 
 it('HSE-013: a hub with no copy says so and how to get one', async () => {
