@@ -24,7 +24,7 @@ export async function createProject(call: ProjectCall, name: string, location: s
   if (parent.outcome.outcome !== 'folders') return { ok: false, words: 'The project location could not be checked. Try again.' };
   const folder = inside(parent.outcome.folder, name.trim());
   const result = await call({ call: 'create_project', folder, name: name.trim() });
-  if (!result.ok) return result;
+  if (!result.ok) return { ok: false, words: `${result.words} Check the location before retrying; if the folder exists, add it as a Local folder.` };
   if (result.outcome.outcome !== 'projects' || !result.outcome.projects.some((project) => project.folder === folder)) {
     return { ok: false, words: 'Creation was not confirmed. Check the location before retrying; if the folder exists, add it as a Local folder.' };
   }

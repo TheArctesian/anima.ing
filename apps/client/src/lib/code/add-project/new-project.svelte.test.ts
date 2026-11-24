@@ -156,3 +156,15 @@ it('does not select a late creation after leaving the draft', async () => {
   await settle();
   expect(draft.folder).toBeNull();
 });
+
+
+it('explains how to recover when the creation acknowledgement is lost', async () => {
+  const { draft } = await show(async () => { throw new Error('The runner disconnected.'); });
+  enter('Name', 'Notes');
+  enter('Location', '/real/projects');
+  button('Create project').click();
+  await vi.waitFor(() => expect(document.body.textContent).toContain('The runner disconnected.'));
+  expect(document.body.textContent).toContain('Check the location before retrying');
+  expect(draft.folder).toBeNull();
+  expect([...document.querySelectorAll('input')].map((input) => input.value)).toContain('Notes');
+});
