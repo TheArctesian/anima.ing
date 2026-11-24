@@ -12,7 +12,7 @@ const LOOPBACK: [&str; 3] = ["localhost", "127.0.0.1", "[::1]"];
 
 /// A hub origin such as `https://hub.anima.ing` or `https://10.10.0.2:8443`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Origin(Url);
+pub struct Origin(Url, Option<std::path::PathBuf>);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum OriginError {
@@ -31,6 +31,19 @@ impl Origin {
     /// # Errors
     /// [`OriginError`] naming what is wrong.
     pub fn parse(text: &str) -> Result<Self, OriginError> {
+        if let Some(path) = text.strip_prefix("unix:") {
+            let path = std::path::PathBuf::from(path);
+            if !cfg!(unix)
+                || !path.is_absolute()
+                || path
+                    .components()
+                    .any(|part| matches!(part, std::path::Component::ParentDir))
+            {
+                return Err(OriginError::NotOrigin);
+            }
+            let url = Url::parse("http://localhost").map_err(|_| OriginError::NotUrl)?;
+            return Ok(Self(url, Some(path)));
+        }
         let url = Url::parse(text.trim()).map_err(|_| OriginError::NotUrl)?;
         let host = url.host_str().ok_or(OriginError::NotOrigin)?;
         let secure =
@@ -46,7 +59,7 @@ impl Origin {
         if !bare {
             return Err(OriginError::NotOrigin);
         }
-        Ok(Self(url))
+        Ok(Self(url, None))
     }
 
     #[must_use]
@@ -56,6 +69,11 @@ impl Origin {
     )]
     pub fn default_hub() -> Self {
         Self::parse(DEFAULT_HUB).expect("the default hub is an https origin")
+    }
+
+    #[must_use]
+    pub fn socket_path(&self) -> Option<&std::path::Path> {
+        self.1.as_deref()
     }
 
     /// The GraphQL endpoint, `POST /graphql` (K7).
@@ -69,7 +87,10 @@ impl Origin {
     /// The origin as text without a trailing slash: the key-store account and the config value.
     #[must_use]
     pub fn as_text(&self) -> String {
-        self.0.origin().ascii_serialization()
+        self.1.as_ref().map_or_else(
+            || self.0.origin().ascii_serialization(),
+            |path| format!("unix:{}", path.display()),
+        )
     }
 }
 

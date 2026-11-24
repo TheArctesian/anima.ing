@@ -25,6 +25,14 @@ const CLAIM_DEVICE_TOKEN = graphql(`
   }
 `);
 
+const ISSUE_COMMAND_LINE_TOKEN = graphql(`
+  mutation IssueCommandLineToken($computer: String!) {
+    issueCommandLineToken(computer: $computer) {
+      token
+    }
+  }
+`);
+
 const LOGOUT = graphql(`
   mutation Logout {
     logout
@@ -62,6 +70,11 @@ export interface AccessApi {
    * written it to the key store (CLI-003).
    */
   claimDeviceToken(claim: string): Promise<HubResult<string>>;
+  /**
+   * A token for the `anima` program on `computer`, linked to the app's token of this request: it ends when that token
+   * ends (R-383). The caller gives it to `anima auth adopt` and keeps it no longer (CLI-003).
+   */
+  issueCommandLineToken(computer: string): Promise<HubResult<string>>;
   /** Ends the token on the hub; for a browser the hub also clears the cookie (K7). */
   logout(): Promise<HubResult<boolean>>;
   /** Who the stored token belongs to; `UNAUTHENTICATED` when there is none or it is no longer valid. */
@@ -78,6 +91,8 @@ export function accessApi(hub: Pick<Hub, 'request'>): AccessApi {
     signInBrowser: async (input) => mapValue(await hub.request(SIGN_IN_BROWSER, { input }), (value) => value.signInBrowser.expiresAt),
     claimDeviceToken: async (claim) =>
       mapValue(await hub.request(CLAIM_DEVICE_TOKEN, { claim }), (value) => value.claimDeviceToken.token),
+    issueCommandLineToken: async (computer) =>
+      mapValue(await hub.request(ISSUE_COMMAND_LINE_TOKEN, { computer }), (value) => value.issueCommandLineToken.token),
     logout: async () => mapValue(await hub.request(LOGOUT, {}), (value) => value.logout),
     me: async () => mapValue(await hub.request(ME, {}), (value) => value.me),
   };

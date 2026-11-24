@@ -2,6 +2,18 @@
 
 pub const EXCEPTIONS: &[(&str, &str)] = &[
     (
+        "Mutation.login",
+        "password sign-in belongs to the app; the command uses browser approval (CMD-010)",
+    ),
+    (
+        "Mutation.commandLineSignIn",
+        "approval details are for the signed-in app or browser, never an agent (SGN-NEW-approve)",
+    ),
+    (
+        "Mutation.approveCommandLineSignIn",
+        "a person approves in the app or browser, never through the CLI or MCP (SGN-NEW-approve)",
+    ),
+    (
         "Mutation.hostedDeviceInvite",
         "the Anima.ing cloud only: takes the cloud key, a secret (R-129)",
     ),
@@ -18,9 +30,8 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "the desktop app's silent join through the link only: returns a token (R-129, HMD-037)",
     ),
     (
-        "Mutation.claimComputerEnrolment",
-        "the install script of a computer with no application only, through its link: returns \
-         a daemon enrolment code (HM-T33)",
+        "Mutation.hostedCommandLineClaim",
+        "the account site only: a cloud-authorized browser approval (SGN-NEW-hosted)",
     ),
     (
         "Mutation.signInBrowser",

@@ -2,7 +2,10 @@
 //! LOG-005, D-3, D-7, D-8). Signing out is in `sign_out`.
 
 pub(super) mod browser_ticket;
+pub(super) mod command_line;
+pub(super) mod device_code;
 pub(super) mod hosted;
+pub(super) mod remote_sessions;
 mod sign_out;
 
 use chrono::{DateTime, TimeDelta, Utc};

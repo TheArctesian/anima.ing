@@ -185,3 +185,95 @@ fn cmd_014_debug_formatting_of_a_hub_client_hides_the_token() {
     );
     assert!(shown.contains("hub.example"));
 }
+
+#[tokio::test]
+async fn sgn_adopt_takes_the_app_token_on_standard_input_and_makes_its_hub_current() {
+    let hub = FakeHub::start().await;
+    hub.answer("Me", me()).answer("Me", me());
+    let anima = Anima::new();
+    let run = anima
+        .run_with_input(
+            &["auth", "adopt", "--hub", &hub.origin, "-"],
+            &format!("{LOGIN_TOKEN}\n"),
+        )
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert!(
+        run.stderr
+            .contains("with the sign-in of the Anima.ing application"),
+        "{}",
+        run.stderr
+    );
+    assert!(!run.stderr.contains(LOGIN_TOKEN) && !run.stdout.contains(LOGIN_TOKEN));
+    assert_eq!(
+        hub.seen()[0].authorization,
+        Some(format!("Bearer {LOGIN_TOKEN}"))
+    );
+
+    let listed = anima.run(&["context", "list", "--json"]).await.json();
+    assert_eq!(
+        listed,
+        json!([{ "name": "app", "hub": hub.origin, "current": true }])
+    );
+    let run = anima.run(&["auth", "status"]).await;
+    assert_eq!(run.code, 0, "the current context is the app's hub: {run:?}");
+}
+
+#[tokio::test]
+async fn sgn_adopt_refuses_an_api_key_and_a_refused_token_and_keeps_nothing() {
+    let hub = FakeHub::start().await;
+    let anima = Anima::new();
+    let run = anima
+        .run_with_input(
+            &["auth", "adopt", "--hub", &hub.origin, "-"],
+            &format!("{KEY}\n"),
+        )
+        .await;
+    assert_eq!(run.code, 2, "{run:?}");
+    assert!(hub.seen().is_empty());
+
+    hub.answer("Me", refusal("UNAUTHENTICATED", "Sign in to continue."));
+    let run = anima
+        .run_with_input(
+            &["auth", "adopt", "--hub", &hub.origin, "-"],
+            &format!("{LOGIN_TOKEN}\n"),
+        )
+        .await;
+    assert_ne!(run.code, 0, "{run:?}");
+    assert!(!anima.config_dir().join("tokens.json").exists());
+    let listed = anima.run(&["context", "list", "--json"]).await.json();
+    assert_eq!(listed, json!([]));
+}
+
+#[tokio::test]
+async fn app_adoption_issues_under_the_lock_and_reuses_its_child_across_reload() {
+    let hub = FakeHub::start().await;
+    hub.answer("Me", me());
+    hub.answer(
+        "AdoptAppSession",
+        data(json!({"issueCommandLineToken": {"token": "linked-child-for-test"}})),
+    );
+    let anima = Anima::new();
+    let args = ["auth", "adopt", "--app-session", "--hub", &hub.origin, "-"];
+    let (first, second) = tokio::join!(
+        anima.run_with_input(&args, "parent-session-for-test\n"),
+        anima.run_with_input(&args, "parent-session-for-test\n")
+    );
+    assert_eq!(first.code, 0, "{first:?}");
+    assert_eq!(second.code, 0, "{second:?}");
+    let seen = hub.seen();
+    assert_eq!(
+        seen.iter()
+            .filter(|request| request.authorization.as_deref()
+                == Some("Bearer parent-session-for-test"))
+            .count(),
+        1
+    );
+    assert!(seen.iter().any(|request| request.authorization.as_deref() == Some("Bearer linked-child-for-test")));
+    for run in [first, second] {
+        assert!(
+            !run.stdout.contains("session-for-test") && !run.stderr.contains("session-for-test")
+        );
+        assert!(!run.stdout.contains("child-for-test") && !run.stderr.contains("child-for-test"));
+    }
+}

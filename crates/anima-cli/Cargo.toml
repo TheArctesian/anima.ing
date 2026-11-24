@@ -27,6 +27,7 @@ name = "anima"
 path = "src/main.rs"
 
 [dependencies]
+whoami.workspace = true
 remote-login = { path = "../remote-login" }
 # One body type for every request: the serialised document is wiped when it drops.
 bytes.workspace = true
@@ -70,7 +71,7 @@ shortening = { path = "../shortening" }
 # The token file and the configuration are written to a temporary file, then renamed (CMD-012).
 tempfile.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["fs", "signal"] }
+tokio = { workspace = true, features = ["fs", "signal", "process"] }
 # The sockets' TLS handshake (`hub/wire.rs`).
 tokio-rustls.workspace = true
 # `graphql-transport-ws` for subscriptions, over the same `hub/wire.rs` stream as the tunnels (CMD-003).
