@@ -160,7 +160,9 @@ where
         return Err(SignInError::BadNumbers);
     }
     device.write_all(&requests::pixel_format()).await?;
-    device.write_all(&requests::encodings()).await?;
+    device
+        .write_all(&requests::encodings(method == Method::Apple))
+        .await?;
     Ok(size)
 }
 

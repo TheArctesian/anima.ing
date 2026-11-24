@@ -25,6 +25,6 @@ export type Heading = { readonly kind: 'build'; readonly name: string } | { read
 /** `scratch`: no project; the heading is T3's "What should we work on?". */
 export function headingOf(folder: string | null, projects: readonly Project[], scratch = false): Heading {
   if (scratch) return { kind: 'scratch' };
-  if (folder !== null) return { kind: 'build', name: folderName(folder) };
+  if (folder !== null) return { kind: 'build', name: projects.find((project) => project.folder === folder)?.name ?? folderName(folder) };
   return projects.length === 0 ? { kind: 'add' } : { kind: 'choose' };
 }

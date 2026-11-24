@@ -27,7 +27,7 @@ export class AddProjectWalk {
   readonly #add: (folder: string) => void;
 
   /** `start`: where "Local folder" opens; `add`: takes the chosen folder. */
-  constructor(list: (folder: string) => Promise<FolderList>, start: () => string, add: (folder: string) => void) {
+  constructor(list: (folder: string) => Promise<FolderList>, start: () => string, add: (folder: string) => void, private readonly create?: () => void) {
     this.#list = list;
     this.#start = start;
     this.#add = add;
@@ -86,8 +86,8 @@ export class AddProjectWalk {
       title: source.title,
       icon: source.icon,
       detail: source.needs === null ? source.line : `${source.line}. ${source.needs}`,
-      disabled: source.needs !== null,
-      run: () => void this.browse(this.#start()),
+      disabled: source.needs !== null || (source.id === 'new' && this.create === undefined),
+      run: () => source.id === 'new' ? this.create?.() : void this.browse(this.#start()),
     }));
     return { id: 'sources', label: 'Sources', rows };
   }

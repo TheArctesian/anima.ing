@@ -18,7 +18,7 @@ export interface DraftChoice {
 /** T3 Code's default: full access (agent-threads.md Section 6.2, decision of the operator). */
 export const FIRST_CHOICE: DraftChoice = { program: 'claude_code', model: null, effort: null, mode: 'full_access' };
 
-const PROGRAMS: readonly Program[] = ['claude_code', 'codex'];
+const PROGRAMS: readonly Program[] = ['claude_code', 'codex', 'grok'];
 const MODE_IDS: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
 const EFFORTS = Object.keys(EFFORT_WORDS) as Effort[];
 const DEFAULT = 'default';
@@ -31,6 +31,7 @@ const DEFAULT = 'default';
 const PROGRAM_EFFORTS: Readonly<Record<Program, readonly Effort[]>> = {
   claude_code: ['low', 'medium', 'high', 'xhigh', 'max'],
   codex: ['low', 'medium', 'high', 'xhigh', 'max'],
+  grok: [],
 };
 
 /** The runner's answer to `models`, as far as it came: the picker says why it shows only the default (TH104). */
@@ -50,6 +51,7 @@ const PLAN_MODE: PermissionMode = { id: 'plan', label: 'Plan', description: 'Pla
 /** The modes of a program: T3's four, of which the runner has three, and the runner's plan mode, which Codex lacks. */
 function modesOf(program: Program): readonly PermissionMode[] {
   const known = new Set(Object.values(MODE_IDS));
+  if (program === 'grok') return PERMISSION_MODES.map((mode) => ['approval-required', 'full-access'].includes(mode.id) ? mode : { ...mode, can: cannot('Grok supports Ask and Full access in Anima.') });
   const offered = PERMISSION_MODES.map((mode) => (known.has(mode.id) ? mode : { ...mode, can: cannot(NO_AUTO) }));
   return [...offered, program === 'codex' ? { ...PLAN_MODE, can: cannot(NO_PLAN) } : PLAN_MODE];
 }
@@ -103,6 +105,6 @@ export function chosen(current: DraftChoice, next: Choice): DraftChoice {
     model: next.model === DEFAULT ? null : next.model,
     effort: EFFORTS.find((each) => each === next.effort) ?? null,
     // Codex has no plan mode: a draft that moves to Codex keeps the default.
-    mode: program === 'codex' && mode === 'plan' ? FIRST_CHOICE.mode : mode,
+    mode: (program === 'codex' && mode === 'plan') || (program === 'grok' && !['ask', 'full_access'].includes(mode)) ? FIRST_CHOICE.mode : mode,
   };
 }

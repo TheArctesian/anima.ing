@@ -137,3 +137,39 @@ async fn a_full_gateway_says_it_is_busy() {
     assert!(second.next().await.is_none());
     listening.abort();
 }
+
+#[tokio::test]
+async fn a_resized_display_layout_requests_all_pixels_and_keeps_the_monitors() {
+    let device = Device::start(SignIn::None).await;
+    let (mut hub, _served) = session(Settings::default());
+    hub.open("vnc", values(device.address, &[]))
+        .await
+        .expect("ready");
+    let first = hub.next_of("sync").await;
+    hub.send(&first).await;
+    for _ in 0..500 {
+        if device.asked().len() >= 2 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(device.asked(), [ASKED_FOR_ALL, ASKED_FOR_CHANGES]);
+    // ExtendedDesktopSize: grow the framebuffer to 80 x 48, keeping display 7.
+    let mut layout = vec![0, 0, 0, 1, 0, 0, 0, 0, 0, 80, 0, 48];
+    layout.extend((-308_i32).to_be_bytes());
+    layout.extend([1, 0, 0, 0]);
+    layout.extend(7_u32.to_be_bytes());
+    layout.extend([0, 0, 0, 0, 0, 80, 0, 48, 0, 0, 0, 0]);
+    device.tell.send(Tell::Bytes(layout)).await.expect("layout");
+    assert_eq!(hub.next_of("displays").await.args, ["all", "7"]);
+    for _ in 0..500 {
+        if device.asked().len() >= 3 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(
+        device.asked().get(2).map(String::as_str),
+        Some(ASKED_FOR_ALL)
+    );
+}

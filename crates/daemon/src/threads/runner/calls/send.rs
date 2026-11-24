@@ -206,7 +206,12 @@ impl Runner {
             return Outcome::Refused { why };
         }
         self.note(Kind::Prompt, Some(id), "sent");
-        let _ = self.apply(id, Thread::sent(shown)).await;
+        let steps = self
+            .threads
+            .get_mut(&id)
+            .map_or_else(Vec::new, |thread| thread.sent_to(shown));
+        let _ = self.apply(id, steps).await;
+        self.save();
         Outcome::Ok
     }
 
