@@ -7,10 +7,11 @@ use std::io::{self, Read as _};
 use std::os::fd::{AsFd, OwnedFd};
 use std::time::{Duration, SystemTime};
 
-use rustix::fs::{AtFlags, FileType, Mode, OFlags, RenameFlags, Stat};
+use rustix::fs::{AtFlags, FileType, Mode, OFlags, RawMode, RenameFlags, Stat};
 use sha2::{Digest as _, Sha256};
 
-const FILE_MODE: u32 = 0o600;
+/// `mode_t`: 32 bits on Linux, 16 on macOS.
+const FILE_MODE: RawMode = 0o600;
 
 /// The deepest folder that a removal goes into; a copy holds only flat files.
 const MAX_DEPTH: usize = 4;
