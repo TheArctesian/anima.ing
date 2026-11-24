@@ -667,3 +667,6 @@ to R-400 and the operator's explicit word.
 ## R-NEW-os-remote-update — Desktop controls for Anima OS updates
 
 Operator, 2026-11-23: “I also would like remote update to work”, followed by “Update action in Anima desktop”. OS5-R1 of [spare-computer-os.md](proposals/spare-computer-os.md) owns this work. Extend K1 with `deviceOsUpdate` and `requestDeviceOsUpdate`. Use authenticated, pinned private SSH; keep signature and rollback checks on the device. Only the admin account can invoke the fixed remote updater commands without a second password. No arbitrary command, argument or update source is accepted. Download work survives a closed client. Activation and rollback require explicit restart confirmation. This does not authorize an unattended restart.
+## R-450-icons — Icon-only device row connections
+
+Operator, 2026-11-23: the SSH, RDP and VNC controls in the Devices list show only their icons, without visible protocol text or a resting button background, for every connection count. Keep tooltips, accessible names, keyboard focus and hover feedback (UI-026). This updates the protocol-label choice of R-224 for dense device rows.
