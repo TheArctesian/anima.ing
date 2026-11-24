@@ -99,6 +99,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
 | HT-063 | The hub pulls the points of your Dawarich server with an API key | A hub of this build that can reach your Dawarich server over `https`, an API key of your Dawarich account | Open |
+| HT-NEW-plainhttp | The hub pulls a Dawarich server on your home network over plain `http`, and refuses plain `http` to a public address | A hub of this build on the same network or VPN as a Dawarich server that answers `http` on a private or VPN address, an API key of that account | Open |
 | HT-041 | The first formula and the first crate version of `anima` alone, from the release workflow (tasks B8h, R8d) | A crates.io account of the operator, the key of the tap, a public release, a Mac and a Linux computer with no Anima | Open |
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
@@ -2277,6 +2278,19 @@ outside your network.
 9. Run `anima source pause <account>`. Expected: no new run until you resume it.
 
 Result: Open.
+
+### HT-NEW-plainhttp: plain `http` to a Dawarich server on a private address (E0-5 T7, OD-E26)
+
+State: Open.
+
+Built: `crates/hub/src/engine/sources/acquisition/transport/at_account.rs` sends a plain `http` base only when each resolved address of the host is in 10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7; the connection goes to the checked address and no redirect is followed. `anima source connect dawarich` says that the key goes with no TLS. The tests check the ranges and the address of the base with fixtures; they do not reach a real Dawarich server or a real name server.
+
+Steps and expected results:
+
+1. Run `anima source connect dawarich --label home --url http://<private address of the server>:<port>` and give the key. Expected: the command says that the key goes with no TLS, and the account is made with health OK.
+2. Run `anima source sync <account>` and then `anima location list --from <a day> --to <the next day>`. Expected: the points of that day are in the list.
+3. Run the same connect command with a plain `http` address whose name resolves to a public address (for example a public test host). Expected: VALIDATION on `baseUrl`, "The hub does not connect to this address.", and no account is made.
+4. On the Dawarich server, make the `http` address answer with a redirect to `https`. Run a sync. Expected: the run fails and the hub does not follow the redirect.
 
 ### HT-040: a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145)
 
