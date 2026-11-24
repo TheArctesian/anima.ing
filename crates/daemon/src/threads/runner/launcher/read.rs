@@ -90,7 +90,7 @@ pub fn confined(
     seat: &Confinement,
     (git, dir, args): (&Path, &Path, &[OsString]),
 ) -> io::Result<(PathBuf, Vec<OsString>, bool)> {
-    if seat.program == Program::ClaudeCode || seat.mode == Mode::FullAccess {
+    if seat.program != Program::Codex || seat.mode == Mode::FullAccess {
         return Ok((git.to_owned(), args.to_vec(), false));
     }
     let Some(codex) = &seat.codex else {

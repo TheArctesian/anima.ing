@@ -70,7 +70,7 @@ impl Attachments {
                     .join(thread.to_string())
                     .join(id.to_string())
                     .join(&upload.file);
-                attachment(upload, &path, program == Program::ClaudeCode, &mut room)
+                attachment(upload, &path, program != Program::Codex, &mut room)
             })
             .collect();
         Ok(taken)

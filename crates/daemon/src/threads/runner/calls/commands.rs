@@ -49,6 +49,7 @@ impl Runner {
         let daemon = self.dir.parent().unwrap_or(&self.dir).to_owned();
         match program {
             Program::ClaudeCode => self.claude_files(folder, daemon).await,
+            Program::Grok => answer(Some(CommandLists::default())),
             Program::Codex => {
                 let real = match super::super::start::chosen_folder(&folder, &daemon) {
                     Ok(real) => real,
