@@ -420,13 +420,23 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); margin: 0; padding: var(--space-3) var(--space-4); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
 .v2 .facts dt { font-weight: 500; }
 .v2 .facts dd { margin: 0; color: var(--text-secondary); }
+/* ---------- The overview at the top of Hosting (Frame 1, task H52). Only tokens; no new value. ---------- */
+.v2 .figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.v2 .fig { display: grid; padding: var(--space-3) var(--space-4); background: var(--surface-raised); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text); text-decoration: none; font-size: var(--t-sm); }
+.v2 .fig b { font-size: var(--t-2xl); font-weight: 500; font-variant-numeric: tabular-nums; }
+.v2 .fig span + span { color: var(--text-secondary); }
+.v2 .fig .w { color: var(--status-warning-text); }
+.v2 .concerns { list-style: none; margin: 0; padding: 0; border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); font-size: var(--t-sm); }
+.v2 .concerns li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); }
+.v2 .concerns li + li { border-top: var(--border-thin) solid var(--border-subtle); }
+.v2 .concerns .sec { flex: 1; }
 </style>
 </head>
 <body>
 <h1 class="board">Hosting</h1>
 <p class="about">The proposed section Hosting (docs/proposals/hosting-section.md, version 4): what runs on your machines and how it is reached, in one place. Its sections, in a list on the left as in Settings, are Applications (with containers, and the Catalogue below it), Models, Storage, Routes and Machines (R-428). The applications in one group for each machine are the manner of Coolify's servers (R-427); the page of one application with its Domains next to its General settings is the manner of Coolify; the Catalogue is a gallery with search and categories, as Arcane's Templates and Coolify's one-click services. Routes is the section that Settings holds today, moved, with the same frames as routes/index.html. Hosting sits directly below Code in the bar. A proposal with its direction decided: the requirements are not approved. The names, machines and numbers are examples.</p>
 <figure>
-<div class="v2" data-theme="dark" style="width: 1280px; height: 1120px;">
+<div class="v2" data-theme="dark" style="width: 1280px; height: 1340px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
   <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">4</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
@@ -443,6 +453,18 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <header class="head"><h1 class="display">Hosting</h1><div class="actions"><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Install from the catalogue</button></div></header>
   <div class="body">
     <div class="cols" style="grid-template-columns: 184px minmax(0, 1fr); gap: var(--space-6); flex: 1; min-height: 0"><nav class="subnav" aria-label="Hosting sections"><a href="#" class="on" aria-current="page" style="">Applications<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">9</span></a><a href="#" style="padding-left: var(--space-6)">Catalogue<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">41</span></a><a href="#" style="">Models<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">2</span></a><a href="#" style="">Storage<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">14</span></a><a href="#" style="">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">6</span></a><a href="#" style="">Machines<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">4</span></a></nav><div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
+    <div class="figs" aria-label="Overview">
+      <a class="fig" href="#"><b>3</b><span>Machines up</span><span class="w">1 needs you</span></a>
+      <a class="fig" href="#"><b>7</b><span>Applications running</span><span class="w">3 need you</span></a>
+      <a class="fig" href="#"><b>5</b><span>Routes proven</span><span class="w">1 needs you</span></a>
+    </div>
+    <ul class="concerns" aria-label="What needs you">
+      <li><b>mini</b><span class="sec">Offline 2 h</span><a class="link" href="#">Open device</a></li>
+      <li><b>Tracks on pop-os</b><span class="sec">1 of 2 running</span><a class="link" href="#">Show</a></li>
+      <li><b>Uptime Kuma on pop-os</b><span class="sec">Stopped</span><a class="link" href="#">Show</a></li>
+      <li><b>Jellyfin on nas</b><span class="sec">A newer image: 10.10.4</span><a class="link" href="#">Show</a></li>
+      <li><b>wiki.example.com</b><span class="sec">Waits for TXT record</span><a class="link" href="#">Open route</a></li>
+    </ul>
     <div class="toolbar">
       <label class="field" style="width: 320px"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input placeholder="Find on any machine" aria-label="Find an application or a container on any machine"></label>
       <button class="btn" type="button">Machine: All machines ▾</button>
@@ -540,10 +562,10 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   </div>
 </main>
 </div>
-<figcaption>Frame 1, dark, 1280 px: Hosting, section Applications (HSE-002, HSE-011; R-427, R-426). The sections are a list on the left, as in Settings: Applications, with the Catalogue below it, Models, Storage, Routes and Machines (R-428); Models and Machines are not drawn yet; Storage is Frame 5. Applications and containers are rows of one list: Immich is open: its first line says the folder and the files that Compose started it from, as Docker says (HOST-030, task H15), then its four containers; Tracks and Wiki.js are closed, and watchtower and samba are containers that Anima did not install (Not managed, read only). One group for each machine, as Coolify shows its servers: the header row has the machine, its state and its number of applications. The choice List shows the applications, or each container of each machine as its own row (HOST-034, task H18). A machine with no applications (mini) is one short row with a link to the catalogue. The search finds an application or a container on any machine, and Machine narrows the page to one machine. The column Reached at shows the routes of each application with the state of each; an application with no route says so and offers to add one. Rows that need you have the wash of their status. Each application and each container that Anima did not install has the mark of its program before its name (HSE-020, task H53): the brand mark of Simple Icons in the accent colour, found by the name and the images, else the first letter of the name (Tracks, samba), by the same rule as the Library of the models. The count beside Hosting in the bar is the number of applications and routes that need you (here 4: three applications and the route wiki.example.com, which waits).</figcaption>
+<figcaption>Frame 1, dark, 1280 px: Hosting, section Applications (HSE-002, HSE-011; R-427, R-426). The sections are a list on the left, as in Settings: Applications, with the Catalogue below it, Models, Storage, Routes and Machines (R-428); Models and Machines are not drawn yet; Storage is Frame 5. Applications and containers are rows of one list: Immich is open: its first line says the folder and the files that Compose started it from, as Docker says (HOST-030, task H15), then its four containers; Tracks and Wiki.js are closed, and watchtower and samba are containers that Anima did not install (Not managed, read only). One group for each machine, as Coolify shows its servers: the header row has the machine, its state and its number of applications. The choice List shows the applications, or each container of each machine as its own row (HOST-034, task H18). A machine with no applications (mini) is one short row with a link to the catalogue. The search finds an application or a container on any machine, and Machine narrows the page to one machine. The column Reached at shows the routes of each application with the state of each; an application with no route says so and offers to add one. Rows that need you have the wash of their status. Above the list, the overview (HSE-019, task H52) has the numbers of the sections, each of which opens its section with Needs you chosen, and one line with one action for each thing that needs you. Models ready waits for the copies of task L1-7 of compute-plan.md and is not drawn. Each application and each container that Anima did not install has the mark of its program before its name (HSE-020, task H53): the brand mark of Simple Icons in the accent colour, found by the name and the images, else the first letter of the name (Tracks, samba), by the same rule as the Library of the models. The count beside Hosting in the bar is the number of applications and routes that need you (here 4: three applications and the route wiki.example.com, which waits).</figcaption>
 </figure>
 <figure>
-<div class="v2" data-theme="light" style="width: 1280px; height: 1120px;">
+<div class="v2" data-theme="light" style="width: 1280px; height: 1340px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
   <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">4</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
@@ -560,6 +582,18 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <header class="head"><h1 class="display">Hosting</h1><div class="actions"><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Install from the catalogue</button></div></header>
   <div class="body">
     <div class="cols" style="grid-template-columns: 184px minmax(0, 1fr); gap: var(--space-6); flex: 1; min-height: 0"><nav class="subnav" aria-label="Hosting sections"><a href="#" class="on" aria-current="page" style="">Applications<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">9</span></a><a href="#" style="padding-left: var(--space-6)">Catalogue<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">41</span></a><a href="#" style="">Models<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">2</span></a><a href="#" style="">Storage<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">14</span></a><a href="#" style="">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">6</span></a><a href="#" style="">Machines<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">4</span></a></nav><div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
+    <div class="figs" aria-label="Overview">
+      <a class="fig" href="#"><b>3</b><span>Machines up</span><span class="w">1 needs you</span></a>
+      <a class="fig" href="#"><b>7</b><span>Applications running</span><span class="w">3 need you</span></a>
+      <a class="fig" href="#"><b>5</b><span>Routes proven</span><span class="w">1 needs you</span></a>
+    </div>
+    <ul class="concerns" aria-label="What needs you">
+      <li><b>mini</b><span class="sec">Offline 2 h</span><a class="link" href="#">Open device</a></li>
+      <li><b>Tracks on pop-os</b><span class="sec">1 of 2 running</span><a class="link" href="#">Show</a></li>
+      <li><b>Uptime Kuma on pop-os</b><span class="sec">Stopped</span><a class="link" href="#">Show</a></li>
+      <li><b>Jellyfin on nas</b><span class="sec">A newer image: 10.10.4</span><a class="link" href="#">Show</a></li>
+      <li><b>wiki.example.com</b><span class="sec">Waits for TXT record</span><a class="link" href="#">Open route</a></li>
+    </ul>
     <div class="toolbar">
       <label class="field" style="width: 320px"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input placeholder="Find on any machine" aria-label="Find an application or a container on any machine"></label>
       <button class="btn" type="button">Machine: All machines ▾</button>
