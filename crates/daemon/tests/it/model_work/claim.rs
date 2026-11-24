@@ -1,3 +1,6 @@
+#[cfg(unix)]
+mod loads;
+
 use anima_daemon::hub::{HubClient, TIMEOUT};
 use daemon_core::wire::DaemonToken;
 use serde_json::{Value, json};

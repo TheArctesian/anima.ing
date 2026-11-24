@@ -203,13 +203,17 @@ impl ModelWork {
 }
 
 async fn claims(mut node: Node, hub: Hub, home: Home, mut halted: watch::Receiver<bool>) {
-    let watched = Watched {
-        servers: Arc::clone(&node.servers),
-        loads: Arc::clone(&node.loads),
-        folders: node.folders.clone(),
-        started: node.started,
-    };
-    let check = tokio::spawn(check(watched, halted.clone()));
+    let check = tokio::spawn(check(
+        Arc::clone(&node.servers),
+        node.folders.clone(),
+        node.started,
+        halted.clone(),
+    ));
+    let loads = tokio::spawn(keep_loads(
+        Arc::clone(&node.servers),
+        Arc::clone(&node.loads),
+        halted.clone(),
+    ));
     let mut ticks = interval(CLAIM_ON);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     let mut rhythm = Rhythm::default();
@@ -236,6 +240,7 @@ async fn claims(mut node: Node, hub: Hub, home: Home, mut halted: watch::Receive
         }
     }
     let _ = check.await;
+    let _ = loads.await;
     node.servers.lock().await.stop_all().await;
 }
 
@@ -259,21 +264,12 @@ async fn claim(node: &mut Node, hub: &Hub) {
     }
 }
 
-/// What the check of the servers and the loads reads, every 15 seconds.
-struct Watched {
+async fn check(
     servers: Shared,
-    loads: Arc<load::Shared>,
     folders: Folders,
     started: std::time::Instant,
-}
-
-async fn check(watched: Watched, mut halted: watch::Receiver<bool>) {
-    let Watched {
-        servers,
-        loads,
-        folders,
-        started,
-    } = watched;
+    mut halted: watch::Receiver<bool>,
+) {
     let mut ticks = interval(SERVERS_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
@@ -282,14 +278,26 @@ async fn check(watched: Watched, mut halted: watch::Receiver<bool>) {
             _ = ticks.tick() => {}
         }
         let now = started.elapsed().as_secs();
-        {
-            let mut servers: tokio::sync::MutexGuard<'_, Servers> = servers.lock().await;
-            servers
-                .cycle(now, |id| folders.server(id).join(cycle::TEMPORARY))
-                .await;
+        let mut servers: tokio::sync::MutexGuard<'_, Servers> = servers.lock().await;
+        servers
+            .cycle(now, |id| folders.server(id).join(cycle::TEMPORARY))
+            .await;
+    }
+}
+
+/// The 15-second work of the loads (K11 Section 11.1), in its own task: a return can take up to two minutes, and
+/// the check of the servers must not wait for it (Section 6).
+async fn keep_loads(servers: Shared, loads: Arc<load::Shared>, mut halted: watch::Receiver<bool>) {
+    let mut ticks = interval(SERVERS_EVERY);
+    ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    loop {
+        tokio::select! {
+            _ = halted.changed() => return,
+            () = async {
+                ticks.tick().await;
+                loads.tick(&servers).await;
+            } => {}
         }
-        // The lock of the servers is free here: the loads read it only for a snapshot.
-        loads.tick(&servers).await;
     }
 }
 

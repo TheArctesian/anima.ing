@@ -6,6 +6,7 @@
 //! time on each memory). A `model_load` that waits sets `waiting`, and a return that runs gives way.
 
 mod kept;
+mod orders;
 pub mod router;
 mod steps;
 mod tick;
@@ -131,14 +132,38 @@ impl Shared {
         lock.map_err(|_| Cause::MemoryBusy)
     }
 
+    /// The lock for an order that is not a `model_load`: a return that runs gives way, and the order waits for it
+    /// with no limit, because it only frees memory or changes a keep.
+    pub async fn for_order(&self) -> tokio::sync::MutexGuard<'_, Loads> {
+        self.waiting.store(true, Ordering::SeqCst);
+        let lock = self.loads.lock().await;
+        self.waiting.store(false, Ordering::SeqCst);
+        lock
+    }
+
     /// `model_load`, `model_unload` and `model_keep`; `None` for an other order.
     pub async fn run(
         &self,
         parameters: &Parameters,
         servers: &supervise::Shared,
     ) -> Option<Result<(), Cause>> {
+        if !matches!(
+            parameters,
+            Parameters::Load { .. } | Parameters::Unload { .. } | Parameters::Keep { .. }
+        ) {
+            return None;
+        }
+        let routers = routers(servers).await;
+        Some(self.run_with(parameters, &routers).await)
+    }
+
+    /// [`Self::run`] on the servers `routers`.
+    ///
+    /// # Errors
+    /// The cause of Section 5; `type_unknown` for an order that is not of the loads.
+    pub async fn run_with(&self, parameters: &Parameters, routers: &Routers) -> Result<(), Cause> {
         let memory = usable(1.0);
-        let done = match parameters {
+        match parameters {
             Parameters::Load {
                 server,
                 copy,
@@ -146,7 +171,6 @@ impl Shared {
                 reserve_bytes,
                 keep,
             } => {
-                let routers = routers(servers).await;
                 let ask = Ask {
                     server: *server,
                     copy: *copy,
@@ -154,32 +178,33 @@ impl Shared {
                     reserve_bytes: *reserve_bytes,
                     keep: *keep,
                 };
-                match self.for_load().await {
-                    Ok(mut loads) => loads.load(&at(&routers, &memory), &ask).await,
-                    Err(cause) => Err(cause),
-                }
+                let mut loads = self.for_load().await?;
+                loads.load(&at(routers, &memory), &ask).await
             }
             Parameters::Unload { server, copy } => {
-                let routers = routers(servers).await;
-                let mut loads = self.loads.lock().await;
-                loads.unload(&at(&routers, &memory), *server, *copy).await
+                let mut loads = self.for_order().await;
+                loads.unload(&at(routers, &memory), *server, *copy).await
             }
-            Parameters::Keep { copy, keep } => self.loads.lock().await.keep(*copy, *keep),
-            _ => return None,
-        };
-        Some(done)
+            Parameters::Keep { copy, keep } => self.for_order().await.keep(*copy, *keep),
+            _ => Err(Cause::TypeUnknown),
+        }
     }
 
-    /// The 15-second work; nothing while a `model_load` holds the lock.
+    /// The 15-second work.
     pub async fn tick(&self, servers: &supervise::Shared) {
+        let routers = routers(servers).await;
+        self.tick_with(&routers).await;
+    }
+
+    /// [`Self::tick`] on the servers `routers`; nothing while an order holds the lock.
+    pub async fn tick_with(&self, routers: &Routers) {
         let Ok(mut loads) = self.loads.try_lock() else {
             return;
         };
-        let routers = routers(servers).await;
         let permitted = self.permitted.load(Ordering::SeqCst);
         let memory = usable(1.0);
         loads
-            .tick(&at(&routers, &memory), permitted, &self.waiting)
+            .tick(&at(routers, &memory), permitted, &self.waiting)
             .await;
     }
 

@@ -53,6 +53,8 @@ pub fn model_state(
     settings: &MachineSettings,
     loads: Loads,
 ) -> Value {
+    // With no loads (their lock did not come), the members of Section 11.1 are left out, not given empty.
+    let known = loads.is_some();
     let (models, memory) = loads.unwrap_or_default();
     let installed: Vec<Value> = installed(folders)
         .iter()
@@ -70,22 +72,29 @@ pub fn model_state(
                 .filter(|model| matches!(model["state"].as_str(), Some("ready" | "active")))
                 .map(|model| &model["copy"])
                 .collect();
-            json!({
+            let mut entry = json!({
                 "server": id, "runtime": server.runtime, "state": server.state.as_str(),
-                "restarts": server.record.restarts(), "loaded": loaded, "models": listed,
-                "inProgress": 0, "queued": 0,
+                "restarts": server.record.restarts(), "inProgress": 0, "queued": 0,
                 "tokensPerSecond": null, "memoryBytes": 0,
                 "tempBytes": super::folders::bytes_below(&folders.server(*id).join("tmp")),
-            })
+            });
+            if known {
+                entry["loaded"] = json!(loaded);
+                entry["models"] = json!(listed);
+            }
+            entry
         })
         .collect();
-    json!({
+    let mut state = json!({
         "at": Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
         "installed": installed,
         "servers": servers,
         "copies": [],
         "cacheBytes": 0,
         "settings": settings.to_json(),
-        "memory": memory,
-    })
+    });
+    if known {
+        state["memory"] = json!(memory);
+    }
+    state
 }

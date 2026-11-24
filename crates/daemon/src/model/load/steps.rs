@@ -79,25 +79,45 @@ impl Loads {
             .map_or(Ok(()), |kept| kept::write(&self.folders.state, copy, kept))
     }
 
-    /// Unloads `copy` and frees its reservation; a pinned copy that `displaced` names waits for its return.
-    pub(super) async fn unload_one(&mut self, at: &At<'_>, copy: Uuid, displaced: bool) {
+    /// Unloads `copy` and frees its reservation; a pinned copy that `displaced` names waits for its return. `false`
+    /// when the router did not confirm the unload: the copy keeps its reservation, and a later step tries again.
+    /// A server that is not ready no longer holds the copy.
+    pub(super) async fn unload_one(&mut self, at: &At<'_>, copy: Uuid, displaced: bool) -> bool {
         let Some(on_node) = self.copies.get_mut(&copy) else {
-            return;
+            return true;
+        };
+        let (server, before) = (on_node.server, on_node.held.state);
+        let Some(router) = at.routers.get(&server) else {
+            self.drop_copy(copy, displaced, at.now);
+            return true;
         };
         on_node.held.state = OnServer::Unloading;
-        let server = on_node.server;
-        let pinned = on_node.held.keep.pinned;
-        let parts = on_node.held.parts.clone();
-        if let Some(router) = at.routers.get(&server)
-            && router.ask("/models/unload", copy).await.is_ok()
-        {
-            let unloaded = |state| matches!(state, Status::Unloaded | Status::Failed);
-            let _ = router.wait(copy, unloaded, || false).await;
+        let unloaded = |state| matches!(state, Status::Unloaded | Status::Failed);
+        let done = router.ask("/models/unload", copy).await.is_ok()
+            && matches!(
+                router.wait(copy, unloaded, || false).await,
+                Waited::Reached | Waited::Failed
+            );
+        if !done {
+            if let Some(on_node) = self.copies.get_mut(&copy) {
+                on_node.held.state = before;
+            }
+            return false;
         }
-        self.copies.remove(&copy);
-        let _ = self.write_preset(server);
-        if displaced && pinned {
-            self.mark_displaced(copy, parts, at.now);
+        self.drop_copy(copy, displaced, at.now);
+        let _ = router.statuses(true).await;
+        true
+    }
+
+    /// Frees the reservation of a copy that its server no longer holds, and writes the preset of the server
+    /// again; a pinned copy that `displaced` names waits for its return.
+    pub(super) fn drop_copy(&mut self, copy: Uuid, displaced: bool, now: u64) {
+        let Some(on_node) = self.copies.remove(&copy) else {
+            return;
+        };
+        let _ = self.write_preset(on_node.server);
+        if displaced && on_node.held.keep.pinned {
+            self.mark_displaced(copy, on_node.held.parts, now);
         }
     }
 
@@ -114,7 +134,8 @@ impl Loads {
         let _ = self.save(copy);
     }
 
-    /// Loads `on_node` on its server, which the caller made room for.
+    /// Loads `on_node` on its server, which the caller made room for. On each failure the daemon asks the router to
+    /// unload the copy and to read the preset without it, so that no copy holds memory with no reservation.
     pub(super) async fn load_one(
         &mut self,
         at: &At<'_>,
@@ -129,15 +150,16 @@ impl Loads {
             router.statuses(true).await.ok_or(Cause::StartFailed)?;
             router.ask("/models/load", copy).await
         };
-        if let Err(cause) = started.await {
-            self.copies.remove(&copy);
-            return Err(cause);
-        }
-        let stop = || matches!(by, By::Return(stop) if stop.load(Ordering::SeqCst));
-        let waited = router
-            .wait(copy, |state| state == Status::Loaded, stop)
-            .await;
-        if waited == Waited::Reached {
+        let waited = match started.await {
+            Ok(()) => {
+                let stop = || matches!(by, By::Return(stop) if stop.load(Ordering::SeqCst));
+                Ok(router
+                    .wait(copy, |state| state == Status::Loaded, stop)
+                    .await)
+            }
+            Err(cause) => Err(cause),
+        };
+        if waited == Ok(Waited::Reached) {
             if let Some(loaded) = self.copies.get_mut(&copy) {
                 loaded.held.state = OnServer::Ready;
                 loaded.held.used_at = super::now();
@@ -148,9 +170,11 @@ impl Loads {
         let _ = router.ask("/models/unload", copy).await;
         self.copies.remove(&copy);
         let _ = self.write_preset(server);
+        let _ = router.statuses(true).await;
         Err(match waited {
-            Waited::Failed => Cause::LoadCrash,
-            _ => Cause::StartFailed,
+            Ok(Waited::Failed) => Cause::LoadCrash,
+            Ok(_) => Cause::StartFailed,
+            Err(cause) => cause,
         })
     }
 
@@ -179,7 +203,8 @@ impl Loads {
         })
     }
 
-    /// `model_load`: room by the rules of Section 11.1, then the load.
+    /// `model_load`: room by the rules of Section 11.1, then the load. A check that fails changes nothing: the room
+    /// counts a copy that the load replaces as free, and the daemon unloads nothing before the room is known.
     ///
     /// # Errors
     /// The cause of Section 5.
@@ -187,26 +212,39 @@ impl Loads {
         if !at.routers.contains_key(&ask.server) {
             return Err(Cause::CopyUnknown);
         }
-        if !self.kept.contains_key(&ask.copy) && self.kept.len() >= MAX_FILES {
-            return Err(Cause::MemberUnknown);
-        }
         let keep = ask
             .keep
             .or_else(|| self.kept.get(&ask.copy).map(|kept| kept.keep))
             .unwrap_or_default();
-        if let Some(there) = self.copies.get(&ask.copy) {
-            let same = there.server == ask.server && there.settings == *ask.settings;
-            match there.held.state {
-                OnServer::Ready | OnServer::Active if same => return self.kept_after(ask, keep),
-                OnServer::Ready => self.unload_one(at, ask.copy, false).await,
-                _ => return Err(Cause::MemoryBusy),
-            }
+        let writes = keep != Keep::default() || self.kept.contains_key(&ask.copy);
+        if writes && !self.kept.contains_key(&ask.copy) && self.kept.len() >= MAX_FILES {
+            return Err(Cause::MemberUnknown);
         }
+        // The use of each copy now, so that a copy with a request in progress is not taken for room.
+        self.observe(at).await;
+        let replaces = match self.copies.get(&ask.copy) {
+            None => false,
+            Some(there) => {
+                let same = there.server == ask.server && there.settings == *ask.settings;
+                match there.held.state {
+                    OnServer::Ready | OnServer::Active if same => {
+                        return self.kept_after(ask, keep, writes);
+                    }
+                    OnServer::Ready => true,
+                    _ => return Err(Cause::MemoryBusy),
+                }
+            }
+        };
         let on_node = self.on_node(ask, keep, at.now)?;
         let load = Load {
             parts: on_node.held.parts.clone(),
         };
-        match room(at.usable, &self.held(), &load, at.now) {
+        let others: Vec<Held> = self
+            .held()
+            .into_iter()
+            .filter(|held| held.copy != ask.copy)
+            .collect();
+        let mut free: Vec<Uuid> = match room(at.usable, &others, &load, at.now) {
             Room::TooLarge => return Err(Cause::MemoryShare),
             Room::Busy => {
                 for (memory, _) in &load.parts {
@@ -214,21 +252,30 @@ impl Loads {
                 }
                 return Err(Cause::MemoryBusy);
             }
-            Room::Unload(copies) => {
-                for copy in copies {
-                    self.unload_one(at, copy, true).await;
-                }
+            Room::Unload(copies) => copies,
+            Room::Load => Vec::new(),
+        };
+        if replaces {
+            free.insert(0, ask.copy);
+        }
+        for copy in free {
+            // The copy that the load replaces is marked when pinned, so that it comes back if the load fails.
+            if !self.unload_one(at, copy, true).await {
+                return Err(Cause::MemoryBusy);
             }
-            Room::Load => {}
         }
         self.load_one(at, on_node, &By::Order).await?;
-        self.kept_after(ask, keep)
+        self.kept_after(ask, keep, writes)
     }
 
-    /// The keep file after a load: its keep, its server and settings, and no mark.
-    fn kept_after(&mut self, ask: &Ask<'_>, keep: Keep) -> Result<(), Cause> {
+    /// The keep after a load: its keep, and, when the node keeps a file for the copy, its server, its settings and
+    /// no mark.
+    fn kept_after(&mut self, ask: &Ask<'_>, keep: Keep, writes: bool) -> Result<(), Cause> {
         if let Some(on_node) = self.copies.get_mut(&ask.copy) {
             on_node.held.keep = keep;
+        }
+        if !writes {
+            return Ok(());
         }
         let kept = self.kept.entry(ask.copy).or_insert_with(|| Kept::new(keep));
         kept.keep = keep;

@@ -102,7 +102,8 @@ impl Router {
     }
 
     /// Reads the list each half second until `copy` is in the state that `reached` wants, for at most
-    /// [`WAIT_SECONDS`]; `stop` ends the wait early.
+    /// [`WAIT_SECONDS`] in all; `stop` ends the wait early. A list that does not come is read again; a copy that the
+    /// router marks failed, or that left its list, ends the wait as `Failed`.
     pub async fn wait(
         &self,
         copy: Uuid,
@@ -110,21 +111,29 @@ impl Router {
         stop: impl Fn() -> bool,
     ) -> Waited {
         let end = tokio::time::Instant::now() + Duration::from_secs(WAIT_SECONDS);
-        while tokio::time::Instant::now() < end {
+        loop {
             if stop() {
                 return Waited::Stopped;
             }
-            let state = self.statuses(false).await.and_then(|list| {
+            let Ok(list) = tokio::time::timeout_at(end, self.statuses(false)).await else {
+                return Waited::TimedOut;
+            };
+            let state = list.map(|list| {
                 list.into_iter()
                     .find(|(id, _)| *id == copy)
                     .map(|(_, state)| state)
             });
             match state {
-                Some(state) if reached(state) => return Waited::Reached,
-                Some(Status::Failed) | None => return Waited::Failed,
-                Some(_) => tokio::time::sleep(POLL).await,
+                Some(Some(state)) if reached(state) => return Waited::Reached,
+                Some(Some(Status::Failed) | None) => return Waited::Failed,
+                Some(Some(_)) | None => {}
+            }
+            if tokio::time::timeout_at(end, tokio::time::sleep(POLL))
+                .await
+                .is_err()
+            {
+                return Waited::TimedOut;
             }
         }
-        Waited::TimedOut
     }
 }

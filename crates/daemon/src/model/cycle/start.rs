@@ -92,8 +92,7 @@ impl Node {
         let clock = self.started;
         self.servers.lock().await.stop(server).await;
         self.loads
-            .loads
-            .lock()
+            .for_order()
             .await
             .server_started(server, crate::model::load::now());
         let place = self.folders.server(server);

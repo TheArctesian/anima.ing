@@ -164,7 +164,7 @@ impl Node {
             usable: &memory,
             now: super::load::now(),
         };
-        self.loads.loads.lock().await.forget(&at, copy).await?;
+        self.loads.for_order().await.forget(&at, copy).await?;
         super::found::record::forget(&self.folders.state, copy)?;
         super::pull::delete(&self.folders.models, copy)
     }
@@ -205,7 +205,7 @@ impl Node {
             Parameters::Pull { .. } => super::pull::pull(&order.parameters, &self.cache()).await,
             Parameters::CopyDelete { copy } => self.delete_copy(*copy).await,
             Parameters::Stop { server } => {
-                self.loads.loads.lock().await.server_stopped(*server);
+                self.loads.for_order().await.server_stopped(*server);
                 if self.servers.lock().await.stop(*server).await {
                     Ok(None)
                 } else {
