@@ -21,6 +21,7 @@ pub(super) enum Input {
     },
     Paste(String),
     Drawn(String),
+    Display(Option<u32>),
     View(usize, usize),
     Disconnect,
     Nothing,
@@ -44,6 +45,10 @@ impl Clipboard {
                 },
                 _ => Input::Nothing,
             },
+            "display" if args.len() == 1 && args[0] == "all" => Input::Display(None),
+            "display" if args.len() == 1 => {
+                number(0).map_or(Input::Nothing, |id| Input::Display(Some(id)))
+            }
             "mouse" => pointer(number(0), number(1), number(2)),
             "sync" => args
                 .first()

@@ -104,6 +104,67 @@ async fn a_session_draws_the_device_and_carries_input_and_the_clipboard() {
 }
 
 #[tokio::test]
+async fn selecting_each_vnc_display_fits_its_pixels_and_offsets_the_pointer() {
+    let device = Device::start(SignIn::None).await;
+    let (mut hub, _served) = session(Settings::default());
+    hub.open("vnc", values(device.address, &[]))
+        .await
+        .expect("ready");
+    let mut client = Drawn::default();
+    draw_frame(&mut hub, &mut client).await;
+
+    let colors = [[230, 0, 0], [0, 180, 0], [0, 0, 140]];
+    let desktop: Vec<u8> = (0..SIZE.0 * SIZE.1)
+        .flat_map(|pixel| {
+            let (x, y) = (pixel % SIZE.0, pixel / SIZE.0);
+            let index = if x < 32 { 0 } else { 1 + y / 24 };
+            colors[index]
+        })
+        .collect();
+    device
+        .tell
+        .send(Tell::Bytes(rfb::update(&[rfb::raw(ALL, &desktop)])))
+        .await
+        .expect("pixels");
+    draw_frame(&mut hub, &mut client).await;
+
+    let monitors = [(10_u32, 0_u16, 0_u16), (21, 32, 0), (32, 32, 24)];
+    let mut wire = vec![0, 0, 0, 1, 0, 0, 0, 0, 0, 64, 0, 48];
+    wire.extend((-308_i32).to_be_bytes());
+    wire.extend([3, 0, 0, 0]);
+    for (id, x, y) in monitors {
+        wire.extend(id.to_be_bytes());
+        wire.extend(x.to_be_bytes());
+        wire.extend(y.to_be_bytes());
+        wire.extend([0, 32, 0, 24, 0, 0, 0, 0]);
+    }
+    device.tell.send(Tell::Bytes(wire)).await.expect("layout");
+    draw_frame(&mut hub, &mut client).await;
+    assert_eq!(
+        hub.next_of("displays").await.args,
+        ["all", "10", "21", "32"]
+    );
+
+    for (index, (id, x, y)) in monitors.into_iter().enumerate() {
+        hub.send(&Instruction::new("display", [id.to_string()]))
+            .await;
+        draw_frame(&mut hub, &mut client).await;
+        assert_eq!(client.rgb, colors[index].repeat(32 * 24));
+        assert_eq!(hub.next_of("displays").await.args[0], id.to_string());
+        hub.send(&Instruction::new("mouse", ["1", "2", "1"])).await;
+        assert_eq!(
+            heard(&device, index + 1).await.last(),
+            Some(&format!("pointer {} {} 1", x + 1, y + 2))
+        );
+    }
+
+    hub.send(&Instruction::new("display", ["all"])).await;
+    draw_frame(&mut hub, &mut client).await;
+    assert_eq!(client.rgb, desktop);
+    assert_eq!(hub.next_of("displays").await.args[0], "all");
+}
+
+#[tokio::test]
 async fn the_clipboard_switches_hold_in_both_directions() {
     let device = Device::start(SignIn::None).await;
     let (mut hub, _served) = session(Settings::default());

@@ -85,7 +85,7 @@ async fn a_device_without_a_sign_in_opens_and_gets_the_gateways_pixel_format() {
         .expect("signed in");
     assert_eq!(size, (800, 600));
     // The chosen type, ClientInit (shared), SetPixelFormat, SetEncodings.
-    let bytes = sent(&mut device, 2 + 20 + 24).await;
+    let bytes = sent(&mut device, 2 + 20 + 28).await;
     assert_eq!(&bytes[..2], [1, 1]);
     assert_eq!(
         &bytes[2..22],
@@ -93,7 +93,13 @@ async fn a_device_without_a_sign_in_opens_and_gets_the_gateways_pixel_format() {
             0, 0, 0, 0, 32, 24, 0, 1, 0, 255, 0, 255, 0, 255, 16, 8, 0, 0, 0, 0
         ]
     );
-    assert_eq!(&bytes[22..26], [2, 0, 0, 5]);
+    assert_eq!(&bytes[22..26], [2, 0, 0, 6]);
+    assert!(
+        bytes[26..]
+            .as_chunks::<4>()
+            .0
+            .contains(&(-308_i32).to_be_bytes())
+    );
 }
 
 #[tokio::test]

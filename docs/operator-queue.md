@@ -313,11 +313,12 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (125)
+## 4. Checks that only the operator can do (126)
 
 | Check | What |
 | --- | --- |
 | HT-181 | the runner relay with real agent programs (TH118) |
+| HT-186 | one VNC monitor at a time on iPad |
 | HT-149 | reporting after an iPad update and the phone Code tab |
 | HT-183 | Device Overview and tabs on iPad |
 | HT-148 | phone Devices, offline notice and Integrations (M2-5) |
