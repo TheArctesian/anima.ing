@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (17)
+## 1. In the order of the priorities (18)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -26,6 +26,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.22 | User documentation and the docs site docs.anima.ing | Operator: the approval of UDOC-001 to UDOC-050 (task UD20) in user-documentation.md Section 10, and its [NEEDS CLARIFICATION] markers. Agent: nothing; no ruling names a task. UD0 (a record) can start when a ruling names it |
+| 4.24 | Agent threads and mobile Code | Operator: OD-THR87 (the ruling of the TH30 contract, reviewed) and OD-THR88 to OD-THR90 in agent-threads.md. Agent: TH21 (in progress, no claim), then TH31 to TH33 in agent-threads.md. TH31 and TH32 also need work-route tasks W3 and W4 of row 4.7. |
 | 4.4 | The engine (E0) | Agent: E0-6 T8 (one sign-in and the thread tokens), E0-6 T3 (the `anima secret` commands) and E0-5 T7 (plain `http` to a private address) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"); T1 to T4 of E0-7 are built. Operator: HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Agent: the tasks of Section 12.4 of compute-plan.md, in their order; read the claims first. Operator: the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md |
 | 4.7 | Jobs, builds and AI agent runs | Operator: an administrator step on a Mac, the acceptance of the design (W2), the check HT-037 of task W0, and the steps of task B1 on his GitHub account. Agent: task W3 in projects-and-builds-plan.md, the queue of the hub (the contract K10 is accepted, R-209); task W4 comes after the acceptance of W2 |
@@ -38,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (232)
+## 2. Open decisions (236)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -175,6 +176,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-THR84 | What does the wipe of a returned phone remove before the person confirms it? | Open. Recommendation: A, remove what the lease added; no factory reset. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-THR85 | Does a lease have a longest age, even while it is renewed? | Open. Recommendation: A, 4 hours, changeable. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-THR86 | Later, should an AXT-096 grant that names one agent narrow the holder below the hub token? | Open, not needed for the first version. Recommendation: A, later and optional. | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR87 | Do you approve the TH30 contract, Section 6.4.2 version 2 (the work type `agent_thread`, the launch request, the command poll), as a change of K10, K1 and K8 un… | Open (TH30, 2026-11-23). Recommendation: B, then A. | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR88 | May the hub send prompts, answers and stops to a thread that the person started at the machine, or only to threads that the hub started? | Open (TH30 review). Recommendation: A for stage 3; B later with its own switch. | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR89 | When the person set no access ceiling at the machine, what is the highest access of a thread that the hub starts? | Open (TH30 review). Recommendation: A. | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR90 | With the switch "Threads may start here" off, which commands does the daemon still take for an open thread? | Open (TH30 review). Recommendation: A. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow`… | Open. Recommendation: yes, an exception for the folder only. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT27 | How do short-lived file links work (wave 2)? (one choice: only through the gateway or the relay, to a signed-in caller or a valid folder token; no file links; p… | Open. Recommendation: only through the gateway or the relay, to a signed-in caller or a token. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT28 | Does MCP-008 also cover the content of a file and the line of a search hit, in named fields with a limit? (yes/no) | Open. Recommendation: yes. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
