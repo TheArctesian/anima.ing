@@ -1029,8 +1029,23 @@ each device includes the same typed `mobileTools` value, without stringifying it
 adding a new operation. Failure states are fixed codes, with no speculative install
 or repair command. The existing Xcode tool entry is unchanged.
 
-Old queries keep their current result. A new query against an older schema can fail
-GraphQL validation; optional field semantics alone do not make that query compatible.
-Consumer implementation must either require the hub version that includes this field,
-or negotiate schema support and omit the selection for older hubs. No broad retry of
-failed queries is approved here. The choice must be explicit in implementation review.
+Old queries keep their current result. CLI and MCP must retain capability listing on
+older hubs. Their shared fetch path uses two fixed selections: the new complete selection
+and the existing legacy selection with no `mobileTools`. Negotiate support by first trying
+the new read query. Only a response consisting entirely of uncoded GraphQL validation
+errors that identify the unknown field `mobileTools` on `DeviceCapabilities`, with no
+returned data, permits one retry using the legacy selection. Match the field and type
+exactly, not a generic unknown-field error. Explicit authorization/error codes, transport
+failures, malformed responses and unrelated or mixed GraphQL errors remain failures;
+they never trigger fallback. A failed legacy read remains an error too. Do not cache this
+result across hubs, account changes or later independent calls; a later call can discover
+an upgraded hub. Neither query changes authorization, filters or paging behavior.
+
+On the legacy path, normalize each device to `mobileTools: null` in CLI JSON and MCP,
+while preserving every other existing field and the existing response envelope. The
+human table says "Not reported" for mobile tools; it must not say missing, unsupported,
+empty, or ready. This means the hub cannot report the snapshot, not that the device lacks
+SDKs. New-query null has the same output. Regression tests must cover exact unsupported
+field fallback, new-hub populated/null snapshots, unchanged filters, and no fallback for
+auth, transport, unrelated or mixed failures. No upgrade requirement or broad retry is
+introduced.
