@@ -2295,6 +2295,8 @@ State: Open.
 
 Built: `crates/hub/src/engine/sources/acquisition/transport/at_account.rs` sends a plain `http` base only when each resolved address of the host is in 10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7; the connection goes to the checked address and no redirect is followed. `anima source connect dawarich` says that the key goes with no TLS. The tests check the ranges and the address of the base with fixtures; they do not reach a real Dawarich server or a real name server.
 
+The risk you accept with plain `http` (OD-E26): the key crosses the private or VPN network with no encryption, and no identity of the server is checked, so a host on that network that takes the address of the server can read the key. Use `https` when the server has it.
+
 Steps and expected results:
 
 1. Run `anima source connect dawarich --label home --url http://<private address of the server>:<port>` and give the key. Expected: the command says that the key goes with no TLS, and the account is made with health OK.
