@@ -1,6 +1,7 @@
 //! Found models through the hub's routes (task L1-22; K11 Sections 2.3 and 8; PULL-012, R-444):
 //! `findModels` asks the machine for a `model_report`, `foundModels` lists the found models of
-//! its result, and `useFoundModel` makes a found copy and its `copy_adopt`.
+//! its result, `useFoundModel` makes a found copy and its `copy_adopt`, and `removeModelCopy`
+//! of a found copy asks its machine for a `copy_delete` (PULL-009).
 
 use axum::http::StatusCode;
 use serde_json::{Value, json};
@@ -14,6 +15,7 @@ const FOUND: &str = "{ foundModels { found tool name format fileCount sizeBytes 
 const FIND: &str = "mutation($deviceId: ID!) { findModels(deviceId: $deviceId) }";
 const USE: &str = "mutation($deviceId: ID!, $found: String!) {
     useFoundModel(deviceId: $deviceId, found: $found) { id address origin state } }";
+const REMOVE: &str = "mutation($id: ID!) { removeModelCopy(id: $id) { id state } }";
 
 fn key(letter: char) -> String {
     letter.to_string().repeat(64)
@@ -21,6 +23,12 @@ fn key(letter: char) -> String {
 
 fn cleanup() -> Value {
     json!({ "isolation": "none", "checkout": "none", "secrets": "none", "keychain": "none" })
+}
+
+fn adopted(copy: &Value) -> Value {
+    json!({ "result": { "outcome": "succeeded", "cause": null, "seconds": 2, "cleanup": cleanup(),
+        "model": { "copy": copy, "copyState": "downloaded", "bytes": 100, "files": 1, "origin": "found",
+            "fileHashes": [{ "sizeBytes": 100, "sha256": key('d') }] } } })
 }
 
 /// The result of a `model_report` that lists a GGUF model of Ollama, a safetensors model of
@@ -126,10 +134,7 @@ async fn pull_012_a_found_model_is_listed_and_used_where_it_is(pool: sqlx::PgPoo
         "a used model is not listed"
     );
 
-    let adopted = json!({ "result": { "outcome": "succeeded", "cause": null, "seconds": 2, "cleanup": cleanup(),
-        "model": { "copy": copy["id"], "copyState": "downloaded", "bytes": 100, "files": 1, "origin": "found",
-            "fileHashes": [{ "sizeBytes": 100, "sha256": key('d') }] } } });
-    let item = finish(&work, &token, "copy_adopt", &adopted).await;
+    let item = finish(&work, &token, "copy_adopt", &adopted(&copy["id"])).await;
     assert_eq!(
         item["parameters"],
         json!({ "copy": copy["id"], "found": key('a') })
@@ -141,4 +146,52 @@ async fn pull_012_a_found_model_is_listed_and_used_where_it_is(pool: sqlx::PgPoo
         again["errors"][0]["extensions"]["code"].is_string(),
         "a used model is not used twice: {again}"
     );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn pull_009_the_removal_of_a_found_copy_deletes_its_record_on_its_machine(
+    pool: sqlx::PgPool,
+) {
+    let work = Work::new(&pool).await;
+    let token = work.daemons.token_for(PVE_01).await;
+    let (status, _) = work.claim(&token, &model_claim(&json!([]))).await;
+    assert_eq!(status, StatusCode::NO_CONTENT, "the hub learns the machine");
+    work.daemons
+        .operate(FIND, json!({ "deviceId": PVE_01 }))
+        .await;
+    finish(&work, &token, "model_report", &state()).await;
+    let used = use_found(&work, &key('a')).await;
+    let copy = used["data"]["useFoundModel"]["id"].clone();
+    finish(&work, &token, "copy_adopt", &adopted(&copy)).await;
+
+    let removed = work.daemons.operate(REMOVE, json!({ "id": copy })).await;
+    assert_eq!(
+        removed["data"]["removeModelCopy"]["state"], "REMOVING",
+        "{removed}"
+    );
+    // The daemon sends no `model` for a `copy_delete` (it deletes only its record of the copy).
+    let done = json!({ "result": { "outcome": "succeeded", "cause": null, "seconds": 0, "cleanup": cleanup() } });
+    let item = finish(&work, &token, "copy_delete", &done).await;
+    assert_eq!(item["parameters"], json!({ "copy": copy }));
+    assert!(
+        copies(&work).await.is_empty(),
+        "a removed copy is not listed"
+    );
+
+    let listed = work.daemons.operate(FOUND, json!({})).await;
+    let names: Vec<&str> = listed["data"]["foundModels"]
+        .as_array()
+        .expect("a list")
+        .iter()
+        .filter_map(|each| each["name"].as_str())
+        .collect();
+    assert!(
+        names.contains(&"qwen3:8b"),
+        "the model is found again when no copy uses it: {listed}"
+    );
+    let again = use_found(&work, &key('a')).await;
+    assert_eq!(again["data"]["useFoundModel"]["state"], "QUEUED", "{again}");
 }
