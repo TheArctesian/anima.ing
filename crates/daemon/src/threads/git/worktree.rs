@@ -9,6 +9,7 @@
 
 pub mod files;
 mod removal;
+mod retirement;
 mod undo;
 
 pub use removal::{remove, remove_broken};
@@ -151,7 +152,7 @@ pub(super) async fn undoable(
         refs::put(common, &full, &at, Was::Absent)?;
         undo.branch = Some((common.to_owned(), full.clone()));
     }
-    let entry = format!("anima-{}", plan.thread.as_simple());
+    let entry = format!("anima-{}", Uuid::now_v7().as_simple());
     let layout = linked::add(common, &entry, &folder, &branch)?;
     undo.entry = Some(layout.clone());
     let target = (plan.thread, repository.as_str());

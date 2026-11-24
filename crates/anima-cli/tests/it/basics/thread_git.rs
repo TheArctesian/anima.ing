@@ -65,7 +65,7 @@ impl Runner {
         let mut lines = BufReader::new(read).lines();
         let line = lines.next_line().await.expect("read").expect("call");
         let mut call: Value = serde_json::from_str(&line).expect("a runner call");
-        assert_eq!(call["call"], "git");
+        assert_eq!(call["call"], "git_v2");
         assert_eq!(call["thread"], THREAD);
         assert_eq!(call["repository"], REPO);
 
@@ -202,4 +202,47 @@ async fn tc7_git_push_requires_a_specific_yes_for_the_default_branch() {
     );
     assert_eq!(push.code, 0, "{push:?}");
     assert!(push.stdout.contains(REMOTE));
+}
+
+#[tokio::test]
+async fn tc7_git_review_shows_hidden_characters_and_literal_escape_notation_distinctly() {
+    let runner = Runner::new();
+    let patch = concat!("@@ -1 +1 @@\n-value\\u{200b}\n", "+value\u{200b}\u{1b}\t\n");
+    let answer = json!({
+        "outcome": "git", "result": "changes", "snapshot": SNAPSHOT, "additions": 1, "deletions": 1,
+        "files": [{"path": "notes.txt", "kind": "modified", "additions": 1, "deletions": 1, "patch": patch}],
+        "truncated": false,
+    });
+    let (review, _) = runner.exchange(&["changes"], &answer).await;
+    assert_eq!(review.code, 0, "{review:?}");
+    assert!(review.stdout.contains("-value\\\\u{200b}\n"), "{review:?}");
+    assert!(
+        review.stdout.contains("+value\\u{200b}\\u{1b}\\u{9}\n"),
+        "{review:?}"
+    );
+    for hidden in ["\u{200b}", "\u{1b}"] {
+        review.assert_never_shows(hidden);
+    }
+}
+
+#[tokio::test]
+async fn tc7_git_remove_reports_both_the_snapshot_and_the_recovery_directory() {
+    let runner = Runner::new();
+    let recovery = "/fixture/worktrees/.anima-retired/sample/worktree";
+    let kept = "refs/anima/kept/c30b92dd-5d0d-40e2-978e-3f26d0cf9af1";
+    let answer =
+        json!({ "outcome": "git", "result": "removed", "kept": kept, "recovery": recovery });
+    let (removed, action) = runner.exchange(&["remove", "--yes"], &answer).await;
+    assert_eq!(action, json!({ "git": "remove" }));
+    assert_eq!(removed.code, 0, "{removed:?}");
+    assert!(
+        removed.stdout.contains(&format!("Git snapshot: {kept}.")),
+        "{removed:?}"
+    );
+    assert!(
+        removed
+            .stdout
+            .contains(&format!("Complete directory: {recovery}")),
+        "{removed:?}"
+    );
 }

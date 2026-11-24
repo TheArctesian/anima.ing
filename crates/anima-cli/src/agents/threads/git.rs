@@ -56,7 +56,7 @@ enum GitCommand {
     /// Print the address of the pull request page for a pushed branch.
     #[command(visible_alias = "pull-request")]
     Pr,
-    /// Save the worktree under a private ref and remove it. Refuses if files would be lost.
+    /// Save a private ref and move the full worktree to a recovery directory.
     Remove,
     /// Discard checkpoints strictly before this turn.
     Forget { before: u32 },
@@ -135,7 +135,7 @@ impl GitCommand {
             }
             Self::Remove => {
                 format!(
-                    "Save the {repository} worktree of thread {thread} to Git and remove it if the files can be preserved?"
+                    "Save a private ref and move the {repository} worktree of thread {thread} to a recovery directory?"
                 )
             }
             Self::Forget { before } => {
@@ -231,7 +231,7 @@ fn refused(why: GitRefusal) -> Failure {
             };
         }
         GitRefusal::NotReviewed => {
-            "Read the complete uncommitted changes without --ignore-whitespace and use the new snapshot."
+            "Read the complete textual uncommitted changes without --ignore-whitespace and use the new snapshot."
         }
         GitRefusal::RecordsHeld => {
             "A running thread can write to Anima's Git records. Stop that thread first."

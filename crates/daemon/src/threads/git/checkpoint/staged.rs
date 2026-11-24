@@ -177,7 +177,7 @@ const MOST_INNER: usize = 64;
 ///   below one folder with a name that nothing in the worktree can have, `kept`.
 ///
 /// `git` lists the files of each with the rules of that repository for what is ignored, as
-/// for the worktree itself. The removal check refuses when anything there is left out.
+/// for the worktree itself. The complete directory, including omitted files, stays recoverable.
 ///
 /// # Errors
 /// A [`GitError`] when a listing fails or there are more than [`MOST_INNER`] repositories.
@@ -228,10 +228,8 @@ pub(super) async fn inner_files(
             if !files::inside(&inside) {
                 continue;
             }
-            // A repository deeper down would need its own ignore rules checked before
-            // staging. Leave it in place rather than copying its files without that check.
             if name.ends_with(b"/") {
-                return Err(unlisted(&folder.join(inside)));
+                continue;
             }
             found.push((folder.join(&inside), saved_at.join(inside)));
         }

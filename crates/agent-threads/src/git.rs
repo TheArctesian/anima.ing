@@ -43,7 +43,7 @@ pub enum GitAction {
     /// Checks the branch and gives the page of the forge where the person opens the pull
     /// request. For the person only.
     PullRequest,
-    /// Saves the work to a private ref and removes the worktree. For the person only.
+    /// Saves a private ref and retires the original directory. For the person only.
     Remove,
     /// Removes the checkpoints of the turns before `before`, to free the disk that they use.
     /// The files of the worktree and the later checkpoints stay. For the person only.
@@ -122,6 +122,9 @@ pub enum GitOutcome {
     PullRequest(PullRequestPage),
     Removed {
         kept: Option<String>,
+        /// The complete retained directory, when the runner supports retirement.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        recovery: Option<std::path::PathBuf>,
     },
     Trusted,
     Refused {

@@ -120,8 +120,11 @@ async fn of(
     };
     let look = Look::Patches { ignore_whitespace };
     let mut changes = between(git, worktree, (&from, &to), look).await?;
-    changes.snapshot =
-        (scope == Scope::Uncommitted && !ignore_whitespace && !changes.truncated).then_some(to);
+    changes.snapshot = (scope == Scope::Uncommitted
+        && !ignore_whitespace
+        && !changes.truncated
+        && !changes.files.iter().any(|file| file.binary))
+    .then_some(to);
     Ok(changes)
 }
 

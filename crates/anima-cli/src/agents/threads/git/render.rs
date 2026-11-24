@@ -1,9 +1,11 @@
+use std::fmt::Write as _;
+
 use agent_threads::git::{ChangedFile, Changes, GitOutcome, Status};
 
 use crate::failure::Failure;
 use crate::output::{
     Cell, Output, Table,
-    text::{clean, clean_file, enum_name},
+    text::{clean, enum_name},
 };
 
 pub(super) fn show(result: &GitOutcome, output: Output) -> Result<(), Failure> {
@@ -51,14 +53,30 @@ pub(super) fn show(result: &GitOutcome, output: Output) -> Result<(), Failure> {
             ))
         }
         GitOutcome::PullRequest(page) => output.line(&clean(&page.url)),
-        GitOutcome::Removed { kept } => {
-            let kept = kept.as_deref().map_or_else(String::new, |reference| {
-                format!(" Work kept at {}.", clean(reference))
-            });
-            output.line(&format!("Worktree removed.{kept}"))
+        GitOutcome::Removed { kept, recovery } => {
+            show_removed(kept.as_deref(), recovery.as_deref(), output)
         }
         GitOutcome::Trusted => output.line("Git settings accepted."),
         GitOutcome::Refused { why } => Err(super::refused(why.clone())),
+    }
+}
+
+fn show_removed(
+    kept: Option<&str>,
+    recovery: Option<&std::path::Path>,
+    output: Output,
+) -> Result<(), Failure> {
+    let kept = kept.map_or_else(String::new, |reference| {
+        format!(" Git snapshot: {}.", clean(reference))
+    });
+    if let Some(recovery) = recovery {
+        let recovery = recovery.display().to_string();
+        output.line(&format!(
+            "Worktree retired.{kept} Complete directory: {}",
+            recovery.escape_debug()
+        ))
+    } else {
+        output.line(&format!("Worktree removed.{kept}"))
     }
 }
 
@@ -92,17 +110,36 @@ fn show_changes(changes: &Changes, output: Output) -> Result<(), Failure> {
     if changes.truncated {
         output.line("Patches could not be displayed in full.")?;
     }
+    if changes.files.iter().any(|file| file.binary) {
+        output.line("Binary changes require inspection outside this commit review.")?;
+    }
     for patch in changes
         .files
         .iter()
         .filter_map(|file| file.patch.as_deref())
     {
-        output.line(clean_file(patch).trim_end_matches('\n'))?;
+        output.line(visible_patch(patch.trim_end_matches('\n')).as_str())?;
     }
     if let Some(snapshot) = &changes.snapshot {
         output.line(&format!("Reviewed snapshot: {}", clean(snapshot)))?;
     }
     Ok(())
+}
+
+/// Keep Git's line structure. Escape non-ASCII and controls, including tabs, so invisible
+/// characters and literal text that looks like an escape remain distinguishable.
+fn visible_patch(patch: &str) -> String {
+    let mut visible = String::with_capacity(patch.len());
+    for character in patch.chars() {
+        match character {
+            '\\' => visible.push_str("\\\\"),
+            '\n' | ' '..='~' => visible.push(character),
+            other => {
+                let _ = write!(visible, "\\u{{{:x}}}", u32::from(other));
+            }
+        }
+    }
+    visible
 }
 
 fn show_files(files: &[ChangedFile], output: Output) -> Result<(), Failure> {

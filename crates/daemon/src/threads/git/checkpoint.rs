@@ -5,14 +5,13 @@
 //! I/O: runs `git` with the Git folder and the index of the runner.
 
 use agent_threads::git::Checkpoint;
+use sha2::Digest;
 use uuid::Uuid;
 
 use super::place::{Worktree, own, shared};
 use super::run::{Git, GitError, Run};
-mod preserved;
 mod staged;
 
-use preserved::Preserved;
 use staged::{Lists, Staged, Staging, fitted};
 
 /// Who a checkpoint commit says it is from: never the person.
@@ -44,17 +43,23 @@ pub fn before_revert_ref(thread: Uuid) -> String {
 /// one that a commit takes, and kept from the clean-up of git.
 #[must_use]
 pub fn reviewed_ref(thread: Uuid) -> String {
-    format!("{}/reviewed-complete", refs_of(thread))
+    format!("{}/reviewed-text", refs_of(thread))
 }
 
-fn old_reviewed_ref(thread: Uuid) -> String {
-    format!("{}/reviewed", refs_of(thread))
+fn old_reviewed_refs(thread: Uuid) -> [String; 2] {
+    let under = refs_of(thread);
+    [
+        format!("{under}/reviewed"),
+        format!("{under}/reviewed-complete"),
+    ]
 }
 
 /// The ref of the commit of `branch` that the last push sent.
 #[must_use]
-pub fn pushed_ref(branch: &str) -> String {
-    format!("refs/anima/pushed/{branch}")
+pub fn pushed_ref(url: &str, branch: &str) -> String {
+    let destination = sha2::Sha256::digest(url.as_bytes());
+    let destination = crate::model::fetch::hex(&destination);
+    format!("refs/anima/pushed-to/{destination}/{branch}")
 }
 
 /// The ref in the repository of the person that keeps the work of a worktree that was
@@ -79,15 +84,6 @@ pub async fn tree_now(
     worktree: &Worktree,
     tip: Option<&str>,
 ) -> Result<String, GitError> {
-    stage_tree(git, worktree, tip).await?;
-    git.text(Run::new(worktree.folder(), ["write-tree"])).await
-}
-
-async fn stage_tree(
-    git: &Git,
-    worktree: &Worktree,
-    tip: Option<&str>,
-) -> Result<Vec<(std::path::PathBuf, std::path::PathBuf)>, GitError> {
     let dir = worktree.folder();
     let left = own::within(git, worktree).await?;
     let start = match tip {
@@ -118,7 +114,8 @@ async fn stage_tree(
     };
     let staged = fitted(git, worktree, (&held.0, &lists), left).await?;
     index_of(git, &held.0, staged).await?;
-    Ok(inner)
+    drop(held);
+    git.text(Run::new(dir, ["write-tree"])).await
 }
 
 /// Puts what was copied into `staging` in the index of the runner: the files that are gone
@@ -181,23 +178,14 @@ pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError
     commit_tree(git, worktree, tree, tip).await
 }
 
-/// Saves the tree for removal and accounts for the files it preserves in the worktree.
-///
-/// # Errors
-/// A [`GitError`] if Git fails or a worktree file is outside the saved tree.
-pub async fn snapshot_for_removal(
+/// Saves the Git representation of the worktree. The original directory is kept separately.
+pub(super) async fn snapshot_on(
     git: &Git,
     worktree: &Worktree,
     tip: Option<String>,
-) -> Result<(String, Preserved), GitError> {
-    let aliases = stage_tree(git, worktree, tip.as_deref()).await?;
-    let preserved = Preserved::from_index(git, worktree, aliases).await?;
-    preserved.check(worktree.folder())?;
-    let tree = git
-        .text(Run::new(worktree.folder(), ["write-tree"]))
-        .await?;
-    let commit = commit_tree(git, worktree, tree, tip).await?;
-    Ok((commit, preserved))
+) -> Result<String, GitError> {
+    let tree = tree_now(git, worktree, tip.as_deref()).await?;
+    commit_tree(git, worktree, tree, tip).await
 }
 
 async fn commit_tree(
@@ -274,7 +262,9 @@ pub(super) async fn keep_reviewed(
     worktree: &Worktree,
     shown: &str,
 ) -> Result<(), GitError> {
-    drop_ref(git, worktree, &old_reviewed_ref(worktree.thread())).await?;
+    for old in old_reviewed_refs(worktree.thread()) {
+        drop_ref(git, worktree, &old).await?;
+    }
     keep(git, worktree, &reviewed_ref(worktree.thread()), shown).await
 }
 
@@ -344,10 +334,8 @@ pub async fn forget_before(
     forget(git, worktree, |turn| turn < before).await?;
     // The last reviewed snapshot goes: the next look at the changes makes a new one. The
     // undo of the last revert goes only with the last checkpoint.
-    let mut old = vec![
-        reviewed_ref(worktree.thread()),
-        old_reviewed_ref(worktree.thread()),
-    ];
+    let mut old = vec![reviewed_ref(worktree.thread())];
+    old.extend(old_reviewed_refs(worktree.thread()));
     if list(git, worktree).await?.is_empty() {
         old.push(before_revert_ref(worktree.thread()));
     }

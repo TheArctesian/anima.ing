@@ -307,3 +307,15 @@ async fn tc7_review_with_ignored_whitespace_cannot_authorize_a_commit() {
         dedented.trim_end()
     );
 }
+
+#[tokio::test]
+async fn tc7_review_never_authorizes_opaque_binary_changes() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join("opaque.bin"), b"\0data\0").expect("an opaque file");
+    let GitOutcome::Changes(changes) = bench.call(PERSON, UNCOMMITTED).await else {
+        panic!("expected changes");
+    };
+    assert!(changes.files.iter().any(|file| file.binary));
+    assert_eq!(changes.snapshot, None, "a binary notice is not a review");
+}

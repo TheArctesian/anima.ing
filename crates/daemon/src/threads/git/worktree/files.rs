@@ -52,49 +52,6 @@ const fn runs(_about: &std::fs::Metadata) -> bool {
     false
 }
 
-/// The most entries and the most folders in folders that [`Root::files_below`] looks at.
-const MOST_BELOW: usize = 200_000;
-const DEEPEST: usize = 64;
-
-/// Adds to `found` each file and each link of the open folder `folder`, which is at `at`.
-fn listed(
-    folder: &Dir,
-    at: &Path,
-    (depth, left): (usize, &mut usize),
-    found: &mut Vec<PathBuf>,
-) -> std::io::Result<()> {
-    let too_many = || {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "a folder of a repository in the worktree holds too much to save; delete or move \
-             that folder, then remove the worktree again",
-        )
-    };
-    for name in folder.names()? {
-        *left = left.checked_sub(1).ok_or_else(too_many)?;
-        if name.eq_ignore_ascii_case(".git") {
-            continue;
-        }
-        let path = at.join(&name);
-        if folder.link(&name).is_some() || folder.file(&name)?.is_some() {
-            found.push(path);
-        } else if let Some(inside) = folder.below(Path::new(&name), Make::No)? {
-            listed(
-                &inside,
-                &path,
-                (depth.checked_sub(1).ok_or_else(too_many)?, left),
-                found,
-            )?;
-        } else {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("the entry {} could not be preserved", shown(&path)),
-            ));
-        }
-    }
-    Ok(())
-}
-
 /// A path of the worktree for a text that a person reads: no control character of the name
 /// is shown as it is, and a long name is cut.
 #[must_use]
@@ -254,21 +211,6 @@ impl Root {
         let taken = std::io::copy(&mut found.take(left.saturating_add(1)), &mut written)?;
         pay(left, taken)?;
         Ok(true)
-    }
-
-    /// Each file and each link below the folder `path` of the worktree, as paths from the top
-    /// of the worktree. A Git folder (`.git`) in it is not gone into, and no link is
-    /// followed. At most [`MOST_BELOW`] entries and [`DEEPEST`] folders in folders.
-    ///
-    /// # Errors
-    /// The error of the system; `InvalidData` for a folder with more than that.
-    pub fn files_below(&self, path: &Path) -> std::io::Result<Vec<PathBuf>> {
-        let mut found = Vec::new();
-        if let Some(folder) = self.0.below(path, Make::No)? {
-            let mut left = MOST_BELOW;
-            listed(&folder, path, (DEEPEST, &mut left), &mut found)?;
-        }
-        Ok(found)
     }
 
     /// Writes the file or the link at `path` below `from`, a folder of the runner, to the

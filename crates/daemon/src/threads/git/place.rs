@@ -217,11 +217,21 @@ impl Home {
 
     /// Removes the record of a worktree that was removed.
     pub fn forget(&self, thread: Uuid, repository: &str) {
-        if let Ok(file) = self.record_file(thread, repository) {
-            // A record that is gone already is the wanted state.
-            let _ = std::fs::remove_file(&file);
-            let _ = file.parent().map(std::fs::remove_dir);
+        let _ = self.release(thread, repository);
+    }
+
+    /// Clears an active record. A missing record is already released.
+    pub(super) fn release(&self, thread: Uuid, repository: &str) -> std::io::Result<()> {
+        let file = self
+            .record_file(thread, repository)
+            .map_err(std::io::Error::other)?;
+        match std::fs::remove_file(&file) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
         }
+        let _ = file.parent().map(std::fs::remove_dir);
+        Ok(())
     }
 
     /// The record of the worktree of `repository` of `thread`, as the runner wrote it.

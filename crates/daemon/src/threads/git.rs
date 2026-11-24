@@ -208,9 +208,7 @@ impl Engine {
             // A worktree that is not whole is still removed, so that it holds nothing.
             Err(_) if own_thread && action == GitAction::Remove && !caller.running => {
                 let of = (target.thread, target.repository);
-                worktree::remove_broken(&self.git, &self.home, of)
-                    .await
-                    .map(|kept| GitOutcome::Removed { kept })
+                worktree::remove_broken(&self.git, &self.home, of).await
             }
             Err(bad) => Err(bad.into()),
         };
@@ -299,9 +297,7 @@ impl Engine {
             GitAction::Forget { before } => GitOutcome::Checkpoints {
                 checkpoints: checkpoint::forget_before(git, worktree, before).await?,
             },
-            GitAction::Remove => GitOutcome::Removed {
-                kept: Some(worktree::remove(&self.git, &self.home, worktree).await?),
-            },
+            GitAction::Remove => worktree::remove(&self.git, &self.home, worktree).await?,
             GitAction::Trust { shown } => {
                 self.accepting(caller, (git, worktree), Some(&shown))
                     .await?

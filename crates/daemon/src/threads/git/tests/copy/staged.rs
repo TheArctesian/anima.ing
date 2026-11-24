@@ -20,7 +20,9 @@ async fn a_committed_folder_that_became_a_link_does_not_stop_a_snapshot() {
     std::fs::write(folder.join("else/f"), "elsewhere\n").expect("a file");
     std::fs::remove_dir_all(folder.join("d")).expect("the folder");
     std::os::unix::fs::symlink("else", folder.join("d")).expect("a link");
-    let GitOutcome::Removed { kept: Some(kept) } = bench.call(PERSON, GitAction::Remove).await
+    let GitOutcome::Removed {
+        kept: Some(kept), ..
+    } = bench.call(PERSON, GitAction::Remove).await
     else {
         panic!("not removed");
     };

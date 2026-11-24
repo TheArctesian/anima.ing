@@ -99,7 +99,7 @@ pub async fn ready(
     let commit = commit.ok_or(GitRefusal::NoCommits)?;
     // Only what the runner itself sent counts as pushed: the refs of the repository are
     // files that an agent can write.
-    let sent = status::sent(git, worktree, &branch).await;
+    let sent = status::sent(git, worktree, (&url, &branch)).await;
     Ok(Ready {
         remote,
         shown: now.push_url.unwrap_or_default(),
@@ -165,7 +165,7 @@ pub async fn send(
         // In the environment: a URL can hold a credential, and each user reads arguments.
         .with_setting(&format!("remote.{THERE}.url"), &ready.url);
     git.output(push).await?;
-    let sent = checkpoint::pushed_ref(&ready.branch);
+    let sent = checkpoint::pushed_ref(&ready.url, &ready.branch);
     let keep = [
         "update-ref",
         "--no-deref",
