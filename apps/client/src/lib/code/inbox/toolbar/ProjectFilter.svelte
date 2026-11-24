@@ -161,7 +161,7 @@
           close(true);
         }}
       >
-        <span id="{id}-outside">Show sessions started outside Anima</span>
+        <span id="{id}-outside">Browse imported history</span>
         <Switch checked={outside.shown} labelledby="{id}-outside" onchange={(next) => { outside?.onShow(next); }} />
       </div>
     {/if}
