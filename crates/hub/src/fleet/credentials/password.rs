@@ -11,7 +11,6 @@ pub enum PasswordKind {
 }
 
 impl PasswordKind {
-    /// The `kind` column value.
     pub(super) const fn as_sql(self) -> &'static str {
         match self {
             Self::Rdp => "rdp_password",

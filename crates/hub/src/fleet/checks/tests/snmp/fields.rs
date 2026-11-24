@@ -1,5 +1,4 @@
-//! The limits of the SNMP input fields, named as the client editor names them (D-5,
-//! RFC 3414, LOG-007).
+//! D-5, RFC 3414, LOG-007.
 
 use super::rules::{AUTH, PRIVACY, config, field, input, v3};
 use crate::fleet::checks::{

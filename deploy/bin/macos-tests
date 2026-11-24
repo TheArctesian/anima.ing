@@ -1,7 +1,7 @@
 #!/bin/sh
-# Runs the tests that only a Mac runs. The gates on GitHub run on Linux
-# (.github/workflows/gates.yml), where these tests are skipped or not compiled; the release
-# runs this file on a Mac before it signs (BLD-042). On the Mac of a person: run it from the
+# Runs the tests that only a Mac runs. The Linux jobs of the gates skip them or do not compile
+# them; the job macos of .github/workflows/gates.yml runs this file for `dev`, a train and a run
+# started by hand, and the release runs it on a Mac before it signs (BLD-042). On the Mac of a person: run it from the
 # repository, with PostgreSQL 17, cargo-nextest and Go on PATH.
 #
 # What it runs:
@@ -14,7 +14,7 @@
 #   4. the pinning test of the desktop shell, with the trust hook of WKWebView.
 set -eu
 
-PACKAGES="anima-app anima-cli anima-daemon anima-database anima-hub"
+PACKAGES="anima-app anima-cli anima-daemon anima-database anima-hub remote-login"
 
 cd "$(dirname "$0")/../.."
 [ "$(uname -s)" = Darwin ] || { echo "macos-tests: this is not a Mac" >&2; exit 2; }

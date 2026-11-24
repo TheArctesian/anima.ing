@@ -11,7 +11,6 @@ import {
 } from '$lib/desktop/stay-awake/shell';
 import { problemText } from './stay-awake';
 
-/** The shell calls the rows make; a test passes its own. */
 export interface StayAwakeShell {
   readonly read: () => Promise<StayAwakeResult>;
   readonly choose: (level: Level) => Promise<StayAwakeResult>;
@@ -30,16 +29,12 @@ export const desktopStayAwakeShell: StayAwakeShell = {
   onChange: onStayAwake,
 };
 
-/**
- * The "Stay awake" rows (AWK-004): the state the shell reports and the operator's changes. One call at a time; each
- * answer replaces the state, and so does each change the shell announces (the tray item, the battery).
- */
+/** AWK-004: one call at a time; each answer and each shell announcement replaces the state. */
 export class StayAwakeControl {
   status = $state<StayAwakeStatus | null>(null);
   busy = $state(false);
   problem = $state<string | null>(null);
 
-  /** How many states the shell has announced. */
   private announced = 0;
 
   constructor(private readonly shell: StayAwakeShell) {}
@@ -57,7 +52,6 @@ export class StayAwakeControl {
     if (result.ok) this.status = result.status;
   }
 
-  /** Reads the state and listens for changes; returns the function that stops listening. */
   watch(): () => void {
     let stopped = false;
     let stop: (() => void) | undefined;

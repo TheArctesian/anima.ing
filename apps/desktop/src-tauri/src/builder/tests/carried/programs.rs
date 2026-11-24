@@ -1,6 +1,4 @@
-//! The seven programs in the release (INS-002, INS-003, OD-16, OD-17, S12 2.1 and 2.2): their
-//! build, where each is put for the bundle, the set the signed app may hold, and the Rust targets
-//! a universal build needs before a job is claimed (BLD-028).
+//! INS-002, INS-003, OD-16, OD-17, S12 2.1 and 2.2, BLD-028.
 
 use std::{
     fs,
@@ -117,7 +115,7 @@ fn ins_002_each_half_is_put_under_the_name_tauri_reads_for_its_target() {
 }
 
 #[test]
-fn ins_002_hmd_052_the_bundle_names_the_seven_programs_and_the_tree() {
+fn ins_002_hmd_052_the_bundle_names_the_seven_programs_the_tree_and_the_licence_files() {
     let bins: Vec<&str> = rust_programs::PROGRAMS
         .iter()
         .map(|(_, binary)| *binary)
@@ -138,7 +136,7 @@ fn ins_002_hmd_052_the_bundle_names_the_seven_programs_and_the_tree() {
     );
     assert_eq!(
         carried::bundle_settings().to_string(),
-        r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"database":"database"}}"#
+        r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"../../../LICENSE":"licences/LICENSE","../../../crates/shortening/LICENSE-APACHE":"licences/LICENSE-APACHE","../../../crates/shortening/NOTICE":"licences/NOTICE","database":"database"}}"#
     );
 }
 
@@ -229,7 +227,6 @@ fn ins_002_staging_copies_cargos_output_and_never_writes_through_a_planted_link(
     );
 }
 
-/// `exists` for a sysroot `/toolchain` that has the standard library of each of `triples`.
 fn toolchain_with(triples: &'static [&'static str]) -> impl Fn(&Path) -> bool {
     move |path: &Path| {
         triples
@@ -246,7 +243,6 @@ fn bld_028_a_universal_build_needs_both_darwin_standard_libraries() {
         tools::rust_targets(Target::DarwinUniversal, sysroot, both),
         []
     );
-    // A system toolchain, as Homebrew's, carries the host's library only.
     let host = toolchain_with(&["aarch64-apple-darwin"]);
     assert_eq!(
         tools::rust_targets(Target::DarwinUniversal, sysroot, host),

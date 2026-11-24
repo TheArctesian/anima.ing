@@ -1,5 +1,4 @@
-//! What the link answers: its devices, a new invite, a revocation and its refusals, in the
-//! words of `link/cmd/anima-link/hubverbs.go` and `inviteverbs.go`.
+//! The link's replies and refusals, as `link/cmd/anima-link/hubverbs.go` and `inviteverbs.go` word them.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

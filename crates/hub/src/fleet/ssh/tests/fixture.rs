@@ -1,6 +1,3 @@
-//! The world the link and probe tests start from, which `sessions` tests start from too: the
-//! operator, `docker-host` with an accepted host key and a stored password, and a vault.
-
 use std::io::Write as _;
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
@@ -21,7 +18,6 @@ pub(crate) const OPERATOR: &str = "0190a000-0000-7000-8000-000000000001";
 
 pub(crate) const PASSWORD: &str = "correct horse battery staple";
 
-/// The address the test client connects from, and the device's SSH server.
 pub(crate) const LOOPBACK: &str = "127.0.0.1";
 
 pub(crate) fn now() -> DateTime<Utc> {
@@ -32,14 +28,12 @@ pub(crate) fn docker_host() -> DeviceId {
     DOCKER_HOST.parse().unwrap()
 }
 
-/// A vault over a throwaway key in a temporary file (SEC-004).
 pub(crate) fn vault() -> Vault {
     let mut key_file = tempfile::NamedTempFile::new().unwrap();
     writeln!(key_file, "{}", STANDARD.encode([7; 32])).unwrap();
     Vault::from_key_file(key_file.path()).unwrap()
 }
 
-/// The operator every session belongs to.
 pub(crate) async fn add_operator(pool: &PgPool) {
     sqlx::query(
         "insert into access.operators (id, username, password_hash, created_at) \
@@ -51,7 +45,6 @@ pub(crate) async fn add_operator(pool: &PgPool) {
     .unwrap();
 }
 
-/// The operator, `accepted` as `docker-host`'s host key, and [`PASSWORD`] for it.
 pub(crate) async fn prepare(pool: &PgPool, vault: &Vault, accepted: &PublicKey) {
     add_operator(pool).await;
     sqlx::query(
@@ -71,9 +64,8 @@ pub(crate) async fn prepare(pool: &PgPool, vault: &Vault, accepted: &PublicKey) 
     store_password(pool, vault, PASSWORD).await;
 }
 
-/// Stores `password` as `docker-host`'s SSH credential, replacing the one stored. It is bound
-/// to [`LOOPBACK`], where the tests' device servers listen and where they move the device
-/// before it is reached (SEC-011).
+/// The credential is bound to [`LOOPBACK`], where the tests move the device before it is
+/// reached (SEC-011).
 pub(crate) async fn store_password(pool: &PgPool, vault: &Vault, password: &str) {
     let mut conn = pool.acquire().await.unwrap();
     let password = SshSecret::Password(Secret::from(password.to_owned()));
@@ -82,7 +74,6 @@ pub(crate) async fn store_password(pool: &PgPool, vault: &Vault, password: &str)
         .unwrap();
 }
 
-/// Points `docker-host` at `host` and `port`, as an operator's edit would.
 pub(crate) async fn move_device(pool: &PgPool, host: &str, port: u16) {
     sqlx::query("update devices.devices set host = $2 where id = $1::text::uuid")
         .bind(DOCKER_HOST)

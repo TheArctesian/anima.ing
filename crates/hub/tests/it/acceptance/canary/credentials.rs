@@ -1,6 +1,5 @@
-//! A device's SSH password, private key and passphrase, RDP and VNC passwords, a credential the
-//! hub cannot read, and a connection test to a refused host that carries a password (DEV-011, DEV-012, DEV-013,
-//! SEC-003, LOG-007).
+//! Device credentials, one the hub cannot read, and a refused connection test that carries a
+//! password (DEV-011, DEV-012, DEV-013, SEC-003, LOG-007).
 
 use serde_json::{Value, json};
 
@@ -9,7 +8,6 @@ use super::{
     edge::{WholeHub, code},
 };
 
-/// `pve-01` in the `devices` fixture.
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 
 const SSH: &str = "mutation($id: ID!, $c: SshCredentialInput!) { \
@@ -28,8 +26,6 @@ fn private_key(body: &str, passphrase: Option<&str>) -> Value {
     json!({ "privateKey": { "key": key, "passphrase": passphrase } })
 }
 
-/// Stores each credential kind for `pve-01` with the operator's `token`, then sends what the
-/// hub refuses or tests.
 pub async fn set(hub: &WholeHub, token: &str, secrets: &mut Secrets) {
     let key = private_key(
         &secrets.plant("ssh-key"),
@@ -67,8 +63,7 @@ pub async fn set(hub: &WholeHub, token: &str, secrets: &mut Secrets) {
         "a bare string is no credential"
     );
 
-    // The hub refuses a loopback host before it connects (R-032): the refusal holds the
-    // typed password too.
+    // The hub refuses a loopback host before it connects (R-032); the request carries a password.
     let input = json!({ "host": "127.0.0.1",
         "ssh": { "enabled": true, "username": "operator", "auth": "PASSWORD" },
         "credential": { "password": secrets.plant("tested-ssh-password") } });

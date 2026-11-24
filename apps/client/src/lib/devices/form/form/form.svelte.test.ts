@@ -20,7 +20,6 @@ beforeEach(() => {
 
 afterEach(leave);
 
-/** The texts a control is described by, in order (`aria-describedby` names one or more ids). */
 function describedBy(control: Element): string[] {
   const ids = control.getAttribute('aria-describedby')?.split(' ') ?? [];
   return ids.map((id) => document.getElementById(id)?.textContent ?? `missing #${id}`);

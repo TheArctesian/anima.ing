@@ -1,5 +1,3 @@
-// Test support: a hub that answers the Builds view's operations from canned results, records what it was sent, and lets a
-// test push subscription changes.
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import { flushSync } from 'svelte';
@@ -42,7 +40,6 @@ export interface SentRequest {
   readonly variables: Record<string, unknown>;
 }
 
-/** `answers` maps an operation to its result; one with no answer is `unreachable`. */
 export function fakeHub(answers: Answers) {
   const sent: SentRequest[] = [];
   let push: (change: JobChange) => void = () => undefined;
@@ -85,7 +82,6 @@ export function fakeHub(answers: Answers) {
     push: (change: JobChange) => {
       push(change);
     },
-    /** The hub refuses or ends the subscription. */
     fail: () => {
       end.error();
     },

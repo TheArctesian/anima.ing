@@ -1,7 +1,6 @@
 <script lang="ts">
   import { modalFooter } from '../footer';
 
-  // Test support: a form that shows its actions in the modal's footer, as DeviceForm does.
   interface Props {
     label: string;
   }

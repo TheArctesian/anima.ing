@@ -1,6 +1,5 @@
-//! The datagrams of a UDP stream on the one interface: after `ok`, each datagram is a frame of
-//! two bytes of length (big endian) and its bytes, in both directions. Both sides use this
-//! module: the proxy for each flow of a client, the hub for its socket to the machine.
+//! After `ok`, each datagram of a UDP stream is a frame of two bytes of length (big endian) and
+//! its bytes, in both directions. The proxy and the hub both use this module.
 
 use std::{
     io,
@@ -20,8 +19,6 @@ use tokio::{
 /// The largest datagram that a stream carries: the largest payload of UDP over IPv4.
 pub const DATAGRAM_MAX: usize = 65_507;
 
-/// Writes one datagram as a frame.
-///
 /// # Errors
 /// [`io::ErrorKind::InvalidInput`] for a datagram above [`DATAGRAM_MAX`]; the I/O error.
 pub async fn write_frame<W: AsyncWrite + Unpin>(writer: &mut W, datagram: &[u8]) -> io::Result<()> {
@@ -57,7 +54,6 @@ pub async fn read_frame<R: AsyncRead + Unpin>(
     Ok(Some(length))
 }
 
-/// What moved on a stream of datagrams, and when it last moved.
 #[derive(Debug)]
 pub struct Moved {
     last: Mutex<Instant>,
@@ -76,19 +72,16 @@ impl Default for Moved {
 }
 
 impl Moved {
-    /// `bytes` went to the far side.
     pub fn sent(&self, bytes: usize) {
         self.sent.fetch_add(bytes as u64, Ordering::Relaxed);
         self.touch();
     }
 
-    /// `bytes` came back from the far side.
     pub fn received(&self, bytes: usize) {
         self.received.fetch_add(bytes as u64, Ordering::Relaxed);
         self.touch();
     }
 
-    /// The bytes sent and received.
     #[must_use]
     pub fn totals(&self) -> (u64, u64) {
         (
@@ -101,7 +94,6 @@ impl Moved {
         *self.last.lock().unwrap_or_else(PoisonError::into_inner) = Instant::now();
     }
 
-    /// Ends when nothing moved for `idle`.
     pub async fn quiet(&self, idle: Duration) {
         loop {
             let since = self
@@ -117,8 +109,7 @@ impl Moved {
     }
 }
 
-/// Carries frames from `stream` to the connected `socket` and datagrams back as frames, until
-/// either side ends or no datagram moved for `idle`. Returns the bytes sent and received.
+/// The bytes sent and received, once either side ends or no datagram moved for `idle`.
 ///
 /// # Errors
 /// The I/O error of either side.
@@ -137,7 +128,6 @@ pub async fn pump<S: AsyncRead + AsyncWrite + Unpin>(
     Ok(moved.totals())
 }
 
-/// Sends each frame of `reader` as a datagram, until the end of the stream.
 async fn frames_out<R: AsyncRead + Unpin>(
     reader: &mut R,
     socket: &UdpSocket,
@@ -151,7 +141,6 @@ async fn frames_out<R: AsyncRead + Unpin>(
     Ok(())
 }
 
-/// Writes each datagram of `socket` as a frame, until an error.
 async fn datagrams_back<W: AsyncWrite + Unpin>(
     writer: &mut W,
     socket: &UdpSocket,

@@ -101,5 +101,9 @@ describe('what was dropped', () => {
     const entry = (file: File, isDirectory: boolean, kind = 'file'): DataTransferItem => ({ kind, getAsFile: () => file, webkitGetAsEntry: () => ({ isDirectory }) }) as unknown as DataTransferItem;
     expect(splitDropped({ files: [one, folder], items: [entry(one, false), entry(folder, true), entry(one, false, 'string')] })).toEqual({ files: [one], folders: [folder] });
     expect(splitDropped({ files: [one, folder] })).toEqual({ files: [one, folder], folders: [] });
+    // A web view that lists a copied file only in `files`, or that cannot tell a folder: the file is not lost.
+    expect(splitDropped({ files: [one], items: [entry(one, false, 'string')] })).toEqual({ files: [one], folders: [] });
+    const plain = { kind: 'file', getAsFile: () => one } as unknown as DataTransferItem;
+    expect(splitDropped({ files: [one], items: [plain] })).toEqual({ files: [one], folders: [] });
   });
 });

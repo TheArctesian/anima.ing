@@ -1,6 +1,4 @@
-//! `anima key` and what an API key may do on the real hub (INT-003, LOG-015, CMD-021, CMD-022):
-//! a write key changes what INT-003 lets it change, and every other change is refused with
-//! exit 5 and a hint, with nothing changed on the hub.
+//! `anima key` on the real hub (INT-003, LOG-015, CMD-021, CMD-022).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -9,7 +7,6 @@ use super::words;
 use crate::kit::real_hub::RealHub;
 use crate::kit::{Anima, Outcome};
 
-/// Makes an API key with `anima key create`; its secret, read from standard output.
 pub async fn make_key(anima: &Anima, name: &str, scope: &str, made_for: &str) -> String {
     let line = format!("key create --name {name} --scope {scope} --for {made_for} --expires 30d");
     let made = anima.run(&words(&line)).await;
@@ -20,8 +17,7 @@ pub async fn make_key(anima: &Anima, name: &str, scope: &str, made_for: &str) ->
     secret
 }
 
-/// Asserts `outcome` is the CMD-022 refusal of a key: exit 5, `FORBIDDEN`, and a hint whose
-/// commands exist.
+/// The CMD-022 refusal of a key.
 pub async fn assert_refused(outcome: &Outcome, what: &str) {
     assert_eq!(outcome.code, 5, "{what}: {outcome:?}");
     let error = outcome.error();
@@ -41,14 +37,12 @@ pub async fn assert_refused(outcome: &Outcome, what: &str) {
     }
 }
 
-/// The device's name and host on the hub.
 async fn device_on(hub: &RealHub, reader: &str, id: &str) -> Value {
     let query = "query($id: ID!) { device(id: $id) { name host } }";
     let data = hub.data(reader, query, json!({ "id": id })).await;
     data["device"].clone()
 }
 
-/// A site `home` and a device `nas` at 10.10.0.5 made by `anima`; the device's ID.
 pub async fn site_and_device(anima: &Anima) -> String {
     let site = anima
         .run(&words("site create home --subnet 10.10.0.0/24"))

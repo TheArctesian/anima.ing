@@ -1,12 +1,8 @@
-//! The `connect` values only RDP has: the domain, the security the device must use, the
-//! rule for its certificate and the resize method (K4 Section 3).
+//! The `connect` values only RDP has (K4 Section 3).
 
 use super::Refused;
 
-/// The names of this file's values, in the order `args` lists them after the names that
-/// VNC has too. They are names the hub sets for RDP (`tunnel/arguments.rs`). The hub's
-/// names for sound and the shared drive are not offered, so the hub sends no value for
-/// them: the gateway has neither.
+/// In the order `args` lists them after the VNC names; sound and the shared drive are not offered.
 pub(super) const ARGUMENTS: [&str; 5] = [
     "domain",
     "security",
@@ -20,8 +16,7 @@ const FINGERPRINT_HASH: &str = "sha256";
 /// The longest domain the gateway takes, in bytes.
 const LONGEST_DOMAIN: usize = 255;
 
-/// How the device must protect the session. Standard RDP security is never used: it has
-/// no certificate to check.
+/// How the device must protect the session; standard RDP security is never used, as it has no certificate to check.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Security {
     /// TLS; the device asks for the sign-in itself.

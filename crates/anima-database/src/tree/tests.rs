@@ -42,7 +42,6 @@ fn a_folder_without_the_server_programs_is_not_a_tree() {
 
 #[test]
 fn log_007_a_program_sees_none_of_the_callers_environment() {
-    // The test process has at least PATH; `env` prints what a child really gets.
     assert!(std::env::var_os("PATH").is_some());
 
     let output = sealed_command(Path::new("/usr/bin/env")).output().unwrap();

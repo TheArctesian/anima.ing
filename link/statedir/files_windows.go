@@ -23,8 +23,7 @@ func trustedSID(sid, user *windows.SID) bool {
 	return sid.Equals(user) || sid.IsWellKnown(windows.WinLocalSystemSid) || sid.IsWellKnown(windows.WinBuiltinAdministratorsSid)
 }
 
-// Windows installs the volume root with TrustedInstaller as its owner. That
-// system service is trusted for ancestors, but not for private link state.
+// TrustedInstaller owns the volume root: it is trusted for ancestors, not for private link state.
 func trustedOwner(sid, user *windows.SID, private bool) bool {
 	if trustedSID(sid, user) {
 		return true
@@ -147,7 +146,6 @@ func readFile(path string) (*os.File, error) {
 func syncDirectory(*os.File) error { return nil }
 
 // CheckFile refuses anything other than a private regular file of this directory.
-// It checks the opened file and never reads or prints its contents.
 func (d *Dir) CheckFile(name string) error {
 	if name == "." || name == ".." || filepath.Base(name) != name {
 		return ErrExposed

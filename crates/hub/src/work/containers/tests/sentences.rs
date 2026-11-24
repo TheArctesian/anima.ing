@@ -1,5 +1,4 @@
-//! Each error of a read as the operator gets it: the K7 code and a fixed sentence that says
-//! what to do (API-010, HOST-001).
+//! Each read error is a K7 code and a fixed sentence that says what to do (API-010, HOST-001).
 
 use async_graphql::Value;
 
@@ -68,4 +67,25 @@ fn k7_an_unknown_device_or_container_is_not_found_and_a_refused_value_is_validat
     );
     assert_eq!(stated(Error::InvalidContainerId).0, "VALIDATION");
     assert_eq!(stated(Error::InvalidLineCount).0, "VALIDATION");
+}
+
+#[test]
+fn host_001_docker_failures_explain_the_ssh_environment_without_claiming_a_cause() {
+    for (error, code, sentence) in [
+        (
+            Error::NoDocker,
+            "CONFLICT",
+            "Docker was not read: the device's SSH user finds no docker command in PATH. \
+             Check that Docker is installed and its command is in PATH for non-interactive SSH commands.",
+        ),
+        (
+            Error::DockerFailed,
+            "UNAVAILABLE",
+            "Docker was not read: docker did not succeed on the device. Check that the engine \
+             (Docker Desktop, Colima or Docker Engine) runs, that the device's SSH user may use it, \
+             and that Docker's context and environment for that SSH user select the intended engine.",
+        ),
+    ] {
+        assert_eq!(stated(error), (code.to_owned(), sentence.to_owned()));
+    }
 }

@@ -1,8 +1,4 @@
 //! GPU readings as series and as the `gpus` list of a batch (MET-006, MET-007, K8 Section 4).
-//!
-//! Each vendor numbers its GPUs from 0, but a batch has one index space (0 to 63), so
-//! [`Placement`] gives each vendor a base, fixed at discovery so that a GPU keeps its index
-//! when another is briefly unreadable.
 
 use std::ops::Add;
 use std::time::Duration;
@@ -16,23 +12,19 @@ use crate::readers::gpu::Sources;
 /// The time to the next discovery when the GPUs are as they were (MET-006).
 pub const DISCOVER_EVERY: Duration = Duration::from_hours(24);
 
-/// The time to the next discovery after one that found fewer GPUs than before, or none the
-/// first time: a driver may still be loading.
+/// After a discovery that lost GPUs, or found none the first time: a driver may still be loading.
 pub const DISCOVER_SOON: Duration = Duration::from_mins(5);
 
-/// What one discovery found, and what follows from it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Discovery {
-    /// The sources to read at each sampling.
     pub sources: Sources,
     pub placement: Placement,
-    /// The `gpus` member of the next batch: the whole set, `[]` when there is none (R-098 b).
+    /// The whole set, `[]` when there is none (R-098 b).
     pub announce: Vec<BatchGpu>,
     count: usize,
 }
 
 impl Discovery {
-    /// The discovery of `found`, each vendor numbering its GPUs from 0.
     #[must_use]
     pub fn new(found: Vec<GpuReading>) -> Self {
         let sources = Sources::seen(&found);
@@ -46,8 +38,6 @@ impl Discovery {
         }
     }
 
-    /// When to discover again, from `now`: soon after a discovery that lost GPUs (or found
-    /// none the first time), else a day.
     #[must_use]
     pub fn next_at<T: Add<Duration, Output = T>>(&self, now: T, previous: Option<&Self>) -> T {
         let lost = previous.map_or(self.count == 0, |earlier| self.count < earlier.count);
@@ -55,7 +45,8 @@ impl Discovery {
     }
 }
 
-/// Each vendor's first index, in the order NVIDIA, AMD, Intel, Apple.
+/// Each vendor's base in the batch's one index space, fixed at discovery so that a GPU keeps its
+/// index when another is briefly unreadable.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Placement {
     bases: [u32; 4],
@@ -71,8 +62,6 @@ const fn slot(vendor: GpuVendor) -> usize {
 }
 
 impl Placement {
-    /// The bases that put each vendor's GPUs after the earlier vendors' GPUs, from what a
-    /// discovery found.
     #[must_use]
     pub fn from_discovery(found: &[GpuReading]) -> Self {
         let mut counts = [0_u32; 4];
@@ -89,7 +78,6 @@ impl Placement {
         Self { bases }
     }
 
-    /// The readings that have an index in the batch's index space (0 to 63), placed.
     #[must_use]
     pub fn place_all(&self, readings: Vec<GpuReading>) -> Vec<GpuReading> {
         readings
@@ -98,7 +86,6 @@ impl Placement {
             .collect()
     }
 
-    /// `reading` with its index in the batch's index space; `None` past index 63.
     #[must_use]
     pub fn place(&self, mut reading: GpuReading) -> Option<GpuReading> {
         let index = self.bases[slot(reading.vendor)].checked_add(reading.index)?;
@@ -109,8 +96,6 @@ impl Placement {
     }
 }
 
-/// The series values of placed GPU readings. A value the GPU did not give is left out, never
-/// zero (MET-007); Apple's shared memory is `gpu_memory_bytes`, never VRAM.
 #[must_use]
 pub fn values(gpus: &[GpuReading]) -> Vec<(SeriesKey, f64)> {
     let mut out = Vec::new();
@@ -141,15 +126,13 @@ pub fn values(gpus: &[GpuReading]) -> Vec<(SeriesKey, f64)> {
     out
 }
 
-/// The `gpus` member of a batch for placed readings: those with an index K8 allows (0 to
-/// [`MAX_GPU_INDEX`]), as their samples are.
 #[must_use]
 pub fn announce(gpus: &[GpuReading]) -> Vec<BatchGpu> {
     gpus.iter()
         .filter_map(|gpu| {
             let (vendor, has_vram) = match gpu.vendor {
                 GpuVendor::Nvidia => (WireVendor::Nvidia, true),
-                GpuVendor::Amd => (WireVendor::Amd, true),
+                GpuVendor::Amd => (WireVendor::Amd, gpu.vram.is_some()),
                 GpuVendor::Intel => (WireVendor::Intel, false),
                 GpuVendor::Apple => (WireVendor::Apple, false),
             };
@@ -177,7 +160,6 @@ const fn float(count: u64) -> f64 {
 mod tests {
     use super::*;
 
-    /// How long `found` waits before the next discovery.
     fn after(found: &Discovery, previous: Option<&Discovery>) -> Duration {
         let now = std::time::Instant::now();
         found.next_at(now, previous) - now

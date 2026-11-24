@@ -1,7 +1,5 @@
-//! Trusting what a device presents (SEC-006, SEC-007, DEV-013): the SSH host key and the RDP
-//! server certificate the operator accepted for each device, which every session connection is
-//! pinned to; what connection tests saw and the operator has not accepted yet (`Sightings`);
-//! and `acceptHostKey` and `acceptServerCertificate`, which store one of them.
+//! Trusting what a device presents (SEC-006, SEC-007, DEV-013): every session connection is
+//! pinned to the SSH host key or RDP server certificate the operator accepted.
 
 mod accept;
 mod accept_certificate;
@@ -33,7 +31,6 @@ pub(crate) use observations::{Endpoint, Observation};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
 pub use sightings::Sightings;
 
-/// Why the operator cannot accept what they asked for (SEC-006, SEC-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Conflict {
     #[error(
@@ -58,7 +55,6 @@ pub enum Conflict {
     CertificateDiffers,
 }
 
-/// Why a trust operation failed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("device {0} not found")]
@@ -74,7 +70,6 @@ pub enum Error {
     Database(#[from] sqlx::Error),
 }
 
-/// The device, or `NotFound` for it.
 async fn find_device(db: &PgPool, id: DeviceId) -> Result<Device, Error> {
     devices::get(db, id).await.map_err(|error| match error {
         devices::Error::NotFound(_) => Error::NotFound(id),
@@ -82,16 +77,13 @@ async fn find_device(db: &PgPool, id: DeviceId) -> Result<Device, Error> {
     })
 }
 
-/// The host key accepted for the device, if any (SEC-006).
-///
 /// # Errors
 /// `Database` when the query fails or the stored key does not parse.
 pub async fn host_key(db: &PgPool, device: DeviceId) -> Result<Option<HostKey>, Error> {
     Ok(store::host_keys(db, &[device]).await?.remove(&device))
 }
 
-/// The accepted host key of each listed device that has one, in one query (API-005). An empty
-/// list returns an empty map without a query.
+/// One query (API-005); an empty list makes no query.
 ///
 /// # Errors
 /// `Database` when the query fails or a stored key does not parse.
@@ -102,8 +94,7 @@ pub async fn host_keys(
     store::host_keys(db, devices).await
 }
 
-/// The accepted RDP server certificate of each listed device that has one, in one query
-/// (API-005, SEC-007). An empty list returns an empty map without a query.
+/// One query (API-005); an empty list makes no query.
 ///
 /// # Errors
 /// `Database` when the query fails.

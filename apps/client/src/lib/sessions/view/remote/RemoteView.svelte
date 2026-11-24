@@ -1,12 +1,14 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { capabilities } from '$lib/platform/platform';
+  import { isMobile } from '$lib/platform/mobile';
   import type { RemoteProtocol, SessionsApi } from '../../api';
   import type { SessionEnding } from '../../ending';
   import { receiveClipboard } from '../../tunnel/guacamole/input';
   import type { GuacamoleState, SessionTunnel } from '../../tunnel/guacamole/tunnel';
   import { displayInput, type Size } from '../display';
   import EndedPanel from '../EndedPanel.svelte';
-  import { keyRoute, pasteText, sendCombination, showDisplay } from '../guacamole/input';
+  import { keyRoute, pasteText, sendCombination } from '../guacamole/input';
   import CertificateModal from '../certificate/CertificateModal.svelte';
   import CredentialPrompt from '../credentials/CredentialPrompt.svelte';
   import { keyFilter, type KeyCombination, type KeyFilter } from '../guacamole/keys';
@@ -18,6 +20,8 @@
   import { followPixelRatio, remotePane, type RemotePane } from './pane';
   import { gatewayAsk, PROMPT_CANCELLED, PROMPT_REFUSED } from './prompt';
   import RemoteToolbar from './RemoteToolbar.svelte';
+  import TouchText from './touch/TouchText.svelte';
+  import RemoteDisplay from './RemoteDisplay.svelte';
 
   type Client = SessionTunnel['client'];
 
@@ -75,6 +79,8 @@
   /** The ended attempt whose certificate warning was closed or answered. */
   let dismissed: Stage<SessionTunnel, GuacamoleState> | undefined = $state.raw();
 
+  const mobile = capabilities().deviceLink && isMobile(navigator);
+  let displayView: RemoteDisplay | undefined = $state();
   const stage = $derived(connection.stage);
   const client = $derived(connection.tunnel?.client);
   const ready = $derived(connection.ready);
@@ -199,10 +205,6 @@
     };
   });
 
-  $effect(() => {
-    client?.getDisplay().scale(scale);
-  });
-
   $effect(() =>
     followPixelRatio((ratio) => {
       pixelRatio = ratio;
@@ -242,16 +244,20 @@
     policy={rules.notice}
     pasteOff={rules.pasteOff}
     {notice}
+    fit={mobile ? () => displayView?.fit() : undefined}
+    canFit={displayView?.zoomed() ?? false}
     onkeys={sendKeys}
     onpaste={pasteFromClipboard}
     ondismiss={() => (notice = undefined)}
   />
+  {#if mobile && ready && visible && client !== undefined && ask.kind !== 'ask'}<TouchText {client} />{/if}
   <div class="stage">
     <!-- The keyboard listens here only; menus, panels and modals are outside it (D-8). -->
     <!-- Focusable because the remote desktop takes the keyboard as a text field does (D-8). -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
       class="pane"
+      class:touch={mobile && ready}
       role="application"
       aria-label="Remote display of {device.name}"
       tabindex="0"
@@ -259,7 +265,7 @@
       {@attach attachPane}
     >
       {#if ready && client !== undefined}
-        <div class="display" data-display {@attach showDisplay(client)}></div>
+        <RemoteDisplay bind:this={displayView} {client} pane={paneElement} paneSize={paneSize ?? remote} {remote} {scale} {mobile} interactive={visible && ask.kind !== 'ask'} />
       {/if}
     </div>
     {#if !ready}
@@ -330,6 +336,8 @@
     outline: none;
   }
 
+  .pane.touch { touch-action: none; }
+
   /* Drawn after the display, so a display that fills the pane cannot cover the ring (UI-009, UI-012). */
   .pane:focus-visible::after {
     content: '';
@@ -337,16 +345,6 @@
     inset: 0;
     pointer-events: none;
     box-shadow: inset 0 0 0 var(--border-focus) var(--accent);
-  }
-
-  /*
-   * The remote display: never animated, filtered or covered by a material (MAT-008). The library puts each layer at
-   * z-index -1, so the display makes its own stacking context; without it the layers paint behind the session.
-   */
-  .display {
-    position: absolute;
-    inset: 0;
-    isolation: isolate;
   }
 
   /* Shown only while no display is: before ready and after the end. A narrow pane scrolls it, never the page (UI-009). */

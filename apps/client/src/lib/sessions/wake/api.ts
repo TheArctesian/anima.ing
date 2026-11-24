@@ -11,12 +11,10 @@ const WakeDevice = graphql(`
   }
 `);
 
-/** The hub's answer to a manual wake: when the packet left, and the relay that sent it (K1 `WakeResult`, RA-031). */
 export type WakeSent = WakeDeviceMutation['wakeDevice'];
 
-/** The wake button's call through a `Hub` (CQ-045). Failures stay the hub's typed K7 errors. */
+/** Failures stay the hub's typed K7 errors (CQ-045). */
 export interface WakeApi {
-  /** Ask the hub to send a Wake-on-LAN packet to `deviceId` through its site's wake relay (RA-031). */
   wakeDevice(deviceId: string): Promise<HubResult<WakeSent>>;
 }
 

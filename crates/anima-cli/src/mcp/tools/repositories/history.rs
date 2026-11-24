@@ -1,5 +1,4 @@
-//! `anima_commits_list`, `anima_branches_list` and `anima_repository_releases_list` (PRJ-036 to
-//! PRJ-038).
+//! PRJ-036 to PRJ-038.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

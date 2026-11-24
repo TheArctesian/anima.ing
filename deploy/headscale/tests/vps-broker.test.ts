@@ -1,4 +1,3 @@
-// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 // `harden.sh broker` against the fake VPS (R-055, VP-2, VP-8, D-14, H2, L5, M3).
 import { afterEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 import { readdirSync, statSync } from 'node:fs';
@@ -18,12 +17,10 @@ const TIMER_UNIT = `${UNIT_DIR}/anima-broker-audit.timer`;
 const LOCK = '/usr/bin/flock -w';
 const LOCK_FILE = '/var/lib/anima-broker/lock';
 
-// The read-only user and group lookups of the hub-user step.
 const notLookup = (call: string): boolean => !call.startsWith('GETENT ');
 
 const sha256 = (text: string): string => new Bun.CryptoHasher('sha256').update(text).digest('hex');
 
-// A stand-in for the compiled broker: `count-nodes` prints 4, `check` answers as the broker does.
 function withBinary(host: Host, count = '4'): string {
   const text = `#!/bin/sh\ncase "$1" in count-nodes) echo ${count};; check) echo "broker: ok, ${count} nodes";; *) exit 64;; esac\n`;
   host.write(NEW, text, 0o755);

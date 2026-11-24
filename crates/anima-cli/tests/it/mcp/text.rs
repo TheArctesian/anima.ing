@@ -1,5 +1,4 @@
-//! Text from devices comes back cleaned and capped, in named fields only (MCP-008), and search text reaches
-//! the hub as given (LOG-011).
+//! Text from devices and search text in the MCP tools (MCP-008, LOG-011).
 
 use serde_json::{Value, json};
 

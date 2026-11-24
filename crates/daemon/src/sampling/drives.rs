@@ -1,10 +1,8 @@
-//! The drives a batch announces: the whole list after start and each time it changes, so an
-//! unchanged list is not sent with every batch (MET-027, K8 Section 4).
+//! The drives a batch announces (MET-027, K8 Section 4).
 
 use daemon_core::readings::Drive;
 use daemon_core::wire::BatchDrive;
 
-/// The drive list last handed to the pusher.
 #[derive(Debug, Default)]
 pub struct DriveWatch {
     announced: Option<Vec<Drive>>,
@@ -16,8 +14,6 @@ impl DriveWatch {
         Self::default()
     }
 
-    /// The `drives` member to send when `read` differs from the list announced last; `None`
-    /// when it is the same, or when nothing could be read (the hub keeps what it has).
     pub fn changed(&mut self, read: Option<&[Drive]>) -> Option<Vec<BatchDrive>> {
         let read = read?;
         if self.announced.as_deref() == Some(read) {

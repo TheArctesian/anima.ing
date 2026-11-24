@@ -1,5 +1,4 @@
-//! The pusher with a renewed token whose save waits (R-322), on the Linux token file: the file
-//! never waits, so the wait is put in place from the pure [`unstored`](super::unstored).
+//! The Linux token file never waits, so the wait (R-322) comes from [`unstored`](super::unstored).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::wire::DaemonToken;
@@ -22,7 +21,6 @@ fn credential(seed: u8) -> Credential {
     }
 }
 
-/// A pusher of token 1 whose renewed token 2 waits to be stored, with its mark put.
 fn waiting(home: &Home) -> Pusher {
     let store = TokenStore::open(home);
     store.save(&credential(1)).expect("stored");

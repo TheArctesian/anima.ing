@@ -3,7 +3,6 @@ import type { Status } from '$lib/hub/generated/graphql';
 import type { CardDevice } from '../api';
 import type { ListQuery } from '../query';
 
-/** What the list knows of a device to group, count and explain it: its status, maintenance flag and checks. */
 export type LookDevice = Pick<CardDevice, 'id' | 'status' | 'checks'>;
 
 /** The groups of a list sorted by status (UR-7, D18), in the hub's STATUS order. */
@@ -20,10 +19,7 @@ export type ListEntry<T> =
   | { readonly kind: 'group'; readonly key: string; readonly title: string; readonly count: number }
   | { readonly kind: 'device'; readonly key: string; readonly device: T };
 
-/**
- * The list as rows: sorted by status and not filtered by it, each group opens with a quiet title and its count, so
- * the problems read first without a second list (D18). Any other order is the devices alone.
- */
+/** Grouped only when sorted by status and not filtered by it, so the problems read first without a second list (D18). */
 export function listItems<T extends LookDevice>(devices: readonly T[], query: Pick<ListQuery, 'sort' | 'statuses'>): readonly ListEntry<T>[] {
   const rows = devices.map((device) => ({ kind: 'device' as const, key: device.id, device }));
   if (!grouped(query)) return rows;
@@ -42,7 +38,6 @@ export function listItems<T extends LookDevice>(devices: readonly T[], query: Pi
   return items;
 }
 
-/** Whether the list has group titles: sorted by status and not filtered by it (D18). */
 export function grouped({ sort, statuses }: Pick<ListQuery, 'sort' | 'statuses'>): boolean {
   return sort === 'STATUS' && statuses.length === 0;
 }
@@ -58,24 +53,20 @@ const TALLY: readonly (readonly [Status, string])[] = [
 
 export interface Tally {
   readonly total: number;
-  /** Only the statuses some device has. */
   readonly parts: readonly { readonly status: Status; readonly count: number; readonly words: string }[];
 }
 
-/** "12 devices · 1 down · 2 degraded · 8 up" (D18). */
 export function tallyOf(devices: readonly Pick<LookDevice, 'status'>[]): Tally {
   const parts = TALLY.map(([status, words]) => ({ status, words, count: devices.filter((device) => device.status === status).length }));
   return { total: devices.length, parts: parts.filter((part) => part.count > 0) };
 }
 
-/** A count filters the list on its status; the same count again, or the total, clears it. */
 export function tallyQuery(query: ListQuery, status: Status | null): ListQuery {
   const only = query.statuses.length === 1 ? query.statuses[0] : undefined;
   return { ...query, statuses: status === null || status === only ? [] : [status] };
 }
 
 export interface Reason {
-  /** What is wrong, in a few words. */
   readonly text: string;
   /** How long it has been so, "12 min", or "over 12 min" when no kept beat is up; `null` when the beats do not say. */
   readonly since: string | null;
@@ -83,10 +74,7 @@ export interface Reason {
 
 const WORDS: Record<Status, string> = { UP: 'up', DOWN: 'down', DEGRADED: 'degraded', MAINTENANCE: 'in maintenance', UNKNOWN: 'unknown' };
 
-/**
- * Why a device is not up (D18): the message of its worst check's last heartbeat, or the check's name and status.
- * `beats` are the device's live beats, oldest first, for how long it has been so.
- */
+/** Why a device is not up (D18); `beats` are its live beats, oldest first. */
 export function reasonOf(device: LookDevice, beats: readonly Beat[] | undefined, now: number): Reason | null {
   if (device.status === 'UP') return null;
   if (device.status === 'MAINTENANCE') return { text: 'In maintenance', since: null };
@@ -100,10 +88,7 @@ export function reasonOf(device: LookDevice, beats: readonly Beat[] | undefined,
   return { text, since: sinceOf(beats?.filter((beat) => beat.checkId === worst.id), now) };
 }
 
-/**
- * How long the check has been other than up: from the first beat of the last run that is not up. Only the newest
- * beats are kept; a run that fills them all began before the oldest.
- */
+/** Only the newest beats are kept, so a run that fills them all began before the oldest. */
 function sinceOf(beats: readonly Beat[] | undefined, now: number): string | null {
   if (beats === undefined || beats.length === 0) return null;
   let start: string | null = null;
@@ -119,11 +104,9 @@ function sinceOf(beats: readonly Beat[] | undefined, now: number): string | null
   }
   const from = start === null ? Number.NaN : Date.parse(start);
   if (Number.isNaN(from)) return null;
-  // The kept beats do not reach the start of the run, so their oldest is only the least it can be.
   return sawUp ? durationText(now - from) : `over ${durationText(now - from)}`;
 }
 
-/** "<1 min", "12 min", "3 h", "2 days". */
 export function durationText(ms: number): string {
   const minutes = Math.floor(Math.max(0, ms) / 60_000);
   if (minutes < 1) return '<1 min';
@@ -139,5 +122,15 @@ export function hasLiveUsage(status: Status): boolean {
   return status !== 'DOWN' && status !== 'UNKNOWN';
 }
 
-/** The order of a list that has no groups: by name, every status. */
 export const UNGROUPED: Pick<ListQuery, 'sort' | 'statuses'> = { sort: 'NAME', statuses: [] };
+
+export type UsageSlot = 'cpu' | 'memory' | 'disk' | 'vram' | 'battery';
+
+/** GPU memory and battery appear only when a device of the list shows one (MET-008, MET-032). */
+export function usageSlots(devices: readonly Pick<CardDevice, 'status' | 'readings' | 'batteries'>[]): readonly UsageSlot[] {
+  const slots: UsageSlot[] = ['cpu', 'memory', 'disk'];
+  const vram = devices.some((device) => hasLiveUsage(device.status) && device.readings?.vramGpu?.hasVram === true && device.readings.vramPercent !== null);
+  if (vram) slots.push('vram');
+  if (devices.some((device) => device.batteries.length > 0)) slots.push('battery');
+  return slots;
+}

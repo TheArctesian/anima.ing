@@ -1,9 +1,5 @@
-//! One pass of the scheduler: settle the devices whose checks had beats, spread first runs,
-//! report late checks and start due attempts within the limits (CHK-001, CHK-010, HUB-003,
-//! LOG-004). A check due before its floor is moved to it, not run (R-102).
-//!
-//! One task owns this state, so no lock guards it. Attempts run in a `JoinSet`; dropping the
-//! scheduler aborts them.
+//! One scheduler pass (CHK-001, CHK-010, HUB-003, LOG-004); a check due before its floor is
+//! moved to it, not run (R-102). One task owns this state, so no lock guards it.
 
 use std::{
     collections::{HashMap, HashSet},
@@ -32,16 +28,12 @@ use crate::{
     status::Status,
 };
 
-/// How far back each tick looks for new beats beyond the previous tick: a writer reads the
-/// clock before it commits, so its beat can be older than a tick that missed it (LOG-004).
+/// A writer reads the clock before it commits, so its beat can be older than the last tick (LOG-004).
 const BEAT_OVERLAP: TimeDelta = TimeDelta::seconds(5);
-/// How long a device whose status could not be settled waits before the next try.
 const SETTLE_RETRY: TimeDelta = TimeDelta::seconds(5);
 
-/// How much one scheduler does at once.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Limits {
-    /// Probes running at the same time.
     pub(super) probes: usize,
     pub(super) due_per_tick: u32,
 }
@@ -51,12 +43,10 @@ pub(super) struct Scheduler {
     due_per_tick: u32,
     permits: Arc<Semaphore>,
     running: JoinSet<Finished>,
-    /// The check of each running attempt; a check here is never started again.
     in_flight: HashMap<task::Id, CheckId>,
     watchdog: Watchdog,
     /// The last device status published, or read before the device's next beat.
     known: HashMap<DeviceId, Status>,
-    /// Devices whose status must be compared with `known` again, and from when.
     unsettled: HashMap<DeviceId, DateTime<Utc>>,
     started_at: Option<DateTime<Utc>>,
     last_tick: Option<DateTime<Utc>>,
@@ -78,13 +68,11 @@ impl Scheduler {
         }
     }
 
-    /// The hub did not run until `now`: the scheduler counts from `now` as from a start, so
-    /// a check that became due meanwhile gets a new due time and is not late.
+    /// Counts from `now` as from a start, so a check that became due while the hub was down is not late.
     pub(super) fn woke(&mut self, now: DateTime<Utc>) {
         self.started_at = Some(now);
     }
 
-    /// One pass at `now`. A failed read of the statuses or the due checks skips the rest.
     pub(super) async fn tick(&mut self, now: DateTime<Utc>, rng: &mut impl Rng) {
         let started = *self.started_at.get_or_insert(now);
         if self.last_tick.is_none() && !self.seed_every_device(now).await {
@@ -111,7 +99,6 @@ impl Scheduler {
         }
     }
 
-    /// Waits for every running attempt, then settles the devices.
     #[cfg(test)]
     pub(super) async fn finish_running(&mut self, now: DateTime<Utc>) {
         let started = *self.started_at.get_or_insert(now);
@@ -121,8 +108,6 @@ impl Scheduler {
         self.settle_devices(now).await;
     }
 
-    /// Reports the check when it is late, then gives it a new due time or starts it, unless
-    /// it is in flight or every permit is taken.
     async fn consider(&mut self, check: Due, now: DateTime<Utc>, rng: &mut impl Rng) {
         let started = self.started_at.unwrap_or(now);
         let late = schedule::is_late(Timing::from(&check), started, now);
@@ -157,8 +142,7 @@ impl Scheduler {
         self.in_flight.insert(handle.id(), id);
     }
 
-    /// Books a finished attempt. A check that ran clears its lateness unless its new due
-    /// time is late already (CHK-010).
+    /// A check that ran clears its lateness unless its new due time is late already (CHK-010).
     fn finish(
         &mut self,
         joined: Result<(task::Id, Finished), task::JoinError>,
@@ -184,9 +168,7 @@ impl Scheduler {
         }
     }
 
-    /// Marks the devices whose checks had a beat since the last tick, less the overlap, from
-    /// any writer such as the push route (LOG-004). `known` makes a second look free. On a
-    /// failed read the same interval is read next time.
+    /// Beats come from any writer, such as the push route (LOG-004); a failed read retries the interval.
     async fn collect_beaten(&mut self, now: DateTime<Utc>) {
         if let Some(since) = self.last_tick {
             let beaten = store::devices_beaten_since(&self.ctx.db, since - BEAT_OVERLAP).await;
@@ -201,7 +183,6 @@ impl Scheduler {
         self.last_tick = Some(now);
     }
 
-    /// Settles the devices whose turn has come; one that fails waits [`SETTLE_RETRY`].
     async fn settle_devices(&mut self, now: DateTime<Utc>) {
         let ready: Vec<DeviceId> = self
             .unsettled
@@ -218,13 +199,11 @@ impl Scheduler {
         }
     }
 
-    /// Whether the scheduler still tracks the device's status.
     #[cfg(test)]
     pub(super) fn tracks(&self, device: DeviceId) -> bool {
         self.known.contains_key(&device) || self.unsettled.contains_key(&device)
     }
 
-    /// Reads the status of every device once, before the first tick's beats.
     async fn seed_every_device(&mut self, now: DateTime<Utc>) -> bool {
         let listed = devices::list(&self.ctx.db).await;
         let Some(listed) = logged(None, "the devices cannot be read", listed) else {
@@ -234,7 +213,6 @@ impl Scheduler {
         self.read_statuses(&ids, now).await
     }
 
-    /// Reads the status of the due checks' devices not seen yet, before their next beat.
     async fn seed(&mut self, due: &[Due], now: DateTime<Utc>) -> bool {
         let unseen: HashSet<DeviceId> = due
             .iter()

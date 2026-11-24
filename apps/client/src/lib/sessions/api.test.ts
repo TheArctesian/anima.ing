@@ -15,7 +15,6 @@ afterEach(async () => {
   await Promise.all(hubs.splice(0).map((hub) => hub.close()));
 });
 
-/** A hub whose HTTP endpoint answers every request with `body`, recording what was sent. */
 function hubAnswering(body: unknown) {
   const sent: Sent[] = [];
   const fakeFetch: typeof fetch = (_input, init) => {
@@ -92,7 +91,6 @@ describe('sessionsApi (K1, CQ-045)', () => {
   });
 });
 
-/** A fake hub with the Phase 2 additions, closed after the test. */
 function k1Hub(...changes: Parameters<typeof fakeHub>) {
   const fake = fakeHub(...changes);
   hubs.push(fake.hub);

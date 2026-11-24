@@ -1,13 +1,10 @@
-//! The repositories that this machine works for (K10 Section 3; R-185, SF-003): a list that the
-//! owner of the machine sets at the machine. A machine with no list refuses each item that
-//! names a repository.
+//! The repositories this machine works for, set by its owner at the machine (K10 Section 3;
+//! R-185, SF-003). A machine with no list refuses each item that names a repository.
 
 use daemon_core::wire::WorkRepository;
 
-/// The forges that this daemon knows (K10 Section 4).
 pub const FORGES: [&str; 1] = ["github"];
 
-/// A line of the list that cannot be read.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 #[error("line {line} of the list of repositories is not `owner` or `owner/name`")]
 pub struct BadLine {
@@ -15,14 +12,12 @@ pub struct BadLine {
     pub line: usize,
 }
 
-/// One permitted owner, or one permitted repository of an owner.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Permitted {
     owner: String,
     name: Option<String>,
 }
 
-/// The list of the owner of the machine. An empty list permits nothing.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Repositories(Vec<Permitted>);
 
@@ -47,13 +42,11 @@ pub fn is_name(name: &str) -> bool {
 }
 
 impl Repositories {
-    /// Reads the list: one `owner` or `owner/name` in each line; a line that starts with `#`
-    /// and an empty line are not entries. GitHub does not tell capital letters apart, so the
-    /// list does not.
+    /// GitHub does not tell capital letters apart, so the list does not.
     ///
     /// # Errors
-    /// [`BadLine`] for the first line that is not an entry: a list with a fault permits
-    /// nothing, it is not read in part.
+    /// [`BadLine`] for the first line that is not an entry; a list with a fault is not read in
+    /// part.
     pub fn parse(text: &str) -> Result<Self, BadLine> {
         let mut permitted = Vec::new();
         for (index, raw) in text.lines().enumerate() {
@@ -76,8 +69,6 @@ impl Repositories {
         Ok(Self(permitted))
     }
 
-    /// Whether the machine works for `repository`: its forge is known, its two names have only
-    /// permitted characters, and the list names its owner or the repository itself.
     #[must_use]
     pub fn permits(&self, repository: &WorkRepository) -> bool {
         let owner = repository.owner.to_ascii_lowercase();

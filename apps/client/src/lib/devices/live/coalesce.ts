@@ -1,7 +1,4 @@
-/**
- * Runs `run` one at a time: calls that arrive while it runs become one more run after it,
- * unless `stopped()` says the owner is gone by then.
- */
+/** Calls during a run become one more run after it, unless `stopped()` says the owner is gone. */
 export function coalesced(run: () => Promise<void>, stopped: () => boolean): () => Promise<void> {
   let running = false;
   let again = false;

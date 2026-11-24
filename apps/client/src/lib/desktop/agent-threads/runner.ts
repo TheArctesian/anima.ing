@@ -2,8 +2,8 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { outcomeFrom, updateFrom, type Action, type Outcome, type Update } from '$lib/agent-threads/live/run';
 
-/** Why a call did not reach the thread runner. The codes are the shell's (THR-128). */
-export type RunnerProblem = 'caller' | 'not_running' | 'foreign' | 'bad_call' | 'notification' | 'failed';
+/** The shell's codes (THR-128). */
+export type RunnerProblem = 'caller' | 'not_running' | 'foreign' | 'bad_call' | 'notification' | 'older_daemon' | 'failed';
 
 const MESSAGES: Readonly<Record<RunnerProblem, string>> = {
   caller: 'Only the main window can drive the threads.',
@@ -11,12 +11,14 @@ const MESSAGES: Readonly<Record<RunnerProblem, string>> = {
   foreign: 'The socket of the thread runner is not a private socket of this user.',
   bad_call: 'The call did not read.',
   notification: 'The notification was not shown.',
+  older_daemon:
+    'The daemon on this computer is older than this app and does not know this call. Quit Anima and open it again: the app updates the daemon at its start. Or install the daemon again in the settings of this computer, at Metrics source: Daemon.',
   failed: 'The thread runner did not answer.',
 };
 
 const PROBLEMS = Object.keys(MESSAGES);
 
-/** A failure of the shell. The message is fixed text: nothing of the shell's error reaches the screen (LOG-007). */
+/** The message is fixed text: nothing of the shell's error reaches the screen (LOG-007). */
 export class RunnerShellError extends Error {
   constructor(readonly problem: RunnerProblem) {
     super(MESSAGES[problem]);
@@ -29,17 +31,14 @@ function problemOf(reason: unknown): RunnerProblem {
   return typeof code === 'string' && PROBLEMS.includes(code) ? (code as RunnerProblem) : 'failed';
 }
 
-/** What the page needs of the thread runner of this computer. A test gives its own. */
 export interface RunnerShell {
-  /** One call; a refusal of the runner is an outcome, not an error. */
+  /** A refusal of the runner is an outcome, not an error. */
   call(action: Action): Promise<Outcome>;
-  /** Starts the watch: each update, and whether the watch reaches the runner. Gives the stop. */
   watch(onUpdate: (update: Update) => void, onLink: (linked: boolean) => void): Promise<() => void>;
   /** A system notification of this computer (THR-059). */
   notify(title: string, words: string): Promise<void>;
 }
 
-/** The desktop shell's commands; outside the desktop application there is no runner. */
 export const desktopRunnerShell: RunnerShell | null = isTauri()
   ? {
       async call(action) {

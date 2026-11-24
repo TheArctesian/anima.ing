@@ -1,7 +1,7 @@
 <script lang="ts">
   import './attachments.css';
   import CodeIcon from '../../icons/CodeIcon.svelte';
-  import { fileIcon, sizeWords, type Attachment } from './attach';
+  import { fileIcon, readingWords, sizeWords, type Attachment } from './attach';
 
   interface Props {
     /** The files of the draft that are not tiles, in the order they were attached. */
@@ -26,7 +26,7 @@
       {#if attachment.state.state === 'failed'}
         <span class="meta failed">{attachment.state.words}</span>
       {:else}
-        <span class="meta">{ready ? sizeWords(attachment.size) : 'Reading'}</span>
+        <span class="meta">{ready ? sizeWords(attachment.size) : readingWords(attachment)}</span>
       {/if}
       <button
         type="button"

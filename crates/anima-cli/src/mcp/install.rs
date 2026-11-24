@@ -1,10 +1,10 @@
-//! `anima mcp agents`, `anima mcp install` and `anima mcp uninstall`: the entry `anima` in the
-//! configuration of each coding agent on this computer (MCP-027 to MCP-038, plan Section 12).
-//! The Settings section calls [`listing`] and [`change`], as it does for the permissions.
+//! The entry `anima` in each coding agent on this computer (MCP-027 to MCP-038, plan Section 12).
 
+pub mod access;
 pub mod agents;
 pub mod files;
 pub mod jsonc;
+mod limited;
 pub mod setup;
 
 use std::path::{Path, PathBuf};
@@ -45,8 +45,10 @@ fn row(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Row {
     } else {
         match steps(agent, here, anima, (action, state)) {
             Ok(steps) => (steps, None),
-            // The list says why such an agent cannot be changed (MCP-033, MCP-035).
-            Err(error @ SetupError::ProgramReplaceable) => (Vec::new(), Some(error.to_string())),
+            // The list says why and what to do by hand (MCP-033 to MCP-035, R-442).
+            Err(
+                error @ (SetupError::ProgramReplaceable { .. } | SetupError::FileShared { .. }),
+            ) => (Vec::new(), Some(error.to_string())),
             Err(_) => (Vec::new(), None),
         }
     };

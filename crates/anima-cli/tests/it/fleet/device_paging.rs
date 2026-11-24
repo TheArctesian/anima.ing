@@ -1,5 +1,4 @@
-//! `device list` and the device name lookup against a hub that pages badly or lies (CMD-022,
-//! CMD-026).
+//! `device list` and the name lookup against a hub that pages badly or lies (CMD-022, CMD-026).
 
 use serde_json::json;
 

@@ -1,7 +1,4 @@
-//! A hosted hub keeps the check `Connected` for a computer on its link (hosted-mode.md
-//! HMD-047, R-143): the serving hub asks the control socket of the link, adds the check to
-//! the device whose host is the link address of a connected computer and reports it as Up.
-//! A computer that the link never saw gets no check.
+//! The `Connected` check of a hosted hub (HMD-047, R-143).
 
 use std::time::{Duration, Instant};
 
@@ -23,8 +20,6 @@ use super::{
 const LAPTOP: &str = "0190a000-0000-7000-8002-000000000002";
 const DESKTOP: &str = "0190a000-0000-7000-8002-000000000003";
 
-/// The `devices.list` reply of a link with a laptop that is connected now and a desktop
-/// that never connected.
 fn two_computers() -> String {
     let device = |name: &str, address: &str| {
         json!({
@@ -78,10 +73,8 @@ async fn hmd_047_a_hosted_hub_reports_a_connected_computer_of_its_link_as_up(poo
     assert!(stored.push_token.is_some(), "a PUSH check");
     let of_laptop = checks::for_device(&pool, laptop).await.unwrap();
     assert_eq!(of_laptop.len(), 1);
-    // The desktop never connected: no check, so its row stays as the application made it.
     let of_desktop = checks::for_device(&pool, desktop).await.unwrap();
     assert_eq!(of_desktop.len(), 0);
-    // The hub only reads the link.
     assert_eq!(link.changes(), Vec::<serde_json::Value>::new());
     assert_eq!(link.requests()[0], json!({ "verb": "devices.list" }));
 }

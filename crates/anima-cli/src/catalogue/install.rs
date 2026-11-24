@@ -1,6 +1,4 @@
-//! `anima catalogue install <id> --device <d>`: asks the hub to install one entry on a
-//! device (R-234). The hub refuses with a fixed reason until task H6 exists, and reaches no
-//! machine; the command prints the reason and ends with exit status 1.
+//! `anima catalogue install`: asks the hub to install one entry on a device (R-234).
 
 use super::documents::{CatalogueInstallAsk, catalogue_install_ask};
 use crate::devices::get::resolve;

@@ -1,15 +1,7 @@
 #!/bin/sh
-# Manual smoke test for deploy/compose.yaml (DB-002). Needs Docker. Not a gate.
-#
-# It works in a temporary copy of the deploy folder, so it never reads deploy/secrets.
-# TEST-ONLY: the secret files are made readable by everyone (mode 0444), because the host
-# owner (root:999) of a real install cannot be set without root. Never do this on the host.
-# It contacts neither Let's Encrypt nor Cloudflare: `certs` runs only with a stub entrypoint
-# (the hook on fixture certificates and `/lego --version`), never its real entry point.
-# `migrate` runs the real migrations as the owner role; then `hub` starts with the runtime
-# login only, must become healthy, and must answer TLS, never plain HTTP, on the published port.
-#
-#   sh deploy/test/smoke.sh
+# Manual smoke test for deploy/compose.yaml (DB-002); needs Docker, not a gate.
+# Test-only: the copied secrets are mode 0444, because the host owner (root:999) cannot be set without root.
+# `certs` runs only a stub entrypoint, so the test contacts neither Let's Encrypt nor Cloudflare.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -36,7 +28,6 @@ mkdir -p "$work/deploy/dns" "$work/deploy/headscale" "$work/apps/desktop" "$work
 cp -R "$repo/deploy/compose.yaml" "$repo/deploy/postgres" "$repo/deploy/certs" "$repo/deploy/gateway" "$repo/deploy/hub" "$work/deploy/"
 cp -R "$repo/Cargo.toml" "$repo/Cargo.lock" "$repo/crates" "$work/"
 cp -R "$repo/apps/desktop/src-tauri" "$work/apps/desktop/src-tauri"
-# The web stage of the hub image: root and workspace manifests, the lock file and the client sources.
 cp "$repo/package.json" "$repo/bun.lock" "$work/"
 cp "$repo/apps/desktop/package.json" "$work/apps/desktop/"
 cp "$repo/quality/package.json" "$work/quality/"
@@ -53,8 +44,7 @@ printf '%s\n' 'smoke-test-not-a-token' |
     ANIMA_SECRETS_CHOWN=0 sh "$repo/deploy/bin/make-secrets" --cloudflare-token-stdin "$work/deploy/secrets"
 sh "$repo/deploy/bin/preflight" secrets "$work/deploy/secrets"
 chmod 0444 "$work/deploy/secrets/"*
-# Fixture certificate for the hook test. Test-only: world-readable so that root without
-# capabilities inside the container can read it.
+# World-readable, so root without capabilities inside the container can read it.
 mkdir "$work/fixture"
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 1 \
     -subj /CN=hub.anima.ing -keyout "$work/fixture/chain.key" -out "$work/fixture/chain.crt" 2>/dev/null
@@ -140,7 +130,7 @@ compose run --rm --no-deps --entrypoint sh hub -c '
 '
 
 step "migrate: applies the migrations as the owner role and exits 0 (R-016)"
-# Run migrate and wait at most 120 s for it to exit; a migrate that serves never exits.
+# A migrate that serves never exits.
 run_migrate() {
     compose up -d --no-deps --force-recreate migrate >/dev/null
     id=$(compose ps -aq migrate)
@@ -167,8 +157,7 @@ compose up -d --no-deps --wait --wait-timeout 120 guacd hub ||
     }
 compose logs --tail 10 hub
 echo "hub is healthy: anima-hub health answered ok over TLS"
-# From this host the published port reaches the hub through Docker's proxy, so the hub sees
-# a 172.16.0.0/12 peer. It closes that connection at accept, before TLS: no HTTP status.
+# Through Docker's proxy the hub sees a 172.16.0.0/12 peer and closes the connection before TLS.
 code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 -X POST \
     -H 'content-type: application/json' -d '{"query":"{__typename}"}' "https://127.0.0.1:443/graphql" || true)
 [ "$code" = 000 ] || fail "a proxied request to /graphql got HTTP status $code, not a closed connection"

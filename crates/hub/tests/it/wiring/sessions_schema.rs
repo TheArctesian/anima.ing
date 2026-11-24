@@ -14,7 +14,6 @@ use super::{
 const START: &str = "mutation($input: StartSessionInput!) { startSession(input: $input) { \
                      sessionId token tunnelPath expiresAt } }";
 
-/// Starts a session on PVE-01 through `schema` and returns the ticket.
 async fn start_on_pve_01(schema: &anima_hub::schema::HubSchema) -> Value {
     let input = json!({ "deviceId": PVE_01, "protocol": "SSH",
                         "display": { "widthPx": 1280, "heightPx": 800 } });

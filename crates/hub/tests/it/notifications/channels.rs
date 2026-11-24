@@ -1,12 +1,11 @@
-//! Creating, listing and deleting channels through the API: each kind reads back with its
-//! settings and never a secret (NOT-002, NOT-003, SEC-003, SEC-005, D-17, CR-14).
+//! Each channel kind reads back without a secret (NOT-002, NOT-003, SEC-003, SEC-005, D-17, CR-14).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::harness::{
     DELETE, WEBHOOK_URL, channels, create, create_query, data, error_json, holds_no_secret,
-    instant, now, run, schema_for, stored_row, validation_fields, webhook,
+    instant, now, run, schema_for, stored_row, update, validation_fields, webhook,
 };
 
 #[sqlx::test(migrations = "./migrations")]
@@ -88,7 +87,38 @@ async fn not_002_each_kind_is_created_with_the_k1_defaults(pool: PgPool) {
     holds_no_secret("the channel list", &Value::Array(listed).to_string());
 }
 
-/// An explicit null takes the K1 default, as an absent field does.
+#[sqlx::test(migrations = "./migrations")]
+async fn a_mobile_channel_seals_its_relay_credentials_and_requires_the_token_for_a_new_url(
+    pool: PgPool,
+) {
+    let schema = schema_for(&pool);
+    let mobile = create(
+        &schema,
+        json!({ "name": "Mobile", "settings": { "mobile": {
+            "url": "https://push.example.test/private-relay-path",
+            "token": "synthetic-relay-secret",
+        } } }),
+    )
+    .await;
+    assert_eq!(mobile["kind"], "MOBILE");
+    assert_eq!(mobile["settings"]["origin"], "https://push.example.test");
+    let encoded = mobile.to_string();
+    assert!(!encoded.contains("private-relay-path"));
+    assert!(!encoded.contains("synthetic-relay-secret"));
+    let listed = channels(&schema).await;
+    assert_eq!(listed, std::slice::from_ref(&mobile));
+
+    let changed = update(
+        &schema,
+        &mobile["id"],
+        json!({ "name": "Mobile", "settings": { "mobile": {
+            "url": "https://push.example.test/different-target",
+        } } }),
+    )
+    .await;
+    assert!(validation_fields(&changed).contains(&"settings.mobile.token".to_owned()));
+}
+
 #[sqlx::test(migrations = "./migrations")]
 async fn not_002_an_explicit_null_takes_the_k1_default(pool: PgPool) {
     let schema = schema_for(&pool);

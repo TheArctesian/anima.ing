@@ -1,10 +1,6 @@
-//! The code and origin checks, the destination, the daemon's environment and its arguments are
-//! pure; `tests/trust.rs` holds the folder rule; `tests/flow.rs` installs a stand-in daemon into a
-//! temporary HOME inside the crate's own `target/` folder, so no real `~/.local`, systemctl or
-//! launchctl is touched.
-
 mod flow;
 mod folders;
+mod guards;
 mod removal;
 mod rig;
 mod stuck;
@@ -184,7 +180,6 @@ fn d_10_only_a_release_build_offers_the_daemon_beside_the_app() {
     );
     fs::write(dir.path().join("anima-daemon"), b"daemon").expect("the daemon");
     assert_eq!(bundled(&app, true), Ok(dir.path().join("anima-daemon")));
-    // A debug build's target folder may hold a daemon built from another commit.
     assert_eq!(bundled(&app, false), Err(DaemonError::NotBundled));
 }
 

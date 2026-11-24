@@ -1,6 +1,4 @@
-//! The PostgreSQL tree in the release (S3 T11, S12 2.2 step 4, D-1, D-2, D-5): the recipe's
-//! command, its work folder made anew, the signing identity read from the clone, and the tools
-//! a Linux builder needs for it (S12 T3).
+//! S3 T11, S12 2.2 step 4, S12 T3, D-1, D-2, D-5.
 
 use std::{
     fs,
@@ -83,6 +81,7 @@ fn s12_d_2_bin_sh_is_never_searched_for_on_the_steps_path() {
 fn s12_d_1_the_work_folder_is_made_anew_with_mode_0700_and_a_planted_link_is_not_followed() {
     let dir = tempfile::tempdir().unwrap();
     let root = fs::canonicalize(dir.path()).unwrap();
+    fs::set_permissions(&root, fs::Permissions::from_mode(0o700)).unwrap();
     let work = root.join("database-tree");
     fs::create_dir_all(work.join("tree")).unwrap();
     fs::write(work.join("tree/STAMP"), b"an old stamp").unwrap();

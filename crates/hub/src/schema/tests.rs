@@ -32,9 +32,7 @@ async fn api_007_debug_build_answers_introspection_and_api_004_refuses_depth_11(
     assert!(deep.errors[0].message.contains("nested too deep"));
 }
 
-// The release side runs only under `cargo test --release -p anima-hub schema`, which the gates
-// do not run. Only that command catches a mutation of `production_build()`, so it is a manual
-// check until it is gated.
+// Runs only under `cargo test --release -p anima-hub schema`, which the gates do not run.
 #[cfg(not(debug_assertions))]
 #[tokio::test]
 async fn api_007_release_build_answers_introspection_with_null() {

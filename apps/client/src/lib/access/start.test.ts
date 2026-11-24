@@ -5,7 +5,6 @@ import { FAKE_WEBSOCKET, FakeSocket, recordingSink, settle, STATUS_CHANGED } fro
 import { accessApi } from './api';
 import { clientStart, ORIGIN_REFUSED, type ClientStart } from './start';
 
-/** A storage holding `stored` as the desktop app's hub address setting. */
 function storage(stored: string | null = null): Storage {
   return { getItem: (key: string) => (key === 'anima.hubAddress' ? stored : null) } as Storage;
 }

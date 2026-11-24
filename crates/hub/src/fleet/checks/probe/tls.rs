@@ -1,9 +1,4 @@
-//! TLS probe: completes a handshake and reports when the leaf certificate expires (CHK-007).
-//!
-//! The probe accepts any certificate chain on purpose: home-lab devices usually present
-//! self-signed certificates, and the check answers "is the service up and when does its
-//! certificate run out", not "is the chain trusted". Only the validity dates of the leaf
-//! certificate are judged, against the `now` the caller supplies.
+//! TLS probe (CHK-007): it accepts any chain on purpose and judges only the leaf's validity dates.
 
 use std::{sync::Arc, time::Instant};
 
@@ -22,7 +17,6 @@ use super::{
     tcp,
 };
 
-/// Accepts every certificate and signature: see the module comment.
 #[derive(Debug)]
 struct AcceptAnyCertificate(Arc<CryptoProvider>);
 
@@ -72,7 +66,6 @@ fn connector() -> Result<TlsConnector, Failure> {
     Ok(TlsConnector::from(Arc::new(config)))
 }
 
-/// The `notBefore` and `notAfter` of a DER certificate.
 pub(super) fn validity(der: &[u8]) -> Result<(DateTime<Utc>, DateTime<Utc>), Failure> {
     let (_, cert) =
         x509_parser::parse_x509_certificate(der).map_err(|_| Failure::CertificateUnreadable)?;
@@ -85,7 +78,6 @@ pub(super) fn validity(der: &[u8]) -> Result<(DateTime<Utc>, DateTime<Utc>), Fai
     ))
 }
 
-/// Fails with the certificate's expiry kept in the result when `now` is outside its dates.
 fn judge(
     der: &[u8],
     now: DateTime<Utc>,

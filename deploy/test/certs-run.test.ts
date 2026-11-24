@@ -1,5 +1,4 @@
-// Unix certificate-container scripts are exercised by the Linux/macOS gates.
-// deploy/certs/run.sh with a fake lego and a fake sleep (DNS-002, DNS-003). No network.
+// DNS-002, DNS-003.
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,9 +11,7 @@ afterEach(() => {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
 });
 
-// Fake lego: logs its arguments. `run` writes a certificate into the --path folder unless
-// FAKE_LEGO_RUN_EXIT is set. `renew` writes FAKE_LEGO_RENEW_CONTENT as the new chain, does
-// not call the hook (as if the hook had failed) and exits with FAKE_LEGO_RENEW_EXIT.
+// Fake lego: `renew` never calls the hook, as if the hook had failed.
 const FAKE_LEGO = `#!/bin/sh
 echo "$*" >>"$FAKE_LOG/lego.log"
 while [ $# -gt 0 ]; do [ "$1" = --path ] && path=$2; shift; done
@@ -32,7 +29,7 @@ case " $* " in
     ;;
 esac
 `;
-// Fake sleep: logs its argument; the (LIMIT+1)th call fails, which ends run.sh's loop.
+// Fake sleep: the (FAKE_SLEEP_LIMIT+1)th call fails, which ends run.sh's loop.
 const FAKE_SLEEP = `#!/bin/sh
 echo "$1" >>"$FAKE_LOG/sleep.log"
 count=$(wc -l <"$FAKE_LOG/sleep.log")

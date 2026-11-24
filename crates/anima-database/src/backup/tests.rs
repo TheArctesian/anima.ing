@@ -4,9 +4,8 @@ use std::os::unix::fs::PermissionsExt;
 
 use super::{BackupError, Checked, check, damaged_in, restore, write};
 use crate::roles;
-use crate::scratch::Database;
+use crate::scratch::{Database, private_folder};
 
-/// A database with the roles and some of the owner's rows.
 fn database_with_rows() -> (Database, crate::Server) {
     let database = Database::new();
     let server = database.start();
@@ -31,7 +30,7 @@ const ROWS: &str = "select count(*) || ' ' || sum(id) || ' ' || \
 #[test]
 fn db_007_a_backup_restores_the_rows_their_owner_and_their_grants() {
     let (source, _source_server) = database_with_rows();
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let file = folder.path().join("anima.backup");
 
     write(&source.tree, &source.layout, &file).unwrap();
@@ -61,7 +60,7 @@ fn db_007_a_backup_restores_the_rows_their_owner_and_their_grants() {
 #[test]
 fn a_restore_into_a_database_that_is_not_empty_changes_nothing() {
     let (database, _server) = database_with_rows();
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let file = folder.path().join("anima.backup");
     write(&database.tree, &database.layout, &file).unwrap();
     database
@@ -85,7 +84,7 @@ fn a_restore_into_a_database_that_is_not_empty_changes_nothing() {
 #[test]
 fn a_backup_with_no_server_fails_and_leaves_no_file() {
     let database = Database::new();
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let file = folder.path().join("anima.backup");
 
     let outcome = write(&database.tree, &database.layout, &file);
@@ -162,10 +161,9 @@ fn log_007_only_the_names_of_damaged_relations_are_kept() {
 #[test]
 fn a_restore_that_fails_late_leaves_nothing_of_what_it_had_made() {
     let (source, _source_server) = database_with_rows();
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let file = folder.path().join("anima.backup");
-    // The source has a grant to a role that the target lacks: the schema and the table are
-    // made and filled first, then the grant fails.
+    // The target lacks the auditor role, so the restore fails after the table is filled.
     source.sql("create role auditor").unwrap();
     source
         .sql_in("anima", "grant select on devices.devices to auditor")
@@ -210,7 +208,7 @@ fn a_restore_of_a_file_that_is_not_there_says_so() {
 fn a_check_that_was_made_is_not_in_the_backup_and_the_backup_still_restores() {
     let (source, _source_server) = database_with_rows();
     assert_eq!(check(&source.tree, &source.layout).unwrap(), Checked::Sound);
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let file = folder.path().join("anima.backup");
 
     write(&source.tree, &source.layout, &file).unwrap();
@@ -238,7 +236,7 @@ fn a_check_that_was_made_is_not_in_the_backup_and_the_backup_still_restores() {
 fn a_check_that_says_damage_and_names_none_is_an_error() {
     use std::os::unix::fs::PermissionsExt as _;
     let database = Database::new();
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let bin = folder.path().join("bin");
     fs::create_dir(&bin).unwrap();
     for program in ["postgres", "initdb", "pg_ctl", "pg_isready"] {
@@ -259,9 +257,8 @@ fn a_check_that_says_damage_and_names_none_is_an_error() {
 #[test]
 fn a_backup_cannot_act_as_the_superuser_when_it_is_restored() {
     let (source, _source_server) = database_with_rows();
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let marker = folder.path().join("ran-as-superuser");
-    // A check that runs a program when a superuser loads the rows, as a tampered backup would.
     let probe = format!(
         "set role anima_owner; \
          create function public.probe() returns boolean language plpgsql as $f$ \
@@ -299,7 +296,7 @@ fn a_backup_cannot_act_as_the_superuser_when_it_is_restored() {
 #[test]
 fn a_backup_is_not_written_into_a_folder_that_others_can_write() {
     let (database, _server) = database_with_rows();
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o777)).unwrap();
 
     let outcome = write(

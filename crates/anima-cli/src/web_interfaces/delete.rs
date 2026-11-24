@@ -1,5 +1,3 @@
-//! `anima web delete`: removes a web interface from its device.
-
 use super::documents::{WebDelete, web_delete};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

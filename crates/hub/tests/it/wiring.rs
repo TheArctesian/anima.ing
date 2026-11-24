@@ -1,8 +1,5 @@
-//! The hub as `main.rs` wires it (WP-06 H-2, WP-10 handoffs 1, 2 and 4–7): the devices and
-//! sessions parts of the one schema with their loaders and the shared `Live`, the checks and
-//! maintenance parts with the loaders that read checks, the stale and
-//! shutdown ends of sessions, the client address, a process log without the URI, and the
-//! push route behind the permitted networks (WP-09 handoff 3).
+//! The hub as `main.rs` wires it, with a process log without the URI (WP-06 H-2, WP-10 handoffs
+//! 1, 2 and 4–7, WP-09 handoff 3).
 
 mod checks_schema;
 mod devices_schema;

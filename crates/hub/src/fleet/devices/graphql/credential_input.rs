@@ -1,12 +1,6 @@
-//! The credential argument of `setSshCredential` (K1 `SshCredentialInput`) and the checks on
-//! it (DEV-012, SEC-005, LOG-007).
-//!
-//! async-graphql's derived parse errors quote the whole value they could not parse, and the
-//! process log keeps the message of an error without a code. A bare string sent as the
-//! credential would reach the log. So [`SshCredential`] parses the argument and replaces any
-//! parse error with a fixed one that holds no input; each string moves into a [`Secret`]
-//! without a copy. The RDP and VNC password argument follows the same rules
-//! ([`PasswordCredential`]).
+//! DEV-012, SEC-005, LOG-007. async-graphql's derived parse errors quote the value and reach the
+//! log, so a parse error is replaced with a fixed one that holds no input; each string moves into
+//! a [`Secret`] without a copy. [`PasswordCredential`] follows the same rules.
 
 mod password;
 
@@ -69,7 +63,6 @@ impl InputType for SshCredential {
     }
 
     fn parse(value: Option<Value>) -> InputValueResult<Self> {
-        // The derived error is dropped unread: its message quotes the input.
         let input = SshCredentialInput::parse(value).map_err(|_| unreadable())?;
         Ok(Self(match input {
             SshCredentialInput::Password(password) => SshSecret::Password(Secret::from(password)),
@@ -168,14 +161,13 @@ fn key_problem(key: &Secret) -> Option<FieldError> {
     if text.is_empty() {
         return Some(FieldError::new(KEY, "Enter a private key."));
     }
-    // The first line must be the key's own header, `-----BEGIN <kind> PRIVATE KEY-----`, so a
-    // public key with a private key marker further down is refused.
+    // Only the first line counts, so a public key with a private key marker further down is
+    // refused.
     let header = text
         .split(|byte| *byte == b'\n')
         .next()
         .unwrap_or_default()
         .trim_ascii_end();
-    // Between the two, only the key format: `OPENSSH `, `RSA `, `ENCRYPTED `, or nothing.
     let marked = header.len() >= BEGIN.len() + PRIVATE_END.len()
         && header.starts_with(BEGIN)
         && header.ends_with(PRIVATE_END)

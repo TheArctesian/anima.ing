@@ -1,23 +1,17 @@
-/**
- * A thread that the runner drives, as the page shows it: the updates of the runner folded into a timeline, the requests
- * that wait, and the row (TH14, THR-014, THR-030). Pure: the time of each update is a parameter.
- */
+/** A runner-driven thread folded into a timeline (TH14, THR-014, THR-030); the time of each update is a parameter. */
 
-import type { Entry, Program, ToolCall, ToolKind } from '../thread';
+import { cellOf, readExec, waited } from '../codex/exec';
+import type { Entry, Program, Thread, ToolCall, ToolKind } from '../thread';
 import type { Ask, RunRow, Said, Update } from './run';
 
-/** The most characters of the output of one tool call that the page keeps. */
 export const OUTPUT_CHARS = 20_000;
-/** The most entries of one thread that the page keeps; the oldest go first. */
 export const ENTRY_LIMIT = 2_000;
 
-/** A part of the timeline of a driven thread: an entry of a session, or a notice of the program. */
 export type LiveEntry =
   | Exclude<Entry, { kind: 'tool' }>
   | { readonly kind: 'tool'; readonly at: Date; readonly tool: ToolCall; readonly call: string }
   | { readonly kind: 'notice'; readonly at: Date; readonly text: string };
 
-/** A request that waits for the person, with the runner's ID for the answer. */
 export interface OpenAsk {
   readonly request: string;
   readonly ask: Ask;
@@ -26,18 +20,13 @@ export interface OpenAsk {
 export interface LiveThread {
   readonly row: RunRow;
   readonly entries: readonly LiveEntry[];
-  /** The reply as it comes, before the program sends it whole. */
   readonly streaming: string;
   readonly asks: readonly OpenAsk[];
-  /** The highest sequence number taken: an update at or below it is a repeat. */
   readonly seq: number;
-  /** When the last update came. */
   readonly last: Date;
-  /** How many entries went past the limit. */
   readonly dropped: number;
 }
 
-/** The kind of a tool by its name, for the words and the icon of the block. */
 export function toolKind(name: string): ToolKind {
   const lower = name.toLowerCase();
   if (['bash', 'command', 'commandexecution', 'shell'].includes(lower)) return 'command';
@@ -51,7 +40,6 @@ export function toolKind(name: string): ToolKind {
   return 'other';
 }
 
-/** The most characters of one text of the program that the page keeps: a reply, a prompt, a tool input, a request. */
 export const TEXT_CHARS = 200_000;
 
 function held(text: string): string {
@@ -66,7 +54,33 @@ function heldAsk(ask: Ask): Ask {
   return { ...ask, subject: capped(ask.subject), diff: ask.diff === null ? null : held(ask.diff) };
 }
 
-/** A new thread from its first row. */
+/** A session file read as a driven timeline, so a thread not started in Anima reads as a chat too (T3 Code). */
+export function storedTimeline(thread: Thread): LiveEntry[] {
+  let at = thread.started ?? new Date(0);
+  const shown: LiveEntry[] = [];
+  /** The shown call that left each script cell running: a `wait` on that cell brings its output there. */
+  const running = new Map<string, number>();
+  thread.entries.forEach((entry, index) => {
+    at = entry.at ?? at;
+    if (entry.kind !== 'tool') {
+      shown.push({ ...entry, at });
+      return;
+    }
+    const cell = thread.program === 'codex' ? cellOf(entry.tool) : null;
+    const owner = entry.tool.name === 'wait' && cell !== null ? running.get(cell) : undefined;
+    const ran = owner === undefined ? undefined : shown[owner];
+    if (owner !== undefined && ran?.kind === 'tool') {
+      shown[owner] = { ...ran, tool: waited(ran.tool, entry.tool) };
+      return;
+    }
+    const tool = thread.program === 'codex' ? readExec(entry.tool) : entry.tool;
+    if (tool === null) return;
+    if (cell !== null && entry.tool.name !== 'wait') running.set(cell, shown.length);
+    shown.push({ kind: 'tool', at, tool, call: `stored-${String(index)}` });
+  });
+  return shown;
+}
+
 export function begun(row: RunRow, at: Date): LiveThread {
   return { row, entries: [], streaming: '', asks: [], seq: 0, last: at, dropped: 0 };
 }
@@ -77,7 +91,6 @@ function withEntry(thread: LiveThread, entry: LiveEntry): LiveThread {
   return { ...thread, entries: over > 0 ? entries.slice(over) : entries, dropped: thread.dropped + over };
 }
 
-/** The entries with the tool call `call` changed by `change`; the newest call of that ID is the one. */
 function withTool(entries: readonly LiveEntry[], call: string, change: (tool: ToolCall) => ToolCall): readonly LiveEntry[] {
   const at = entries.findLastIndex((entry) => entry.kind === 'tool' && entry.call === call);
   const entry = entries[at];
@@ -108,9 +121,8 @@ function said(thread: LiveThread, event: Said, at: Date): LiveThread {
 }
 
 /**
- * `thread` with `update` taken at `at`. An update at or below the last sequence number is a repeat (the runner sends the
- * updates it keeps again to each new watch) and changes nothing. A request leaves the list only when the runner closes
- * it: by an answer, a stop or the end of its process (THR-030).
+ * The runner sends its kept updates again to each new watch, so one at or below `seq` is a repeat.
+ * A request leaves the list only when the runner closes it (THR-030).
  */
 export function applied(thread: LiveThread, update: Update, at: Date): LiveThread {
   if (update.seq <= thread.seq) return thread;
@@ -130,7 +142,6 @@ export function applied(thread: LiveThread, update: Update, at: Date): LiveThrea
   }
 }
 
-/** The tool calls that follow each other as one block, as the timeline of a session file draws them. */
 export type LivePart = { readonly kind: 'entry'; readonly entry: Exclude<LiveEntry, { kind: 'tool' }> } | { readonly kind: 'tools'; readonly tools: readonly ToolCall[] };
 
 export function liveParts(entries: readonly LiveEntry[]): readonly LivePart[] {
@@ -152,13 +163,21 @@ export function liveParts(entries: readonly LiveEntry[]): readonly LivePart[] {
 /** The time the runner gives a program for its first answer before it ends it (TH97); the same as the runner. */
 export const FIRST_ANSWER_MINUTES = 10;
 
-/**
- * What a thread that is starting waits for, with the time it has waited (TH97): on a busy computer Claude Code reads its
- * sign-in from the Keychain and Codex loads its plugins first, which can take minutes.
- */
 export function waitingWords(program: Program, started: Date, now: Date): string {
   const seconds = Math.max(0, Math.floor((now.getTime() - started.getTime()) / 1000));
   const waited = seconds < 60 ? `${String(seconds)} s` : `${String(Math.floor(seconds / 60))} min ${String(seconds % 60)} s`;
   const first = program === 'claude_code' ? 'Claude Code reads its sign-in first' : 'Codex loads its plugins first';
   return `Waiting for the first answer of the program: ${waited}. ${first}; on a busy computer this can take minutes. The runner ends it after ${String(FIRST_ANSWER_MINUTES)} minutes with no answer.`;
+}
+
+export interface SentPrompt {
+  readonly thread: string;
+  readonly text: string;
+  readonly at: Date;
+}
+
+/** The runner shows a prompt only once the program took it, many seconds after the send on a busy computer (TH97). */
+export function withSent(entries: readonly LiveEntry[], sent: SentPrompt | null): readonly LiveEntry[] {
+  if (sent === null || entries.some((entry) => entry.kind === 'prompt')) return entries;
+  return [{ kind: 'prompt', at: sent.at, text: held(sent.text), images: 0 }, ...entries];
 }

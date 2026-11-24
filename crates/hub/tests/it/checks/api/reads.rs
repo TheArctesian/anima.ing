@@ -163,7 +163,6 @@ fixture_test! {
         assert_eq!(a["edges"].as_array().unwrap().len(), 2);
         assert_eq!(a["edges"][0]["node"]["responseTimeMs"], 0);
         assert_eq!((a["pageInfo"]["hasNextPage"].clone(), b["pageInfo"]["hasNextPage"].clone()), (json!(true), json!(true)));
-        // Each check continues from its own cursor, in the same request.
         let vars = json!({ "a": long, "b": short,
             "ca": a["pageInfo"]["endCursor"], "cb": b["pageInfo"]["endCursor"] });
         let second = data_with(&schema, query, vars).await;

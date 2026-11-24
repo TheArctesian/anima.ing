@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 10 | 28 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 14 | 64 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -140,9 +140,9 @@ Added 2026-11-18. From [agent-tools-as-extensions.md](proposals/agent-tools-as-e
 
 - [ ] The fallback to a local model, BOT-047 to BOT-057 of [bots.md](proposals/bots.md), is parked (OD-AXT3).
 - [x] A page of all agents on all devices: moved out of this list by R-243 (2026-11-19) into [agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) Section 6.8 (AXT-046 to AXT-052). The alerts are decided by R-244 (OD-AXT20, AXT-053).
-- [ ] A review of the Herdr decision if Herdr Cloud ships or the Herdr project stalls (OD-AXT2). AIS-009 to AIS-017 are withdrawn, not deferred.
+- [x] A review of the Herdr decision if Herdr Cloud ships or the Herdr project stalls (OD-AXT2). AIS-009 to AIS-017 are withdrawn, not deferred. Closed by R-389 (2026-11-23): Herdr is not hosted, Code replaces it, so the review has no subject.
 - [ ] The later entries of Section 6.5.1 of the proposal, in waves: A ComfyUI and Unsloth Studio; B OpenClaw (after a security review) and Agent Zero; C JupyterLab and InvokeAI (OD-AXT17, OD-AXT18).
-- [ ] The desktop and phone applications of Herdr, Hermes Agent and T3 Code (AXT-025).
+- [ ] The desktop application of Hermes Agent (AXT-025). The applications of Herdr and T3 Code left this item by R-389 (2026-11-23): Code replaces both.
 - [ ] Aider: removed from the six agents of the first version (OD-AXT16). It comes back only with a new decision.
 
 ### Hosted applications: an always-on machine for a database
@@ -150,6 +150,55 @@ Added 2026-11-18. From [agent-tools-as-extensions.md](proposals/agent-tools-as-e
 Added 2026-11-20. From R-298 and [hosted-applications-plan.md](plans/hosted-applications-plan.md).
 
 - [ ] Anima hosts a database for a person on a machine that runs all the time, a cloud server that Anima starts for that person. It needs the start of cloud servers for customers, which is not built. Not designed; the operator wants it planned in a conversation of its own.
+
+### TH111: the files of a prompt
+
+Added 2026-11-22. From the security reviews of task TH111 of [agent-threads.md](proposals/agent-threads.md) (branch `threads/runner-attach`). None of them is High.
+
+- [ ] The store opens a file with `O_NOFOLLOW` and `O_NONBLOCK`, checks that it is a regular file, keeps a SHA-256 of the bytes that came and checks it at the take, and reads at most the size that came.
+- [ ] A thread folder that holds the folder of the daemon (`~`, `~/Library`) is refused, as a folder inside it is (THR-041). This is older than TH111, and it refuses a start in `~`: it waits for a decision of the operator.
+- [ ] Each thread, and all threads, keep at most a number of bytes of files that went; a start of the runner removes the folders that no thread knows; a file of a prompt whose holder never answers goes back after a time.
+- [ ] An image goes with its EXIF data, its place (GPS) too. The runner removes it, or the client tells the person before the send.
+- [ ] A process of an agent of the same user can read the files of the other threads (the model of the same user, THR-040).
+- [ ] The runner reads and writes the files in its loop, with no task of its own: up to 10 MiB for one image.
+- [ ] Claude Code in a mode other than full access asks for leave to read a file outside its folder (step 3 of the human check of TH111).
+
+### TH116: threads in a worktree of their own
+
+Added 2026-11-23. From the second security review of task TH116 of [agent-threads.md](proposals/agent-threads.md) (branch `threads/launcher-read-runs`) and from the leak of test holders (branch `threads/test-holder-leak`). None of them is High.
+
+- [ ] A start that the holder refuses after the runner sent it (the holder answers Refused, the holder is lost, or the agent stays silent) keeps the worktree, its branch and its record: the runner keeps a new worktree when it sends the start, not when the holder answers. The runner should remove a worktree with no turn on those paths, with the removal of the engine. The person removes it now.
+- [ ] After a start of the runner again, a confined Codex thread gets no Read runs until it starts again: the runner does not keep the copy of Codex of each thread in its record. This fails closed.
+- [ ] The Read runs of Codex share one home folder (`codex-reads/`) for all threads. One home for each thread would keep the threads apart.
+- [ ] A warning of the Git engine of the runner may name a home path in the text of an I/O error. It is not text of the person (LOG-007), but the warning can say less.
+- [ ] A test process that is killed (SIGKILL, for example at the time limit of a command) runs no drop, and its holder and its made programs stay. Clean them with `ps` and SIGTERM; never the holder of the installed application.
+
+### TH117: the commands and the picker extras
+
+Added 2026-11-23. From task TH117 of [agent-threads.md](proposals/agent-threads.md) (branch `threads/composer-commands`).
+
+- [ ] Claude Code has a fast mode for some models (`supportsFastMode` in its answer to `initialize`), but only a hidden flag `--fast-mode` and its settings turn it on. The runner gives Claude Code no `--settings` and no flag outside the closed list (THR-040), so Claude Code lists no speed. It waits for a documented flag or a ruling of the operator.
+- [ ] The programs of access of a Codex model (`cyber`) are only listed: Codex 0.170 takes no choice of one on `thread/start` or `turn/start`.
+- [ ] After a restart of the runner, a Claude Code thread that still runs lists no commands until it starts again: the runner does not send `initialize` a second time. The composer can ask with the program and the folder instead.
+- [ ] The commands of Claude Code that come from plugins are listed only when a thread runs: the files of the plugins are not read for a folder.
+- [ ] A background ask for the Codex skills of a folder that panics leaves the folder marked as asked; after two, no folder is asked again until the runner starts again. No panic path is known. A guard that ends the ask on drop would remove it.
+- [ ] The walk of the Claude Code files checks that a folder is not a link, then opens `SKILL.md` in it by its path: a process that changes the folder between the two can put a link in the path. The read stays a plain file of at most 8 KiB. Opening the folder first and the file relative to it would close the gap.
+- [ ] A skill chosen from the list of a folder before a thread starts cannot go with the first prompt: the start takes no skill, and a prompt takes only skills of the list of its own thread.
+- [ ] Links in `~/.claude/commands` and `~/.claude/skills` are left out, as in a repository. Many people keep these folders as links to their dotfiles.
+- [ ] The Claude Code files of a folder that does not answer in 5 seconds (a hung mount) give `pending`; one read runs at a time, so a read that never ends makes each later call of a Claude Code folder answer `pending` until the runner starts again. The Codex path still checks its folder on the loop of the runner, as `start` does.
+
+### THR-050: the private `TMPDIR` of each agent
+
+Added 2026-11-23. From the security review of branch `threads/private-tmpdir` of [agent-threads.md](proposals/agent-threads.md). None of them is High.
+
+- [ ] The roots of a sandboxed thread are its folder, its `TMPDIR` and `/tmp`, as written in the launcher. A folder that the person adds to the sandbox (the writable roots of Codex, the folders that Claude Code may write) is not read, so a thread that can write the records there does not hold the engine.
+- [ ] Not checked: whether the sandbox of Codex or of Claude Code on macOS lets an agent write the temporary folder of the user under `/var/folders` when `TMPDIR` names a different folder.
+- [ ] When the daemon ends after an agent started and before the record of its thread was written, the next start of the runner does not know the thread: it removes its `TMPDIR`, and the hold does not count it.
+- [ ] The checks of a program before a start (the check that it is silent, the list of models) and the hooks of a thread in Full access get the `TMPDIR` of the login. They take no prompt.
+- [ ] A Codex thread whose folder holds the folder of the daemon gets that folder as read-only, and its `TMPDIR` is in it: the agent may not be able to write its `TMPDIR`. The start warns about such a folder (THR-041).
+- [ ] A start is refused when a folder that its sandbox could write is in or holds a folder that a different running sandboxed thread can write (two threads in the very same folder are permitted). `/tmp` itself is left out of this check: when the folder of the runner is under `/tmp`, each sandboxed agent can still write each `TMPDIR`. A folder that does not resolve is compared as it is named.
+- [ ] That check refuses also next to a Codex thread whose folder holds the folder of the daemon, though Codex gets that folder as read-only. A thread in Full access is not checked (operator's ruling of 2026-11-23): its agent can write each `TMPDIR`. This is accepted.
+- [ ] No test starts two threads through the runner to show the refusal: the tests check the rule of the seats only.
 
 ## 3. Ideas from other products
 

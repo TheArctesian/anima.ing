@@ -1,4 +1,4 @@
-//! The phases the command prints and the exit code of each ending (PRJ-039, PRJ-041, CMD-021).
+//! PRJ-039, PRJ-041, CMD-021.
 
 #[cfg(unix)]
 use std::process::Stdio;

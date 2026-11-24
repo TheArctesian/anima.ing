@@ -1,5 +1,4 @@
-//! The issue change tools refuse text over the hub's limits before any request, in fixed words
-//! (MCP-008, PRJ-028).
+//! The issue change tools and the hub's text limits (MCP-008, PRJ-028).
 
 use serde_json::json;
 

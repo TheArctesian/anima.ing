@@ -1,11 +1,7 @@
 //! A database login's password: 192 random bits as 48 hexadecimal characters.
 //!
 //! It has no `Debug`, `Display` or `Clone`, and its text is wiped when it drops (LOG-007).
-//! Hexadecimal needs no quoting in a URL.
-//!
-//! PostgreSQL is never sent the password to store. It is sent the SCRAM verifier, which is
-//! what it would store itself. So no statement holds a password, and none can reach a log,
-//! the activity view or a statistics extension, whatever their settings are.
+//! PostgreSQL is sent only the SCRAM verifier, so no statement holds a password.
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use hmac::{Hmac, KeyInit as _, Mac as _};
@@ -35,7 +31,6 @@ impl Password {
         Ok(Self::from_bytes(&bytes))
     }
 
-    /// The password that `bytes` spell in lower-case hexadecimal.
     pub(crate) fn from_bytes(bytes: &[u8; BYTES]) -> Self {
         const DIGITS: &[u8; 16] = b"0123456789abcdef";
         let mut text = Zeroizing::new(String::with_capacity(BYTES * 2));
@@ -46,13 +41,11 @@ impl Password {
         Self(text)
     }
 
-    /// A password that was read back from where this crate stored it.
     pub(crate) fn from_text(text: String) -> Self {
         Self(Zeroizing::new(text))
     }
 
-    /// The `SCRAM-SHA-256` verifier of this password with `salt` (RFC 5803), in the form
-    /// PostgreSQL keeps in `pg_authid` and takes in `CREATE ROLE ... PASSWORD`.
+    /// The `SCRAM-SHA-256` verifier of this password with `salt` (RFC 5803), as `pg_authid` keeps it.
     pub(crate) fn scram_verifier(&self, salt: &[u8; 16]) -> String {
         let salted = Zeroizing::new(salted_password(self.0.as_bytes(), salt));
         let client_key = Zeroizing::new(keyed(salted.as_slice(), b"Client Key"));
@@ -66,7 +59,7 @@ impl Password {
         )
     }
 
-    /// The text for the URL file and the sign-in. Never log it.
+    /// The text for the URL file and the sign-in; never log it (LOG-007).
     #[must_use]
     pub fn expose(&self) -> &str {
         &self.0

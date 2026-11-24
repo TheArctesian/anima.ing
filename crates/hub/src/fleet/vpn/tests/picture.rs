@@ -10,7 +10,6 @@ use crate::fleet::vpn::{
     picture::{carry, router_devices},
 };
 
-/// The idle fixture with the router's path fields set.
 fn router_with(active: bool, cur_addr: &str, peer_relay: &str, online: bool) -> Picture {
     let mut raw = json("status-idle.json");
     let router = peer_mut(&mut raw, "router-home");
@@ -312,7 +311,6 @@ fn vpn_009_nodes_are_in_name_order_and_sites_in_site_order() {
     );
 }
 
-/// The idle fixture with the router's routes and the mac's tags and routes replaced.
 fn home_served_by(router: &[&str], mac_tags: &[&str], mac_routes: &[&str]) -> Picture {
     let mut raw = json("status-idle.json");
     peer_mut(&mut raw, "router-home")["PrimaryRoutes"] = serde_json::json!(router);

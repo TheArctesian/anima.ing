@@ -15,6 +15,7 @@ mod codex;
 pub mod control;
 pub mod drive;
 pub mod files;
+pub mod git;
 pub mod marks;
 pub mod project;
 #[cfg(test)]
@@ -165,6 +166,8 @@ pub struct ThreadReader {
     kept: usize,
     /// The tool calls that have no result yet, by the ID of the call.
     open: HashSet<String>,
+    /// The open scripts of `exec` of a Codex rollout.
+    scripts: codex::Scripts,
 }
 
 impl ThreadReader {
@@ -177,6 +180,7 @@ impl ThreadReader {
             named: None,
             kept: 0,
             open: HashSet::new(),
+            scripts: codex::Scripts::default(),
         }
     }
 
@@ -292,6 +296,26 @@ impl ThreadReader {
         {
             tool.output = Some(held(output, MAX_OUTPUT));
             tool.failed = failed;
+        }
+    }
+
+    /// Adds more output to the call `call`, which already has a result: a command that still
+    /// ran when its first output came. A call that is not kept gets nothing.
+    fn more(&mut self, call: &str, output: &str, failed: bool) {
+        if self.open.remove(call) && self.open.is_empty() {
+            self.thread.tail = Tail::Open;
+        }
+        let Some(&index) = self.calls.get(call) else {
+            return;
+        };
+        if let Some(Entry {
+            kind: EntryKind::Tool(tool),
+            ..
+        }) = self.thread.entries.get_mut(index)
+        {
+            let before = tool.output.take().unwrap_or_default();
+            tool.output = Some(held(&format!("{before}{output}"), MAX_OUTPUT));
+            tool.failed |= failed;
         }
     }
 

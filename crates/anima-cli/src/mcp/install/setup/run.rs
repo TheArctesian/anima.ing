@@ -1,73 +1,59 @@
-//! Runs an agent's own program (MCP-035): fixed arguments, no shell, the home folder, a time limit.
+//! Runs an agent's own program (MCP-035): fixed arguments, no shell, the home folder, the folders
+//! of `PATH` that the check accepted, a time limit.
 
-use std::io::Read as _;
-use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
+use std::path::PathBuf;
+use std::process::Command;
+use std::time::Duration;
 
+use super::super::access::Others;
+use super::super::limited;
 use super::Here;
 use super::program::{Found, fixed_program};
 
-/// The longest time an agent's own program may take; it is then stopped and counts as failed.
 const RUN_LIMIT: Duration = Duration::from_secs(20);
 
-/// What an agent's own program did: its exit and what it wrote, or why it did not run.
+const OUTPUT_LIMIT: u64 = 1 << 20;
+
 pub(super) enum Ran {
     Done {
         success: bool,
         stdout: Vec<u8>,
     },
-    /// It ran past [`RUN_LIMIT`] and was stopped, or could not be started.
     Failed,
-    /// A different user can replace it (MCP-033): it is not run.
-    Replaceable,
+    /// A different user can replace it, so it is not run (MCP-033).
+    Replaceable {
+        program: PathBuf,
+        others: Others,
+    },
     Missing,
 }
 
-/// Runs an agent's own program with fixed arguments and no shell (MCP-035), for at most
-/// [`RUN_LIMIT`].
 pub(super) fn run(here: &Here, name: &str, arguments: &[String]) -> Ran {
     let program = match fixed_program(here, name) {
         Found::Fixed(path) => path,
-        Found::Replaceable => return Ran::Replaceable,
+        Found::Replaceable { program, others } => return Ran::Replaceable { program, others },
         Found::Missing => return Ran::Missing,
     };
-    // In the home folder: an agent must not read the project configuration of the folder the
-    // person happens to be in.
-    let Ok(mut child) = Command::new(program)
-        .args(arguments)
-        .current_dir(&here.home)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-    else {
+    // Only the checked `PATH` folders, so `env node` finds the checked `node` whatever the caller's `PATH`.
+    #[cfg(unix)]
+    let folders = super::script::folders(here);
+    #[cfg(windows)]
+    let folders = here.path.clone();
+    // With no folder, the system would look in the folder the program is in at the time.
+    if folders.is_empty() {
+        return Ran::Failed;
+    }
+    let Ok(path) = std::env::join_paths(&folders) else {
         return Ran::Failed;
     };
-    let mut stdout = child.stdout.take();
-    let reader = std::thread::spawn(move || {
-        let mut out = Vec::new();
-        if let Some(stdout) = stdout.as_mut() {
-            let _ = stdout.take(1 << 20).read_to_end(&mut out);
-        }
-        out
-    });
-    let start = Instant::now();
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break Some(status),
-            Ok(None) if start.elapsed() < RUN_LIMIT => {
-                std::thread::sleep(Duration::from_millis(50));
-            }
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
-                break None;
-            }
-        }
-    };
-    let stdout = reader.join().unwrap_or_default();
-    status.map_or(Ran::Failed, |status| Ran::Done {
-        success: status.success(),
-        stdout,
+    let mut command = Command::new(program);
+    // The home folder, so an agent reads no project configuration of the person's current folder.
+    command
+        .args(arguments)
+        .current_dir(&here.home)
+        .env("PATH", path);
+    limited::run(command, RUN_LIMIT, OUTPUT_LIMIT).map_or(Ran::Failed, |output| Ran::Done {
+        success: output.success,
+        stdout: output.stdout,
     })
 }

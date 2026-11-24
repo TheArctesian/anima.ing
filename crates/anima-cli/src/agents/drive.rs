@@ -1,25 +1,43 @@
-//! `anima agents start`, `send`, `approve`, `interrupt`, `stop`, `running`, `watch` and
-//! `raise-limit`: the person drives the agent threads of this computer through the runner of
-//! the daemon (TH13, THR-030, THR-049, THR-114). No MCP tool starts a thread or answers a
-//! request: an answer is a trust decision, and a start waits for the count of THR-114
-//! (Section 7 of cli-mcp-plan.md).
+//! The agent threads of this computer, through the daemon's runner (TH13, THR-030, THR-049).
+//! No MCP tool starts a thread or answers a request: an answer is a trust decision (THR-114).
 
 use std::path::PathBuf;
 
-use agent_threads::control::{Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow};
-use agent_threads::drive::{Answer, Effort, Mode, Program};
+use agent_threads::control::{
+    Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow, WorkspaceKind,
+};
+use agent_threads::drive::{Effort, Mode, Program};
 use uuid::Uuid;
 
 use super::runner::{RunnerLink, refusal};
+
+mod approve;
+mod queue;
+mod send;
+mod set;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
 use crate::output::{Cell, Table, Tone};
+pub use approve::ApproveArgs;
+pub use queue::QueueArgs;
+pub use send::SendArgs;
+pub use set::SetArgs;
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ProgramName {
     ClaudeCode,
     Codex,
+}
+
+impl ProgramName {
+    #[must_use]
+    pub const fn program(self) -> Program {
+        match self {
+            Self::ClaudeCode => Program::ClaudeCode,
+            Self::Codex => Program::Codex,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
@@ -32,6 +50,17 @@ pub enum ModeName {
     Ask,
     /// The program plans and changes nothing until you accept its plan (Claude Code only).
     Plan,
+}
+
+impl ModeName {
+    const fn mode(self) -> Mode {
+        match self {
+            Self::FullAccess => Mode::FullAccess,
+            Self::AcceptEdits => Mode::AcceptEdits,
+            Self::Ask => Mode::Ask,
+            Self::Plan => Mode::Plan,
+        }
+    }
 }
 
 #[derive(Debug, clap::Args)]
@@ -47,35 +76,22 @@ pub struct StartArgs {
     model: Option<String>,
     #[arg(long, value_parser = parse_effort)]
     effort: Option<Effort>,
+    /// A speed of the model other than the standard one, from `anima agents models`.
+    #[arg(long)]
+    speed: Option<String>,
     /// A different copy of the program than the first on the PATH of your login, such as the
     /// copy of an application. The runner takes only a copy that it finds itself.
     #[arg(long)]
     program_path: Option<PathBuf>,
+    /// Run the thread in a new worktree of its own of the repository at `--folder`, on a new
+    /// branch; your checkout does not change (TH116).
+    #[arg(long)]
+    worktree: bool,
+    /// The branch or commit that the worktree starts from (the current one when not named).
+    #[arg(long, requires = "worktree")]
+    base: Option<String>,
     /// The first prompt.
     prompt: String,
-}
-
-#[derive(Debug, clap::Args)]
-pub struct SendArgs {
-    thread: Uuid,
-    /// The prompt: to the running turn, or as a new turn.
-    text: String,
-}
-
-#[derive(Debug, clap::Args)]
-pub struct ApproveArgs {
-    thread: Uuid,
-    /// The ID of the request, as `anima agents watch` shows it.
-    request: Uuid,
-    /// Deny, with this message to the agent.
-    #[arg(long, conflicts_with_all = ["for_session", "choose"])]
-    deny: Option<String>,
-    /// Allow, and send back the session rule at this place of the request (0 is the first).
-    #[arg(long, conflicts_with = "choose")]
-    for_session: Option<usize>,
-    /// The answer to a question, as KEY=CHOICE; once for each choice.
-    #[arg(long, value_parser = parse_choice)]
-    choose: Vec<(String, String)>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -91,13 +107,7 @@ pub struct WatchArgs {
 
 fn parse_effort(text: &str) -> Result<Effort, String> {
     serde_json::from_value(serde_json::Value::from(text))
-        .map_err(|_| "low, medium, high, xhigh or max".to_owned())
-}
-
-fn parse_choice(text: &str) -> Result<(String, String), String> {
-    text.split_once('=')
-        .map(|(key, choice)| (key.to_owned(), choice.to_owned()))
-        .ok_or_else(|| "KEY=CHOICE".to_owned())
+        .map_err(|_| "none, minimal, low, medium, high, xhigh, max or ultra".to_owned())
 }
 
 /// Gives a result that is not a refusal.
@@ -119,9 +129,7 @@ impl StartArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let mut link = RunnerLink::connect().await?;
         let folder = std::path::absolute(&self.folder).unwrap_or(self.folder);
-        // What the files of the folder make the program do by itself, before the prompt goes
-        // (THR-046, OD-THR21: honoured, with a notice). A check that fails is said and does
-        // not stop the start.
+        // A failed folder check is said and does not stop the start (THR-046, OD-THR21).
         let checked = link
             .call(Action::Folder {
                 folder: folder.clone(),
@@ -133,27 +141,25 @@ impl StartArgs {
             _ => invocation.output.message(NOT_CHECKED),
         }
         let action = Action::Start {
-            program: match self.program {
-                ProgramName::ClaudeCode => Program::ClaudeCode,
-                ProgramName::Codex => Program::Codex,
-            },
+            provider_address: None,
+            program: self.program.program(),
             folder,
-            mode: match self.mode {
-                ModeName::FullAccess => Mode::FullAccess,
-                ModeName::AcceptEdits => Mode::AcceptEdits,
-                ModeName::Ask => Mode::Ask,
-                ModeName::Plan => Mode::Plan,
-            },
+            mode: self.mode.mode(),
             model: self.model,
             effort: self.effort,
+            speed: self.speed,
             prompt: self.prompt,
             program_path: self
                 .program_path
                 .map(|path| std::path::absolute(&path).unwrap_or(path)),
+            draft: None,
+            attachments: Vec::new(),
+            worktree: self.worktree,
+            base: self.base,
         };
         loop {
             match link.call(action.clone()).await? {
-                Outcome::Started { thread } => {
+                Outcome::Started { thread, .. } => {
                     return invocation
                         .output
                         .data(&thread, |thread| one(&thread.to_string()));
@@ -182,47 +188,27 @@ fn one(text: &str) -> Table {
 /// Sends one call whose answer is only that it was done.
 async fn simple(invocation: &Invocation, action: Action, done: &str) -> Result<(), Failure> {
     let mut link = RunnerLink::connect().await?;
-    if let Outcome::Stopped { all_ended: false } = accepted(link.call(action).await?)? {
-        invocation.output.message(
-            "The program ended, but a process below it could not be proved to have ended.",
-        );
+    let stopped = match &action {
+        Action::Stop { thread } => Some(*thread),
+        _ => None,
+    };
+    if let (Outcome::Stopped { all_ended: false }, Some(thread)) =
+        (accepted(link.call(action).await?)?, stopped)
+    {
+        invocation.output.message(&not_proved(thread));
     } else {
         invocation.output.message(done);
     }
     Ok(())
 }
 
-impl SendArgs {
-    /// # Errors
-    /// [`Failure`] for a refusal of the runner.
-    pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let action = Action::Send {
-            thread: self.thread,
-            text: self.text,
-        };
-        simple(invocation, action, "Sent.").await
-    }
-}
-
-impl ApproveArgs {
-    /// # Errors
-    /// [`Failure`] for a refusal of the runner.
-    pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let answer = match (self.deny, self.for_session, self.choose.is_empty()) {
-            (Some(message), _, _) => Answer::Deny { message },
-            (None, Some(rule), _) => Answer::AllowForSession { rule },
-            (None, None, false) => Answer::Choose {
-                answers: self.choose,
-            },
-            (None, None, true) => Answer::Allow,
-        };
-        let action = Action::Answer {
-            thread: self.thread,
-            request: self.request,
-            answer,
-        };
-        simple(invocation, action, "Answered.").await
-    }
+/// What the person does when a stop could not prove that each process of the thread ended
+/// (THR-049): the holder sweeps it again at its next start; until then, the person can find what
+/// still runs by the mark of the thread.
+fn not_proved(thread: Uuid) -> String {
+    format!(
+        "The program ended, but a process below it could not be proved to have ended. The next start of the holder looks for it again. To look now: `ps axeww | grep -F AGENT_THREAD={thread} | grep -v grep` shows a process of the thread, and `kill` with its process ID ends it. On a Mac this cannot show a program signed by Apple, such as /bin/sh, because macOS hides its environment."
+    )
 }
 
 /// `anima agents interrupt`: the running turn stops; the program stays.
@@ -236,6 +222,21 @@ pub async fn interrupt(args: ThreadIdArgs, invocation: &Invocation) -> Result<()
             thread: args.thread,
         },
         "The turn stopped.",
+    )
+    .await
+}
+
+/// `anima agents compact`: Codex compacts the context of the thread (TH117).
+///
+/// # Errors
+/// [`Failure`] for a refusal of the runner.
+pub async fn compact(args: ThreadIdArgs, invocation: &Invocation) -> Result<(), Failure> {
+    simple(
+        invocation,
+        Action::Compact {
+            thread: args.thread,
+        },
+        "Codex is compacting the context of the thread.",
     )
     .await
 }
@@ -281,8 +282,7 @@ pub async fn running(invocation: &Invocation) -> Result<(), Failure> {
         return Ok(());
     };
     invocation.output.data(&threads, |threads| table(threads))?;
-    // Why a recent thread stopped, and an older holder (TH97, TH98): words the table has no
-    // room for.
+    // Stop reasons and the holder go below the table (TH97, TH98).
     let day_ago = chrono::Utc::now() - chrono::Duration::days(1);
     for row in threads.iter().filter(|row| row.started > day_ago) {
         if let (RunState::Stopped, Some(ended)) = (row.state, &row.ended) {
@@ -296,7 +296,9 @@ pub async fn running(invocation: &Invocation) -> Result<(), Failure> {
 }
 
 fn table(rows: &[ThreadRow]) -> Table {
-    let mut table = Table::new(vec!["STATE", "PROGRAM", "TITLE", "FOLDER", "THREAD"]);
+    let mut table = Table::new(vec![
+        "STATE", "PROGRAM", "TITLE", "FOLDER", "CONTEXT", "THREAD",
+    ]);
     for row in rows {
         let state = serde_json::to_value(row.state).ok();
         table.row(vec![
@@ -308,11 +310,37 @@ fn table(rows: &[ThreadRow]) -> Table {
                 row.program,
             ))),
             Cell::new(&row.title),
-            Cell::new(&row.folder.display().to_string()),
+            Cell::new(&folder_words(row)),
+            Cell::new(&context_words(row)),
             Cell::new(&row.id.to_string()),
         ]);
     }
     table
+}
+
+/// The folder of a row, with "(worktree)" when it is a linked worktree of Git (TH112).
+fn folder_words(row: &ThreadRow) -> String {
+    let folder = row.folder.display();
+    match &row.workspace {
+        Some(workspace) if workspace.kind == WorkspaceKind::Worktree => {
+            format!("{folder} (worktree)")
+        }
+        _ => folder.to_string(),
+    }
+}
+
+/// How full the context window is, as the program last said it (TH112); "-" when it did not.
+fn context_words(row: &ThreadRow) -> String {
+    match row
+        .usage
+        .as_ref()
+        .and_then(|usage| usage.context.zip(usage.window))
+    {
+        Some((context, window)) if window > 0 => {
+            format!("{}%", context.saturating_mul(100) / window)
+        }
+        _ => "-".to_owned(),
+    }
 }
 
 pub(super) const fn program_key(program: Program) -> &'static str {
@@ -347,3 +375,6 @@ pub async fn watch(args: WatchArgs, invocation: &Invocation) -> Result<(), Failu
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

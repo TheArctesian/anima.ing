@@ -1,12 +1,7 @@
 //! Typed check configuration and its stored JSON form (CHK-009).
 //!
-//! The serde form of [`CheckConfig`] is JSON with camelCase keys and an internal tag:
-//! `{"type":"tcp","port":22,"timeoutMs":5000}`. The `config` column stores it without the tag,
-//! which the `type` column holds, so it matches the fixtures. The tag values are the fixed
-//! type ids (`icmp tcp tls http dns push group docker systemd snmp tailscale_ping
-//! domain_expiry`, and the ids of later types) and never change meaning. Unknown keys are
-//! refused, so a stored form that does not match fails loudly instead of falling back to
-//! defaults. Secrets are never part of this JSON: see [`HttpSecrets`] and [`SnmpSecrets`].
+//! The `config` column stores the serde form without its tag, which the `type` column holds.
+//! Secrets are never part of this JSON: see [`HttpSecrets`] and [`SnmpSecrets`].
 
 mod http;
 mod rules;
@@ -81,7 +76,6 @@ impl CheckType {
     }
 }
 
-/// Address family an ICMP check uses.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum IpVersion {
@@ -90,7 +84,6 @@ pub enum IpVersion {
     V6,
 }
 
-/// Record type a DNS check asks for.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum DnsRecordType {
@@ -124,7 +117,6 @@ const fn warn_days() -> u32 {
     30
 }
 
-/// What a check does, with the settings of its type. Contains no secrets.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(
     tag = "type",
@@ -187,9 +179,8 @@ pub enum CheckConfig {
         #[serde(default = "network_timeout_ms")]
         timeout_ms: u32,
     },
-    /// The registration of a domain, read over RDAP: Degraded below `warn_days` days left,
-    /// Down after it expires (spec 6.4, D-29). `domain` is ASCII; the probe asks for it in
-    /// lower case.
+    /// A domain's registration over RDAP: Degraded below `warn_days` days left, Down after it
+    /// expires (spec 6.4, D-29).
     DomainExpiry {
         domain: String,
         #[serde(default = "warn_days")]
@@ -218,7 +209,6 @@ impl CheckConfig {
         }
     }
 
-    /// The time limit of one probe; DNS has none of its own and uses the network default.
     #[must_use]
     pub fn timeout(&self) -> Duration {
         let ms = match self {

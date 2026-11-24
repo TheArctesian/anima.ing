@@ -1,5 +1,3 @@
-//! The Linux readers on the machine that runs the tests: read only (MET-002).
-
 use anima_daemon::readers::{Platform, reading};
 use chrono::Utc;
 use daemon_core::points::samples;
@@ -46,6 +44,42 @@ async fn met_006_amd_cards_are_numbered_by_their_drm_card_number() {
 }
 
 #[tokio::test]
+async fn met_007_amd_uma_keeps_gpu_usage_without_advertising_dedicated_vram() {
+    let drm = tempfile::tempdir().expect("a folder");
+    for (card, carveout) in [(0, Some("0\n")), (1, Some("5\n")), (2, None)] {
+        let device = drm.path().join(format!("card{card}/device"));
+        std::fs::create_dir_all(&device).expect("device");
+        for (file, value) in [
+            ("vendor", "0x1002\n"),
+            ("gpu_busy_percent", "3\n"),
+            ("mem_info_vram_used", "515244032\n"),
+            ("mem_info_vram_total", "536870912\n"),
+        ] {
+            std::fs::write(device.join(file), value).expect("sysfs file");
+        }
+        if let Some(value) = carveout {
+            std::fs::create_dir(device.join("uma")).expect("UMA directory");
+            std::fs::write(device.join("uma/carveout"), value).expect("UMA setting");
+        }
+    }
+    let cards = anima_daemon::readers::gpu::amd_cards(drm.path()).await;
+    let announced = anima_daemon::sampling::gpu::announce(&cards);
+    assert_eq!(cards.len(), 3);
+    for card in &cards[..2] {
+        assert_eq!(card.busy_percent, Some(3.0));
+        assert_eq!(card.vram, None);
+        let samples = anima_daemon::sampling::gpu::values(std::slice::from_ref(card));
+        assert_eq!(samples.len(), 1);
+        assert_eq!(samples[0].0.kind().as_str(), "gpu_percent");
+    }
+    assert_eq!(
+        announced.iter().map(|gpu| gpu.has_vram).collect::<Vec<_>>(),
+        [false, false, true]
+    );
+    assert_eq!(cards[2].vram.unwrap().total_bytes, 536_870_912);
+}
+
+#[tokio::test]
 async fn met_027_a_linux_reading_lists_drives_and_their_counters() {
     let read = reading(Platform::Linux, Utc::now()).await;
     let Some(drives) = read.drives else {
@@ -65,7 +99,6 @@ async fn met_027_a_linux_reading_lists_drives_and_their_counters() {
 #[tokio::test]
 async fn met_032_a_linux_reading_lists_only_batteries_with_a_charge_of_0_to_100() {
     let read = reading(Platform::Linux, Utc::now()).await;
-    // A server or a container lists no battery, and one without the folder reads none.
     for battery in read.batteries.iter().flatten() {
         assert!(!battery.name.is_empty() && battery.name.len() <= 128);
         assert!(

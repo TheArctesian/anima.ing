@@ -1,6 +1,4 @@
-//! Who may get the token at a socket of the link (K8 Section 1, HMD-054): a program that listens
-//! at the path and is not the peer that the daemon expects gets no byte of a request, and on macOS
-//! no folder that the environment names gets one.
+//! Who may get the token at a socket of the link (K8 Section 1, HMD-054).
 
 use std::fs::Permissions;
 use std::os::unix::fs::PermissionsExt as _;
@@ -15,7 +13,6 @@ use daemon_core::wire::{Announcements, Batch, DaemonToken};
 use tokio::io::AsyncReadExt as _;
 use tokio::net::UnixListener;
 
-/// A program at the socket, in a folder that only this user can reach.
 pub fn listener_at_the_socket() -> (tempfile::TempDir, std::path::PathBuf, UnixListener) {
     let folder = tempfile::tempdir().expect("a folder");
     std::fs::set_permissions(folder.path(), Permissions::from_mode(0o700)).expect("mode");
@@ -24,8 +21,6 @@ pub fn listener_at_the_socket() -> (tempfile::TempDir, std::path::PathBuf, UnixL
     (folder, socket, listener)
 }
 
-/// Pushes with a token to the socket; returns the cause of the failure (`None` for an answer)
-/// and each byte that the listener got on its one connection.
 async fn push_to(listener: UnixListener, client: HubClient) -> (Option<Cause>, Vec<u8>) {
     let receiving = tokio::spawn(async move {
         let (mut stream, _) = listener.accept().await.expect("a connection");
@@ -60,8 +55,7 @@ async fn k8_1_a_listener_of_a_different_user_gets_no_byte_of_the_request() {
     assert!(got.is_empty(), "the listener got {} bytes", got.len());
 }
 
-/// The real `codesign` reads the signature of this test process, which has no Developer ID
-/// signature, as a program of the same user that listens at the path would have none.
+/// This test process has no Developer ID signature, like a foreign program of the same user.
 #[cfg(target_os = "macos")]
 #[tokio::test]
 async fn k8_1_a_signed_daemon_sends_nothing_to_a_program_of_its_user_without_the_signature() {
@@ -77,8 +71,7 @@ async fn k8_1_a_signed_daemon_sends_nothing_to_a_program_of_its_user_without_the
     assert!(got.is_empty(), "the listener got {} bytes", got.len());
 }
 
-/// R-317: an old enrolment that did not move asks the socket of the move again, and
-/// its wait ends once a program there passes the check.
+/// R-317.
 #[tokio::test]
 async fn k8_1_the_wait_of_an_old_enrolment_ends_when_the_socket_appears_and_passes() {
     let folder = tempfile::tempdir().expect("a folder");
@@ -98,8 +91,7 @@ async fn k8_1_the_wait_of_an_old_enrolment_ends_when_the_socket_appears_and_pass
         .expect("the wait ends");
 }
 
-/// R-317: a program at the socket that fails the check never ends the wait, so the
-/// daemon does not move to it and sends it nothing.
+/// R-317.
 #[tokio::test]
 async fn k8_1_the_wait_of_an_old_enrolment_goes_on_while_the_peer_fails_the_check() {
     let (_folder, socket, _listener) = listener_at_the_socket();
@@ -112,7 +104,7 @@ async fn k8_1_the_wait_of_an_old_enrolment_goes_on_while_the_peer_fails_the_chec
     assert!(waiting.is_err(), "the wait ended for a peer that fails");
 }
 
-/// R-317: the move of an old enrolment asks only this check, which writes nothing.
+/// R-317.
 #[tokio::test]
 async fn k8_1_the_check_before_a_move_admits_the_peer_of_this_user_and_no_other() {
     let (_folder, socket, listener) = listener_at_the_socket();

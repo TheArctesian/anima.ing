@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { shownTitle } from '$lib/agent-threads/thread';
   import CodeIcon from '../icons/CodeIcon.svelte';
   import { shortAge } from '../status/status';
   import type { InboxRow } from './inbox';
@@ -46,7 +47,7 @@
         }}
       >
         <CodeIcon name="folder" />
-        <span class="title">{item.row.title ?? 'Untitled thread'}</span>
+        <span class="title">{shownTitle(item.row)}</span>
         <span class="age">{item.since === null ? '' : shortAge(item.since.getTime(), now.getTime())}</span>
       </li>
     {/each}

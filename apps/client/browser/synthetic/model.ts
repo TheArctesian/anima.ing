@@ -36,7 +36,6 @@ interface Page {
   readonly first?: number | null;
 }
 
-/** One page of a Relay-style connection; the fixtures are small, so there is never a next page. */
 export function connection(nodes: readonly unknown[], page: Page = {}): Row {
   const shown = page.first == null ? nodes : nodes.slice(0, page.first);
   return {
@@ -46,7 +45,6 @@ export function connection(nodes: readonly unknown[], page: Page = {}): Row {
   };
 }
 
-/** A fixture row may give `status` and `message`, for the pictures of a device that is not up; each other row is up. */
 function heartbeats(row: Row = {}): Row[] {
   const at = (minute: number): string => `2026-11-06T10:0${String(minute)}:00Z`;
   const status = row.status ?? 'UP';
@@ -77,6 +75,7 @@ const CHANNEL_SETTINGS_TYPES: Record<string, string> = {
   NTFY: 'NtfySettings',
   EMAIL: 'EmailSettings',
   APPRISE: 'AppriseSettings',
+  MOBILE: 'WebhookSettings',
 };
 
 /** A notification channel with its settings typed by kind and its latest delivery, if any (NOT-002). */
@@ -145,7 +144,7 @@ function eventsOf(device: Row | undefined, lines: readonly EventLine[], first: n
   }));
 }
 
-/** A few events of the first device, so the logs panel has rows; every host is an example host (CON-003). */
+/** Every host is an example host (CON-003). */
 export function eventRows(state: HubState): Row[] {
   return eventsOf(state.fixtures.devices[0], [
     ['INFO', 'CHECK', 'Check recovered'],
@@ -154,11 +153,7 @@ export function eventRows(state: HubState): Row[] {
   ], 1);
 }
 
-/**
- * The events of one device, as the hub answers `events(filter: { deviceId })` for the Logs tab of its page (LOG-009).
- * Another device than the first has two events of its own. They are left out of the whole log: there each device name
- * is a link, and the specs find each device's link once on the devices page.
- */
+/** LOG-009. Other devices' events stay out of the whole log, where the specs find each device's link once. */
 export function deviceEventRows(state: HubState, deviceId: string): Row[] {
   const index = state.fixtures.devices.findIndex((device) => device.id === deviceId);
   if (index === 0) return eventRows(state);

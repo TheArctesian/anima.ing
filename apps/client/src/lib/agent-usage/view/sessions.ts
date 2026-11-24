@@ -1,7 +1,7 @@
 import type { SessionRow } from '../api';
 import { shortDay } from './shape';
 
-// What the list of sessions draws (AIS-025, AIS-026). Pure: the same rows and time give the same words.
+// AIS-025, AIS-026. Pure: the same rows and time give the same words.
 
 const MINUTE_MS = 60_000;
 
@@ -28,7 +28,7 @@ export function spanText(startedAt: string, lastUseAt: string): string {
 /** A session is recent when its last use is at most 30 minutes before now: two count periods of the daemon (AIS-026). */
 const RECENT_MS = 30 * MINUTE_MS;
 
-/** Whether `row` was used in the 30 minutes before `now`. Worked out here, so a page left open does not keep a stale mark. */
+/** Worked out here, so a page left open keeps no stale mark. */
 export function isRecent(row: Pick<SessionRow, 'lastUseAt'>, now: number): boolean {
   return now - Date.parse(row.lastUseAt) <= RECENT_MS;
 }

@@ -26,11 +26,9 @@
   ].map((menu) => ({ ...menu, trigger: triggerAt(menu.prompt, menu.prompt.length) }));
   let choice = $state(pickerChoice);
   let pickerOpen = $state(false);
-  // Each menu hangs over a stand-in for the composer's card, as it does over the real one.
   const stands = $state<Record<string, HTMLElement | undefined>>({});
 </script>
 
-<!-- Stage 4 of the T3 Code copy: the composer in each state, for the gallery. The engine here is made up. -->
 <div class="page">
   <PageHeader title="Code kit: composer" detail="T3 Code's composer in Anima's skin" eyebrow={{ text: 'Stage 4', icon: 'carbon:code' }} />
 
@@ -38,6 +36,7 @@
     <div class="lane" data-kit="rest"><Card engine={new SceneEngine()} title="Tighten the gate" /></div>
     <div class="lane" data-kit="rich"><Card engine={new SceneEngine()} start={RICH} /></div>
     <div class="lane" data-kit="failed"><Card engine={new SceneEngine('idle', [], 'The runner did not answer. Your message is still here.')} start="Run the gates" /></div>
+    <div class="lane" data-kit="new-thread"><Card engine={new SceneEngine()} contextStrip /></div>
   </Section>
 
   <Section title="While a turn runs" icon="carbon:activity">
@@ -86,6 +85,7 @@
     <div class="lane" data-kit="real-idle"><Composer row={{ ...row, id: 'r-idle' }} onSend={never} onInterrupt={never} onStop={never} /></div>
     <div class="lane" data-kit="real-running"><Composer row={{ ...row, id: 'r-running', state: 'working' }} onSend={never} onInterrupt={never} onStop={never} /></div>
     <div class="lane" data-kit="real-ended"><Composer row={{ ...row, id: 'r-ended', state: 'stopped', ended: 'The program was closed.' }} onSend={never} onInterrupt={never} onStop={never} /></div>
+    <div class="lane" data-kit="real-set"><Composer row={{ ...row, id: 'r-set' }} onSend={never} onInterrupt={never} onStop={never} onSet={never} /></div>
     <div class="lane" data-kit="real-read"><Composer row={null} onSend={never} onInterrupt={never} onStop={never} /></div>
   </Section>
 </div>

@@ -51,11 +51,11 @@
           onFavourite(model, !model.favourite);
         }}
       >
-        <CodeIcon name="pin" />
+        <CodeIcon name="star" />
       </button>
     </Tooltip>
   {:else if model.favourite}
-    <span class="mark on" class:quiet={quietMark}><CodeIcon name="pin" /></span>
+    <span class="mark on" class:quiet={quietMark}><CodeIcon name="star" /></span>
   {/if}
   {#if jump !== undefined}<Kbd keys={jump} />{/if}
 </span>
@@ -66,13 +66,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  /* The lit row shows its whole name, on more lines: a keyboard has no hover to read a cut name by. */
-  :global([role='option'].lit) .name {
-    overflow: visible;
-    overflow-wrap: anywhere;
-    white-space: normal;
   }
 
   .check,

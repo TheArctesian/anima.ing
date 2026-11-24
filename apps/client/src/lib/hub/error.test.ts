@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MALFORMED, parseResponse } from './error';
+import { MALFORMED, needsNewerHub, parseResponse, UNSERVED } from './error';
 
 function failure(error: unknown): unknown {
   return { data: null, errors: [error] };
@@ -26,9 +26,18 @@ describe('parseResponse', () => {
     expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'VALIDATION', message: 'Check the form.', fields: [] } });
   });
 
-  it('an error without a K7 code is INTERNAL with its message', () => {
-    const body = { errors: [{ message: 'Unknown field "nme" on type "Device".' }] };
-    expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message: 'Unknown field "nme" on type "Device".' } });
+  it.each(['The query is too deep.', 'Unknown type "OtherInput"'])('an unrelated uncoded error stays INTERNAL: %s', (message) => {
+    const body = { errors: [{ message }] };
+    expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message } });
+  });
+
+  it.each([
+    'Unknown field "projectGroups" on type "Query".',
+    'Invalid value for argument "input", unknown field "includeEmpty" of type "ProjectGroupImportInput"',
+  ])('a field the hub does not know is unserved: %s', (message) => {
+    const answer = parseResponse({ errors: [{ message }] });
+    expect(answer).toEqual({ ok: false, error: UNSERVED });
+    expect(!answer.ok && needsNewerHub(answer.error)).toBe(true);
   });
 
   it('an unknown code is INTERNAL', () => {

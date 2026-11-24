@@ -1,5 +1,4 @@
-//! The audit targets of the sources engine and Projects: stored with their kind and read back
-//! (SRC-003, PRO-001, PRJ-028).
+//! The audit targets of the sources engine and Projects (SRC-003, PRO-001, PRJ-028).
 
 use sqlx::{PgPool, Row as _};
 use uuid::Uuid;
@@ -7,7 +6,7 @@ use uuid::Uuid;
 use super::{audit, day, new_audit};
 use crate::{
     fleet::events::AuditTarget,
-    ids::{ProjectId, RepositoryId, SourceAccountId},
+    ids::{ProjectGroupId, ProjectId, RepositoryId, SourceAccountId},
 };
 
 #[sqlx::test(migrations = "./migrations")]
@@ -18,10 +17,12 @@ async fn src_003_audit_entries_for_source_account_project_and_repository_are_sto
     let account = SourceAccountId::from(Uuid::now_v7());
     let project = ProjectId::from(Uuid::now_v7());
     let repository = RepositoryId::from(Uuid::now_v7());
+    let group = ProjectGroupId::from(Uuid::now_v7());
     for (target, kind) in [
         (AuditTarget::SourceAccount(account), "source_account"),
         (AuditTarget::Project(project), "project"),
         (AuditTarget::Repository(repository), "repository"),
+        (AuditTarget::ProjectGroup(group), "project_group"),
     ] {
         let mut entry = new_audit(serde_json::json!({ "label": "work" }));
         entry.target = target;

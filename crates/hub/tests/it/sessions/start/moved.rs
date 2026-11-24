@@ -1,7 +1,4 @@
-//! `startSession` after the device's host changed (SEC-011): a stored credential entered for
-//! another host refuses the start with `CONFLICT` and one Warning event, and nothing starts;
-//! entering the credential again, or changing the host back, lets it start; an unchanged host
-//! is not refused, whatever its letter case.
+//! A credential entered for another host refuses `startSession` (SEC-011).
 
 use anima_hub::{
     fleet::{

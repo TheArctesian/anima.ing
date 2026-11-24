@@ -1,5 +1,4 @@
-//! The unpack of a `.zip` (R-329) with the rules of the `.tar.gz`, against hostile
-//! archives made in the test.
+//! R-329.
 
 use std::io::{Seek as _, Write as _};
 
@@ -11,11 +10,10 @@ use zip::write::SimpleFileOptions;
 
 use super::kit::{FAKE_RUNTIME, PROGRAM, entry, folders, release};
 
-/// One entry of a test zip.
 enum Part<'a> {
     File(&'a str, u32, &'a [u8]),
     Folder(&'a str),
-    Link(&'a str),
+    Link(&'a str, &'a str),
 }
 
 fn zip_of(parts: &[Part<'_>], method: zip::CompressionMethod) -> std::fs::File {
@@ -31,9 +29,7 @@ fn zip_of(parts: &[Part<'_>], method: zip::CompressionMethod) -> std::fs::File {
                     zip.write_all(bytes).expect("bytes");
                 }
                 Part::Folder(name) => zip.add_directory(*name, options).expect("a folder"),
-                Part::Link(name) => zip
-                    .add_symlink(*name, "/etc/passwd", options)
-                    .expect("a link"),
+                Part::Link(name, to) => zip.add_symlink(*name, *to, options).expect("a link"),
             }
         }
         zip.finish().expect("finished");
@@ -82,9 +78,30 @@ fn a_whole_zip_is_installed_with_plain_modes() {
 }
 
 #[test]
+fn a_link_in_a_zip_is_installed_as_a_copy_of_its_file() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let root = tempfile::tempdir().expect("a folder");
+    let target = target(root.path());
+    let file = stored(&[
+        Part::Link("lib/libllama.so", "../bin/libllama.so.1"),
+        Part::File(PROGRAM, 0o755, FAKE_RUNTIME.as_bytes()),
+        Part::File("bin/libllama.so.1", 0o755, b"llama"),
+    ]);
+    place_archive(file, &target).expect("installed");
+    let copy = target.folders.release(&release()).join("lib/libllama.so");
+    let meta = std::fs::symlink_metadata(&copy).expect("a file");
+    assert!(meta.file_type().is_file());
+    assert_eq!(meta.permissions().mode() & 0o7777, 0o755);
+    assert_eq!(std::fs::read(&copy).expect("read"), b"llama");
+}
+
+#[test]
 fn a_hostile_zip_is_refused_and_leaves_nothing() {
     let cases: [&[Part<'_>]; 5] = [
-        &[Part::File(PROGRAM, 0o755, b"x"), Part::Link("bin/link")],
+        &[
+            Part::File(PROGRAM, 0o755, b"x"),
+            Part::Link("bin/link", "/etc/passwd"),
+        ],
         &[
             Part::File(PROGRAM, 0o755, b"x"),
             Part::File("../escape", 0o644, b"y"),

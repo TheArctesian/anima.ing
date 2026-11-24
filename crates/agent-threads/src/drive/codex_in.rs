@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 
 use super::DriveError;
 use super::launch::{Effort, Mode, Model};
+use super::prompt::{Attached, Prompt};
 use super::request::{Answer, ProgramRequestId, Request, RequestKind};
 
 /// The closed list of the Codex methods that Anima may call (THR-021, R-290).
@@ -27,12 +28,16 @@ pub enum CodexMethod {
     AccountRateLimitsRead,
     /// The models of the picker (TH104).
     ModelList,
+    /// The skills of the folder of a thread, for the `$` list (TH117).
+    SkillsList,
+    /// The person asks Codex to compact the context of a thread (TH117).
+    ThreadCompactStart,
     /// Only when the person asks for the sign-in at the client of the same computer.
     AccountLoginStart,
 }
 
 impl CodexMethod {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 14] = [
         Self::Initialize,
         Self::Initialized,
         Self::ThreadStart,
@@ -44,6 +49,8 @@ impl CodexMethod {
         Self::AccountRead,
         Self::AccountRateLimitsRead,
         Self::ModelList,
+        Self::SkillsList,
+        Self::ThreadCompactStart,
         Self::AccountLoginStart,
     ];
 
@@ -61,6 +68,8 @@ impl CodexMethod {
             Self::AccountRead => "account/read",
             Self::AccountRateLimitsRead => "account/rateLimits/read",
             Self::ModelList => "model/list",
+            Self::SkillsList => "skills/list",
+            Self::ThreadCompactStart => "thread/compact/start",
             Self::AccountLoginStart => "account/login/start",
         }
     }
@@ -93,51 +102,73 @@ impl CodexInput {
         json!({"jsonrpc": "2.0", "method": CodexMethod::Initialized.name()}).to_string()
     }
 
-    /// A new thread in `folder`; the mode goes here, so the project file cannot change it
+    /// A new thread in its folder; the mode goes here, so the project file cannot change it
     /// (TH18 3.3).
     #[must_use]
-    pub fn thread_start(id: i64, folder: &Path, mode: Mode, model: Option<&Model>) -> String {
+    pub fn thread_start(
+        id: i64,
+        place: CodexPlace<'_>,
+        mode: Mode,
+        model: Option<&Model>,
+    ) -> String {
         call(
             id,
             CodexMethod::ThreadStart,
-            &thread_params(None, folder, mode, model),
+            &thread_params(None, place, mode, model),
         )
     }
 
+    /// The profile of THR-041 was measured on `thread/start` only, so these two never send it.
     #[must_use]
     pub fn thread_resume(id: i64, thread: &str, folder: &Path, mode: Mode) -> String {
+        let place = CodexPlace { folder, kept: None };
         call(
             id,
             CodexMethod::ThreadResume,
-            &thread_params(Some(thread), folder, mode, None),
+            &thread_params(Some(thread), place, mode, None),
         )
     }
 
     #[must_use]
     pub fn thread_fork(id: i64, thread: &str, folder: &Path, mode: Mode) -> String {
+        let place = CodexPlace { folder, kept: None };
         call(
             id,
             CodexMethod::ThreadFork,
-            &thread_params(Some(thread), folder, mode, None),
+            &thread_params(Some(thread), place, mode, None),
         )
     }
 
     #[must_use]
-    pub fn turn_start(id: i64, thread: &str, text: &str, effort: Option<Effort>) -> String {
-        let mut params = json!({"threadId": thread, "input": [{"type": "text", "text": text}]});
-        if let Some(effort) = effort {
+    pub fn turn_start(id: i64, thread: &str, prompt: &Prompt, turn: &TurnSettings<'_>) -> String {
+        let mut params = json!({"threadId": thread, "input": input(prompt)});
+        if let Some(effort) = turn.effort {
             params["effort"] = Value::from(effort.as_str());
+        }
+        if let Some(model) = turn.model {
+            params["model"] = Value::from(model.as_str());
+        }
+        if let Some(speed) = turn.speed {
+            params["serviceTier"] = Value::from(speed);
+        }
+        if let Some(mode) = turn.mode {
+            let (sandbox, approval) = mode.codex();
+            params["approvalPolicy"] = Value::from(approval);
+            // A policy of a turn takes the place of the profile of the thread.
+            if !(turn.keeps && mode.folder_sandbox()) {
+                params["sandboxPolicy"] = sandbox_policy(sandbox);
+            }
         }
         call(id, CodexMethod::TurnStart, &params)
     }
 
     /// A message into the running turn.
     #[must_use]
-    pub fn turn_steer(id: i64, turn: CodexTurn<'_>, text: &str) -> String {
+    pub fn turn_steer(id: i64, turn: CodexTurn<'_>, prompt: &Prompt) -> String {
         let params = json!({
             "threadId": turn.thread,
             "expectedTurnId": turn.turn,
-            "input": [{"type": "text", "text": text}],
+            "input": input(prompt),
         });
         call(id, CodexMethod::TurnSteer, &params)
     }
@@ -169,6 +200,24 @@ impl CodexInput {
     #[must_use]
     pub fn model_list(id: i64) -> String {
         call(id, CodexMethod::ModelList, &json!({"includeHidden": false}))
+    }
+
+    /// The skills that Codex finds for `folder` (TH117). It reads them again from disk, so that a
+    /// skill that was added since the last list is in it.
+    #[must_use]
+    pub fn skills_list(id: i64, folder: &Path) -> String {
+        let params = json!({"cwds": [folder.to_string_lossy()], "forceReload": true});
+        call(id, CodexMethod::SkillsList, &params)
+    }
+
+    /// Compacts the context of the thread (TH117): Codex says it with a `contextCompacted` item.
+    #[must_use]
+    pub fn thread_compact(id: i64, thread: &str) -> String {
+        call(
+            id,
+            CodexMethod::ThreadCompactStart,
+            &json!({"threadId": thread}),
+        )
     }
 
     /// The reply to a server request. "Allow for the session" sends back one decision that the
@@ -211,14 +260,86 @@ fn call(id: i64, method: CodexMethod, params: &Value) -> String {
     json!({"jsonrpc": "2.0", "id": id, "method": method.name(), "params": params}).to_string()
 }
 
-fn thread_params(thread: Option<&str>, folder: &Path, mode: Mode, model: Option<&Model>) -> Value {
+/// What a turn changes of its thread from that turn on (TH110): `None` keeps what the thread has.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TurnSettings<'a> {
+    pub model: Option<&'a Model>,
+    pub effort: Option<Effort>,
+    /// A service tier of the model, or `default` for the standard one (TH117).
+    pub speed: Option<&'a str>,
+    pub mode: Option<Mode>,
+    /// The thread has the profile that keeps a folder read-only (THR-041): a mode in the sandbox
+    /// of the folder goes with its approvals only, so that the profile stays.
+    pub keeps: bool,
+}
+
+/// Where a thread of Codex works: its folder, and the folder in it that its sandbox keeps
+/// read-only, when the folder holds the folder of Anima (THR-041).
+#[derive(Clone, Copy, Debug)]
+pub struct CodexPlace<'a> {
+    pub folder: &'a Path,
+    pub kept: Option<&'a KeptFolder>,
+}
+
+/// A folder that the sandbox of a Codex thread keeps read-only, with the name of the profile of
+/// permissions that does it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KeptFolder {
+    pub folder: std::path::PathBuf,
+    profile: String,
+}
+
+impl KeptFolder {
+    /// The profile is named for the thread, so that a profile of the same name in a file of
+    /// configuration, written before the start, cannot add to it.
+    #[must_use]
+    pub fn new(folder: std::path::PathBuf, thread: uuid::Uuid) -> Self {
+        Self {
+            folder,
+            profile: format!("anima-keeps-{}", thread.simple()),
+        }
+    }
+}
+
+/// The `sandboxPolicy` of a `turn/start` for the `sandbox` of a `thread/start` (Codex 0.170;
+/// `readOnly` was measured on 2026-11-21).
+fn sandbox_policy(sandbox: &str) -> Value {
+    let kind = match sandbox {
+        "danger-full-access" => "dangerFullAccess",
+        "workspace-write" => "workspaceWrite",
+        _ => "readOnly",
+    };
+    json!({"type": kind})
+}
+
+fn thread_params(
+    thread: Option<&str>,
+    place: CodexPlace<'_>,
+    mode: Mode,
+    model: Option<&Model>,
+) -> Value {
     let (sandbox, approval) = mode.codex();
     let mut params = json!({
-        "cwd": folder.to_string_lossy(),
+        "cwd": place.folder.to_string_lossy(),
         "sandbox": sandbox,
         "approvalPolicy": approval,
         "approvalsReviewer": "user",
     });
+    if let Some(kept) = place.kept.filter(|_| mode.folder_sandbox()) {
+        // The sandbox of the folder, with the folder of Anima read-only: a profile that Codex
+        // takes only when the start names no `sandbox` (Codex 0.170, measured 2026-11-22). It wins
+        // over `sandbox_mode` and `default_permissions` in the files of the user and the project.
+        if let Some(fields) = params.as_object_mut() {
+            fields.remove("sandbox");
+        }
+        params["config"] = json!({
+            "default_permissions": kept.profile,
+            "permissions": {kept.profile.as_str(): {
+                "extends": ":workspace",
+                "filesystem": {kept.folder.to_string_lossy(): "read"},
+            }},
+        });
+    }
     if let Some(thread) = thread {
         params["threadId"] = Value::from(thread);
         params["excludeTurns"] = Value::from(true);
@@ -227,4 +348,26 @@ fn thread_params(thread: Option<&str>, folder: &Path, mode: Mode, model: Option<
         params["model"] = Value::from(model.as_str());
     }
     params
+}
+
+/// The input of a turn (TH111): the words, with the path of each file that is not an image, then
+/// each image as `localImage`, which Codex reads itself (measured on 0.170, 2026-11-21).
+fn input(prompt: &Prompt) -> Value {
+    let is_image = |kind: &Attached| matches!(kind, Attached::Image { .. });
+    let words = prompt.words(|file| !is_image(&file.kind));
+    // The skills that the person chose go first, as Codex puts a `$skill` of its own composer.
+    let mut input: Vec<Value> = prompt
+        .skills
+        .iter()
+        .map(|skill| json!({"type": "skill", "name": skill.name, "path": skill.path}))
+        .collect();
+    input.push(json!({"type": "text", "text": words}));
+    for file in prompt
+        .attachments
+        .iter()
+        .filter(|file| is_image(&file.kind))
+    {
+        input.push(json!({"type": "localImage", "path": file.path}));
+    }
+    Value::Array(input)
 }

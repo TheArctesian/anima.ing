@@ -1,5 +1,4 @@
-//! Decides which file the unit goes to and which commands start it (MET-019, D-10): pure, from
-//! the platform, the user and the environment.
+//! Decides which file the unit goes to and which commands start it (MET-019, D-10).
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -8,22 +7,18 @@ use super::render::Unit;
 use super::step::Step;
 use crate::readers::Platform;
 
-/// Whose unit: the operator's own, or the whole computer's (Linux, needs root).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Target {
     User,
     System,
 }
 
-/// The account the system unit runs as; the operator makes it (the unit says `User=` this).
+/// The operator makes this account; the system unit runs as it.
 pub(super) const ACCOUNT: &str = "anima-daemon";
 
-/// The system unit's state folder, which holds the token (`ANIMA_DAEMON_HOME` in the unit).
 pub(crate) const SYSTEM_HOME: &str = "/var/lib/anima-daemon";
 
-/// The pauses before each further try of `launchctl bootstrap`: right after `bootout`, or after
-/// the old daemon was just ended, launchd answers EIO (5) for some seconds while it still takes
-/// the old service out (seen twice in a row on 2026-11-21). Six tries over 15 s in all.
+/// After a `bootout`, launchd answers EIO for some seconds while it takes the old service out.
 const BOOTSTRAP_RETRIES: &[Duration] = &[
     Duration::from_secs(1),
     Duration::from_secs(2),
@@ -32,8 +27,7 @@ const BOOTSTRAP_RETRIES: &[Duration] = &[
     Duration::from_secs(5),
 ];
 
-/// What `install` does: write `contents of unit` as `file`, then run `steps` in order. `home` is
-/// the daemon folder the started daemon finds: the unit sets no `ANIMA_DAEMON_HOME` for the user.
+/// `home` is the daemon folder the started daemon finds: the user unit sets no `ANIMA_DAEMON_HOME`.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Plan {
     pub unit: Unit,
@@ -54,14 +48,10 @@ pub enum PlanError {
     NoHome,
 }
 
-/// The name of the program before R-126. `install` takes its unit out, so that one machine
-/// never runs the old program beside the new one.
+/// The program before R-126, whose unit `install` takes out.
 const OLD_UNIT: &str = "anima-agent.service";
 const OLD_LABEL: &str = "ing.anima.agent";
 
-/// Stops and disables the unit of the old program and deletes its file. Each step may fail:
-/// on a machine that never had it, and when the old unit is slow to stop. Only the unit of
-/// the scope of this install is taken out: a user install cannot stop a system unit.
 fn retire_old(stop: Step, file: &std::path::Path) -> Vec<Step> {
     let mut stop = stop;
     stop.may_fail = true;
@@ -81,8 +71,7 @@ fn retire_old_systemd(user: bool, file: &std::path::Path) -> Vec<Step> {
     retire_old(stop, file)
 }
 
-/// `systemctl [--user]` reload, enable, then restart: `restart` starts a stopped unit and
-/// restarts a running one, so an upgrade (a new binary, then `install`) runs the new binary.
+/// `restart` starts a stopped unit and restarts a running one, so an upgrade runs the new binary.
 fn systemctl(user: bool) -> Vec<Step> {
     let scope: &[&str] = if user { &["--user"] } else { &[] };
     ["daemon-reload", "enable", "restart"]
@@ -98,10 +87,6 @@ fn systemctl(user: bool) -> Vec<Step> {
         .collect()
 }
 
-/// The plan for `target` on `platform`, run by user `uid`; `env` looks up environment variables.
-///
-/// # Errors
-/// [`PlanError`] for `--system` on macOS or without root, and for no `HOME`.
 pub(super) fn plan(
     target: Target,
     platform: Platform,
@@ -127,10 +112,8 @@ pub(super) fn plan(
                 .collect(),
         }),
         (Target::User, Platform::Linux) => {
-            // The user manager reads its units from, and sets `%E` (the unit's
-            // `ReadWritePaths`) to, its own config folder: `~/.config` unless its environment
-            // says otherwise, which this shell cannot see. This shell's `XDG_CONFIG_HOME` is
-            // therefore not followed; a daemon folder found through it is refused later.
+            // The user manager reads its units from its own config folder, which this shell
+            // cannot see, so this shell's `XDG_CONFIG_HOME` is not followed.
             let config = home()?.join(".config");
             Ok(Plan {
                 unit: Unit::SystemdUser,
@@ -146,8 +129,7 @@ pub(super) fn plan(
             let home = home()?;
             let file = home.join("Library/LaunchAgents/ing.anima.daemon.plist");
             let domain = format!("gui/{uid}");
-            // `bootstrap` fails on a daemon that is already loaded, so a re-run first takes the
-            // old one out; that `bootout` fails, harmlessly, when nothing was loaded.
+            // `bootstrap` fails on a daemon that is already loaded, so a re-run first takes it out.
             let mut old = Step::new("/bin/launchctl", &["bootout"]);
             old.args.push(format!("{domain}/{OLD_LABEL}"));
             let retire = retire_old(
@@ -277,7 +259,7 @@ mod tests {
             plan.file,
             PathBuf::from("/home/ada/Library/LaunchAgents/ing.anima.daemon.plist")
         );
-        // R-126: the unit of the old program goes first; each of its two steps may fail.
+        // R-126.
         assert_eq!(plan.steps[0].args, ["bootout", "gui/501/ing.anima.agent"]);
         assert_eq!(
             plan.steps[1].args,

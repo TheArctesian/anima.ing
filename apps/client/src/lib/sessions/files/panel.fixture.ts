@@ -1,4 +1,3 @@
-// Test support: the file panel mounted on a fake ticket and a fake socket, and the queries tests make of it.
 import { flushSync, mount, unmount } from 'svelte';
 import type { HubResult } from '$lib/hub/hub';
 import type { LoadingClock } from '$lib/motion/loading/loading';
@@ -16,14 +15,12 @@ let cleanups: (() => unknown)[] = [];
 /** Stands in for the socket of a panel that never made one. */
 let none: FakeFilesSocket;
 
-/** Call before each test. */
 export function resetPanels(): void {
   FakeFilesSocket.reset();
   none = new FakeFilesSocket('none');
   FakeFilesSocket.reset();
 }
 
-/** Call after each test: unmounts what the test mounted. */
 export async function removePanels(): Promise<void> {
   for (const cleanup of cleanups.reverse()) await cleanup();
   cleanups = [];
@@ -38,7 +35,6 @@ export interface Shown {
   close: () => Promise<void>;
 }
 
-/** Mount the panel on a fake ticket and socket; `ticket` can be a failure. */
 export async function show(ticket: HubResult<FilesTicket> | Promise<HubResult<FilesTicket>> | undefined = undefined, clock?: LoadingClock): Promise<Shown> {
   const tickets: string[] = [];
   const api: FilesApi = {
@@ -66,7 +62,6 @@ export async function show(ticket: HubResult<FilesTicket> | Promise<HubResult<Fi
   return { target, socket, saved, tickets, close };
 }
 
-/** Open the link and answer the home listing. */
 export async function listed(entries: FileEntry[], path = HOME): Promise<Shown> {
   const shown = await show();
   shown.socket.open();
@@ -83,7 +78,7 @@ export const button = (target: HTMLElement, label: string): HTMLButtonElement =>
   return found;
 };
 export const names = (target: HTMLElement) => [...target.querySelectorAll('.entry .name')].map((each) => each.textContent);
-/** Whether the button is off: it stays focusable, so it says so with `aria-disabled`. */
+/** The button stays focusable, so `aria-disabled` marks it off. */
 export const off = (element: HTMLElement): boolean => element.getAttribute('aria-disabled') === 'true';
 export const status = (target: HTMLElement) => target.querySelector('.status')?.textContent;
 export const bar = (target: HTMLElement) => target.querySelector('[role="progressbar"]');

@@ -1,7 +1,3 @@
-//! All SQL on schema `projects`: I/O only. This file holds the writes of the import; the
-//! signs and resources are in `store/signs.rs`, the operator's choices in `store/choices.rs`
-//! and the reads of the API in `store/reads.rs`.
-
 pub(super) mod choices;
 pub(super) mod metadata;
 pub(super) mod reads;
@@ -15,14 +11,12 @@ use uuid::Uuid;
 use super::model::Known;
 use crate::ids::{ProjectId, RepositoryId, SourceAccountId};
 
-/// The forge of every repository this slice imports.
 pub(super) const FORGE: &str = "github";
 
 const KNOWN: &str = "id, project_id, account_id, full_name, html_url, default_branch, \
     private, archived, fork, description, pushed_at, left_out_at IS NOT NULL AS left_out, \
     gone_at IS NOT NULL AS gone";
 
-/// The stored repository with GitHub id `external_id`, locked until the transaction ends.
 pub(super) async fn known(
     conn: &mut PgConnection,
     external_id: &str,
@@ -37,7 +31,6 @@ pub(super) async fn known(
     .await
 }
 
-/// The slugs that start with `stem`: the ones a new slug must not repeat.
 pub(super) async fn slugs_like(
     conn: &mut PgConnection,
     stem: &str,
@@ -49,7 +42,6 @@ pub(super) async fn slugs_like(
         .await
 }
 
-/// A new project `(slug, name)` holding the new repository `repository` of `account`.
 pub(super) async fn import(
     conn: &mut PgConnection,
     (slug, name): (&str, &str),
@@ -92,9 +84,7 @@ pub(super) async fn import(
     .map(drop)
 }
 
-/// Writes the listed fields of the known repository `id`, clears `gone`, and gives it to
-/// `account` when it has no account. Its project takes the new name when it is the project's
-/// first repository (PRJ-016).
+/// The project takes the new name when this is its first repository (PRJ-016).
 pub(super) async fn refresh(
     conn: &mut PgConnection,
     (id, account): (RepositoryId, SourceAccountId),
@@ -136,7 +126,6 @@ pub(super) async fn refresh(
     .map(drop)
 }
 
-/// Clears `gone` of a left-out repository the listing holds again; nothing else is written.
 pub(super) async fn returned(
     conn: &mut PgConnection,
     id: RepositoryId,
@@ -150,8 +139,6 @@ pub(super) async fn returned(
         .map(drop)
 }
 
-/// After a complete listing by `account`: marks gone each of its repositories the listing does
-/// not hold, and stamps when the others were listed. Returns how many it marked gone.
 pub(super) async fn listed(
     conn: &mut PgConnection,
     account: SourceAccountId,
@@ -189,10 +176,8 @@ pub(super) async fn left_out_ids(conn: &mut PgConnection) -> Result<Vec<String>,
     .await
 }
 
-/// Deletes the repositories of `account`, then each of their projects that has none left. The
-/// operator's decisions outlive the account (PRO-002, PRO-004): a left-out repository, and one
-/// whose project holds a confirmed resource, is kept with no account, so the account that
-/// lists it next adopts it as it is. Returns how many repositories it deleted.
+/// The operator's decisions outlive the account (PRO-002, PRO-004): a left-out repository, or
+/// one whose project holds a confirmed resource, stays with no account for the next to adopt.
 pub(super) async fn forget(
     conn: &mut PgConnection,
     account: SourceAccountId,

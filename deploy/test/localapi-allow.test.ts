@@ -1,4 +1,3 @@
-// The LocalAPI allow list (D-4, VPN-005): the two allowed calls and every refused shape.
 import { describe, expect, test } from "bun:test";
 import { decide } from "../localapi/allow.ts";
 

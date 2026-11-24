@@ -11,7 +11,6 @@ vi.mock('$app/paths', () => ({ resolve: (path: string) => path, asset: (path: st
 vi.mock('$lib/access/navigation', () => ({ loadClientAt: mocks.loadClientAt }));
 
 let app: ReturnType<typeof mount> | undefined;
-/** Each wait of the page is held here until the test lets it go, so the test sees each step. */
 let held: (() => void)[] = [];
 
 async function settle(): Promise<void> {
@@ -31,7 +30,6 @@ async function open(plan: StandInPlan = {}): Promise<{ target: HTMLElement; acco
   return { target, account };
 }
 
-/** Lets each held wait go, then settles. */
 async function release(): Promise<void> {
   const waiting = held;
   held = [];

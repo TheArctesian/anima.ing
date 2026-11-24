@@ -1,15 +1,5 @@
-//! `anima-database`: wires the command line to the library and sets the exit code. No rules here.
-//!
-//!   anima-database serve  --tree <folder> [--root <folder> --socket-folder <folder>]
-//!   anima-database status --tree <folder> [--root <folder> --socket-folder <folder>]
-//!   anima-database backup  <file> --tree <folder> [...]
-//!   anima-database restore <file> --tree <folder> [...]
-//!   anima-database verify  --tree <folder> [...]
-//!
-//! `backup`, `restore` and `verify` need a running `serve`.
-//!
-//! `serve` prints `ready` on standard output when the database accepts connections, and stops
-//! the server on SIGTERM or SIGINT. Nothing it prints holds a password (LOG-007).
+//! `backup`, `restore` and `verify` need a running `serve`. `serve` prints `ready` when the
+//! database accepts connections. Nothing it prints holds a password (LOG-007).
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -140,8 +130,7 @@ fn serve(place: &Place) -> Result<ExitCode, Failure> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
-    // Before the server starts: a signal that comes during the start is kept, and stops the
-    // server cleanly as soon as the start is done. It does not cut the start short.
+    // A signal during the start is kept and stops the server once the start is done.
     let stop = {
         let _context = runtime.enter();
         stopping::Requested::new()?
@@ -225,7 +214,6 @@ fn verify(place: &Place) -> Result<ExitCode, Failure> {
     }
 }
 
-/// The error and each cause below it, on one line.
 fn with_causes(error: &dyn std::error::Error) -> String {
     let mut text = error.to_string();
     let mut cause = error.source();

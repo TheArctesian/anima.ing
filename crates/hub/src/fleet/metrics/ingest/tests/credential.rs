@@ -1,6 +1,4 @@
-//! K8 Sections 2 and 5: the daemon token is read from one `Authorization: Bearer` header, and
-//! only its canonical spelling; anything else is no credential. A token works until, not at,
-//! its expiry, and a renewed token is promoted only while it works (MET-013).
+//! The daemon token as a credential (K8 Sections 2 and 5, MET-013).
 
 use axum::http::{HeaderMap, HeaderValue, header::AUTHORIZATION};
 use chrono::TimeDelta;
@@ -95,7 +93,6 @@ async fn met_013_an_unused_renewed_token_at_its_expiry_is_refused_and_never_prom
 
     assert_eq!(authenticate(&pool, &presented, expiry).await.unwrap(), None);
     assert_eq!(token_hashes(&pool).await, stored);
-    // A second earlier its first use promotes it.
     let in_time = authenticate(&pool, &presented, expiry - TimeDelta::seconds(1)).await;
     assert_eq!(in_time.unwrap(), Some(pve()));
     assert_eq!(token_hashes(&pool).await, (stored.1.unwrap(), None));

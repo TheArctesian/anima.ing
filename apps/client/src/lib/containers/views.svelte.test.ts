@@ -2,9 +2,11 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
+import { DEVICE, deviceHosting } from '$lib/hosting/hosting.fixture';
+import { HostingStore } from '$lib/hosting/store.svelte';
 import { APP_ID, fakeCalls, type FakeCalls } from './containers.fixture';
 import ContainersPanel from './ContainersPanel.svelte';
-import { ContainersStore } from './store.svelte';
+import { StorageStore } from './storage/storage.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -13,15 +15,17 @@ vi.mock('motion', async (importOriginal) => ({
 
 let app: ReturnType<typeof mount> | undefined;
 let calls: FakeCalls;
-let store: ContainersStore;
+let hosting: HostingStore;
 
+/** The tab of a device (HSE-008), with the Compose project tracks open to its containers. */
 beforeEach(async () => {
   installAnimations();
   calls = fakeCalls();
-  store = new ContainersStore(calls);
-  const reading = store.load();
-  app = mount(ContainersPanel, { target: document.body, props: { store } });
-  await reading;
+  hosting = new HostingStore(deviceHosting(calls));
+  hosting.only = DEVICE;
+  app = mount(ContainersPanel, { target: document.body, props: { hosting, storage: new StorageStore(calls) } });
+  await hosting.load();
+  hosting.toggle(`${DEVICE.id}/project/tracks`);
   flushSync();
 });
 
@@ -73,7 +77,7 @@ it('HOST-017: the log replaces the details, and closing drops the details', asyn
   button('Close the details')?.click();
   flushSync();
   expect(document.querySelector('.below')).toBeNull();
-  expect(store.detail).toBeNull();
+  expect(hosting.pane?.store.detail).toBeNull();
 });
 
 it('R-224: the switch in the pane of a container reads its details, then its log again', async () => {
@@ -88,7 +92,7 @@ it('R-224: the switch in the pane of a container reads its details, then its log
   view('log')?.click();
   await settle();
   expect(document.querySelector('.log h3')?.textContent).toBe('Log of tracks-app-1');
-  expect(store.selected).toBe(APP_ID);
+  expect(hosting.pane?.store.selected).toBe(APP_ID);
 });
 
 it('HOST-017: details the hub refuses show the reason of the hub and keep the table', async () => {
@@ -96,35 +100,29 @@ it('HOST-017: details the hub refuses show the reason of the hub and keep the ta
   button('Details of tracks-app-1')?.click();
   await settle();
   expect(document.querySelector('.detail [role="alert"]')?.textContent).toContain('An API key cannot use containerDetail.');
-  expect(document.querySelectorAll('tbody tr:not(.group)')).toHaveLength(4);
+  expect(document.querySelectorAll('tbody tr:not(.group)')).toHaveLength(5);
 });
 
-it('HOST-021: the hub looks for newer images only when the operator asks, and each row then has its mark', async () => {
+it('HOST-021: the hub looks for newer images only when the operator asks, and each container then has its mark', async () => {
   expect(calls.updatesAsked).toBe(0);
-  expect(document.querySelector('.mark')).toBeNull();
+  const cells = () => [...document.querySelectorAll('tbody tr:not(.group)')].map((row) => row.children[2]?.textContent.trim());
+  // The rows: ai, tracks, its containers tracks-app-1 and tracks-worker-1, then recorder.
+  expect(cells()).toEqual(['Read only', 'Read only', '', '', 'Read only']);
   button('Look for newer images')?.click();
   await settle();
   expect(calls.updatesAsked).toBe(1);
-  expect([...document.querySelectorAll('.mark')].map((mark) => [mark.textContent, mark.classList.contains('newer')])).toEqual([
-    ['Newer image', true],
-    ['Up to date', false],
-    ['Built here, or the tag moved', false],
-  ]);
-  expect(document.querySelector('.count')?.textContent.replace(/\s+/g, ' ').trim()).toBe('4 containers, 1 with a newer image');
+  expect(cells()).toEqual(['Not known', 'Newer image', 'Newer image', 'Up to date', 'Built here, or the tag moved']);
 });
 
-it('HOST-021: after a refresh the count is of the rows that are shown, and a failed new try drops the old marks', async () => {
+it('HOST-021: a failed new try drops the old marks and shows the reason of the hub, and the list stays', async () => {
   button('Look for newer images')?.click();
   await settle();
-  calls.containers = calls.containers.filter((each) => each.id !== APP_ID);
-  await store.load();
-  flushSync();
-  expect(document.querySelector('.count')?.textContent.replace(/\s+/g, ' ').trim()).toBe('3 containers, 0 with a newer image');
   calls.fail = { code: 'UNAVAILABLE', message: 'Docker was not read: the device cannot be reached over SSH.' };
   button('Look for newer images')?.click();
   await settle();
-  expect(document.querySelector('.mark')).toBeNull();
-  expect(document.querySelector('.problem')).not.toBeNull();
+  expect(document.body.textContent).not.toContain('Newer image');
+  expect(document.querySelector('.problem')?.textContent).toContain('cannot be reached over SSH');
+  expect(document.querySelectorAll('tbody tr:not(.group)')).toHaveLength(5);
 });
 
 it('HOST-017: an answer that comes after the operator closed the details, or chose a different container, is dropped', async () => {
@@ -140,7 +138,7 @@ it('HOST-017: an answer that comes after the operator closed the details, or cho
   button('Close the details')?.click();
   first?.();
   await settle();
-  expect([store.detail, store.detailStatus]).toEqual([null, 'idle']);
+  expect([hosting.pane?.store.detail, hosting.pane?.store.detailStatus]).toEqual([null, 'idle']);
   expect(document.querySelector('.below')).toBeNull();
 });
 
@@ -161,25 +159,18 @@ it('HOST-020: a refresh that fails keeps the last list and says why, and an empt
   expect(button('Refresh')).toBeDefined();
 });
 
-it('HOST-021: when the hub cannot look, the reason is shown and the table stays', async () => {
-  calls.fail = { code: 'UNAVAILABLE', message: 'Docker was not read: the device cannot be reached over SSH.' };
-  button('Look for newer images')?.click();
-  await settle();
-  expect(document.querySelector('.problem')?.textContent).toContain('cannot be reached over SSH');
-  expect(document.querySelectorAll('tbody tr:not(.group)')).toHaveLength(4);
-});
-
-it('HOST-020: the images and the volumes are read once, when the operator first opens one of them', async () => {
+it('HOST-020: the images are read once, when the operator first opens them, and again on Refresh', async () => {
   expect(calls.storageAsked).toBe(0);
   view('images')?.click();
   await settle();
   expect(calls.storageAsked).toBe(1);
   expect(rowTexts()[0]).toEqual(['example/tracks:0.36', '470MB', '49.49MB', 'tracks-app-1 and 2 more']);
   expect(document.querySelector('.count')?.textContent).toBe('2 images. 483.6MB in use, 13.6MB (2%) can be freed by a clean-up');
-  view('volumes')?.click();
+  view('networks')?.click();
+  await settle();
+  view('images')?.click();
   await settle();
   expect(calls.storageAsked).toBe(1);
-  expect(rowTexts()[1]).toEqual(['old-data', '1.2GB', 'local', 'Not used']);
   button('Refresh')?.click();
   await settle();
   expect(calls.storageAsked).toBe(2);
@@ -198,5 +189,5 @@ it('HOST-020: the networks have their own read, and a failed read offers a retry
   expect(rowTexts()[1]).toEqual(['backend', 'bridge', 'local', 'Inside the device only', 'None']);
   view('containers')?.click();
   flushSync();
-  expect(document.querySelectorAll('tbody tr:not(.group)')).toHaveLength(4);
+  expect(document.querySelectorAll('tbody tr:not(.group)')).toHaveLength(5);
 });

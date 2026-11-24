@@ -24,8 +24,6 @@ async fn event_count(pool: &PgPool) -> i64 {
         .unwrap()
 }
 
-/// The audit rows written since `seen`, which must be exactly one, with its who, where, when
-/// and target checked.
 async fn one_new(pool: &PgPool, seen: usize, action: &str) -> Value {
     let mut rows = audit_rows(pool).await.split_off(seen);
     assert_eq!(rows.len(), 1, "{rows:?}");
@@ -41,7 +39,6 @@ async fn one_new(pool: &PgPool, seen: usize, action: &str) -> Value {
     row
 }
 
-/// From now on every audit insert raises, as a failing write after the domain write would.
 async fn fail_audit_inserts(pool: &PgPool) {
     for statement in [
         "CREATE FUNCTION events.refuse_audit() RETURNS trigger LANGUAGE plpgsql AS \

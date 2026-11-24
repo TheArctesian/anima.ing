@@ -1,5 +1,3 @@
-//! Pure rule tests and `#[sqlx::test]` store and face tests of web interfaces.
-
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 

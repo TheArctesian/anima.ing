@@ -1,5 +1,4 @@
-//! The link's wire form; the socket client and the ownership check against a fake control
-//! socket are in `tests/` (FRN-009, LNK-003, LNK-004, LOG-007).
+//! FRN-009, LNK-003, LNK-004, LOG-007.
 
 mod owned;
 mod socket;
@@ -35,7 +34,6 @@ fn frn_009_requests_name_their_verb_and_only_their_arguments() {
         text(Request::DevicesRevoke { key: "nodekey:0a" }),
         "{\"args\":{\"key\":\"nodekey:0a\"},\"verb\":\"devices.revoke\"}\n"
     );
-    // A quote in a name stays inside its JSON string.
     assert_eq!(
         text(Request::InvitesMake { name: "a\"b" }),
         "{\"args\":{\"name\":\"a\\\"b\"},\"verb\":\"invites.make\"}\n"
@@ -159,7 +157,6 @@ fn frn_009_the_invite_verbs_and_an_answer_with_no_result() {
     assert!(matches!(missing, Err(Error::Unreadable)), "{missing:?}");
 }
 
-/// A private folder with a socket that answers each request line with `answer(line)`.
 pub(super) fn fake(
     answer: impl Fn(&str) -> Vec<u8> + Send + Sync + 'static,
 ) -> (tempfile::TempDir, PathBuf) {

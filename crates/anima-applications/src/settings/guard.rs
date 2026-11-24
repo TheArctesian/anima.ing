@@ -4,9 +4,7 @@
 /// What the operating system says of the settings file, read without following a link.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Guarded {
-    /// The identifier of the owner.
     pub owner: u32,
-    /// The mode bits.
     pub mode: u32,
     /// True for a regular file; false for a link, a folder and each other thing.
     pub regular: bool,
@@ -26,8 +24,7 @@ pub enum NotGuarded {
 /// Decides if the settings file can be trusted to be of the administrator.
 ///
 /// # Errors
-/// The reason, when the file is a link or not a file, when its owner is not the identifier
-/// 0, and when it has a write bit for its group or for others.
+/// The reason the file is not trusted.
 pub const fn guard(file: &Guarded) -> Result<(), NotGuarded> {
     if !file.regular {
         return Err(NotGuarded::NotRegular);

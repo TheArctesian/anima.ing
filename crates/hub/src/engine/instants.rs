@@ -1,17 +1,14 @@
 //! The one form of an event instant that Anima machines exchange: microseconds since the Unix
-//! epoch in UTC (K-E3 Section 2; TML-008). A time zone changes how an instant is shown, never
-//! the instant. Pure.
+//! epoch in UTC (K-E3 Section 2; TML-008).
 
 use chrono::{DateTime, Utc};
 
-/// The instant as microseconds since 1970-01-01T00:00:00Z. Precision below a microsecond is
-/// cut, as PostgreSQL stores it.
+/// Precision below a microsecond is cut, as PostgreSQL stores it.
 #[must_use]
 pub fn micros(at: DateTime<Utc>) -> i64 {
     at.timestamp_micros()
 }
 
-/// The instant `micros` microseconds after the epoch; `None` outside the range chrono holds.
 #[must_use]
 pub fn from_micros(micros: i64) -> Option<DateTime<Utc>> {
     DateTime::from_timestamp_micros(micros)

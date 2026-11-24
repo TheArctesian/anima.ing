@@ -1,8 +1,5 @@
-//! The K1 root fields the command line never uses, each with its reason (CMD-031). A builder who
-//! adds a document for a field deletes its entry here; the coverage test fails until they do,
-//! and for any K1 root field that is neither used nor listed.
+//! The K1 root fields the command line never uses, each with its reason (CMD-031).
 
-/// The operational keys have no command yet: K-E5 Section 2.2 names `anima key`, the API key noun.
 const NO_KEY_NOUN: &str = "no command yet: K-E5 Section 2.2 names the noun `anima key`, which is \
     already the API key noun (INT-003, `key list|create|revoke`); the noun waits for a ruling \
     (E0-6 T3)";
@@ -53,6 +50,11 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "Mutation.offerVaultKey",
         "client work: a client adds a client by QR code; no command takes part in a key offer \
          (K-E5 Section 3, a trust decision)",
+    ),
+    (
+        "Mutation.recordReveal",
+        "client work: only the client that opens a sealed record asks for its reveal; no \
+         command can open a record (K-E5 Section 3, a trust decision)",
     ),
     (
         "Query.vaultKeyOffer",

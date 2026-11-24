@@ -2,7 +2,7 @@ import { gesture } from './tokens';
 
 const msPerSecond = 1000;
 
-/** Where a released item would come to rest: position + (velocity ÷ 1000) × d ÷ (1 − d) (MOT-032). */
+/** Where a released item comes to rest (MOT-032). */
 export function project(
   position: number,
   velocityPxPerS: number,
@@ -11,7 +11,7 @@ export function project(
   return position + ((velocityPxPerS / msPerSecond) * deceleration) / (1 - deceleration);
 }
 
-/** The distance shown for `overshoot` past a limit: (overshoot × size × c) ÷ (size + c × |overshoot|) (MOT-033). */
+/** The distance shown for `overshoot` past a limit (MOT-033). */
 export function rubberband(overshoot: number, size: number, constant: number = gesture.rubberbandConstant): number {
   return (overshoot * size * constant) / (size + constant * Math.abs(overshoot));
 }

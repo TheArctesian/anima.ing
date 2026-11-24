@@ -1,6 +1,4 @@
-//! `anima containers from-run -- docker run ...`: the Compose file of one `docker run` command
-//! (HOST-022). The hub reads the words of the command: it expands nothing, runs nothing and
-//! reaches no device. The file goes to standard output and the notes to standard error.
+//! The hub reads the words of the `docker run` command; it expands, runs and reaches nothing (HOST-022).
 
 use std::path::Path;
 

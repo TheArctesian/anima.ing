@@ -8,7 +8,6 @@ use crate::fleet::{
     ssh::FixedCommand,
 };
 
-/// One recorded line of `docker ps`, with the fields Docker prints besides the three read.
 fn line(names: &str, state: &str, status: &str) -> String {
     json!({
         "Command": "\"/docker-entrypoint.sh nginx -g 'daemon off;'\"",

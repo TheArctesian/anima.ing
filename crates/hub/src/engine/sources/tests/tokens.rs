@@ -1,6 +1,3 @@
-//! PRJ-018: a token minted while its account was being removed is not kept. The removal's
-//! `forget` and a mint's `keep` meet under the one lock of [`Tokens`].
-
 use chrono::{TimeZone as _, Utc};
 use source_exchange::Minted;
 use uuid::Uuid;
@@ -23,7 +20,6 @@ fn prj_018_a_keep_after_the_accounts_forget_stores_no_token() {
     let tokens = Tokens::default();
     let account = SourceAccountId::from(Uuid::now_v7());
     let ticket = tokens.ticket();
-    // The mint is in flight; the account is removed and its token forgotten.
     tokens.forget(account);
 
     drop(tokens.keep(account, minted(), ticket));

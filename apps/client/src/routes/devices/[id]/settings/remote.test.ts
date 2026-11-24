@@ -58,7 +58,6 @@ async function show(hubAnswers = answers(), search = ''): Promise<ReturnType<typ
   return fake;
 }
 
-/** The button with this text (icon glyphs left out) or this accessible label, inside `within` when given. */
 function button(label: string, within = 'body'): HTMLButtonElement {
   const found = [...document.querySelectorAll<HTMLButtonElement>(`${within} button`)].find(
     (candidate) => candidate.textContent.replace(/\p{Co}/gu, '').trim() === label || candidate.getAttribute('aria-label') === label,
@@ -84,7 +83,6 @@ const RDP_SECRET = 'rdp-hunter2';
 const VNC_SECRET = 'vnc-hunter2';
 const CERTIFICATE = { fingerprintSha256: 'AA:BB:CC', subject: 'CN=desk', notAfter: null, firstSeenAt: '2026-11-04T09:00:00Z' };
 
-/** The device with RDP and VNC on; each says whether a password is stored. */
 function remote(rdpStored: boolean, vncStored: boolean) {
   const base = device();
   return device({
@@ -93,7 +91,6 @@ function remote(rdpStored: boolean, vncStored: boolean) {
   });
 }
 
-/** Types into a protocol's password field; SSH's is the device credential's. */
 function typePassword(protocol: 'ssh' | 'rdp' | 'vnc', secret: string): void {
   const input = document.getElementById(protocol === 'ssh' ? 'device-credential-password' : `device-${protocol}-password`);
   if (!(input instanceof HTMLInputElement)) throw new Error(`no ${protocol} password input`);
@@ -103,7 +100,6 @@ function typePassword(protocol: 'ssh' | 'rdp' | 'vnc', secret: string): void {
 
 const stored = (protocol: 'ssh' | 'rdp' | 'vnc') => document.querySelector(`[data-connection="${protocol}"]`)?.textContent.includes('in the hub, encrypted');
 
-/** Opens a protocol's row when it is closed. */
 async function openRow(protocol: 'rdp' | 'vnc'): Promise<void> {
   const toggle = document.querySelector<HTMLButtonElement>(`[data-connection="${protocol}"] [aria-expanded]`);
   if (toggle === null) throw new Error(`no ${protocol} row`);
@@ -122,7 +118,6 @@ async function storePassword(protocol: 'rdp' | 'vnc', secret: string): Promise<v
 }
 const sent = (fake: ReturnType<typeof fakeHub>, operation: string) => fake.requests.filter((request) => request.operation === operation);
 
-/** Every console call so far, as text. */
 function consoleText(spies: readonly ReturnType<typeof vi.spyOn>[]): string {
   return JSON.stringify(spies.map((spy) => spy.mock.calls));
 }
@@ -218,7 +213,6 @@ describe('settings tab: replacing and removing stored secrets (D17, D-4, DEV-011
   });
 });
 
-/** The RDP test's answer with this certificate; `changed` says the hub held another one. */
 function certificateTest(serverCertificate: typeof CERTIFICATE, changed: boolean) {
   return {
     reachable: true,
@@ -232,7 +226,6 @@ function certificateTest(serverCertificate: typeof CERTIFICATE, changed: boolean
   };
 }
 
-/** Runs the RDP connection test, then presses Accept certificate. */
 async function testAndAccept(): Promise<void> {
   document.querySelector<HTMLButtonElement>('[data-connection-test="rdp"]')?.click();
   await settle();
@@ -276,5 +269,22 @@ describe('settings tab: RDP server certificate (SEC-007)', () => {
     const shown = document.querySelector('[aria-label="Server certificate"]')?.textContent ?? '';
     expect(shown).toContain('DD:EE:FF');
     expect(shown).not.toContain('AA:BB:CC');
+  });
+});
+
+describe('simple SSH setup', () => {
+  it('enables SSH with only a login name and leaves advanced settings out of the initial form', async () => {
+    const unconfigured = device({ ssh: { ...device().ssh, enabled: false, username: '', credentialStored: false } });
+    const fake = await show(answers({ Device: { device: unconfigured } }), '?tab=settings&section=ssh');
+    expect(document.getElementById('device-ssh-port')).toBeNull();
+    const user = document.getElementById('device-ssh-username');
+    if (!(user instanceof HTMLInputElement)) throw new Error('no user name input');
+    user.value = 'operator';
+    user.dispatchEvent(new Event('input', { bubbles: true }));
+    button('Enable SSH').click();
+    await settle();
+    const updates = sent(fake, 'UpdateDevice');
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.variables).toMatchObject({ input: { ssh: { enabled: true, port: 22, username: 'operator', auth: 'PASSWORD' } } });
   });
 });

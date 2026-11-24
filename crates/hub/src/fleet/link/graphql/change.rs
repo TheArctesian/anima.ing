@@ -1,8 +1,6 @@
-//! One link change with its audit entry and event, run to the end in a task of its own: a
-//! client that goes away while the link works still leaves the audit entry of the change the
-//! link made (LOG-005). The value comes back only to the resolver that asked for it.
-//!
-//! The entries name the device, never the invite and never the device's key (LOG-007).
+//! A link change and its audit entry run to the end in a task of their own, so a client that
+//! goes away still leaves the audit entry (LOG-005). The entries name the device, never the
+//! invite and never the device's key (LOG-007).
 
 use std::{future::Future, sync::Arc};
 

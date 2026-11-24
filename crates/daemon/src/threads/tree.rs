@@ -10,6 +10,9 @@ use std::time::Duration;
 
 use rustix::process::{Pid, Signal, kill_process, test_kill_process};
 
+mod settle;
+pub use settle::{Killed, left_running, zombies_in};
+
 /// One row of the process table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Row {
@@ -214,6 +217,14 @@ pub struct Ended {
 /// (`with_root` false) it gets `SIGCONT`. A process that the root starts after it goes on, in a
 /// group of its own, is not found: that is said in the answer only when the walk cannot run.
 pub async fn end(root: u32, with_root: bool, spare: &Known, grace: Duration) -> Ended {
+    kill_tree(root, with_root, spare, grace)
+        .await
+        .settled()
+        .await
+}
+
+/// As [`end`], with no wait for the killed processes to be gone.
+pub async fn kill_tree(root: u32, with_root: bool, spare: &Known, grace: Duration) -> Killed {
     signal(root, Signal::STOP);
     let mut known: BTreeSet<u32> = BTreeSet::new();
     let mut seen = true;
@@ -247,13 +258,12 @@ pub async fn end(root: u32, with_root: bool, spare: &Known, grace: Duration) -> 
     } else {
         signal(root, Signal::CONT);
     }
-    tokio::time::sleep(Duration::from_millis(100)).await;
     // The root is reaped by its holder, so a root that ended may still answer a signal test.
-    let left = known.iter().filter(|pid| alive(**pid)).count();
     let count = known.len() + usize::from(with_root);
-    Ended {
+    Killed {
         count: u32::try_from(count).unwrap_or(u32::MAX),
-        all: seen && left == 0,
+        sure: seen,
+        pids: known,
     }
 }
 
@@ -279,33 +289,40 @@ async fn during_grace(root: u32, grace: Duration) -> BTreeSet<u32> {
 /// Ends each process of `known` that still runs as the same process, with the processes below
 /// it: what a program left when it ended by itself, which is not below it any more (THR-049).
 pub async fn sweep(known: &Known) -> Ended {
+    kill_seen(known).await.settled().await
+}
+
+/// As [`sweep`], with no wait for the killed processes to be gone.
+pub async fn kill_seen(known: &Known) -> Killed {
     if known.is_empty() {
-        return Ended {
-            count: 0,
-            all: true,
-        };
+        return Killed::nothing();
     }
     let Some(table) = table().await else {
-        return Ended {
-            count: 0,
-            all: false,
+        return Killed {
+            sure: false,
+            ..Killed::nothing()
         };
     };
     let found = spare_with_children(&table, known);
     for pid in &found {
         signal(*pid, Signal::KILL);
     }
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    let left = found.iter().filter(|pid| alive(**pid)).count();
-    Ended {
+    Killed {
         count: u32::try_from(found.len()).unwrap_or(u32::MAX),
-        all: left == 0,
+        sure: true,
+        pids: found,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn thr_049_a_zombie_that_ps_lists_is_an_end() {
+        let shown = "  401 Z\n  402 S+\n  403 Zs\nnot a row\n";
+        assert_eq!(zombies_in(shown), BTreeSet::from([401, 403]));
+    }
 
     #[test]
     fn thr_049_a_zombie_does_not_run() {

@@ -1,5 +1,5 @@
-//! All SQL on `metrics.daemons` and `metrics.enrolments` (K2 0710, 0712, 0716, 0717, 0718, 0722). Lookups are by hash
-//! only; the time is a parameter, and a value is usable until, not at, its expiry.
+//! The only SQL on `metrics.daemons` and `metrics.enrolments` (K2 0710, 0712, 0716, 0717, 0718,
+//! 0722); lookups are by hash only.
 
 use daemon_core::wire::{CodeHash, TokenHash};
 use std::collections::HashMap;
@@ -38,9 +38,7 @@ pub(super) async fn insert_code(
     Ok(())
 }
 
-/// Marks the code used at `now` in one statement, committed on its own, and returns its device;
-/// `None` for a code that is unknown, used or expired. Two uses at once cannot both pass: the
-/// second waits for the first's row lock and then finds it used (MET-012).
+/// Two uses at once cannot both pass: the second waits for the row lock, then finds it used (MET-012).
 pub(super) async fn use_code(
     db: &PgPool,
     code: CodeHash,
@@ -56,9 +54,8 @@ pub(super) async fn use_code(
     .await
 }
 
-/// Makes `token` the device's only token, with no renewed one beside it. The stale timer
-/// starts again, and the version and the need are forgotten: the new daemon has sent no batch
-/// yet (MET-018, R-122, R-364). Whether the daemon it replaced waited for a person.
+/// Staleness, version and need are cleared: the new daemon has sent no batch yet (MET-018, R-122,
+/// R-364). Returns whether the replaced daemon waited for a person.
 pub(super) async fn replace_token(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -85,9 +82,8 @@ pub(super) async fn replace_token(
     Ok(needed.unwrap_or(false))
 }
 
-/// The device whose usable token is `token` at `now`. A renewed token is promoted on its first
-/// use, which ends the token it replaced (MET-013). The promotion runs first: a second first use
-/// at the same moment waits for the row, finds no renewed token, and then finds it current.
+/// A renewed token is promoted on first use, ending the one it replaced (MET-013). The promotion
+/// runs first, so a concurrent first use waits for the row and then finds the token current.
 pub(super) async fn holder(
     db: &PgPool,
     token: TokenHash,
@@ -115,9 +111,7 @@ pub(super) async fn holder(
     .await
 }
 
-/// Stores `next` as the renewed token of the device whose current, usable token is `current`,
-/// replacing an unused renewed token (K8 Section 5); `None` when `current` is no longer that,
-/// because the token was revoked or replaced by a new enrolment meanwhile.
+/// Replaces an unused renewed token (K8 Section 5); `None` when `current` was revoked or replaced.
 pub(super) async fn set_next(
     db: &PgPool,
     current: TokenHash,
@@ -151,8 +145,7 @@ pub(super) async fn code_kept(
     .await
 }
 
-/// Deletes the device's token and all its codes, used ones too, so an exchange whose code was
-/// redeemed before the revoke finds it gone; whether the device had a token.
+/// Deletes used codes too, so an exchange whose code was redeemed before the revoke finds it gone.
 pub(super) async fn revoke(conn: &mut PgConnection, device: DeviceId) -> Result<bool, sqlx::Error> {
     let deleted = sqlx::query("DELETE FROM metrics.daemons WHERE device_id = $1")
         .bind(device)
@@ -165,17 +158,32 @@ pub(super) async fn revoke(conn: &mut PgConnection, device: DeviceId) -> Result<
     Ok(deleted.rows_affected() > 0)
 }
 
-/// What a batch found when it was taken: whether its daemon was marked stale, and whether it
-/// waited for a person (R-364).
+/// Whether the batch's daemon was marked stale, and whether it waited for a person (R-364).
 pub(super) struct Taken {
     pub(super) was_stale: bool,
     pub(super) needed: bool,
 }
 
-/// Records a batch accepted at `now` from the device whose usable token is still `token`, in
-/// the caller's transaction, and clears its stale mark and its need (R-364); the
-/// time of the last batch never moves back, should a batch that started earlier commit later.
-/// `None` when the token was revoked or replaced since it was checked (MET-013, MET-018).
+pub(super) async fn lock_token(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    token: TokenHash,
+    now: DateTime<Utc>,
+) -> Result<bool, sqlx::Error> {
+    let found: Option<DeviceId> = sqlx::query_scalar(
+        "SELECT device_id FROM metrics.daemons
+         WHERE device_id = $1 AND token_sha256 = $2 AND expires_at > $3 FOR UPDATE",
+    )
+    .bind(device)
+    .bind(token.to_bytes().as_slice())
+    .bind(now)
+    .fetch_optional(conn)
+    .await?;
+    Ok(found.is_some())
+}
+
+/// Clears the stale mark and the need (R-364); `None` when the token was revoked or replaced
+/// since it was checked (MET-013, MET-018).
 pub(super) async fn take_batch(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -200,9 +208,7 @@ pub(super) async fn take_batch(
     Ok(row.map(|(was_stale, needed)| Taken { was_stale, needed }))
 }
 
-/// Records `version`, the daemon version of the batch accepted at `at`, in the caller's
-/// transaction after [`take_batch`]; `None` is a daemon older than R-122. A batch that started
-/// earlier and commits after a newer one leaves the newer one's version (R-122).
+/// `None` is a daemon older than R-122; an earlier batch that commits later keeps the newer version.
 pub(super) async fn record_version(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -236,10 +242,8 @@ pub(in crate::fleet::metrics) async fn daemon_versions(
     Ok(rows.into_iter().collect())
 }
 
-/// Sets the need of the device's daemon to `need` (`None` clears it) in the caller's
-/// transaction, unless `need` is a need and a batch came after `batch_after`: that daemon holds
-/// its token. `None` when the device has no daemon token, else whether the need changed
-/// (R-364).
+/// A need is not set once a batch came after `batch_after`: that daemon holds its token (R-364).
+/// `None` when the device has no daemon token, else whether the need changed.
 pub(super) async fn set_need(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -293,8 +297,6 @@ pub(super) async fn overdue(
     .await
 }
 
-/// Marks the device's daemon stale at `now` in the caller's transaction, unless a batch came at
-/// or after `cutoff` or it is marked already; whether this marked it.
 pub(super) async fn mark_stale(
     conn: &mut PgConnection,
     device: DeviceId,

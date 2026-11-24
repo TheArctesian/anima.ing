@@ -31,7 +31,7 @@ void graphql(`
   }
 `);
 
-// The device names come with the routes: a route names its device only by its ID. 200 is the hub's page size.
+// A route names its device only by its ID; 200 is the hub's page size.
 const APPLICATION_ROUTES = graphql(`
   query ApplicationRoutes {
     applicationRoutes {
@@ -56,23 +56,28 @@ const CHECK_APPLICATION_ROUTE = graphql(`
   }
 `);
 
+const REMOVE_APPLICATION_ROUTE = graphql(`
+  mutation RemoveApplicationRoute($id: ID!) {
+    removeApplicationRoute(id: $id)
+  }
+`);
+
 export type ApplicationRoute = ApplicationRoutesQuery['applicationRoutes'][number];
 
-/** The routes of the hub, with the name of each device that the hub gave on its first page of devices. */
 export interface RouteList {
   readonly routes: readonly ApplicationRoute[];
   readonly deviceNames: ReadonlyMap<string, string>;
 }
 
-/** What the Routes section asks of the hub (task H21); the section and its tests take this, not the hub. */
 export interface RouteCalls {
-  /** Each route of the hub. A read key may read them: no field holds a certificate or a key. */
+  /** A read key may read them: no field holds a certificate or a key. */
   list(): Promise<HubResult<RouteList>>;
-  /** Reads the proof of the name once. A person with a browser token and a second factor only (SF-232). */
+  /** A person with a browser token and a second factor only (SF-232). */
   check(id: string): Promise<HubResult<ApplicationRoute>>;
+  /** Removes the name with its certificate and its key. A signed-in person; no second factor (ruling of 2026-11-22). */
+  remove(id: string): Promise<HubResult<string>>;
 }
 
-/** The route calls of the hub. */
 export function routesApi(hub: Pick<Hub, 'request'>): RouteCalls {
   return {
     list: async () => {
@@ -84,6 +89,10 @@ export function routesApi(hub: Pick<Hub, 'request'>): RouteCalls {
     check: async (id) => {
       const result = await hub.request(CHECK_APPLICATION_ROUTE, { id });
       return result.ok ? { ok: true, value: result.value.checkApplicationRoute } : result;
+    },
+    remove: async (id) => {
+      const result = await hub.request(REMOVE_APPLICATION_ROUTE, { id });
+      return result.ok ? { ok: true, value: result.value.removeApplicationRoute } : result;
     },
   };
 }

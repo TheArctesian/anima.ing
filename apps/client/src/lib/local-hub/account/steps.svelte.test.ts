@@ -45,7 +45,6 @@ function typeInto(target: HTMLElement, index: number, value: string): void {
   field.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-/** A code pasted into the first box. */
 async function enterCode(target: HTMLElement, code: string): Promise<void> {
   const event = new Event('paste', { bubbles: true, cancelable: true });
   Object.defineProperty(event, 'clipboardData', { value: { getData: () => code } });
@@ -93,7 +92,6 @@ it('FRN-004, LOG-007: the authenticator step draws the URI as a QR code labelled
   const qr = target.querySelector('svg[role="img"]');
   expect(qr?.getAttribute('aria-label')).toBe('Authenticator code for Anima');
   expect(target.querySelector('code.text')?.textContent).toBe('JBSW Y3DP EHPK 3PXP');
-  // No live region holds the key, so a screen reader never announces it (LOG-007).
   for (const live of target.querySelectorAll('output, [role="status"], [role="alert"], [aria-live]')) expect(live.textContent).not.toContain('JBSW');
   for (const element of target.querySelectorAll('*')) {
     for (const attribute of element.attributes) expect(attribute.value).not.toContain(SECRET);

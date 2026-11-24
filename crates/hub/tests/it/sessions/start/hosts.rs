@@ -1,6 +1,4 @@
-//! `startSession` and the device's host (GW-011): an IP literal the target rule or the hub's
-//! deny list refuses is a `VALIDATION` error on `host`, reported with display problems; a
-//! routable literal or a name starts.
+//! `startSession` refuses a host literal the target rule or deny list refuses, on `host` (GW-011).
 
 use anima_hub::fleet::{sessions::Live, targets::AddressPolicy};
 use serde_json::json;
@@ -47,7 +45,6 @@ async fn gw_011_start_session_refuses_a_host_literal_that_is_not_one_remote_host
         assert_eq!(error["extensions"]["code"], "VALIDATION", "{host}: {error}");
         assert_eq!(fields(&error), ["host"], "{host}");
     }
-    // A literal the target rule allows is refused when the hub's deny list holds it.
     let deny = AddressPolicy::new(vec!["10.10.0.0/24".parse().unwrap()]);
     let denying = schema_at(&pool, now(), &Live::default().denying(deny));
     for host in ["10.10.0.21", "::ffff:10.10.0.21"] {
@@ -62,7 +59,7 @@ async fn gw_011_start_session_refuses_a_host_literal_that_is_not_one_remote_host
     }
     nothing_written(&pool).await;
 
-    // A routable literal and a name (checked when the tunnel connects) are accepted.
+    // A name is checked when the tunnel connects.
     let schema = schema_at(&pool, now(), &Live::default());
     for host in ["10.10.0.21", "fd7a:115c:a1e0::21", "docker-host.home.lan"] {
         set_host(&pool, DOCKER_HOST, host).await;

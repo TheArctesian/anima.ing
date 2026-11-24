@@ -1,5 +1,4 @@
-//! `anima`, the command line for an Anima hub (docs/plans/cli-mcp-plan.md). One folder for each
-//! operator noun (CMD-002); `hub` is the only network code (CMD-003).
+//! `anima`, the command line for an Anima hub (docs/plans/cli-mcp-plan.md; CMD-002, CMD-003).
 
 pub mod agents;
 pub mod api;
@@ -50,6 +49,7 @@ pub mod retention;
 pub mod routes;
 pub mod sealed_records;
 pub mod sessions;
+pub mod shortening;
 pub mod sites;
 pub mod snapshot;
 pub mod sources;

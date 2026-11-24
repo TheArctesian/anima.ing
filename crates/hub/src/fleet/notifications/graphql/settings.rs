@@ -1,9 +1,5 @@
-//! `Query.notificationSettings` and `Mutation.setNotificationSettings`: the certificate
-//! thresholds and the default template (NOT-006, NOT-007, D-21, D-22). The mutation writes the
-//! row, one audit entry and one event in one transaction (API-003, LOG-005).
-//!
-//! Thresholds: whole days from 1 to 365, at most 5 once duplicates are removed. They may be
-//! sent in any order; the hub keeps them largest first, as the database check and K1 say.
+//! NOT-006, NOT-007, D-21, D-22. The mutation writes its row, audit entry and event in one
+//! transaction (API-003, LOG-005).
 
 use async_graphql::{Context, InputObject, Object, Result};
 use serde_json::json;

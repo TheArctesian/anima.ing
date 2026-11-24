@@ -1,7 +1,4 @@
-//! A copy of the whole root of a stopped hub, with a dump of the database in it, and the check
-//! of such a copy (ROL-054, R-189). The copy is what a hosted hub goes back to when an update
-//! fails: the database cluster, the vault key, the sealing keys, the sealed files, the state of
-//! the link with its key, the logs.
+//! A copy of the whole root of a stopped hub, with a dump of its database, and its check (ROL-054, R-189).
 //!
 //! ```text
 //! <copy>/root/          each file of the hub root, but the programs, the locks and the sockets
@@ -9,8 +6,7 @@
 //! <copy>/copy.json      the list of the entries with their sizes, modes and SHA-256
 //! ```
 //!
-//! The copy holds every secret of the hub. Its folder and each file in it keep the owner-only
-//! modes of the root, and nothing of a file is printed.
+//! The copy holds every secret of the hub: it keeps the owner-only modes of the root, and nothing of a file is printed.
 
 mod database;
 mod entries;
@@ -33,11 +29,8 @@ use crate::run::{self, RunError};
 use crate::{Carried, Folders};
 pub use list::{Entry, Kind, List};
 
-/// The dump of the database in a copy.
 pub const DUMP: &str = "database.dump";
-/// The list of a copy.
 pub const LIST: &str = "copy.json";
-/// The folder of a copy that holds the files of the root.
 pub const ROOT: &str = "root";
 
 #[derive(Debug, thiserror::Error)]
@@ -74,7 +67,7 @@ pub(crate) fn io_error(step: &'static str) -> impl FnOnce(io::Error) -> RootCopy
     }
 }
 
-/// What a copy holds, for the one line that the command prints. No path and no secret.
+/// What a copy holds, for the line the command prints; no path and no secret.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub struct Summary {
     pub entries: usize,
@@ -83,13 +76,10 @@ pub struct Summary {
     pub made: u64,
 }
 
-/// Makes a copy of the root of `folders` in the new folder `to`. The hub must be stopped: this
-/// holds the lock of its `run` for the whole time, starts only the database for the dump, and
-/// stops it again before it reads a file.
+/// Makes a copy of the root of `folders` in the new folder `to`; the hub must be stopped.
 ///
 /// # Errors
-/// [`RootCopyError::HubRuns`] for a hub that runs; otherwise the step that failed. A copy that
-/// is not whole is removed.
+/// [`RootCopyError::HubRuns`] for a hub that runs; otherwise the step that failed.
 pub fn make(carried: &Carried, folders: &Folders, to: &Path) -> Result<Summary, RootCopyError> {
     if !folders.database().cluster().is_dir() {
         return Err(RootCopyError::NoHub);
@@ -101,7 +91,6 @@ pub fn make(carried: &Carried, folders: &Folders, to: &Path) -> Result<Summary, 
     new_place(to)?;
     let made = fill(carried, folders, to);
     if made.is_err() {
-        // A part of a copy is of no use and holds the hub's keys.
         fs::remove_dir_all(to).ok();
     }
     made
@@ -118,7 +107,6 @@ fn fill(carried: &Carried, folders: &Folders, to: &Path) -> Result<Summary, Root
     Ok(list.summary())
 }
 
-/// Makes the folder of a new copy, mode 0700, below a folder that only this user can write.
 fn new_place(to: &Path) -> Result<(), RootCopyError> {
     if fs::symlink_metadata(to).is_ok() {
         return Err(RootCopyError::PlaceTaken);
@@ -140,13 +128,10 @@ fn new_place(to: &Path) -> Result<(), RootCopyError> {
     owner_only::folder(to).map_err(io_error("make the folder of the copy"))
 }
 
-/// Checks the copy in `copy`: each entry of its list is there with its size, its mode and its
-/// SHA-256, the parts that a hub cannot start without are in the list, and the dump reads with
-/// the `pg_restore` of the PostgreSQL in `tree`. It starts no server and changes nothing.
+/// Checks each entry of the copy's list and that the dump reads; it starts no server.
 ///
 /// # Errors
-/// [`RootCopyError::NoList`] or [`RootCopyError::Damaged`] with the first fault; the fault
-/// names a path of the copy and never a content.
+/// [`RootCopyError::NoList`] or [`RootCopyError::Damaged`] with the first fault, by path only.
 pub fn check(tree: &Path, copy: &Path) -> Result<Summary, RootCopyError> {
     let list = List::read(&copy.join(LIST))?;
     list.has_the_parts_of_a_hub()?;

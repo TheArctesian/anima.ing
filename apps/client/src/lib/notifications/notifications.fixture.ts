@@ -1,5 +1,4 @@
-// Test support: a hub that answers the notification operations from canned results and records what it was sent, the
-// K6 channels in the shape K1 returns, and the synthetic values the tests use. Never a real secret (WP-50 checkpoint 4).
+// Never a real secret here (WP-50 checkpoint 4).
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import { flushSync } from 'svelte';
@@ -7,7 +6,7 @@ import { channels, deliveries, notificationSettings } from '$lib/fixtures/phase3
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
 import type { Delivery, NotificationChannel, NotificationSettings } from './api';
 
-/** A made-up secret. A test that finds it in the DOM, the console or storage has found a leak. */
+/** A test that finds this in the DOM, the console or storage has found a leak. */
 export const FAKE_SECRET = 'FAKE_SECRET_7c1e';
 /** A webhook URL that carries the secret in its path and query, as Discord and Slack URLs do (D-17). */
 export const FAKE_WEBHOOK_URL = `https://hooks.example.net/services/${FAKE_SECRET}?token=${FAKE_SECRET}`;
@@ -17,6 +16,7 @@ const TYPENAMES = {
   NTFY: 'NtfySettings',
   EMAIL: 'EmailSettings',
   APPRISE: 'AppriseSettings',
+  MOBILE: 'WebhookSettings',
 } as const;
 
 function lastDeliveryOf(id: string): Delivery | null {
@@ -25,7 +25,6 @@ function lastDeliveryOf(id: string): Delivery | null {
   return last === undefined ? null : { id: last.id, channelId: last.channelId, kind: last.kind, at: last.at, ok: last.ok, reason: last.reason, code: last.code };
 }
 
-/** The K6 channels, one of each kind, each with its latest K6 delivery. */
 export const FIXTURE_CHANNELS: readonly NotificationChannel[] = channels.map(
   (channel) =>
     ({
@@ -69,7 +68,6 @@ export const DIRTY_APPRISE_CHANNEL: NotificationChannel = {
   settings: { __typename: 'AppriseSettings', server: `https://ops:${FAKE_SECRET}@apprise.example.net`, mode: 'STATELESS_URLS', tags: [] },
 };
 
-/** The K6 `notificationSettings`. */
 export const FIXTURE_SETTINGS: NotificationSettings = notificationSettings;
 
 export const TEST_DELIVERY: Delivery = {
@@ -106,7 +104,7 @@ export function failure(code: HubError['code'], message = 'hub text', fields: re
 
 type Answer = HubResult<unknown> | Promise<HubResult<unknown>> | (() => HubResult<unknown> | Promise<HubResult<unknown>>);
 
-/** `answers` maps an operation to its result, or to a function giving one per call; an operation without one is `unreachable`. */
+/** An operation without an answer fails with `unreachable`. */
 export function fakeHub(answers: Partial<Record<Operation, Answer>>): { hub: Hub; sent: SentRequest[] } {
   const sent: SentRequest[] = [];
   const hub = {
@@ -120,7 +118,6 @@ export function fakeHub(answers: Partial<Record<Operation, Answer>>): { hub: Hub
   return { hub, sent };
 }
 
-/** The usual answers: the K6 channels and settings. */
 export function loaded(more: Partial<Record<Operation, Answer>> = {}): Partial<Record<Operation, Answer>> {
   return { NotificationChannels: ok({ notificationChannels: FIXTURE_CHANNELS }), NotificationSettings: ok({ notificationSettings: FIXTURE_SETTINGS }), ...more };
 }
@@ -130,14 +127,12 @@ export async function settled(): Promise<void> {
   flushSync();
 }
 
-/** The button whose accessible name, or else its text, is `label`. */
 export function button(label: string, within: ParentNode = document): HTMLButtonElement {
   const found = [...within.querySelectorAll('button')].find((candidate) => (candidate.getAttribute('aria-label') ?? candidate.textContent.trim()) === label);
   if (found === undefined) throw new Error(`no button ${label}`);
   return found;
 }
 
-/** The field labelled `label` in the open dialog, or in `within`. */
 export function field(label: string, within?: ParentNode): HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement {
   const scope = within ?? document.querySelector('[role="dialog"]') ?? document;
   const found = [...scope.querySelectorAll('label')].find((candidate) => candidate.textContent.trim() === label);
@@ -146,7 +141,6 @@ export function field(label: string, within?: ParentNode): HTMLInputElement | HT
   return control;
 }
 
-/** The checkbox or radio whose label starts with `label`, in the open dialog. */
 export function choice(label: string): HTMLInputElement {
   const scope = document.querySelector('[role="dialog"]') ?? document;
   const found = [...scope.querySelectorAll('label')].find((candidate) => candidate.textContent.trim().startsWith(label));
@@ -155,7 +149,6 @@ export function choice(label: string): HTMLInputElement {
   return input;
 }
 
-/** Types into a field the way the browser reports it. */
 export function typeInto(control: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   control.value = value;
   control.dispatchEvent(new Event('input', { bubbles: true }));
@@ -175,7 +168,6 @@ export function dialog(): HTMLElement | null {
   return document.querySelector('[role="dialog"]');
 }
 
-/** Fades that never finish, so a test sees the document as it is during a fade. */
 export function holdAnimations(): void {
   Object.defineProperty(Element.prototype, 'animate', {
     configurable: true,
@@ -190,7 +182,6 @@ export function inDialog(label: string): HTMLButtonElement {
   return button(label, scope.closest('.portal') ?? scope);
 }
 
-/** Whether a node keeps `text` in a property of its own, as a cache keyed by a symbol would. */
 function nodeKeeps(element: Element, text: string): boolean {
   const own = element as unknown as Record<PropertyKey, unknown>;
   return [...Object.getOwnPropertyNames(element), ...Object.getOwnPropertySymbols(element)].some((name) => {
@@ -203,7 +194,6 @@ function nodeKeeps(element: Element, text: string): boolean {
   });
 }
 
-/** Every place a secret could linger: the markup, field values, fields' own properties, storage, the URL. */
 export function places(text: string): Record<string, number> {
   const fields = [...document.querySelectorAll('input, textarea, select')];
   const stored = [localStorage, sessionStorage].flatMap((storage) => Object.keys(storage).map((key) => `${key}=${storage.getItem(key) ?? ''}`));

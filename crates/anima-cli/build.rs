@@ -1,7 +1,5 @@
-//! Builds the release version into `anima` (INS-003, OD-17): the builder sets `ANIMA_VERSION` to
-//! the version it gives the Tauri configuration (BLD-043). The script sets `CARGO_PKG_VERSION`
-//! for this package's compiler runs, so clap's `--version` and the MCP server's version both
-//! print it. Unset, the crate version stays.
+//! Sets `CARGO_PKG_VERSION` from the builder's `ANIMA_VERSION` when given
+//! (INS-003, OD-17, BLD-043).
 
 #[path = "release_version.rs"]
 mod release_version;

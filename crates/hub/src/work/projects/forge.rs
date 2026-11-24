@@ -1,10 +1,8 @@
 //! What every live read of a project repository on GitHub shares (K-E1 Section 13; PRJ-031,
-//! PRJ-032): the repository's reach, the read through the engine's cache within each request's
-//! budget of reads, the read stamp, the K7 cursors over GitHub's pages, the fixed failure words
-//! and the cut of GitHub's text.
+//! PRJ-032).
 //!
-//! Text from GitHub is other people's: it stays a plain string, is cut as K1 states, and never
-//! reaches a log line or an error message (LOG-007).
+//! Text from GitHub stays a plain string, is cut as K1 states, and never reaches a log line
+//! or an error message (LOG-007).
 //!
 //! A named change goes through [`change::make`], which sends it once and records it (OD-E14,
 //! PRJ-028).

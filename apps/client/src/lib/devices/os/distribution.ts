@@ -1,15 +1,11 @@
 import type { IconName } from '$lib/icons/icons';
 
-/** A Linux distribution's logo and its name as the operator reads it. */
 export interface Distribution {
   readonly icon: IconName;
   readonly label: string;
 }
 
-/**
- * The distributions with a logo in the bundled Nerd Font (font-logos), by the `ID` their `/etc/os-release` gives. An ID
- * not listed here keeps the plain Linux logo.
- */
+/** The distributions with a logo in the bundled Nerd Font (font-logos), by their `/etc/os-release` `ID`. */
 const DISTRIBUTIONS: Readonly<Record<string, Distribution>> = {
   almalinux: { icon: 'simple-icons:almalinux', label: 'AlmaLinux' },
   alpine: { icon: 'simple-icons:alpinelinux', label: 'Alpine Linux' },
@@ -74,7 +70,6 @@ const DISTRIBUTIONS: Readonly<Record<string, Distribution>> = {
   kubuntu: { icon: 'simple-icons:kubuntu', label: 'Kubuntu' },
 };
 
-/** The distribution an os-release `ID` names, or null when it has no logo of its own. */
 export function distribution(id: string | null | undefined): Distribution | null {
   if (id === null || id === undefined) return null;
   return Object.hasOwn(DISTRIBUTIONS, id) ? (DISTRIBUTIONS[id] ?? null) : null;

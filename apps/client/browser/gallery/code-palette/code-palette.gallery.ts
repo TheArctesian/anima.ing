@@ -5,22 +5,16 @@ import { HUB_ORIGIN } from '../../synthetic/access';
 import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 import { HEIGHT, MODES, storedSettings } from '../shots';
 
-// The command palette and the key table of the Code section (stage 6 of the T3 Code copy), each state. It needs a build
-// made with `VITE_ANIMA_SPECIMEN=1` and runs only when asked, `GALLERY_CODE_PALETTE=1`; pictures go to
-// `gallery-shots/code-palette/<mode>/`.
+// Needs a build made with `VITE_ANIMA_SPECIMEN=1`.
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-palette/', import.meta.url));
 const SETTLE_MS = 300;
 
 interface PaletteShot {
   readonly name: string;
-  /** The radios of the page to choose first: "Loading", "One open". */
   readonly settings?: readonly string[];
-  /** What to type into the open palette. */
   readonly typed?: string;
-  /** Keys to press after typing. */
   readonly keys?: readonly string[];
-  /** A part of the page to frame in place of the open palette. */
   readonly part?: string;
 }
 

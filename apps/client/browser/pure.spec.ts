@@ -3,8 +3,6 @@ import { BEARER_TOKEN, browserSessions, callerOf, clearedCookie, HUB_ORIGIN, ses
 import { isClosedError, noteClosing, untilClosed } from './synthetic/closed';
 import { ticketBook } from './synthetic/tickets';
 
-// The pure parts of the K7 and K4 model, in Node with no browser: a mutation here must fail a test, not pass unseen.
-
 const NOW = new Date('2026-11-07T10:00:00Z');
 const later = (seconds: number): Date => new Date(NOW.getTime() + seconds * 1000);
 

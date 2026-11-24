@@ -1,20 +1,13 @@
-//! The BER subset SNMP uses (X.690): single-byte tags, definite lengths, integers, octet
-//! strings and object identifiers. Pure.
+//! The BER subset SNMP uses (X.690).
 //!
-//! The reader never trusts a length: each one is read in at most four bytes and must fit in
-//! what is left of its parent, so a value can never reach past the datagram. Readers do not
-//! recurse; the SNMP message grammar is walked level by level by the caller, so the nesting
-//! depth is the grammar's own (at most six levels), whatever the input says. Nothing here
-//! panics on any input.
-//!
-//! The writer builds into zeroized buffers sized up front, so a buffer that held a community
-//! never grows and leaves no copy behind.
+//! Each length must fit in what is left of its parent, readers never recurse (the caller walks
+//! the grammar level by level), and nothing here panics on any input. The writer builds into
+//! zeroized buffers sized up front, so a buffer that held a community leaves no copy behind.
 
 use zeroize::Zeroizing;
 
 use crate::fleet::checks::config::OID_ARCS_MAX;
 
-/// An encoded value whose buffer is wiped on drop.
 pub(in crate::fleet::checks) type Bytes = Zeroizing<Vec<u8>>;
 
 pub(in crate::fleet::checks) const INTEGER: u8 = 0x02;
@@ -23,21 +16,18 @@ pub(in crate::fleet::checks) const NULL: u8 = 0x05;
 pub(in crate::fleet::checks) const OBJECT_IDENTIFIER: u8 = 0x06;
 pub(in crate::fleet::checks) const SEQUENCE: u8 = 0x30;
 
-/// The input is not the BER the grammar expects. It holds nothing of the input.
+/// It holds nothing of the input.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::fleet::checks) struct Malformed;
 
-/// One value read from the input: its tag, its content and where the content starts in the
-/// whole input.
 #[derive(Clone, Copy, Debug)]
 pub(in crate::fleet::checks) struct Tlv<'a> {
     pub(in crate::fleet::checks) tag: u8,
     pub(in crate::fleet::checks) content: &'a [u8],
-    /// The offset of `content` in the input the first reader was made from.
+    /// The offset in the input the first reader was made from, not in the parent.
     pub(in crate::fleet::checks) offset: usize,
 }
 
-/// Reads the values one after the other inside one parent.
 #[derive(Clone, Debug)]
 pub(in crate::fleet::checks) struct Reader<'a> {
     rest: &'a [u8],
@@ -58,10 +48,6 @@ impl<'a> Reader<'a> {
         self.rest.is_empty()
     }
 
-    /// The next value.
-    ///
-    /// # Errors
-    /// A multi-byte tag, an indefinite or oversize length, or a length past the parent.
     pub(in crate::fleet::checks) fn next(&mut self) -> Result<Tlv<'a>, Malformed> {
         let (&tag, after_tag) = self.rest.split_first().ok_or(Malformed)?;
         if tag & 0x1f == 0x1f {
@@ -96,10 +82,6 @@ impl<'a> Reader<'a> {
         Ok(tlv)
     }
 
-    /// The next value, which must have this tag.
-    ///
-    /// # Errors
-    /// The value is malformed or has another tag.
     pub(in crate::fleet::checks) fn expect(&mut self, tag: u8) -> Result<Tlv<'a>, Malformed> {
         let tlv = self.next()?;
         if tlv.tag == tag {
@@ -109,26 +91,14 @@ impl<'a> Reader<'a> {
         }
     }
 
-    /// The content of the next value, which must be an INTEGER that fits an `i64`.
-    ///
-    /// # Errors
-    /// The value is malformed, has another tag or does not fit.
     pub(in crate::fleet::checks) fn integer(&mut self) -> Result<i64, Malformed> {
         self.expect(INTEGER)?.integer()
     }
 
-    /// The content of the next value, which must be an OCTET STRING.
-    ///
-    /// # Errors
-    /// The value is malformed or has another tag.
     pub(in crate::fleet::checks) fn octets(&mut self) -> Result<&'a [u8], Malformed> {
         Ok(self.expect(OCTET_STRING)?.content)
     }
 
-    /// Fails unless every value of the parent was read.
-    ///
-    /// # Errors
-    /// Bytes are left over.
     pub(in crate::fleet::checks) const fn finish(&self) -> Result<(), Malformed> {
         if self.rest.is_empty() {
             Ok(())
@@ -139,7 +109,6 @@ impl<'a> Reader<'a> {
 }
 
 impl<'a> Tlv<'a> {
-    /// A reader over the content, for a constructed value.
     #[must_use]
     pub(in crate::fleet::checks) const fn reader(&self) -> Reader<'a> {
         Reader {
@@ -148,10 +117,6 @@ impl<'a> Tlv<'a> {
         }
     }
 
-    /// The content as a two's complement integer of one to eight bytes.
-    ///
-    /// # Errors
-    /// The content is empty or longer than eight bytes.
     pub(in crate::fleet::checks) fn integer(&self) -> Result<i64, Malformed> {
         let (&first, _) = self.content.split_first().ok_or(Malformed)?;
         if self.content.len() > 8 {
@@ -164,11 +129,6 @@ impl<'a> Tlv<'a> {
             .fold(start, |sum: i64, byte| (sum << 8) | i64::from(*byte)))
     }
 
-    /// The content as an unsigned integer (Counter32, Gauge32, `TimeTicks`, Counter64): one
-    /// leading zero byte is allowed, then at most eight bytes.
-    ///
-    /// # Errors
-    /// The content is empty or too long.
     pub(in crate::fleet::checks) fn unsigned(&self) -> Result<u64, Malformed> {
         let digits = match self.content {
             [0, rest @ ..] if !rest.is_empty() => rest,
@@ -182,11 +142,6 @@ impl<'a> Tlv<'a> {
             .fold(0_u64, |sum, byte| (sum << 8) | u64::from(*byte)))
     }
 
-    /// The content as the arcs of an object identifier.
-    ///
-    /// # Errors
-    /// An empty content, an unfinished arc, an arc over `u32` or more than
-    /// [`OID_ARCS_MAX`] arcs.
     pub(in crate::fleet::checks) fn oid(&self) -> Result<Vec<u32>, Malformed> {
         let mut arcs = Vec::new();
         let mut value: u64 = 0;
@@ -223,10 +178,8 @@ impl<'a> Tlv<'a> {
     }
 }
 
-/// The length octets of a definite length.
 fn length(length: usize) -> Vec<u8> {
     if length < 0x80 {
-        // A short-form length is one byte below 0x80.
         return vec![u8::try_from(length).unwrap_or(0)];
     }
     let bytes = length.to_be_bytes();
@@ -237,7 +190,6 @@ fn length(length: usize) -> Vec<u8> {
     out
 }
 
-/// One value with this tag around the concatenated parts.
 #[must_use]
 pub(in crate::fleet::checks) fn tlv(tag: u8, parts: &[&[u8]]) -> Bytes {
     let size: usize = parts.iter().map(|part| part.len()).sum();
@@ -251,7 +203,6 @@ pub(in crate::fleet::checks) fn tlv(tag: u8, parts: &[&[u8]]) -> Bytes {
     out
 }
 
-/// An INTEGER (or an application integer type) in its shortest two's complement form.
 #[must_use]
 pub(in crate::fleet::checks) fn integer(tag: u8, value: i64) -> Bytes {
     let bytes = value.to_be_bytes();
@@ -267,13 +218,11 @@ pub(in crate::fleet::checks) fn integer(tag: u8, value: i64) -> Bytes {
     tlv(tag, &[&bytes[skip..]])
 }
 
-/// An OCTET STRING.
 #[must_use]
 pub(in crate::fleet::checks) fn octets(bytes: &[u8]) -> Bytes {
     tlv(OCTET_STRING, &[bytes])
 }
 
-/// An OBJECT IDENTIFIER; `None` when the first two arcs cannot be encoded.
 #[must_use]
 pub(in crate::fleet::checks) fn oid(arcs: &[u32]) -> Option<Bytes> {
     let [first, second, rest @ ..] = arcs else {

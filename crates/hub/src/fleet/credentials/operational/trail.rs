@@ -1,6 +1,5 @@
-//! The audit entry and the event of each change of an operational key, and the audit entry of a
-//! fetch (LOG-004, LOG-005; K-E5 Section 2.2). Pure. Each names the key, its metadata, its
-//! version numbers and its consumers; none holds a value (LOG-007).
+//! Audit entries and events of operational keys (LOG-004, LOG-005; K-E5 Section 2.2); none
+//! holds a value (LOG-007).
 
 use serde_json::{Value, json};
 
@@ -142,8 +141,6 @@ pub(super) fn fetched(name: &str, version: i32, device: DeviceId) -> Value {
     json!({ "name": name, "version": version, "device": device })
 }
 
-/// A device was removed while its server had `version` of the key: the hub cannot take the
-/// value back from that server.
 pub(super) fn device_removed(
     (id, name): (OperationalKeyId, &str),
     version: i32,

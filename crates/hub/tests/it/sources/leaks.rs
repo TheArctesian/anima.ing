@@ -1,7 +1,5 @@
-//! PRJ-018, LOG-007: after a connect, syncs and their failures, neither the App key, the App
-//! token (the JWT a mint is signed in with) nor an installation token is in any table, any
-//! process log line, any audit entry, any GraphQL answer or any `sourceAccountChanged` payload.
-//! PRJ-039: the secrets and the key in a conversion reply are in no log line and no error.
+//! PRJ-018, LOG-007: no App key, App token or installation token reaches a table, a log line, a
+//! GraphQL answer or a `sourceAccountChanged` payload. PRJ-039: nor a conversion reply's secrets.
 
 use std::{sync::Arc, time::Duration};
 

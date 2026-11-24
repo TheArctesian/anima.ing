@@ -6,9 +6,6 @@ import { failure, fakeHub, ok } from './access.fixture';
 import SignOutRow from './SignOutRow.svelte';
 import { COOKIE_KEPT, GATEWAY_KEPT } from './sign-out';
 
-// The Sign out row on both platforms (E-4): the desktop app clears its key store and moves within the page; a browser
-// asks the hub to clear the cookie and then loads the sign-in page anew.
-
 const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,
   clearAccessToken: vi.fn(),

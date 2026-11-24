@@ -1,13 +1,9 @@
 import type { DaemonRelease, DaemonTarget } from './release';
 
-/**
- * Why no command was made: the code or the hub origin is not what the hub issues (MET-019), or the client reaches the hub
- * through the local port of its link, which a daemon cannot use (K8 Section 1, R-172; HM-D16).
- */
+/** `link`: a daemon cannot use the local port of the client's link (MET-019; K8 Section 1, R-172; HM-D16). */
 export type CommandRefusal = 'code' | 'origin' | 'link';
 
 export type InstallCommand =
-  /** Download, verify, install, enrol, start. */
   | { readonly kind: 'download'; readonly text: string }
   /** Development: the daemon is already on the computer; the operator pastes the code at its prompt. */
   | { readonly kind: 'enrol-only'; readonly text: string; readonly note: string };
@@ -24,13 +20,9 @@ export interface CommandInput {
 
 /** K8 Section 3: `anima_enrol_` and the unpadded base64url of 16 bytes, which is 22 characters. */
 const CODE = /^anima_enrol_[A-Za-z0-9_-]{22}$/;
-/**
- * An https origin as the daemon takes it (MET-020): a host (letters, digits, dots, hyphens) on port 443, written or not; no
- * other port, path, query, user or quote. The daemon refuses any other port, so a command with one could only fail.
- */
+/** An https origin as the daemon takes it (MET-020): the daemon refuses any port but 443. */
 const ORIGIN = /^https:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::443)?$/;
 
-/** The origin of a hub that the client reaches through its link: a port of this computer. */
 const LINK_ORIGIN = /^http:\/\/127\.0\.0\.1:\d{1,5}$/;
 
 const DOWNLOAD_ROOT = 'https://releases.anima.ing/daemon';
@@ -46,7 +38,7 @@ const NO_RELEASE_NOTE = `No download is published for this build. ${PASTE}`;
 const NO_TARGET_NOTE = `Choose the computer above to get the full install command. ${PASTE}`;
 const NO_BINARY_NOTE = `No download is published for this computer. ${PASTE}`;
 
-/** The command that installs and enrols the daemon on the device the code was made for (MET-019, D-10 b). Pure: nothing is read from the page. */
+/** MET-019, D-10 b. */
 export function installCommand({ release, target, code, origin }: CommandInput): CommandResult {
   if (LINK_ORIGIN.test(origin)) return { ok: false, refusal: 'link' };
   if (!ORIGIN.test(origin)) return { ok: false, refusal: 'origin' };
@@ -72,7 +64,6 @@ export function installCommand({ release, target, code, origin }: CommandInput):
   return { ok: true, command: { kind: 'download', text: `(${steps.join(' && ')})` } };
 }
 
-/** The sentence that says why there is no command. */
 export function refusalMessage(refusal: CommandRefusal): string {
   if (refusal === 'link') return 'No install command: this application reaches the hub through its link, and a daemon cannot use that path yet.';
   return refusal === 'origin'

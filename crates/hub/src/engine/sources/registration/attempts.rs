@@ -1,14 +1,9 @@
 //! The one attempt the hub holds, in memory only, and the broadcast of its changes (K-E1
-//! Section 7a). No table: a hub restart drops it.
+//! Section 7a). A hub restart drops it.
 //!
-//! The lock is a std mutex, never held across an `await`: each step is a closure over the
-//! attempt that runs and returns under it. Each step first expires an attempt whose time is
-//! over and drops one that ended more than 10 minutes ago; a change is published after the
-//! lock is released.
-//!
-//! Work that moves the attempt between two phases across an `await` (the exchange, the store)
-//! holds a [`Settle`]: when that work is dropped or panics, the attempt still leaves the phase.
-//! A caller that waits for the attempt to end reads the feed, never the lock, and stops at a bound.
+//! The lock is a std mutex, never held across an `await`; a change is published after it is
+//! released. Work that holds the attempt between two phases across an `await` holds a
+//! [`Settle`], so the attempt leaves the phase even when that work is dropped or panics.
 
 use std::{
     sync::{Arc, Mutex, PoisonError},
@@ -22,10 +17,8 @@ use uuid::Uuid;
 use super::attempt::{Attempt, Phase, Refusal, Snapshot};
 use crate::clock::Clock;
 
-/// How many changes a slow subscriber may fall behind before it skips some.
 const CAPACITY: usize = 32;
 
-/// The hub's one attempt slot and its feed. Cheap to clone; clones share both.
 #[derive(Clone)]
 pub struct Attempts {
     held: Arc<Mutex<Option<Attempt>>>,
@@ -36,8 +29,6 @@ pub struct Attempts {
 }
 
 impl Attempts {
-    /// An empty slot whose installation poll asks every `poll`, and whose
-    /// [`Attempts::ended_within`] waits at most `ending_wait`.
     #[must_use]
     pub fn new(poll: Duration, ending_wait: Duration) -> Self {
         let (sender, _) = broadcast::channel(CAPACITY);
@@ -50,8 +41,6 @@ impl Attempts {
         }
     }
 
-    /// Runs `f` on the slot at `now` under the lock, after expiry, and publishes the attempt
-    /// when `f` changed what may be shown.
     fn with<T>(&self, now: DateTime<Utc>, f: impl FnOnce(&mut Option<Attempt>) -> T) -> T {
         let (result, before, after) = {
             let mut slot = self.held.lock().unwrap_or_else(PoisonError::into_inner);
@@ -72,9 +61,6 @@ impl Attempts {
         result
     }
 
-    /// Holds `attempt` in place of the one before, unless that one made an App that waits for
-    /// Install.
-    ///
     /// # Errors
     /// `AppWaiting` while an App waits for Install.
     pub fn start(&self, attempt: Attempt, now: DateTime<Utc>) -> Result<Snapshot, Refusal> {
@@ -91,7 +77,6 @@ impl Attempts {
         })
     }
 
-    /// Drops attempt `id` when it is still the one held: its start was not recorded.
     pub fn forget(&self, id: Uuid, now: DateTime<Utc>) {
         self.with(now, |slot| {
             if slot.as_ref().is_some_and(|held| held.id() == id) {
@@ -100,14 +85,12 @@ impl Attempts {
         });
     }
 
-    /// The attempt the API shows at `now`: open, or ended in the last 10 minutes.
+    /// Open, or ended in the last 10 minutes.
     #[must_use]
     pub fn current(&self, now: DateTime<Utc>) -> Option<Snapshot> {
         self.with(now, |slot| slot.as_ref().map(Attempt::snapshot))
     }
 
-    /// Runs `step` on the attempt held at `now`; on attempt `id` only, when given.
-    ///
     /// # Errors
     /// `NotFound` when no attempt is held, or another one; the refusal of `step` otherwise.
     pub fn step<T>(
@@ -122,31 +105,25 @@ impl Attempts {
         })
     }
 
-    /// A receiver for every change from now on.
     #[must_use]
     pub fn subscribe(&self) -> broadcast::Receiver<Snapshot> {
         self.sender.subscribe()
     }
 
-    /// Wakes the installation poll at once (a hit on `/installed`).
     pub fn wake(&self) {
         self.wake.notify_one();
     }
 
-    /// Resolves when [`Attempts::wake`] is called.
     pub async fn woken(&self) {
         self.wake.notified().await;
     }
 
-    /// How long the installation poll waits between two asks.
     #[must_use]
     pub const fn poll(&self) -> Duration {
         self.poll
     }
 
-    /// The phase attempt `id` ended in (`CONNECTED`, `FAILED` or `CANCELLED`), waiting for it at
-    /// most the `ending_wait` given to [`Attempts::new`]; `None` when it has not ended by then or
-    /// is no longer held. Reads the time from `clock`; holds no lock while it waits.
+    /// `None` when the attempt has not ended within `ending_wait` or is no longer held.
     pub async fn ended_within(&self, id: Uuid, clock: &dyn Clock) -> Option<Phase> {
         // Subscribed before the first read, so no change between the two is missed.
         let mut changes = self.subscribe();
@@ -175,9 +152,7 @@ impl Attempts {
     }
 }
 
-/// The last step of work that holds attempt `id` between two phases: it runs when this is
-/// dropped, at the time of `clock`, whether the work ended, was dropped or panicked. The step
-/// runs under the lock, never across an `await`.
+/// Runs its step under the lock when dropped, whether the work ended, was dropped or panicked.
 pub struct Settle {
     attempts: Attempts,
     id: Uuid,
@@ -185,11 +160,9 @@ pub struct Settle {
     step: Option<SettleStep>,
 }
 
-/// What a [`Settle`] does to the attempt, at the time it runs.
 type SettleStep = Box<dyn FnOnce(&mut Attempt, DateTime<Utc>) + Send>;
 
 impl Settle {
-    /// Runs `step` on attempt `id` when dropped, unless [`Settle::instead`] replaces it.
     #[must_use]
     pub fn new(
         attempts: Attempts,
@@ -205,7 +178,6 @@ impl Settle {
         }
     }
 
-    /// Runs `step` instead of the earlier one: the work knows how it ended.
     pub fn instead(&mut self, step: impl FnOnce(&mut Attempt, DateTime<Utc>) + Send + 'static) {
         self.step = Some(Box::new(step));
     }

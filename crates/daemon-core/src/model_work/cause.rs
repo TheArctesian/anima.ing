@@ -1,18 +1,14 @@
-//! The causes of a refusal of a model item (Section 5, with those of K10 Section 5), and the
-//! causes of a failure after `preparing`. Each is a fixed code; no text of a runtime or a file
-//! goes into a report (Section 3).
+//! The causes of a refusal or failure of a model item (Section 5, K10 Section 5). Each is a
+//! fixed code; no text of a runtime or a file goes into a report (Section 3).
 
-/// Why the machine refuses or fails a model item.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Cause {
-    // Refusals of K10 Section 5 that a model item can get.
     TypeUnknown,
     KindNotPermitted,
     MemberUnknown,
     SecretUnknown,
     SwitchOff,
     Policy,
-    // Refusals of Section 5.
     FlagOwned,
     RuntimeNotConfigured,
     RuntimeNotInstalled,
@@ -21,6 +17,8 @@ pub enum Cause {
     CopyUnknown,
     CopyNotReady,
     RemoteCode,
+    /// A file of a copy is refused for a reason that is not remote code.
+    FileRejected,
     DiskShare,
     MemoryShare,
     FileType,
@@ -28,10 +26,11 @@ pub enum Cause {
     RuntimeTooOld,
     ActorNotPermitted,
     RevisionTooNew,
-    // Failures after `preparing`.
     Checksum,
     Size,
     SourceFailed,
+    /// The child fetch process itself failed; the cause carries nothing of the child (R-406).
+    FetchFailed,
     Listener,
     IsolationFailed,
     LimitMemory,
@@ -43,21 +42,17 @@ pub enum Cause {
     ProgramMismatch,
     /// An archive of a runtime breaks a rule of the unpack (R-328).
     ArchiveRejected,
-    /// Linux: the tree of a server cannot be contained; the detail says which step failed.
-    /// There is no start with less containment (R-331, R-330).
+    /// Linux: there is no start with less containment (R-331, R-330).
     ContainmentFailed(Containment),
 }
 
-/// The step at which the containment of a server failed: the detail of `containment_failed`.
-/// The launcher steps each have their own exit code, so a refusal of the user namespace reads
-/// as such.
+/// Each launcher step has its own exit code, so a refusal of the user namespace reads as such.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Containment {
     /// No cgroup v2, or the cgroup of the daemon is not delegated to its user.
     NoDelegation,
     /// The cgroup v2 mount has no `nsdelegate`, so a namespace would not stop a move out.
     NoNsdelegate,
-    /// The launcher could not write itself into the cgroup of the server.
     CgroupJoinFailed,
     /// The launcher could not set the parent-death signal.
     BackstopFailed,
@@ -65,7 +60,6 @@ pub enum Containment {
     ParentGone,
     /// The system refused the user and cgroup namespaces (`AppArmor` or a sysctl).
     UsernsDenied,
-    /// The launcher could not run the runtime, or its arguments were wrong.
     ExecFailed,
 }
 
@@ -78,7 +72,6 @@ impl Containment {
         Self::ExecFailed,
     ];
 
-    /// The detail as the report spells it.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -92,8 +85,7 @@ impl Containment {
         }
     }
 
-    /// The exit code of the launcher for a failure at this step; `None` for a step of the
-    /// daemon, before the launcher runs.
+    /// `None` for a step of the daemon, before the launcher runs.
     #[must_use]
     pub const fn exit_code(self) -> Option<i32> {
         match self {
@@ -106,7 +98,6 @@ impl Containment {
         }
     }
 
-    /// The step of a launcher exit code.
     #[must_use]
     pub fn of_exit_code(code: i32) -> Option<Self> {
         Self::ALL
@@ -116,7 +107,6 @@ impl Containment {
 }
 
 impl Cause {
-    /// The cause as the report spells it.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -134,6 +124,7 @@ impl Cause {
             Self::CopyUnknown => "copy_unknown",
             Self::CopyNotReady => "copy_not_ready",
             Self::RemoteCode => "remote_code",
+            Self::FileRejected => "file_rejected",
             Self::DiskShare => "disk_share",
             Self::MemoryShare => "memory_share",
             Self::FileType => "file_type",
@@ -144,6 +135,7 @@ impl Cause {
             Self::Checksum => "checksum",
             Self::Size => "size",
             Self::SourceFailed => "source_failed",
+            Self::FetchFailed => "fetch_failed",
             Self::Listener => "listener",
             Self::IsolationFailed => "isolation_failed",
             Self::LimitMemory => "limit_memory",
@@ -158,7 +150,6 @@ impl Cause {
         }
     }
 
-    /// The detail of the cause, when it has one.
     #[must_use]
     pub const fn detail(self) -> Option<&'static str> {
         match self {
@@ -167,8 +158,7 @@ impl Cause {
         }
     }
 
-    /// Whether the machine reports the cause with the state `refused` (before `preparing`),
-    /// not `failed`.
+    /// Whether the machine reports the cause as `refused` (before `preparing`), not `failed`.
     #[must_use]
     pub const fn is_refusal(self) -> bool {
         !matches!(
@@ -176,6 +166,7 @@ impl Cause {
             Self::Checksum
                 | Self::Size
                 | Self::SourceFailed
+                | Self::FetchFailed
                 | Self::Listener
                 | Self::IsolationFailed
                 | Self::LimitMemory

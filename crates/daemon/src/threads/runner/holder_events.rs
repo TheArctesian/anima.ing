@@ -3,10 +3,12 @@
 //! keeps its limit of output (THR-113).
 
 mod older;
+mod reconnect;
 mod refused;
 
 pub(super) use older::Standing;
 mod signed_out;
+mod started;
 
 use agent_threads::control::{Change, Outcome, Refusal, RunState};
 use agent_threads::drive::DriveEvent;
@@ -127,6 +129,7 @@ impl Runner {
                 thread,
                 back,
                 prompt,
+                files,
             }) = self.waits.remove(&command)
             else {
                 continue;
@@ -136,28 +139,16 @@ impl Runner {
                 .get(&thread)
                 .is_some_and(|thread| thread.row.state != RunState::Stopped);
             let result = if running {
-                self.began(thread, &prompt).await
+                self.began(thread, &prompt, &files).await
             } else {
                 self.threads.remove(&thread);
+                self.attached.give_back(thread);
+                // The launcher lets go of the seat of the thread at once.
+                self.rights_now();
                 refused(Refusal::Holder)
             };
-            self.answer_late(&back, Some(thread), result);
+            self.answer_late(Some(&back), Some(thread), result);
         }
-    }
-
-    /// The program of a new thread runs: its first prompt goes to it.
-    async fn began(&mut self, id: Uuid, prompt: &str) -> Outcome {
-        let Some(thread) = self.threads.get_mut(&id) else {
-            return refused(Refusal::Holder);
-        };
-        if thread.row.state == RunState::Stopped {
-            return refused(Refusal::NotRunning);
-        }
-        let steps = thread.begin(prompt);
-        self.note(Kind::Start, Some(id), "started");
-        let _ = self.apply(id, steps).await;
-        self.save();
-        Outcome::Started { thread: id }
     }
 
     async fn lines(&mut self, key: &str, first: u64, lines: Vec<Line>) {
@@ -187,7 +178,8 @@ impl Runner {
                 }
             };
             signed_out |= steps.iter().any(signed_out::not_logged_in);
-            if self.apply(id, steps).await.is_err() {
+            // A held-back line is not a lost link: the next lines are read.
+            if let Err(super::NotSent::LinkDown) = self.apply(id, steps).await {
                 break;
             }
         }
@@ -198,7 +190,8 @@ impl Runner {
         // The record holds the open requests before the holder drops their lines (THR-030); a
         // line that changed nothing of the record does not write it again.
         let after = self.threads.get(&id).map(Thread::record_key);
-        if after != before {
+        let marked = self.mark_started(id);
+        if after != before || marked {
             self.save();
         }
         self.command(Action::Ack {
@@ -232,11 +225,15 @@ impl Runner {
         let Some(thread) = self.threads.get_mut(&id) else {
             return;
         };
+        let relayed = thread.row.provider_address.is_some();
         let steps = match self.silence.ended(id) {
             Some(why) => thread.ended_because(why),
             None => thread.exited(exit.code, exit.signal),
         };
         let _ = self.apply(id, steps).await;
+        if relayed {
+            self.note(Kind::Relay, Some(id), "pass-through ended");
+        }
         self.save();
         self.command(Action::Forget {
             thread: key.to_owned(),
@@ -261,9 +258,10 @@ impl Runner {
                 thread,
                 back,
                 prompt,
+                files,
             } => {
-                let result = self.start_done(thread, &prompt, &outcome).await;
-                (back, Some(thread), result)
+                let result = self.start_done(thread, (&prompt, &files), &outcome).await;
+                (Some(back), Some(thread), result)
             }
             Waits::Stop { back } => {
                 let result = match outcome {
@@ -271,45 +269,29 @@ impl Runner {
                     HolderOutcome::Refused { .. } => refused(Refusal::Holder),
                     _ => Outcome::Ok,
                 };
-                (back, None, result)
+                (Some(back), None, result)
             }
-            Waits::Send { thread, back, text } => {
-                let result = self.sent(thread, &text, &outcome).await;
-                (back, Some(thread), result)
+            Waits::Send(prompt) => {
+                let (thread, result) = self.prompt_answered(&prompt, &outcome).await;
+                (prompt.back, Some(thread), result)
             }
             Waits::Answer(pending) => {
                 let result = self.answered(&pending, &outcome).await;
-                (pending.back, Some(pending.thread), result)
+                (Some(pending.back), Some(pending.thread), result)
             }
         };
-        self.answer_late(&back, thread, result);
+        self.answer_late(back.as_ref(), thread, result);
     }
 
     /// Answers a call that waited for the holder; a refusal goes to the log first (THR-044), as
     /// the refusal of a call that did not wait does.
-    fn answer_late(&mut self, back: &Caller, thread: Option<Uuid>, result: Outcome) {
+    fn answer_late(&mut self, back: Option<&Caller>, thread: Option<Uuid>, result: Outcome) {
         if let Outcome::Refused { why } = &result {
             self.note(Kind::Refusal, thread, super::calls::refusal_word(why));
         }
-        back.answer(result);
-    }
-
-    async fn start_done(&mut self, id: Uuid, prompt: &str, outcome: &HolderOutcome) -> Outcome {
-        if matches!(outcome, HolderOutcome::Refused { .. }) {
-            self.threads.remove(&id);
-            refused(Refusal::Holder)
-        } else {
-            self.began(id, prompt).await
+        if let Some(back) = back {
+            back.answer(result);
         }
-    }
-
-    async fn sent(&mut self, id: Uuid, text: &str, outcome: &HolderOutcome) -> Outcome {
-        if let Some(why) = taken(outcome) {
-            return refused(why);
-        }
-        self.note(Kind::Prompt, Some(id), "sent");
-        let _ = self.apply(id, Thread::sent(text)).await;
-        Outcome::Ok
     }
 
     async fn answered(&mut self, pending: &Pending, outcome: &HolderOutcome) -> Outcome {
@@ -329,7 +311,7 @@ impl Runner {
 }
 
 /// Why the holder did not take a line, or `None` when it did.
-const fn taken(outcome: &HolderOutcome) -> Option<Refusal> {
+pub(super) const fn taken(outcome: &HolderOutcome) -> Option<Refusal> {
     match outcome {
         HolderOutcome::Refused {
             why: HolderRefusal::InputClosed | HolderRefusal::UnknownThread,

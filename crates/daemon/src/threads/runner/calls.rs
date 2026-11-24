@@ -2,23 +2,33 @@
 //! here, written to the log of the runner (THR-044), and answered on the socket.
 
 use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState, ThreadRow};
-use agent_threads::drive::{Answer, Effort, Model, Program};
+use agent_threads::drive::{Effort, KeptFolder, Model, Program};
 use uuid::Uuid;
 
 use super::codex::Codex;
 use super::log::{Kind, Line};
 use super::socket::{self, CLIENT_BYTES, CLIENT_QUEUE, Caller, Client, Incoming};
 use super::start::NewThread;
-use super::thread::{Step, Thread};
-use super::{Pending, Runner, Waits};
+use super::{Runner, Waits};
 use crate::threads::wire;
+use answer::Answering;
+use send::Sender;
 
+mod answer;
+mod attach;
+mod commands;
 mod files;
+mod folders;
+mod queue;
 mod reads;
 mod refusal_lines;
+mod send;
+mod set;
+pub(super) use commands::FolderSkills;
 pub(super) use files::Walked;
-pub(super) use refusal_lines::RefusalLines;
 use refusal_lines::Say;
+pub(super) use refusal_lines::{RefusalLines, refusal_word};
+pub(super) use send::SentPrompt;
 
 /// What the runner can see of the source of a call: the local socket (THR-044).
 const SOURCE: &str = "local socket";
@@ -26,10 +36,21 @@ const SOURCE: &str = "local socket";
 const WATCHERS: usize = 16;
 
 /// The Codex calls of a thread of Codex.
-pub(super) fn codex_of(row: &ThreadRow, effort: Option<Effort>) -> Option<Codex> {
+/// Its sandbox keeps the folder of the daemon read-only when the folder of the thread holds it
+/// (THR-041).
+pub(super) fn codex_of(
+    row: &ThreadRow,
+    effort: Option<Effort>,
+    daemon: &std::path::Path,
+) -> Option<Codex> {
     (row.program == Program::Codex).then(|| {
         let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
-        Codex::new(row.folder.clone(), row.mode, model, effort)
+        let mut codex = Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
+            crate::threads::notice::held_anima(&row.folder, daemon)
+                .map(|anima| KeptFolder::new(anima, row.id)),
+        );
+        codex.change_speed(row.speed.clone());
+        codex
     })
 }
 
@@ -55,7 +76,20 @@ impl Runner {
                     self.watch(id, client);
                     return;
                 }
+                Action::Models => {
+                    self.models_call(back, !agent);
+                    return;
+                }
                 Action::Interrupt { thread } => self.interrupt(thread).await,
+                queued @ (Action::Queue { .. }
+                | Action::Requeue { .. }
+                | Action::Unqueue { .. }) => self.queue_call(queued).await,
+                set @ Action::Set { .. } => self.set(set).await,
+                listed @ Action::Commands { .. } => self.commands_call(listed).await,
+                Action::Compact { thread } => self.compact(thread).await,
+                attach @ (Action::Attach { .. }
+                | Action::AttachMore { .. }
+                | Action::Unattach { .. }) => self.attach_call(attach),
                 Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
                 Action::ChangeProject { change } => self.change_project(&change),
                 Action::Files {
@@ -63,25 +97,13 @@ impl Runner {
                     query,
                     most,
                 } => self.files(thread, &query, most),
-                Action::Folder { folder } => {
-                    match super::start::chosen_folder(
-                        &folder,
-                        self.dir.parent().unwrap_or(&self.dir),
-                    ) {
-                        Ok(real) => Outcome::Folder {
-                            notice: crate::threads::notice::of_folder(&real),
-                        },
-                        Err(why) => Outcome::Refused { why },
-                    }
+                Action::Folder { folder } => self.folder_notice(&folder),
+                Action::Folders { folder, hidden } => {
+                    self.folders(folder, hidden, back);
+                    return;
                 }
-                Action::RaiseLimit => {
-                    self.limits = self.limits.raised();
-                    self.save();
-                    Outcome::Limits {
-                        limits: self.limits,
-                    }
-                }
-                waits => match self.held_call(waits, back.clone()).await {
+                Action::RaiseLimit => self.raise_limit(),
+                waits => match self.held_call(waits, back.clone(), !agent).await {
                     Ok(()) => return,
                     Err(why) => Outcome::Refused { why },
                 },
@@ -93,10 +115,33 @@ impl Runner {
         back.answer(answer);
     }
 
-    /// A call whose answer waits for the holder: a start, a prompt, an answer or a stop.
-    async fn held_call(&mut self, action: Action, back: Caller) -> Result<(), Refusal> {
+    /// The soft limits one step up, kept across a restart (THR-114).
+    fn raise_limit(&mut self) -> Outcome {
+        self.limits = self.limits.raised();
+        self.save();
+        Outcome::Limits {
+            limits: self.limits,
+        }
+    }
+
+    /// A call whose answer waits for the holder (a start, a prompt, an answer or a stop) or for
+    /// a task of the Git engine.
+    async fn held_call(
+        &mut self,
+        action: Action,
+        back: Caller,
+        person: bool,
+    ) -> Result<(), Refusal> {
         match action {
-            Action::Send { thread, text } => self.send(thread, text, back).await,
+            send @ Action::Send { .. } => {
+                let sender = if person {
+                    Sender::Person
+                } else {
+                    Sender::Agent
+                };
+                self.send(send, back, sender).await
+            }
+            Action::SendQueued { thread, queued } => self.send_queued(thread, queued, back).await,
             Action::Answer {
                 thread,
                 request,
@@ -106,6 +151,14 @@ impl Runner {
                     .await
             }
             Action::Stop { thread } => self.stop(thread, back).await,
+            Action::Git {
+                thread,
+                repository,
+                action,
+            } => {
+                self.git_call((thread, repository, action), !person, back);
+                Ok(())
+            }
             start => match NewThread::of(start) {
                 Some(new) => self.start(new, back).await,
                 None => Err(Refusal::BadValue),
@@ -149,6 +202,18 @@ impl Runner {
         }
     }
 
+    /// Says once in the runner log that a program runs at background priority, because its
+    /// lift failed (R-403).
+    pub(super) fn say_priority(&mut self) {
+        if crate::threads::priority::failure_to_say() {
+            self.note(
+                Kind::Start,
+                None,
+                "a program runs at background priority: the lift failed",
+            );
+        }
+    }
+
     pub(super) fn note(&mut self, kind: Kind, thread: Option<Uuid>, what: &str) {
         let at = chrono::Utc::now();
         if kind == Kind::Refusal {
@@ -165,66 +230,6 @@ impl Runner {
         if let Err(error) = self.log.write(&line) {
             tracing::warn!(%error, "the log of the runner was not written");
         }
-    }
-
-    /// A prompt of the person. The client gets its answer when the holder took the line.
-    async fn send(&mut self, id: Uuid, text: String, back: Caller) -> Result<(), Refusal> {
-        let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
-        let lines = thread.send(&text)?;
-        let steps = lines.into_iter().map(Step::Write).collect();
-        match self.apply(id, steps).await {
-            Err(_) => Err(Refusal::Holder),
-            Ok(Some(command)) => {
-                let waits = Waits::Send {
-                    thread: id,
-                    back,
-                    text,
-                };
-                self.waits.insert(command, waits);
-                Ok(())
-            }
-            // A Codex prompt that waits in the thread for its ID: it is the thread's now.
-            Ok(None) => {
-                self.note(Kind::Prompt, Some(id), "sent");
-                let _ = self.apply(id, Thread::sent(&text)).await;
-                back.answer(Outcome::Ok);
-                Ok(())
-            }
-        }
-    }
-
-    /// An answer of the person. The request closes, and the client gets its answer, when the
-    /// holder took the line (THR-030).
-    async fn answer(
-        &mut self,
-        to: Answering,
-        answer: &Answer,
-        back: Caller,
-    ) -> Result<(), Refusal> {
-        let Answering {
-            thread: id,
-            request,
-        } = to;
-        let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
-        let line = thread.answer(request, answer)?;
-        // The record says that the answer went, before the line goes (THR-030).
-        self.save();
-        let Ok(Some(command)) = self.apply(id, vec![Step::Write(line)]).await else {
-            if let Some(thread) = self.threads.get_mut(&id) {
-                thread.answer_failed(request);
-            }
-            // The record must not say that the answer went: a restart would close the request.
-            self.save();
-            return Err(Refusal::Holder);
-        };
-        let pending = Pending {
-            thread: id,
-            request,
-            word: answer_word(answer),
-            back,
-        };
-        self.waits.insert(command, Waits::Answer(pending));
-        Ok(())
     }
 
     async fn interrupt(&mut self, id: Uuid) -> Outcome {
@@ -266,16 +271,14 @@ impl Runner {
     }
 }
 
-/// The request of a thread that an answer is for.
-struct Answering {
-    thread: Uuid,
-    request: Uuid,
-}
-
 /// Whether only the person may make this call: an answer to a request, a raise of the limit,
-/// a start and a change of how a thread is listed (TH46). A process of an agent may not, so that
-/// an agent never approves itself or hides a thread from the person.
+/// a start, a change of how a thread is listed (TH46), the queue of a thread (TH109) and a change
+/// of its model, effort or mode (TH110), and the files of a prompt (TH111). A process of an agent may not, so that an agent never
+/// approves itself, gives itself more rights or hides a thread from the person.
 const fn for_the_person(action: &Action) -> bool {
+    if let Action::Git { action, .. } = action {
+        return action.for_the_person();
+    }
     matches!(
         action,
         Action::Answer { .. }
@@ -284,6 +287,17 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::ChangeListing { .. }
             | Action::ChangeProject { .. }
             | Action::Files { .. }
+            | Action::Folders { .. }
+            | Action::Queue { .. }
+            | Action::Requeue { .. }
+            | Action::Unqueue { .. }
+            | Action::SendQueued { .. }
+            | Action::Set { .. }
+            | Action::Commands { .. }
+            | Action::Compact { .. }
+            | Action::Attach { .. }
+            | Action::AttachMore { .. }
+            | Action::Unattach { .. }
     )
 }
 
@@ -296,17 +310,18 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Stop { thread }
         | Action::ChangeListing { thread, .. }
         | Action::Earlier { thread, .. }
-        | Action::Files { thread, .. } => Some(*thread),
+        | Action::Files { thread, .. }
+        | Action::Queue { thread, .. }
+        | Action::Requeue { thread, .. }
+        | Action::Unqueue { thread, .. }
+        | Action::SendQueued { thread, .. }
+        | Action::Set { thread, .. }
+        | Action::Compact { thread }
+        | Action::Attach { thread, .. }
+        | Action::AttachMore { thread, .. }
+        | Action::Unattach { thread, .. }
+        | Action::Git { thread, .. } => Some(*thread),
         _ => None,
-    }
-}
-
-const fn answer_word(answer: &Answer) -> &'static str {
-    match answer {
-        Answer::Allow => "allow",
-        Answer::AllowForSession { .. } => "allow for the session",
-        Answer::Deny { .. } => "deny",
-        Answer::Choose { .. } => "choose",
     }
 }
 
@@ -321,22 +336,4 @@ fn refusal_to_daemon_log(thread: Option<Uuid>, why: &str, say: Say) {
         Say::LastLine => "; more refusals of this minute are only in runner.log",
     };
     tracing::info!(%thread, why, "the runner refused a call{more}");
-}
-
-pub(super) const fn refusal_word(why: &Refusal) -> &'static str {
-    match why {
-        Refusal::UnknownThread => "unknown thread",
-        Refusal::FromAnAgent => "from a process of an agent",
-        Refusal::Running => "the thread runs",
-        Refusal::FolderNotPermitted => "folder not permitted",
-        Refusal::ProgramNotFound => "program not found",
-        Refusal::ProgramDoesNotAnswer { .. } => "program did not answer",
-        Refusal::BadValue => "bad value",
-        Refusal::RequestGone => "request gone",
-        Refusal::AnswerDoesNotFit => "answer does not fit",
-        Refusal::NotRunning => "not running",
-        Refusal::Holder => "holder",
-        Refusal::HolderOlder { .. } => "holder older than the daemon",
-        Refusal::OverLimit { .. } => "over the soft limit",
-    }
 }

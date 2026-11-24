@@ -6,7 +6,7 @@ import { capabilities } from '$lib/platform/platform';
 import { sessionsApi } from '$lib/sessions/api';
 import { RETEST_INTERVAL_MS, type ScreenSharingCalls } from './setup';
 
-/** The calls of the screen sharing flow, on the hub and the desktop shell (R-079). */
+/** The calls of the screen sharing flow (R-079). */
 export function screenSharingCalls(hub: Hub): ScreenSharingCalls {
   return {
     test: sessionsApi(hub).testConnection,

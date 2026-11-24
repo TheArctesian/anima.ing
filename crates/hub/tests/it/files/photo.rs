@@ -44,7 +44,7 @@ fn segment(marker: u8, payload: &[u8]) -> Vec<u8> {
     [&[0xFF, marker], length.to_be_bytes().as_slice(), payload].concat()
 }
 
-/// The photo: EXIF with GPS, then image data large enough for two parts of a piece.
+/// The image data is large enough for two parts of a piece.
 pub fn photo() -> Vec<u8> {
     let image: Vec<u8> = (0..70_000_u32)
         .map(|i| u8::try_from(i % 200).unwrap())

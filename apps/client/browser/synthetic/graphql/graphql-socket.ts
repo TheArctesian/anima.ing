@@ -6,13 +6,9 @@ import type { HubState } from '../model';
 import type { Recording } from '../recorder';
 import type { Live } from './live';
 
-// `wss://hub.anima.ing/graphql`: graphql-transport-ws (API-002). The hub accepts `connection_init` from a socket whose upgrade
-// carried the session cookie and whose payload has no `authorization` (K7), or whose payload brings the good bearer value,
-// and closes with 4403 otherwise.
-// Limits of Playwright: it shows no upgrade headers, so the cookie is read from the context's jar when `connection_init`
-// arrives, and the upgrade's `Origin` cannot be checked: the socket is taken to come from the hub origin, where every
-// test page runs. The cookie's `Origin` rule is proved for HTTP and in the pure `callerOf` tests. Duplicate headers
-// (two `Origin` lines) cannot be expressed through Playwright either.
+// The hub acks a socket whose upgrade carried the session cookie and whose payload has no `authorization` (K7), or whose
+// payload brings the good bearer value; else it closes with 4403 (API-002).
+// Playwright shows no upgrade headers, so the cookie is read from the context's jar.
 
 export const FORBIDDEN_CLOSE = 4403;
 
@@ -54,7 +50,7 @@ async function factsOf(parts: SocketParts, message: ClientMessage): Promise<Sock
   return { hadAuthorization: message.payload?.authorization !== undefined, hadCookie: cookie !== null, signedIn: caller !== 'signed-out' };
 }
 
-/** Serves one graphql-transport-ws socket. A subscription answers nothing until a spec pushes an event through `live`. */
+/** A subscription answers nothing until a spec pushes an event through `live`. */
 export function serveGraphqlSocket(parts: SocketParts, socket: WebSocketRoute): void {
   let facts: SocketFacts | undefined;
   socket.onMessage((raw) => {

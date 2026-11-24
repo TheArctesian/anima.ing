@@ -262,19 +262,21 @@ fn questions(list: &Value) -> Vec<Question> {
         .collect()
 }
 
-/// The answer to a control request of the runner. Of the answer to `initialize` only its list
-/// of models is read (TH104); the rest names the account and is dropped (THR-051).
+/// The answer to a control request of the runner. Of the answer to `initialize` only its lists
+/// of models (TH104) and of commands (TH117) are read; the rest names the account and is
+/// dropped (THR-051).
 fn control_response(response: &Value) -> Vec<DriveEvent> {
     let Some(id) = ProgramRequestId::from_json(&response["request_id"]) else {
         return vec![unknown("a control response with no ID", false)];
     };
-    let models = turn_facts::claude_models(&response["response"]);
+    let models = super::claude_models(&response["response"]);
     let reply = DriveEvent::Reply {
         id,
         ok: response["subtype"] == "success",
         result: Value::Null,
     };
-    [reply].into_iter().chain(models).collect()
+    let commands = super::claude_commands(&response["response"]);
+    [reply].into_iter().chain(models).chain(commands).collect()
 }
 
 /// The end of a turn: `success` is completed, an abort is an interrupt, each other is a fault.

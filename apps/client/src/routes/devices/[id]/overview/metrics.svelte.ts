@@ -12,30 +12,22 @@ import { mergeStorage } from '$lib/metrics/storage/storage';
 import { batteryBar, chargesOfSeries, mergeCharges, NO_CHARGES, type Charges } from '$lib/metrics/battery/battery';
 import { memoryBytesOfSeries, mergeMemoryBytes } from '$lib/metrics/container/container';
 
-/**
- * The metrics the Overview shows for one device and the hub calls behind them (D-5, D-6): the series of the chosen
- * range, the window they are drawn in, the latest readings and the live points of the 1-hour range. The window moves
- * only when data arrives (a load or a sample), never with the clock, so a chart slides once per new point (5.7.3).
- */
+/** The window moves only when data arrives, never with the clock, so a chart slides once per new point (D-5, D-6, 5.7.3). */
 export class DeviceMetrics {
   view = $state.raw<DeviceMetricsView | null>(null);
-  /** The window the chart draws, `null` before the first answer. */
   span = $state.raw<TimeWindow | null>(null);
-  /** The range of the data on screen: it stays the old range while a switch is on its way. */
+  /** Stays the old range while a switch is on its way. */
   get shownRange(): MetricRange | null {
     return this.#shown;
   }
 
-  /** The series count of each chart the last answer for this device drew, `null` before one: the skeleton copies it. */
   chartShape = $state.raw<readonly number[] | null>(null);
 
-  /** The hub's latest readings at load, then the newest a live batch carried; the bars show them. */
   readings = $state.raw<BarReadings | null>(null);
-  /** The newest charge of each battery: the last point of its series at load, then each live batch (MET-032). */
+  /** MET-032. */
   #charges = $state.raw<Charges>(NO_CHARGES);
-  /** The battery meter beside the bars; `null` for a device with no battery. */
   readonly battery = $derived(batteryBar(this.view?.batteries ?? [], this.#charges));
-  /** The bytes of memory in use: the last point of their series at load, then each live batch (HMD-073). */
+  /** HMD-073. */
   memoryBytes = $state.raw<number | null>(null);
   error = $state.raw<HubError | null>(null);
   liveError = $state.raw<HubError | null>(null);
@@ -55,10 +47,7 @@ export class DeviceMetrics {
     this.chartShape = chartShapeOf(deviceId);
   }
 
-  /**
-   * Shows `range`. Only an SSH device has metrics (D-7); any other source sends no request. The 1-hour range then
-   * listens for live points. A newer call drops an older answer; so does `stop`.
-   */
+  /** Only an SSH device has metrics (D-7); a newer call or `stop` drops an older answer. */
   async load(range: MetricRange, source: MetricsSource): Promise<void> {
     this.#generation += 1;
     const mine = this.#generation;
@@ -98,7 +87,6 @@ export class DeviceMetrics {
     this.span = seriesWindow(range, at, pointTimes);
   }
 
-  /** Ends the subscription; answers still on their way are dropped. */
   stop(): void {
     this.#generation += 1;
     this.#stopped = true;
@@ -118,7 +106,6 @@ export class DeviceMetrics {
     });
   }
 
-  /** The point joins the series and the window ends at it, so the chart slides by the distance it moved. */
   #add(added: NewMetrics): void {
     const at = Date.parse(added.at);
     if (this.#stopped || Number.isNaN(at)) return;

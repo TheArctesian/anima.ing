@@ -1,5 +1,4 @@
-//! The folders a program is looked for in: the fixed folders first, then `PATH`, each once, and
-//! never a relative one; and Apple's placeholders that must not run (CAP-021).
+//! CAP-021.
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};

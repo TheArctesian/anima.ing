@@ -29,13 +29,10 @@ use crate::{
     ids::{DeviceId, SiteId},
 };
 
-/// How often the hub reads its VPN status.
 const INTERVAL: Duration = Duration::from_secs(60);
-/// How long a read waits for the broker's node list before it publishes without it, as long
-/// as the `LocalAPI` read may take (BD-15).
+/// As long as the `LocalAPI` read may take (BD-15).
 pub(super) const BROKER_WAIT: Duration = Duration::from_secs(10);
 
-/// What the reader works with besides the proxy address.
 #[derive(Clone)]
 pub struct Reading {
     pub pool: PgPool,
@@ -46,11 +43,9 @@ pub struct Reading {
     pub broker: Option<Broker>,
 }
 
-/// The broker's answer of one read; None when the broker is not set.
 pub(super) type Brokered = Option<Result<BrokerView, Error>>;
 
-/// Reads the hub's VPN status each 60 s and publishes the picture (VPN-008); None when the
-/// `LocalAPI` proxy is not set (the vpn query then answers null). The first read is at once.
+/// `None` when the `LocalAPI` proxy is not set; the vpn query then answers null (VPN-008).
 #[must_use]
 pub fn spawn_reader(
     localapi: Option<String>,
@@ -68,15 +63,13 @@ pub fn spawn_reader(
     }))
 }
 
-/// One read. A failure keeps the last picture, marked not fresh.
 pub(super) async fn read_once(localapi: &str, reading: &Reading, last_failed: &mut bool) {
     let outcome = read_and_publish(localapi, reading).await;
     log_change(outcome.as_ref().err(), *last_failed);
     *last_failed = outcome.is_err();
 }
 
-/// Logs only a change between failing and working, by the fault word only (LOG-007): an
-/// outage writes two lines, not one a minute.
+/// Only a change, by the fault word only (LOG-007): an outage writes two lines, not one a minute.
 fn log_change(failure: Option<&Error>, last_failed: bool) {
     match (failure, last_failed) {
         (None, true) => read_again(),
@@ -113,10 +106,6 @@ fn broker_again() {
     tracing::info!(job = "vpn_reader", "VPN broker read again");
 }
 
-/// The broker state and node list of one read. A busy broker (a mutation holds the turn, or
-/// the read did not end within [`BROKER_WAIT`]) keeps the last picture's state and list, and
-/// is `Failed` when there is none. `NotInstalled` when the socket is not there; any other
-/// failure is `Failed`.
 pub(super) fn broker_answer<'a>(
     brokered: &'a Brokered,
     last: Option<&'a Picture>,
@@ -130,9 +119,7 @@ pub(super) fn broker_answer<'a>(
     }
 }
 
-/// The broker's node list, read in a task of its own that holds the turn to its end. The read
-/// waits for it at most `wait`; after that this read's answer is `BrokerBusy`, and the
-/// task ends by itself within the call limit.
+/// The task holds the broker's turn to its end, which comes by itself within the call limit.
 pub(super) async fn read_broker(broker: Option<&Broker>, wait: Duration) -> Brokered {
     let broker = broker?.clone();
     let mut task = tokio::spawn(async move { broker.nodes_if_free().await });
@@ -143,10 +130,8 @@ pub(super) async fn read_broker(broker: Option<&Broker>, wait: Duration) -> Brok
     }
 }
 
-/// Reads the status and the broker, builds and publishes the picture, then writes its new
-/// warnings. When the status read or the build fails, the last picture is published again as
-/// not fresh; a broker failure only sets the picture's broker state. A failed warning write
-/// keeps the published picture; its marks are not written, so the next read tries again.
+/// A failed warning write keeps the published picture; its marks are not written, so the next
+/// read tries again.
 async fn read_and_publish(localapi: &str, reading: &Reading) -> Result<(), Error> {
     let now = reading.clock.now();
     let (status, brokered) = tokio::join!(
@@ -180,8 +165,7 @@ async fn read_and_publish(localapi: &str, reading: &Reading) -> Result<(), Error
     write_warnings(&reading.pool, &reading.bus, &due, now).await
 }
 
-/// Publishes the latest picture again, marked not fresh, with its old `read_at`. A picture
-/// that is already not fresh is left as it is, so subscribers are not woken for nothing.
+/// A picture already not fresh is left as it is, so subscribers are not woken for nothing.
 fn keep_stale(feed: &Feed) {
     if let Some(latest) = feed.latest().filter(|latest| latest.fresh) {
         feed.publish(Picture {
@@ -191,8 +175,6 @@ fn keep_stale(feed: &Feed) {
     }
 }
 
-/// The picture of `status` and the broker's answer, with the devices, the sites, and the ping
-/// checks of the routers.
 async fn build_picture(
     status: &Status,
     (broker_state, broker): (BrokerState, Option<&BrokerView>),
@@ -224,7 +206,6 @@ async fn build_picture(
     })
 }
 
-/// Writes each warning whose mark is new as one `vpn` event, all in one transaction.
 pub(super) async fn write_warnings(
     pool: &PgPool,
     bus: &Bus,

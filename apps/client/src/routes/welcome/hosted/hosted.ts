@@ -1,10 +1,6 @@
 import type { HubState, Problem, SignInCode } from '$lib/hosted/account';
 
-/**
- * The steps of "Sign in" (hosted-mode.md Section 4.1, HMD-023): get a code, wait for the sign-in in the browser,
- * the hub starts (make or wake), connect to it, then the device list. The person never types an invite, an address or
- * a hub password: the app joins by itself (Section 4.3). A step that stops shows why and offers a retry.
- */
+/** HMD-023: the person never types an invite, an address or a hub password; the app joins by itself (Section 4.3). */
 export type HostedStep =
   | { readonly kind: 'start' }
   | { readonly kind: 'waiting'; readonly code: SignInCode; readonly opened: boolean }
@@ -25,7 +21,7 @@ export type HostedEvent =
 
 export const FIRST: HostedStep = { kind: 'start' };
 
-/** Where Retry goes: a code that is cancelled, expired or refused is spent, so the sign-in starts again. */
+/** A code that is cancelled, expired or refused is spent, so the sign-in starts again. */
 function retried(problem: Problem, from: HostedStep): HostedStep {
   if (problem === 'signed-out') return FIRST;
   if (from.kind === 'waiting' && problem !== 'offline') return FIRST;
@@ -33,19 +29,16 @@ function retried(problem: Problem, from: HostedStep): HostedStep {
   return from;
 }
 
-/** The step after a sign-in step: the browser opened again, or the person signed in. */
 function afterWaiting(step: HostedStep & { kind: 'waiting' }, event: HostedEvent): HostedStep {
   if (event.kind === 'opened') return { ...step, opened: event.opened };
   return event.kind === 'signed-in' ? { kind: 'hub', job: null } : step;
 }
 
-/** The step after the cloud said where the hub is: ready to connect, or a job that runs. */
 function afterHub(step: HostedStep, event: HostedEvent): HostedStep {
   if (event.kind !== 'hub') return step;
   return event.hub === 'ready' ? { kind: 'connecting' } : { kind: 'hub', job: event.hub };
 }
 
-/** The step after `event` in `step`; an event that does not belong to the step leaves it where it is. */
 export function nextStep(step: HostedStep, event: HostedEvent): HostedStep {
   if (event.kind === 'failed') return step.kind === 'done' || step.kind === 'failed' ? step : { kind: 'failed', problem: event.problem, from: step };
   switch (step.kind) {
@@ -65,7 +58,6 @@ export function nextStep(step: HostedStep, event: HostedEvent): HostedStep {
   }
 }
 
-/** The words of a step: its heading, one line, and the label of its button when it has one. */
 export interface StepText {
   readonly title: string;
   readonly line: string;
@@ -88,17 +80,13 @@ const PROBLEM_TEXT: Readonly<Record<Problem, StepText>> = {
   payment: { title: 'Payment failed', line: 'Pay on cloud.anima.ing, then retry.', action: 'Retry' },
 };
 
-/** The words of a failed step: a refusal by the hub names the hub, and a sign-in closed inside the app names no browser. */
 function failedText(step: Extract<HostedStep, { kind: 'failed' }>, here: string, inApp: boolean): StepText {
   if (step.problem === 'refused' && step.from.kind === 'connecting') return { ...PROBLEM_TEXT.refused, line: `Your hub refused ${here}.` };
   if (inApp && step.problem === 'cancelled') return { ...PROBLEM_TEXT.cancelled, line: 'The sign-in was closed.' };
   return PROBLEM_TEXT[step.problem];
 }
 
-/**
- * The words of `step`. `here` names what signs in: a phone says "this device" (MOB-016). With `inApp` the sign-in
- * page shows inside the app, so no step names a code or a browser (mobile plan M3-5).
- */
+/** A phone says "this device" (MOB-016); with `inApp` no step names a code or a browser (mobile plan M3-5). */
 export function stepText(step: HostedStep, here: 'this computer' | 'this device' = 'this computer', inApp = false): StepText {
   switch (step.kind) {
     case 'start':

@@ -1,9 +1,5 @@
-//! What a release carries for a hub on this computer (INS-002, OD-16, S12 packaging Section 2.1):
-//! seven programs beside the app's own executable and the PostgreSQL tree in its resources, each
-//! built from the job's commit in the clone. Tauri needs `binaries/<program>-<triple>` for each
-//! Rust target it compiles, and for the universal bundle `binaries/<program>-universal-apple-darwin`,
-//! which `lipo` makes from the two halves, as Tauri makes the app's own universal binary. A missing
-//! file fails `tauri build`. Pure; the I/O is in `on_disk` and the steps in `steps`.
+//! INS-002, OD-16, S12 packaging Section 2.1. Tauri needs `binaries/<program>-<triple>` for each
+//! Rust target it compiles; a missing file fails `tauri build`.
 
 pub mod committed;
 pub mod link;
@@ -21,31 +17,42 @@ use super::{
     plan::{Command, Program, command},
 };
 
-/// The programs beside the app's own executable, as `bundle.externalBin` names them under
-/// `binaries/`: the six Rust programs, then `anima-link`.
 pub fn programs() -> impl Iterator<Item = &'static str> {
     rust_programs::PROGRAMS
         .iter()
         .map(|(_, binary)| *binary)
         .chain([link::PROGRAM])
 }
-/// The folder Tauri reads the programs from, in the clone.
 const STAGE: &str = "apps/desktop/src-tauri/binaries";
 const UNIVERSAL: &str = "universal-apple-darwin";
 const WINDOWS_TRIPLE: &str = "x86_64-pc-windows-msvc";
 const LINUX_TRIPLE: &str = "x86_64-unknown-linux-gnu";
 const MAC_TRIPLES: [&str; 2] = ["aarch64-apple-darwin", "x86_64-apple-darwin"];
 
-/// The `bundle` settings that make Tauri carry the seven programs and the tree, whose folder
-/// `apps/desktop/src-tauri/database` becomes `database` in the resources.
+/// crates/shortening is under Apache-2.0, whose section 4 asks for the licence and the NOTICE text
+/// in each copy.
+const LICENCES: [(&str, &str); 3] = [
+    ("../../../LICENSE", "licences/LICENSE"),
+    ("../../../crates/shortening/NOTICE", "licences/NOTICE"),
+    (
+        "../../../crates/shortening/LICENSE-APACHE",
+        "licences/LICENSE-APACHE",
+    ),
+];
+
+/// The platform files of macOS and Linux name the licence files too; Windows reads them only here.
 pub fn bundle_settings() -> serde_json::Value {
     let programs: Vec<String> = programs()
         .map(|program| format!("binaries/{program}"))
         .collect();
-    serde_json::json!({ "externalBin": programs, "resources": { "database": "database" } })
+    let mut resources = serde_json::Map::new();
+    resources.insert("database".to_owned(), "database".into());
+    for (source, target) in LICENCES {
+        resources.insert(source.to_owned(), target.into());
+    }
+    serde_json::json!({ "externalBin": programs, "resources": resources })
 }
 
-/// The Rust targets `tauri build` compiles for `target`.
 fn triples(target: Target) -> &'static [&'static str] {
     match target {
         Target::LinuxX86_64 => &[LINUX_TRIPLE],
@@ -65,7 +72,6 @@ fn staged_as(clone: &Path, program: &str, triple: &str) -> PathBuf {
         .join(format!("{program}-{triple}{suffix}"))
 }
 
-/// The file of `program` the bundle takes for `target`.
 pub fn staged(clone: &Path, target: Target, program: &str) -> PathBuf {
     match target {
         Target::LinuxX86_64 => staged_as(clone, program, LINUX_TRIPLE),
@@ -74,8 +80,6 @@ pub fn staged(clone: &Path, target: Target, program: &str) -> PathBuf {
     }
 }
 
-/// `lipo` of the two macOS halves of `program` into the universal file the bundle takes; none on
-/// Linux.
 pub fn joined(clone: &Path, target: Target, program: &str) -> Option<Command> {
     (target == Target::DarwinUniversal).then(|| {
         let mut lipo = command(Program::Lipo, clone, &["-create", "-output"]);
@@ -89,15 +93,14 @@ pub fn joined(clone: &Path, target: Target, program: &str) -> Option<Command> {
     })
 }
 
-/// Whether `header`, the first bytes of a file, starts a 64-bit little-endian x86-64 ELF
-/// program: `e_type` an executable (2) or a position-independent one (3), `e_machine` 62.
+/// `e_type` an executable (2) or a position-independent one (3), `e_machine` 62 (x86-64).
 pub fn is_x86_64_elf(header: &[u8]) -> bool {
     matches!(header, [0x7f, b'E', b'L', b'F', 2, 1, ..])
         && matches!(header.get(16..18), Some([2 | 3, 0]))
         && header.get(18..20) == Some(&[62, 0][..])
 }
 
-/// A PE executable whose COFF machine is AMD64 and optional header is PE32+.
+/// COFF machine AMD64 and a PE32+ optional header.
 pub fn is_x86_64_pe(header: &[u8]) -> bool {
     if !header.starts_with(b"MZ") {
         return false;

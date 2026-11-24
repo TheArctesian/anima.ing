@@ -1,10 +1,11 @@
 import type { CodeIconName } from '../../icons/icons';
+import { shownName } from '../run/shown-name';
 
 /** How the composer shows an attachment: a tile for an image or a video, a row of the file list for the rest. */
 export type AttachmentKind = 'image' | 'video' | 'text' | 'file';
 
-/** Whether the file can be sent: read, still being read, or failed with the words to show. */
-export type AttachmentState = { readonly state: 'ready' } | { readonly state: 'reading' } | { readonly state: 'failed'; readonly words: string };
+/** Whether the file can be sent: read, still being read (`sent`: the bytes that the runner has so far), or failed with the words to show. */
+export type AttachmentState = { readonly state: 'ready' } | { readonly state: 'reading'; readonly sent?: number } | { readonly state: 'failed'; readonly words: string };
 
 /** One file attached to the draft (03, "Attachments"). */
 export interface Attachment {
@@ -17,6 +18,10 @@ export interface Attachment {
   /** An object or data URL the tile and the preview dialog draw; null when there is nothing to draw. */
   readonly preview: string | null;
   readonly state: AttachmentState;
+  /** The id under which the runner holds the file, when it has all of it: a `send` names it. */
+  readonly remote?: string;
+  /** When the runner had the whole file, in milliseconds: it drops a file that is not sent in one hour. */
+  readonly held?: number;
 }
 
 /** What `classify` and `admit` read of a `File`; a `File` fits as it is. */
@@ -34,13 +39,15 @@ export interface Limits {
   readonly count: number;
   readonly imageBytes: number;
   readonly fileBytes: number | null;
+  /** The most bytes of the images of one message together. */
+  readonly imagesBytes: number;
   readonly promptChars: number;
   readonly foldBytes: number;
 }
 
 const MB = 1024 * 1024;
 
-export const LIMITS: Limits = { count: 100, imageBytes: 10 * MB, fileBytes: 50 * MB, promptChars: 120_000, foldBytes: 32 * 1024 };
+export const LIMITS: Limits = { count: 100, imageBytes: 10 * MB, fileBytes: 50 * MB, imagesBytes: 80 * MB, promptChars: 120_000, foldBytes: 32 * 1024 };
 
 const SENT_AS_IMAGE: Readonly<Record<string, string>> = { gif: 'image/gif', jpeg: 'image/jpeg', jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
 const VIDEO: Readonly<Record<string, string>> = {
@@ -83,6 +90,20 @@ function untyped(file: FileFacts): boolean {
   return type === '' || type === 'application/octet-stream';
 }
 
+/* The types that the runner takes as an image (`ImageKind::of_mime`). */
+const RUNNER_IMAGE = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+
+/** Whether a file of this type goes as an image, with the limits of an image. A different image, as HEIC, is shown as an image and goes as a file: the runner decides by the type, and the composer agrees with it. */
+export function sentAsImage(mime: string): boolean {
+  return RUNNER_IMAGE.includes(bareMime(mime));
+}
+
+/* A photo that the file manager gives no type gets the type of its extension: the runner is never told an empty type. */
+function heicMime(file: FileFacts): string {
+  const typed = bareMime(file.type);
+  return /^image\/hei[cf]$/.test(typed) ? typed : `image/${extension(file.name) === 'heif' ? 'heif' : 'heic'}`;
+}
+
 function isHeic(file: FileFacts): boolean {
   return /^image\/hei[cf]$/i.test(file.type) || (untyped(file) && /\.hei[cf]$/i.test(file.name));
 }
@@ -111,7 +132,7 @@ function plainFile(file: FileFacts, mime?: string): Classified {
 export function classify(file: FileFacts): Classified {
   if (isDng(file)) return plainFile(file, 'image/x-adobe-dng');
   if (isSvg(file)) return plainFile(file, 'image/svg+xml');
-  if (isHeic(file)) return { kind: 'image', mime: file.type };
+  if (isHeic(file)) return { kind: 'image', mime: heicMime(file) };
   const guessed = untyped(file) ? SENT_AS_IMAGE[extension(file.name)] : undefined;
   if (guessed !== undefined) return { kind: 'image', mime: guessed };
   if (!file.type.toLowerCase().startsWith('image/')) return plainFile(file);
@@ -140,6 +161,8 @@ export const REFUSAL = {
   tooLarge: (name: string, limit: number) => `'${name}' exceeds the ${limitWords(limit)} attachment limit.`,
   notAnImage: (name: string) => `'${name}' could not be read as an image.`,
   imageTooLarge: (name: string) => `'${name}' is too large to attach.`,
+  imagesTooLarge: (name: string, limit: number) => `'${name}' does not fit: the images of one message can be ${limitWords(limit)} together.`,
+  folders: (count: number) => (count === 1 ? 'A folder cannot be attached. Attach the files in it.' : 'Folders cannot be attached. Attach the files in them.'),
 } as const;
 
 export interface Admitted<F extends FileFacts> {
@@ -154,11 +177,14 @@ export interface Refused {
 }
 
 /** Why a file of this class cannot be attached, or null. T3 checks the size of a file here and of an image after it compresses it; we do not compress, so both are checked here. */
-function refusal(file: FileFacts, kind: AttachmentKind, limits: Limits): string | null {
-  if (kind === 'image') return file.size > limits.imageBytes ? REFUSAL.imageTooLarge(file.name) : null;
-  if (limits.fileBytes === null) return REFUSAL.noFiles();
+function refusal(file: FileFacts, sort: { readonly kind: AttachmentKind; readonly mime: string }, limits: Limits): string | null {
+  if (sort.kind === 'image' && file.size <= 0) return REFUSAL.empty(file.name);
+  if (sentAsImage(sort.mime)) return file.size > limits.imageBytes ? REFUSAL.imageTooLarge(file.name) : null;
+  // An image that the runner takes as a file has the limit of a file.
+  const most = sort.kind === 'image' ? (limits.fileBytes ?? limits.imageBytes) : limits.fileBytes;
+  if (most === null) return REFUSAL.noFiles();
   if (file.size <= 0) return REFUSAL.empty(file.name);
-  return file.size > limits.fileBytes ? REFUSAL.tooLarge(file.name, limits.fileBytes) : null;
+  return file.size > most ? REFUSAL.tooLarge(file.name, most) : null;
 }
 
 /**
@@ -168,14 +194,20 @@ function refusal(file: FileFacts, kind: AttachmentKind, limits: Limits): string 
 export function admit<F extends FileFacts>(current: readonly Attachment[], incoming: readonly F[], limits: Limits = LIMITS): { taken: Admitted<F>[]; refused: Refused[] } {
   const taken: Admitted<F>[] = [];
   const refused: Refused[] = [];
+  let images = current.reduce((sum, attachment) => sum + (sentAsImage(attachment.mime) ? attachment.size : 0), 0);
   for (const file of incoming) {
     const sort = classify(file);
+    // The words of a refusal show the name as a chip would: a mark that hides or turns the text does not reach the line.
+    const named = { name: shownName(file.name), type: file.type, size: file.size };
     let words: string | null;
     if (current.length + taken.length >= limits.count) words = REFUSAL.full(limits.count);
-    else if (sort.kind === 'unsupported') words = REFUSAL.unsupported(file.name);
-    else words = refusal(file, sort.kind, limits);
+    else if (sort.kind === 'unsupported') words = REFUSAL.unsupported(named.name);
+    else words = refusal(named, sort, limits);
+    const counted = sort.kind !== 'unsupported' && sentAsImage(sort.mime);
+    if (words === null && counted && images + file.size > limits.imagesBytes) words = REFUSAL.imagesTooLarge(named.name, limits.imagesBytes);
     if (words !== null) refused.push({ name: file.name, words });
     else if (sort.kind !== 'unsupported') taken.push({ file, kind: sort.kind, mime: sort.mime });
+    if (words === null && counted) images += file.size;
   }
   return { taken, refused };
 }
@@ -184,6 +216,13 @@ export function admit<F extends FileFacts>(current: readonly Attachment[], incom
 export function attachmentOf(taken: Admitted<FileFacts>, id: string, preview: string | null, state: AttachmentState = { state: 'ready' }): Attachment {
   const name = taken.file.name === '' ? (taken.kind === 'image' ? 'image' : 'file') : taken.file.name;
   return { id, name, kind: taken.kind, size: taken.file.size, mime: taken.mime, preview, state };
+}
+
+/** How far a file is that is still being read: the part of it that the runner has, or only that it is read. */
+export function readingWords(attachment: Pick<Attachment, 'size' | 'state'>): string {
+  const sent = attachment.state.state === 'reading' ? attachment.state.sent : undefined;
+  if (sent === undefined || attachment.size <= 0) return 'Reading';
+  return `${String(Math.min(99, Math.floor((sent / attachment.size) * 100)))}%`;
 }
 
 /** The icon of a row of the file list. T3's set of file-type icons is not copied (the icons of the Code section are Lucide's). */

@@ -1,5 +1,4 @@
-//! `anima code show <repository> <path>` (alias `cat`): the text of one file on standard
-//! output (PRJ-040). The hub refuses an API key (D-23), so this needs a login.
+//! `anima code show` (PRJ-040); the hub refuses an API key (D-23), so it needs a login.
 
 use super::documents::{CodeFileRead, code_file_read};
 use crate::failure::{Failure, exit};
@@ -35,7 +34,6 @@ impl ShowArgs {
         };
         let file = hub.run::<CodeFileRead>(variables).await?.code_file;
         if invocation.output.json() {
-            // With `--json` the object is printed whole and no table is made.
             return invocation.output.data(&file, |_| Table::record());
         }
         let cannot = |why: &str| Failure::Ended {

@@ -1,6 +1,5 @@
-//! Reaching an RDP or VNC port for a connection test: the hub's checked connect (R-032), the
-//! one SSH uses, so the host is resolved once, every address passes the target rule and the
-//! connection goes to a checked address. I/O edge; nothing here logs.
+//! Reaching an RDP or VNC port through the hub's checked connect, the one SSH uses (R-032).
+//! I/O edge; nothing here logs.
 
 use std::{future::Future, time::Duration};
 
@@ -9,7 +8,7 @@ use crate::fleet::{
     targets::Reached,
 };
 
-/// Why a desktop protocol read gave nothing. Holds no host name or remote text (LOG-007).
+/// Holds no host name or remote text (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub(in crate::fleet::sessions) enum ReadError {
     #[error("the host name does not resolve")]
@@ -26,8 +25,6 @@ pub(in crate::fleet::sessions) enum ReadError {
     Tls,
 }
 
-/// A connection to the first checked address of `target` that answers.
-///
 /// # Errors
 /// [`ReadError::Unresolved`], [`ReadError::RefusedTarget`] before any connection, or
 /// [`ReadError::Unreachable`].
@@ -39,8 +36,6 @@ pub(in crate::fleet::sessions) async fn reach(target: Target<'_>) -> Result<Reac
     })
 }
 
-/// `read`, ended with [`ReadError::Timeout`] once `limit` passes.
-///
 /// # Errors
 /// As `read`, or [`ReadError::Timeout`].
 pub(in crate::fleet::sessions) async fn within<T>(

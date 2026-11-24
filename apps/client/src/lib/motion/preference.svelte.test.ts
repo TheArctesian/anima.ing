@@ -22,7 +22,6 @@ async function motionPreference() {
   return (await import('./preference')).motionPreference();
 }
 
-/** The OS setting as `prefers-reduced-motion` reports it. */
 function system(reduces: boolean): FakeMedia {
   const media = new FakeMedia('', reduces);
   vi.stubGlobal(
@@ -100,10 +99,7 @@ it('MOT-043: an unknown data-motion value is System', async () => {
   expect((await motionPreference()).reduced).toBe(true);
 });
 
-/*
- * Tracking in an effect: the module imported above, never reset, so the effect and the preference share one Svelte
- * runtime. It keeps the first query it gets, so every test here uses the same OS stand-in.
- */
+// The module imported above is never reset, so these tests share one Svelte runtime and one OS stand-in.
 describe('the preference inside an effect (MOT-041)', () => {
   const os = new FakeMedia('(prefers-reduced-motion: reduce)', false);
 
@@ -112,7 +108,6 @@ describe('the preference inside an effect (MOT-041)', () => {
     vi.stubGlobal('matchMedia', () => os);
   });
 
-  /** Tracks `.reduced` in an effect; returns what each run saw and the effect's stop. */
   function watch(): { seen: boolean[]; stop: () => void } {
     const preference = tracked();
     const seen: boolean[] = [];

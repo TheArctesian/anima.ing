@@ -7,7 +7,6 @@ use catalogue::{
 
 use super::{Ask, EntryKind, Refusal, entries, entry, install, listing::listed, model::Tier};
 
-/// A person in the Anima app in a browser, who names the digest of `listed` when it has one image.
 fn person_with_digest(listed: &super::Listed) -> Ask<'_> {
     Ask {
         in_browser: true,
@@ -24,7 +23,7 @@ fn ids(found: &[super::Listed]) -> Vec<&str> {
 
 #[test]
 fn h38_the_hub_lists_each_shipped_recipe_that_passes_the_static_test() {
-    // Pi-hole is refused by the static test (port 53, OD-HOST-45): it is not listed.
+    // Pi-hole is refused by the static test (port 53, OD-HOST-45).
     assert_eq!(
         ids(entries()),
         [

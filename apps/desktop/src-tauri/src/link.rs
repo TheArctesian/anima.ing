@@ -1,12 +1,7 @@
-//! This device's link to a hub (one-click plan S6, 2.6): the shell joins with an invite, runs
-//! `anima-link device` while the app runs, and reports its state. For a hosted hub a unit of
-//! the user keeps the link running with the app closed, and the shell watches it (HMD-058). The client then reaches the
-//! hub at `http://127.0.0.1:<port>`. No rule of the link is here (REPO-003).
-//!
-//! Only the main web view may ask (WEB-007). The invite is the one value that comes from the
-//! web view; its form is checked first, it reaches `anima-link` on standard input only and it
-//! is never logged (LOG-007).
+//! This device's link to a hub (one-click plan S6, 2.6, HMD-058). No rule of the link is here (REPO-003).
+//! Only the main web view may ask (WEB-007). The invite reaches `anima-link` on standard input only and is never logged (LOG-007).
 
+pub mod access;
 #[cfg(unix)]
 mod copy;
 #[cfg(windows)]
@@ -65,7 +60,6 @@ const CTL_LIMIT: Duration = Duration::from_secs(3);
 #[derive(Debug, Default)]
 pub struct Changing(Arc<AtomicBool>);
 
-/// Holds [`Changing`] for one join or leave; dropping it frees it.
 struct Claim(Arc<AtomicBool>);
 
 impl Changing {
@@ -83,7 +77,6 @@ impl Drop for Claim {
     }
 }
 
-/// What the client sees of the link.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LinkStatus {
@@ -111,8 +104,7 @@ fn folders() -> Result<LinkFolders, LinkError> {
         .ok_or(LinkError::NoHome)
 }
 
-/// What `anima-link` may see of the app's environment: the home folder and the folder for
-/// temporary files.
+/// `anima-link` sees only these variables of the app's environment.
 fn environment(read: impl Fn(&str) -> Option<OsString>) -> Vec<(&'static str, OsString)> {
     #[cfg(unix)]
     let names = ["HOME", "TMPDIR"];
@@ -138,8 +130,6 @@ fn launch(program: PathBuf, folder: &Path, port: u16) -> Launch {
     }
 }
 
-/// Starts the device link when this device has joined a hub. Called once at the app's start.
-/// A join that stopped half way is undone first: the folder before it is put back.
 pub fn start(device: &Arc<DeviceLink>) {
     let Ok(folders) = folders() else { return };
     if folders.recover().is_err() {
@@ -147,15 +137,13 @@ pub fn start(device: &Arc<DeviceLink>) {
     }
     let program = crate::carried::program(PROGRAM);
     resume(device, program.clone(), &folders);
-    // A link that the app runs for a hosted hub goes to a unit of the user (HMD-058), off this
-    // thread: the start of the app does not wait for it.
+    // A hosted hub's link goes to a unit of the user (HMD-058), off this thread.
     if let Some(program) = program.filter(|_| folder::wants_unit(&folders.device)) {
         let device = Arc::clone(device);
         thread::spawn(move || kept::hand_over(&device, program, &folders.device));
     }
 }
 
-/// Runs the device link of `folders.device` on its saved port, when this device has joined.
 fn resume(device: &DeviceLink, program: Option<PathBuf>, folders: &LinkFolders) {
     if !folders.device.is_dir() {
         return;
@@ -165,8 +153,7 @@ fn resume(device: &DeviceLink, program: Option<PathBuf>, folders: &LinkFolders) 
         return;
     };
     if let Some(link) = kept::now(&folders.device, port) {
-        // The unit runs the copy of an earlier app, or a copy at its earlier place: it gets the
-        // program of this app at its place (HMD-055).
+        // The unit may run an earlier app's copy; it gets this app's program (HMD-055).
         let application = crate::user_folders::of_this_user();
         let link = match (&program, application) {
             (Some(carried), Some(application)) => link.refresh(carried, &application),
@@ -181,9 +168,7 @@ fn resume(device: &DeviceLink, program: Option<PathBuf>, folders: &LinkFolders) 
     }
 }
 
-/// Puts the joined folder in place of the one before and runs its device link. When the swap
-/// fails, the link before runs again on its own port. The folder before is removed last; a
-/// failure there is logged only, as the join itself succeeded.
+/// A failure to remove the folder before is only logged: the join itself succeeded.
 fn replace(
     device: &DeviceLink,
     program: PathBuf,
@@ -215,9 +200,8 @@ async fn blocking<T: Send + 'static>(
         .unwrap_or(Err(LinkError::Failed))
 }
 
-/// Joins this device to the hub of `invite`, replaces the link of an earlier join, and starts
-/// the device link. On a hosted hub a unit of the user then keeps the link running with the app
-/// closed (HMD-058); when the unit cannot be made, the app runs the link itself as before. Returns the device key's fingerprint and the local port.
+/// Joins this device to the hub of `invite`; returns the device key's fingerprint and local port.
+/// On a hosted hub a unit of the user keeps the link running, or else the app runs it (HMD-058).
 #[tauri::command]
 pub async fn link_join<R: Runtime>(
     webview: Webview<R>,
@@ -280,7 +264,6 @@ pub async fn link_status<R: Runtime>(
     Ok(status)
 }
 
-/// `anima-link ctl status` of the running device link: its path and latency.
 fn link_path(folder: &Path) -> Option<(String, f64, Option<String>)> {
     let program = crate::carried::program(PROGRAM)?;
     let env = environment(|name| std::env::var_os(name));

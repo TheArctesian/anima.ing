@@ -1,5 +1,3 @@
-//! All SQL on schema `devices`: I/O only; rows are mapped in `records`. Ids and time come in as parameters.
-
 use chrono::{DateTime, Utc};
 use sqlx::{Connection, PgConnection, PgExecutor, PgPool};
 
@@ -11,7 +9,6 @@ use super::{
 };
 use crate::ids::{DeviceId, SiteId};
 
-/// A device with its SSH, RDP and VNC settings and tags in one row.
 macro_rules! select_device {
     ($($tail:expr),*) => {
         concat!(
@@ -44,6 +41,7 @@ macro_rules! device_filter {
     };
 }
 
+pub(super) mod automatic;
 mod detected_os;
 mod distribution;
 mod holds;
@@ -60,7 +58,6 @@ pub(super) use remote::{
 };
 pub(super) use sites::{create_site, list_sites, sites_by_ids};
 
-/// Inserts the device, its tags and its settings; all or nothing.
 /// An AFTER INSERT trigger adds the default `rdp_settings` and `vnc_settings` rows.
 pub(super) async fn create_device(
     conn: &mut PgConnection,
@@ -115,7 +112,6 @@ async fn replace_tags(conn: &mut PgConnection, id: DeviceId, tags: &[String]) ->
     Ok(())
 }
 
-/// Changes only the fields present; tags and each settings object are replaced wholly when present.
 pub(super) async fn update_device(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -168,8 +164,7 @@ pub(super) async fn update_device(
     Ok(changed)
 }
 
-/// Deletes with one `DELETE`; foreign keys remove tags and SSH settings (DEV-015).
-/// The device is read `FOR UPDATE` first, so the returned device is the one deleted.
+/// Foreign keys remove tags and SSH settings (DEV-015); the `FOR UPDATE` read returns the device deleted.
 pub(super) async fn delete_device(conn: &mut PgConnection, id: DeviceId) -> Result<Device, Error> {
     let mut tx = conn.begin().await?;
     let row = sqlx::query_as::<_, DeviceRow>(select_device!("WHERE d.id = $1 FOR UPDATE OF d"))
@@ -202,7 +197,6 @@ pub(super) async fn get(db: &PgPool, id: DeviceId) -> Result<Device, Error> {
     fetch(db, id).await
 }
 
-/// Every device, in byte order of the name.
 pub(super) async fn all(db: &PgPool) -> Result<Vec<Device>, Error> {
     let rows = sqlx::query_as(select_device!("ORDER BY d.name COLLATE \"C\""))
         .fetch_all(db)
@@ -210,7 +204,6 @@ pub(super) async fn all(db: &PgPool) -> Result<Vec<Device>, Error> {
     to_devices(rows)
 }
 
-/// One page of devices in byte order of the name.
 #[derive(Debug)]
 pub(super) struct DevicePage {
     pub(super) devices: Vec<Device>,
@@ -219,7 +212,6 @@ pub(super) struct DevicePage {
     pub(super) total: i64,
 }
 
-/// The page of filtered devices after the named one.
 pub(super) async fn list(
     db: &PgPool,
     filter: &DeviceFilter,
@@ -257,7 +249,6 @@ pub(super) async fn list(
     })
 }
 
-/// Every device that passes the filter, in byte order of the name, with no paging.
 pub(super) async fn filtered(db: &PgPool, filter: &DeviceFilter) -> Result<Vec<Device>, Error> {
     let rows = sqlx::query_as(select_device!(
         "WHERE ",
@@ -272,7 +263,6 @@ pub(super) async fn filtered(db: &PgPool, filter: &DeviceFilter) -> Result<Vec<D
     to_devices(rows)
 }
 
-/// A substring pattern for `ILIKE` that matches `%`, `_` and `\` literally.
 fn like_pattern(text: &str) -> String {
     let mut pattern = String::from("%");
     for character in text.chars() {
@@ -303,7 +293,6 @@ pub(super) async fn in_maintenance(db: &PgPool, id: DeviceId) -> Result<bool, Er
         .ok_or(Error::NotFound(Missing::Device(id)))
 }
 
-/// Every tag in use, once, in byte order.
 pub(super) async fn tags(db: &PgPool) -> Result<Vec<String>, Error> {
     Ok(sqlx::query_scalar(
         "SELECT tag FROM (SELECT DISTINCT tag FROM devices.device_tags) t ORDER BY tag COLLATE \"C\"",

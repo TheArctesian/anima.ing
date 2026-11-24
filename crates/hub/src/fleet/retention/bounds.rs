@@ -1,11 +1,8 @@
-//! The range of days the operator may set for each subject, and its default (D-25, DB-011).
-//! `migrations/0901_retention_recordings_removed.sql` states the same numbers in its check
-//! constraint (it restates those of 0900 without `recordings`, R-113).
+//! The days the operator may set for each subject (D-25, DB-011); `migrations/0901_retention_recordings_removed.sql` states the same numbers.
 
 use super::model::Subject;
 use crate::api_errors::FieldError;
 
-/// The smallest, largest and default number of days a subject is kept.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Bounds {
     pub(super) min: u16,
@@ -22,7 +19,6 @@ pub(super) const fn bounds(subject: Subject) -> Bounds {
     Bounds { min, max, default }
 }
 
-/// `days` as a period of `subject`, or the error on the `days` field.
 pub(super) fn checked(subject: Subject, days: i64) -> Result<u16, FieldError> {
     let Bounds { min, max, .. } = bounds(subject);
     u16::try_from(days)

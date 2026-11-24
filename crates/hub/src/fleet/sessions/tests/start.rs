@@ -1,5 +1,4 @@
 //! The pure checks `start` runs before it writes anything: display bounds (K4 §4, GW-012).
-//! The IP literals the gateway must not reach are the address policy's (`targets::tests`).
 
 use proptest::prelude::*;
 
@@ -15,8 +14,6 @@ fn request(width_px: i64, height_px: i64, dpi: i64) -> DisplayRequest {
 }
 
 proptest! {
-    /// Accepted exactly when width and height are 1..=8192 and DPI 48..=480; otherwise each
-    /// field outside its bounds is named once, in input order.
     #[test]
     fn gw_012_display_is_accepted_only_within_bounds(
         width in -10_i64..9000,

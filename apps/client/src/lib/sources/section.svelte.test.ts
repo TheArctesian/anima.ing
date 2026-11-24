@@ -47,7 +47,7 @@ async function open(...accounts: ReturnType<typeof account>[]): Promise<void> {
 }
 
 function button(label: string): HTMLButtonElement {
-  // The disclosure's button also holds its chevron glyph, so a disclosure is found by the start of its text.
+  // A disclosure's button also holds its chevron glyph, so it matches when its text includes the label.
   const same = (each: HTMLButtonElement) => each.textContent.replace(/\s+/g, ' ').trim() === label || (each.hasAttribute('aria-expanded') && each.textContent.includes(label));
   const found = [...document.querySelectorAll('button')].find(same);
   if (found === undefined) throw new Error(`no button ${label}`);
@@ -221,4 +221,12 @@ it('PRJ-018: the key field hides what is typed, is not named for the browser, an
   await click('Connect');
   expect(hub.sent).toEqual([]);
   expect(text()).toContain('Paste the private key or choose its .pem file.');
+  const invalid = [...document.querySelectorAll<HTMLInputElement>('input[aria-invalid="true"]')];
+  expect(invalid).toHaveLength(4);
+  for (const input of invalid) {
+    const descriptions = (input.getAttribute('aria-describedby') ?? '').split(' ').map((id) => document.getElementById(id)?.textContent ?? '');
+    const error = input.parentElement?.querySelector('.problem')?.textContent;
+    expect(error).toBeTruthy();
+    expect(descriptions).toContain(error);
+  }
 });

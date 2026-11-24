@@ -130,11 +130,9 @@ describe('the seam holds (WP-42 D-4)', () => {
     expect(scan("import '$lib/desktop/updater';")).toBe(true);
     expect(scan("import type { UpdaterPort } from '../desktop/updater';")).toBe(false);
     expect(scan("export type { UpdaterPort } from '$lib/desktop/updater';")).toBe(false);
-    // From inside lib/desktop the same folder is reached by './updater'.
     expect(scan("export { desktopUpdater } from './updater';", 'lib/desktop/x.ts')).toBe(true);
     expect(scan("export { desktopUpdater } from './updater.js';", 'lib/desktop/x.ts')).toBe(true);
     expect(scan("export type { UpdaterPort } from './updater';", 'lib/desktop/x.ts')).toBe(false);
-    // './updater' elsewhere is another module; the updater's own file is skipped.
     expect(scan("import { x } from './updater';", 'lib/other/x.ts')).toBe(false);
     expect(scan("import { x } from './updater';", 'lib/desktop/updater.ts')).toBe(false);
   });
@@ -146,7 +144,6 @@ describe('the seam holds (WP-42 D-4)', () => {
   });
 });
 
-/** The module path a specifier names, as `lib/...` without extension; null for a package. */
 function resolveSpecifier(file: string, specifier: string): string | null {
   const target = specifier.startsWith('$lib/')
     ? `lib/${specifier.slice('$lib/'.length)}`
@@ -156,12 +153,11 @@ function resolveSpecifier(file: string, specifier: string): string | null {
   return target?.replace(/\.(?:ts|js)$/, '') ?? null;
 }
 
-/** `text` without its comments; strings are kept whole, so an apostrophe in a comment cannot open one. */
+/** Strings are kept whole, so an apostrophe in a comment cannot open one. */
 function withoutComments(text: string): string {
   return text.replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (match) => (/^(?:\/\/|\/\*)/.test(match) ? ' ' : match));
 }
 
-/** Whether the file at `path` imports or re-exports values of `lib/desktop/updater` (its own file and type-only forms excepted). */
 function importsUpdaterValues(path: string, text: string): boolean {
   if (/^lib\/desktop\/updater\.(?:ts|js)$/.test(path)) return false;
   const statement = /\b(?:import|export)\s+(?!type\b)(?:[^;'"]*?\bfrom\s+)?['"]([^'"]+)['"]/g;

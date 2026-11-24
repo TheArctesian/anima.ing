@@ -257,7 +257,9 @@ that owns the area.
 | SF-230 | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-227 | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-325 | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
-| SF-330 | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Open (built in `bb0bce295`) |
+| SF-330 | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (2026-11-22, relayed; R-384: a Full access agent adds a route with no approval, one rule for each caller). The rule of `bb0bce295` that only a browser token adds a public route goes; the consent at the machine (OD-HOST-43) stays |
+| SF-391 | The consent at the machine is the one guard left for a public route, and nothing sets it yet. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
+| SF-392 | On a hosted hub a route is added with no second factor. Medium | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (R-430; option B, 2026-11-23) |
 | SF-331 | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-332 | The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-327 | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `68c9a7ab5`) |
@@ -281,6 +283,14 @@ that owns the area.
 | SF-248 | Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-246 | Images start as root with nothing added to contain them; the rule of `shm_size`. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-249 | The machine tests run images that are not trusted. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-335 | A fetch of an operational key during the removal of its device gives the value, and the removal does not name the key. Low | The operational keys (E0-6, K-E5 Section 2) | Open (built on the branch `engine/e0-6-security-review`) |
+| SF-338 | `anima-daemon uninstall` keeps the key cache when the delete of the token fails. Low | The key cache of the daemon (E0-6, K-E5 Section 2.1) | Open (built on the branch `engine/e0-6-security-review`) |
+| SF-336 | `anima-daemon key read` can give a dropped version while a save or a delete in the Keychain waits for the person. Low | The key cache of the daemon on macOS (E0-6, K-E5 Section 2.1) | Open |
+| SF-334 | An API key can read a vault key offer and can replace or delete a sealed record. Medium | The sealed records (E0-6, K-E5 Section 3) | Open |
+| SF-337 | A reveal with a valid new code passes for a login token that was deleted during the request. Low | The sealed records (E0-6, K-E5 Section 3) | Open |
+| SF-333 | A login token with the declaration of an AI agent can change and grant operational keys. Low | The operational keys (E0-6, K-E5 Section 2.2) | Open |
+| SF-354 | A connection that is open when its route is removed stays up. Medium | The routes of the hub (task H21) | Open |
+| SF-355 | A removed redirect keeps answering until the proxy reads its table again, or while it cannot. Low | The routes of the hub (task H21) | Open |
 | SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
@@ -292,6 +302,9 @@ that owns the area.
 | SF-237 | A browser session can make an API key that lasts longer than the session. Low | The browser session of a hosted hub (task HM-T32) | Open |
 | SF-241 | A remote session that a browser opened stays open after the browser session of the hub ends. Low | The browser session of a hosted hub (task HM-T32) | Open |
 | SF-240 | Behind the gateway each browser has the loopback address of the container. Low | The browser session of a hosted hub (task HM-T32) | Open |
+| SF-341 | An account with a known password at the first start, on a port that each local user reaches | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open, narrowed (R-371) |
+| SF-353 | Each local user of the machine reaches the port of the program on `127.0.0.1` | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open, narrowed (R-371) |
+| SF-393 | A hosted hub reaches the hubs of other accounts and the host of the pool. High | The hubs of the hosted pool (R-030, R-129) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -2393,7 +2406,16 @@ Mitigation now: Settings with defaults: 10 s for the handshake with the PROXY he
 
 A re-read of `19e7fd03a` on 2026-11-21 found three more points, decided overnight on the recommendation of the orchestrator (R-365): (Medium) slow clients of several networks could hold each stream of the link of one device; (Medium) the answer to a client that reads it one byte at a time had only the idle time; (Low) false UDP sources could fill the flows of a stream. Built in `bb0bce295`: one route keeps at most 16 connections open (`ANIMA_ROUTE_PROXY_CONNECTIONS`, below the 32 streams of a link), and a TCP stream and a WebSocket after its `101` hold their place until they end; each write to a client must finish within 30 s (`ANIMA_ROUTE_PROXY_WRITE_SECONDS`), or the connection ends; a UDP stream opens at most 8 new flows each second with a burst of 16 (`ANIMA_ROUTE_PROXY_UDP_NEW_PER_SECOND`). Tests: `a_tcp_stream_holds_a_place_of_its_route_until_it_ends`, `a_websocket_after_its_101_holds_a_place_of_its_route`, `a_write_to_a_client_that_does_not_read_ends_at_its_time`, `a_udp_stream_opens_only_its_new_flows_each_second`, `a_bucket_takes_its_burst_at_once_and_then_its_rate`, and the defaults of the settings.
 
-A re-read of `33e4fb787` on 2026-11-21 found two more points, decided overnight on the recommendation of the orchestrator (R-365): (Medium) the cap of each route let several routes of one device hold each stream of its link; (Low) the bucket of new UDP flows is one for each stream, so one sender of false sources could take each new flow. Built in `68c9a7ab5`: the hub limits the streams of the routes of one device together (`ANIMA_ROUTES_STREAMS_PER_DEVICE`, 16), and refuses a value at or above the streams of the link (`ANIMA_ROUTES_STREAMS_PER_LINK`, 32); a UDP stream keeps at most 4 flows from one source network, the /24 of IPv4 and the /64 of IPv6 (`ANIMA_ROUTE_PROXY_UDP_FLOWS_PER_NETWORK`). Tests: `two_routes_of_one_device_share_the_limit_of_the_device`, `the_streams_of_one_device_stay_below_the_streams_of_its_link`, `a_udp_stream_opens_only_its_flows_of_one_source_network`, `a_source_of_udp_is_its_24_of_ipv4_and_its_64_of_ipv6`. A re-read of `d00de9969` on 2026-11-21 found the Low of the bucket only partly closed: false sources in many networks still take the shared tokens of the stream. It does not block the merge; task H41 of the plan holds it. Built on the branch `hosted/udp-buckets` (task H41): a new flow takes the place of the oldest waiting flow, never of a flow whose source sent again after the application answered it, so false sources of many networks replace only each other. Waiting flows hold at most half of the connections of the route, set-up flows fewer than the rest, so one connection stays for a new client; a replaced flow ends at once, and set-up flows leave the waiting places free. Still open (Low): a sender that sends again to each false source can set up flows without seeing an answer; the first datagram of a new real client still competes for the tokens of the bucket. Tests: `false_sources_of_many_networks_replace_only_waiting_flows`, `set_up_flows_leave_the_waiting_places_free`, `waiting_and_set_up_flows_leave_one_connection_of_the_route`, `set_up_flows_stop_at_their_own_cap`.
+A re-read of `33e4fb787` on 2026-11-21 found two more points, decided overnight on the recommendation of the orchestrator (R-365): (Medium) the cap of each route let several routes of one device hold each stream of its link; (Low) the bucket of new UDP flows is one for each stream, so one sender of false sources could take each new flow. Built in `68c9a7ab5`: the hub limits the streams of the routes of one device together (`ANIMA_ROUTES_STREAMS_PER_DEVICE`, 16), and refuses a value at or above the streams of the link (`ANIMA_ROUTES_STREAMS_PER_LINK`, 32); a UDP stream keeps at most 4 flows from one source network, the /24 of IPv4 and the /64 of IPv6 (`ANIMA_ROUTE_PROXY_UDP_FLOWS_PER_NETWORK`). Tests: `two_routes_of_one_device_share_the_limit_of_the_device`, `the_streams_of_one_device_stay_below_the_streams_of_its_link`, `a_udp_stream_opens_only_its_flows_of_one_source_network`, `a_source_of_udp_is_its_24_of_ipv4_and_its_64_of_ipv6`. A re-read of `d00de9969` on 2026-11-21 found the Low of the bucket only partly closed: false sources in many networks still take the shared tokens of the stream. It does not block the merge; task H41 of the plan holds it. Built on the branch `hosted/udp-buckets` (task H41): a new flow takes the place of the oldest waiting flow, never of a flow whose source sent again after the application answered it, so false sources of many networks replace only each other. Waiting flows hold at most half of the connections of the route, set-up flows fewer than the rest, so one connection stays for a new client; a replaced flow ends at once, and set-up flows leave the waiting places free. Still open (Low): a sender that sends again to each false source can set up flows without seeing an answer; the first datagram of a new real client still competes for the tokens of the bucket. Tests: `false_sources_of_many_networks_replace_only_waiting_flows`, `set_up_flows_leave_the_waiting_places_free`, `waiting_and_set_up_flows_leave_one_connection_of_the_route`, `set_up_flows_stop_at_their_own_cap`. Merged into dev in `bc513403a`. A separate reviewer read `08159dcfe`, `2969f5b69` and `1b41cf1f0`; at `1b41cf1f0` no finding of severity High or Medium is open. These Lows stay open:
+
+- A sender of false sources that sends again to each of them sets up flows without seeing an answer, at most 7 of them by default. While those places are full, a real client stays waiting and a new source can replace it.
+- The first datagram of a new real client competes with false sources for the tokens of the bucket (8 each second).
+- One connection of the route stays free for one replacement at a time. In a burst, a new flow can race a replaced flow for its connection, so a real client can be refused once and must send again.
+- When the listener of a stream starts again, the old flows keep their connections until they are idle (60 seconds). The correction: end the flows of a listener when it is stopped, and check that one name has one listener. Built on the branch `hosted/udp-flow-ends`: when the listener of a UDP stream stops, its table drops each flow, which ends it (test `clearing_the_table_drops_each_handle`). One name has one listener: the name of a route is unique (migration 1060) and a route has one kind.
+- When `carry` panics, the connection of the name is not given back (`proxy.release`). The correction: a guard that gives it back on drop. Built on the branch `hosted/udp-flow-ends`.
+- Each replaced flow is a new dial through the hub, up to 8 each second for each stream, each with one query of the hub and one UDP socket.
+- The hub records an error of the door for a frame that a replaced flow cut off; it is a normal end.
+- No test runs a whole flow: the handover of a connection while a flow dials, and the admission of a new client while set-up flows are at their cap.
 
 What stays: a client that takes one segment in each 30 s keeps its connection. Many source networks together can still take the new flows of a stream; the flows answer each source with no more bytes than it sent (SF-248).
 
@@ -2457,7 +2479,43 @@ Mitigation now: Only a person with a login or a browser token, on an account wit
 
 The fix to make: `addApplicationRoute` and `removeApplicationRoute` ask for a code of the second factor given in the last minutes (a step-up), and refuse otherwise.
 
-State: Open (built in `bb0bce295`). Found by a separate reviewer on 2026-11-21.
+Ruling (2026-11-22, R-384): the operator chose that a Full access agent adds a route with no approval, and one rule for each caller: no step-up and no device approval for adding or removing a route; a thread in a restricted mode asks in the thread (Section 3b of [vault.md](../contracts/extensions/vault.md)). The rule of `bb0bce295` (only a browser token adds a public route, `PublicNeedsPerson`) and the refusal of an agent at a removal go; task H21 removes them. What stays: no API key and no builder token change a route, the second factor of the account (HM-D14) as the Routes session keeps it, and the consent at the machine before a public route serves (OD-HOST-43). The cost, told to him: an agent can make an application public with no question; the consent at the machine is the one guard left.
+
+State: Accepted by the operator (R-384). Found by a separate reviewer on 2026-11-21.
+
+### SF-391: The consent at the machine is the one guard left for a public route, and nothing sets it yet. Low
+
+Requirements: HOST-046, task H21; OD-HOST-43; R-384.
+
+What it is: After R-384 a login token, also one that an agent holds, adds a public route with no approval. The one guard left before the route serves is the consent at the machine (`routes.route.machine_consent`). Each route is stored with it false, and no code outside the tests sets it.
+
+Where: `crates/hub/src/work/routes.rs` (`add`), `crates/hub/src/work/routes/model.rs` (`Route::waits`), and the setter that is not written.
+
+Effect, and who can cause it: Whoever can reach the setter, when it is written. Effect: an application is public on the internet with no question to a person.
+
+Mitigation now: Nothing sets the consent, so no route serves (the three serving reads filter on `waits`).
+
+The fix to make: The setter gets its own security review by a separate reviewer before it is merged. It is not reachable by an API key, a builder token or a tool of `anima mcp`, and the consent is given at the machine, not at the hub.
+
+State: Open. Found by a separate reviewer on 2026-11-22.
+
+### SF-392: On a hosted hub a route is added with no second factor. Medium
+
+Requirements: HM-D14; R-129; task H21.
+
+What it is: A hosted hub has no TOTP of the hub (R-129), so `addApplicationRoute` and `checkApplicationRoute` ask for no second factor there.
+
+Where: `crates/hub/src/work/routes/graphql.rs` (`signed_in_for_routes`).
+
+Effect, and who can cause it: A person or an agent with the login or browser token of a hosted account. Effect: a route is added with the sign-in alone. A public route still waits for the consent at the machine, which nothing sets (SF-391). Since R-390 (branch `hosted/routes-private-consent`) a private route waits for no consent and reaches a port of a machine, also of a database (R-391), for each node of the network of Anima, guarded by the sign-in alone (SF-245).
+
+Severity: raised from Low to Medium by the review of R-390 and R-391 (2026-11-22): with them, the sign-in alone makes a database reachable from each node, containers included. The acceptance of R-430 named a private route guarded by the sign-in alone, not a database, so the operator was asked again.
+
+The ruling of the operator (2026-11-23): option B, accept as is. He did not choose option A (ask at the machine for a database port also on a private route) or option C (a private route answers only the devices of the account). The cost that he accepted: "on a hosted hub, the sign-in alone, including an agent's login token, makes a database reachable from every node of the Anima network, containers included, with no question at the machine". SF-245 stays Open.
+
+Mitigation now: The hub knows that it is hosted only from how it was started (`ANIMA_HOSTED_CLOUD_KEY_FILE`), never from a request. API keys and builder tokens stay refused. A public route still waits for the consent at the machine.
+
+State: Accepted by the operator on 2026-11-23 (R-430, and option B for the database ports of R-390 and R-391). Severity stays Medium.
 
 ### SF-328: The protocol of a public stream was only a label that the person picked. Medium
 
@@ -2668,7 +2726,98 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 2.2: a fixed list of files for each format (`file_type`); `auto_map` and `custom_pipelines` refused (`remote_code`); vLLM `--load-format safetensors`; the chat template only from the copy, at most 64 KiB, in the sandboxed renderer of the runtime.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
+
+### SF-370: The check of a copy does not refuse a class that is not in the list of the runtime. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: a fixed list of classes for each runtime (`files/classes.rs`): for vLLM the 131 text-generation architectures of vLLM v0.34.0, and a list of tokenizer classes; each entry of `architectures` and `tokenizer_class` must be on it and has no `.`, `/`, `--` or `:`, else `remote_code`. `llama_server` loads only GGUF and reads no `config.json`; `mlx_lm` has no list yet.
+
+State: Closed in 04f5684d8, read again by the separate reviewer on 2026-11-22. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-371: Only `config.json` and `tokenizer_config.json` are checked for remote-code members. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: `check_copy` walks each JSON file of the Section 2.2 list but `tokenizer.json`: also `generation_config.json`, `special_tokens_map.json`, `preprocessor_config.json` and each `*.safetensors.index.json`.
+
+State: Closed in 04f5684d8, read again by the separate reviewer on 2026-11-22. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-372: An over-long chat template, an unparsable file and an oversized file are all reported as `remote_code`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: Waits for the operator: a separate cause word, or the text of `remote_code` in Section 5 made wider. The cause words do not change in this branch.
+
+State: Open; the decision goes to the operator. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-373: The read of the files of a copy is not bounded in the code that reads them. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: The caller of the checks (`model_load`, task L1-8) must read at most 2 MiB of each file (`MAX_CONFIG_BYTES`) and take the length of `chat_template.jinja` from its metadata before it reads it.
+
+State: Open; owned by the `model_load` caller (L1-8). Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-374: Tests are missing for a duplicate key, a long `chat_template.jinja` through `check_copy` and a large real tokenizer configuration. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: Tests for each, with a fixture of about 1.2 MB of `added_tokens_decoder` (the size of Gemma 3).
+
+State: Built on branch `compute/sf-298-model-files`. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-375: A vLLM copy without `config.json` is not refused. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: `check_copy` refuses (`remote_code`) a copy for a runtime with a class list when it has no `config.json`.
+
+State: Built on branch `compute/sf-298-model-files`. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+
+### SF-376: The tokenizer list is a choice of the builder, and the list of architectures cites a vLLM version (v0.34.0) that was inferred. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: When a vLLM release source pins a version, check both lists again against that version, for each vLLM release source (step in the L1-7 row).
+
+State: Open. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+
+### SF-377: Classes `*ForConditionalGeneration` (for example Gemma 3 4B and larger, Mistral-Small-3.1) are refused by the text-only list. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: None for Level 1, whose scope is text. Image input (L1-14) must make the list wider.
+
+State: Open; noted in the L1-14 row. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+
+### SF-378: `mlx_lm` has no class list. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: None now: `mlx_lm` maps `model_type` to its own modules and does not use `auto_map`, and the walk for `auto_map` and `custom_pipelines` still covers its copies.
+
+State: Open as a note. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`). Correction of 2026-11-22 (SEC-C-012): a fixed file list exists in code (`daemon-core`, `model_work/files.rs`), so "no code exists" is no longer true; a branch that builds the remaining parts is in progress, and the entry stays Open. The memory safety of the GGUF and safetensors parsers is outside the file list: that risk rests on SF-299 (accepted, R-346). R-342 point (3) records that the protections named on its card (the sandbox and the file checks) do not exist by default. Found by a separate reviewer on 2026-11-20.
 
 ### SF-299: A runtime runs with each right of the user of the daemon, so a fault of a parser reads the token and the configuration. High
 
@@ -2688,7 +2837,8 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Sections 2.1 and 4: an empty environment with a fixed list of variables (offline, no usage report, no proxy, no `HF_TOKEN`, no `DYLD_*`, no `LD_PRELOAD`, no `PYTHONPATH`); media only as a `data:` URL; no download folder; a row "runtime: no outgoing connection". The isolation of finding b enforces it.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
+State: Accepted by the operator (R-379, 2026-11-22, relayed): no network block on a model server by default, as SF-299 under R-346. K11 Sections 4 and 9 no longer say "no outgoing connection". What stays required: loopback only, the offline and no-telemetry variables, the cleaned environment with no token, only GGUF and safetensors with the `remote_code` refusal; the isolation stays a setting at the machine, off by default. Code exists: the environment is cleared (`env_clear`, `crates/daemon/src/model/server.rs:263`) and the variables are a fixed list (`daemon-core`, `command.rs`). Found by a separate reviewer on 2026-11-20.
 
 ### SF-301: The hub gives the SHA-256, so the check proves nothing against a hub that is taken over. High
 
@@ -2718,7 +2868,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: the check after each start, restart and `model_load` and each 15 seconds, over the process tree, TCP and UDP, IPv4 and IPv6; only `::ffff:127.0.0.1` counts as mapped loopback; the time of 15 seconds is stated.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-304: Prompts can reach a log through the output of a runtime and its slots. Medium
 
@@ -2728,7 +2878,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 2.1: the output goes to a ring file of 1 MiB with mode 0600 that is never sent; owned flags `--log-disable`, `--no-slots`, no slot save path, `--disable-log-requests`.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-305: The memory and the disk of a runtime were not limited. Medium
 
@@ -2738,7 +2888,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: a server above its share and 10 % is ended (`limit_memory`); `memory.max` or `RLIMIT_AS` on Linux; a temporary folder of 2 GiB, counted as `tempBytes`; the disk reserve checked for each write.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-306: A partial download that nobody continues stays on the disk. Low
 
@@ -2748,7 +2898,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 7: `partial/` counts in the share and in `cacheBytes`; deleted after 7 days or at `copy_delete`; at most 4 partial copies.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-307: The unpack of a runtime archive accepted hard links, devices, setuid bits and very large archives. Medium
 
@@ -2758,7 +2908,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 6: regular files and folders only; modes 0755 and 0644, no setuid, setgid or sticky bit; 8 GiB and 50,000 entries at most; no two names equal in lower case; unpack to a temporary folder, then rename; `sizeBytes` for each release source.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-308: A server that fails late is started again with no end. Medium
 
@@ -2768,7 +2918,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: each end that no item asked for counts; 5 in one hour or 20 in 24 hours make it `failed`; an end in a load makes the copy `failed` (`load_crash`).
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-309: A different process can take the port and receive the API key of a probe. Low
 
@@ -2778,7 +2928,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: port 0 where the runtime permits it; before each probe the listener must belong to the process tree of the server (`listener`).
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-310: The index of a GPU and the value of `gpuLayers` were not checked against the machine. Low
 
@@ -2788,7 +2938,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 2.1: a GPU that is not in the inventory is refused (`gpu_unknown`); the only string of `gpuLayers` is `all`.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-311: The list of advisories gave no lowest version of a runtime. Low
 
@@ -2798,7 +2948,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 6: a lowest version of each runtime in the daemon program (`runtime_too_old`), changed only by a signed release.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-312: An API key of an AI agent can start each model work. Medium
 
@@ -2818,7 +2968,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 4: the roots of the system or of the program only; no proxy; no downgrade; no redirect to an IP address or a host outside the list; at most 5 redirects; at most `sizeBytes`; the fixed list of hosts of Hugging Face.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-314: The Hugging Face token can have more rights than a read of gated repositories. Note
 
@@ -2828,7 +2978,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 7: the hub asks for a fine-grained token with read access to gated repositories only.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-315: The daemon can follow a link when it makes or deletes a file of model work. Note
 
@@ -2838,7 +2988,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 10: each change relative to an open folder handle with `O_NOFOLLOW`; `copy_delete` follows no link.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ## The security review of the model work at the machine (task L1-6, 2026-11-20)
 
@@ -3457,6 +3607,190 @@ What it is: `private_folder` made the roots and their missing parents in one rec
 The correction: It makes each missing part on its own with mode 0700 and checks each part that it made, and the root: a plain folder of this user, not a link. A parent that was already there is used as it is. Test: `the_missing_parents_of_a_folder_of_model_work_are_made_private`.
 
 State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+## The security review of the model work contract K11 (SEC-C-012, 2026-11-22)
+
+A separate reviewer reviewed contract K11, [model-work.md](../contracts/compute/model-work.md), version 0.3, against `origin/dev` on 2026-11-22. This is the review SEC-C-012 that R-344 put after the acceptance. "Severity" is the word of the reviewer. By the operator's relayed direction, the Medium findings are tightening inside the contract that R-344 permits, with no new ruling; the text of K11 now states each correction as its rule, and the pull (task L1-7) is built to the tightened text. Each entry stays Open until code exists and the operator closes it.
+
+### SF-357: A resumed pull can pass the hash check with changed bytes. Medium
+
+Requirements: task L1-7 of [compute-plan.md](plans/compute-plan.md); PULL-005, PULL-006; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 7, "Resume".
+
+What it is: The SHA-256 state is kept with each complete part, so the daemon does not read the file again. The files of `partial/` belong to the user of the daemon, and runtimes run with no isolation (R-346). A process of that user can change the bytes of a part that was already hashed; the resumed pull then passes the check with bytes that are not those of the hash.
+
+The correction: Section 7: before the move to `copies/`, the daemon reads the whole file again and hashes it from byte 0; or it holds each partial file through one descriptor for the whole life of the pull.
+
+State: Open. Fixed in the text of K11 (2026-11-22); no code. Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-358: "No outgoing connection" of a runtime is not enforced by default. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); MET-020; SEC-C-012; SF-300.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 4, row "Each other address", and Section 9.
+
+What it is: The text said that a runtime makes no outgoing connection. R-346 left the isolation off, and the offline variables of `daemon-core` `command.rs` only advise a runtime. The text claimed a control that does not exist by default.
+
+The correction: Sections 4 and 9 state the real default: no block (R-379), and list what stays required.
+
+State: Open. Fixed in the text of K11 (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-359: The revision and the file paths of a pull are not pinned. Medium
+
+Requirements: task L1-7 of [compute-plan.md](plans/compute-plan.md); PULL-004; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2 and Section 7, "The source".
+
+What it is: `revision` had no exact form, and a file name could hold `/`, so a hub that is taken over could choose a branch name or a path that leaves the folder of the copy or meets a link.
+
+The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name, or one sub-folder and a flat name joined by one `/` (R-408); each of the two parts is checked as a flat name, with no `/`, `..`, `%`, control character or character outside ASCII (SF-362), and the file part is from the list of Section 2.2. The daemon opens each part with `openat` and `O_NOFOLLOW`, flattens the file on write into `copies/<copy>/` with `O_EXCL` under a folder of mode 0700, and refuses two files whose flattened names are equal in lower case, as the unpack does; it never overwrites one.
+
+State: Open. Fixed in the text of K11 (2026-11-22); no code. Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-360: The Hugging Face token is not held by a type of its own and can leave through a dump or a redirect. Medium
+
+Requirements: task L1-7 of [compute-plan.md](plans/compute-plan.md); PULL-010, SEC-C-003; SEC-C-012; SF-303.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 7, "The token of a gated repository".
+
+What it is: The text did not make `hf_token` a type of the order, did not stop a core dump of the fetch process, and left the drop of the header at a redirect to the default of a library.
+
+The correction: `hf_token` is its own type in the order: it wipes on drop, has no `Debug` and no `Clone`, and is never serialised back. The fetch process sets `PR_SET_DUMPABLE` 0 and `RLIMIT_CORE` 0. The token goes only to `huggingface.co`, only on `/resolve/` requests, only when `gated` is true. A test shows that the `Authorization` header is stripped on the redirect from `huggingface.co` to `cas-bridge.xethub.hf.co`, by the code and not by a library default.
+
+State: Open. Fixed in the text of K11 (2026-11-22); no code. Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-361: "Holds no token" overstates the separation of the fetch process. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); MET-020; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 4.
+
+What it is: The fetch child runs with each file right of the user of the daemon, so a fault in it can read the token from the daemon folder.
+
+The correction: Section 4 states the limit: the separation keeps the token out of the memory and the environment of the child, not out of its reach.
+
+State: Open. Fixed in the text of K11 (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-362: The case check of the unpack misses names that are equal after Unicode normalisation. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); CAG-008; SEC-C-012; SF-307.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 6; `crates/daemon/src/model/unpack.rs:129-138`.
+
+What it is: On APFS two names that differ in bytes can be the same file after normalisation; the lower-case check does not see it.
+
+The correction: Section 6: the unpack refuses an entry name with a character outside ASCII (the stricter of the two choices; the other was a compare after NFC and case folding). The change of the code is a later task.
+
+State: Open. Fixed in the text of K11 (2026-11-22); the code is not changed. Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-363: The pinned SHA-256 of a release source, not its broad host list, is the control. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); CAG-008; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 6; `releases/fetch.rs:48`.
+
+What it is: The list of GitHub hosts for a release source is broad; an entry with no SHA-256 would rest on it.
+
+The correction: Section 6: an entry with no SHA-256 is refused (`runtime_not_configured`).
+
+State: Open. Fixed in the text of K11 (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-364: The exception of R-336 for task L1-6 is out of date. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); MET-020; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 4; MET-020 of [design-spec.md](spec/design-spec.md).
+
+What it is: The child fetch process is built (task L1-6b), so the exception that let the daemon process download a runtime archive is no longer needed.
+
+The correction: The exception is removed from Section 4 and from MET-020.
+
+State: Open. Fixed in the text (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-365: The API key of a model server does not protect against a process of the same user. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2.1.
+
+What it is: The key is in the environment of the runtime, which a process of the same user can read.
+
+The correction: Section 2.1 states that the key protects only against other users and browser pages.
+
+State: Open. Fixed in the text of K11 (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-379: The child reports two of its own faults as `source_failed`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch/child.rs`.
+
+What it is: A child that refused a non-empty environment, or could not build its Tokio runtime, wrote `source_failed`, so a fault of the child read as a fault of the source.
+
+The correction: Both return `fetch_failed`. Tests: `the_child_refuses_to_work_with_any_environment_variable`, `the_reply_of_the_child_reads_back_as_its_cause`.
+
+State: Corrected on the branch `compute/model-causes`. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-380: The form of a name with a sub-folder is loose. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2, `files[].name`.
+
+What it is: The text did not say how many `/` a name may hold, that a part may not be empty, `.` or `..`, or whether the limit of 256 characters counts both parts.
+
+The correction: Exactly 0 or 1 `/`; each part has 1 or more characters and is neither `.` nor `..`; at most 256 characters in all.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-381: The address of a file in a sub-folder could encode the `/`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 7, "The source".
+
+What it is: "Each part is encoded as a path segment" read on the whole name gives `%2F`, which a server may read in a different way.
+
+The correction: The folder and the file are each encoded as a path segment, with a literal `/` between them, never `%2F`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-382: Names that Windows reserves are not refused. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2.2.
+
+What it is: A part such as `nul.gguf`, `COM1`, a name that ends in a dot or a space, or a name with `:` opens a device or a stream on Windows.
+
+The correction: Either part is refused (`file_type`) when it is `CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9` or `LPT1` to `LPT9` in any case, with or without an extension, ends in a dot or a space, or holds `:`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-383: Two causes could fire for a file over its size. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 5.
+
+What it is: `size` and `file_rejected` both spoke of a file that is too large.
+
+The correction: `size` fires when the downloaded size differs from the `sizeBytes` given; `file_rejected` fires when a content check of a file finds it too large.
+
+State: Corrected on the branch `compute/model-causes` (text of K11). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-384: A child that exits with code 0 chooses between `source_failed` and the other words. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/releases/fetch.rs`, `verdict`.
+
+What it is: Only the word of a child that exited with code 0 gives `source_failed`; a child under the control of a hostile archive could write that word in place of `fetch_failed`.
+
+The correction: None needed: the child could already write each word of its fixed list, so the exit-0 path adds no new power, and the cause carries no text of the child.
+
+State: Accepted as reviewed. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
 ## The security review of the browser session of a hosted hub and of the trust in the gateway (task HM-T32, 2026-11-21)
 
 Task HM-T32 of [hosted-mode.md](proposals/hosted-mode.md) is the review that HMD-067 asks for before a person other than the operator uses `hub.anima.ing`. This part of it is the side of this repository: the browser session of a hosted hub (`hostedBrowserTicket`, `hostedBrowserSignIn`, the cookie, its life, the sign-out), the web client behind the gateway (HM-T27, HM-T30, HM-T31), Connect GitHub on a hosted hub (HM-T29), and what the hub trusts from the gateway: the public origin, the guard of the host name, the check of `Origin`, the cookies, CORS, the security headers and the paths below `/_door/`. It also looks at the move to one address for each hub (`https://<hub id>.hub.anima.ing`, HMD-068, HMD-069). The review read the code on `dev` of 2026-11-21 (`crates/hub/src/fleet/link/graphql/hosted.rs`, `crates/hub/src/fleet/access/`, `crates/hub/src/lib.rs`, `crates/hub/src/config.rs`, `crates/hub/src/web_client/`, `crates/hub/src/engine/sources/registration*`, `crates/hub/src/fleet/sessions/`, `apps/client/src/lib/hub/gateway/`, `apps/client/src/lib/hosted/`). It read the gateway of the private repository to know what the hub may assume; the findings of the gateway are recorded there, not here. It ran the hub tests of `crates/hub/tests/it/link/hosted_origin.rs`; it contacted no server. An agent did it, and a second agent read the same code with only the list of the flows; this list holds the findings of both. "Severity" is the word of the reviewers.
@@ -3717,6 +4051,8 @@ Effect, and who can cause it: A container on a machine of the network reaches a 
 
 Mitigation now: Section 16.7: a private route listens only on the address of the hub on the network of Anima and the proxy checks the interface; never in the table of the door; private means each node, containers included; the same rights as a public route.
 
+Change (2026-11-22, R-390 and R-391, branch `hosted/routes-private-consent`): a private route no longer waits for the consent at the machine, and it may point at the port of a database or of metrics. So a person or an agent with a login token makes a database of one machine reachable to each node of the network of Anima, also each container of each machine, with no question at the machine. The proxy answers a private route only on its private listener, to a client address in the networks of the nodes (`Proxy::reaches`); the plain HTTP listener lists public names only, and the HTTPS listener refuses a private name on the public listener after the TLS handshake, so the name and its certificate are seen there before the refusal. A private stream listens only on the private address. Since the same branch the proxy refuses a private network wider than /8 of IPv4 or /16 of IPv6, and a private address that is unspecified or the public listen address. What stays open: "private" is each node of the network, not only the signed-in devices of the account.
+
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
 
 ### SF-248: Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium
@@ -3761,10 +4097,453 @@ Mitigation now: OD-HOST-53: the test machine is not on the network of Anima or h
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
 
+### SF-335: A fetch of an operational key during the removal of its device gives the value, and the removal does not name the key. Low
+
+Requirements: R-147; K-E5 Section 2.1 ("After removal").
+
+What it is: The fetch checked the consumer row of the device with `EXISTS` and did not lock it. A removal of the device that ran during the fetch deleted the row before the fetch recorded it, so the list of the keys that the server had did not name the key, and the fetch still gave the value.
+
+Where: `crates/hub/src/fleet/credentials/operational/store.rs` (`fetchable`), `operational/store/consumers.rs` (`mark_fetched`, `delete_of_device`).
+
+Effect, and who can cause it: A device that fetches a key for the first time while the operator removes it. Effect: the server holds the key, and the removal does not tell the operator to revoke it at the provider. The audit entry of the fetch exists.
+
+Mitigation now: `fetchable` holds the consumer rows of the device shared (`FOR SHARE OF k, c`), so the removal waits for the fetch to commit and then names the key.
+
+State: Open. The correction is built on the branch `engine/e0-6-security-review`; no test makes the race. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-338: `anima-daemon uninstall` keeps the key cache when the delete of the token fails. Low
+
+Requirements: R-147; K-E5 Section 2.1.
+
+What it is: `uninstall` deleted the token first and stopped at its error, so the key cache stayed. On macOS a delete in the Keychain can wait for the person (R-322).
+
+Where: `crates/daemon/src/main.rs` (`uninstall`).
+
+Effect, and who can cause it: A failed or waiting delete of the token during `anima-daemon uninstall`. Effect: `anima-daemon key read` gives the values for up to 7 days, and no daemon runs to delete them.
+
+Mitigation now: `uninstall` deletes the key cache first, and also when the delete of the token fails.
+
+State: Open. The correction is built on the branch `engine/e0-6-security-review`. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-336: `anima-daemon key read` can give a dropped version while a save or a delete in the Keychain waits for the person. Low
+
+Requirements: R-147; K-E5 Section 2.1.
+
+What it is: The daemon drops a revoked or replaced version in memory, but the stored record stays until a save or a delete in the Keychain succeeds. `key read` is a different process and reads the stored record.
+
+Where: `crates/daemon/src/keys/keeper.rs` (`follow`, `save`, `forget`), `crates/daemon/src/keys.rs` (`key read`).
+
+Effect, and who can cause it: On macOS, before the person allows the Keychain access, the hub revokes or rotates a key. Effect: a workload that runs `anima-daemon key read` gets the old value. The 7-day rule ends it. Linux is not affected.
+
+Mitigation now: none apart from the 7-day rule. The live check HT-035 covers the Keychain.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-334: An API key can read a vault key offer and can replace or delete a sealed record. Medium
+
+Requirements: VLT-001, VLT-002; K-E5 Section 3.
+
+What it is: `offerVaultKey`, `vaultKeyOffer`, `storeSealedRecord` and `deleteSealedRecord` take each signed-in token. Only `recordReveal` asks for a person (a login or a browser token, and no declared AI agent).
+
+Where: `crates/hub/src/engine/sealed_records/graphql.rs`; `crates/hub/src/fleet/access/guard/refused.rs` (`API_KEY_REFUSED_ROOTS`).
+
+Effect, and who can cause it: A holder of an API key, also a key made for an AI agent. Effect: it can read an offer and so stop the addition of a client (the bytes stay sealed), or replace or delete the one sealed copy of a record on the hub.
+
+Mitigation now: each change writes an audit entry that names the key.
+
+State: Open. The correction (a person only, on the four fields) waits until `recordReveal` is on `dev`, because it changes the same file. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-337: A reveal with a valid new code passes for a login token that was deleted during the request. Low
+
+Requirements: VLT-005; K-E5 Section 3.
+
+What it is: The check of the second factor reads no row for a deleted token, and then records the code on no row and passes.
+
+Where: `crates/hub/src/fleet/access/recheck.rs`, `access/store/tokens.rs` (`lock_token_totp`).
+
+Effect, and who can cause it: A sign-out of the login while its reveal runs. Effect: the reveal passes, but only with a valid new TOTP code.
+
+Mitigation now: the reveal needs the code.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-333: A login token with the declaration of an AI agent can change and grant operational keys. Low
+
+Requirements: R-147; K-E5 Section 2.2.
+
+What it is: The changes of the operational keys refuse an API key but not a request that declares an AI agent. `recordReveal` refuses such a request.
+
+Where: `crates/hub/src/fleet/credentials/graphql.rs`; `crates/hub/src/fleet/access/guard.rs` (`operator_only`).
+
+Effect, and who can cause it: An AI agent that holds the login token of the operator and declares itself. Effect: it can grant a key to a server. The declaration is voluntary, so this is a second defence only; the contract does not ask for it.
+
+Mitigation now: a grant writes an audit entry that names the agent.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+### The read of the proposed exception for Arcane (R-247), 2026-11-19
+
+A separate reviewer read the first form of the proposed text "Excepted entries" (Section 10.1 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), as it was at commit `2cf0d35c`) against contract K10 version 0.4, the rulings R-226 to R-238, R-246 and R-247, and Section 4.18 of [extensions-plan.md](plans/extensions-plan.md). The reviewer did not read the proposal, which holds the view of the writer. The reviewer ran no container and no Arcane: each point about the behaviour of Arcane or of Docker is marked "not verified".
+
+The last line of the reviewer: "The text gives more than R-247: any Compose file of the hub's choice (command, entrypoint, environment, configs, a second service, a prepared volume) that names the listed image gets the socket, so a person who controls the hub, and each program of the user of the daemon, becomes the administrator directly with no Arcane; it also lets the port be published to the network, and keeps the program startable after the setting is withdrawn."
+
+Twelve findings are changes of the text (SF-339 to SF-350); the second form of the text (version 7 of the proposal) has each change, and no reviewer has read the second form. Three findings need the operator (SF-351 to SF-353), and the reviewer gave a view on the open question OD-HOST-28: option B, and the same for `application_back` of such an entry. What the reviewer found sound: a list fixed in the program that the hub cannot write; a digest and no tag; the setting in the file that only the administrator can write, empty after the install; the refusal `not_at_machine`; the fixed target of the mount; and that on an engine of a user the exception gives the right of that user, not of the administrator.
+
+### SF-339: The exception is tied to the image, and the hub still writes the file. High
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F1 of the reviewer.
+
+- What it is: An `application_apply` with a file of the choice of the hub whose service has the listed digest gets the socket. With an `entrypoint` or `command` of its choice, a `configs` entry over a file of the image, an `environment` of its choice (a known key, authentication off, a different Docker host; names of variables not verified), a second service that shares the volume or the network, or one more mount over a folder of the image, "install Arcane" is "run anything as administrator". Who: a person who controls the hub, a login session, and each program of the user of the daemon (R-236). R-247 gives an entry of the tested catalogue, not the image of Arcane in any file.
+- Change: An entry of the list is one whole Compose file by its SHA-256, the digest of each image, and a list of variables with the form of each value; a file with a different SHA-256 gets no exception; the file has one service, no `command`, `entrypoint`, `user`, `configs`, `tmpfs` or `labels`, and no mount apart from one volume and the socket.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-340: A prepared volume, or a later ordinary file on the same application. High
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F2 of the reviewer.
+
+- What it is: An ordinary file is installed first under the same application with a volume of the name that the entry uses, and a database with an administrator of the attacker is written to it; then the excepted file is applied. Or, after the program runs, an ordinary file on the same application mounts the volume and reads or changes keys and users. Who: as SF-339.
+- Change: An excepted entry is installed only as the first apply of an application with no volume, no `binds/` and no kept version; such an application takes no other file; a machine has at most one application for each entry.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-341: An account with a known password at the first start, on a port that each local user reaches. High (not verified)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F3 of the reviewer.
+
+- What it is: The port is on `127.0.0.1`, which each user and program of the machine can open. If the program starts with a default administrator and a known password (ARC-005 marks the switch-off as not verified), any local user, and the user of the daemon who started the install, signs in first and is the administrator of the machine. No hub is needed.
+- Change: An entry is in the list only when the test by hand (task AR0) shows that its fixed file leaves no account with a known password and no open first-run page at any time after the start; the applications program makes each secret of the entry at the machine, at random, and the hub does not send it and cannot read it.
+
+State: Open, narrowed. R-371 (2026-11-22) withdraws the exception, so this is no longer a way to the administrator of the machine. What stays applies to each ordinary entry of the catalogue: the default account of an ordinary entry gives that application, not the machine. The severity above is that of the excepted entry and is not rated again for an ordinary one. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-342: "Open to the network" would publish the administrator of the machine. High
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F4 of the reviewer.
+
+- What it is: With the setting on for a different application, "each other rule applies with no change" lets the port of the excepted program be published on each address. ARC-003 says `127.0.0.1`.
+- Change: The port of an excepted entry is always on `127.0.0.1`; "Open to the network" does not apply to it.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-343: The setting withdrawn or the list changed, and the program can be started again. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F5 of the reviewer.
+
+- What it is: The text refuses only the mount at an apply. After the administrator removes the name, `container_action` with `start` or `restart`, which an API key may ask for, still starts the container with the socket.
+- Change: When the setting does not name the entry, or the list of today does not hold the file and digest of the running version, the applications program refuses `application_apply`, `application_back` and the `start` and `restart` of `container_action` for it, and asks the administrator at the machine if it stops the container; when the hub and device pair of Section 6.4.2 changes, the setting is empty again.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-344: `container_follow` on the excepted program. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F6 of the reviewer.
+
+- What it is: A login at the hub, or a program of the user of the daemon, reads the log. If the program prints a first password, a token of an agent or a session link (not verified), that is a way to the administrator for a person who is not one.
+- Change: `container_follow` refuses a container of an excepted entry; its log is read at the machine.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-345: The text does not say whom the exception makes administrator, nor which rules stop holding. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F7 of the reviewer.
+
+- What it is: Not said, and true also after the other changes: on a system engine a program with the socket can write the settings file of Section 6.4.2 and replace the applications program, so "only the administrator of the machine can set them" is no longer true there; "Protected", "All containers", "The hub may delete volumes", the limits, the rule of adoption and the project label do not hold against it; it can get and start any image, also a new version of itself; `application_remove` does not remove what it started or changed; and on a system engine the user of the daemon can start it with no hub (R-236), so R-226 no longer limits a fault of the daemon on that machine.
+- Change: The longer sentence of the screen, the longer sentence of Section 3, and a row for the setting in Section 6.4.2, as Section 10.1 of the proposal now has them.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-346: The source of the mount on an engine in a virtual machine. Medium (not verified)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F8 of the reviewer.
+
+- What it is: "The real path of the socket of the engine" is a path of the host. An engine in a virtual machine (Docker Desktop) resolves the source of a bind mount in its own machine: the path of the socket of the user may not mount, or may mount a different thing. A `read_only` mount of a socket stops no request on it.
+- Change: The applications program writes the path that the administrator recorded for this purpose: on a system engine and a rootless engine the real path after each link is resolved, on an engine in a virtual machine the path in that machine; it refuses the mount when none is recorded; the text makes no claim for `read_only`.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-347: The list goes old, and the applications program is not updated through the hub. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F9 of the reviewer.
+
+- What it is: A listed version with a known fault stays the only one that installs, on each machine, until the administrator installs a new applications program by hand. The text has no way to withdraw an entry.
+- Change: A release can mark an entry as withdrawn, and the program then refuses it as SF-343 says; the settings screen shows the version and the date of each entry; the hub shows a machine whose list is older than the list that the hub knows and offers no install of the entry there.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-348: "One digest" does not say of what. Low
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F10 of the reviewer.
+
+- What it is: An image has a digest of its index, which holds each architecture, and one for each architecture.
+- Change: The list holds the digest of the image index, or one digest for each architecture; the reference is `repository@sha256:…` with the registry host and no tag, compared after the filling of variables and again in the final form; after the pull the program checks the identifier of the image.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-349: "Unless the owner named the entry" does not say who. Low
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F11 of the reviewer.
+
+- What it is: The contract defines "the administrator of the machine"; "the owner" is a different word.
+- Change: "The administrator of the machine, in the settings file of Section 6.4.2". The hub learns the state from the refusal only.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-350: The agent of Arcane is not the manager with a different image. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F12 of the reviewer.
+
+- What it is: The agent has no web port. Its manager address and token come from the hub, and whoever names the manager is the administrator of the machine with no login at all; the applications program can check only the form. Whoever is an administrator in the manager is the administrator of each machine with an agent. ARC-012 says: no agent before the review of task AR6.
+- Change: The agent is a second entry with its own name in the setting, not in the list before the review of task AR6 has no open finding of severity high; its file publishes no port; the address of its manager has the form `127.0.0.1` with a port or an address of the network of Anima; the screen says who then controls the machine.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-351: With the entry named, a person who controls the hub is the administrator of the machine. High; needs the operator (OD-HOST-31)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point N2 of the reviewer.
+
+- What it is: R-247 told him that such a person "can install a program that is the administrator". It did not say that the hub is also the sign-in of that program (ARC-005, ARC-010), the tunnel to it (ARC-004), and the source of the manager address of an agent. So a hub that is taken over is root on those machines, where Section 3 of K10 until now gave it containers under `contained` only. No change of the text removes this while the hub is the sign-in.
+- Change: None; a decision. Options and recommendation are in OD-HOST-31.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19.
+
+### SF-352: On a system engine, the user of the daemon reaches the administrator through the entry. High; needs the operator (OD-HOST-32)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point N3 of the reviewer.
+
+- What it is: R-236 accepted that a program of the user of the daemon gets "what the rules of the machine permit". When he accepted it, no rule of the machine permitted the socket. With the setting on, a program of that user, or a fault of the daemon, can install the entry with no hub.
+- Change: None; a decision. Options and recommendation are in OD-HOST-32.
+
+State: Withdrawn (R-371, 2026-11-22): no entry of the catalogue may hold the socket of the engine, and no code of the exception exists. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19.
+
+### SF-353: Each local user of the machine reaches the port of the program on `127.0.0.1`. Medium; needs the operator (OD-HOST-33)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point N4 of the reviewer.
+
+- What it is: After SF-341 this is the login page only, but each fault of the program before a sign-in is then a way to the administrator for a local user.
+- Change: None; a decision. Options and recommendation are in OD-HOST-33.
+
+State: Open, narrowed. R-371 (2026-11-22) withdraws the exception, so this is no longer a way to the administrator of the machine. What stays applies to each ordinary entry of the catalogue: a fault before the sign-in of an ordinary entry gives that application, not the machine. The severity above is that of the excepted entry and is not rated again for an ordinary one. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19.
+
+### SF-354: A connection that is open when its route is removed stays up. Medium
+
+Requirements: HOST-046, HOST-050; Section 12 of hosted-applications-stage-2.md.
+
+What it is: A removal refuses each new connection at once, because the door reads the route again for each connection. A TCP stream or a WebSocket that is already open is a task of its own. The proxy stops only the listener, not the connections that it started, and the door never checks the route of an open relay again. A UDP flow ends when its listener stops, within the refresh of 60 s.
+
+Where: `crates/route-proxy/src/streams/tcp.rs` (`copy_bidirectional`), `streams/listeners.rs` (`keep`), `serve/https.rs` (the upgrade relay), `crates/hub/src/work/routes/door.rs` (`connect`).
+
+Effect, and who can cause it: A client that is connected when the person removes a route, for example because the route is abused. Effect: it keeps its connection until it is idle or closes.
+
+Mitigation now: none in the code. A new connection is refused at once.
+
+State: Open. It existed before Remove came back. Found on 2026-11-22 by the security review of the branch `hosted/routes-remove-signed-in`, a separate reviewer, which found no High.
+
+### SF-355: A removed redirect keeps answering until the proxy reads its table again, or while it cannot. Low
+
+Requirements: HOST-050.
+
+What it is: The proxy answers a redirect from its own table and does not ask the hub. It reads the table every 60 s. When a read fails, it keeps the old table, and with it the certificate of the removed name.
+
+Where: `crates/route-proxy/src/serve/https.rs` (`redirect`), `crates/route-proxy/src/main.rs` and `serve.rs` (`refresh`).
+
+Effect, and who can cause it: Nobody causes it. A removed redirect answers for up to 60 s, or for as long as the hub cannot be read.
+
+Mitigation now: a redirect goes only to the one fixed address that the person gave (SF-248).
+
+State: Open. It existed before Remove came back. Found on 2026-11-22 by the same review.
+
+## The security review of the daemon side of the drain (task L1-5, 2026-11-22)
+
+A separate reviewer read commits `1440a9ddb` and `9038ff2a2` (branch `compute/l1-5-drain`) against the contract [model-work.md](../contracts/compute/model-work.md), Section 2 (`model_drain`) and Section 3, on 2026-11-22. The review found no High and no Medium. Task L1-10 of [compute-plan.md](plans/compute-plan.md) owns SF-366, SF-367 and SF-369.
+
+### SF-366: Drains one after the other can starve other model work. Low
+
+Requirements: task L1-5 of [compute-plan.md](plans/compute-plan.md); CAP-013.
+
+Where: `crates/daemon/src/model/cycle.rs`, `crates/daemon/src/model/drain.rs`.
+
+What it is: The drain runs inline in the claim loop. While it waits, the daemon claims no other item. When task L1-10 counts real requests, a hub that sends one 60-second drain after the other can keep the machine from other work.
+
+Effect, and who can cause it: The hub, or an actor that can make `model_drain` items. Effect: the model work of the machine stops. Today the count is zero, so each drain ends at once.
+
+The correction: In task L1-10, run the drain off the claim path, or refuse a new drain while one is in progress.
+
+State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`.
+
+### SF-367: A long drain sends no report and can pass its lease. Low
+
+Requirements: task L1-5 of [compute-plan.md](plans/compute-plan.md); CAP-013; K10 Section 7.
+
+Where: `crates/daemon/src/model/drain.rs`.
+
+What it is: The daemon sends no report during a drain. A drain of up to 60 seconds can pass a lease or a report deadline of K10.
+
+Effect, and who can cause it: No attacker. Effect: the hub can end the item as lost while the drain still runs.
+
+The correction: In task L1-10, report during the drain, or keep the drain shorter than the lease.
+
+State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`.
+
+### SF-368: The tests of the drain did not check its limits. Note
+
+Requirements: task L1-5 of [compute-plan.md](plans/compute-plan.md); CAP-013.
+
+Where: `crates/daemon-core/src/model_work/tests/`, `crates/daemon/src/model/drain.rs`.
+
+What it is: The first tests did not check the refusal of bad `seconds`, the drain with the switch off or the policy against work, the actor check, or the deadline of the I/O drain with requests left.
+
+The correction: Tests `seconds_outside_1_to_60_or_not_an_integer_are_refused`, `a_drain_runs_with_the_switch_off_or_the_policy_against_work`, `an_agent_types_list_without_model_drain_refuses_an_agent_drain` and `a_drain_with_requests_left_ends_at_its_deadline_with_the_count` (paused tokio time). Built on the branch `compute/l1-5-drain`.
+
+State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`. Built; the entry stays Open until the operator closes it.
+
+### SF-369: The count of requests in progress is always zero. Note
+
+Requirements: task L1-5 of [compute-plan.md](plans/compute-plan.md); CAP-013.
+
+Where: `crates/daemon/src/model/cycle.rs` (`TODO(L1-10)`).
+
+What it is: The daemon sends no request to a server yet, so the drain counts zero and ends at once. That is safe now. When task L1-10 adds the model address, a zero count would end a drain while requests are still in progress.
+
+The correction: Task L1-10 must bind the counter to the real requests in progress.
+
+State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`.
+
+## The security reviews of the Git stage (task TC7, 2026-11-22 and 2026-11-23)
+
+Separate reviewers read the Git engine of the runner (`crates/daemon/src/threads/git/`) in more than ten passes; [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md) has each pass, each High and each Medium with its correction. No High is open. These Lows stay. The engine is not connected to the runner, the command or the page, so no person can reach them yet.
+
+### SF-388: A push through Anima sends no large-file (LFS) contents. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/push.rs`.
+
+What it is: With Git LFS set for all repositories of the person, a snapshot and a commit of the runner hold pointers. A push through Anima sends the pointers and not the contents.
+
+Effect, and who can cause it: No attacker. A person who pushes through Anima gets a branch on the remote whose large files are missing, with no word.
+
+Mitigation now: None. The design record of the question to the remote plans a line that says so.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-386: Large-file (LFS) contents are outside the budget of a thread. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/place/own.rs`.
+
+What it is: The budget of the folder of a thread counts the objects of Git. The contents that Git LFS keeps beside them are not counted.
+
+Effect, and who can cause it: An agent with LFS set for the person can fill the disk of the records with large files. The limit of the free disk (1 GiB kept free) still holds.
+
+Mitigation now: The check of the free disk.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-389: The locks of the engine are in one process only. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git.rs`; also `worktree::make`, which does not hold the lock of the worktree.
+
+What it is: The engine keeps its locks in memory. Two processes that run an engine on the same records (two daemons of one user) do not see the lock of the other.
+
+Effect, and who can cause it: No attacker. Two daemons of one user at the same time can damage a checkpoint or refuse an action.
+
+Mitigation now: One daemon for each user is the rule of the runner.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-390: The history of a repository inside a worktree is not saved. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/checkpoint/staged.rs`, `checkpoint.rs`.
+
+What it is: A removal saves the files of a repository that an agent made inside the worktree, as plain files. Its own commits (its Git folder) are not saved. A repository whose name is not text, or more than 512 of them, stops each snapshot until the person commits its removal.
+
+Effect, and who can cause it: The agent of the thread. Effect: commits made only in such a repository are lost at the removal of the worktree; the files are kept.
+
+Mitigation now: The files are saved, and the refusal names the way out.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-387: A planted entry in the large-file store of the person stops a removal with an error that names nothing. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/place/own.rs`, `worktree/files.rs`.
+
+What it is: A removal copies large-file contents into `.git/lfs/objects` of the person. A folder or a file that cannot be read at the name of a content makes the removal fail, and the error names no path. Also: two different files with the same content whose names differ only in the case of a letter are saved under one name on a disk that does not tell the case apart.
+
+Effect, and who can cause it: A Full access agent, which can write the `.git` of the person. Effect: the removal of the worktree fails until the person removes the entry; no work is lost.
+
+Mitigation now: No link is followed and a good content is never changed.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-385: Some failures of a snapshot or a removal name the wrong cause, or no file. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/checkpoint/staged.rs`, `place/walk.rs`, `project/linked.rs`.
+
+What it is: Seven cases that the last reviews left, each in [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md), "Lows open after the twelfth review". Examples: a full disk of the records is said as a failure of a file of the worktree, with "delete or move it"; a folder that cannot be read is not removed by the runner; on Linux a network disk that answers "not supported" for a real file has that file staged as gone (not reproduced).
+
+Effect, and who can cause it: The agent of the thread for most cases; the disk for the others. Effect: a checkpoint or a removal fails until the person acts, and the text does not always say what to do. No case was found that loses saved work.
+
+Mitigation now: The words of the system are in each text.
+
+Three more from the reviews of step W1 (branch `threads/git-wired`): the copy of the packs of a thread looks at only the first 16 names, so an agent can push its own pack out; a pack run that fails early can leave its folder in the worktree; a repository whose path has `:` cannot make a pack (the refusal says so).
+
+State: Open. Found by separate reviewers on 2026-11-23 in the branch `threads/git-copy-limit` (commits `d44e975e4` to `13bd13b09`) and `threads/git-wired` (`188a196e0`).
+
+## The hubs of the hosted pool (2026-11-23)
+
+### SF-393: A hosted hub reaches the hubs of other accounts and the host of the pool. High
+
+Requirements: R-030; R-129; P3-003.
+
+What it is: The hubs of the pool start with no `ANIMA_PROBE_DENY`; their log says "ANIMA_PROBE_DENY is empty". The address policy of the hub (`AddressPolicy`) then permits each private range. On `pool-hil-1`, the hub containers are on the Incus bridge `incusbr0`: 10.130.6.0/24 and fd42:4b84:1ad:7923::/64, with the host at 10.130.6.1. A variable set in the unit of the hub does not help: `anima-local-hub` starts the hub with an empty environment of its own (`members::hosted`) and did not pass `ANIMA_PROBE_DENY`.
+
+Where: `crates/anima-local-hub/src/members.rs` (`hosted`), `crates/anima-local-hub/src/arguments.rs`; `crates/hub/src/fleet/targets.rs` (`AddressPolicy`); the unit `deploy/hub-image/anima-hub.service` of the repository of the cloud service.
+
+Effect, and who can cause it: Each signed-in account of a hosted hub, a person or an agent with its login token. Effect: a session tunnel gives raw TCP from the hub to the hubs of other accounts and to the host (its SSH, DNS and HTTPS on the bridge); a check, a webhook, a source or the target of a route sends requests there. Through the DNS of the bridge, a check learns the names and the addresses of the hubs of other accounts. The HTTP of each hub listens on its loopback only, so a hub does not reach the API of another hub, and the other hubs still ask for their own sign-in. Not tried on the live server.
+
+Severity: High. There is no wall between the accounts on the bridge, and R-030 names this case.
+
+The fix to make: Two parts, both needed.
+- Public repository, branch `hosted/local-hub-probe-deny`: `anima-local-hub run --probe-deny <networks>` passes the list to the hub as `ANIMA_PROBE_DENY`, and it refuses a blank list. A separate reviewer read it and found no finding of High or above.
+- Repository of the cloud service, pull request `probe-deny` (TheArctesian/anima-cloud#5): the script `probe-deny.sh` reads the networks of the bridge at each start and adds the addresses of the host from the profile key `environment.ANIMA_HOST_ADDRESSES`. The unit passes them with `--probe-deny`.
+- Existing hubs keep the unit and the programs of their image, so each one gets the new programs, the script and the unit, and a restart of the instance.
+
+- The server, in the same pull request (`deploy/bridge-wall/`): a program in the hub container that is not the hub (a Docker application of the account, `guacd`, the link) does not use the address policy. Port isolation on the network device of each hub stops traffic between containers. A table of nftables on the host takes only DNS, DHCP, DHCPv6 and ICMPv6 from the bridge. No hub runs Docker on 2026-11-23, so this part is not a live risk yet. The operator approves both parts in one deploy.
+- After the deploy, branch `hosted/hosted-hub-needs-probe-deny`: a hosted hub refuses to start with no networks to refuse (Low of the review of 2026-11-23). It merges only after the new unit is on each hub.
+
+A note from the review, not a change: a network written in the IPv6 form of an IPv4 address (`::ffff:10.130.6.0/120`) in `ANIMA_PROBE_DENY` does not refuse the IPv4 address. `AddressPolicy::permits` makes the target canonical but not the networks of the list. `probe-deny.sh` writes IPv4 networks in their IPv4 form. Write them so by hand too.
+
+The deploy (2026-11-23, by the orchestrating session with the approval of the operator, relayed): both hubs of `pool-hil-1` have the deny list and pass the checks of the deploy steps. One fault was found and corrected at the deploy. `probe-deny.sh` passed the route of the DHCP gateway, `10.130.6.1` with no prefix (`ip -o -4 route show dev eth0 scope link` lists it). The hub refused the whole list ("invalid configuration"), so the first hub was down about 2 minutes. Corrected on the server and in the repository of the cloud service: a bare address gets /32 or /128 (branch `probe-deny-bare-address`, `b524aa0`). The script now also names an entry that is not a network and stops, and a test runs it with the answers of `ip` on `pool-hil-1` (branch `probe-deny-checked`, `945111c`). Neither branch is merged; the operator decides.
+
+Mitigation now: the deny list of the hub on each hub of `pool-hil-1` since 2026-11-23. The ruling of the operator on 2026-11-23, relayed: "B: full fix only". There is no interim block on the server, by his choice; nothing on the server changes until the full fix is ready and he approves the deploy.
+
+State: Open. Found by the orchestrating session on 2026-11-23 from the start warning of the hubs; confirmed from the code on 2026-11-23.
+
 ## Closed
 
 | Entry | Subject | Area | State |
 | --- | --- | --- | --- |
+| SF-339 | The exception is tied to the image, and the hub still writes the file | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-340 | A prepared volume, or a later ordinary file on the same application | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-342 | "Open to the network" would publish the administrator of the machine | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-343 | The setting withdrawn or the list changed, and the program can be started again | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-344 | `container_follow` on the excepted program | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-345 | The text does not say whom the exception makes administrator, nor which rules stop holding | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-346 | The source of the mount on an engine in a virtual machine | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-347 | The list goes old, and the applications program is not updated through the hub | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-348 | "One digest" does not say of what | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-349 | "Unless the owner named the entry" does not say who | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-350 | The agent of Arcane is not the manager with a different image | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-351 | With the entry named, a person who controls the hub is the administrator of the machine | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
+| SF-352 | On a system engine, the user of the daemon reaches the administrator through the entry | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Withdrawn (R-371) |
 | SF-013 | A job can take its machine out of work | Work route (contract K10, not built) | Accepted (R-187) |
 
 ### SF-013: A job can take its machine out of work

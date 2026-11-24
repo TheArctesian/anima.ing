@@ -1,6 +1,4 @@
-//! D-24, API-005: one build costs the same eight statements for 28 checks as for 328, a
-//! cached scrape costs none, and scrapes the client abandons share one build. Statements are
-//! counted by the TCP proxy of the batching test.
+//! The statement cost of a metrics build (D-24, API-005).
 
 use std::{sync::atomic::Ordering, time::Duration};
 
@@ -10,7 +8,6 @@ use sqlx::PgPool;
 use super::{body, database_now, rig, scrape};
 use crate::checks::face::batching::{add_bulk, counting_pool};
 
-/// The bulk checks of the batching test, given the configuration their type needs.
 async fn add_readable_bulk(pool: &PgPool) {
     add_bulk(pool).await;
     for (kind, config) in [
@@ -65,8 +62,7 @@ async fn d_24_a_build_costs_eight_statements_for_28_or_328_checks(pool: PgPool) 
     assert!(many.lines().count() > few.lines().count() + 600);
     assert_eq!(cached, few);
     assert_eq!(cached_cost, 0);
-    // Devices, maintenance windows, standings, checks, newest heartbeats and the 1d, 7d and
-    // 30d uptime sums.
+    // Devices, maintenance windows, standings, checks, newest heartbeats and three uptime sums.
     assert_eq!((few_cost, many_cost), (8, 8));
 }
 
@@ -88,7 +84,6 @@ async fn d_24_abandoned_scrapes_cost_one_build_and_the_next_scrape_waits_for_it(
         () = std::future::ready(()) => None,
     };
     for _ in 0..40 {
-        // Clients with a 1 ms scrape timeout; some may get the body once the build is done.
         let _late = tokio::time::timeout(Duration::from_millis(1), scrape(&router)).await;
     }
     let waited = body(&router).await;
@@ -96,7 +91,6 @@ async fn d_24_abandoned_scrapes_cost_one_build_and_the_next_scrape_waits_for_it(
     let again = body(&router).await;
     let again_cost = count.swap(0, Ordering::SeqCst);
 
-    // The build the first scrape started is the only one, and the next scrape waits for it.
     assert_eq!(left, None);
     assert_eq!(one_build, 8);
     assert_eq!((again, again_cost), (waited, 0));

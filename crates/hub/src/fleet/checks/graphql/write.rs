@@ -1,6 +1,5 @@
-//! The four check mutations. Each writes its change, one audit entry and one event in one
-//! transaction: if any step fails, nothing is stored (API-003, LOG-005, CHK-005). A new check
-//! takes the default notification channels in the same transaction (NOT-003).
+//! Each mutation writes its change, audit entry and event in one transaction
+//! (API-003, LOG-005, CHK-005).
 
 use std::collections::HashMap;
 
@@ -165,8 +164,7 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
     };
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
-    // The audit compares against the row as it is under our lock, not as it was when the
-    // request arrived (LOG-005).
+    // The audit compares against the row under this lock, not the one read before (LOG-005).
     let before = store::fetch_for_update(&mut tx, id)
         .await
         .map_err(to_graphql)?;

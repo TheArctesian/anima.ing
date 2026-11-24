@@ -24,14 +24,19 @@ profile="$RUNNER_TEMP/testflight.mobileprovision"
 printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$profile"
 
 version=$(sh deploy/bin/commit-version origin/main)
-if [[ "$GITHUB_REF_NAME" == main ]]; then version=$(sh deploy/bin/commit-version HEAD); fi
+if [[ "$GITHUB_REF_NAME" == main ]]; then
+    version=$(sh deploy/bin/commit-version HEAD)
+else
+    IFS=. read -r major minor patch <<< "$version"
+    # The internal train must sort above the old manually uploaded 0.8.39.
+    if (( major == 0 && (minor < 8 || (minor == 8 && patch < 40)) )); then version=0.8.40; fi
+fi
 number=$GITHUB_RUN_NUMBER
 build="$((900 + number / 10000)).$((number / 100 % 100)).$((number % 100))"
 
 # Build 900.0.4 records the operator's reviewed exemption in App Store Connect.
 if [[ "$GITHUB_REF_NAME" == dev ]]; then export IOS_TESTFLIGHT_EXPORT_EXEMPT=true; fi
 
-# The archive script verifies the signed bundle identifier, version and build number.
 export IOS_SIGN_IDENTITY="$identity" IOS_PROFILE="$profile" IOS_TESTFLIGHT_BUILD="$build"
 sh apps/desktop/src-tauri/ios-archive.sh "$version" | tee "$RUNNER_TEMP/testflight-archive.log"
 archive=$(sed -n 's/^archive=//p' "$RUNNER_TEMP/testflight-archive.log")

@@ -1,7 +1,4 @@
-//! The hub's broker client over a real Unix socket, through the reader and the `vpn` query: the
-//! merge of the node list, the broker states and the turn (R-055, VP-7, BD-10, BD-15, BD-16).
-//! The fake broker accepts one connection at a time and closes a second at once, as systemd's
-//! `MaxConnections=1` does.
+//! The fake broker closes a second connection at once, as systemd's `MaxConnections=1` does (R-055, VP-7, BD-10, BD-15, BD-16).
 
 use crate::local_socket::{Listener as UnixListener, Stream as UnixStream};
 use std::{
@@ -26,11 +23,10 @@ use super::{
     proxy::{self, Reply},
 };
 
-/// A fake broker on a socket in its own temporary folder.
 pub struct FakeBroker {
     folder: tempfile::TempDir,
     seen: Arc<Mutex<Vec<String>>>,
-    /// The request lines read, each as soon as it arrives, before the delay.
+    /// Each request line as soon as it arrives, before the delay.
     received: Arc<watch::Sender<Vec<String>>>,
     refused: Arc<AtomicUsize>,
 }
@@ -44,13 +40,10 @@ impl FakeBroker {
         Broker::new(self.path())
     }
 
-    /// The request lines seen so far.
     pub fn seen(&self) -> Vec<String> {
         self.seen.lock().unwrap().clone()
     }
 
-    /// Waits until a request line that `wanted` accepts has arrived, while the broker may still
-    /// be working on it.
     pub async fn until_received(&self, wanted: impl Fn(&str) -> bool) {
         let mut received = self.received.subscribe();
         received
@@ -59,24 +52,19 @@ impl FakeBroker {
             .unwrap();
     }
 
-    /// Connections closed at once because another one was open.
     pub fn refused(&self) -> usize {
         self.refused.load(Ordering::SeqCst)
     }
 }
 
-/// A broker reply with `value`.
 pub fn ok(value: &Value) -> String {
     json!({ "ok": true, "value": value }).to_string()
 }
 
-/// A broker refusal line.
 pub fn refusal(word: &str, detail: &str) -> String {
     json!({ "ok": false, "refusal": word, "detail": detail }).to_string()
 }
 
-/// A broker that answers each request line with `answer(line)` after `delay`; `None` closes
-/// the connection with no reply.
 pub fn start(
     delay: Duration,
     answer: impl Fn(&str) -> Option<String> + Send + Sync + 'static,
@@ -116,7 +104,6 @@ pub fn start(
     fake
 }
 
-/// Reads one request line, tells `arrived`, then answers it after `delay`.
 async fn serve_one(
     stream: UnixStream,
     delay: Duration,
@@ -156,8 +143,6 @@ pub fn broker_node(
             "expiry": null, "approved": approved, "available": available })
 }
 
-/// The `nodes` value: `router-home` with a second route waiting, `router-office` waiting for
-/// office1's subnet, and the operator's `mac`.
 pub fn nodes_value() -> Value {
     json!({
         "nodes": [
@@ -172,7 +157,6 @@ pub fn nodes_value() -> Value {
     })
 }
 
-/// A reader of `STATUS` that also calls `broker`, publishing on `feed`.
 pub async fn read_with(pool: &PgPool, feed: &Feed, broker: Broker) -> tokio::task::JoinHandle<()> {
     let proxy = proxy::start(|| Reply::json(200, STATUS)).await;
     let reading = Reading {
@@ -187,7 +171,6 @@ pub async fn read_with(pool: &PgPool, feed: &Feed, broker: Broker) -> tokio::tas
 const BROKER: &str = "{ vpn { broker nodes { name waitingRoutes } \
     sites { site { name } waitingRouter { name address role path keyState waitingRoutes inAnima } } } }";
 
-/// The `vpn` picture after one read through `broker`.
 async fn shown_with(pool: &PgPool, broker: Broker) -> Value {
     let feed = Feed::new();
     let (hub, token) = hub_reading(pool, &feed, Some(broker.clone())).await;
@@ -245,7 +228,6 @@ async fn vp_7_eof_with_no_reply_is_unreadable(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn vp_7_a_reply_over_64_kib_is_refused(pool: PgPool) {
-    // A valid reply whose one line is longer than 64 KiB.
     let mut value = nodes_value();
     value["nodes"][0]["name"] = "m".repeat(64 * 1024).into();
     let fake = start(Duration::ZERO, move |_| Some(ok(&value)));
@@ -270,8 +252,7 @@ async fn vp_7_a_mutation_during_a_read_takes_its_turn(pool: PgPool) {
     let (hub, token) = hub_reading(&pool, &feed, Some(broker.clone())).await;
     let invite = "mutation { createVpnInvite { expiresAt } }";
 
-    // The reader holds the shared turn for 300 ms; without it the mutation's connection would
-    // be closed while the reader waits for its reply.
+    // The reader holds the shared turn for 300 ms; without it the mutation's connection is closed.
     let (reader, made) = tokio::join!(read_with(&pool, &feed, broker), async {
         while fake.seen().is_empty() {
             tokio::time::sleep(Duration::from_millis(5)).await;
@@ -294,8 +275,6 @@ async fn bd_15_a_read_while_another_call_holds_the_turn_does_not_connect(pool: P
     let broker = fake.broker();
     let (first, second) = (Feed::new(), Feed::new());
 
-    // Two readers on clones of one broker read at once: the second finds the turn taken,
-    // publishes without the broker's list and never connects.
     let (one, two) = tokio::join!(
         read_with(&pool, &first, broker.clone()),
         read_with(&pool, &second, broker)

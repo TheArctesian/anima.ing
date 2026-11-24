@@ -1,7 +1,3 @@
-//! Local servers for the egress and dispatch tests. Each records the connections it accepts,
-//! the request or command lines that reach it, the HTTP request headers and bodies, and the TLS
-//! server name each handshake asked for.
-
 mod mail;
 
 use std::{
@@ -26,37 +22,23 @@ use tokio_rustls::TlsAcceptor;
 
 use mail::{GO_AHEAD, PLAIN, Script, implicit, smtp, starttls};
 
-/// How a server answers each connection.
 #[derive(Clone)]
 pub(in crate::fleet::notifications) enum Behaviour {
-    /// HTTP: read one request, write these bytes, close; over TLS when an acceptor is given.
     Http(Vec<u8>, Option<TlsAcceptor>),
-    /// HTTP: read one request, answer 200 with a body that never ends; over TLS when an
-    /// acceptor is given.
     Endless(Option<TlsAcceptor>),
-    /// HTTP over TLS: read one request, wait this long, write this head (status line and
-    /// headers, the blank line included) and a few body bytes, then send nothing more until the
-    /// client goes.
+    /// Over TLS: waits, writes this head (blank line included) and a few body bytes, then stalls.
     Stalled(&'static [u8], Duration, TlsAcceptor),
-    /// Read whatever arrives and never answer, until the client goes.
     Silent,
-    /// SMTP over TLS from the first byte.
     SmtpImplicit(TlsAcceptor),
-    /// SMTP over TLS from the first byte that refuses every login with 535.
     SmtpRefusingLogin(TlsAcceptor),
-    /// SMTP over TLS from the first byte that queues the message, taking this long, and never
-    /// answers QUIT.
+    /// Queuing the message takes this long, and QUIT gets no answer.
     SmtpSilentAtQuit(Duration, TlsAcceptor),
-    /// Plain SMTP that offers no STARTTLS.
     SmtpPlain,
-    /// SMTP that offers STARTTLS and upgrades with this acceptor.
     SmtpStartTls(TlsAcceptor),
-    /// SMTP that offers STARTTLS and writes a plaintext 554 right after its 220 answer, in the
-    /// same write, then upgrades with this acceptor (a STARTTLS response injection).
+    /// A plaintext 554 in the same write as the 220, then the upgrade (a STARTTLS response injection).
     SmtpStartTlsInjecting(TlsAcceptor),
 }
 
-/// What a server saw.
 #[derive(Default)]
 struct Seen {
     peers: Mutex<Vec<SocketAddr>>,
@@ -75,8 +57,7 @@ pub(in crate::fleet::notifications) struct Server {
 }
 
 impl Server {
-    /// Waits until the server has accepted every connection made before this call and ended
-    /// each, so what it saw is complete: a sentinel connection is accepted after them.
+    /// Waits until every earlier connection has ended: a sentinel connection is accepted after them.
     pub(in crate::fleet::notifications) async fn settle(&self) {
         let sentinel = TcpStream::connect(("127.0.0.1", self.port)).await.unwrap();
         let address = sentinel.local_addr().unwrap();
@@ -107,17 +88,14 @@ impl Server {
             .count()
     }
 
-    /// The HTTP request lines or SMTP command lines received, in order.
     pub(in crate::fleet::notifications) fn lines(&self) -> Vec<String> {
         self.seen.lines.lock().unwrap().clone()
     }
 
-    /// The HTTP header lines received, in order, across all requests.
     pub(in crate::fleet::notifications) fn headers(&self) -> Vec<String> {
         self.seen.headers.lock().unwrap().clone()
     }
 
-    /// The HTTP request bodies received, in order.
     pub(in crate::fleet::notifications) fn bodies(&self) -> Vec<Vec<u8>> {
         self.seen.bodies.lock().unwrap().clone()
     }
@@ -133,7 +111,6 @@ impl Server {
     }
 }
 
-/// A self-signed certificate for `name`: its DER and a TLS server presenting it.
 pub(in crate::fleet::notifications) fn certificate(name: &str) -> (Vec<u8>, TlsAcceptor) {
     let key = rcgen::KeyPair::generate().unwrap();
     let params = rcgen::CertificateParams::new(vec![name.to_owned()]).unwrap();
@@ -148,7 +125,6 @@ pub(in crate::fleet::notifications) fn certificate(name: &str) -> (Vec<u8>, TlsA
     (der, TlsAcceptor::from(Arc::new(config)))
 }
 
-/// A server on `127.0.0.1` that answers each connection as `behaviour` says.
 pub(in crate::fleet::notifications) async fn serve(behaviour: Behaviour) -> Server {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -206,7 +182,6 @@ async fn answer(stream: TcpStream, behaviour: Behaviour, seen: &Seen) {
     }
 }
 
-/// HTTP, over TLS when an acceptor is given: `reply` once, or a body that never ends.
 async fn web(stream: TcpStream, acceptor: Option<TlsAcceptor>, reply: Option<&[u8]>, seen: &Seen) {
     match acceptor {
         None => web_on(stream, reply, seen).await,
@@ -236,8 +211,6 @@ async fn handshake(
     Some(tls)
 }
 
-/// Reads one request (head and `Content-Length` body), records its request line, header lines
-/// and body, returns the reader.
 async fn request<S: AsyncRead + Unpin>(stream: S, seen: &Seen) -> Option<BufReader<S>> {
     let mut reader = BufReader::new(stream);
     let mut length = 0;
@@ -286,8 +259,6 @@ async fn endless<S: AsyncRead + AsyncWrite + Unpin>(stream: S, seen: &Seen) {
     }
 }
 
-/// Reads one request, waits `wait`, writes `head` and a few body bytes, then holds the
-/// connection.
 async fn stalled<S: AsyncRead + AsyncWrite + Unpin>(
     stream: S,
     (wait, head): (Duration, &[u8]),
@@ -305,13 +276,11 @@ async fn stalled<S: AsyncRead + AsyncWrite + Unpin>(
     }
 }
 
-/// Reads and drops whatever arrives until the client closes, answering nothing.
 pub(super) async fn drain<S: AsyncRead + Unpin>(mut stream: S) {
     let mut sink = [0; 1024];
     while stream.read(&mut sink).await.is_ok_and(|read| read > 0) {}
 }
 
-/// Reads and drops whatever arrives until the client closes.
 async fn silent(stream: TcpStream) {
     drain(stream).await;
 }

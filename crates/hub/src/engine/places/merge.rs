@@ -47,13 +47,10 @@ pub async fn references(
     })
 }
 
-/// Moves every reference of `from` to `into` in the caller's transaction, adds the name and the
-/// aliases of `from` to `into`, and marks `from` as merged. A link that would join a record to
-/// itself, or repeat one that exists, is removed (PLC-004).
+/// A link that would join a record to itself, or repeat one that exists, is removed (PLC-004).
 ///
 /// # Errors
-/// `NotFound`, `Merged`; `Invalid` when `from` is `into`, when `into` is inside `from`, or when
-/// the tree would be deeper than 5 levels; `Database`, `Links`, `Holder`. The caller rolls back.
+/// `NotFound`, `Merged`, `Invalid`, `Database`, `Links`, `Holder`. The caller rolls back.
 pub async fn merge(
     conn: &mut PgConnection,
     holders: &Holders,
@@ -119,12 +116,10 @@ async fn move_held(
     Ok(held)
 }
 
-/// Makes one new top-level place from `split.new` and moves the named children, site rows and
-/// record links from `id` to it. A reference that is not named stays (PLC-004).
+/// A reference that is not named stays (PLC-004).
 ///
 /// # Errors
-/// `NotFound`, `Merged`; `Invalid` for a field of the new place, or for a named child, site or
-/// link that is not a reference of `id`; `Database`, `Links`. The caller rolls back.
+/// `NotFound`, `Merged`, `Invalid`, `Database`, `Links`. The caller rolls back.
 pub async fn split(
     conn: &mut PgConnection,
     id: PlaceId,
@@ -175,12 +170,10 @@ fn unique<T: PartialEq>(ids: impl Iterator<Item = T>) -> Vec<T> {
     kept
 }
 
-/// Deletes a place that has no reference. A place with references is merged into
-/// `replacement`; with none given the answer is `InUse` with the counts (PLC-005).
+/// A place with references is merged into `replacement`, or is `InUse` with none (PLC-005).
 ///
 /// # Errors
-/// `NotFound`, `Merged`, `InUse`; `Invalid` when the replacement is the place itself or is not
-/// usable (as [`merge`]); `Database`, `Links`, `Holder`. The caller rolls back.
+/// `NotFound`, `Merged`, `InUse`, `Invalid`, `Database`, `Links`, `Holder`. The caller rolls back.
 pub async fn remove(
     conn: &mut PgConnection,
     holders: &Holders,
@@ -203,8 +196,7 @@ pub async fn remove(
     }
 }
 
-/// A refusal of the merge of a delete, named for the argument `replacement`: the place itself
-/// was found, so a place that is missing or merged is the replacement.
+/// The place itself was found, so a place that is missing or merged is the replacement.
 fn of_replacement(error: Error) -> Error {
     match error {
         Error::Invalid(faults) => Error::Invalid(

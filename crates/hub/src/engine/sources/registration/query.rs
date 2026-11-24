@@ -1,10 +1,6 @@
-//! Reading one value from the query of a redirect back from GitHub or of the ticket link.
-//! Pure. The text is hostile: nothing is decoded, and a name given twice gives nothing.
-//!
-//! Every value the flow reads (a ticket, a state, a code, an installation ID) is plain base64url
-//! or digits, so a value that needs percent-decoding could never match and is never decoded.
+//! Reads one value from the query of a GitHub redirect or the ticket link. The text is hostile:
+//! nothing is decoded, since each value the flow reads is plain base64url or digits.
 
-/// The longest query read; longer text gives nothing.
 const MAX_QUERY: usize = 4096;
 
 /// The value of `name` in `raw`, when it is there exactly once and not empty.

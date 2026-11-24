@@ -1,7 +1,5 @@
-//! The projects GraphQL part (K1; XP-02): the projects, one project, leave out and restore a
-//! repository, confirm a resource; and, merged in, the live reads of a repository's pull
-//! requests, issues, workflow runs, history and code (PRJ-027 to PRJ-035) and the changes made
-//! there (OD-E14).
+//! The projects GraphQL part (K1; XP-02), with the live reads of a repository (PRJ-027 to PRJ-035)
+//! and the changes made there (OD-E14) merged in.
 //!
 //! Every field is `CONFLICT` while Projects is off (EXT-002). Each mutation that changes
 //! something writes its change, one audit entry and one event in one transaction.
@@ -16,7 +14,7 @@ use self::views::{ProjectConnection, ProjectView, ResourceView, Rows};
 use super::{
     Error,
     browse::ProjectBrowse,
-    code, history, issues,
+    code, groups, history, issues,
     model::ResourceKind,
     on,
     page::{After, decode_cursor, page_size},
@@ -37,6 +35,7 @@ use crate::{
 #[graphql(name = "ProjectsQueries")]
 pub struct Query(
     ProjectsQuery,
+    groups::graphql::GroupsQuery,
     pull_requests::Query,
     issues::Query,
     workflows::Query,
@@ -76,6 +75,12 @@ async fn shown(db: &PgPool, projects: Vec<reads::ProjectRow>) -> Result<Vec<(Aft
         repositories,
         resources: reads::resources(db, &ids).await.map_err(failed)?,
         evidence: reads::evidence(db, &ids).await.map_err(failed)?,
+        groups: groups::store::of_projects(db, &ids)
+            .await
+            .map_err(failed)?
+            .into_iter()
+            .map(|(project, row)| (project, row.into()))
+            .collect(),
         standings,
     };
     Ok(views::projects(projects, rows))
@@ -219,6 +224,7 @@ impl ProjectsQuery {
 #[graphql(name = "ProjectsMutations")]
 pub struct Mutation(
     ProjectsMutation,
+    groups::graphql::GroupsMutation,
     issues::Mutation,
     pull_requests::Mutation,
     workflows::Mutation,

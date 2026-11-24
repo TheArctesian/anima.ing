@@ -1,5 +1,4 @@
-//! The pure rules of a change to GitHub: the K7 code and fixed words of each outcome (K-E1
-//! Section 13.7, decisions item 7) and the record it leaves (PRJ-028, LOG-007).
+//! K-E1 Section 13.7 and LOG-007.
 
 use async_graphql::{Error as GraphQlError, Value};
 use chrono::{TimeZone as _, Utc};

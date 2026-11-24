@@ -1,5 +1,3 @@
-//! `anima file list <record>`.
-
 use super::documents::{AttachmentList, attachment_list};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

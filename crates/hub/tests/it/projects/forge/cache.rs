@@ -1,5 +1,4 @@
-//! PRJ-032, K-E1 Section 13.1: a second read inside the window sends nothing; `fresh` sends
-//! once the held answer is five seconds old; a failed refresh serves the held answer stale.
+//! The forge read cache (PRJ-032, K-E1 Section 13.1).
 
 use chrono::TimeDelta;
 use serde_json::json;

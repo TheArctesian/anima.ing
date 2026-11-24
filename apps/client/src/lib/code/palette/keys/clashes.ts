@@ -31,9 +31,9 @@ const KEPT_IN_DESKTOP =
 const OPEN_FOR_RULING =
   "Not in the ruled list, and a page may take this key from the browser (Anima's threads page already takes ⌘F). Open: remap it too, or keep it";
 
-/** Ctrl+Alt in the desktop app on Windows, where it is AltGr: the ruling keeps T3 Code's key, which also types there. */
-const OPEN_ON_WINDOWS =
-  "The desktop app keeps T3 Code's key (operator, 2026-11-21), but on Windows Ctrl+Alt is AltGr and types a letter. Open: remap it in the Windows desktop app too, or keep it";
+/** Ctrl+Alt in the desktop app on Windows, where it is AltGr: the Windows desktop app moves the command (`WINDOWS_KEYS`). */
+const MOVED_ON_WINDOWS =
+  "The Windows desktop app moves the command to Ctrl+Shift (user, 2026-11-22: Ctrl+Shift+U for a thread with no project, Ctrl+Shift+Y for the right panel); Linux keeps T3 Code's key";
 
 export const TAKEN_KEYS: readonly TakenKey[] = [
   { key: 'mod+shift+[', place: 'threads-page', does: 'Previous thread', same: 'thread.previous' },
@@ -107,8 +107,8 @@ export const TAKEN_KEYS: readonly TakenKey[] = [
   { key: 'meta+k', place: 'browser', does: 'Search the web (Firefox)', only: 'mac', kept: OPEN_FOR_RULING },
   { key: 'ctrl+shift+m', place: 'browser', does: 'Profile menu (Chrome)', only: 'other', kept: OPEN_FOR_RULING },
   { key: 'ctrl+shift+s', place: 'browser', does: 'Screenshot (Firefox), web capture (Edge)', only: 'other', kept: OPEN_FOR_RULING },
-  { key: 'ctrl+alt+n', place: 'windows', does: 'Start NVDA, the screen reader; as AltGr+N it also types ń on a Polish layout', only: 'other', kept: OPEN_ON_WINDOWS },
-  { key: 'ctrl+alt+b', place: 'windows', does: 'As AltGr+B it types { on a Hungarian layout', only: 'other', kept: OPEN_ON_WINDOWS },
+  { key: 'ctrl+alt+n', place: 'windows', does: 'Start NVDA, the screen reader; as AltGr+N it also types ń on a Polish layout', only: 'other', kept: MOVED_ON_WINDOWS },
+  { key: 'ctrl+alt+b', place: 'windows', does: 'As AltGr+B it types { on a Hungarian layout', only: 'other', kept: MOVED_ON_WINDOWS },
 ];
 
 /** One shortcut of the key table that a taken shortcut also uses, on one platform. */

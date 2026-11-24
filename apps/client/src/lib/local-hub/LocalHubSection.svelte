@@ -14,7 +14,6 @@
   import { linkText, stateText } from './state';
 
   interface Props {
-    /** The section's anchor, heading, icon and line (SET-001). */
     section: { id: string; title: string; icon: IconName; description: string };
     hubState: LocalHubWatch;
     mac?: boolean;
@@ -53,7 +52,6 @@
       {#if running}
         <FormButton size="sm" busy={hubState.busy} onclick={() => void hubState.stop()}>Stop</FormButton>
       {:else}
-        <!-- A hub that is still stopping cannot start yet: the button waits, and says so. -->
         <FormButton size="sm" busy={hubState.busy} aria-disabled={stopping} onclick={() => void hubState.start()}>{stopping ? 'Stopping…' : 'Start'}</FormButton>
       {/if}
       {#snippet message()}<p role="alert">{hubState.problem ?? ''}</p>{/snippet}

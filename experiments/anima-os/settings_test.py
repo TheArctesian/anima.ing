@@ -41,7 +41,7 @@ def rotation_panel(machine, output):
         screenshot(output, f'panel-{mode}')
         check_panel(machine)
     machine.command('eval "$(xdotool getwindowgeometry --shell "$panel")"; '
-                    'xdotool mousemove "$((X+WIDTH/2))" "$((Y+HEIGHT-38))" click 1')
+                    'xdotool mousemove "$((X+WIDTH-65))" "$((Y+HEIGHT-38))" click 1')
     time.sleep(1)
     machine.command('test "$(xdotool getactivewindow)" != "$panel"')
     screenshot(output, 'done-closed-panel')

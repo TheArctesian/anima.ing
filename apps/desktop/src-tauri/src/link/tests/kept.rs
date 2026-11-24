@@ -1,5 +1,4 @@
-//! The device link that a unit of the user keeps (HMD-058): the shell's calls of
-//! `anima-link unit` and `ctl status`, with a stand-in link, and the watch of a running link.
+//! HMD-058: the device link that a unit of the user keeps.
 
 use std::{
     fs,
@@ -18,9 +17,6 @@ use super::super::{
 };
 use super::runs::{stand_in, until};
 
-/// `anima-link` as the shell asks it: `unit install` makes the mark `unit` in the state folder,
-/// `unit remove` deletes it, `unit show` and `ctl status` answer from it. The file of the unit
-/// is `unit.file` beside it. Each call is noted.
 const UNIT_LINK: &str = r#"
 here=$(dirname "$0")
 echo "$*" >> "$here/calls"
@@ -80,7 +76,6 @@ fn hmd_058_a_unit_that_runs_a_different_folder_is_not_the_unit_of_this_one() {
     link.install().unwrap();
     assert!(link.keeps_this_folder());
 
-    // The same unit file and program, asked for the folder of a different copy of the app.
     let other = Kept {
         folder: folder.path().join("other"),
         ..link.clone()
@@ -270,7 +265,7 @@ fn hmd_058_the_folder_of_a_hosted_link_is_marked_once_and_a_link_is_no_mark() {
 
 #[test]
 fn hmd_054_the_unit_is_given_the_socket_of_the_daemon_when_its_folder_is_private() {
-    let folder = tempfile::tempdir().unwrap();
+    let folder = super::sockets::private_tempdir();
     let daemon = folder.path().join("made/anima-daemon");
     let socket = kept::private_socket(&daemon).expect("a folder that the app made");
     assert_eq!(socket, daemon.join("link.sock"));

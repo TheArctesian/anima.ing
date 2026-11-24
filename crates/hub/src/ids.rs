@@ -1,13 +1,11 @@
-//! Entity identifiers: one UUID newtype per entity, so a `DeviceId` never passes for a `SiteId`.
-//!
-//! Domains generate ids at their I/O edge; this module only wraps, parses and prints them.
+//! One UUID newtype per entity, so a `DeviceId` never passes for a `SiteId`; domains generate
+//! ids at their I/O edge.
 
 use std::{fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// The text is not a UUID.
 #[derive(Debug, thiserror::Error)]
 #[error("not a valid id")]
 pub struct ParseIdError(#[from] uuid::Error);
@@ -48,51 +46,31 @@ macro_rules! entity_id {
 }
 
 entity_id! {
-    /// An operator account.
     OperatorId,
-    /// A site (a group of devices).
     SiteId,
-    /// A managed device.
     DeviceId,
-    /// A health check on a device.
     CheckId,
-    /// A maintenance window.
     WindowId,
-    /// A remote session.
     SessionId,
-    /// An entry in the event log.
     EventId,
-    /// A web interface of a device.
     WebInterfaceId,
-    /// A metric series of a device.
     MetricSeriesId,
-    /// An API key.
     ApiKeyId,
-    /// A notification channel.
     ChannelId,
-    /// A notification delivery.
     DeliveryId,
-    /// An access token of the operator or of a builder.
     TokenId,
-    /// A release: one version and commit, built for one or more targets.
     ReleaseId,
-    /// The build of one release for one target.
     BuildJobId,
-    /// A computer the operator enrolled to build releases.
     BuilderId,
     /// A job of the work route: what the hub gives to the daemon of a machine (K10).
     JobId,
-    /// A connection to an outside source, such as one GitHub App installation.
     SourceAccountId,
-    /// The sealed credential of a source account.
     SourceSecretId,
-    /// One sync run of a source account.
     SyncRunId,
-    /// A project.
     ProjectId,
-    /// A repository of a project.
+    /// A group of projects: the operator's own label (PRO-059).
+    ProjectGroupId,
     RepositoryId,
-    /// A resource a project uses, such as a Cloudflare or Vercel deployment.
     ResourceId,
     /// A link between two records (RLK-001).
     RecordLinkId,

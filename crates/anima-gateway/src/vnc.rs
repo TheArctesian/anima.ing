@@ -1,9 +1,6 @@
-//! The VNC client (RFB 3.8, RFC 6143): the sign-in to a device, the device's updates drawn
-//! into the screen copy, and the client's messages.
+//! The VNC client (RFB 3.8, RFC 6143).
 //!
-//! The device is not trusted. Every length it sends is checked against a limit before the
-//! gateway waits for the bytes or makes room for them, and no bytes from a device can make
-//! this code panic.
+//! The device is not trusted: each length it sends is checked against a limit before use, and no bytes from a device can make this code panic.
 
 mod auth;
 mod drawing;
@@ -16,9 +13,7 @@ use crate::screen::Screen;
 use messages::{Body, Start};
 pub use sign_in::{Account, Method, Offered, SignInError, offered, sign_in};
 
-/// One update may send this many times the screen's pixels: a device has no reason to
-/// send a pixel more often, and without a limit one message could keep the gateway busy
-/// for a long time.
+/// One update may send this many times the screen's pixels, so one message cannot keep the gateway busy.
 const MOST_SCREENS_IN_AN_UPDATE: usize = 2;
 /// Above this many bytes of room, the unread buffer is given back once it is nearly empty.
 const LARGE_BUFFER: usize = 1 << 20;
@@ -49,27 +44,19 @@ pub enum Malformed {
 /// What a device did, after the screen copy has taken it in.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Event {
-    /// An update arrived; the screen copy may have changed.
     Updated,
-    /// The device's screen has a new size and is black until the device sends it again:
-    /// the next request must ask for all of the screen.
+    /// The device's screen has a new size and is black: the next request asks for all of it.
     Resized,
-    /// The device's clipboard has this text.
     Clipboard(String),
     Bell,
 }
 
-/// An update whose rectangles are still arriving.
 struct Update {
     rects_left: usize,
-    /// The pixels its rectangles may still send.
     pixels_left: usize,
-    /// It has changed the screen size; it may do so once.
     resized: bool,
 }
 
-/// The device's side of an open session: the bytes not yet read as messages, and the
-/// state the encodings keep between updates.
 #[derive(Default)]
 pub struct Device {
     /// At most one rectangle or clipboard text, and the read that completed it.
@@ -103,8 +90,6 @@ impl Device {
         Ok(events)
     }
 
-    /// Reads what is at `from` in the unread bytes: a rectangle of the update in progress,
-    /// or the start of a message. Gives its length; `None` when it is not all there yet.
     fn read_one(
         &mut self,
         from: usize,
@@ -147,8 +132,7 @@ impl Device {
         };
         let pixels = rect.area.width * rect.area.height;
         if rect.body == Body::NewSize {
-            // One new size in an update. What is left of the limit must at least hold the new
-            // screen once, and is never more than the limit of the new screen.
+            // The rest of the limit holds the new screen at least once, and at most its own limit.
             if std::mem::replace(&mut update.resized, true) {
                 return Err(Malformed::BadSize);
             }

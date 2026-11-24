@@ -1,8 +1,5 @@
-//! Runs a program the application carries, once: an absolute program and fixed arguments, no
-//! shell, an environment that holds only the given variables, and a limit after which it is
-//! killed. [`run`] gives the program's first error line for the app's log; [`exchange`] gives
-//! the program its input on standard input and never makes text of what it said, for the runs
-//! that carry a secret (LOG-007).
+//! Runs a carried program once with no shell, only the given variables and a time limit.
+//! [`exchange`] is for runs that carry a secret: it never makes text of what the program said (LOG-007).
 
 use std::{
     ffi::OsString,
@@ -17,10 +14,8 @@ use std::{
 use zeroize::Zeroizing;
 
 const POLL: Duration = Duration::from_millis(20);
-/// The most the program's answer or its error message can be.
 const MOST_OUTPUT: u64 = 64 * 1024;
 
-/// One run: what runs, with what, and for how long at most.
 #[derive(Debug, Clone, Copy)]
 pub struct Invocation<'a> {
     pub program: &'a Path,
@@ -42,8 +37,7 @@ pub enum ProgramError {
     Unreadable,
 }
 
-/// What a program said on standard error. It may hold a secret, so it has no `Display`, and its
-/// `Debug` gives only its length.
+/// It may hold a secret, so it has no `Display`, and its `Debug` gives only its length.
 #[derive(Clone, PartialEq, Eq, Default)]
 pub struct Said(Zeroizing<Vec<u8>>);
 
@@ -71,12 +65,10 @@ pub enum ExchangeError {
     TimedOut,
     #[error("the program's exit status could not be read")]
     Unreadable,
-    /// The exit code (none when a signal ended it) and what it said on standard error.
     #[error("the program exited with a failure")]
     Exited { code: Option<i32>, said: Said },
 }
 
-/// What the program printed on standard output.
 pub fn run(invocation: &Invocation<'_>) -> Result<Vec<u8>, ProgramError> {
     let mut child = start(invocation, Stdio::null()).map_err(|()| ProgramError::CouldNotStart)?;
     // Read while the program runs: one that fills a pipe would never end.
@@ -95,8 +87,6 @@ pub fn run(invocation: &Invocation<'_>) -> Result<Vec<u8>, ProgramError> {
     Ok(joined(printed).to_vec())
 }
 
-/// Writes `input` to the program's standard input, closes it, and returns what the program
-/// printed on standard output. With `None` the program gets no input at all.
 pub fn exchange(
     invocation: &Invocation<'_>,
     input: Option<&[u8]>,
@@ -150,8 +140,7 @@ fn start(invocation: &Invocation<'_>, stdin: Stdio) -> Result<Child, ()> {
         .map_err(drop)
 }
 
-/// Writes `input` and closes standard input. A child that exits before it reads leaves a broken
-/// pipe; that is not an error here, as its exit status tells what happened.
+/// A broken pipe is not an error: the exit status of a child that exits before it reads tells what happened.
 fn hand_over(child: &mut Child, input: Option<&[u8]>) -> Result<(), ExchangeError> {
     let Some(input) = input else {
         return Ok(());
@@ -169,7 +158,6 @@ enum Ended {
     Unreadable,
 }
 
-/// The child's exit status; at the limit the child is killed and reaped.
 fn wait(child: &mut Child, limit: Duration) -> Result<ExitStatus, Ended> {
     let started = Instant::now();
     loop {

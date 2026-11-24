@@ -1,17 +1,12 @@
-//! `adopted_apply` (contract K10 Section 6.4.7): a Compose project that Anima did not install
-//! and that the owner adopted, started from its recorded paths.
+//! `adopted_apply`: an adopted Compose project, run from its recorded paths (contract K10 Section 6.4.7).
 
 use super::{Facts, free, managed};
 use crate::{AdoptedAction, Plan, Refusal, Step, inventory::project_is_protected, plan::Project};
 
-/// The plan of `adopted_apply` for `(action, pull)`. It uses the recorded files and the
-/// recorded folder, never a label of a container, and it changes no file of the project
-/// (R-211).
+/// Uses the recorded files and folder, never a container label, and changes no project file (R-211).
 ///
 /// # Errors
-/// `applications_off`; `member_unknown` for `pull` with an action other than `up`;
-/// `not_adopted` for a project that is not in the list "Adopted projects", and for each
-/// name that starts with `anima-`; `protected`; `busy`.
+/// `applications_off`, `member_unknown`, `not_adopted`, `protected` or `busy`.
 pub fn applied(
     project: &str,
     (action, pull): (AdoptedAction, bool),

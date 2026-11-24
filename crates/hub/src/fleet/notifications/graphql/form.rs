@@ -1,10 +1,12 @@
 //! The channel input as a draft for the channel rules: defaults for null fields, the K1 enums
 //! as the domain's, and every secret still a [`Secret`](crate::fleet::credentials::Secret).
 
+use crate::fleet::credentials::Secret;
+
 use super::input::{
     AppriseShape, ChannelShape, DEFAULT_METHOD, DEFAULT_MODE, DEFAULT_NTFY, DEFAULT_ON_BY_DEFAULT,
-    DEFAULT_PORT, DEFAULT_PRIORITY, DEFAULT_SECURITY, EmailShape, NtfyShape, SettingsShape,
-    TemplateShape, WebhookShape,
+    DEFAULT_PORT, DEFAULT_PRIORITY, DEFAULT_SECURITY, EmailShape, MobileRelayShape, NtfyShape,
+    SettingsShape, TemplateShape, WebhookShape,
 };
 use crate::fleet::notifications::channels::{
     AppriseDraft, Draft, EmailDraft, NtfyDraft, SettingsDraft, Template, WebhookDraft,
@@ -29,6 +31,18 @@ fn settings(input: SettingsShape) -> SettingsDraft {
         SettingsShape::Ntfy(input) => SettingsDraft::Ntfy(ntfy(input)),
         SettingsShape::Email(input) => SettingsDraft::Email(email(input)),
         SettingsShape::Apprise(input) => SettingsDraft::Apprise(apprise(input)),
+        SettingsShape::Mobile(input) => SettingsDraft::Mobile(mobile(input)),
+    }
+}
+
+fn mobile(input: MobileRelayShape) -> WebhookDraft {
+    WebhookDraft {
+        url: input.url.map(|url| url.0),
+        method: DEFAULT_METHOD.into(),
+        headers: input.token.map(|token| {
+            let bearer = Secret::new([b"Bearer ".as_slice(), token.0.expose()].concat());
+            vec![("Authorization".to_owned(), bearer)]
+        }),
     }
 }
 

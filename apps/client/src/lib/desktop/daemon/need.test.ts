@@ -12,7 +12,6 @@ const ok = <T>(value: T): HubResult<T> => ({ ok: true, value });
 const refused = (code: 'NOT_FOUND' | 'FORBIDDEN'): HubResult<DaemonNeed | null> => ({ ok: false, error: { code, message: 'x' } });
 const UNREACHABLE: HubResult<DaemonNeed | null> = { ok: false, error: { code: 'unreachable', message: 'x' } };
 
-/** This Mac on the link, a device of the hub with `source`, whose mark is read from `mark`. */
 function parts(mark: () => KeychainMark, source: HubDevice['metricsSource'] = 'DAEMON') {
   return {
     device: vi.fn(() => Promise.resolve(MAC)),

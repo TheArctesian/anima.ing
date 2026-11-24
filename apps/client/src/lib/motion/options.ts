@@ -13,7 +13,7 @@ export interface SpringMotion {
   readonly velocity?: number;
 }
 
-/** A duration and a curve, only for opacity and colour (MOT-003); `durationMs` is in milliseconds. */
+/** A duration and a curve, only for opacity and colour (MOT-003). */
 export interface TweenMotion {
   readonly type: 'tween';
   readonly durationMs: number;
@@ -32,7 +32,6 @@ const springMass = 1;
 
 const instant: InstantMotion = { type: 'instant' };
 
-/** The token tables that apply in one mode; thresholds and gesture constants are the same in both (MOT-021). */
 export function modeTokens(reduced: boolean) {
   return {
     duration: reduced ? reducedMotion.duration : duration,
@@ -42,7 +41,7 @@ export function modeTokens(reduced: boolean) {
   };
 }
 
-/** The spring for a K5 name; under reduced motion springs are instant (D-5, MOT-041). */
+/** Springs are instant under reduced motion (D-5, MOT-041). */
 export function springMotion(name: SpringName, reduced: boolean, velocity?: number): SpringMotion | InstantMotion {
   if (reduced) return instant;
   const { stiffness, damping } = spring[name];
@@ -50,13 +49,11 @@ export function springMotion(name: SpringName, reduced: boolean, velocity?: numb
   return velocity === undefined ? base : { ...base, velocity };
 }
 
-/** A tween for opacity or colour with the mode's duration; a zero duration is instant. */
 export function tweenMotion(name: DurationName, curve: EaseName, reduced: boolean): TweenMotion | InstantMotion {
   const durationMs = modeTokens(reduced).duration[name];
   return durationMs === 0 ? instant : { type: 'tween', durationMs, ease: ease[curve] };
 }
 
-/** Delay before list item `index` comes in (`stagger-list`); items past the cap share the last delay. */
 export function staggerDelayMs(index: number, reduced: boolean): number {
   const { intervalMs, maxItems } = modeTokens(reduced).stagger.list;
   return Math.min(Math.max(index, 0), maxItems - 1) * intervalMs;

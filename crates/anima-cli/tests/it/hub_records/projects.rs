@@ -1,4 +1,6 @@
-//! `anima project` against the scripted hub (PRJ-002, PRJ-016, PRO-004).
+//! PRJ-002, PRJ-016, PRO-004.
+
+mod groups;
 
 use serde_json::{Value, json};
 
@@ -33,6 +35,7 @@ fn project(left_out: bool) -> Value {
         "repositories": [repository("acme/anima", left_out)],
         "resources": [resource("res-1", "CLOUDFLARE", "FOUND_IN_REPOSITORY")],
         "syncedAt": "2026-11-12T08:00:00Z",
+        "group": null,
     })
 }
 
@@ -170,8 +173,6 @@ async fn pro_004_resource_confirm_confirms_the_resource_of_that_kind() {
     assert_eq!(run.code, 3, "no vercel resource: {run:?}");
 }
 
-/// A left-out or gone repository keeps its old name, which another repository can take later.
-/// The project lists both; the scripted hub answers both lists with them.
 fn stale_and_new() -> Value {
     let mut old = repository("acme/anima", true);
     old["id"] = json!("repo-old");

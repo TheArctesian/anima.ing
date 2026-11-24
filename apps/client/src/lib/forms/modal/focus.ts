@@ -17,10 +17,7 @@ function radioGroup(element: HTMLElement, all: readonly HTMLElement[]): HTMLInpu
   );
 }
 
-/**
- * A radio button that is not its group's Tab stop. The group is one stop: the focused button, else the
- * checked one, else the first (the last when Tab goes backwards), as in the browser.
- */
+/** A radio group is one Tab stop, as in the browser: the focused button, else the checked one, else the edge one. */
 function inactiveRadio(element: HTMLElement, all: readonly HTMLElement[], active: Element | null, backwards: boolean): boolean {
   const group = radioGroup(element, all);
   if (group === null) return false;
@@ -29,19 +26,11 @@ function inactiveRadio(element: HTMLElement, all: readonly HTMLElement[], active
   return element !== stop;
 }
 
-/**
- * The elements inside `root` that Tab stops on, in document order. A hidden, inert or disabled
- * element is left out, and a group of radio buttons is one stop, as in the browser.
- */
 export function focusableIn(root: HTMLElement, active: Element | null = document.activeElement, backwards = false): HTMLElement[] {
   const all = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(reachable);
   return all.filter((element) => !inactiveRadio(element, all, active, backwards));
 }
 
-/**
- * Where Tab goes from `active` among a dialog's stops: the next one (the previous with Shift),
- * round from the last to the first; from outside the stops, the first (the last with Shift).
- */
 export function tabTarget<T>(stops: readonly T[], active: unknown, backwards: boolean): T | null {
   if (stops.length === 0) return null;
   const at = stops.findIndex((stop) => stop === active);
@@ -49,10 +38,6 @@ export function tabTarget<T>(stops: readonly T[], active: unknown, backwards: bo
   return stops[(at + (backwards ? stops.length - 1 : 1)) % stops.length] ?? null;
 }
 
-/**
- * The element a dialog focuses when it opens: one marked `data-autofocus`, else the first reachable one
- * that does not close the dialog (`data-dismiss`), else the Close button, else the dialog.
- */
 export function initialFocusIn(dialog: HTMLElement): HTMLElement {
   const stops = focusableIn(dialog);
   return (
@@ -63,11 +48,7 @@ export function initialFocusIn(dialog: HTMLElement): HTMLElement {
   );
 }
 
-/**
- * Keeps Tab inside `dialog` and moves the focus itself, so every stop is reached in every engine:
- * WebKit's own Tab skips buttons and links and can leave the dialog. A stop that does not take the
- * focus (one not rendered) is passed over. Returns whether it handled the event.
- */
+/** Moves the focus itself: WebKit's own Tab skips buttons and links and can leave the dialog. */
 export function trapTab(event: KeyboardEvent, dialog: HTMLElement): boolean {
   if (event.key !== 'Tab' || event.ctrlKey || event.altKey || event.metaKey) return false;
   event.preventDefault();

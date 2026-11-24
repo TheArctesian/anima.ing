@@ -1,9 +1,7 @@
 import { expect, test } from '../test-hub';
 import { openDevices } from './screens';
 
-// The Web menu is fixed where it opened, so a real scroll that moves its button closes it (Section 5.7.3, MOT-002); an event
-// that moves nothing does not: Chromium fires a document `scroll` about 130 ms after a click with no scroll input, and a mobile
-// address bar fires `resize` without changing the width (WEB-011). Run in the real engines, where those events are the browser's own.
+// Chromium fires a `scroll` about 130 ms after a plain click, and a mobile address bar fires `resize` with the same width (WEB-011, MOT-002).
 
 const MENU = { name: 'Web interfaces of nas' };
 const STAYS_OPEN_MS = 500;
@@ -51,7 +49,6 @@ test('WEB-011: a resize that keeps the width keeps the menu open, and a width ch
 });
 
 test('WEB-011: a height-only resize that cuts the panel keeps the open menu inside the window and next to its button', async ({ page }) => {
-  // The panel is fixed, so a shorter window (a mobile keyboard or address bar) must not leave a choice below the edge.
   await page.setViewportSize({ width: 390, height: 700 });
   await openDevices(page);
   const button = page.getByRole('button', MENU);
@@ -59,7 +56,6 @@ test('WEB-011: a height-only resize that cuts the panel keeps the open menu insi
   const menu = page.getByRole('group', MENU);
   await expect(menu).toBeVisible();
 
-  // Cut the window to 40 px above the panel's bottom edge, so the panel no longer fits where it was placed.
   const opened = await menu.boundingBox();
   if (opened === null) throw new Error('menu has no box');
   const CUT_PX = 40;
@@ -76,7 +72,6 @@ test('WEB-011: a height-only resize that cuts the panel keeps the open menu insi
   expect(inside.length).toBeGreaterThanOrEqual(3); // two choices and the pin of the pinned one
   expect(inside.every(Boolean)).toBe(true);
 
-  // placeNear puts the panel flush under the button or flush above it, so the two touch within the gap.
   const panel = await menu.boundingBox();
   const anchor = await button.boundingBox();
   if (panel === null || anchor === null) throw new Error('menu or button has no box');

@@ -1,10 +1,10 @@
-//! One update of a thread as one line of text for `anima agents watch`. Pure. The words of the
-//! program are shown as text: `stream::line` cleans each line of control characters.
+//! One thread update as one line for `anima agents watch`; `stream::line` cleans control characters.
+
+use std::fmt::Write as _;
 
 use agent_threads::control::{Change, RunState};
 use agent_threads::drive::{DriveEvent, RequestKind, StepState};
 
-/// The most characters of a reply, a command or a result on one line.
 const WIDTH: usize = 200;
 
 fn short(text: &str) -> String {
@@ -41,7 +41,21 @@ const fn kind_words(kind: RequestKind) -> &'static str {
 #[must_use]
 pub fn text(change: &Change) -> Option<String> {
     Some(match change {
-        Change::Prompt { text, source } => format!("prompt ({source}): {}", short(text)),
+        Change::Prompt {
+            text,
+            source,
+            images,
+            files,
+        } => {
+            let mut with = String::new();
+            if *images > 0 {
+                let _ = write!(with, " [{images} image(s)]");
+            }
+            if !files.is_empty() {
+                let _ = write!(with, " [files: {}]", files.join(", "));
+            }
+            format!("prompt ({source}): {}{with}", short(text))
+        }
         Change::Asked { request, detail } => format!(
             "NEEDS YOU: may it {}? {} (request {request})",
             kind_words(detail.kind),

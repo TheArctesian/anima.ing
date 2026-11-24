@@ -1,9 +1,7 @@
 //! The two `docker` commands and the pure reading of their output (HOST-001, CHK-012).
 //!
-//! The list asks Docker for nine named values of each container and no label but four of
-//! Compose (the project, the service, and where Compose found the project, R-211), so a label
-//! that holds a secret never leaves the device. The log asks for both
-//! output streams of the container (`2>&1`): the link never reads standard error.
+//! The list asks for no label but four of Compose (R-211), so a label that holds a secret never
+//! leaves the device. The log asks for both streams (`2>&1`): the link never reads standard error.
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -15,7 +13,6 @@ use super::{
 };
 use crate::fleet::ssh::{CommandOutput, FixedCommand};
 
-/// One JSON object for each container, made by Docker's template from static text.
 const LIST_FORMAT: &str = concat!(
     r#"'{"id":{{json .ID}},"names":{{json .Names}},"image":{{json .Image}},"#,
     r#""state":{{json .State}},"status":{{json .Status}},"ports":{{json .Ports}},"#,
@@ -28,13 +25,11 @@ const LIST_FORMAT: &str = concat!(
 
 /// The exit status of a shell that found no such program.
 const NOT_FOUND_STATUS: u32 = 127;
-/// How the line starts that Docker writes when it knows no container by the identifier.
 const NO_SUCH_CONTAINER: [&str; 2] = [
     "Error response from daemon: No such container",
     "Error: No such container",
 ];
 
-/// `docker ps` for every container, from static text only.
 pub(super) fn list_command() -> FixedCommand {
     FixedCommand::new("docker")
         .arg("ps")
@@ -44,7 +39,6 @@ pub(super) fn list_command() -> FixedCommand {
         .arg(LIST_FORMAT)
 }
 
-/// `docker logs` for the last lines of one container, with the time of each line.
 pub(super) fn log_command(tail: &Tail) -> FixedCommand {
     FixedCommand::new("docker")
         .arg("logs")
@@ -55,7 +49,6 @@ pub(super) fn log_command(tail: &Tail) -> FixedCommand {
         .arg("2>&1")
 }
 
-/// One line of the list, as [`LIST_FORMAT`] writes it.
 #[derive(Deserialize)]
 struct Line {
     id: String,
@@ -67,14 +60,13 @@ struct Line {
     created: String,
     project: String,
     service: String,
-    /// The two labels of where Compose found the project. An older answer has none.
+    /// An older answer has no labels of where Compose found the project.
     #[serde(default)]
     dir: String,
     #[serde(default)]
     files: String,
 }
 
-/// Why a command that did not exit 0 failed, from its status alone.
 pub(super) const fn failure(output: &CommandOutput) -> Error {
     match output.exit_status {
         Some(NOT_FOUND_STATUS) => Error::NoDocker,
@@ -82,11 +74,8 @@ pub(super) const fn failure(output: &CommandOutput) -> Error {
     }
 }
 
-/// The containers the list names.
-///
 /// # Errors
-/// `Unreadable` when the output was cut or a line is not what the format writes; `NoDocker`
-/// or `DockerFailed` when the command did not exit 0.
+/// `Unreadable` for cut or unexpected output; `NoDocker` or `DockerFailed` for a failed command.
 pub(super) fn containers(output: &CommandOutput) -> Result<Vec<Container>, Error> {
     if output.cut {
         return Err(Error::Unreadable);
@@ -132,8 +121,7 @@ fn container(line: Line) -> Container {
     }
 }
 
-/// The container's own name among the comma-separated `Names`: the first with no `/`, which
-/// a name that a link of another container gives has.
+/// The first name with no `/`: a link of another container gives a name with one.
 pub(super) fn shown_name(names: &str) -> String {
     names
         .split(',')
@@ -168,7 +156,6 @@ fn health(status: &str) -> Health {
     }
 }
 
-/// The ports of Docker's one text, which a comma and a space divide.
 fn listed(ports: &str) -> Vec<String> {
     ports
         .split(", ")
@@ -177,7 +164,7 @@ fn listed(ports: &str) -> Vec<String> {
         .collect()
 }
 
-/// The time in Docker's `2026-11-18 10:00:00 -0800 PST`; `None` for any other text.
+/// Docker's `2026-11-18 10:00:00 -0800 PST`.
 fn created(text: &str) -> Option<DateTime<Utc>> {
     let mut words = text.split_whitespace();
     let stamp = format!("{} {} {}", words.next()?, words.next()?, words.next()?);
@@ -186,12 +173,10 @@ fn created(text: &str) -> Option<DateTime<Utc>> {
         .map(|at| at.with_timezone(&Utc))
 }
 
-/// The lines of the log. Bytes that are not UTF-8 become the replacement character. When the
-/// output was cut at the link's cap, the last line is partial and is left out.
+/// When the output was cut at the link's cap, the last line is partial and is left out.
 ///
 /// # Errors
-/// `NoContainer` when Docker says it knows no such container; `NoDocker` or `DockerFailed`
-/// when the command did not exit 0 for another reason.
+/// `NoContainer` when Docker knows no such container; else `NoDocker` or `DockerFailed`.
 pub(super) fn log(output: &CommandOutput) -> Result<ContainerLog, Error> {
     let text = String::from_utf8_lossy(&output.stdout);
     if !output.cut && output.exit_status != Some(0) {
@@ -211,8 +196,7 @@ pub(super) fn log(output: &CommandOutput) -> Result<ContainerLog, Error> {
     })
 }
 
-/// Whether the last line is Docker's own error for an unknown container. Only that line is
-/// read, and only from its start, so a line that the container wrote cannot make this answer.
+/// Only the last line is read, from its start, so a line that the container wrote cannot forge it.
 pub(super) fn says_no_container(text: &str) -> bool {
     text.lines()
         .rev()
@@ -224,7 +208,6 @@ pub(super) fn says_no_container(text: &str) -> bool {
         })
 }
 
-/// A line that `--timestamps` wrote: its time, one space, the container's text.
 fn log_line(line: &str) -> LogLine {
     let timed = line.split_once(' ').and_then(|(stamp, text)| {
         let at = DateTime::parse_from_rfc3339(stamp).ok()?;

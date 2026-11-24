@@ -6,7 +6,7 @@ import { workApi } from '../work/api';
 import { field, type Asker } from './request';
 import type { RepositoryAccess } from './types';
 
-// The fragments every tab's lists share; only codegen reads them, inlining them where they are spread (API-008).
+// Only codegen reads these fragments and inlines them where they are spread (API-008).
 void graphql(`
   fragment ForgeReadFields on ForgeRead {
     at
@@ -50,7 +50,7 @@ async function access(hub: Asker, slug: string): Promise<HubResult<ReadonlyMap<s
   return { ok: true, value: new Map((result.value?.repositories ?? []).map((each) => [each.id, each.access])) };
 }
 
-/** The hub's calls for a project's work, code and history (PRJ-027 to PRJ-035). */
+/** PRJ-027 to PRJ-035. */
 export function forgeApi(hub: Asker) {
   return { access: (slug: string) => access(hub, slug), ...workApi(hub), ...codeApi(hub), ...historyApi(hub) };
 }

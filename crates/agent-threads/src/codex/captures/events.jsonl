@@ -1,0 +1,10 @@
+{"timestamp":"2026-11-20T22:42:45.000Z","type":"session_meta","payload":{"id":"01a1fcd7-d299-7090-a69d-e78c7a956aa7","timestamp":"2026-11-20T22:42:45.000Z","cwd":"/work/project","cli_version":"0.0.0","git":{"branch":"main"}}}
+{"timestamp":"2026-11-20T22:42:45.100Z","type":"turn_context","payload":{"cwd":"/work/project","model":"gpt-5.4"}}
+{"timestamp":"2026-11-20T22:42:45.200Z","type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}
+{"timestamp":"2026-11-20T22:42:45.300Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Count the files here."}]}}
+{"timestamp":"2026-11-20T22:42:45.300Z","type":"event_msg","payload":{"type":"user_message","message":"Count the files here.","images":[],"local_images":[]}}
+{"timestamp":"2026-11-20T22:42:46.000Z","type":"response_item","payload":{"type":"reasoning","summary":[{"type":"summary_text","text":"Listing the folder."}],"content":null}}
+{"timestamp":"2026-11-20T22:42:46.100Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"ls | wc -l\",\"workdir\":\"/work/project\"}","call_id":"call_a"}}
+{"timestamp":"2026-11-20T22:42:46.500Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_a","output":"Chunk ID: 1\nWall time: 0.0 seconds\nProcess exited with code 0\nOutput:\n3\n"}}
+{"timestamp":"2026-11-20T22:42:47.000Z","type":"event_msg","payload":{"type":"agent_message","message":"There are 3 files."}}
+{"timestamp":"2026-11-20T22:42:47.100Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"t1"}}

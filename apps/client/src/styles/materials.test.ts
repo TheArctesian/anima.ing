@@ -15,7 +15,6 @@ function svelteFiles(folder: string): string[] {
   });
 }
 
-/** The declarations of the first rule whose selector is exactly `selector`. */
 function rule(selector: string): string {
   const css = materials.replaceAll(/\/\*[\s\S]*?\*\//g, '');
   const start = css.search(new RegExp(`(^|\\})\\s*${selector.replace('.', '\\.')} \\{`));

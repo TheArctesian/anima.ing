@@ -9,7 +9,7 @@ use crate::builder::{
 };
 
 /// The `bundle` settings that carry the seven programs and the PostgreSQL tree (INS-002, S12 2.1).
-const CARRIED: &str = r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"database":"database"}}"#;
+const CARRIED: &str = r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"../../../LICENSE":"licences/LICENSE","../../../crates/shortening/LICENSE-APACHE":"licences/LICENSE-APACHE","../../../crates/shortening/NOTICE":"licences/NOTICE","database":"database"}}"#;
 
 fn args(command: &plan::Command) -> Vec<&str> {
     command.args.iter().map(|a| a.to_str().unwrap()).collect()
@@ -194,7 +194,6 @@ fn bld_043_bld_083_macos_builds_universal_and_bundles_app_and_dmg_with_no_apple_
             "app,dmg"
         ]
     );
-    // No ad-hoc identity and no Apple secret in a step.
     assert!(commands.iter().all(|command| command.env.is_empty()));
     let app = Path::new("/c/bundle/macos/Anima.ing.app");
     let [codesign, lipo] = plan::bundle_checks(app, &app.join("Contents/MacOS/Anima"));
@@ -243,7 +242,6 @@ fn s12_s_2_both_tauri_steps_sign_with_the_builders_own_identity_on_macos_only() 
         assert_eq!(config["bundle"]["macOS"]["signingIdentity"], identity);
         assert_eq!(config["bundle"]["resources"]["database"], "database");
     }
-    // Linux names no identity, also when one is given.
     let linux = plan::bundle(
         Path::new("/c"),
         Target::LinuxX86_64,

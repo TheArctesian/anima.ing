@@ -31,8 +31,6 @@ func open(t *testing.T, path string) *statedir.Dir {
 	return dir
 }
 
-// runOnce is one life of a hub link: load the identity, start, save the
-// relay that the start chose, report the address, stop.
 func runOnce(t *testing.T, path, relayMapURL string) tunnel.Address {
 	t.Helper()
 	dir := open(t, path)

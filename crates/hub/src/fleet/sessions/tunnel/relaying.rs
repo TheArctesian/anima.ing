@@ -1,15 +1,8 @@
-//! The Guacamole tunnel's part of the session task (K4 Sections 2 to 5, `upgrade::FarSide`):
-//! it opens the gateway side, and once the `/tunnel` request is answered waits for the
-//! upgraded socket, runs the tunnel (`link`) or tells the client the certificate changed. The
-//! shared task (`upgrade::run_session`) owns the ticket from redeem to end.
+//! The Guacamole tunnel's part of the session task (K4 Sections 2 to 5); the shared task
+//! (`upgrade::run_session`) owns the ticket from redeem to end.
 //!
-//! A known gap, accepted (SEC-002, issue #1): the opening stops when the client leaves only
-//! if hyper notices, and hyper notices an EOF during a request only while its read buffer is
-//! empty. A client that sends even one byte after the request headers and then leaves is not
-//! seen: the opening carries on, the credential still reaches guacd, and the session ends
-//! when the upgrade never comes (or the opening fails) instead of at once. Only the holder of
-//! a valid ticket, from the address it is bound to, can do this, and the session still ends
-//! once.
+//! Accepted gap (SEC-002): hyper does not see a client that sends a byte after the request
+//! headers and leaves, so the opening carries on until the upgrade never comes.
 
 mod link;
 mod writes;
@@ -29,7 +22,6 @@ use crate::fleet::sessions::{
 };
 use writes::{leave_gateway, send_text};
 
-/// The event message when the request did not offer the `guacamole` subprotocol.
 const NOT_GUACAMOLE: &str = "The client did not open the tunnel as a Guacamole WebSocket, so \
                              the hub closed the session.";
 
@@ -55,9 +47,6 @@ impl FarSide for Route {
     }
 }
 
-/// The tunnel after the response: waits for the upgraded socket, then relays, or tells the
-/// client the certificate changed. When the upgrade fails, guacd is told the hub is leaving;
-/// after a changed certificate the session still ends `SERVER_CERTIFICATE_MISMATCH` (SEC-007).
 pub(super) async fn connected(
     timing: Timing,
     tunnel: &mut Tunnel,
@@ -80,8 +69,7 @@ pub(super) async fn connected(
     }
 }
 
-/// Tells the client the certificate changed and closes 4003; guacd was never reached (K4
-/// Section 5). The mismatch is the cause even if the client is gone before it hears of it.
+/// Guacd was never reached (K4 Section 5).
 async fn certificate_mismatch(mut client: WebSocket, tunnel: &mut Tunnel, timing: Timing) -> End {
     let cause = Cause::ServerCertificateMismatch;
     let _ = send_text(

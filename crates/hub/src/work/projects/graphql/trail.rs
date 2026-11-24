@@ -1,6 +1,5 @@
-//! What an operator's choice about a project leaves behind: one audit entry and one event, in
-//! the mutation's own transaction (LOG-004, LOG-005). The words name the project by its slug,
-//! which the hub made, never by text from GitHub (LOG-007).
+//! One audit entry and one event in the mutation's transaction (LOG-004, LOG-005). The words
+//! name the project by its slug, which the hub made, never by text from GitHub (LOG-007).
 
 use serde_json::json;
 

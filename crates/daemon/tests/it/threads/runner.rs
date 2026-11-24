@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use agent_threads::control::{Action, Call, Change, Outcome, Reply, RunState, SOCKET};
 use agent_threads::drive::{Answer, Mode, Program};
-use anima_daemon::threads::link::HolderLink;
-use anima_daemon::threads::wire;
+use anima_daemon::threads::tree;
+use rustix::process::{Pid, Signal};
 use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, Lines};
 use tokio::net::UnixStream;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
@@ -18,30 +18,12 @@ use uuid::Uuid;
 
 use super::gone;
 
-/// A made Claude Code: it names its session, asks to run a command, and after the answer starts
-/// a child in a process group of its own, writes the child's ID to `child.pid`, and ends its turn.
-pub(super) const CLAUDE: &str = r#"#!/usr/bin/perl
-$| = 1;
-my $sid = "none";
-for my $i (0 .. $#ARGV) { $sid = $ARGV[$i + 1] if $ARGV[$i] eq "--session-id"; }
-print qq({"type":"system","subtype":"init","session_id":"$sid","model":"made","permissionMode":"bypassPermissions"}\n);
-while (my $line = <STDIN>) {
-    if ($line =~ /"type":"user"/) {
-        print qq({"type":"system","subtype":"session_state_changed","state":"running"}\n);
-        print qq({"type":"control_request","request_id":"r1","request":{"subtype":"can_use_tool","tool_name":"Bash","input":{"command":"sleep 300"},"permission_suggestions":[],"tool_use_id":"t1"}}\n);
-    } elsif ($line =~ /"control_response"/) {
-        my $pid = fork();
-        if ($pid == 0) { setpgrp(0, 0); exec("/bin/sleep", "300"); }
-        open(my $file, ">", "child.pid"); print $file $pid; close($file);
-        print qq({"type":"result","subtype":"success","is_error":false,"result":"done","terminal_reason":"completed"}\n);
-        print qq({"type":"system","subtype":"session_state_changed","state":"idle"}\n);
-    }
-}
-"#;
+mod commands;
+mod made;
+mod relay;
 
-/// A made login shell: it is asked as a login and interactive shell, sets the names of a
-/// profile (one of them with the value of a secret of Anima), and runs the script it is given.
-const SHELL: &str = "#!/bin/sh\n[ \"$1\" = -l ] && [ \"$2\" = -i ] || exit 3\nexport LOGIN_ONLY=yes COPY=s3cret-value ANIMA_LEAK=x\nexec /bin/sh -c \"$4\"\n";
+pub(super) use made::CLAUDE;
+use made::{CODEX, SHELL};
 
 /// A secret of Anima in the environment of the daemon.
 pub(super) const SECRET: &str = "s3cret-value";
@@ -66,10 +48,14 @@ impl Kit {
     /// A kit with no runner yet.
     pub(super) fn unstarted(claude: &str) -> Self {
         use std::os::unix::fs::PermissionsExt as _;
+        // Keep Git records outside shared `/tmp` and socket paths short in deep checkouts.
+        #[cfg(target_os = "linux")]
+        let home = tempfile::tempdir_in("/var/tmp").expect("a folder");
+        #[cfg(not(target_os = "linux"))]
         let home = tempfile::tempdir().expect("a folder");
         let bin = home.path().join("bin");
         std::fs::create_dir(&bin).expect("bin");
-        for (name, text) in [("claude", claude), ("login-shell", SHELL)] {
+        for (name, text) in [("claude", claude), ("codex", CODEX), ("login-shell", SHELL)] {
             let path = bin.join(name);
             std::fs::write(&path, text).expect("written");
             std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("mode");
@@ -140,25 +126,65 @@ impl Kit {
     }
 }
 
+/// How long the holder may take to end its programs after `SIGTERM`: a grace of a few seconds
+/// for each thread, on a busy computer.
+const HOLDER_END: Duration = Duration::from_secs(30);
+
 impl Drop for Kit {
+    /// Ends the runner, then each holder of its folder with its programs. The holder outlives
+    /// the runner (THR-113) and refuses a `Quit` while a thread runs, so it gets `SIGTERM`, which
+    /// ends each program it holds (THR-049). The holders are found by their command line, not by
+    /// the socket: on a busy computer a holder may not listen yet when a short test ends, and an
+    /// older holder may have given the socket up (TH98). One missed would run on with its folder
+    /// deleted and its made programs. A holder that still runs after the wait fails the test and
+    /// is killed, so that a failing test leaves nothing behind either.
     fn drop(&mut self) {
         self.end_runner();
-        let dir = self.threads();
-        // The holder ends with the test: a thread of its own, as a drop runs inside the runtime.
-        let _ = std::thread::spawn(move || {
-            let runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("a runtime");
-            runtime.block_on(async move {
-                if let Ok(mut link) = HolderLink::connect(&dir).await {
-                    let _ = link.send(wire::Action::Quit).await;
-                    tokio::time::sleep(Duration::from_millis(200)).await;
-                }
-            });
-        })
-        .join();
+        let holders = holders_of(&self.threads());
+        for pid in &holders {
+            signal(*pid, Signal::TERM);
+        }
+        let deadline = std::time::Instant::now() + HOLDER_END;
+        while holders.iter().any(|pid| tree::alive(*pid)) && std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        // Looked up again, so that a process that took the ID of an ended holder is not killed.
+        let left: Vec<u32> = holders_of(&self.threads())
+            .into_iter()
+            .filter(|pid| holders.contains(pid))
+            .collect();
+        for pid in &left {
+            signal(*pid, Signal::KILL);
+        }
+        // A second panic while the test already fails would abort the whole test binary.
+        assert!(
+            std::thread::panicking() || left.is_empty(),
+            "the holders {left:?} of the test still ran {HOLDER_END:?} after SIGTERM"
+        );
     }
+}
+
+fn signal(pid: u32, signal: Signal) {
+    if let Some(pid) = i32::try_from(pid).ok().and_then(Pid::from_raw) {
+        let _ = rustix::process::kill_process(pid, signal);
+    }
+}
+
+/// The processes that run `anima-daemon holder <dir>`, from `ps`; none when `ps` cannot run, as
+/// a panic in a drop while the test already fails would abort each test of the binary.
+pub(super) fn holders_of(dir: &Path) -> Vec<u32> {
+    let Ok(output) = Process::new("/bin/ps")
+        .args(["-axww", "-o", "pid=,command="])
+        .output()
+    else {
+        return Vec::new();
+    };
+    let mark = format!(" holder {}", dir.display());
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|line| line.trim_end().ends_with(&mark))
+        .filter_map(|line| line.split_whitespace().next()?.parse().ok())
+        .collect()
 }
 
 pub(super) struct Client {
@@ -238,16 +264,22 @@ async fn start_and_answer(kit: &Kit) -> (Uuid, Uuid, u32) {
     assert_eq!(client.done(watch).await, Outcome::Ok);
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: kit.path("work"),
             mode: Mode::FullAccess,
             model: None,
             effort: None,
+            speed: None,
             prompt: "Run the command".to_owned(),
             program_path: None,
+            draft: None,
+            attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
-    let Outcome::Started { thread } = client.done(start).await else {
+    let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
     let asked = client

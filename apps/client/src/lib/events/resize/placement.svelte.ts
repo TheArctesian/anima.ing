@@ -18,10 +18,7 @@ function drawnOffset(panel: HTMLElement): number | null {
   return Number.isNaN(y) ? null : y;
 }
 
-/**
- * How far the logs panel is open: the stop it rests at, the height it shows now and the motion between stops.
- * A drag moves it 1:1 with rubber-band at the limits; a release, a key or the disclosure button springs it to a stop.
- */
+/** A drag moves the logs panel 1:1 with rubber-band at the limits; a release, a key or the disclosure springs it to a stop. */
 export class PanelPlacement {
   stop = $state<Stop>(THIRD);
   height = $state(0);
@@ -30,18 +27,15 @@ export class PanelPlacement {
   #dragging = false;
   readonly #around: Surroundings;
 
-  /** `start` is the stop the panel rests at before the operator moves it. */
   constructor(around: Surroundings, start: Stop = THIRD) {
     this.#around = around;
     this.stop = start;
   }
 
-  /** Whether any of the content shows. */
   get open(): boolean {
     return this.height > this.#around.snaps()[COLLAPSED];
   }
 
-  /** Puts the panel at its stop at once: first paint, and a page that changed size. */
   settle(): void {
     const snaps = this.#around.snaps();
     // A page that changes size under a drag keeps the dragged height, held between the new limits.

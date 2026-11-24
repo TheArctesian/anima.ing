@@ -1,9 +1,10 @@
-//! The files that a copy may have (Section 2.2, SEC-C-008, SEC-C-009). Each format has a fixed
-//! list of names; each other file of `files` is refused before a byte is downloaded.
+//! The files that a copy may have (Section 2.2, SEC-C-008, SEC-C-009); any other file is refused before a byte is downloaded.
+
+pub mod classes;
+pub mod code;
 
 use super::names::{Format, is_source_name};
 
-/// The most files of one pull, and the longest name of a file.
 pub const MAX_FILES: usize = 64;
 pub const MAX_NAME: usize = 256;
 
@@ -22,14 +23,13 @@ const SAFETENSORS_NAMES: [&str; 7] = [
 
 const SAFETENSORS_SUFFIXES: [&str; 3] = [".safetensors", ".safetensors.index.json", ".model"];
 
-/// Whether `name` is a path inside a repository: segments of the source characters and `/`,
-/// no segment `.` or `..`, no leading `/`, at most 256 characters (Section 2).
+/// A path inside a repository (Section 2).
 #[must_use]
 pub fn is_file_path(name: &str) -> bool {
     name.len() <= MAX_NAME && !name.is_empty() && name.split('/').all(is_source_name)
 }
 
-/// Whether the format permits the file `name` (already a valid path).
+/// `name` is already a valid path.
 #[must_use]
 pub fn permitted(format: Format, name: &str) -> bool {
     let lower = name.to_ascii_lowercase();

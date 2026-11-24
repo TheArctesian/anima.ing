@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+pub(super) mod asking;
 mod copies;
 pub mod sign_in;
 

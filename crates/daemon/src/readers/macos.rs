@@ -1,7 +1,4 @@
-//! The macOS collection: `sysctl`, `vm_stat`, `df -P -k`, `netstat -ib -n`, `top -l 2` and
-//! `pmset -g batt` (MET-002, MET-032). The commands are the forms in `daemon_core::readings` (MET-016).
-//!
-//! Not built on macOS yet (R-092 D-8); it runs only fixed commands, so it compiles anywhere.
+//! The macOS commands of a reading (MET-002, MET-016, MET-032).
 
 use std::time::Duration;
 

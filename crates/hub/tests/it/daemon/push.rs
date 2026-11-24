@@ -1,8 +1,6 @@
-//! K8 Sections 4 and 6, MET-015, MET-017, NET-002: a push is refused with the first refusal in
-//! K8's order, each written as a warning with its code and address, the device when the token
-//! was valid, and never the token; one with no valid token at most once a minute per address.
-//! An accepted batch stores each mean at 10 seconds, its max in the aggregates, and nothing
-//! twice.
+//! K8 Sections 4 and 6, MET-015, MET-017, NET-002: a push refusal is logged without the token.
+
+mod thread_summaries;
 
 use axum::http::StatusCode;
 use chrono::{DurationRound as _, TimeDelta};
@@ -245,7 +243,6 @@ async fn met_015_the_max_lands_in_the_minute_hour_and_day_rows_and_the_mean_in_t
     let now = pushing_now(&pool).await;
     let daemons = Daemons::at(&pool, now).await;
     let token = daemons.token_for(PVE_01).await;
-    // Two batches, each with a point of one minute five minutes ago, so they share a bucket.
     let minute = (now - TimeDelta::minutes(5))
         .duration_trunc(TimeDelta::minutes(1))
         .unwrap();

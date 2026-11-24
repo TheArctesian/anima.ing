@@ -1,7 +1,8 @@
 //! The holder (THR-113): a small process that owns the agent programs of the threads and the end
 //! of their output, so that the daemon can stop, be updated and start again while agents run.
 //! It is `anima-daemon holder <folder>`, started by the daemon with an empty environment. It
-//! reads no settings, opens no file of the person and speaks to no network.
+//! reads no sign-in files. Opted-in relay threads use a holder-owned loopback listener;
+//! their provider traffic passes through in memory (TH118, R-400).
 //!
 //! Its channel is one socket file in a folder of mode 0700 of the user (THR-128). It checks that
 //! the peer is the same user. It cannot tell the daemon from a different program of the same
@@ -9,7 +10,7 @@
 //! A new connection takes the place of the one before it, so that a daemon that starts again
 //! is never locked out by the one that died.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -43,6 +44,7 @@ pub enum HolderError {
 
 /// One thread in the holder.
 pub struct Slot {
+    pub(crate) relay: Option<super::program::relay::Lease>,
     pub pid: u32,
     pub started: Option<String>,
     pub input: Input,
@@ -70,6 +72,7 @@ pub fn locked(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
 
 /// What the tasks of the holder share.
 pub struct Shared {
+    pub(crate) relays: Arc<super::program::relay::Relays>,
     pub threads: BTreeMap<ThreadKey, Slot>,
     pub dir: PathBuf,
     connection: Option<(u64, mpsc::UnboundedSender<String>)>,
@@ -80,6 +83,11 @@ pub struct Shared {
     /// The holder ends: no new start, so that no program outlives it (THR-049).
     pub closing: bool,
     pub limit: usize,
+    /// What an older holder left that this one could not prove ended: kept in the record.
+    pub inherited: Vec<record::Entry>,
+    /// The commands being done now: a stop waits without the turn, and the same command sent
+    /// again in that time is not done a second time (H10).
+    pub acting: BTreeSet<u64>,
 }
 
 impl Shared {
@@ -101,17 +109,18 @@ impl Shared {
         let running = self
             .threads
             .iter()
-            .filter(|(_, slot)| slot.exit.is_none())
+            .filter(|(_, slot)| slot.exit.is_none() || slot.left_behind)
             .map(|(thread, slot)| record::Entry {
                 thread: thread.clone(),
                 pid: slot.pid,
                 started: slot.started.clone(),
+                left: (slot.exit.is_some() && slot.left_behind).then(|| slot.seen.clone()),
             });
         let written = record::write(
             &self.dir,
             &Record {
                 version: wire::VERSION,
-                threads: running.collect(),
+                threads: running.chain(self.inherited.iter().cloned()).collect(),
             },
         );
         if let Err(error) = written {
@@ -144,6 +153,7 @@ impl Shared {
     #[must_use]
     pub fn new_slot(&self, pid: u32, started: Option<String>, input: Input) -> Slot {
         Slot {
+            relay: None,
             pid,
             started,
             input,
@@ -165,12 +175,14 @@ impl Shared {
 /// [`HolderError`] when the folder is not private, a different holder holds it, or the socket
 /// cannot be made.
 pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
+    super::program::keep_inherited_from_programs();
     // The build of the file this holder started from, before an update replaces it (TH98).
     let _ = wire::this_build();
     let _lock = lock(dir)?;
-    record::end_left_over(dir).await;
+    let inherited = record::end_left_over(dir).await;
     let listener = bind(dir)?;
     let shared = Arc::new(Mutex::new(Shared {
+        relays: Arc::default(),
         threads: BTreeMap::new(),
         dir: dir.to_owned(),
         connection: None,
@@ -179,6 +191,8 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         draining: false,
         closing: false,
         limit: if limit == 0 { LIMIT } else { limit },
+        inherited,
+        acting: BTreeSet::new(),
     }));
     // One command at a time, from any connection: the check that a command was done and the
     // command itself are one step, so a command sent again on a new connection while the first
@@ -332,12 +346,11 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
             break;
         };
         let ends = matches!(command.action, Action::Quit);
-        let one = turn.lock().await;
+        let one = Arc::clone(&turn).lock_owned().await;
         if !shared.lock().is_ok_and(|state| state.serves(me)) {
             break;
         }
-        let outcome = super::commands::run(&shared, command).await;
-        drop(one);
+        let outcome = super::commands::run(&shared, command, one).await;
         if ends && outcome == Outcome::Ok {
             // A command after the Quit would start a program in a holder that ends.
             quitting = true;

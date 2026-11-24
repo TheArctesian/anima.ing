@@ -3,7 +3,8 @@
 use agent_threads::control::Change;
 use agent_threads::drive::DriveEvent;
 
-use super::claude;
+use super::{CLAUDE_INIT, claude, counter};
+use crate::threads::runner::thread::Step;
 
 fn diff(turn: &str, diff: &str) -> Change {
     Change::Said {
@@ -65,4 +66,53 @@ fn th106_a_read_back_gives_one_update_however_big_it_is() {
         .map(|update| update.seq)
         .collect();
     assert_eq!(back, vec![big.seq]);
+}
+
+#[test]
+fn th112_the_row_keeps_the_last_use_of_tokens_for_a_client_that_comes_later() {
+    let mut thread = claude();
+    thread.begin("go");
+    thread.line(CLAUDE_INIT, &mut counter());
+    let result = r#"{"type":"result","subtype":"success","is_error":false,"result":"done","terminal_reason":"completed","usage":{"input_tokens":10,"output_tokens":5,"iterations":[{"input_tokens":7,"output_tokens":3}]},"modelUsage":{"m":{"contextWindow":200000}},"total_cost_usd":0.25}"#;
+    let steps = thread.line(result, &mut counter());
+    let usage = thread.row.usage.clone().expect("the use of tokens");
+    assert_eq!(
+        (usage.context, usage.window, usage.input, usage.output),
+        (Some(10), Some(200_000), 10, 5)
+    );
+    assert!(
+        steps.iter().any(|step| matches!(
+            step,
+            Step::Change(Change::State { row, .. }) if row.usage.is_some()
+        )),
+        "the change of the state at the end of the turn carries it"
+    );
+    assert!(
+        steps.contains(&Step::Workspace),
+        "a turn end reads the branch again"
+    );
+    // A new use with no change of the state still goes to the clients with the row.
+    let later = result.replace("\"input_tokens\":7", "\"input_tokens\":70");
+    let steps = thread.line(&later, &mut counter());
+    assert!(steps.iter().any(|step| matches!(
+        step,
+        Step::Change(Change::State { row, .. })
+            if row.usage.as_ref().and_then(|usage| usage.context) == Some(73)
+    )));
+}
+
+#[test]
+fn th11_the_updates_kept_for_a_watch_have_a_bound_of_bytes() {
+    let mut thread = claude();
+    let big = "x".repeat(1024 * 1024);
+    for _ in 0..10 {
+        thread.note(Change::Prompt {
+            text: big.clone(),
+            source: "test".to_owned(),
+            images: 0,
+            files: Vec::new(),
+        });
+    }
+    let kept = thread.kept().count();
+    assert!((1..=4).contains(&kept), "kept {kept} updates of 1 MiB");
 }

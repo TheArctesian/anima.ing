@@ -13,7 +13,6 @@ fn signed_in() -> Anima {
     Anima::new().with("ANIMA_TOKEN", "login-token-for-watch-tests")
 }
 
-/// Runs `anima <words> --hub <origin>` against a hub that plays `script`.
 async fn watch(words: &[&str], script: Vec<Value>) -> (crate::kit::Outcome, SubscriptionHub) {
     let hub = SubscriptionHub::start(Script::Next(script)).await;
     let mut args = words.to_vec();

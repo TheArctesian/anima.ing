@@ -11,7 +11,6 @@
   import KitWebKeys from './KitWebKeys.svelte';
   import { KIT_CHATS, KIT_NOW } from './chats';
 
-  // The page of stage 6 (TC6, first half): the command palette with a fixed list of chats, its key table and the clashes.
   let open = $state(false);
   let chats = $state<'ready' | 'loading' | 'failed' | 'none'>('ready');
   let chat = $state<'none' | 'open'>('none');

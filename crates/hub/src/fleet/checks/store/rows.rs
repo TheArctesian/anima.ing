@@ -1,5 +1,3 @@
-//! Database records of the `checks` schema, and how its constraints map to field errors.
-
 use std::net::IpAddr;
 
 use chrono::{DateTime, Utc};
@@ -56,7 +54,6 @@ pub(super) struct StandingRow {
     status: String,
 }
 
-/// A stored value outside the domain of its column.
 #[derive(Debug, thiserror::Error)]
 #[error("a stored check value is out of range")]
 struct OutOfRange;
@@ -90,8 +87,6 @@ pub(super) fn number<T: TryFrom<i32>>(value: i32) -> Result<T, sqlx::Error> {
     T::try_from(value).map_err(|_| out_of_range())
 }
 
-/// The `config` column: the JSON of [`CheckConfig`] without its type tag, which the `type`
-/// column holds.
 pub(super) fn stored_config(config: &CheckConfig) -> Result<Value, sqlx::Error> {
     let mut value =
         serde_json::to_value(config).map_err(|error| sqlx::Error::Encode(Box::new(error)))?;
@@ -101,9 +96,7 @@ pub(super) fn stored_config(config: &CheckConfig) -> Result<Value, sqlx::Error> 
     Ok(value)
 }
 
-/// Reads the `config` column back with the type tag from the `type` column. A stored tag,
-/// or any key on a type without settings (serde ignores those), is refused like any other
-/// unknown key.
+/// A stored tag, or any key on a type without settings (serde ignores those), is refused.
 pub(super) fn config_of(kind: &str, mut value: Value) -> Option<CheckConfig> {
     let Value::Object(fields) = &mut value else {
         return None;
@@ -194,7 +187,6 @@ impl TryFrom<StandingRow> for Standing {
     }
 }
 
-/// Turns a violated constraint into the field the operator must fix.
 pub(super) fn write_error(error: sqlx::Error) -> Error {
     let (field, message) = match error.as_database_error().and_then(|e| e.constraint()) {
         Some("checks_device_id_name_key") => {

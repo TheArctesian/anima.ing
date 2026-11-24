@@ -1,5 +1,4 @@
-//! The pure reading of `docker ps` and `docker logs` output, and the two checked values
-//! (HOST-001).
+//! The pure reading of `docker ps` and `docker logs` output (HOST-001).
 
 use chrono::{TimeZone, Utc};
 
@@ -52,7 +51,6 @@ fn host_001_the_list_gives_name_image_state_status_ports_and_compose_project() {
         (ContainerState::Exited, Health::None, None)
     );
     assert_eq!((&db.ports, &db.compose_project), (&vec![], &None));
-    // A container of no project, in the answer of a list that has no such label.
     assert_eq!(
         (&db.compose_working_dir, &db.compose_files),
         (&None, &vec![])
@@ -95,10 +93,12 @@ fn host_001_the_status_text_gives_the_health_and_an_unknown_state_is_unknown() {
 
 #[test]
 fn host_010_a_shell_with_no_docker_and_a_docker_that_fails_are_told_apart() {
-    assert!(matches!(
-        docker::containers(&output("", Some(127))),
-        Err(Error::NoDocker)
-    ));
+    let missing = docker::containers(&output("", Some(127))).unwrap_err();
+    assert!(matches!(missing, Error::NoDocker));
+    assert_eq!(
+        missing.to_string(),
+        "the device's SSH user cannot find docker in PATH"
+    );
     assert!(matches!(
         docker::containers(&output("", Some(1))),
         Err(Error::DockerFailed)
@@ -186,7 +186,6 @@ fn host_001_a_log_of_no_such_container_is_told_apart_from_a_docker_that_fails() 
         docker::log(&output("permission denied\n", Some(1))),
         Err(Error::DockerFailed)
     ));
-    // A line of the container that holds the words does not make the answer "not found".
     let quoted = "2026-11-18T18:00:00Z app: No such container: x\nError: the log driver failed\n";
     assert!(matches!(
         docker::log(&output(quoted, Some(1))),

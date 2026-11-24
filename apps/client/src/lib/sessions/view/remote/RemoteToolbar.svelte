@@ -13,16 +13,19 @@
     pasteOff: string | undefined;
     /** A one-line message over the row, with a way to dismiss it. */
     notice: string | undefined;
+    fit?: (() => void) | undefined;
+    canFit?: boolean;
     onkeys: (combination: KeyCombination) => void;
     onpaste: () => void;
     ondismiss: () => void;
   }
 
-  const { deviceName, ready, policy, pasteOff, notice, onkeys, onpaste, ondismiss }: Props = $props();
+  const { deviceName, ready, policy, pasteOff, notice, fit, canFit = false, onkeys, onpaste, ondismiss }: Props = $props();
 </script>
 
 <div class="toolbar">
   <KeysMenu disabled={!ready} entries={KEY_COMBINATIONS} {onkeys} {onpaste} {pasteOff} />
+  {#if ready && fit !== undefined}<button type="button" onclick={fit} disabled={!canFit}>Fit</button>{/if}
   <span class="device">{deviceName}</span>
   {#if ready && policy !== undefined}<span class="policy" data-policy title={policy}>{policy}</span>{/if}
   <!-- Notices lie over the toolbar row, which has a fixed height, so the display never moves for them (MOT-007). -->
@@ -49,6 +52,18 @@
     border-bottom: var(--border-thin) solid var(--border-strong);
     background: var(--surface-raised);
   }
+
+  button {
+    min-block-size: var(--target-min-touch);
+    min-inline-size: var(--target-min-touch);
+    padding-inline: var(--space-2);
+    border: var(--border-thin) solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-base);
+    color: var(--text);
+  }
+
+  button:disabled { opacity: var(--opacity-disabled); }
 
   .cover {
     position: absolute;

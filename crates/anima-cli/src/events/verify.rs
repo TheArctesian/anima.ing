@@ -1,5 +1,4 @@
-//! `anima audit verify`: checks the hash chain of the audit log on the hub (K1 `auditChain`,
-//! LOG-027). It changes nothing.
+//! `anima audit verify` (LOG-027).
 
 use super::documents::{AuditChain, audit_chain};
 use crate::failure::Failure;

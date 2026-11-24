@@ -5,6 +5,8 @@ use anima_daemon::threads::wire::{Action, Event, Outcome};
 
 use super::*;
 
+mod holder_end;
+
 #[tokio::test]
 async fn thr_049_a_stop_ends_three_children_in_three_process_groups() {
     let holder = Holder::start(0);
@@ -129,10 +131,24 @@ async fn thr_021_ending_the_children_spares_the_servers_marked_before_the_turn()
 
 #[tokio::test]
 async fn thr_049_a_program_that_ends_by_itself_leaves_no_child_in_a_group_of_its_own() {
+    ends_by_itself_after("alone", 3).await;
+}
+
+/// The holder looks below a program every 2 s; a child that left the group of a program that
+/// ended before the first look is found by its mark.
+#[tokio::test]
+async fn thr_049_a_program_that_ends_before_the_first_look_leaves_no_child() {
+    ends_by_itself_after("early", 1).await;
+}
+
+/// A program that puts a child in a group of its own and ends by itself after `seconds`: the
+/// holder ends the child before it says that the program ended. Each test has its own `thread`:
+/// the mark of a thread is its key, and tests run at the same time.
+async fn ends_by_itself_after(thread: &str, seconds: u32) {
     let holder = Holder::start(0);
     let mut link = holder.link().await;
-    let script = "perl -e 'setpgrp(0,0); sleep 300' & echo $!; sleep 3";
-    let id = link.send(start("alone", "/bin/sh", &["-c", script])).await;
+    let script = format!("perl -e 'setpgrp(0,0); sleep 300' & echo $!; sleep {seconds}");
+    let id = link.send(start(thread, "/bin/sh", &["-c", &script])).await;
     link.answer(id).await;
     let child: u32 = texts(
         &link
@@ -142,11 +158,11 @@ async fn thr_049_a_program_that_ends_by_itself_leaves_no_child_in_a_group_of_its
     .1
     .parse()
     .expect("a pid");
-    link.until(exited("alone")).await;
+    link.until(exited(thread)).await;
     assert!(gone(child).await, "the child the program left is ended");
     let stop = link
         .send(Action::Stop {
-            thread: "alone".into(),
+            thread: thread.into(),
         })
         .await;
     assert_eq!(
@@ -237,55 +253,4 @@ async fn thr_113_a_program_that_does_not_read_its_input_holds_up_no_command() {
         .expect("a stop is not held up by the full input");
     assert!(matches!(answer, Outcome::Stopped { .. }));
     assert!(gone(pid).await);
-}
-
-#[tokio::test]
-async fn thr_049_the_end_of_the_holder_ends_its_programs_and_a_new_holder_ends_what_a_killed_one_left()
- {
-    let mut holder = Holder::start(0);
-    let mut link = holder.link().await;
-    let id = link
-        .send(start(
-            "a",
-            "/bin/sh",
-            &[
-                "-c",
-                "perl -e 'setpgrp(0,0); sleep 300' & echo $!; sleep 300",
-            ],
-        ))
-        .await;
-    let Outcome::Started { pid } = link.answer(id).await else {
-        panic!("not started")
-    };
-    let child: u32 = texts(
-        &link
-            .until(|event| matches!(event, Event::Lines { .. }))
-            .await,
-    )[0]
-    .1
-    .parse()
-    .expect("a pid");
-    holder.child.kill().expect("SIGKILL");
-    holder.child.wait().expect("ended");
-    assert!(tree::alive(pid), "a killed holder ends nothing by itself");
-    holder.child = spawn(&holder.dir, 0);
-    let _link = holder.link().await;
-    assert!(
-        gone(pid).await && gone(child).await,
-        "the new holder ended what the old one left"
-    );
-
-    let mut link = holder.link().await;
-    let id = link.send(start("b", "/bin/sh", &["-c", "sleep 300"])).await;
-    let Outcome::Started { pid } = link.answer(id).await else {
-        panic!("not started")
-    };
-    rustix::process::kill_process(
-        rustix::process::Pid::from_raw(i32::try_from(holder.child.id()).expect("pid"))
-            .expect("pid"),
-        rustix::process::Signal::TERM,
-    )
-    .expect("SIGTERM");
-    holder.child.wait().expect("the holder ends");
-    assert!(gone(pid).await, "SIGTERM to the holder ends its programs");
 }

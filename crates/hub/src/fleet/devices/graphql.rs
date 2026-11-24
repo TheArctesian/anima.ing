@@ -1,9 +1,4 @@
-//! The devices GraphQL part: root `Query` and `Mutation` and the loader constructors (K1;
-//! API-003, API-005, API-006, VPN-002, DEV-010, DEV-015).
-//!
-//! The types live in the sub-modules; each `#[Object]` block there is the single resolver block
-//! for its type. Later packages add the fields that join other domains (`Device.status`,
-//! `Device.checks`, `Device.uptime`, `SshSettings.hostKey`) to these same types (R-011).
+//! The devices GraphQL part (K1; API-003, API-005, API-006, VPN-002, DEV-010, DEV-015, R-011).
 
 mod connection;
 mod credential;
@@ -258,7 +253,6 @@ impl Mutation {
         let change = checked(validate_change(&form), bad_ids)?;
         let id = id.map_err(|error| invalid(&[error]))?;
         if change.is_empty() {
-            // Nothing to write: no new `updated_at`, no event, no audit entry.
             return store::get(pool(ctx)?, id).await.map_err(to_graphql);
         }
         let trail = Trail::from_context(ctx)?;
@@ -282,8 +276,7 @@ impl Mutation {
         let id = device_id(&id).map_err(|e| invalid(&[e]))?;
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
-        // The secret goes first, under the credentials lock, before the device row is locked:
-        // the order a concurrent `setSshCredential` takes, so the two cannot deadlock.
+        // The credentials lock comes before the device row, the order `setSshCredential` takes.
         clear_ssh(&mut tx, id)
             .await
             .map_err(|error| credential::credential_error(error, id))?;

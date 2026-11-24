@@ -1,5 +1,4 @@
-//! The reminder tools of the `records` set (K-E6 Section 6; REM-001 to REM-007). A trigger and
-//! `unless` are JSON objects in the form of K-E6 Section 2.
+//! The reminder tools of the `records` set (K-E6 Section 6; REM-001 to REM-007).
 
 mod inputs;
 
@@ -87,7 +86,6 @@ impl ReminderTool {
         }
     }
 
-    /// The definitions of the tools that read and change rules.
     fn rule_definition(self) -> Definition {
         match self {
             Self::List => Definition::new::<NoInput>(
@@ -143,7 +141,6 @@ impl ReminderTool {
         }
     }
 
-    /// The definitions of the tools of the firings.
     fn firing_definition(self) -> Definition {
         match self {
             Self::Test => Definition::new::<IdInput>(
@@ -185,8 +182,6 @@ impl ReminderTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -199,7 +194,6 @@ impl ReminderTool {
         Ok(Value::Object(result))
     }
 
-    /// Runs a tool that reads or changes rules.
     async fn call_rule(
         self,
         hub: &Hub,
@@ -251,7 +245,6 @@ impl ReminderTool {
         })
     }
 
-    /// Runs a tool of the firings.
     async fn call_firing(
         self,
         hub: &Hub,

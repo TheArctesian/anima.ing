@@ -1,5 +1,4 @@
-//! Repairs driven by real scheduler ticks: the ICMP check goes Down, then the SSH port
-//! answers or does not (CHK-013, R-064, LOG-005).
+//! CHK-013, R-064, LOG-005.
 
 use chrono::TimeDelta;
 use serde_json::json;
@@ -18,7 +17,6 @@ fn event(severity: &str, message: &str) -> (String, String, String) {
     (severity.to_owned(), "check".to_owned(), message.to_owned())
 }
 
-/// Whether the check counts as edited by the operator; a repair by the hub must not count.
 async fn edited(pool: &sqlx::PgPool, id: crate::ids::CheckId) -> bool {
     sqlx::query_scalar("SELECT operator_edited FROM checks.checks WHERE id = $1")
         .bind(id)
@@ -114,7 +112,6 @@ repair_test! {
         assert_eq!(repair_events(&pool, device).await, [event("warning", SILENT)]);
         assert_eq!(audits_of(&pool, id).await, []);
 
-        // The SSH port answers now, but the check was tried: the next Down beat leaves it.
         let listener = Listener::start().await;
         set_ssh_port(&pool, device, listener.port).await;
         tick_at(&mut scheduler, now + TimeDelta::seconds(10)).await;

@@ -1,6 +1,4 @@
-//! What the command line reads from its process: environment variables and whether each
-//! standard stream is a terminal. `main` reads it once; everything else takes it as a
-//! parameter, so tests set it by running the program with another environment.
+//! `main` reads the process environment once; everything else takes it as a parameter.
 
 use std::ffi::OsString;
 use std::io::IsTerminal as _;
@@ -8,7 +6,7 @@ use std::path::PathBuf;
 
 use zeroize::Zeroizing;
 
-/// The process's view of its surroundings. `Debug` is not derived: `token` is a secret.
+/// `Debug` is not derived: `token` is a secret.
 pub struct Environment {
     /// `ANIMA_HUB` (CMD-013).
     pub hub: Option<String>,
@@ -33,7 +31,6 @@ pub struct Terminals {
 }
 
 impl Environment {
-    /// Reads this process's environment and streams.
     #[must_use]
     pub fn from_process() -> Self {
         let value = variable;
@@ -58,8 +55,6 @@ fn variable(name: &str) -> Option<OsString> {
     std::env::var_os(name).filter(|value| !value.is_empty())
 }
 
-/// The configuration folder from the platform environment: `LOCALAPPDATA` on Windows,
-/// `XDG_CONFIG_HOME`/`HOME` on Unix. Does not read the token.
 #[must_use]
 pub fn process_config_dir() -> Option<PathBuf> {
     if cfg!(windows) {
@@ -71,8 +66,7 @@ pub fn process_config_dir() -> Option<PathBuf> {
     config_dir(variable("XDG_CONFIG_HOME"), variable("HOME"))
 }
 
-/// The home folder of this process (`HOME`; `USERPROFILE` on Windows) when it is an absolute path: the session files of
-/// the agent programs of this user are below it (THR-007).
+/// The session files of this user's agent programs are below it (THR-007).
 #[must_use]
 pub fn process_home() -> Option<PathBuf> {
     let name = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
@@ -81,8 +75,6 @@ pub fn process_home() -> Option<PathBuf> {
         .filter(|home| home.is_absolute())
 }
 
-/// `$XDG_CONFIG_HOME/anima` when that is an absolute path (the XDG rule), else
-/// `$HOME/.config/anima`.
 fn config_dir(xdg: Option<OsString>, home: Option<OsString>) -> Option<PathBuf> {
     let xdg = xdg.map(PathBuf::from).filter(|path| path.is_absolute());
     let base = xdg.or_else(|| home.map(|home| PathBuf::from(home).join(".config")))?;

@@ -1,5 +1,4 @@
-//! An API key's pace (K-E1 Section 13.1): 20 changes in the minute from its first, then none
-//! until that minute ends; one key's minute holds no other key back.
+//! An API key's pace (K-E1 Section 13.1).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;

@@ -1,5 +1,3 @@
-//! The store against PostgreSQL: what it reads (`read`) and what it writes (`write`).
-
 use super::*;
 
 /// `store_test` one folder deeper: sqlx reads the fixture path from the calling file.

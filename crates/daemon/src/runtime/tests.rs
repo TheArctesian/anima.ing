@@ -1,6 +1,3 @@
-//! The run on Linux: the first announcement, the watch of the GPUs and the files that
-//! `prepare` reads.
-
 use chrono::DateTime;
 use daemon_core::wire::DaemonToken;
 
@@ -13,7 +10,6 @@ fn setup(issued_by: &str) -> (tempfile::TempDir, Home) {
     enrolled("https://hub.example", issued_by)
 }
 
-/// A daemon's folder as an enrolment at `hub` left it, with a token that `issued_by` gave.
 fn enrolled(hub: &str, issued_by: &str) -> (tempfile::TempDir, Home) {
     let dir = tempfile::tempdir().expect("a folder");
     let home = Home::at(dir.path().join("daemon"));
@@ -35,14 +31,11 @@ fn enrolled(hub: &str, issued_by: &str) -> (tempfile::TempDir, Home) {
     (dir, home)
 }
 
-/// What `run` prepares: the token as [`token_wait`] reads it, then the pusher.
 async fn prepared(home: &Home) -> Result<(Pusher, Uuid, LinkWatch), RunError> {
     let credential = token_wait::credential(home).await?;
     prepare(home, credential).await
 }
 
-/// The first thing sampling sends is the GPU list, `[]` included (K8 Section 4): the hub
-/// is told the set before any point arrives.
 #[tokio::test]
 async fn k8_4_sampling_starts_by_announcing_the_gpus() {
     let (sender, mut events) = mpsc::channel(CHANNEL_ROOM);

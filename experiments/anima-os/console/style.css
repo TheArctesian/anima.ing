@@ -60,7 +60,7 @@ html,body{margin:0;background:var(--card);overflow:hidden}
 #anima-console .hint{font-size:12px;color:var(--muted-foreground)}
 #anima-console .numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:24px 0 16px}
 #anima-console .number{font-size:26px;font-weight:300;letter-spacing:-.5px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-#anima-console footer{grid-column:2;display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--border);padding-top:12px;font-size:12px;color:var(--muted-foreground);position:relative;z-index:1;background:var(--card)}
+#anima-console footer{grid-column:2;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--border);padding-top:12px;font-size:12px;color:var(--muted-foreground);position:relative;z-index:1;background:var(--card)}
 #anima-console .overlay{position:fixed;inset:0;z-index:5;background:#101216bb;display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto}
 #anima-console .dialog{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:520px;max-width:100%;max-height:100%;overflow:auto;box-shadow:0 20px 70px #0005}
 #anima-console .dialog h2{display:flex;align-items:center;gap:12px;font-size:24px;font-weight:300;margin-bottom:12px}
@@ -99,3 +99,33 @@ html,body{margin:0;background:var(--card);overflow:hidden}
 #anima-console .operation-status span{color:var(--muted-foreground);font-size:13px}
 #anima-console .operation-status progress{width:100%;height:6px;accent-color:var(--primary)}
 #anima-console .operation-status .setting-link{padding:0;border:0}
+
+#anima-console .network-settings{max-width:760px;margin-top:24px;display:grid;gap:16px}
+#anima-console .network-card{border:1px solid var(--border);border-radius:6px;overflow:hidden}
+#anima-console .network-heading{display:flex;align-items:center;gap:12px;padding:16px 18px;background:var(--secondary);min-height:76px}
+#anima-console .network-heading>.glyph{color:var(--muted-foreground);width:22px;height:22px;flex-basis:22px}
+#anima-console .network-heading>div{flex:1;min-width:0}
+#anima-console .network-heading h2{margin:0;font-size:15px}
+#anima-console .network-heading small{display:block;color:var(--muted-foreground);font-size:12px;overflow-wrap:anywhere}
+#anima-console .network-heading button{flex-shrink:0;font-size:13px;min-height:44px;padding:8px 10px}
+#anima-console .connection-state{color:var(--muted-foreground);font-size:12px;flex-shrink:0}
+#anima-console .connection-state.connected{color:var(--success);display:flex;align-items:center;gap:7px}
+#anima-console .connection-state.connected:before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+#anima-console .network-empty{padding:24px 18px;border-top:1px solid var(--border)}
+#anima-console .network-empty strong{font-size:14px;font-weight:500}
+#anima-console .network-empty p{font-size:13px;line-height:1.5;margin:6px 0 0;max-width:470px}
+#anima-console .wifi-network{display:flex;width:100%;gap:14px;min-height:76px;padding:14px 18px;border:0;border-top:1px solid var(--border);border-radius:0;background:transparent;text-align:left}
+#anima-console .wifi-network:hover{background:var(--secondary);border-color:var(--border)}
+#anima-console .wifi-network:focus-visible{outline-offset:-3px}
+#anima-console .network-name{flex:1;min-width:0}
+#anima-console .network-name strong{display:block;font-size:14px;font-weight:500;overflow-wrap:anywhere}
+#anima-console .network-name small{display:block;font-size:12px;color:var(--muted-foreground);margin-top:3px}
+#anima-console .network-connect{display:flex;align-items:center;gap:8px;color:var(--primary);font-size:13px;flex-shrink:0}
+#anima-console .network-connect .glyph{width:14px;height:14px;flex-basis:14px}
+#anima-console .wifi-signal{display:flex;align-items:flex-end;gap:2px;width:22px;height:18px;flex-shrink:0}
+#anima-console .wifi-signal i{width:4px;background:var(--border);border-radius:1px}
+#anima-console .wifi-signal i:nth-child(1){height:5px}#anima-console .wifi-signal i:nth-child(2){height:9px}#anima-console .wifi-signal i:nth-child(3){height:13px}#anima-console .wifi-signal i:nth-child(4){height:18px}
+#anima-console .wifi-signal i.lit{background:var(--muted-foreground)}
+#anima-console .wifi-dialog-name{font-size:16px;color:var(--foreground);overflow-wrap:anywhere}
+@media(max-width:760px){#anima-console .network-heading,#anima-console .wifi-network{padding:14px 12px;gap:10px}#anima-console .network-empty{padding:20px 12px}#anima-console .network-heading>.glyph{display:none}#anima-console .network-connect .glyph{display:none}}
+@media(max-height:550px){#anima-console .network-settings{margin-top:20px;gap:12px}#anima-console .network-heading{min-height:60px;padding:8px 12px}#anima-console .wifi-network{min-height:64px;padding:10px 12px}}

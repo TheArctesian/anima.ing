@@ -18,6 +18,8 @@ mod claude_out;
 mod codex_in;
 mod codex_out;
 mod launch;
+mod lists;
+mod prompt;
 mod request;
 mod session_rule;
 #[cfg(test)]
@@ -27,11 +29,16 @@ mod turn_facts;
 pub use account::{AccountFacts, Limit, Private};
 pub use claude_in::ClaudeInput;
 pub use claude_out::ClaudeDecoder;
-pub use codex_in::{CodexInput, CodexMethod, CodexTurn};
+pub use codex_in::{CodexInput, CodexMethod, CodexPlace, CodexTurn, KeptFolder, TurnSettings};
 pub use codex_out::CodexDecoder;
 pub use launch::{Effort, Invocation, Launch, Mode, Model, Program, SessionStart};
+pub use lists::commands::{
+    CommandLists, CommandRow, MOST_ROWS, Run, SkillRow, claude_commands, claude_file, codex_skills,
+};
+pub use lists::models::{EffortWords, ModelChoice, SpeedChoice, claude_models, codex_models};
+pub use prompt::{Attached, Attachment, ChosenSkill, Prompt};
 pub use request::{Answer, ProgramRequestId, Question, Request, RequestKind};
-pub use turn_facts::{ModelChoice, PlanStep, StepState, Usage};
+pub use turn_facts::{PlanStep, StepState, Usage};
 
 use serde::{Deserialize, Serialize};
 
@@ -143,6 +150,11 @@ pub enum DriveEvent {
     /// program; it is not an update of a thread.
     Models {
         models: Vec<ModelChoice>,
+    },
+    /// The commands or the skills that the program offers in the folder of the thread (TH117).
+    /// The runner keeps the newest of each thread; it is not an update of a thread.
+    Commands {
+        lists: CommandLists,
     },
     TurnEnded {
         outcome: TurnOutcome,

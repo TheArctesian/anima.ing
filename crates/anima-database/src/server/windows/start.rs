@@ -1,5 +1,4 @@
-//! `pg_ctl` drops administrative groups before starting PostgreSQL. Its whole descendant
-//! tree joins our job before any code runs; the server handle is admitted by job membership.
+//! The `pg_ctl` tree joins the job while suspended, so job membership admits the server.
 use super::super::{Lock, Server, ServerError, Settings, arguments, io_error, open_log};
 use crate::{Layout, Program, Tree, windows::Endpoint};
 use anima_windows::job::Job;

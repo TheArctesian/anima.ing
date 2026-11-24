@@ -1,6 +1,4 @@
-//! `anima-daemon install` for the user against a temporary HOME: what it writes and runs, and
-//! when it refuses for the token. The system unit needs root and `/etc`, so only its pure parts
-//! are tested (`units::plan`, `units::ready`).
+//! The system unit needs root and `/etc`, so only its pure parts are tested (`units::plan`, `units::ready`).
 
 use std::fs;
 use std::io;
@@ -28,7 +26,7 @@ fn met_019_install_writes_the_user_unit_with_this_binary_s_path_then_enables_and
         fs::metadata(rig.unit()).expect("meta").permissions().mode() & 0o777,
         0o644
     );
-    // First the unit of the old program is taken out (R-126), then the new one is set up.
+    // R-126: the unit of the old program goes first.
     assert_eq!(
         ran[0],
         "/usr/bin/systemctl --user disable --now anima-agent.service"
@@ -53,8 +51,6 @@ fn met_019_systemctl_user_is_given_the_session_bus_folder() {
     let rig = enrolled();
     let mut envs = Vec::new();
     install(Target::User, &rig.host(), rig.env(), |step: &Step| {
-        // Each `systemctl --user` command; the step that deletes the file of the old unit is
-        // not one (R-126).
         if step.program.ends_with("systemctl") {
             envs.push(step.env.clone());
         }
@@ -137,8 +133,7 @@ fn met_019_a_failing_command_is_an_error_naming_it_and_a_missing_one_is_too() {
     let error = result.expect_err("failed");
     assert!(matches!(&error, InstallError::Step { .. }));
     assert!(error.to_string().contains("daemon-reload"));
-    // The two commands that retire the unit of the old program may fail (R-126); the reload is
-    // the first that must not, and no command runs after it.
+    // R-126: the two commands that retire the old unit may fail; the reload may not.
     assert!(
         ran.last()
             .is_some_and(|last| last.contains("daemon-reload")),

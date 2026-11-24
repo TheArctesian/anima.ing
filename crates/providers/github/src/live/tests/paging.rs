@@ -1,5 +1,3 @@
-//! PRJ-031: a list reads its next page from the `Link` header and stops at the last.
-
 use crate::live::paging::next_page;
 
 const FIRST: &str = "<https://api.github.com/repositories/500/pulls?per_page=100&page=2>; rel=\"next\", \

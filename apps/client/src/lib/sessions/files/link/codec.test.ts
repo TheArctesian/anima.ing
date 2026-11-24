@@ -110,7 +110,6 @@ function seeded(seed: number) {
 const SEEDS = [JSON.stringify(ENTRIES), '{"type":"download","size":65536}', '{"type":"refused","reason":"EXISTS"}', '{"type":"done"}', '{"type":"ping"}'];
 const NOISE = '{}[]",:0123456789-.eE nulltruefalse\\u\0é';
 
-/** `text` with a few characters replaced, deleted or inserted. */
 function mutate(text: string, next: (below: number) => number): string {
   let out = text;
   for (let edits = 1 + next(4); edits > 0; edits -= 1) {
@@ -122,7 +121,6 @@ function mutate(text: string, next: (below: number) => number): string {
   return out;
 }
 
-/** Whether `message` holds only values the closed set allows, whatever text it came from. */
 function wellFormed(message: HubMessage): boolean {
   switch (message.kind) {
     case 'download':

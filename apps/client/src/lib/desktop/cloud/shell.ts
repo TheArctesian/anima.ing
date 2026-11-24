@@ -2,7 +2,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import { sealAccess } from '$lib/hosted/access';
 import { answer, refusal, type Answer, type HostedAccount, type HubState, type Problem, type SignInCode } from '$lib/hosted/account';
 
-/** The shell's error codes (`apps/desktop/src-tauri/src/cloud/error.rs`) as the problems the first run shows. */
+/** Mirrors the codes of `apps/desktop/src-tauri/src/cloud/error.rs`. */
 const PROBLEMS: Readonly<Record<string, Problem>> = {
   unconfigured: 'unconfigured',
   cancelled: 'cancelled',
@@ -18,7 +18,7 @@ function problemOf(reason: unknown): Problem {
   return (typeof code === 'string' ? PROBLEMS[code] : undefined) ?? 'refused';
 }
 
-/** Runs a shell command; its answer is checked by `shape`, and any failure is a problem, never its text (LOG-007). */
+/** A failure is a problem, never its text (LOG-007). */
 async function command<T>(name: string, shape: (value: unknown) => T | undefined, args?: Record<string, unknown>): Promise<Answer<T>> {
   if (!isTauri()) return refusal('unconfigured');
   try {
@@ -38,10 +38,7 @@ function signInCodeOf(value: unknown): SignInCode | undefined {
 
 const HUB_STATES: readonly unknown[] = ['ready', 'making', 'waking'] satisfies HubState[];
 
-/**
- * `GET /v1/hub/usage` of the account site through the shell (HMD-073 in form B): the figures of the account for the
- * page of the hub, unchecked; `hosted/usage` checks their form.
- */
+/** Unchecked; `hosted/usage` checks the form (HMD-073). */
 export function cloudHubUsage(): Promise<Answer<unknown>> {
   return command('cloud_hub_usage', (value) => (value === undefined ? undefined : value));
 }
@@ -51,12 +48,8 @@ export async function clearCloudSession(): Promise<void> {
 }
 
 /**
- * The Anima.ing cloud through the shell (HMD-043): the WorkOS device sign-in, the hub of the account and this device's
- * access to it. The shell does the calls, so the WorkOS tokens stay in the shell and its key store (HMD-034); this side
- * sees the short code, the page, the hub state, and the invite and the claim, which go straight to the join.
- *
- * With `inApp` (the iPhone app, mobile plan M3-5) a new sign-in has no code: the shell shows the sign-in page inside
- * the app and answers when the person signed in or closed it.
+ * The shell does the calls, so the WorkOS tokens stay in the shell and its key store (HMD-043, HMD-034).
+ * With `inApp` (mobile plan M3-5) the shell shows the sign-in page inside the app, so a new sign-in has no code.
  */
 export function cloudAccount(inApp = false): HostedAccount {
   return {

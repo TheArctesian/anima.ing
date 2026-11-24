@@ -32,7 +32,6 @@ pub use remote::{
 };
 pub use rules::FieldError;
 
-/// What a lookup could not find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Missing {
     Device(DeviceId),
@@ -48,7 +47,6 @@ impl std::fmt::Display for Missing {
     }
 }
 
-/// Why a devices operation failed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("{0} not found")]
@@ -113,8 +111,6 @@ pub async fn record_detected_os(
     store::set_detected_os(db, id, os).await
 }
 
-/// Whether the device is in maintenance.
-///
 /// # Errors
 /// `NotFound` when there is no such device.
 pub async fn in_maintenance(db: &PgPool, id: DeviceId) -> Result<bool, Error> {
@@ -154,8 +150,7 @@ pub async fn lock_metrics_source(
 }
 
 /// Sets the device's metrics source to `daemon` in the caller's transaction, which stops SSH
-/// collection for it, and returns the device's name. Only daemon enrolment calls it (MET-011,
-/// R-092 D-7).
+/// collection for it, and returns the device's name (MET-011, R-092 D-7).
 ///
 /// # Errors
 /// `NotFound` when there is no such device.
@@ -163,8 +158,7 @@ pub async fn use_daemon_metrics(conn: &mut PgConnection, id: DeviceId) -> Result
     store::set_daemon_source(conn, id).await
 }
 
-/// The most live sessions the device allows, `None` for no limit (RA-036). Any executor, so
-/// `sessions` reads it inside the transaction that starts a session.
+/// The most live sessions the device allows, `None` for no limit (RA-036).
 ///
 /// # Errors
 /// `NotFound` when there is no such device.
@@ -173,4 +167,28 @@ pub async fn session_limit<'e>(
     id: DeviceId,
 ) -> Result<Option<NonZeroU8>, Error> {
     store::remote::session_limit(db, id).await
+}
+
+/// Initializes untouched connection settings for a private, enrolled device.
+///
+/// # Errors
+/// Returns a database error if the device or its settings cannot be read or written.
+pub async fn configure_private_access(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    access: &daemon_core::inventory::RemoteAccess,
+) -> Result<bool, Error> {
+    let found = store::fetch(&mut *conn, device).await?;
+    let private = found
+        .host
+        .parse::<std::net::Ipv6Addr>()
+        .is_ok_and(|ip| ip.segments()[..3] == [0xfd41, 0x4e49, 0x4d41]);
+    if private
+        && found.metrics_source == MetricsSource::Daemon
+        && found.kind != "hub"
+        && access.accepted()
+    {
+        return store::automatic::configure(conn, device, access).await;
+    }
+    Ok(false)
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { folderName, type ThreadRow } from '$lib/agent-threads/thread';
+  import { folderName, shownTitle, type ThreadRow } from '$lib/agent-threads/thread';
   import type { Anchor } from '$lib/overlay/helptip/placement';
   import Breadcrumb from './Breadcrumb.svelte';
   import TopBand from './TopBand.svelte';
@@ -39,11 +39,11 @@
 -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="head" class:empty={thread === undefined} class:inset {oncontextmenu}>
-  <TopBand clearsWindowControls keepsPanelRoom {end}>
+  <TopBand clearsWindowControls keepsPanelRoom={end === undefined} {end}>
     {#if thread !== undefined}
       <Breadcrumb
         {project}
-        title={thread.title ?? 'Untitled thread'}
+        title={shownTitle(thread)}
         {onproject}
         onactions={onactions === undefined
           ? undefined

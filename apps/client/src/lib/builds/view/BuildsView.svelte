@@ -98,7 +98,6 @@
     gap: var(--space-6);
   }
 
-  /* Narrow: the side's parts join the column, the form first and the log after the releases. */
   .side {
     display: contents;
   }
@@ -126,7 +125,6 @@
     text-align: center;
   }
 
-  /* Wide: the releases on the left, the form and the log beside them, the log kept in view while the list scrolls. */
   @container (inline-size > 60rem) {
     .columns {
       display: grid;

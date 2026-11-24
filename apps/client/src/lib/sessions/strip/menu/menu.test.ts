@@ -15,7 +15,6 @@ const onreturn = vi.fn();
 const keyframes: Keyframe[][] = [];
 const MENU_WIDTH = 120;
 
-/** A scrolling strip like the real one, with the menu's control inside it. */
 function show(ready: boolean, at = new DOMRect(300, 40, 32, 32)): HTMLElement {
   const strip = document.createElement('div');
   strip.style.overflowX = 'auto';
@@ -54,7 +53,6 @@ beforeEach(() => {
     return animation;
   };
   Object.defineProperty(Element.prototype, 'animate', { value: record, configurable: true });
-  // A menu measures where its style puts it: MENU_WIDTH wide, 40 px high.
   const measure = Element.prototype.getBoundingClientRect;
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
     if (!(this instanceof HTMLElement) || this.getAttribute('role') !== 'menu') return measure.call(this);

@@ -3,16 +3,12 @@ import type { Extension, ExtensionsApi } from './api';
 
 export type ExtensionsStatus = 'loading' | 'ready' | 'failed';
 
-/** The change the hub refused, with the hub's words. */
 export interface Refusal {
   readonly key: string;
   readonly message: string;
 }
 
-/**
- * The extensions the hub lists and which are on (EXT-001). `shown` lays a change on its way over the hub's list so a
- * control moves at once; a refused change drops out, the control goes back, and `refusal` holds the hub's words.
- */
+/** EXT-001: `shown` lays a change on its way over the hub's list so a control moves at once. */
 export class ExtensionsStore {
   status = $state<ExtensionsStatus>('loading');
   loadProblem = $state('');
@@ -46,12 +42,10 @@ export class ExtensionsStore {
     }
   }
 
-  /** Reads the list unless it is already read. */
   async ensureLoaded(): Promise<void> {
     if (this.status !== 'ready') await this.load();
   }
 
-  /** Sends the change; the control shows it while it travels and goes back if the hub refuses. */
   async set(key: string, on: boolean): Promise<void> {
     this.refusal = null;
     this.#pending = { ...this.#pending, [key]: on };
@@ -69,7 +63,6 @@ export class ExtensionsStore {
 
 const [getExtensions, setExtensions] = createContext<ExtensionsStore>();
 
-/** Make `store` available below; call once in the root layout. */
 export function provideExtensions(store: ExtensionsStore): void {
   setExtensions(store);
 }

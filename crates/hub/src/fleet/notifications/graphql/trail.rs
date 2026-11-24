@@ -1,11 +1,6 @@
-//! What a channel mutation leaves behind: one audit entry and one event, written in the
-//! mutation's own transaction (LOG-004, LOG-005, LOG-007).
-//!
-//! The `change` objects are built by pure functions from the stored channels, so they hold
-//! only what the API shows: the settings without secrets (a webhook's origin and header names,
-//! never its URL or a header value). A secret appears only by its field name, under
-//! `sealedSet` or `sealedCleared` (as checks records `sealed`: a key with "secret" in its name
-//! is redacted whole). The event names the channel and nothing of its target.
+//! The audit entry and event a channel mutation writes in its own transaction (LOG-004, LOG-005, LOG-007).
+//! A change holds the settings without secrets; a secret appears only by its field name, under `sealedSet` or `sealedCleared`.
+//! The event names the channel and nothing of its target.
 
 use serde_json::{Map, Value, json};
 
@@ -15,7 +10,6 @@ use crate::fleet::{
     notifications::{Channel, Delivery, DeliveryReason, channels::Touched},
 };
 
-/// The audited fields of a channel; `settings` is the stored, secret-free JSON.
 fn fields(node: &ChannelNode) -> Map<String, Value> {
     let fields = &node.channel.fields;
     let template = fields
@@ -32,7 +26,6 @@ fn fields(node: &ChannelNode) -> Map<String, Value> {
     map
 }
 
-/// The entries of `new` whose value differs from `old`'s.
 fn differing(old: &Map<String, Value>, new: &Map<String, Value>) -> Map<String, Value> {
     new.iter()
         .filter(|(key, value)| old.get(*key) != Some(*value))
@@ -71,8 +64,6 @@ pub(super) fn created(node: &ChannelNode, touched: &Touched) -> TrailEntry {
     )
 }
 
-/// Only the fields that differ appear in `change`; within `settings`, only the settings that
-/// differ.
 pub(super) fn updated(before: &ChannelNode, after: &ChannelNode, touched: &Touched) -> TrailEntry {
     let (old, new) = (fields(before), fields(after));
     let mut change = differing(&old, &new);
@@ -94,16 +85,14 @@ pub(super) fn updated(before: &ChannelNode, after: &ChannelNode, touched: &Touch
     )
 }
 
-/// The deleted channel's name and kind, so the entry outlives the channel. Its settings are
-/// not read, so a channel whose stored settings cannot be read can still be deleted.
+/// Its settings are not read, so a channel whose stored settings cannot be read can still be deleted.
 pub(super) fn deleted(channel: &Channel) -> TrailEntry {
     let fields = &channel.fields;
     let change = json!({ "name": fields.name, "kind": fields.kind.as_str() });
     entry(channel, AuditAction::Delete, ("deleted", change))
 }
 
-/// A test notification sent through `channel`: the channel's name and the delivery's outcome
-/// (its reason word and code), never the target, the message or a reply (NOT-004, LOG-007).
+/// The channel's name and the delivery's outcome, never the target, the message or a reply (NOT-004, LOG-007).
 pub(super) fn tested(channel: &Channel, delivery: &Delivery) -> TrailEntry {
     let reason = delivery.reason.map(DeliveryReason::as_str);
     let change = json!({

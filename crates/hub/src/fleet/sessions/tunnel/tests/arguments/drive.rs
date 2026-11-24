@@ -1,4 +1,4 @@
-//! The shared drive of an RDP device is its own folder under the drive root (RA-021).
+//! RA-021.
 
 use super::{
     Desktop, PASSWORD, Secret, Sources, TARGET, connect_by_name_of, connect_for, connect_values,

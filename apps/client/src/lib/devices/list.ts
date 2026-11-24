@@ -2,7 +2,6 @@ import type { DeviceSort, Status } from '$lib/hub/generated/graphql';
 import type { CardDevice, DevicePage, ReadingsChange, StatusChange } from './api';
 import type { ListQuery } from './query';
 
-/** The devices on screen and where the next page starts. */
 export interface DeviceList {
   readonly devices: readonly CardDevice[];
   readonly totalCount: number;
@@ -10,7 +9,6 @@ export interface DeviceList {
   readonly hasNextPage: boolean;
 }
 
-/** The list that a first page makes. */
 export function fromPage(page: DevicePage): DeviceList {
   return {
     devices: page.edges.map((edge) => edge.node),
@@ -20,7 +18,7 @@ export function fromPage(page: DevicePage): DeviceList {
   };
 }
 
-/** The list with a later page added; a device already listed keeps its entry, since its live status may be newer. */
+/** A listed device keeps its entry, since its live status may be newer. */
 export function appendPage(list: DeviceList, page: DevicePage): DeviceList {
   const listed = new Set(list.devices.map((device) => device.id));
   const added = page.edges.map((edge) => edge.node).filter((device) => !listed.has(device.id));
@@ -32,7 +30,7 @@ export function appendPage(list: DeviceList, page: DevicePage): DeviceList {
   };
 }
 
-/** The list with VNC on for device `id`, after the flow of R-079 turned it on. */
+/** After the R-079 flow turned VNC on. */
 export function applyVncEnabled(list: DeviceList, id: string): DeviceList {
   return { ...list, devices: list.devices.map((device) => (device.id === id ? { ...device, vnc: { ...device.vnc, enabled: true } } : device)) };
 }
@@ -40,10 +38,7 @@ export function applyVncEnabled(list: DeviceList, id: string): DeviceList {
 /** Worst first (E-1): the hub's severity order. */
 const SEVERITY: Record<Status, number> = { DOWN: 0, DEGRADED: 1, UNKNOWN: 2, MAINTENANCE: 3, UP: 4 };
 
-/**
- * Names compare by Unicode code point, which orders exactly as their UTF-8 bytes do (the hub's order, WP-06).
- * JavaScript's `<` compares UTF-16 code units and would put a character above U+FFFF before U+E000-U+FFFF.
- */
+/** Code-point order matches the hub's UTF-8 byte order (WP-06); `<` on UTF-16 code units does not. */
 function compareNames(a: string, b: string): number {
   const left = Array.from(a, (char) => char.codePointAt(0) ?? 0);
   const right = Array.from(b, (char) => char.codePointAt(0) ?? 0);
@@ -55,7 +50,6 @@ function compareNames(a: string, b: string): number {
   return left.length - right.length;
 }
 
-/** Lowest first, no uptime last. */
 function compareUptime(a: number | null | undefined, b: number | null | undefined): number {
   if (a == null || b == null) return Number(a == null) - Number(b == null);
   return a - b;
@@ -77,12 +71,7 @@ export function compareDevices(sort: DeviceSort): (a: CardDevice, b: CardDevice)
   return (a, b) => primaryOrder(sort, a, b) || compareNames(a.name, b.name);
 }
 
-/**
- * The list after a live status change (DEV-003, DEV-004). The device changes in place; it leaves when the
- * status filter no longer admits it; under STATUS or UPTIME the list is ordered again. An unknown device
- * gives the same list: a push carries no device record, so a device cannot enter the list or the filter from here
- * (the page fetches again for that), and under STATUS or UPTIME only the loaded rows are reordered.
- */
+/** A push carries no device record, so a device cannot enter the list here; the page fetches again (DEV-003, DEV-004). */
 export function applyStatus(list: DeviceList, change: StatusChange, query: ListQuery): DeviceList {
   if (!list.devices.some((device) => device.id === change.deviceId)) return list;
   const leaves = query.statuses.length > 0 && !query.statuses.includes(change.status);
@@ -98,7 +87,7 @@ export function applyStatus(list: DeviceList, change: StatusChange, query: ListQ
   };
 }
 
-/** The list with a device's latest readings replaced (MET-004). Readings change no order or filter, and an unknown device gives the same list. */
+/** Readings change no order or filter (MET-004). */
 export function applyReadings(list: DeviceList, change: ReadingsChange): DeviceList {
   if (!list.devices.some((device) => device.id === change.deviceId)) return list;
   return {

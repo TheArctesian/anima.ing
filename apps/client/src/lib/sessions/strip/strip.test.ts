@@ -32,14 +32,12 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     ({
       address: { origin: 'https://hub.anima.ing', http: '', socket: '' },
       status: { current: { connection: 'connected', lastContactAt: null } },
-      // The nav's live-session item asks the hub; nothing answers here.
       request: () => new Promise(() => undefined),
       subscribe: () => () => undefined,
       close: () => Promise.resolve(),
     }) as unknown as Hub,
 }));
 
-// The layout's sessions API is the fixture's fake hub; its port is spied on, and `popOut` is the test's port.
 vi.mock('$lib/sessions/api', async (importOriginal) => {
   const { fake: state } = await import('./layout.fixture');
   return { ...(await importOriginal<typeof import('$lib/sessions/api')>()), sessionsApi: () => state.api };
@@ -106,7 +104,6 @@ it('RA-001 / UI-015: the labelled close button ends that session once and keeps 
 });
 
 it('LOG-007: a failed end warns with the error name only, never its message', async () => {
-  // `using` restores the spy when the test ends, even when an assertion throws.
   using warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   const sessions = show();
   await openStarted(sessions);
@@ -207,8 +204,7 @@ describe('pop out (RA-002, D-13)', () => {
   });
 });
 
-// jsdom has no layout, so this shows the markers the CSS acts on, not pixels: the strip is hidden in the same update
-// in which the pages show, so the page has no 32 px step to take and no tab paints over it (M-1, R-075).
+// jsdom has no layout, so this checks the markers the CSS acts on, not pixels (M-1, R-075).
 it('MOT-007, R-075, 5.7.3: after the last tab closes the strip is hidden in the update in which the pages show', async () => {
   const sessions = show();
   const id = await openStarted(sessions);
@@ -273,7 +269,7 @@ it('UI-015: a tab opened with the device\'s OS shows its logo in place of the co
 
 it('MOT-007, MV-004: the tab has one width whatever the title, so a title moves neither the close button nor the protocol', () => {
   const css = readFileSync(`${import.meta.dirname}/SessionTabs.svelte`, 'utf8');
-  // A fixed basis that only shrinks, down to a set least width: the count of tabs sets the width, never a title (NAV-005).
+  // NAV-005: the count of tabs sets the width, never a title.
   expect(css).toMatch(/\.slot \{[^}]*\n\s+flex: 0 1 calc\(/);
   expect(css).toMatch(/\.slot \{[^}]*\n\s+min-inline-size: min\(/);
   expect(css).not.toMatch(/\.slot \{[^}]*max-inline-size/);

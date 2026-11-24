@@ -551,6 +551,9 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
       <div class="seg" role="radiogroup" aria-label="Show by"><button type="button">Status</button><button class="on" type="button">Group</button></div>
       <span style="margin-left: auto"><button class="btn sm" type="button" aria-pressed="true">Select</button></span>
     </div>
+    <div role="status" style="padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--accent-tint); font-size: var(--t-sm)">
+      <b>Earlier groups need a newer hub</b><div class="sec">Your earlier groups are kept on this device. Shared groups still work. Update the hub, then reopen Projects to sync the earlier groups.</div>
+    </div>
     <div class="toolbar" role="toolbar" aria-label="Selected projects" style="padding: var(--space-2) var(--space-3); border-radius: var(--radius-lg); background: var(--surface-raised)">
       <span class="num">2 selected</span><button class="btn sm quiet" type="button">Select all</button>
       <span style="margin-left: auto; display: inline-flex; gap: var(--space-2)"><button class="btn sm" type="button">New group</button><span class="field" style="height: var(--control-sm)">Add to group</span><button class="btn sm" type="button">Remove from group</button><button class="btn sm primary" type="button">Done</button></span>
@@ -568,7 +571,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </main>
 </div>
 
-<figcaption>Frame 3, dark, 1280 px: groups of cards (PRO-059 to PRO-063), a choice of this screen that the application keeps on the computer. "Show by" Group, in select mode with two cards selected. Each head opens and closes its group and has Rename and Delete; "Sites" is closed; "Ungrouped" comes last. The application keeps its cards as tiles: a tile has the check mark at its start.</figcaption>
+<figcaption>Frame 3, dark, 1280 px: groups of cards (PRO-059 to PRO-063), shared automatically with the users of this hub. This frame shows an older hub that supports shared groups but not import: a quiet notice replaces the import error and Retry. Earlier device groups stay on the device until the hub is updated and Projects is reopened; existing shared assignments stay. "Show by" Group, in select mode with two cards selected. Each head opens and closes its group and has Rename and Delete; "Sites" is closed; "Ungrouped" comes last. The application keeps its cards as tiles: a tile has the check mark at its start.</figcaption>
 </figure>
 </body>
 </html>

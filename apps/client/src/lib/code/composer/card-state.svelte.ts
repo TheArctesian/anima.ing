@@ -1,17 +1,29 @@
-import { admit, attachmentOf, type Attachment } from './attachments/attach';
+import { admit, attachmentOf, REFUSAL, type Attachment, type AttachmentState } from './attachments/attach';
+import { PENDING_FULL, roomFor } from './run/pending';
 import type { ComposerEngine, Message, Outcome } from './engine';
+import type { Choice } from './picker/catalogue';
+import { shownName } from './run/shown-name';
 import { sendFace, stopAfter, STOP_LANDED_MS, STOP_PENDING_MS, type FollowUp, type SendFace, type StopPhase, type Turn } from './primary/send';
 
 /** The unsent text of each chat, by the key its page gives: it outlives the composer while the window is open. */
 // eslint-disable-next-line svelte/prefer-svelte-reactivity -- read once when a composer is made, never by an effect
 const kept = new Map<string, { readonly prompt: string; readonly attachments: readonly Attachment[] }>();
 
+/** One count for every composer: a draft that is opened again keeps its files, and a new file must not take the id of one of them. */
+let serial = 0;
+
+const HELD_FOR_MS = 60 * 60 * 1000;
 const STILL_READING = 'An attachment is still being read.';
 const FAILED_FILE = 'Remove the attachment that failed, then send.';
 
 /** Frees the addresses of the previews: nothing draws them after the message went or the attachment was removed. */
 function release(attachments: readonly Attachment[]): void {
   for (const attachment of attachments) if (attachment.preview?.startsWith('blob:') === true) URL.revokeObjectURL(attachment.preview);
+}
+
+/** Two choices that say the same model, effort and mode. */
+function same(a: Choice, b: Choice | null): boolean {
+  return b !== null && a.model === b.model && a.effort === b.effort && a.mode === b.mode;
 }
 
 /**
@@ -24,27 +36,41 @@ export class CardState {
   busy = $state(false);
   /** The words of the last failure, shown under the editor until the next try. */
   problem = $state<string | null>(null);
+  /** The problem is a send that did not go: its text is back in the editor, and Retry sends it again. */
+  unsent = $state(false);
   stop = $state<StopPhase>('none');
   /** The id of the queued message that is open in the composer. */
   editing = $state<string | null>(null);
   /** ⌘ or Ctrl is held: the other follow-up (03 B.7.3). */
   alternate = $state(false);
+  /** The choice the person made in the picker that the chat does not say yet. */
+  asked = $state<Choice | null>(null);
   followUp: FollowUp = 'steer';
 
   #engine: () => ComposerEngine;
   #key: string | undefined;
   #aside: Message | null = null;
+  #before: Choice | null = null;
   #timer: ReturnType<typeof setTimeout> | undefined;
-  #serial = 0;
+  /** The files go to the runner one after the other: a part is 2 MiB, and a hundred files at one time would hold them all in memory. */
+  #line: Promise<void> = Promise.resolve();
+  #gone = false;
+  /** How each file that the runner holds is given up: by the engine that sent it, which names its chat also when a different chat is open by then. */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- looked up when a file is given up, never read by an effect
+  #drops = new Map<string, (remote: string) => void>();
+  #now: () => number;
 
-  constructor(engine: () => ComposerEngine, key: string | undefined, modifier: string) {
+  constructor(engine: () => ComposerEngine, key: string | undefined, modifier: string, now: () => number = Date.now) {
     this.#engine = engine;
+    this.#now = now;
     this.#key = key;
     this.modifier = modifier;
     const draft = key === undefined ? undefined : kept.get(key);
     if (draft !== undefined) {
       this.prompt = draft.prompt;
-      this.attachments = draft.attachments;
+      // A file that was on its way when the composer went stopped there.
+      release(draft.attachments.filter((attachment) => attachment.state.state === 'reading'));
+      this.attachments = draft.attachments.filter((attachment) => attachment.state.state !== 'reading');
     }
   }
 
@@ -105,8 +131,15 @@ export class CardState {
       else if (face.action !== 'queue') release(message.attachments);
       return;
     }
+    this.#putBack(message, editing, aside);
+    this.unsent = editing === null && face.action === 'send';
+  }
+
+  /** A message that did not go comes back in front of what was typed meanwhile, and an edit stays open. */
+  #putBack(message: Message, editing: string | null, aside: Message | null): void {
     const typed = this.prompt === (editing === null ? '' : (aside?.prompt ?? '')) ? '' : this.prompt;
-    this.#fill({ prompt: typed === '' ? message.prompt : `${message.prompt}\n${typed}`, attachments: message.attachments });
+    // What was attached while the message was on its way stays, after the files of the message.
+    this.#fill({ prompt: typed === '' ? message.prompt : `${message.prompt}\n${typed}`, attachments: [...message.attachments, ...this.attachments] });
     if (editing === null) return;
     this.editing = editing;
     this.#aside = aside;
@@ -137,7 +170,10 @@ export class CardState {
    */
   orphaned(): void {
     if (this.editing === null) return;
-    if (this.#aside !== null && (this.#aside.prompt !== '' || this.#aside.attachments.length > 0)) this.#fill(this.#aside);
+    if (this.#aside !== null && (this.#aside.prompt !== '' || this.#aside.attachments.length > 0)) {
+      this.#giveUp(this.attachments);
+      this.#fill(this.#aside);
+    }
     this.#endEdit();
     this.#engine().opened?.(null);
     this.keep();
@@ -146,23 +182,93 @@ export class CardState {
   /** The composer goes away: no timer of it fires after, and the queue is told that a message was left open. */
   dispose(): void {
     clearTimeout(this.#timer);
-    if (this.editing !== null) this.#engine().abandoned?.();
+    if (this.editing !== null) {
+      this.#engine().abandoned?.();
+      // The change of the queued message is lost, and with it the files that were attached to it.
+      this.#giveUp(this.attachments);
+      this.attachments = [];
+    }
+    // A file that is on its way stops at its next part: the page sends for the chat that is open, and that one changed.
+    this.#gone = true;
+    const unsent = this.attachments.filter((attachment) => attachment.state.state === 'reading');
+    if (unsent.length === 0) return;
+    release(unsent);
+    this.attachments = this.attachments.filter((attachment) => !unsent.includes(attachment));
+    this.keep();
   }
 
-  add(files: readonly File[]): void {
-    const { taken, refused } = admit(this.attachments, files);
+  /** Attaches the files that fit; `folders`: how many folders came with them, which are refused with words. */
+  add(files: readonly File[], folders = 0): void {
+    const admitted = admit(this.attachments, files);
+    // The engine of this moment sends each of these files: the line of uploads can reach a file after a different chat was opened.
+    const engine = this.#engine();
+    const sends = engine.upload !== undefined;
+    // The unsent files of the other chats wait at the runner too: what it has no room for is refused here, with words.
+    const room = sends ? roomFor(this.#waiting(), admitted.taken, (entry) => entry.file.size) : { fits: admitted.taken, over: 0 };
+    const taken = room.fits;
+    const refused = room.over > 0 ? [...admitted.refused, { words: PENDING_FULL }] : admitted.refused;
     const made = taken.map((entry) => {
-      this.#serial += 1;
+      serial += 1;
       const preview = entry.kind === 'image' || entry.kind === 'video' ? URL.createObjectURL(entry.file) : null;
-      return attachmentOf(entry, `a${String(this.#serial)}`, preview);
+      // The name that the program is told, not the one of the file: the two differ for a name with marks that hide.
+      const made = attachmentOf(entry, `a${String(serial)}`, preview, sends ? { state: 'reading', sent: 0 } : { state: 'ready' });
+      return { ...made, name: shownName(entry.file.name) };
     });
     this.attachments = [...this.attachments, ...made];
-    this.problem = refused.at(-1)?.words ?? null;
+    this.problem = refused.at(-1)?.words ?? (folders > 0 ? REFUSAL.folders(folders) : null);
+    if (!sends) return;
+    made.forEach((attachment, at) => {
+      const file = taken[at]?.file;
+      // A file that throws does not stop the files after it.
+      if (file !== undefined) this.#line = this.#line.then(() => this.#upload(attachment, file, engine)).catch(() => undefined);
+    });
+  }
+
+  /** The files of this window that the runner holds or is taking: of this composer, of the unsent text that is set aside, and of the other chats. */
+  #waiting(): readonly Attachment[] {
+    const others = [...kept].flatMap(([key, draft]) => (key === this.#key ? [] : draft.attachments));
+    const mine = [...this.attachments, ...(this.#aside?.attachments ?? [])];
+    // The runner drops a file that is not sent in one hour: such a file takes no room there.
+    const held = (attachment: Attachment): boolean => attachment.held !== undefined && this.#now() - attachment.held < HELD_FOR_MS;
+    return [...others.filter(held), ...mine.filter((attachment) => held(attachment) || attachment.state.state === 'reading')];
   }
 
   remove(id: string): void {
-    release(this.attachments.filter((attachment) => attachment.id === id));
+    const removed = this.attachments.filter((attachment) => attachment.id === id);
+    // The reason of a file that did not go leaves with the file.
+    if (removed.some((attachment) => attachment.state.state === 'failed' && attachment.state.words === this.problem)) this.problem = null;
+    this.#giveUp(removed);
     this.attachments = this.attachments.filter((attachment) => attachment.id !== id);
+  }
+
+  /** Files that will not go: their previews are freed, and the runner is told of each that it holds, so that it does not wait there. */
+  #giveUp(attachments: readonly Attachment[]): void {
+    release(attachments);
+    for (const attachment of attachments) {
+      if (attachment.remote === undefined) continue;
+      // A file of an unsent text that was opened again has no engine of its own: the one of now is of the same chat.
+      (this.#drops.get(attachment.remote) ?? this.#engine().discard)?.(attachment.remote);
+      this.#drops.delete(attachment.remote);
+    }
+  }
+
+  /** Gives one file to the engine and writes how it went on its attachment; a file that was removed meanwhile is given up by the engine. */
+  async #upload(attachment: Attachment, file: File, engine: ComposerEngine): Promise<void> {
+    const held = (): boolean => !this.#gone && this.attachments.some((other) => other.id === attachment.id);
+    const write = (state: AttachmentState, remote?: string): void => {
+      if (held()) this.attachments = this.attachments.map((other) => (other.id === attachment.id ? { ...other, state, ...(remote === undefined ? {} : { remote, held: this.#now() }) } : other));
+    };
+    if (!held() || engine.upload === undefined) return;
+    const went = await engine.upload(file, attachment.mime, { told: (sent) => write({ state: 'reading', sent }), gone: () => !held() }).catch((): { state: 'failed'; words: string } => ({ state: 'failed', words: REFUSAL.empty(attachment.name) }));
+    if (went.state === 'sent' && !held()) engine.discard?.(went.id);
+    else if (went.state === 'sent') {
+      if (engine.discard !== undefined) this.#drops.set(went.id, engine.discard);
+      write({ state: 'ready' }, went.id);
+    }
+    if (went.state !== 'failed' || !held()) return;
+    write({ state: 'failed', words: went.words });
+    // Also under the editor: the tile of an image has only "Failed", and the reason is the runner's, as when it holds too many files.
+    this.problem = went.words;
   }
 
   /** Opens a queued message in the composer; the chat's own unsent text is set aside (03 3.6). */
@@ -170,6 +276,8 @@ export class CardState {
     const message = this.#engine().queued.find((queued) => queued.id === id);
     if (message === undefined) return;
     if (this.editing === null) this.#aside = { prompt: this.prompt, attachments: this.attachments };
+    // The files of the queued message that was open are of no message now: nothing draws them, and the runner must not hold them.
+    else this.#giveUp(this.attachments);
     this.editing = id;
     this.#engine().opened?.(id);
     this.prompt = message.prompt;
@@ -178,9 +286,32 @@ export class CardState {
 
   cancelEdit(): void {
     if (this.editing === null) return;
+    this.#giveUp(this.attachments);
     this.#fill(this.#aside);
     this.#endEdit();
     this.#engine().opened?.(null);
+  }
+
+  /** A new choice of the picker: the words of a refusal go under the editor, as those of a send do. */
+  async choose(next: Choice): Promise<void> {
+    const engine = this.#engine();
+    const before = engine.choice;
+    if (!(await this.#run(() => engine.choose(next)))) return;
+    this.asked = next;
+    this.#before = before;
+  }
+
+  /**
+   * The choice the picker shows. A program can take a change only at its next turn, and the chat says the old one
+   * until then: what the person asked for is shown until the chat's own choice moves.
+   */
+  shownChoice(now: Choice): Choice {
+    return this.asked !== null && same(now, this.#before) ? this.asked : now;
+  }
+
+  /** The chat's own choice moved: the program has the change, or took a different one. */
+  settled(now: Choice): void {
+    if (this.asked !== null && !same(now, this.#before)) this.asked = null;
   }
 
   /** "Send now" and "Remove" of a queued message. */
@@ -196,7 +327,10 @@ export class CardState {
 
   #fill(message: Message | null): void {
     this.prompt = message?.prompt ?? '';
-    this.attachments = message?.attachments ?? [];
+    // A file that was on its way when it was set aside stopped there: it does not come back as one that is read for ever.
+    const stopped = (message?.attachments ?? []).filter((attachment) => attachment.state.state === 'reading');
+    release(stopped);
+    this.attachments = (message?.attachments ?? []).filter((attachment) => !stopped.includes(attachment));
     // Also when the composer is gone while a message went: the sent text must not come back as the unsent text.
     this.keep();
   }
@@ -206,6 +340,7 @@ export class CardState {
     if (this.busy) return false;
     this.busy = true;
     this.problem = null;
+    this.unsent = false;
     let outcome: Outcome;
     try {
       outcome = await call();

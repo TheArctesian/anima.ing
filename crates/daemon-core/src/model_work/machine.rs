@@ -1,17 +1,13 @@
-//! The settings at the machine (Section 10.1): the file `model-work.json` in the daemon folder.
-//! Only the owner of the machine writes it; the hub cannot. A member that the file leaves out
-//! has the default that the operator chose. The actor check (Section 3) reads `agentTypes`.
+//! The machine's `model-work.json` (Section 10.1); only the owner of the machine writes it, not the hub.
 
 use serde_json::{Map, Value};
 
 use super::names::{Actor, is_source_name};
 use crate::wire::{MODEL_TYPES, WorkType};
 
-/// The organisations of the default list (R-342). The publishers that a release
-/// of the daemon names join this list with that release; this release names none.
+/// The default organisations (R-342); this release names no further publishers.
 pub const DEFAULT_ORGANISATIONS: [&str; 2] = ["unsloth", "mlx-community"];
 
-/// The values of `model-work.json`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MachineSettings {
     /// Start each runtime in an isolation (Section 9; default off, R-346).
@@ -80,8 +76,6 @@ fn flag(object: &Map<String, Value>, name: &'static str) -> Result<Option<bool>,
 }
 
 impl MachineSettings {
-    /// Reads the text of `model-work.json`.
-    ///
     /// # Errors
     /// [`SettingsError`] for a text that is not an object of the five settings.
     pub fn parse(text: &str) -> Result<Self, SettingsError> {
@@ -108,14 +102,12 @@ impl MachineSettings {
         Ok(settings)
     }
 
-    /// Whether the machine takes an item of `work_type` that `actor` asked for (Section 3,
-    /// R-326). The hub writes `actor`, so this limits an honest hub only.
+    /// The hub writes `actor`, so this limits an honest hub only (Section 3, R-326).
     #[must_use]
     pub fn actor_permits(&self, actor: Actor, work_type: WorkType) -> bool {
         actor != Actor::Agent || self.agent_types.contains(&work_type)
     }
 
-    /// Whether a pull may name `organisation` (Section 7).
     #[must_use]
     pub fn organisation_permitted(&self, organisation: &str) -> bool {
         self.organisations.iter().any(|name| name == organisation)

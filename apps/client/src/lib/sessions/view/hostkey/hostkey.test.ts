@@ -11,7 +11,6 @@ const tested = (hostKey: typeof KEY | null, reachable = true): HubResult<Connect
 const acceptedAs = (fingerprintSha256: string): HubResult<AcceptedHostKey> => ({ ok: true, value: { ...KEY, fingerprintSha256 } });
 const refused: HubResult<never> = { ok: false, error: { code: 'CONFLICT', message: 'hub text' } };
 
-/** The step after `events`; an event that does not apply leaves the step as it was. */
 function run(...events: HostKeyEvent[]): HostKeyStep {
   return events.reduce((step, event) => transition(step, event) ?? step, WARNED);
 }

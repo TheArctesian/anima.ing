@@ -1,6 +1,4 @@
-//! The hub checks the bytes the bucket itself holds, after every upload URL of the job expired,
-//! and copies the stable name only from the object it checked (BLD-064, BLD-066, D-28). The
-//! public address only has to answer 200.
+//! Publishing checks the bucket's own bytes (BLD-064, BLD-066, D-28).
 
 use std::sync::Arc;
 
@@ -16,11 +14,8 @@ use super::{
 };
 use crate::{builds::harness::data, hub::start};
 
-/// The object of the job's `AppImage`.
 const APP: &str = "linux-x86_64/0.1.12/Anima_0.1.12_amd64.AppImage";
 
-/// Publishes once; the job failed with a reason that holds `why`, and nothing was written for
-/// people.
 async fn fails(publishing: &Publishing, held: &Held, why: &str) {
     assert_eq!(publishing.sweep(ready()).await, 1);
     let (state, reason) = publishing.job(held).await;
@@ -43,9 +38,6 @@ async fn d_28_a_job_is_taken_only_after_its_upload_urls_expired(pool: PgPool) {
     assert_eq!(publishing.job(&held).await.0, "published");
 }
 
-/// The review's case: a builder writes the `AppImage` again while the hub copies it. Its URL has
-/// expired by then, so the write is refused and the stable name gets the checked bytes; nor can
-/// the URLs write after the publish.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_no_upload_url_writes_once_the_hub_checks_the_files(pool: PgPool) {
     let publishing = Arc::new(Publishing::start(&pool).await);
@@ -80,7 +72,6 @@ async fn d_28_no_upload_url_writes_once_the_hub_checks_the_files(pool: PgPool) {
     assert_eq!(publishing.put(&urls[1], &sums).await, 403);
 }
 
-/// Bytes written again while the URL still worked are the bytes the hub checks.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_bytes_written_again_before_the_urls_expire_fail_the_job(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -100,7 +91,6 @@ async fn d_28_bytes_written_again_before_the_urls_expire_fail_the_job(pool: PgPo
     fails(&publishing, &held, "does not have the SHA-256").await;
 }
 
-/// `CopyObject` names the `ETag` the hub read; an object changed after its check is not copied.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_a_file_changed_after_its_check_is_not_copied(pool: PgPool) {
     let publishing = Arc::new(Publishing::start(&pool).await);
@@ -126,8 +116,6 @@ async fn d_28_a_file_changed_after_its_check_is_not_copied(pool: PgPool) {
     assert!(publishing.fake.object(LINUX_FEED).is_none());
 }
 
-/// A cache at the public address may still serve the bytes it saw first; the hub checks the
-/// bucket's own.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_a_warm_cache_does_not_hide_the_bytes_in_the_bucket(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -151,8 +139,6 @@ async fn bld_064_a_file_people_cannot_read_fails_the_job(pool: PgPool) {
     fails(&publishing, &held, "at the public address").await;
 }
 
-/// D-25: when the answer to the `latest.json` write is lost, the hub reads the object back; the
-/// write landed, so the job is published.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_feed_write_whose_answer_was_lost_is_read_back(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -165,7 +151,6 @@ async fn d_25_a_feed_write_whose_answer_was_lost_is_read_back(pool: PgPool) {
     assert!(publishing.fake.object(LINUX_FEED).is_some());
 }
 
-/// The hub copies by `ETag` only, so a file the bucket gives none for fails the job.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_a_file_without_an_etag_fails_the_job(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -176,8 +161,6 @@ async fn d_28_a_file_without_an_etag_fails_the_job(pool: PgPool) {
     fails(&publishing, &held, "gave no ETag").await;
 }
 
-/// URLs granted again under a clock that went back do not shorten the wait: the latest expiry
-/// stays.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_the_latest_upload_url_expiry_is_kept(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;

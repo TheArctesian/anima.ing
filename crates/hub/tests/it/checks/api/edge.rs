@@ -1,5 +1,4 @@
-//! Edges of the mutations: one connection is enough, an empty update is refused, a push check's
-//! token rotates only on request, and a deleted group says whom it let go (API-010, CHK-005).
+//! Edges of the check mutations (API-010, CHK-005).
 
 use serde_json::{Value, json};
 use sqlx::{PgPool, postgres::PgPoolOptions};

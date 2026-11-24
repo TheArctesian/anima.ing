@@ -1,12 +1,6 @@
 //! macOS trust hook (WEB-008, OD-7, R-069): a navigation-delegate proxy in front of wry's.
-//!
-//! wry's `WryNavigationDelegate` has no `webView:didReceiveAuthenticationChallenge:
-//! completionHandler:`, so without this `WebKit` applies system trust and a pin is never
-//! asked. The proxy implements that one method and forwards every other selector to wry's
-//! delegate, which keeps the `http`/`https` filter and the page-load events.
-//!
-//! This module only reads the challenge and carries the answer back. Which answer, and what
-//! the operator is told, is decided in safe Rust by the `Decide` it is given.
+//! wry's delegate has no authentication-challenge method, so without the proxy a pin is never asked.
+//! This module only carries the challenge and the answer; the `Decide` it is given decides in safe Rust.
 
 #![expect(
     unsafe_code,
@@ -42,13 +36,11 @@ pub type Decide = Box<dyn Fn(&Presented<'_>, &dyn Fn() -> bool) -> Answer>;
 
 type Completion = DynBlock<dyn Fn(Disposition, *mut NSURLCredential)>;
 
-/// The key the proxy hangs on its web view by: this static's address, unique to this module.
+/// Its address is the association key, unique to this module.
 static PROXY_KEY: u8 = 0;
 
 pub struct ProxyIvars {
-    /// wry's delegate, which gets every selector but the challenge. Weak: wry's own web view
-    /// owns it, and it holds the `WKWebView` (its page-load handler), which holds this proxy;
-    /// a strong reference here would make a cycle, and a closed view would never be freed.
+    /// Weak: it holds the `WKWebView`, which holds this proxy, so a strong reference is a cycle.
     inner: Weak<ProtocolObject<dyn WKNavigationDelegate>>,
     decide: Decide,
 }
@@ -111,12 +103,8 @@ define_class!(
     }
 );
 
-/// Puts the proxy in front of wry's delegate on `platform`'s `WKWebView`. Runs on the main
-/// thread (`Webview::with_webview`). On an error the view must load nothing.
-///
-/// The view owns the proxy (an associated object, retained), because `navigationDelegate` is
-/// weak: the proxy lives exactly as long as the view. Popping out (`Webview::reparent`) moves
-/// this same `WKWebView` to another window's content view, so the proxy and the pin go with it.
+/// Runs on the main thread. On an error the view must load nothing.
+/// The view retains the proxy because `navigationDelegate` is weak, so the pin moves with the view.
 pub fn install(platform: &PlatformWebview, decide: Decide) -> Result<(), WebViewError> {
     let main_thread = MainThreadMarker::new().ok_or(WebViewError::Native)?;
     let view = web_view(platform)?;
@@ -150,17 +138,13 @@ pub fn install(platform: &PlatformWebview, decide: Decide) -> Result<(), WebView
     installed.then_some(()).ok_or(WebViewError::Native)
 }
 
-/// The `WKWebView` (a wry subclass) of a device web view, for as long as `platform` is
-/// borrowed. Public for the pinning proof (`tests/pinning`), which checks with a weak
-/// reference that a closed view is freed.
 pub fn web_view(platform: &PlatformWebview) -> Result<&WKWebView, WebViewError> {
     // SAFETY: on macOS `inner()` is the live `WKWebView` of this web view, and wry keeps it
     // while `platform` exists; the reference cannot outlive the borrow of `platform`.
     unsafe { platform.inner().cast::<WKWebView>().as_ref() }.ok_or(WebViewError::Native)
 }
 
-/// Reads one challenge and turns the safe answer into `WebKit`'s. Server trust only: any
-/// other challenge (HTTP auth, client certificates) gets the default, as without the hook.
+/// Server trust only: any other challenge gets the default handling, as without the hook.
 fn reply(
     decide: &Decide,
     challenge: &NSURLAuthenticationChallenge,
@@ -206,8 +190,6 @@ fn reply(
     }
 }
 
-/// `WebKit`'s disposition for an answer: accept only with a chain to accept, cancel, or the
-/// system's own handling. Pure.
 pub(super) fn disposition(answer: Answer, has_trust: bool) -> Disposition {
     match answer {
         Answer::Accept if has_trust => Disposition::UseCredential,
@@ -216,7 +198,6 @@ pub(super) fn disposition(answer: Answer, has_trust: bool) -> Disposition {
     }
 }
 
-/// The credential that accepts `trust`'s chain.
 fn credential(trust: &SecTrust) -> Option<Retained<NSURLCredential>> {
     let trust_ref = trust.as_concrete_TypeRef().cast::<c_void>();
     // SAFETY: `credentialForTrust:` takes a live `SecTrustRef` (held by `trust`) and returns an

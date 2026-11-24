@@ -1,7 +1,5 @@
-//! Where this computer's power comes from now (AWK-006): on macOS from `pmset -g batt`, on
-//! Linux from `/sys/class/power_supply`. Neither needs more rights. A state that cannot be
-//! read is `Mains`, so a read failure never turns the control off. The parse is the daemon's
-//! (the crate `power`), so the two read the power source alike (CAP-004).
+//! This computer's power source (AWK-006); an unreadable state is `Mains`, so a read failure never turns the control off.
+//! The parse is the daemon's (the crate `power`), so the two read the power source alike (CAP-004).
 
 use std::{ffi::OsStr, fs, path::Path, time::Duration};
 
@@ -13,7 +11,6 @@ use crate::os_program::{self, AfterLimit, Limit, Stdout};
 
 const POWER_SUPPLIES: &str = "/sys/class/power_supply";
 
-/// `pmset -g` prints a few lines at once.
 const PMSET_LIMIT: Limit = Limit {
     patience: Duration::from_secs(3),
     after: AfterLimit::Kill,
@@ -38,7 +35,6 @@ fn supply_at(entry: &Path) -> Supply {
     }
 }
 
-/// The supplies under `root` (`/sys/class/power_supply`); none when it cannot be read.
 fn supplies_under(root: &Path) -> Vec<Supply> {
     fs::read_dir(root).map_or_default(|entries| {
         entries
@@ -48,7 +44,6 @@ fn supplies_under(root: &Path) -> Vec<Supply> {
     })
 }
 
-/// The output of `pmset` with `args` as text, or `None` when it did not run.
 pub fn pmset_report(pmset: &str, args: &[&str]) -> Option<String> {
     let args: Vec<&OsStr> = args.iter().map(OsStr::new).collect();
     os_program::run(pmset, &args, PMSET_LIMIT, PMSET_OUTPUT)
@@ -56,7 +51,7 @@ pub fn pmset_report(pmset: &str, args: &[&str]) -> Option<String> {
         .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
 }
 
-/// This computer's power source now. Blocks for a short program run on macOS.
+/// Blocks for a short program run on macOS.
 #[must_use]
 pub fn read(platform: &Platform) -> Power {
     match platform.os {

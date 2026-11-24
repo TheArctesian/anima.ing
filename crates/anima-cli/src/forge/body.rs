@@ -1,6 +1,5 @@
-//! The text of a new issue or comment: from a file or standard input (`-`), never an argument,
-//! so a long Markdown text keeps its shape and stays out of the shell's history (CMD-025). A
-//! failure names the file, never the text (LOG-007).
+//! A body comes from a file or standard input, never an argument, so it keeps its shape and
+//! stays out of the shell's history (CMD-025). A failure names the file, never the text (LOG-007).
 
 use std::path::Path;
 
@@ -11,8 +10,6 @@ use crate::prompt::Prompter;
 /// GitHub takes at most 65,536 characters; a character is at most four bytes of UTF-8.
 const MAX_BODY_BYTES: usize = 4 * 65_536;
 
-/// The UTF-8 text in `from` (`-` for standard input); `what` names it in a failure.
-///
 /// # Errors
 /// [`Failure::Input`] when it cannot be read, is too large or is not UTF-8;
 /// [`Failure::Usage`] when it holds only white space.

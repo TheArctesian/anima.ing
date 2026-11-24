@@ -36,15 +36,15 @@ describe('TH61: where the list shows a thread', () => {
     expect(shelfOf(marked({ snoozedAt: at(1), snoozedUntil: at(24) }), quiet(0), at(WEEK + 1))).toEqual({ shelf: 'active' });
   });
 
-  it('reads the marks of a listing as the runner writes them', () => {
+  it('reads the marks of a listing, and whether the runner started its thread, as the runner writes them', () => {
     const read = outcomeFrom({
       outcome: 'listings',
-      listings: [{ thread: 't', pinned: false, archived: false, removed: false, snoozed_at: '2027-01-15T10:00:00Z', snoozed_until: '2027-01-15T18:00:00Z' }],
+      listings: [{ thread: 't', pinned: false, archived: false, removed: false, snoozed_at: '2027-01-15T10:00:00Z', snoozed_until: '2027-01-15T18:00:00Z', started_by_anima: true }],
     });
     expect(read).toEqual({
       outcome: 'listings',
       listings: [
-        { thread: 't', pinned: false, archived: false, title: null, removed: false, marks: { ...NO_MARKS, snoozedAt: at(2), snoozedUntil: at(10) } },
+        { thread: 't', pinned: false, archived: false, title: null, removed: false, marks: { ...NO_MARKS, snoozedAt: at(2), snoozedUntil: at(10) }, startedByAnima: true },
       ],
     });
   });

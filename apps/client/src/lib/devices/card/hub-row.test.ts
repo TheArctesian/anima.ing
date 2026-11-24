@@ -28,7 +28,7 @@ async function settle(): Promise<void> {
 }
 
 const GIB = 1024 ** 3;
-// The container of a hosted hub: Linux, no way in, CPU and memory of its own control group (HMD-071).
+// A hosted hub's container (HMD-071).
 const HUB = device('hub', { kind: 'hub', name: 'Hub', os: 'LINUX', metricsSource: 'DAEMON', readings: readings({ cpuPercent: 12, memoryPercent: 40, diskPercent: null, diskMount: null }) });
 const NAS = device('nas', { os: 'LINUX', metricsSource: 'DAEMON', readings: readings() });
 

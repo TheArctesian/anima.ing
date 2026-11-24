@@ -1,5 +1,4 @@
-//! The list of a copy of a hub root: one entry for each folder, file and link. Pure but for the
-//! read and the write of the list file.
+//! The list of a copy of a hub root; pure but for reading and writing the list file.
 
 use std::fs;
 use std::io::Write as _;
@@ -21,7 +20,7 @@ pub enum Kind {
     Link { target: PathBuf },
 }
 
-/// One entry: its path below the root of the copy, its mode bits and what it is.
+/// One entry; `path` is below the root of the copy.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
     pub path: PathBuf,
@@ -59,9 +58,7 @@ impl List {
         }
     }
 
-    /// The parts that a hub cannot start without: the version file of the cluster and the
-    /// vault key. The other parts (sealing keys, files, link) are in the list when the root
-    /// had them.
+    /// A hub cannot start without the cluster's version file and the vault key.
     pub(super) fn has_the_parts_of_a_hub(&self) -> Result<(), RootCopyError> {
         for part in [self.cluster.join("PG_VERSION"), PathBuf::from("vault.key")] {
             let listed = self

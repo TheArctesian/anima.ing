@@ -1,6 +1,4 @@
-//! The hash chain of the audit log against PostgreSQL: each write links its entry, the start
-//! links the entries that exist, and the check finds each kind of change at its place
-//! (LOG-021 to LOG-028).
+//! The audit log hash chain against PostgreSQL (LOG-021 to LOG-028).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::json;
@@ -18,8 +16,6 @@ fn soon() -> DateTime<Utc> {
     day(2031, 7, 1)
 }
 
-/// Writes `count` audit entries through the hub, each in its own transaction, and returns
-/// their IDs in the order of writing.
 async fn write(pool: &PgPool, at: DateTime<Utc>, count: usize) -> Vec<Uuid> {
     let mut ids = Vec::new();
     for n in 0..count {
@@ -48,7 +44,6 @@ async fn execute(conn: &mut PgConnection, sql: &str, id: Uuid) {
     sqlx::query(sql).bind(id).execute(conn).await.unwrap();
 }
 
-/// The kind and link of the first fault the check finds at `now`.
 async fn fault(pool: &PgPool, now: DateTime<Utc>) -> (FaultKind, Option<i64>, Uuid) {
     let fault = check_chain(pool, now)
         .await

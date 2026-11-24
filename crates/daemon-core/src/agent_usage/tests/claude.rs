@@ -1,14 +1,8 @@
-//! The Claude Code reader (AIS-018, AIS-022): prompts the operator typed, tool calls, the tokens
-//! of each reply once, sub-agent lines without their prompts; nothing of the text kept.
-
 use proptest::prelude::*;
 
 use super::{MARKER, assert_no_marker, days_of, tally};
 use crate::agent_usage::{Source, Tokens};
 
-/// A synthetic session: a title, a typed prompt, a reminder the program wrote, a reply in two
-/// lines (one usage), a tool's result, a sub-agent's prompt and reply, a meta line, a
-/// synthetic reply, and lines that are not JSON or not of a known form.
 const SESSION: &str = r#"{"type":"custom-title","customTitle":"MARKER-7f3a9c-SECRET title","sessionId":"s1"}
 {"type":"user","timestamp":"2026-11-07T23:59:58.120Z","cwd":"/Users/me/MARKER-7f3a9c-SECRET/app","isSidechain":false,"message":{"role":"user","content":"Fix the MARKER-7f3a9c-SECRET bug"}}
 {"type":"user","timestamp":"2026-11-07T23:59:59Z","cwd":"/elsewhere","message":{"role":"user","content":"<system-reminder>MARKER-7f3a9c-SECRET</system-reminder>"}}
@@ -108,14 +102,12 @@ fn ais_018_each_new_reply_counts_however_many_came_before() {
 }
 
 proptest! {
-    /// Any bytes are skipped or counted, never a panic.
     #[test]
     fn ais_018_the_claude_reader_takes_any_line(line in proptest::collection::vec(any::<u8>(), 0..256)) {
         let mut tally = crate::agent_usage::Tally::new(Source::ClaudeCode);
         tally.feed(&line);
     }
 
-    /// Lines of the right form with any values never panic or keep their text.
     #[test]
     fn ais_018_the_claude_reader_takes_any_values(
         kind in "user|assistant|x",

@@ -7,16 +7,14 @@
   import { KINDS, type ChannelDraft, type Stored } from './draft';
   import EmailFields from './kinds/EmailFields.svelte';
   import type { DraftField } from './input';
+  import SecretField from './SecretField.svelte';
   import NtfyFields from './kinds/NtfyFields.svelte';
   import WebhookFields from './kinds/WebhookFields.svelte';
 
-  // The editor's fields, laid out; the editor around it owns the values' life, the check and the save.
   interface Props {
     draft: ChannelDraft;
-    /** `null` for a new channel, which alone may choose its kind. */
     stored: Stored | null;
     problemOf: (field: DraftField) => string;
-    /** A fixed sentence for a refused save, or empty. */
     failure: string;
     busy: boolean;
     placeholders: readonly string[];
@@ -29,7 +27,7 @@
   const kindLabel = $derived(KINDS.find((kind) => kind.id === draft.kind)?.label ?? '');
   const templateProblems = $derived({ title: problemOf('template.title'), body: problemOf('template.body') });
 
-  // Inside the modal the actions go to its footer; the Save button is tied to the form by its ID.
+  // Inside the modal the actions go to its footer, so Save reaches the form by its ID.
   const footer = modalFooter();
   $effect.pre(() => footer?.show(actions));
 </script>
@@ -58,6 +56,9 @@
       <legend>{kindLabel}</legend>
       {#if draft.kind === 'WEBHOOK'}
         <WebhookFields bind:webhook={draft.webhook} {stored} {problemOf} />
+      {:else if draft.kind === 'MOBILE'}
+        <SecretField label="Push relay URL" bind:value={draft.mobile.url} problem={problemOf('mobile.url')} stored={stored !== null} />
+        <SecretField label="Relay token" shape="hidden" bind:value={draft.mobile.token} problem={problemOf('mobile.token')} stored={stored !== null} />
       {:else if draft.kind === 'NTFY'}
         <NtfyFields bind:ntfy={draft.ntfy} {stored} {problemOf} />
       {:else if draft.kind === 'EMAIL'}
@@ -83,7 +84,7 @@
   <p class="failure" role="alert">{failure}</p>
   <div class="actions">
     <FormButton tabindex={0} onclick={onCancel} aria-disabled={busy}>Cancel</FormButton>
-    <!-- The label stays while the hub works, so neither button moves (MOT-007); aria-busy says it is busy. -->
+    <!-- The label stays while the hub works, so neither button moves (MOT-007). -->
     <FormButton tabindex={0} type="submit" form="{ids}-form" tone="primary" aria-disabled={busy} aria-busy={busy}>Save</FormButton>
   </div>
 {/snippet}

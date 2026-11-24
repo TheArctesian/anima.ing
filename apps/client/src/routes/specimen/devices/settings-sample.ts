@@ -2,7 +2,7 @@ import type { DeviceDetail } from '$lib/devices/api';
 import type { HubResult } from '$lib/hub/hub';
 import type { UpdateDeviceInput } from '$lib/hub/generated/graphql';
 
-/** A synthetic Linux workstation with SSH and VNC on, as the hub would send it, for the Settings lane (D17). */
+/** The Settings lane's sample device (D17). */
 export const SAMPLE_DEVICE: DeviceDetail = {
   id: 'specimen-pop-os',
   name: 'pop-os',
@@ -53,16 +53,13 @@ export const SAMPLE_DEVICE: DeviceDetail = {
   month: null,
 };
 
-/** The name the lane's fake hub refuses, so the refused state can be seen. */
 export const REFUSED_NAME = 'atlas';
 
-/** What the hub would store for `input`: each part it names replaces the device's, the rest stays. */
 export function updated(device: DeviceDetail, input: UpdateDeviceInput): HubResult<DeviceDetail> {
   if (input.name === REFUSED_NAME) {
     return { ok: false, error: { code: 'VALIDATION', message: 'Invalid input', fields: [{ field: 'name', message: 'Another device has this name.' }] } };
   }
   const { ssh, rdp, vnc, transfer, ...plain } = input;
-  // Only the synthetic lane builds a device this way, so a part the input leaves empty keeps the device's value.
   const value = {
     ...device,
     ...present(plain),
@@ -74,7 +71,6 @@ export function updated(device: DeviceDetail, input: UpdateDeviceInput): HubResu
   return { ok: true, value };
 }
 
-/** The parts of an input that it sets. */
 function present(part: object | null | undefined): Record<string, unknown> {
   return Object.fromEntries(Object.entries(part ?? {}).filter(([, value]) => value !== undefined && value !== null));
 }

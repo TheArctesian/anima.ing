@@ -1,5 +1,4 @@
-// Test support: a hub that answers the three API key operations from canned results and records what it was sent,
-// and the synthetic values the tests use. Never a real key (WP-50 plan checkpoint 4).
+// Synthetic values only, never a real key (WP-50 checkpoint 4).
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import { flushSync } from 'svelte';
@@ -13,7 +12,6 @@ export const FAKE_SECRET = `anima_${'A'.repeat(43)}`;
 /** The tests' clock: after the K6 key "old-script" expired, before "metrics-scrape" does. */
 export const NOW = new Date('2026-11-07T12:00:00Z');
 
-/** The K6 `apiKeys` slice. */
 export const FIXTURE_KEYS: readonly ApiKey[] = apiKeys;
 
 export const MADE_KEY: ApiKey = {
@@ -42,7 +40,6 @@ export function failure(code: HubError['code'], message = 'hub text'): HubResult
   return { ok: false, error: { code, message, fields: [] } as HubError };
 }
 
-/** `answers` maps an operation to its result; an operation without one is `unreachable`. */
 export function fakeHub(answers: Partial<Record<Operation, HubResult<unknown> | Promise<HubResult<unknown>>>>): { hub: Hub; sent: SentRequest[] } {
   const sent: SentRequest[] = [];
   const hub = {
@@ -66,14 +63,12 @@ export function button(label: string): HTMLButtonElement {
   return found;
 }
 
-/** Types into a text or date field the way the browser reports it. */
 export function typeInto(field: HTMLInputElement, value: string): void {
   field.value = value;
   field.dispatchEvent(new Event('input', { bubbles: true }));
   flushSync();
 }
 
-/** The radio button whose label reads `label`. */
 export function radio(label: string): HTMLInputElement {
   const found = [...document.querySelectorAll('label')].find((candidate) => candidate.textContent.trim().startsWith(label));
   const input = found?.querySelector('input[type="radio"]');
@@ -87,7 +82,6 @@ export function field(selector: string): HTMLInputElement {
   return found;
 }
 
-/** The shown key's field: a read-only text area, so the whole key wraps into view. */
 export function keyField(): HTMLTextAreaElement {
   const found = document.querySelector('[role="dialog"] textarea[readonly]');
   if (!(found instanceof HTMLTextAreaElement)) throw new Error('no key field');

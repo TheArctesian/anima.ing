@@ -3,7 +3,6 @@ import { failure, ok } from '$lib/access/access.fixture';
 import type { Hub, HubResult } from '$lib/hub/hub';
 import { ReleasePublishing } from '../publishing.svelte';
 
-/** A hub that answers every request with `answer`. */
 function answering(answer: HubResult<unknown>): Pick<Hub, 'request'> {
   return { request: () => Promise.resolve(answer) } as unknown as Pick<Hub, 'request'>;
 }

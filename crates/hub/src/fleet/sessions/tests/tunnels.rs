@@ -1,5 +1,4 @@
-//! The end signal of an open tunnel (D-10, K4 §5, LOG-005): `endSession` and shutdown reach
-//! the tunnel with the cause and who asked, and a redemption never slips past `endSession`.
+//! The end signal of an open tunnel (D-10, K4 §5, LOG-005).
 
 use crate::fleet::sessions::Presented;
 use std::{
@@ -83,9 +82,7 @@ fn ra_008_end_by_withdraws_a_pending_or_spent_ticket() {
     assert_eq!(live.take_expired(pending(1).expires_at).len(), 0);
 }
 
-/// D-10 regression: `endSession` and a redemption racing on real threads. Under one lock the
-/// outcome is always consistent: the tunnel opened and was told to end, or the ticket was
-/// withdrawn and the redemption refused. Never an open tunnel nobody signalled.
+/// D-10: under one lock, either the tunnel opened and was told to end, or the redemption was refused.
 #[test]
 fn ra_008_end_by_and_redeem_never_both_miss_on_real_threads() {
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -146,7 +143,6 @@ async fn ra_008_shut_down_signals_every_tunnel_withdraws_every_ticket_and_refuse
     assert!(live.withdraw(session(3)).is_none(), "and no longer held");
     assert_eq!(one.ended().await, shutdown);
     assert_eq!(two.ended().await, shutdown);
-    // The first cause wins: a later endSession does not change it.
     drop(live.end_by(session(1), &operator_actor()));
     assert_eq!(one.ended().await, shutdown);
     assert_eq!(
@@ -195,8 +191,7 @@ fn k4_1_a_ticket_on_another_tunnel_path_is_refused_and_spent_in_the_redemption()
         Some(Refused),
         "spent"
     );
-    // No tunnel was registered in between, so an `endSession` can never signal one that is
-    // then dropped: it withdraws the spent ticket and ends the row itself.
+    // No tunnel was registered in between, so `endSession` withdraws the spent ticket and ends the row.
     assert!(
         matches!(
             live.end_by(session(1), &operator_actor()),
@@ -206,7 +201,6 @@ fn k4_1_a_ticket_on_another_tunnel_path_is_refused_and_spent_in_the_redemption()
     );
 }
 
-/// The committed row of ticket `n`'s session, as `start` writes it.
 fn started_row(n: u128) -> Session {
     let ticket = pending(n);
     Session {

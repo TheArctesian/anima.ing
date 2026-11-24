@@ -73,7 +73,8 @@ pub(super) const LINUX_GPU_LINES: [&str; 3] = [
     concat!(
         "grep -H . /sys/class/drm/card*/device/gpu_busy_percent ",
         "/sys/class/drm/card*/device/mem_info_vram_used ",
-        "/sys/class/drm/card*/device/mem_info_vram_total"
+        "/sys/class/drm/card*/device/mem_info_vram_total ",
+        "/sys/class/drm/card*/device/uma/carveout"
     ),
     "timeout --preserve-status -s INT -k 1 2 intel_gpu_top -J -s 500",
 ];

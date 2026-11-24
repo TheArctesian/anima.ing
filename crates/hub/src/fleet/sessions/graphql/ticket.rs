@@ -1,5 +1,4 @@
-//! `startSession`'s input and output as K1 describes them (`StartSessionInput`,
-//! `DisplayInput`, `SessionTicket`; API-009), and what the start needs to wake the device.
+//! `startSession`'s input and output as K1 describes them (API-009).
 
 use async_graphql::{Context, ID, InputObject, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, Utc};

@@ -1,6 +1,3 @@
-//! The pure parts of the files domain: the stream form of a piece (FIL-002), the checks of
-//! names and media types, and the checks of extracted fields (VIS-004).
-
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use proptest::prelude::*;
 

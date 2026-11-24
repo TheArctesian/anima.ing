@@ -42,7 +42,7 @@ export interface LinkInvite {
   readonly expiresAt: string;
 }
 
-/** The link calls of the hub (FRN-009) as plain functions of a hub. */
+/** The link calls of the hub (FRN-009). */
 export interface LinkApi {
   devices(): Promise<HubResult<readonly LinkDevice[]>>;
   invite(name: string): Promise<HubResult<LinkInvite>>;

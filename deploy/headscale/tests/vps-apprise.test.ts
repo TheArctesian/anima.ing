@@ -4,9 +4,7 @@ import { join } from "node:path";
 import { parseNftables, type Chain } from "../src/nftables.ts";
 import { evaluateChain, resolvedChain, type Packet, type Verdict } from "./nft-eval.ts";
 
-// NOT-002, D-19, NET-001, WP-52: Apprise (172.30.3.10 on the notify bridge) fetches any URL a
-// service URL parameter names. The host firewall keeps it off this host and every private,
-// VPN, loopback, link-local, Docker and multicast range, and lets it reach the internet.
+// NOT-002, D-19, NET-001, WP-52.
 const ruleset = parseNftables(readFileSync(join(import.meta.dir, "..", "vps", "nftables.conf"), "utf8"));
 const chain = (name: string): Chain => resolvedChain(ruleset, "inet anima_filter", name);
 
@@ -15,13 +13,11 @@ const HUB = "172.30.3.2";
 const NOTIFY_BRIDGE = "br-3f9a0c1d2e4b";
 const PUBLIC_ADDRESS = "203.0.113.7";
 
-/** A packet for this host: raw prerouting, then input if prerouting let it through. */
 function delivered(packet: Packet): Verdict {
   if (evaluateChain(chain("prerouting"), packet) === "drop") return "drop";
   return evaluateChain(chain("input"), packet);
 }
 
-/** A packet routed through this host: raw prerouting, then forward. */
 function forwarded(packet: Packet): Verdict {
   if (evaluateChain(chain("prerouting"), packet) === "drop") return "drop";
   return evaluateChain(chain("forward"), packet);
@@ -72,7 +68,6 @@ describe("Apprise and this host (NOT-002, D-19)", () => {
   });
 });
 
-// Both ends of every denied range, then the address just outside each (NET-001).
 const DENIED = [
   "0.0.0.0", "0.0.0.1", "0.255.255.255",
   "10.0.0.0", "10.0.0.1", "10.255.255.255",

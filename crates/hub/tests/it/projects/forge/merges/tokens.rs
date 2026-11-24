@@ -1,6 +1,4 @@
-//! D-23, R-100, K-E1 Section 13.5: both merge roots are login or browser token only. A read key,
-//! a write key made for a user or an agent, and a signed-out request are refused before
-//! anything is read or sent; a login token merges.
+//! Both merge roots take only a login or browser token (D-23, R-100, K-E1 13.5).
 
 use chrono::TimeDelta;
 use serde_json::{Value, json};

@@ -1,7 +1,5 @@
-//! `anima location import <file>`: sends the samples of a file to the hub. The file is a JSON
-//! list or JSON lines, each a sample in the Anima form (K1 `LocationSampleInput`) or an
-//! OwnTracks message; an OwnTracks message that is no location is passed over. The hub stores
-//! a sample one time, so the same file again adds nothing.
+//! The file is a JSON list or JSON lines of samples in the Anima form (K1 `LocationSampleInput`)
+//! or OwnTracks messages; a message that is no location is passed over.
 
 use std::path::PathBuf;
 

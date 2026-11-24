@@ -8,7 +8,6 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: shell.invoke, isTauri: shell.is
 const MAC: ThisMachine = { name: 'Studio', user: 'stephen', os: 'MACOS', vpnAddress: '100.64.0.7', sshListening: true };
 const LOGIN_SERVER = 'https://hs.anima.ing';
 
-/** A hub that names its VPN login server (ADR-005). */
 function hub() {
   return fakeHub({ VpnLoginServer: { vpnLoginServer: LOGIN_SERVER } }).hub;
 }

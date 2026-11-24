@@ -1,10 +1,9 @@
-//! One server process (Sections 2.1 and 9): started by the absolute path of its program, with
-//! an empty environment and the fixed list, the owned flags, in its tree ([`super::tree`]),
-//! and its output in the ring. Stopped by a request to end, at most 10 seconds, then the end
-//! of the whole tree.
+//! A server process in its tree, with an empty environment and its output in the ring (Sections 2.1 and 9).
 
 #[cfg(target_os = "linux")]
 mod handshake;
+#[cfg(target_os = "linux")]
+mod join;
 
 use std::io;
 use std::net::TcpListener;
@@ -21,25 +20,19 @@ use zeroize::{Zeroize as _, Zeroizing};
 use super::ring::Ring;
 use super::tree::{self, Identity, Record};
 
-/// The range of ports of the daemon configuration (default 41000 to 41999).
 pub const PORTS: RangeInclusive<u16> = 41_000..=41_999;
 
-/// What one start needs. Each word comes from the code of the daemon. The values of the
-/// environment hold the API key, so they are wiped when the launch drops.
+/// Each word comes from the code of the daemon; the environment holds the API key.
 pub struct Launch {
     pub program: PathBuf,
     pub arguments: Vec<String>,
     pub environment: Vec<(String, String)>,
-    /// The state folder and the path below it of the temporary folder of the process.
     pub state: PathBuf,
     pub temporary: PathBuf,
     pub ring: PathBuf,
     pub key: Zeroizing<String>,
-    /// The folder of the server in the state folder; it holds the record of the tree.
     pub place: PathBuf,
-    /// The server, which names its cgroup on Linux.
     pub server: uuid::Uuid,
-    /// The daemon program, which is the launcher on Linux (R-331).
     pub launcher: PathBuf,
 }
 
@@ -51,20 +44,14 @@ impl Drop for Launch {
     }
 }
 
-/// A running server and its tree. When it drops, each process of the tree whose identity
-/// holds is ended, and the cgroup with it, so no part of the tree outlives the record of the
-/// daemon (a stop of the daemon, a drop of the node).
+/// A running server; its drop ends the whole tree, so no process outlives the daemon's record.
 pub struct Running {
     pub child: Child,
-    /// The main process of the server.
     pub leader: Identity,
-    /// The processes of the tree at the last poll; the leader is one of them.
     pub known: Vec<Identity>,
     pub cgroup: Option<PathBuf>,
     record: PathBuf,
-    /// The API key of this start, in memory only (Section 2.1).
     pub key: Zeroizing<String>,
-    /// The tree was ended and waited for; it is not signalled again.
     ended: bool,
     #[cfg(target_os = "linux")]
     startup: Option<tokio::net::UnixStream>,
@@ -78,8 +65,7 @@ impl Drop for Running {
     }
 }
 
-/// The parts of a running server that end its tree, apart from the handle of its child, so
-/// the end runs on a blocking thread (it reads `ps` on macOS and waits for the cgroup).
+/// The parts that end the tree, without the child handle, so the end can run on a blocking thread.
 #[derive(Clone)]
 struct Tree {
     leader: Identity,
@@ -89,16 +75,13 @@ struct Tree {
 }
 
 impl Tree {
-    /// Sends `signal` to each known process whose identity holds.
     fn signal_all(&self, signal: Signal) {
         for identity in self.known.iter().chain([&self.leader]) {
             let _gone_or_sent = tree::signal(identity, signal);
         }
     }
 
-    /// Ends the whole tree now: the cgroup, and each known process whose identity holds. On
-    /// macOS the walk is read once more first, so a child made after the last poll is ended
-    /// too.
+    /// On macOS the walk is read again first, so a child made after the last poll is ended too.
     #[cfg_attr(
         target_os = "linux",
         expect(unused_mut, reason = "only the macOS walk adds to known")
@@ -124,7 +107,6 @@ impl Tree {
 }
 
 impl Running {
-    /// The record of the tree now.
     fn record(&self) -> Record {
         Record {
             known: self.known.clone(),
@@ -132,9 +114,7 @@ impl Running {
         }
     }
 
-    /// The step at which the launcher failed, when the main process ended with the exit code of
-    /// a launcher step and the launcher wrote that code to its failure file (an exit code of
-    /// the runtime alone is not taken as one of the launcher).
+    /// The launcher step that failed; an exit code alone is not taken without the launcher's failure file.
     #[must_use]
     pub fn launch_failure(&self, status: std::process::ExitStatus) -> Option<Containment> {
         let step = Containment::of_exit_code(status.code()?)?;
@@ -153,11 +133,8 @@ impl Running {
         }
     }
 
-    /// Reads the processes of the tree, keeps them, and writes the record.
-    ///
     /// # Errors
-    /// An error of the read of the tree (the cgroup on Linux, the walk on macOS), or an empty
-    /// tree while the main process still runs (it left the tree): both fail closed.
+    /// Fails closed when the tree cannot be read or the running main process has left it.
     pub async fn poll(&mut self) -> io::Result<Vec<Identity>> {
         #[cfg(target_os = "linux")]
         if let Some(startup) = self.startup.take() {
@@ -188,8 +165,7 @@ impl Running {
         if running && members.is_empty() {
             return Err(io::Error::other("the main process runs outside its tree"));
         }
-        // With a delegated cgroup a runtime can move itself into a different cgroup of the
-        // daemon; a main process that runs but is not in its own cgroup has left it (T1).
+        // A delegated cgroup lets a runtime move itself out; a running leader outside it has left (T1).
         #[cfg(target_os = "linux")]
         if running && !members.contains(&self.leader) {
             return Err(io::Error::other(
@@ -201,20 +177,17 @@ impl Running {
         Ok(members)
     }
 
-    /// Ends the whole tree on this thread: only for a drop, which cannot wait.
     fn end_now(&mut self) {
         self.tree().end();
     }
 
-    /// Ends the whole tree on a blocking thread.
     async fn end_off_thread(&self) {
         let tree = self.tree();
         let _ = tokio::task::spawn_blocking(move || tree.end()).await;
     }
 }
 
-/// The first port of `range` that is free on loopback now. The listener check after the start
-/// confirms that the server, not another program, holds it.
+/// The listener check after the start confirms that the server, not another program, holds the port.
 #[must_use]
 pub fn free_port(range: RangeInclusive<u16>) -> Option<u16> {
     range
@@ -222,8 +195,6 @@ pub fn free_port(range: RangeInclusive<u16>) -> Option<u16> {
         .find(|port| TcpListener::bind(("127.0.0.1", *port)).is_ok())
 }
 
-/// Empties the temporary folder of the process (no link followed) and makes it again, 0700.
-///
 /// # Errors
 /// An I/O error of the folder.
 pub fn fresh_temporary(state: &Path, path: &Path) -> io::Result<()> {
@@ -269,7 +240,6 @@ fn command(launch: &Launch, cgroup: Option<&Path>) -> Command {
     command
 }
 
-/// The cgroup of the server on Linux; none on macOS.
 #[cfg_attr(
     not(target_os = "linux"),
     expect(
@@ -291,16 +261,19 @@ fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
     }
 }
 
-/// Starts the process of `launch` in its tree.
-///
-/// Call it from a thread that lives as long as the daemon (a worker of the async runtime),
-/// never from `spawn_blocking`: on Linux the parent-death signal of the launcher fires when
-/// the thread that started it ends ([`super::tree::linux::launch`]).
+/// Call it from a long-lived runtime worker, not `spawn_blocking`: the launcher's parent-death
+/// signal fires when the thread that started it ends ([`super::tree::linux::launch`]).
 ///
 /// # Errors
-/// `containment_failed` when the cgroup cannot be made (Linux); `start_failed` for an error of
-/// the folders, the ring or the start.
-pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
+/// `containment_failed` when the cgroup or the join fails (Linux); `start_failed` otherwise.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        clippy::unused_async,
+        reason = "only the wait for the cgroup join awaits, and it is Linux only"
+    )
+)]
+pub async fn spawn(launch: &Launch) -> Result<Running, Cause> {
     fresh_temporary(&launch.state, &launch.temporary).map_err(|_| Cause::StartFailed)?;
     match std::fs::remove_file(launch.place.join(tree::LAUNCH_FAILURE)) {
         Ok(()) => {}
@@ -337,10 +310,11 @@ pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
         startup,
     };
     running.record().save(&running.record);
+    #[cfg(target_os = "linux")]
+    let running = join::joined(running).await?;
     Ok(running)
 }
 
-/// Ends the whole tree at once, also when its main process has already ended.
 pub async fn kill(running: &mut Running) {
     let _ = running.poll().await;
     running.end_off_thread().await;
@@ -348,8 +322,6 @@ pub async fn kill(running: &mut Running) {
     running.ended = true;
 }
 
-/// Asks the tree to end, waits at most 10 seconds for the main process, then ends what is
-/// left of the tree.
 pub async fn stop(running: &mut Running) {
     let _ = running.poll().await;
     let tree = running.tree();

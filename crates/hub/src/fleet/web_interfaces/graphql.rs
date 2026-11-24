@@ -1,8 +1,4 @@
-//! The web interfaces GraphQL part: root `Mutation` (K1; WEB-001, WEB-002, WEB-008, WEB-009).
-//!
-//! The output types are in `types`; `Device.webInterfaces` and
-//! `Device.webInterfaceSuggestions` belong to the devices part. Each mutation writes its change,
-//! one audit entry and one event in one transaction: if any step fails, nothing is stored.
+//! K1 (WEB-001, WEB-002, WEB-008, WEB-009): each mutation stores its change, audit entry and event in one transaction.
 
 mod error;
 mod open_in;

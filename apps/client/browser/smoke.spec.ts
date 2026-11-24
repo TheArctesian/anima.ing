@@ -2,8 +2,6 @@ import { expect, test } from './test-hub';
 import { createHash } from 'node:crypto';
 import { HUB_ORIGIN } from './synthetic/access';
 
-// Smoke: the harness serves the production build, the client signs in by cookie and lists the fixture devices.
-
 const FIXTURE_DEVICES = ['win-desktop', 'win-legacy', 'mac-mini', 'gpu-box', 'nas'];
 
 test.describe('signed in', () => {
@@ -33,7 +31,6 @@ test.describe('signed in', () => {
     expect(hub.recording.where({ operation: 'Devices' }).length).toBeGreaterThan(0);
     expect(watch.pageErrors).toEqual([]);
     expect(watch.consoleErrors).toEqual([]);
-    // T5 owns the CSP: when the build violates the K7 policy, this fails and the line below is marked.
     expect(watch.cspViolations).toEqual([]);
   });
 });

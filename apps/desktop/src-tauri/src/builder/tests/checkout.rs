@@ -1,5 +1,4 @@
-//! The checkout against a real repository: a local bare repository stands in for GitHub through
-//! the repository seam, so these tests run git itself (BLD-040, BLD-041, D-15, D-21).
+//! A local bare repository stands in for GitHub, so these tests run git itself (BLD-040, BLD-041, D-15, D-21).
 
 use std::{
     fs,
@@ -17,8 +16,7 @@ use crate::builder::{
     steps::{Workshop, config_is_clones},
 };
 
-/// A bare repository whose `main` holds one commit, and a commit on another branch that is
-/// not on `main`, as a fork's commit served through the main repository would be.
+/// `off_main` is on another branch, as a fork's commit served through the main repository would be.
 struct Origin {
     _root: tempfile::TempDir,
     bare: PathBuf,
@@ -121,7 +119,6 @@ async fn bld_040_a_commit_on_main_is_checked_out_with_a_clean_tree() {
 async fn d_15_a_clone_whose_config_a_build_changed_is_cloned_anew() {
     let origin = origin();
     checkout(&origin, &origin.on_main).await.unwrap();
-    // A build redirects the repository and marks the clone.
     let url = format!("file://{}", origin.bare.display());
     git(
         &origin.clone,
@@ -167,12 +164,10 @@ fn d_15_only_the_keys_git_clone_writes_are_trusted() {
     }
 }
 
-/// The path of the loose object `name` in `clone`.
 fn loose(clone: &Path, name: &str) -> PathBuf {
     clone.join(".git/objects").join(&name[..2]).join(&name[2..])
 }
 
-/// Makes every object in `clone` loose, as a build can: the packs are unpacked and removed.
 fn unpack(clone: &Path) {
     let packs = clone.join(".git/objects/pack");
     let aside = clone.parent().unwrap().join("packs-aside");
@@ -196,9 +191,7 @@ fn unpack(clone: &Path) {
     }
 }
 
-/// What a hostile build step can do to the clone without touching its config (D-21): commit an
-/// orphan `C`, then overwrite the loose object of `on_main` with one of the same name whose
-/// parent is `C`. Returns `C`.
+/// A hostile build step that leaves the config alone (D-21): `on_main`'s loose object gets an orphan parent `C`, which it returns.
 fn forge_parent(origin: &Origin) -> String {
     let clone = &origin.clone;
     git(clone, &["checkout", "-q", "--orphan", "evil"]);
@@ -227,15 +220,13 @@ fn forge_parent(origin: &Origin) -> String {
         ],
     );
     fs::remove_file(&forged_at).unwrap();
-    // The zlib bytes of a loose object do not hold its name: copied under `main`'s name, git
-    // reads the forged commit whenever it asks for `main`'s.
+    // A loose object's bytes do not hold its name, so git reads the forged commit as `main`'s.
     let target = loose(clone, &origin.on_main);
     fs::remove_file(&target).unwrap();
     fs::copy(loose(clone, &forged), &target).unwrap();
     evil
 }
 
-/// Adds a commit to `main` of the origin, so `on_main` is no longer its tip; returns it.
 fn advance_main(origin: &Origin) -> String {
     let work = origin.clone.parent().unwrap().join("advance");
     let bare = origin.bare.to_str().unwrap();
@@ -253,8 +244,7 @@ async fn d_21_a_forged_object_never_lets_a_commit_off_main_be_checked_out() {
     let origin = origin();
     let tip = advance_main(&origin);
     checkout(&origin, &tip).await.unwrap();
-    // git checks the hash of the commit it is named, not of the parents it walks to: the forged
-    // object is `on_main`, the parent of `main`'s tip.
+    // git checks the hash of the commit it is named, not of the parents it walks to.
     let evil = forge_parent(&origin);
     // The forgery works on git itself: without fsck, the ancestry check would pass.
     git(

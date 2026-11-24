@@ -1,5 +1,4 @@
-//! `anima event list`, `audit list` and `event watch` against the scripted hubs (CMD-020,
-//! CMD-026, API-002).
+//! CMD-020, CMD-026, API-002.
 
 use serde_json::{Value, json};
 

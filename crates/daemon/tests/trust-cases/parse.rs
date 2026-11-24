@@ -1,12 +1,8 @@
-// The parser of `trust-cases.txt`, pulled in with `include!` by the daemon's test module
-// (crates/daemon/src/units/trust_cases.rs) and the desktop shell's
-// (apps/desktop/src-tauri/src/daemon/tests/trust.rs), so there is one copy. It is a file of
-// items, not a module, and has no `use`: the including file brings in nothing it needs.
+// The daemon's and the desktop shell's tests both `include!` this file, so it holds items only, with no `use`.
 
 const TABLE: &str = include_str!("../trust-cases.txt");
 
-// One row of the table of trust cases, with its account files resolved. `passwd` and
-// `group_file` are `None` for a file the row says cannot be read.
+// `passwd` and `group_file` are `None` for a file the row says cannot be read.
 #[expect(
     clippy::struct_excessive_bools,
     reason = "a row of the table: each flag is one of its columns"
@@ -26,7 +22,7 @@ struct Case {
     differs: bool,
 }
 
-// One of exactly two words; any other value panics, so a typo cannot read as a verdict.
+// Any other value panics, so a typo cannot read as a verdict.
 fn word(value: &str, yes: &str, no: &str, row: &str) -> bool {
     if value == yes {
         true
@@ -37,8 +33,6 @@ fn word(value: &str, yes: &str, no: &str, row: &str) -> bool {
     }
 }
 
-// The rows of `trust-cases.txt`; a malformed row or a duplicate set panics, so the table
-// cannot rot quietly.
 fn cases() -> Vec<Case> {
     let mut sets = std::collections::HashMap::new();
     let mut rows = Vec::new();

@@ -65,7 +65,7 @@ fn a_given_root_holds_everything_but_the_socket() {
     ] {
         assert!(path.starts_with("/srv/trial"), "{}", path.display());
     }
-    // S5: the hub's socket for the link is in the short folder of the database's socket.
+    // S5: the link socket shares the database's short socket folder.
     assert_eq!(folders.link_socket(), PathBuf::from("/srv/s/link.sock"));
 }
 
@@ -88,7 +88,6 @@ fn a_root_that_the_database_refuses_is_refused() {
     assert!(Folders::new(PathBuf::from("relative"), PathBuf::from("/srv/s")).is_err());
 }
 
-/// ROL-053: a copy of the root is a copy of the hub. The socket folder is not state.
 #[test]
 fn rol_053_each_file_of_the_state_of_a_hub_is_below_its_root() {
     let folders = Folders::new("/var/lib/anima/hub".into(), "/run/anima".into()).unwrap();

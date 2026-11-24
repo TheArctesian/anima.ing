@@ -1,5 +1,3 @@
-//! D-9 and WEB-008: the leaf-certificate probe against servers on the loopback only.
-
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -33,7 +31,6 @@ fn server_config(chain: Vec<CertificateDer<'static>>, key: PrivateKeyDer<'static
         .unwrap()
 }
 
-/// A self-signed certificate for `localhost`, `127.0.0.1` and `::1`, and its server config.
 fn self_signed() -> (CertificateDer<'static>, ServerConfig) {
     let names = vec![
         "localhost".to_owned(),
@@ -46,8 +43,6 @@ fn self_signed() -> (CertificateDer<'static>, ServerConfig) {
     (der.clone(), server_config(vec![der], key.into()))
 }
 
-/// Serves one TLS handshake on `listener`, then answers how many application bytes the
-/// client sent before it closed; `None` when the handshake failed.
 fn tls_server(listener: TcpListener, config: ServerConfig) -> JoinHandle<Option<usize>> {
     tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
@@ -62,7 +57,6 @@ fn tls_server(listener: TcpListener, config: ServerConfig) -> JoinHandle<Option<
     })
 }
 
-/// A server on 127.0.0.1 and the `https` URL of it.
 async fn local_server(config: ServerConfig) -> (String, JoinHandle<Option<usize>>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -100,7 +94,7 @@ async fn d_9_the_probe_looks_up_a_host_name() {
 
 #[tokio::test]
 async fn d_9_the_probe_connects_to_an_ipv6_address() {
-    // A host without an IPv6 loopback cannot run this test; it passes there without probing.
+    // A host without an IPv6 loopback skips this test.
     let Ok(listener) = TcpListener::bind("[::1]:0").await else {
         return;
     };
@@ -133,7 +127,6 @@ async fn d_9_the_probe_reads_the_leaf_of_a_chain_not_its_issuer() {
     assert_eq!(read, Fingerprint::of_certificate(leaf.der()));
 }
 
-/// Always presents one certificate and signs with one key, whatever the client asks.
 #[derive(Debug)]
 struct Presents(Arc<CertifiedKey>);
 
@@ -143,7 +136,6 @@ impl ResolvesServerCert for Presents {
     }
 }
 
-/// Probes a server that presents another server's certificate but signs with its own key.
 async fn probe_replayed_certificate(
     version: &'static SupportedProtocolVersion,
 ) -> Result<Fingerprint, CertificateError> {
@@ -198,9 +190,7 @@ async fn d_9_a_server_that_never_answers_times_out_within_the_patience() {
 
 #[tokio::test]
 async fn d_9_a_closed_port_is_unreachable() {
-    // Port 0 is never open: no process can listen on it, so no parallel test can open it
-    // either, and the connect fails at once (refused on Linux, unassignable on macOS). A
-    // freed ephemeral port could be taken by another test before the probe arrives.
+    // Port 0 is never open, so no parallel test can take it and the connect fails at once.
     let url = "https://127.0.0.1:0/";
     let started = Instant::now();
     let answer = leaf_fingerprint(&origin(url), PATIENCE).await;

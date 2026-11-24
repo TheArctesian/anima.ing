@@ -1,8 +1,7 @@
-/** The threads of this computer (THR-011 to THR-016): what the desktop shell answers, checked, and how the page orders it. */
+/** The threads of this computer (THR-011 to THR-016). */
 
 export type Program = 'claude_code' | 'codex';
 
-/** One row of the list: a session of an agent program, read from its file. */
 export interface ThreadRow {
   readonly id: string;
   readonly program: Program;
@@ -12,14 +11,10 @@ export interface ThreadRow {
   readonly model: string | null;
   readonly started: Date | null;
   readonly last: Date | null;
-  /** How the session file ends (THR-055): what the last lines say of the turn. */
   readonly tail: Tail;
 }
 
-/**
- * How the session file ends (THR-055); for a thread that the runner drives, what its program reports: `asks` (a
- * request waits for the person) or `running` (the program works).
- */
+/** How the session file ends (THR-055), or for a thread that the runner drives, what its program reports. */
 export type Tail = 'turn_ended' | 'stopped' | 'open_tool' | 'open' | 'nothing' | 'asks' | 'starting' | 'running';
 
 export type ToolKind = 'command' | 'edit' | 'read' | 'search' | 'web' | 'agent' | 'plan' | 'question' | 'other';
@@ -48,7 +43,6 @@ export interface Thread extends ThreadRow {
   readonly dropped: number;
 }
 
-/** What the page needs from the desktop shell; tests pass their own. */
 export interface ThreadsShell {
   list(program: Program | null): Promise<readonly ThreadRow[]>;
   read(id: string): Promise<Thread>;
@@ -62,11 +56,27 @@ export function programName(program: Program): string {
   return program === 'claude_code' ? 'Claude Code' : 'Codex';
 }
 
-/** The last part of a folder path: the name a person knows the folder by. */
+/** The folder below the home folder in which the runner makes the folder of each thread with no project (THR-041). */
+const SCRATCH = 'Anima Scratch';
+
+function partsOf(folder: string): readonly string[] {
+  return folder.split(/[/\\]/).filter((part) => part !== '');
+}
+
+export function scratchHome(folder: string | null): string | null {
+  if (folder === null || partsOf(folder).at(-2) !== SCRATCH) return null;
+  return folder.slice(0, folder.replace(/[/\\]+$/u, '').search(/[/\\][^/\\]+$/u));
+}
+
+export function isScratchHome(folder: string): boolean {
+  return partsOf(folder).at(-1) === SCRATCH;
+}
+
+/** "No project" for a scratch folder, as T3 Code names a scratch thread, so that no generated name shows. */
 export function folderName(folder: string | null): string {
   if (folder === null) return 'No folder';
-  const parts = folder.split(/[/\\]/).filter((part) => part !== '');
-  return parts.at(-1) ?? folder;
+  if (scratchHome(folder) !== null || isScratchHome(folder)) return 'No project';
+  return partsOf(folder).at(-1) ?? folder;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -99,7 +109,7 @@ function rowFrom(value: unknown): ThreadRow | null {
   };
 }
 
-/** The shell's answer as rows, or `null` when it is not one. The answer crosses a process boundary, so each field is checked. */
+/** The answer crosses a process boundary, so each field is checked. */
 export function rowsFrom(answer: unknown): readonly ThreadRow[] | null {
   if (!Array.isArray(answer)) return null;
   const rows = (answer as unknown[]).map(rowFrom);
@@ -143,7 +153,7 @@ function entryFrom(value: unknown): Entry | null {
   }
 }
 
-/** The shell's answer as a thread, or `null` when it is not one. An entry of a kind this client does not know is left out. */
+/** An entry of a kind this client does not know is left out. */
 export function threadFrom(answer: unknown): Thread | null {
   const row = rowFrom(answer);
   if (row === null || !isRecord(answer) || !Array.isArray(answer.entries)) return null;
@@ -156,7 +166,6 @@ export function threadFrom(answer: unknown): Thread | null {
   };
 }
 
-/** The rows of `program` (all when `null`) whose title, folder or branch holds `search`, without regard to case. */
 export function narrowed(rows: readonly ThreadRow[], program: Program | null, search: string): readonly ThreadRow[] {
   const wanted = search.trim().toLowerCase();
   return rows.filter((row) => {
@@ -166,7 +175,25 @@ export function narrowed(rows: readonly ThreadRow[], program: Program | null, se
   });
 }
 
-/** How long ago `last` was, in the short words of the list. */
+export const UNTITLED = 'Untitled thread';
+
+/** With no title, the program, folder and start name a thread, so that no two rows read the same (TH46). */
+export interface Named {
+  readonly title: string | null;
+  readonly program: Program;
+  readonly folder: string | null;
+  readonly started: Date | null;
+}
+
+export function shownTitle(thread: Named): string {
+  const title = thread.title?.trim() ?? '';
+  if (title !== '') return title;
+  if (thread.folder === null && thread.started === null) return UNTITLED;
+  const place = thread.folder === null ? '' : ` in ${folderName(thread.folder)}`;
+  const at = thread.started === null ? '' : `, ${thread.started.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
+  return `${programName(thread.program)}${place}${at}`;
+}
+
 export function ago(last: Date | null, now: Date): string {
   if (last === null) return '';
   const minutes = Math.floor((now.getTime() - last.getTime()) / 60_000);
@@ -179,7 +206,6 @@ export function ago(last: Date | null, now: Date): string {
 /** A part of the timeline: one entry, or the tool calls that follow each other, drawn as one block (THR-014). */
 export type Part = { readonly kind: 'entry'; readonly entry: Exclude<Entry, { kind: 'tool' }> } | { readonly kind: 'tools'; readonly tools: readonly ToolCall[] };
 
-/** The entries as parts: tool calls that follow each other are one block. */
 export function parts(entries: readonly Entry[]): readonly Part[] {
   const out: Part[] = [];
   let run: ToolCall[] = [];
@@ -199,7 +225,6 @@ export function parts(entries: readonly Entry[]): readonly Part[] {
   return out;
 }
 
-/** The words for the kind of a tool call. */
 export function kindName(kind: ToolKind): string {
   const names: Record<ToolKind, string> = {
     command: 'Command',
@@ -215,7 +240,6 @@ export function kindName(kind: ToolKind): string {
   return names[kind];
 }
 
-/** The result of a call in a few words: the lines added and removed by an edit, a failure, or the lines of the output. */
 export function resultWords(tool: ToolCall): string {
   if (tool.failed) return 'Failed';
   if (tool.patch !== null) {

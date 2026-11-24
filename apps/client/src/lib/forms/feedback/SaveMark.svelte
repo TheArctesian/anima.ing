@@ -2,15 +2,13 @@
   import Icon from '$lib/icons/Icon.svelte';
 
   interface Props {
-    /** Where the setting's save stands; nothing shows before its first change. */
     mark: 'saving' | 'saved' | 'faded' | 'refused' | undefined;
   }
 
   const { mark }: Props = $props();
 </script>
 
-<!-- Beside a setting's label (UR-7, D17): "Saving…" turns into "Saved", which fades; "Not saved" stays until the value
-     saves. The region is always there, so a screen reader hears each change. -->
+<!-- UR-7, D17. The region is always there, so a screen reader hears each change. -->
 <span class="mark {mark ?? ''}" role="status">
   {#if mark === 'saving'}
     Saving…
@@ -49,9 +47,14 @@
     color: var(--status-down-text);
   }
 
+  /* Reduced motion follows the Settings choice (MOT-043): On reduces whatever the OS says, Off keeps full motion. */
   @media (prefers-reduced-motion: reduce) {
-    .mark {
+    :global(:root:not([data-motion='full'])) .mark {
       transition: none;
     }
+  }
+
+  :global(:root[data-motion='reduce']) .mark {
+    transition: none;
   }
 </style>

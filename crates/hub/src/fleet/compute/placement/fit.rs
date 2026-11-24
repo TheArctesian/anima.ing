@@ -15,10 +15,9 @@ pub struct KvShape {
 }
 
 impl KvShape {
-    /// KV bytes for each token: 2 (K and V) × layers × KV heads × head dimension × element bytes.
+    /// KV bytes for each token; the 2 counts K and V.
     ///
     /// # Errors
-    ///
     /// `FitError::Overflow` when the product does not fit in 64 bits.
     pub fn bytes_per_token(&self) -> Result<u64, FitError> {
         [
@@ -48,19 +47,21 @@ pub struct FitRequest {
 /// The verdict for one variant on one node (FIT-005).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FitVerdict {
-    /// The model fits at the requested context and uses this many bytes.
-    Fits { used_bytes: u64 },
-    /// The model does not fit at the requested context; this smaller context fits (FIT-004).
+    Fits {
+        used_bytes: u64,
+    },
+    /// A smaller context fits (FIT-004).
     ReducedContext {
         largest_context: u64,
         used_bytes: u64,
     },
-    /// The model does not fit at any context of at least one step; this many bytes are missing.
-    NoContext { missing_bytes: u64 },
+    /// Not even one context step fits.
+    NoContext {
+        missing_bytes: u64,
+    },
 }
 
 impl FitVerdict {
-    /// The reason in words, for the operator.
     #[must_use]
     pub fn reason(&self, request: &FitRequest) -> String {
         match self {
@@ -88,10 +89,7 @@ pub enum FitError {
     Overflow,
 }
 
-/// Estimate whether a variant fits on a node, and if not, the largest context that fits.
-///
 /// # Errors
-///
 /// `FitError::Overflow` when a memory size does not fit in 64 bits.
 pub fn estimate_fit(request: &FitRequest) -> Result<FitVerdict, FitError> {
     let per_token = request.kv.bytes_per_token()?;

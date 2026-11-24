@@ -167,41 +167,29 @@ export type ServerCertificate = AcceptServerCertificateMutation['acceptServerCer
 
 export type { Protocol };
 
-/**
- * What a connection test is given: a saved device's ID, or unsaved host, settings and credential (DEV-013); with
- * `protocol: RDP` the hub also reads the server certificate (K4 §3).
- */
+/** A saved device's ID, or unsaved host, settings and credential (DEV-013); RDP also reads the certificate (K4 §3). */
 export type { ConnectionTestInput };
 
-/**
- * The result of a connection test (SEC-006, SEC-007). `serverCertificate` and `certificateChanged` are present
- * when the input names a K1 field (`protocol`, `rdp`, `vnc` or `password`); an SSH test without one is sent as in
- * Phase 1, so a hub without K1 still answers it.
- */
+/** SEC-006, SEC-007. The certificate fields come only when the input names a K1 field, so a hub without K1 still answers. */
 export type ConnectionTest = TestConnectionMutation['testConnection'] &
   Partial<Pick<TestRemoteConnectionMutation['testConnection'], 'serverCertificate' | 'certificateChanged' | 'certificateMatched'>>;
 
 /** The device's copy and paste flags a session obeys (RA-033, K4 §8.7). */
 export type SessionTransfer = NonNullable<DeviceTransferQuery['device']>['transfer'];
 
-/** What the hub says after storing a password (K1 `RdpSettings`, `VncSettings`). */
 export interface StoredCredential {
   readonly credentialStored: boolean;
 }
 
-/** A host key the hub has accepted. */
 export type AcceptedHostKey = AcceptHostKeyMutation['acceptHostKey'];
 
-/** One page of a device's session history, as the hub answers it (Section 6.7). */
 export type SessionPage = DeviceSessionsQuery['sessions'];
 
 /** The session calls through a `Hub` (CQ-045). Failures stay the hub's typed K7 errors. */
 export interface SessionsApi {
   /**
-   * Start a `protocol` session on `deviceId`. `CONFLICT` while no host key (SSH, K4 §6) or, for RDP, no server
-   * certificate is accepted (K4 §1); when the device has reached its session limit (RA-036); and when the device's
-   * address changed after its stored credential for `protocol` was entered, until the operator enters it again
-   * (SEC-011).
+   * `CONFLICT` with no accepted host key (SSH, K4 §6) or RDP certificate (K4 §1), at the session limit (RA-036), or
+   * when the address changed after the stored credential was entered (SEC-011).
    */
   startSession(deviceId: string, protocol: Protocol, display: SessionDisplay): Promise<HubResult<SessionTicket>>;
   /** End the session, or return an ended one unchanged with its recorded `endReason` (D-4). */
@@ -214,10 +202,7 @@ export interface SessionsApi {
   acceptServerCertificate(deviceId: string, fingerprintSha256: string): Promise<HubResult<ServerCertificate>>;
   /** The device's copy and paste flags (RA-033); `NOT_FOUND` when the device is gone. */
   transferPolicy(deviceId: string): Promise<HubResult<SessionTransfer>>;
-  /**
-   * Store `password` as the device's RDP or VNC credential (GW-015). A failure keeps the hub's code but has fixed
-   * text, so the password can never reach the operator's screen or a log through an error (LOG-007).
-   */
+  /** GW-015: a failure keeps the hub's code with fixed text, so the password never reaches the screen or a log (LOG-007). */
   setCredential(protocol: RemoteProtocol, deviceId: string, password: string): Promise<HubResult<StoredCredential>>;
   /** One page of the device's sessions; pass the previous `endCursor` as `after` for older ones (Section 6.7). */
   history(deviceId: string, first: number, after: string | null): Promise<HubResult<SessionPage>>;
@@ -249,7 +234,6 @@ function carriesSecret(input: ConnectionTestInput): boolean {
   return [input.password, input.credential].some((field) => field !== undefined && field !== null);
 }
 
-/** Whether `input` uses a K1 field, so only a hub with K1 can answer it. */
 function namesK1(input: ConnectionTestInput): boolean {
   return [input.protocol, input.rdp, input.vnc, input.password].some((field) => field !== undefined && field !== null);
 }

@@ -6,19 +6,24 @@ use std::collections::{BTreeMap, VecDeque};
 
 use agent_threads::control::{Change, Refusal, RunState, ThreadRow, Update};
 use agent_threads::drive::{
-    ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Request,
+    ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Prompt, Request,
 };
 use agent_threads::first_line;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::codex::Codex;
+use super::codex::{Changed, Codex};
 
 mod asks;
+mod commands;
 mod events;
 mod kept;
+mod queue;
+mod record;
+mod settings;
 mod step;
 
+pub use settings::Changes;
 pub use step::Step;
 
 /// How many updates of a thread the runner keeps for a client that starts to watch, and their
@@ -28,6 +33,25 @@ const KEPT_BYTES: usize = 4 * 1024 * 1024;
 
 /// The source of a prompt that came through the local socket (THR-042).
 pub const THIS_COMPUTER: &str = "this computer";
+
+/// A prompt as the clients see it: its words and what went with it (TH111), never the bytes.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Shown {
+    pub text: String,
+    pub images: u32,
+    pub files: Vec<String>,
+}
+
+impl Shown {
+    #[must_use]
+    pub fn of(prompt: &Prompt) -> Self {
+        Self {
+            text: prompt.text.clone(),
+            images: prompt.images(),
+            files: prompt.files(),
+        }
+    }
+}
 
 /// A request that waits for the person, with the line it came in, so that a runner that starts
 /// again reads it again (THR-030).
@@ -52,6 +76,12 @@ pub struct Saved {
     pub effort: Option<Effort>,
     pub codex_thread: Option<String>,
     pub codex_turn: Option<String>,
+    /// What the person changed of a Codex thread after its start (TH110).
+    #[serde(default)]
+    pub codex_changed: Changed,
+    /// The changes of the person that the program did not take yet (TH110).
+    #[serde(default)]
+    pub asked: settings::Asked,
     /// The open requests: the ID of the runner and the line of the program.
     pub open: Vec<(Uuid, String)>,
     /// The open requests whose answer went to the holder: after a restart they close, so that
@@ -68,7 +98,6 @@ pub struct Saved {
 #[derive(Debug)]
 pub struct Thread {
     pub row: ThreadRow,
-    effort: Option<Effort>,
     driver: Driver,
     open: BTreeMap<Uuid, Open>,
     program: Option<ProgramState>,
@@ -79,18 +108,32 @@ pub struct Thread {
     /// The holder started the program: a line may be written to it.
     held: bool,
     last_error: Option<String>,
+    /// The queue stopped after an interrupt or a failed turn, until the person sends (TH109).
+    stalled: bool,
+    /// The prompts that went as turns of their own and whose turns did not end yet: a queued
+    /// prompt goes only at none, also when the program says that it is idle in between. Claude
+    /// Code holds a prompt sent during a turn and runs it as a turn of its own (THR-020), so each
+    /// counts; a Codex steer ends with the running turn (TH109).
+    pending: u32,
+    /// The changes of the person that the program does not have yet (TH110).
+    asked: settings::Asked,
+    /// The commands and the skills that the program last named (TH117). In memory only.
+    lists: Option<agent_threads::drive::CommandLists>,
+    /// When a call last asked Codex for its skills again (TH117).
+    lists_asked: Option<std::time::Instant>,
 }
 
 impl Thread {
     #[must_use]
-    pub fn new(row: ThreadRow, effort: Option<Effort>, codex: Option<Codex>) -> Self {
+    pub fn new(mut row: ThreadRow, effort: Option<Effort>, codex: Option<Codex>) -> Self {
+        // A record of an older runner keeps the effort beside the row.
+        row.effort = row.effort.or(effort);
         let driver = match codex {
             Some(codex) => Driver::Codex(Box::new(codex)),
             None => Driver::Claude(ClaudeDecoder::new()),
         };
         Self {
             row,
-            effort,
             driver,
             open: BTreeMap::new(),
             program: None,
@@ -100,80 +143,12 @@ impl Thread {
             controls: 0,
             held: false,
             last_error: None,
+            stalled: false,
+            pending: 0,
+            asked: settings::Asked::default(),
+            lists: None,
+            lists_asked: None,
         }
-    }
-
-    /// The record of the thread.
-    #[must_use]
-    pub fn saved(&self) -> Saved {
-        let (codex_thread, codex_turn) = match &self.driver {
-            Driver::Codex(codex) => (codex.thread.clone(), codex.turn.clone()),
-            Driver::Claude(_) => (None, None),
-        };
-        Saved {
-            row: self.row.clone(),
-            effort: self.effort,
-            codex_thread,
-            codex_turn,
-            open: self
-                .open
-                .iter()
-                .map(|(id, open)| (*id, open.line.clone()))
-                .collect(),
-            seq: self.seq,
-            answering: self
-                .open
-                .iter()
-                .filter(|(_, open)| open.answering)
-                .map(|(id, _)| *id)
-                .collect(),
-        }
-    }
-
-    /// What the record holds of this thread but the lines of its requests: when it does not
-    /// change, the record need not be written again.
-    #[must_use]
-    pub fn record_key(&self) -> String {
-        let (codex_thread, codex_turn) = match &self.driver {
-            Driver::Codex(codex) => (codex.thread.as_deref(), codex.turn.as_deref()),
-            Driver::Claude(_) => (None, None),
-        };
-        let open: Vec<(&Uuid, bool)> = self
-            .open
-            .iter()
-            .map(|(id, open)| (id, open.answering))
-            .collect();
-        serde_json::to_string(&(&self.row, codex_thread, codex_turn, open)).unwrap_or_default()
-    }
-
-    /// A thread from its record, after a start of the runner; its open requests are read again
-    /// from their lines and keep their IDs.
-    #[must_use]
-    pub fn restore(saved: Saved, codex: Option<Codex>) -> Self {
-        let codex = codex.map(|codex| codex.known(saved.codex_thread, saved.codex_turn));
-        let mut thread = Self::new(saved.row, saved.effort, codex);
-        // What the program last said stays true until it says more (THR-085).
-        thread.program = match thread.row.state {
-            RunState::Idle => Some(ProgramState::Idle),
-            RunState::Working | RunState::NeedsYou => Some(ProgramState::Working),
-            RunState::Starting | RunState::Stopped | RunState::Unknown => None,
-        };
-        thread.held = thread.row.state != RunState::Stopped;
-        thread.seq = saved.seq;
-        for (id, line) in saved.open {
-            let events = thread.decode(line.as_bytes());
-            if let Some(DriveEvent::Request(request)) = events.into_iter().next() {
-                thread.open.insert(
-                    id,
-                    Open {
-                        request,
-                        line,
-                        answering: saved.answering.contains(&id),
-                    },
-                );
-            }
-        }
-        thread
     }
 
     fn decode(&mut self, line: &[u8]) -> Vec<DriveEvent> {
@@ -185,14 +160,20 @@ impl Thread {
 
     /// The first steps of a new thread: its prompt, and the first line of the program.
     pub fn begin(&mut self, prompt: &str) -> Vec<Step> {
+        self.begin_with(&Prompt::plain(prompt))
+    }
+
+    /// The first steps of a new thread whose first prompt has files (TH111).
+    pub fn begin_with(&mut self, prompt: &Prompt) -> Vec<Step> {
         self.held = true;
-        self.row.title = first_line(prompt, agent_threads::TITLE_LENGTH);
-        let mut steps = vec![prompt_change(prompt)];
+        self.pending = 1;
+        self.row.title = first_line(&prompt.text, agent_threads::TITLE_LENGTH);
+        let mut steps = Self::sent(&Shown::of(prompt));
         match &mut self.driver {
             Driver::Claude(_) => {
                 // Its answer names the models of the program (TH104).
                 steps.push(Step::Write(ClaudeInput::initialize("anima-initialize")));
-                steps.push(Step::Write(ClaudeInput::prompt(prompt)));
+                steps.push(Step::Write(ClaudeInput::prompt_with(prompt)));
             }
             Driver::Codex(codex) => {
                 steps.push(Step::Write(codex.begin()));
@@ -208,25 +189,44 @@ impl Thread {
     ///
     /// # Errors
     /// [`Refusal::NotRunning`] when the program ended or the holder did not start it yet.
-    pub fn send(&mut self, text: &str) -> Result<Vec<String>, Refusal> {
+    pub fn send(&mut self, prompt: &Prompt, person: bool) -> Result<Vec<String>, Refusal> {
         if self.row.state == RunState::Stopped || !self.held {
             return Err(Refusal::NotRunning);
         }
+        // A prompt of the person starts the queue again after the turn of it; a prompt of an
+        // agent does not (TH109).
+        if person {
+            self.stalled = false;
+        }
+        // Each prompt is a turn that must end before the queue goes on, but a steer of a running
+        // Codex turn. The state of the program is not read here: it says Idle until the program
+        // says that the new turn runs, so a second prompt in that moment would not count.
+        let steers = matches!(&self.driver, Driver::Codex(codex) if codex.steers());
+        if !steers || self.pending == 0 {
+            self.pending = self.pending.saturating_add(1);
+        }
         Ok(match &mut self.driver {
-            Driver::Claude(_) => vec![ClaudeInput::prompt(text)],
-            Driver::Codex(codex) => codex.prompt(text).into_iter().collect(),
+            Driver::Claude(_) => vec![ClaudeInput::prompt_with(prompt)],
+            Driver::Codex(codex) => codex.prompt(prompt),
         })
     }
 
-    /// The holder took the lines of a prompt: it is shown with its source (THR-042).
+    /// The holder took the lines of a prompt: it is shown with its source (THR-042) and its
+    /// files (TH111).
     #[must_use]
-    pub fn sent(text: &str) -> Vec<Step> {
-        vec![prompt_change(text)]
+    pub fn sent(shown: &Shown) -> Vec<Step> {
+        vec![Step::Change(Change::Prompt {
+            text: shown.text.clone(),
+            source: THIS_COMPUTER.to_owned(),
+            images: shown.images,
+            files: shown.files.clone(),
+        })]
     }
 
     /// The person stops the running turn; the program stays. Each open request closes (THR-087:
     /// a stop by the person).
     pub fn interrupt(&mut self) -> Vec<Step> {
+        self.stall();
         let mut steps = self.turn_stop();
         steps.extend(self.close_all("the turn was stopped"));
         steps.extend(self.state_change());
@@ -265,10 +265,12 @@ impl Thread {
         };
         self.row.ended = Some(why);
         self.row.state = RunState::Stopped;
+        // A stop also stops the queue (THR-102).
+        self.row.queued.clear();
         self.row.open.clear();
         steps.push(Step::Change(Change::State {
             state: RunState::Stopped,
-            row: self.row.clone(),
+            row: Box::new(self.row.clone()),
         }));
         steps
     }
@@ -322,7 +324,7 @@ impl Thread {
         self.row.open = open;
         Some(Step::Change(Change::State {
             state,
-            row: self.row.clone(),
+            row: Box::new(self.row.clone()),
         }))
     }
 
@@ -348,5 +350,7 @@ fn prompt_change(text: &str) -> Step {
     Step::Change(Change::Prompt {
         text: text.to_owned(),
         source: THIS_COMPUTER.to_owned(),
+        images: 0,
+        files: Vec::new(),
     })
 }

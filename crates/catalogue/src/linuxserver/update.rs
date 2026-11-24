@@ -1,5 +1,4 @@
-//! The one change that the generator may make to a recipe that exists (SF-244): a
-//! new digest or a new version. Each other change needs a person who reads it.
+//! The generator changes a recipe that exists only by a new digest or version (SF-244).
 
 use serde_json::Value;
 
@@ -8,7 +7,6 @@ use crate::{
     entry::{Entry, MachineTest, Reviewed},
 };
 
-/// Why the generator writes nothing to a recipe that exists.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Change {
     #[error("the recipe was written by a person")]
@@ -24,12 +22,10 @@ fn json(text: Option<&str>) -> Result<Value, Change> {
         .ok_or(Change::NotReadable)
 }
 
-/// `value` at `path`, a key at each step.
 fn at<'a>(value: &'a mut Value, path: &[&str]) -> Option<&'a mut Value> {
     path.iter().try_fold(value, |node, key| node.get_mut(*key))
 }
 
-/// Copies the value at `path` of `from` into `into`.
 fn copy(into: &mut Value, from: &Value, path: &[&str]) -> Result<(), Change> {
     let new = path
         .iter()
@@ -40,7 +36,6 @@ fn copy(into: &mut Value, from: &Value, path: &[&str]) -> Result<(), Change> {
     Ok(())
 }
 
-/// The images of an entry: each service and its reference.
 fn images(entry: &Value) -> Vec<&str> {
     entry
         .pointer("/anima/images")
@@ -57,15 +52,12 @@ fn entry(existing: &Recipe) -> Option<Entry> {
     (existing.entry.as_deref()).and_then(|text| serde_json::from_str::<Entry>(text).ok())
 }
 
-/// The review state of a recipe that exists, which the generator writes again unchanged
-/// (SF-255).
+/// The review state, which the generator writes again unchanged (SF-255).
 #[must_use]
 pub fn reviewed(existing: &Recipe) -> Option<Reviewed> {
     entry(existing).and_then(|entry| entry.anima.reviewed)
 }
 
-/// The last test on a machine of a recipe that exists, which the generator keeps only for the
-/// same digest.
 #[must_use]
 pub fn tested(existing: &Recipe) -> Option<MachineTest> {
     entry(existing).map(|entry| entry.anima.last_test)
@@ -74,10 +66,7 @@ pub fn tested(existing: &Recipe) -> Option<MachineTest> {
 /// Whether the generator may write `made` over `existing`.
 ///
 /// # Errors
-/// [`Change::Reviewed`] for a recipe with no `origin`, which a person wrote;
-/// [`Change::NotReadable`] for an entry that is not JSON; [`Change::NotOnlyPin`] when the two
-/// recipes differ in more than the version, the images, the days of the reads and the pin, and
-/// a reset of the last test on a machine to `not-tested`.
+/// [`Change`] when a person wrote `existing`, an entry is not JSON, or more than the pin changed.
 pub fn update(existing: &Recipe, made: &Recipe) -> Result<(), Change> {
     let mut old = json(existing.entry.as_deref())?;
     let new = json(made.entry.as_deref())?;

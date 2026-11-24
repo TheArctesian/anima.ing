@@ -4,9 +4,7 @@ import { expectNoViolations, servePolicy, violationsSoFar, type PolicyReports } 
 import { TERMINAL_TITLE } from '../synthetic/tunnels';
 import { openDevices } from './screens';
 
-// Plan criterion 2, the live sessions, client side: one SSH session (xterm.js) and one VNC session (Guacamole) open over
-// the synthetic tunnels. Every test here runs under the exact K7 policy, with the browser's own violation report as a
-// second channel (WP-44 T5), so a session never needs more than K7 allows (SEC-001).
+// Plan criterion 2, client side: each session runs under the exact K7 policy with a report channel (WP-44 T5, SEC-001).
 
 let policy: PolicyReports;
 

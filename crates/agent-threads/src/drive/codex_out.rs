@@ -292,8 +292,10 @@ fn replied(id: ProgramRequestId, value: &Value) -> Vec<DriveEvent> {
         facts(account::codex_account(result))
     } else if result.get("rateLimits").is_some() {
         facts(account::codex_limits(&result["rateLimits"]))
+    } else if let Some(skills) = super::codex_skills(result) {
+        vec![skills]
     } else {
-        turn_facts::codex_models(result).into_iter().collect()
+        super::codex_models(result).into_iter().collect()
     };
     events.insert(0, reply(id, value));
     events

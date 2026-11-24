@@ -1,5 +1,5 @@
 //! What a program says of a thread beside its words: the diff and the plan of a Codex turn
-//! (TH101, TH102), the use of tokens (TH103) and the models that a program offers (TH104).
+//! (TH101, TH102) and the use of tokens (TH103). The models are in `lists/models.rs`.
 //! Pure: each function reads one JSON value. None of these facts names the account (THR-051).
 
 use serde::{Deserialize, Serialize};
@@ -8,10 +8,9 @@ use serde_json::Value;
 use super::{DriveEvent, text_of};
 use crate::{MAX_TEXT, held};
 
-/// The most steps of one plan and the most models of one list that a decoder keeps.
+/// The most steps of one plan that a decoder keeps.
 const MAX_STEPS: usize = 100;
-const MAX_MODELS: usize = 200;
-/// The most bytes of one step, one model value or one model name.
+/// The most bytes of one step.
 const MAX_WORDS: usize = 1024;
 
 /// One step of the plan of a turn.
@@ -42,18 +41,6 @@ pub struct Usage {
     pub output: u64,
     /// What Claude Code says the turn cost, in US dollars at list price; Codex says no cost.
     pub cost_usd: Option<f64>,
-}
-
-/// A model that a program offers, for the picker of a start.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ModelChoice {
-    /// The value that a start names (`--model` of Claude Code, `model` of Codex).
-    pub value: String,
-    /// The name for the person.
-    pub name: String,
-    /// The efforts of reasoning that the model takes; empty when it takes none.
-    pub efforts: Vec<String>,
-    pub default_effort: Option<String>,
 }
 
 /// `turn/diff/updated` of Codex: the whole diff of the turn so far.
@@ -98,32 +85,6 @@ pub fn codex_usage(params: &Value) -> DriveEvent {
     }
 }
 
-/// The answer to `model/list` of Codex, or `None` when `result` is not one. A hidden model is
-/// left out, as the picker of Codex leaves it out.
-pub fn codex_models(result: &Value) -> Option<DriveEvent> {
-    let data = result.get("data")?.as_array()?;
-    if !data.iter().all(|model| model.get("model").is_some()) {
-        return None;
-    }
-    let models = data
-        .iter()
-        .filter(|model| model["hidden"].as_bool() != Some(true))
-        .take(MAX_MODELS)
-        .map(|model| ModelChoice {
-            value: held(&text_of(&model["model"]), MAX_WORDS),
-            name: held(&text_of(&model["displayName"]), MAX_WORDS),
-            efforts: list(&model["supportedReasoningEfforts"], MAX_STEPS)
-                .filter_map(|effort| effort["reasoningEffort"].as_str())
-                .map(|effort| held(effort, MAX_WORDS))
-                .collect(),
-            default_effort: model["defaultReasoningEffort"]
-                .as_str()
-                .map(|effort| held(effort, MAX_WORDS)),
-        })
-        .collect();
-    Some(DriveEvent::Models { models })
-}
-
 /// The use of the turn from the `result` line of Claude Code. The context now is the last
 /// request of the turn (its last entry of `iterations`); the window is the largest of the
 /// models that the turn used.
@@ -153,34 +114,6 @@ pub fn claude_usage(value: &Value) -> Option<DriveEvent> {
             cost_usd: value["total_cost_usd"].as_f64(),
         },
     })
-}
-
-/// The list `models` of the answer of Claude Code to `initialize`, or `None` when the answer has
-/// none. Only this list is read: the rest of the answer names the account (THR-051).
-pub fn claude_models(answer: &Value) -> Option<DriveEvent> {
-    let models = answer.get("models")?.as_array()?;
-    let models = models
-        .iter()
-        .take(MAX_MODELS)
-        .filter(|model| model["value"].is_string())
-        .map(|model| {
-            let efforts: Vec<String> = if model["supportsEffort"].as_bool() == Some(true) {
-                list(&model["supportedEffortLevels"], MAX_STEPS)
-                    .filter_map(Value::as_str)
-                    .map(|effort| held(effort, MAX_WORDS))
-                    .collect()
-            } else {
-                Vec::new()
-            };
-            ModelChoice {
-                value: held(&text_of(&model["value"]), MAX_WORDS),
-                name: held(&text_of(&model["displayName"]), MAX_WORDS),
-                efforts,
-                default_effort: None,
-            }
-        })
-        .collect();
-    Some(DriveEvent::Models { models })
 }
 
 fn list(value: &Value, most: usize) -> impl Iterator<Item = &Value> {

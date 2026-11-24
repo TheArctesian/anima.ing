@@ -1,6 +1,3 @@
-//! What the hub says of a repository on GitHub, as the scripted hub answers it: one repository,
-//! one project, and the K1 rows of pull requests, issues, comments, workflows and runs.
-
 use serde_json::{Value, json};
 
 use super::fake_hub::{FakeHub, data};
@@ -9,8 +6,6 @@ pub const REPOSITORY: &str = "0190a000-0000-7000-9002-000000000001";
 pub const FULL_NAME: &str = "acme/anima";
 pub const SHA: &str = "0123456789abcdef0123456789abcdef01234567";
 
-/// Answers `ProjectList` with one project that holds `acme/anima`, so a name resolves to
-/// [`REPOSITORY`].
 pub fn project(hub: &FakeHub) {
     let repository = json!({
         "id": REPOSITORY, "fullName": FULL_NAME, "url": "https://github.com/acme/anima",
@@ -34,7 +29,6 @@ pub fn read() -> Value {
     json!({ "at": "2026-11-14T09:00:00Z", "stale": false, "problem": null })
 }
 
-/// A connection of `nodes` under `root`, with a next page when `next` is a cursor.
 pub fn connection(root: &str, nodes: &[Value], next: Option<&str>) -> Value {
     let edges: Vec<Value> = nodes
         .iter()
@@ -150,7 +144,6 @@ pub fn code_directory(entries: &[Value], partial: bool) -> Value {
         "partial": partial, "read": read() } })
 }
 
-/// A `CodeFile`: `content` is `TEXT`, `BINARY` or `TOO_LARGE`; `text` only for `TEXT`.
 pub fn code_file(path: &str, content: &str, text: Option<&str>) -> Value {
     json!({ "codeFile": {
         "repository": REPOSITORY, "ref": "main", "path": path, "name": "notes.txt", "sha": SHA,

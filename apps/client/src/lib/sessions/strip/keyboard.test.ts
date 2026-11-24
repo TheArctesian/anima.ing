@@ -37,7 +37,6 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     }) as unknown as Hub,
 }));
 
-// The layout's sessions API is the fixture's fake hub; its port is spied on, and `popOut` is the test's port.
 vi.mock('$lib/sessions/api', async (importOriginal) => {
   const { fake: state } = await import('./layout.fixture');
   return { ...(await importOriginal<typeof import('$lib/sessions/api')>()), sessionsApi: () => state.api };

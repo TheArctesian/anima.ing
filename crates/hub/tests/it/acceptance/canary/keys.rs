@@ -1,5 +1,4 @@
-//! An API key made, shown once, used as a bearer, refused where D-23 refuses it, and used for a
-//! `/metrics` scrape; and a key the hub never made (INT-003, D-23, D-24, LOG-007).
+//! An API key on each path, and a key the hub never made (INT-003, D-23, D-24, LOG-007).
 
 use axum::http::StatusCode;
 use chrono::{DateTime, TimeDelta, Utc};
@@ -14,7 +13,6 @@ use crate::hub::USERNAME;
 const CREATE: &str =
     "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret key { id } } }";
 
-/// Makes a READ key with the operator's `token` and uses it on each path.
 pub async fn api_key(hub: &WholeHub, token: &str, now: DateTime<Utc>, secrets: &mut Secrets) {
     let input = json!({ "name": "scraper", "scope": "READ", "madeFor": "USER",
                         "expiresAt": now + TimeDelta::days(30) });

@@ -1,5 +1,4 @@
-//! Signs give proposed resources found in the repository (PRO-003); a sign that goes removes
-//! a found proposal but never a confirmed one, which only the operator makes (PRO-004).
+//! Signs propose resources (PRO-003); a removed sign never removes one the operator confirmed (PRO-004).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -11,7 +10,6 @@ use crate::hub::error;
 const CONFIRM: &str = "mutation($id: ID!) { confirmProjectResource(id: $id) \
     { id kind state evidence { sign path } confirmedAt } }";
 
-/// `(kind, state, evidence)` of each resource, sorted by kind.
 fn shown(project: &Value) -> Vec<(String, String, Value)> {
     let mut all: Vec<(String, String, Value)> = project["resources"]
         .as_array()
@@ -75,7 +73,6 @@ async fn pro_004_a_sign_that_goes_removes_a_found_resource_but_not_a_confirmed_o
     assert_eq!(resource["state"], "CONFIRMED", "{confirmed}");
     assert!(resource["confirmedAt"].is_string());
 
-    // Both files go in a later push.
     files(&kit.stub, "me/site", &["README.md"], &[]);
     let mut pushed = Repo::new(1, "me/site");
     pushed.pushed_at = "2030-05-03T10:00:00Z".to_owned();

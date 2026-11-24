@@ -90,7 +90,8 @@ test("the Windows installer carries the seven programs, and a Windows cargo buil
   const carried = conf("tauri.windows-carried.json").bundle;
   const programs = ["anima", "anima-daemon", "anima-hub", "anima-local-hub", "anima-database", "anima-gateway", "anima-link"];
   expect((carried["externalBin"] as string[]).toSorted()).toEqual(programs.map((program) => `binaries/${program}`).toSorted());
-  expect(carried["resources"]).toEqual({ "database/": "database/" });
+  // The tree of the database, and the licence files of deploy/release/licences.txt (cli-licences.test.ts).
+  expect(Object.entries(carried["resources"] as Record<string, string>).filter(([, to]) => !to.startsWith("licences/"))).toEqual([["database/", "database/"]]);
   // The bundle script builds each program it names under that name, and passes the file to tauri build.
   const script = readFileSync(join(root, "deploy/bin/windows-bundle.ps1"), "utf8");
   expect(script).toContain("'--config', 'src-tauri/tauri.windows-carried.json'");
@@ -101,21 +102,31 @@ test("the Windows installer carries the seven programs, and a Windows cargo buil
   expect(workflow.jobs["windows-gates"]?.steps.some((step) => step.run?.includes("binaries"))).toBe(false);
 });
 
+test("only the gates job leaves folders out of Defender's scanning, never the job that builds what people download", () => {
+  const excludes = (job: string) => workflow.jobs[job]?.steps.some((step) => step.run?.includes("Add-MpPreference")) ?? false;
+  expect(excludes("windows-gates")).toBe(true);
+  expect(excludes("windows")).toBe(false);
+  expect(excludes("windows-trial")).toBe(false);
+  // Before the checkout, so that the files of the checkout and of each build are not scanned either.
+  const steps = workflow.jobs["windows-gates"]?.steps ?? [];
+  expect(steps.findIndex((step) => step.run?.includes("Add-MpPreference"))).toBeLessThan(steps.findIndex((step) => step.uses?.startsWith("actions/checkout@")));
+});
+
 interface Gates { jobs: Record<string, { env?: Record<string, string>; if?: string; with?: Record<string, string>; steps?: Step[] }> }
 const gates = Bun.YAML.parse(readFileSync(join(root, ".github/workflows/gates.yml"), "utf8")) as Gates;
 
 test("merge trains build Windows from the same dev base and provide its trial artifacts", () => {
-  expect(gates.jobs["windows"]?.if).toBe("(github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true'");
+  expect(gates.jobs["windows"]?.if).toBe("${{ !inputs.ref && (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true' }}");
   expect(gates.jobs["windows"]?.with?.["dev_sha"]).toBe("${{ needs.base.outputs.dev_sha }}");
   const steps = workflow.jobs["windows"]?.steps ?? [];
   expect(steps.find((step) => step.uses?.startsWith("actions/checkout@"))?.with?.["ref"]).toBe("${{ inputs.ref }}");
 });
 
-test.skipIf(process.platform === "win32")("the gates reject failed Windows builds and never excuse a skipped Linux gate", () => {
+test.skipIf(process.platform === "win32")("the gates reject a failed Windows or Mac job and never excuse a skipped Linux gate", () => {
   const script = gates.jobs["passed"]?.steps?.[0]?.run;
   expect(script).toBeDefined();
   for (const [windows, linux, success] of [["success", "success", true], ["skipped", "success", true], ["failure", "success", false], ["cancelled", "success", false], ["success", "skipped", false]] as const) {
-    const results = { windows: { result: windows }, "rust-test": { result: linux } };
+    const results = { windows: { result: windows }, macos: { result: windows }, "rust-test": { result: linux } };
     const ran = Bun.spawnSync(["sh", "-c", script ?? "exit 9"], { env: { ...process.env, RESULTS: JSON.stringify(results) }, stdout: "pipe", stderr: "pipe" });
     expect(ran.exitCode === 0).toBe(success);
   }

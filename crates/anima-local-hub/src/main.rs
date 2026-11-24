@@ -1,26 +1,6 @@
-//! `anima-local-hub`: wires the command line to the library and sets the exit code. No rules here.
-//!
-//!   anima-local-hub run     [--root <folder> --socket-folder <folder>] [--listen <address:port>]
-//!                           [--hosted-cloud-key-file <file>] [--public-origin <origin>]
-//!                           [--web-root <folder>]
-//!   anima-local-hub install --tree <folder> [--root ... --socket-folder ...] [--listen ...] [--step-back]
-//!   anima-local-hub update  --tree <folder> [--root ... --socket-folder ...]
-//!   anima-local-hub remove  [--root <folder> --socket-folder <folder>]
-//!   anima-local-hub status  [--root <folder> --socket-folder <folder>]
-//!   anima-local-hub start | stop  [--root <folder> --socket-folder <folder>]
-//!   anima-local-hub account status | totp-new <name> | create <name>  [--root ... --socket-folder ...]
-//!
-//! `install` runs from the application bundle: it copies the programs beside it and the
-//! PostgreSQL tree to the hub's folder and makes the unit that runs `run` at login.
-//! `install` refuses programs of a lower version than the installed ones unless `--step-back`
-//! is given; the application never gives it. `--listen` is a loopback address with a port.
-//! `update` does the same only when the installed hub exists and its programs differ from the
-//! ones that the application carries, and are not older; it prints `{"updated":true}` or
-//! `{"updated":false}` (`{"updated":false,"older":true}` and a line on standard error when the programs are older). It keeps the `--listen`
-//! that `install` was given.
-//!
-//! `run` prints `ready` on standard output when the hub serves, and stops the group in order
-//! on SIGTERM or SIGINT. Nothing it prints holds a secret (LOG-007).
+//! `anima-local-hub`: wires the command line to the library and sets the exit code.
+//! `install` refuses older programs unless `--step-back` is given; the application never gives it.
+//! `run` prints `ready` when the hub serves; nothing it prints holds a secret (LOG-007).
 
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
@@ -53,7 +33,7 @@ const EXIT_ANOTHER_COPY: u8 = 10;
 /// `account`: the hub is not ready, so its database does not run.
 const EXIT_NOT_READY: u8 = 20;
 
-/// The hub's address when none is given: the default of K7. S5 owns this choice.
+/// The default of K7; S5 owns this choice.
 pub(crate) const LISTEN: &str = "127.0.0.1:8443";
 
 type Failure = Box<dyn std::error::Error>;
@@ -109,7 +89,7 @@ fn main() -> ExitCode {
     }
 }
 
-/// NET-003: without TLS the hub may listen on loopback only. The hub checks it too.
+/// NET-003: without TLS the hub listens on loopback only.
 fn loopback(listen: SocketAddr) -> Result<SocketAddr, Failure> {
     if !listen.ip().is_loopback() {
         return Err("--listen must be a loopback address".into());
@@ -146,8 +126,7 @@ fn serve(place: &Place, listen: SocketAddr, programs: RunFiles) -> Result<ExitCo
     })
 }
 
-/// The unit of the user who runs this program. `systemctl --user` finds the user's systemd
-/// through the two session variables.
+/// `systemctl --user` finds the user's systemd through the two session variables.
 struct User {
     home: PathBuf,
     session: Vec<(&'static str, String)>,
@@ -183,7 +162,6 @@ impl User {
     }
 }
 
-/// What the application carries: the programs beside this one, and `tree`.
 fn carried_by_application(tree: PathBuf) -> Result<Carried, Failure> {
     let program = std::env::current_exe()?;
     Ok(Carried::new(
@@ -269,8 +247,8 @@ fn start_or_stop(place: &Place, start: bool) -> Result<ExitCode, Failure> {
     Ok(ExitCode::SUCCESS)
 }
 
-/// Standard input and output pass to the hub as they are: they carry the secrets. On a
-/// failure only a fixed message is printed, never the hub's own text.
+/// Standard input and output carry the secrets, so they pass to the hub as they are.
+/// On a failure only a fixed message is printed, never the hub's own text.
 fn account(place: &Place, verb: AccountVerb, name: Option<Name>) -> Result<ExitCode, Failure> {
     let action = match (verb, name) {
         (AccountVerb::Status, None) => Action::Status,

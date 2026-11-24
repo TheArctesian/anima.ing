@@ -1,10 +1,4 @@
-//! One send through one channel: read its settings, open its secrets, render the template,
-//! encode for the kind and hand the result to the egress (NOT-002, D-17, D-21). The dispatcher
-//! and `sendTestNotification` both send through here, so a test notification takes the same
-//! path as a real one.
-//!
-//! Everything before the egress is pure apart from the vault's decryption; the only I/O is the
-//! connection, bounded by the egress time limit.
+//! One send through one channel (NOT-002, D-17, D-21); test and real notifications share it.
 
 use super::{
     failure::Failure,
@@ -21,8 +15,7 @@ use crate::fleet::{
     },
 };
 
-/// What a send needs besides the channel: the vault that opens its secrets and the one egress
-/// path (P3-003).
+/// Every send leaves through the one egress path (P3-003).
 #[derive(Clone)]
 pub(in crate::fleet::notifications) struct Sender {
     vault: Vault,
@@ -34,13 +27,7 @@ impl Sender {
         Self { vault, egress }
     }
 
-    /// Sends a `kind` notification with `values` through `channel`, worded by the channel's
-    /// template or else by `defaults` (NOT-007).
-    ///
-    /// # Errors
-    /// `SETUP_FAILED` when the stored settings or template cannot be read; `SECRET_UNREADABLE`
-    /// when the sealed secrets do not open for these settings; nothing is sent then. Otherwise
-    /// what [`outgoing`] or the egress refused.
+    /// Without both channel templates, `defaults` words the notice (NOT-007).
     pub(in crate::fleet::notifications) async fn send(
         &self,
         channel: &Channel,
@@ -75,7 +62,6 @@ impl Sender {
         self.deliver(request).await
     }
 
-    /// Hands `request` to the egress, which bounds it by its time limit.
     async fn deliver(&self, request: Outgoing) -> Result<(), Failure> {
         let sent = match request {
             Outgoing::Http(request) => self.egress.send_http(request).await,

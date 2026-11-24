@@ -1,4 +1,4 @@
-//! `anima context`: names for hub origins, and which one is current (CMD-015).
+//! CMD-015.
 
 pub mod config;
 pub mod select;

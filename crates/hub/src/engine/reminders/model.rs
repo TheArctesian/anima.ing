@@ -10,9 +10,7 @@ use crate::{
     ids::{FiringId, PlaceId, ReminderRuleId, SampleId},
 };
 
-/// The class of the thing that an occurrence is about: A, B or C (K-E5; K-E6 names it
-/// `DataClass`). The engine uses it only
-/// for the text on a lock screen (REM-009).
+/// The class of what an occurrence is about (K-E5); the engine uses it only for the text on a lock screen (REM-009).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Class {
     A,
@@ -23,7 +21,6 @@ pub enum Class {
 /// What an extension or the engine gives to the reminders (K-E6 Section 1).
 #[derive(Clone, Debug, PartialEq)]
 pub enum Occurrence {
-    /// A record that a source or a domain stored.
     Record {
         source: String,
         kind: String,
@@ -32,14 +29,12 @@ pub enum Occurrence {
         class: Class,
         at: DateTime<Utc>,
     },
-    /// A number at a time.
     Measure {
         key: String,
         value: f64,
         class: Class,
         at: DateTime<Utc>,
     },
-    /// A thing that ends at a time.
     Expiry {
         subject: String,
         record: Reference,
@@ -49,7 +44,6 @@ pub enum Occurrence {
     },
 }
 
-/// Below or above a value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Comparison {
     Below,
@@ -57,7 +51,7 @@ pub enum Comparison {
 }
 
 impl Comparison {
-    /// Whether `measured` is on this side of `value`. A value that is equal is on no side.
+    /// A value that is equal is on no side.
     #[must_use]
     pub fn holds(self, measured: f64, value: f64) -> bool {
         match self {
@@ -67,23 +61,20 @@ impl Comparison {
     }
 }
 
-/// The change of a place state that a place rule waits for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Crossing {
     Arrive,
     Leave,
 }
 
-/// When a time rule is due.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TimeTrigger {
-    /// At a local time of `zone`, on each day of `days` (each day when empty).
+    /// Each day when `days` is empty.
     Daily {
         at: NaiveTime,
         days: Vec<Weekday>,
         zone: Tz,
     },
-    /// One time, at an instant.
     Once(DateTime<Utc>),
 }
 
@@ -95,15 +86,13 @@ pub enum Trigger {
         place: PlaceId,
         on: Crossing,
     },
-    /// A `Record` with this source and kind whose title contains `contains`, in any case.
+    /// `contains` matches the title in any case.
     SourceEvent {
         source: String,
         kind: String,
         contains: Option<String>,
     },
-    /// The health of a source account changes to `state`; `account` is `None` for any account.
-    /// The source framework gives the change as a `Record` with the source `sources`, the
-    /// state as its kind and the account as its record.
+    /// `account` is `None` for any account; the change arrives as a `Record` of the source `sources` with the state as its kind.
     SourceState {
         account: Option<Reference>,
         state: String,
@@ -123,9 +112,10 @@ pub enum Trigger {
 /// The one condition that stops a reminder (REM-003).
 #[derive(Clone, Debug, PartialEq)]
 pub enum Unless {
-    /// A `Record` with this source and kind is known for the day of the rule.
-    RecordToday { source: String, kind: String },
-    /// The newest measure of the key is on this side of the value.
+    RecordToday {
+        source: String,
+        kind: String,
+    },
     Measure {
         key: String,
         is: Comparison,
@@ -149,7 +139,6 @@ impl Default for Limits {
     }
 }
 
-/// One rule, as the evaluation reads it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rule {
     pub id: ReminderRuleId,
@@ -164,8 +153,6 @@ pub struct Rule {
     pub updated_at: DateTime<Utc>,
 }
 
-/// What the rule sent before: the last firing that was not suppressed, how many of them the
-/// day of the rule has, and the subjects that fired.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct History {
     pub last_fired: Option<DateTime<Utc>>,
@@ -173,15 +160,12 @@ pub struct History {
     pub subjects: HashSet<String>,
 }
 
-/// What the hub knew before this moment: the records of the day of the rule, as
-/// `(source, kind)`, and the newest measure of each key.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Known {
     pub records_today: HashSet<(String, String)>,
     pub measures: HashMap<String, f64>,
 }
 
-/// A place whose state changed in this sweep, with the sample that changed it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlaceChange {
     pub place: PlaceId,
@@ -190,7 +174,6 @@ pub struct PlaceChange {
     pub observed_at: DateTime<Utc>,
 }
 
-/// One evaluation: the time, the new occurrences, the place changes and what was known.
 #[derive(Clone, Copy, Debug)]
 pub struct Moment<'a> {
     pub now: DateTime<Utc>,
@@ -199,8 +182,7 @@ pub struct Moment<'a> {
     pub known: &'a Known,
 }
 
-/// Why a firing that was due is not sent. It is stored, so that the operator sees it; it is
-/// not sent later.
+/// A stopped firing is stored so that the operator sees it; it is not sent later.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Stop {
     Cooldown,
@@ -218,12 +200,11 @@ impl Stop {
     }
 }
 
-/// One firing of a rule. `stopped` is `None` for a firing to send.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Due {
     pub rule: ReminderRuleId,
     pub revision: i32,
-    /// What the firing is about; one rule fires at most one time for one subject.
+    /// One rule fires at most one time for one subject.
     pub subject: String,
     pub text: String,
     pub class: Class,
@@ -253,7 +234,6 @@ impl FiringState {
         }
     }
 
-    /// The state whose stored text is `text`.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         [
@@ -268,7 +248,6 @@ impl FiringState {
     }
 }
 
-/// One stored firing, as the operator reads it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Firing {
     pub id: FiringId,
@@ -278,7 +257,6 @@ pub struct Firing {
     pub text: String,
     pub class: Class,
     pub state: FiringState,
-    /// Why a suppressed firing was not sent.
     pub reason: Option<String>,
     pub due_at: DateTime<Utc>,
     pub sent_at: Option<DateTime<Utc>>,

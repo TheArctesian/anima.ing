@@ -1,5 +1,4 @@
-//! The host sealed inside a secret (SEC-011): the frame, the comparison, and the two contexts
-//! that keep host-bound rows and rows from before apart.
+//! SEC-011: a secret is sealed with its host; host-bound rows and older rows use separate contexts.
 
 use proptest::prelude::*;
 
@@ -78,9 +77,6 @@ fn sec_011_a_row_from_before_opens_only_for_its_recorded_host() {
     ));
 }
 
-/// A database writer cannot rebind a host-bound row by giving it a recorded host, nor make a
-/// row from before skip its recorded host by clearing it: neither opens under the other
-/// context.
 #[test]
 fn sec_011_the_legacy_column_cannot_rebind_a_row() {
     let vault = vault_from(test_key());
@@ -109,7 +105,6 @@ fn sec_011_a_truncated_frame_is_malformed() {
 }
 
 proptest! {
-    /// Any host and secret come back as they went in.
     #[test]
     fn sec_011_a_frame_round_trips(
         host in ".{0,300}",
@@ -121,7 +116,6 @@ proptest! {
         prop_assert_eq!(secret.expose(), bytes.as_slice());
     }
 
-    /// Whatever bytes a frame holds, reading it never panics, and what it reads fits in them.
     #[test]
     fn sec_011_any_bytes_give_a_frame_or_malformed(
         plain in proptest::collection::vec(any::<u8>(), 0..64),

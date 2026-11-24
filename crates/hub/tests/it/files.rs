@@ -1,5 +1,5 @@
-//! The file store and the extraction proposals through the hub (K-E4 Sections 9 and 10;
-//! FIL-001 to FIL-005, VIS-001 to VIS-004, LOG-007).
+//! The file store and the extraction proposals (K-E4 Sections 9 and 10; FIL-001 to FIL-005,
+//! VIS-001 to VIS-004, LOG-007).
 
 mod archives;
 mod keys;
@@ -40,8 +40,6 @@ use crate::hub::{CLIENT, Hub, dependencies, set_operator, start};
 
 const BOOK: &str = "book:isbn-9780141439518";
 
-/// A hub with a file store in a folder of its own, its data keys in another, and the
-/// `/files/v1` routes beside `/graphql`.
 struct FileHub {
     app: Router,
     token: String,
@@ -84,7 +82,6 @@ impl FileHub {
         }
     }
 
-    /// Sends `request` from the test client.
     async fn send(&self, mut request: Request<Body>) -> (StatusCode, HeaderMap, Vec<u8>) {
         let peer: SocketAddr = format!("{CLIENT}:50000").parse().unwrap();
         request.extensions_mut().insert(ConnectInfo(peer));
@@ -94,7 +91,6 @@ impl FileHub {
         (status, headers, bytes.to_vec())
     }
 
-    /// Uploads `body` to `owner` as `query` says, with `token`.
     async fn upload_as(&self, token: &str, query: &str, body: Body) -> (StatusCode, Value) {
         let request = Request::post(format!("/files/v1/attachments?{query}"))
             .header(header::AUTHORIZATION, format!("Bearer {token}"))
@@ -124,8 +120,6 @@ impl FileHub {
         self.send(request).await
     }
 
-    /// A download whose body may end with an error: the status and the bytes, or `None` when
-    /// the body did not arrive whole.
     async fn try_download(&self, id: &str) -> Option<(StatusCode, Vec<u8>)> {
         let mut request = Request::get(format!("/files/v1/attachments/{id}"))
             .header(header::AUTHORIZATION, format!("Bearer {}", self.token))
@@ -139,7 +133,6 @@ impl FileHub {
         Some((status, body.to_bytes().to_vec()))
     }
 
-    /// Runs a GraphQL request on the same app.
     async fn post(&self, query: &str, variables: Value) -> Value {
         let body = json!({ "query": query, "variables": variables }).to_string();
         let request = Request::post("/graphql")
@@ -152,7 +145,6 @@ impl FileHub {
         serde_json::from_slice(&bytes).unwrap()
     }
 
-    /// Every regular file below the file store, staging copies included.
     fn stored_files(&self) -> Vec<PathBuf> {
         files_below(self.files.path())
     }
@@ -183,7 +175,6 @@ async fn count(pool: &PgPool, table: &str) -> i64 {
         .unwrap()
 }
 
-/// An API key of the read scope for the fixture operator.
 async fn read_key(pool: &PgPool) -> String {
     let bytes = [9_u8; 32];
     sqlx::query(

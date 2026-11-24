@@ -1,16 +1,9 @@
 //! Network probes, one per check type (CHK-001, CHK-007, CHK-012).
 //!
-//! [`probe`] runs one attempt and reports the raw outcome. A network failure is a
-//! [`ProbeResult`] with `ok: false`, never an `Err` or a panic. Invert, retries and status
-//! belong to the evaluation (CHK-008). Every probe resolves its host once, keeps only the
-//! addresses the [`AddressPolicy`] allows and connects to one of those addresses, so DNS
-//! rebinding cannot reach a refused address. SNMP checks run through [`snmp::observe`] with
-//! their opened secrets, and domain expiry checks through [`rdap::Rdap`], which keeps the
-//! RDAP bootstrap file between attempts. No probe starts a process or a shell on the hub;
-//! Docker and systemd checks send only fixed commands over the SSH link (CHK-012).
-//!
-//! PUSH and GROUP checks are not probed: the device calls the hub, or the children decide.
-//! For them [`probe`] returns a failed result saying so; the scheduler must not call it.
+//! A network failure is a [`ProbeResult`] with `ok: false`, never an `Err` or a panic; invert,
+//! retries and status belong to the evaluation (CHK-008). Every probe resolves its host once and
+//! connects only to an address the [`AddressPolicy`] allows, so DNS rebinding cannot reach a
+//! refused address. No probe starts a process or a shell on the hub (CHK-012).
 
 mod dns;
 pub(in crate::fleet::checks) mod docker;
@@ -39,30 +32,23 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// The device a probe is aimed at. HTTP and DNS checks name their own target in the
-/// configuration and ignore the host.
+/// HTTP and DNS checks name their own target in the configuration and ignore the host.
 #[derive(Clone, Debug)]
 pub struct ProbeTarget {
     pub host: String,
 }
 
-/// Replacements for the network, so tests can run without it. Crate-private: production
-/// code outside this crate cannot carry host overrides.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Overrides {
-    /// Lower-case host name to the addresses it resolves to.
+    /// Keyed by lower-case host name.
     pub hosts: Arc<HashMap<String, Vec<IpAddr>>>,
-    /// The port of every configured DNS server (default 53).
     pub dns_port: Option<u16>,
 }
 
-/// What a probe may do and when "now" is.
 #[derive(Clone, Debug)]
 pub struct ProbeEnv {
     pub policy: Arc<AddressPolicy>,
-    /// The instant certificate dates are judged against.
     pub now: DateTime<Utc>,
-    /// `host:port` of the Tailscale `LocalAPI` proxy, when one is configured (D-4).
     pub localapi: Option<String>,
     pub(crate) overrides: Overrides,
 }
@@ -78,14 +64,12 @@ impl ProbeEnv {
         }
     }
 
-    /// The same environment with this `LocalAPI` proxy.
     #[must_use]
     pub fn with_localapi(self, localapi: Option<String>) -> Self {
         Self { localapi, ..self }
     }
 }
 
-/// Runs one attempt of the check and reports what happened, within the check's time limit.
 pub async fn probe(
     target: &ProbeTarget,
     config: &CheckConfig,
@@ -98,9 +82,8 @@ pub async fn probe(
     within(config, run(target, config, secrets, env)).await
 }
 
-/// `attempt`, cut off at the check's time limit. This is the only timer that decides the
-/// outcome: an ICMP echo still waiting at the limit had no reply, whichever timer fires first,
-/// so the same case always gives the same message (CHK-001).
+/// The only timer that decides the outcome, so the same case always gives the same message
+/// (CHK-001).
 pub(super) async fn within(
     config: &CheckConfig,
     attempt: impl Future<Output = ProbeResult>,

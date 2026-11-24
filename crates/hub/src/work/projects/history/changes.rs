@@ -1,9 +1,9 @@
 //! A commit status written by Anima (K1; OD-E14, PRO-010, PRJ-028).
 //!
-//! Its context is fenced to `anima/`, so Anima cannot write the status of another system; its
-//! address, when it has one, is below the hub's own public origin (`ANIMA_PUBLIC_ORIGIN`); its
-//! description is at most 140 characters. A status can satisfy a required check and so open a
-//! merge: login or browser token only (D-23, R-100; K-E1 Section 13.5).
+//! Its context is fenced to `anima/`, so Anima cannot write the status of another system, and its
+//! address is below the hub's own public origin (`ANIMA_PUBLIC_ORIGIN`).
+//! A status can satisfy a required check and so open a merge: login or browser token only (D-23,
+//! R-100; K-E1 Section 13.5).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

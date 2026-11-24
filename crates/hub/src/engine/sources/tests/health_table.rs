@@ -1,5 +1,4 @@
-//! SRC-009: every rule of the health table, first match wins, and each boundary of three
-//! failures and three intervals.
+//! The health table (SRC-009).
 
 use chrono::{DateTime, TimeDelta, TimeZone as _, Utc};
 
@@ -14,7 +13,6 @@ fn now() -> DateTime<Utc> {
 
 const INTERVAL: TimeDelta = TimeDelta::minutes(15);
 
-/// Running, synced a minute ago, no failures: OK.
 fn healthy() -> HealthFacts {
     HealthFacts {
         paused: false,

@@ -1,10 +1,6 @@
-//! Reads the leaf certificate an `https` origin presents, for the system-browser mode (D-9),
-//! where the operator compares the fingerprint before opening the page.
-//!
-//! The probe connects only to the origin's own host and port, completes a TLS handshake and
-//! closes: it sends no request, so there is no redirect to follow. It accepts any chain on
-//! purpose (the point is to show an untrusted certificate), but still checks the handshake
-//! signatures, so the server proved it holds the leaf's key.
+//! Reads the leaf certificate an `https` origin presents, for the system-browser mode (D-9).
+//! The probe connects only to the origin's own host and port and sends no request.
+//! It accepts any chain, to show an untrusted certificate, but checks the handshake signatures.
 
 use std::{sync::Arc, time::Duration};
 
@@ -22,7 +18,7 @@ use super::{
     pin::{Host, PinnedOrigin},
 };
 
-/// Why the leaf certificate could not be read. Carries no host, port or TLS text (LOG-007).
+/// Carries no host, port or TLS text (LOG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum CertificateError {
     #[error("the host is not a name TLS can use")]
@@ -50,7 +46,6 @@ impl CertificateError {
     }
 }
 
-/// Accepts every chain and checks the handshake signatures: see the module comment.
 #[derive(Debug)]
 struct AnyChain(Arc<CryptoProvider>);
 
@@ -119,8 +114,7 @@ fn server_name(host: &Host) -> Result<ServerName<'static>, CertificateError> {
     }
 }
 
-/// The fingerprint of the leaf certificate the origin presents. `patience` bounds name
-/// lookup, connect and handshake together.
+/// `patience` bounds name lookup, connect and handshake together.
 pub async fn leaf_fingerprint(
     origin: &PinnedOrigin,
     patience: Duration,
@@ -144,7 +138,6 @@ async fn read_leaf(
         .connect(name, stream)
         .await
         .map_err(|_| CertificateError::Handshake)?;
-    // Dropping the session closes the connection; no application data is ever written.
     session
         .get_ref()
         .1

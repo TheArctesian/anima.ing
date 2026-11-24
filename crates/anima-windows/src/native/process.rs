@@ -48,7 +48,7 @@ pub fn matches(pid: u32, expected: &Path) -> io::Result<bool> {
     Ok(std::fs::canonicalize(actual)? == std::fs::canonicalize(expected)?)
 }
 
-/// The current account's SID, suitable for a per-user scheduled task principal.
+/// The current account's SID.
 /// # Errors
 /// Windows cannot inspect the current process token or format its SID.
 pub fn current_user() -> io::Result<String> {

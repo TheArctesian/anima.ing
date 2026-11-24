@@ -3,20 +3,19 @@ import { openPortsOf } from '$lib/desktop/link/shell';
 import { portRows, systemOf } from './ports';
 
 describe('the switches of the open ports (HMD-049)', () => {
-  it('a Mac and a Linux computer offer SSH and screen sharing, each naming the setting that it needs', () => {
+  it('a Mac offers SSH and screen sharing, each naming the setting that it needs', () => {
     const mac = portRows('mac', []);
     expect(mac.map((row) => row.port)).toEqual([22, 5900]);
     expect(mac.map((row) => row.on)).toEqual([false, false]);
-    expect(mac[0]?.needs).toContain('Remote Login');
+    expect(mac[0]?.needs).toContain('administrator approval');
     expect(mac[1]?.needs).toContain('Screen Sharing');
-    expect(portRows('linux', []).map((row) => row.port)).toEqual([22, 5900]);
   });
 
-  it('only Windows offers Remote Desktop', () => {
-    const windows = portRows('windows', [3389]);
-    expect(windows.map((row) => row.port)).toEqual([22, 3389, 5900]);
-    expect(windows.find((row) => row.port === 3389)).toMatchObject({ on: true, label: 'Remote Desktop (port 3389)' });
-    expect(windows.find((row) => row.port === 3389)?.needs).toContain('Remote Desktop');
+  it.each(['windows', 'linux'] as const)('%s offers Remote Desktop', (system) => {
+    const rows = portRows(system, [3389]);
+    expect(rows.map((row) => row.port)).toEqual([22, 3389, 5900]);
+    expect(rows.find((row) => row.port === 3389)).toMatchObject({ on: true, label: 'Remote Desktop (port 3389)' });
+    expect(rows.find((row) => row.port === 3389)?.needs).toContain(system === 'windows' ? 'Remote Desktop' : 'RDP server');
   });
 
   it('a row is on only when the list of the computer holds its port', () => {

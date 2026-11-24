@@ -1,13 +1,8 @@
-//! The containers of a device, read-only (HOST-001, HOST-010; R-149, stage 1 of hosted
-//! applications).
-//!
-//! The hub runs fixed read-only `docker` commands through its SSH link (CHK-012): the list of
-//! the containers, the last lines of the log of one, the details of one (HOST-017), and the
-//! images, the volumes and the networks (HOST-020). The only operator values that reach a
-//! command are a container identifier, rendered by the hub from its hex digits, and a number
-//! of lines. Nothing is kept: no table, no event, no log line of the hub holds a container
-//! name, an image or a line of a log (LOG-007). No error holds text from the device.
-//! No domain imports this one; `schema.rs` merges [`graphql`].
+//! The containers of a device, read-only (HOST-001, HOST-010; R-149), by fixed `docker` commands
+//! over the hub's SSH link (CHK-012). No table, event or hub log line holds a container name, an
+//! image or a log line, and no error holds text from the device (LOG-007).
+//! The only operator values that reach a command are a container identifier, rendered from its
+//! hex digits, and a number of lines.
 
 pub mod compose_file;
 mod detail;
@@ -42,16 +37,12 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The longest the list may take on the device.
 const LIST_LIMIT: Duration = Duration::from_secs(10);
-/// The longest the read of the details of one container may take on the device.
 const DETAIL_LIMIT: Duration = Duration::from_secs(15);
-/// The longest the read of the images and the volumes may take: Docker measures each volume.
+/// Docker measures each volume.
 const STORAGE_LIMIT: Duration = Duration::from_secs(30);
-/// The longest the read of a log may take on the device.
 const LOG_LIMIT: Duration = Duration::from_secs(15);
 
-/// What a link needs besides the device.
 #[derive(Clone, Copy)]
 pub struct Reach<'a> {
     pub db: &'a PgPool,
@@ -69,14 +60,10 @@ pub enum Error {
     InvalidContainerId,
     #[error("the number of log lines is 1 to 1000")]
     InvalidLineCount,
-    /// The link to the device did not open, or the command did not run on it. A device with
-    /// no SSH credential has no list in stage 1 (`LinkError::NoCredential`).
     #[error("the SSH link to the device failed")]
     Link(#[source] LinkError),
-    /// The device's shell found no `docker` program.
-    #[error("docker is not installed on the device")]
+    #[error("the device's SSH user cannot find docker in PATH")]
     NoDocker,
-    /// `docker` ran and ended without exit status 0.
     #[error("docker on the device did not succeed")]
     DockerFailed,
     #[error("the device has no container with this identifier")]
@@ -88,7 +75,7 @@ pub enum Error {
     Devices(#[source] devices::Error),
 }
 
-/// The containers of `device`, running or not, in Docker's order (newest first).
+/// Running or not, in Docker's order (newest first).
 ///
 /// # Errors
 /// `NotFound` for an unknown device; the [`Error`] for the first step that fails.
@@ -102,7 +89,7 @@ pub async fn list(
     docker::containers(&output)
 }
 
-/// The last lines of the log of one container of `device`, both output streams, oldest first.
+/// Both output streams, oldest first.
 ///
 /// # Errors
 /// `NotFound` for an unknown device, `NoContainer` when Docker knows no such container; the
@@ -118,8 +105,7 @@ pub async fn log(
     docker::log(&output)
 }
 
-/// The details of one container of `device`, with the names of its environment variables and
-/// no value of one (HOST-017).
+/// Environment variable names only, never a value (HOST-017).
 ///
 /// # Errors
 /// `NotFound` for an unknown device, `NoContainer` when Docker knows no such container; the
@@ -136,9 +122,6 @@ pub async fn detail(
     detail::detail(&output)
 }
 
-/// The images and the volumes of `device`, with the size of each, the containers that use it
-/// and the space that a clean-up can free (HOST-020).
-///
 /// # Errors
 /// `NotFound` for an unknown device; the [`Error`] for the first step that fails.
 pub async fn storage(
@@ -152,8 +135,6 @@ pub async fn storage(
     storage::storage(&output)
 }
 
-/// The networks of Docker on `device`, each with the containers on it (HOST-020).
-///
 /// # Errors
 /// `NotFound` for an unknown device; the [`Error`] for the first step that fails.
 pub async fn networks(
@@ -167,8 +148,8 @@ pub async fn networks(
     storage::networks(&output)
 }
 
-/// Whether a newer image exists for each container of `device` (HOST-021): the digest on the
-/// device against the digest of the same tag at its public registry. It updates nothing.
+/// Compares the device's digest with the same tag at its public registry (HOST-021); it updates
+/// nothing.
 ///
 /// # Errors
 /// `NotFound` for an unknown device; the [`Error`] for the first step on the device that
@@ -183,7 +164,6 @@ pub async fn image_updates(
     image_updates_through(reach, device, &egress, now).await
 }
 
-/// [`image_updates`] with the rules of the connections to the registries given.
 async fn image_updates_through(
     reach: Reach<'_>,
     device: DeviceId,
@@ -203,7 +183,6 @@ async fn known(db: &PgPool, device: DeviceId) -> Result<Device, Error> {
     })
 }
 
-/// Opens a link to `device` and runs the one `command` on it.
 async fn run(
     reach: Reach<'_>,
     device: &Device,

@@ -1,4 +1,4 @@
-//! The push rhythm and what each answer makes the daemon do (K8 Sections 6 and 7): pure.
+//! The push rhythm and the action for each answer (K8 Sections 6 and 7).
 
 use std::time::Duration;
 
@@ -10,35 +10,28 @@ use crate::hub::answer::Answer;
 /// The time between pushes while the hub answers well (MET-014).
 pub const RHYTHM: Duration = Duration::from_secs(10);
 
-/// The first wait after a failure; each failure doubles it up to [`BACKOFF_MAX`]. It is short so
-/// that one push that ran to [`TIMEOUT`](crate::hub::TIMEOUT) is retried inside the hub's stale
-/// bound of 3 rhythms (MET-018): 10 s rhythm, 10 s timeout, 2 s wait (R-312).
+/// Short, so a push that ran to its timeout is retried inside the hub's stale bound (MET-018, R-312).
 pub const BACKOFF_START: Duration = Duration::from_secs(2);
 
 pub const BACKOFF_MAX: Duration = Duration::from_secs(60);
 
-/// How far a wait after a failure may move from its step, either way: 20 % (K8 Section 7).
+/// How far a wait after a failure may move from its step, either way (K8 Section 7).
 pub const JITTER: f64 = 0.2;
 
 /// How long a refused token waits before the daemon tries it again (K8 Section 6).
 pub const REFUSED_RETRY: Duration = Duration::from_mins(10);
 
-/// What one push answer makes the daemon do.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
-    /// 204: remove the points through the batch's receipt.
     Remove,
-    /// `MALFORMED` or `OUT_OF_RANGE`: the batch can never be accepted; drop it.
+    /// The batch can never be accepted.
     Drop(RefusalCode),
-    /// `TOO_LARGE`: send the same data again as a smaller batch.
     Shrink,
-    /// `TOKEN_REFUSED` or `WRONG_DEVICE`: stop pushing, keep sampling and buffering.
+    /// Stop pushing; sampling and buffering go on.
     Stop(RefusalCode),
-    /// Network error, timeout, 5xx or `UNAVAILABLE`: keep the points and wait.
     Wait,
 }
 
-/// The action for the answer to a push.
 #[must_use]
 pub const fn action<T>(answer: &Answer<T>) -> Action {
     match answer {
@@ -47,8 +40,7 @@ pub const fn action<T>(answer: &Answer<T>) -> Action {
             RefusalCode::Malformed | RefusalCode::OutOfRange => Action::Drop(*code),
             RefusalCode::TooLarge => Action::Shrink,
             RefusalCode::TokenRefused | RefusalCode::WrongDevice => Action::Stop(*code),
-            // `ENROLMENT_REFUSED`, `NO_KEY`, `NO_RELEASE` and the three codes of the work route
-            // (K10) are not push answers; treat any such as a wait.
+            // These codes are not push answers (K10 and others); treat any such as a wait.
             RefusalCode::EnrolmentRefused
             | RefusalCode::NoKey
             | RefusalCode::NoRelease
@@ -61,29 +53,23 @@ pub const fn action<T>(answer: &Answer<T>) -> Action {
     }
 }
 
-/// The size of the batch to retry after `TOO_LARGE` for one of `sent` points: half of it, or
-/// `None` when one point alone was too large and can only be dropped.
 #[must_use]
 pub const fn smaller(sent: usize) -> Option<usize> {
     if sent > 1 { Some(sent / 2) } else { None }
 }
 
-/// The largest batch to try next: grows back toward [`BATCH_POINTS`] after each accepted batch.
 #[must_use]
 pub fn grown(limit: usize) -> usize {
     limit.saturating_mul(2).min(BATCH_POINTS)
 }
 
-/// The wait after consecutive failures.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Backoff {
     last: Option<Duration>,
 }
 
 impl Backoff {
-    /// Records a failure and returns how long to wait: the step, 2 s, then 4 s, 8 s, 16 s, 32 s,
-    /// 60 s, 60 s, moved by up to [`JITTER`] either way by `spread` (0 to 1, from a random source; 0.5
-    /// keeps the step), so daemons that failed together do not all try again together.
+    /// Spread by up to [`JITTER`] either way, so daemons that failed together do not retry together.
     pub fn failed(&mut self, spread: f64) -> Duration {
         let step = self
             .last
@@ -92,12 +78,10 @@ impl Backoff {
         step.mul_f64(2.0f64.mul_add(JITTER * spread.clamp(0.0, 1.0), 1.0 - JITTER))
     }
 
-    /// Records a success: the next failure starts again at [`BACKOFF_START`].
     pub const fn recovered(&mut self) {
         self.last = None;
     }
 
-    /// Whether the last push failed.
     #[must_use]
     pub const fn is_failing(&self) -> bool {
         self.last.is_some()

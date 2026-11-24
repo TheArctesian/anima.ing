@@ -1,7 +1,5 @@
-//! The accounts of the AI agent programs (K8 Section 4 `agentUsage.accounts`, Section 8.2
-//! `accountSalt`; AIS-022, THR-149): the hub answers with one salt, keeps each
-//! device's newest report, and puts the devices of one key under one account. The address is
-//! shown to the person, in no log line, and goes with its device.
+//! AI agent accounts (K8 Sections 4 and 8.2; AIS-022, THR-149): the address is shown to the
+//! person, in no log line, and goes with its device.
 
 use std::io;
 use std::sync::{Arc, Mutex};
@@ -29,8 +27,6 @@ pub(super) fn account(key: &str, used: u8) -> Value {
             "limits": [{ "window": "five_hour", "usedPercent": used, "reached": false }] })
 }
 
-/// Pushes `accounts` from the device of `pusher`, `step` batches after its first; the status
-/// and the body of the answer.
 pub(super) async fn push(pusher: &Pusher<'_>, step: i64, accounts: Value) -> (StatusCode, String) {
     // Each report is later than the one before, as on a hub whose clock runs.
     pusher.daemons.clock.advance(TimeDelta::seconds(1));
@@ -158,7 +154,7 @@ async fn thr_149_an_address_that_is_not_one_is_refused(pool: PgPool) {
     );
 }
 
-/// The address is personal data: deleting the device deletes it (DEV-015).
+/// The address is personal data (DEV-015).
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
@@ -190,8 +186,7 @@ async fn thr_149_deleting_the_device_deletes_its_address(pool: PgPool) {
     assert_eq!(stored().await, 0);
 }
 
-/// A present list is the whole set of the device: a source that it no longer names (signed out,
-/// or the accounts turned off) loses its report and its address (THR-149).
+/// A present list is the device's whole set (THR-149).
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
@@ -218,8 +213,7 @@ async fn thr_149_a_list_that_no_longer_names_the_source_deletes_its_address(pool
     );
 }
 
-/// Each address that the wire takes is stored: the database checks only its length, so a
-/// locale of the database cannot refuse a row and stop the pushes of the device.
+/// The database checks only the length, so its locale cannot refuse a row and stop the pushes.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
@@ -249,8 +243,7 @@ async fn thr_149_each_address_that_the_wire_takes_is_stored(pool: PgPool) {
     }
 }
 
-/// THR-149 point 7: at TRACE, a stored report, a refused one and the query of the page write the
-/// address in no log line.
+/// THR-149 point 7: no log line holds the address, even at TRACE.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
@@ -259,8 +252,7 @@ async fn thr_149_the_hub_logs_no_address(pool: PgPool) {
     let capture = Capture::default();
     let writer = capture.clone();
     let log = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in bearer::metrics: a second dispatcher keeps another test thread from caching this
-    // test's callsites as disabled.
+    // A second dispatcher keeps another test thread from caching these callsites as disabled.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(log);
     tracing::callsite::rebuild_interest_cache();
@@ -293,7 +285,6 @@ async fn thr_149_the_hub_logs_no_address(pool: PgPool) {
     assert!(!text.contains("person-9b2e"), "an address reached the log");
 }
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 pub(super) struct Capture(pub(super) Arc<Mutex<Vec<u8>>>);
 

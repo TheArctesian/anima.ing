@@ -1,5 +1,4 @@
-//! The events GraphQL part: the `events` and `audit` lists and the `eventAdded` subscription
-//! (K1; LOG-004, LOG-005, LOG-010, API-003, API-006).
+//! The events GraphQL part (K1; LOG-004, LOG-005, LOG-010, API-003, API-006).
 
 mod chain;
 mod connection;

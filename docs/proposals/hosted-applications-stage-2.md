@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28. Version 7 (2026-11-20): R-302, R-300 and R-301 give stage 3 its direction (HOST-046 to HOST-048); Section 12 is the design of the routing on the hub, Section 13 the recipe format of the catalogue, Section 14 the design of the PostgreSQL entry. Version 8 (2026-11-20): Section 13 has the fields and the codes of a database (`kind`, `server`, `database`), and Section 14.6 says what task H24 built and where it differs from the design.
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. R-445 (operator, 2026-11-23) approves HOST-030 and HOST-032 to HOST-036 (OD-HOST-13). Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28. Version 7 (2026-11-20): R-302, R-300 and R-301 give stage 3 its direction (HOST-046 to HOST-048); Section 12 is the design of the routing on the hub, Section 13 the recipe format of the catalogue, Section 14 the design of the PostgreSQL entry. Version 8 (2026-11-20): Section 13 has the fields and the codes of a database (`kind`, `server`, `database`), and Section 14.6 says what task H24 built and where it differs from the design. Version 9 (2026-11-22): Section 10.1 is the second form of the exception of R-247 after a read by a separate reviewer (SF-339 to SF-353), and Section 10.5 has three more questions for the operator (OD-HOST-31 to OD-HOST-33); no reviewer has read the second form. Version 10 (2026-11-22): Section 13.10 records the proposed ARTEX first-party recipe (HOST-053 of the plan). Version 11 (2026-11-22): R-433 decides OD-HOST-59 to OD-HOST-64; HOST-053 has its direction.
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
@@ -875,13 +875,13 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-027: the switch "Manage applications" at the machine | Approved (R-210) | Its code waits for version 0.4 and for task W4 |
 | HOST-028: the profile of a machine for a Compose file | Approved (R-210, as R-228 changed it: no profile `full`) | The rules are Section 4.5. The rules as a pure function are task H28 |
 | HOST-029: the files of an application are plain files in one folder | Not approved | The review of Section 4 (its Section 6.4.4) |
-| HOST-030: Anima shows where the file of a project is | Not approved as a function of its own | R-211 names task H15, the read that task H16 needs. The approval of HOST-030 as a thing that the operator sees is one question for him |
+| HOST-030: Anima shows where the file of a project is | Approved (R-445) | Task H15: the hub part is built; the part that the operator sees |
 | HOST-031: manage an adopted project in place | Approved (R-211), with no change of its file | Version 0.4 of the contract, task H5 |
-| HOST-032: the way back to the earlier images | Not approved | A question for the operator |
-| HOST-033: the wait for health after an install or an update | Not approved | A question for the operator |
-| HOST-034: the containers of all machines in one list | Not approved | A question for the operator. No answer of 2026-11-19 covers it |
-| HOST-035: the limits of memory and processor as fields | Not approved | A question for the operator |
-| HOST-036: the result of each item on the page of the application | Not approved | A question for the operator |
+| HOST-032: the way back to the earlier images | Approved (R-445) | Task H19, after task H6; a security review of the final diff |
+| HOST-033: the wait for health after an install or an update | Approved (R-445) | Task H19, after task H6; a security review of the final diff |
+| HOST-034: the containers of all machines in one list | Approved (R-445) | Task H18 |
+| HOST-035: the limits of memory and processor as fields | Approved (R-445) | The editor of HOST-022 (task H11) |
+| HOST-036: the result of each item on the page of the application | Approved (R-445) | Task H20, after task H6 and task W6 |
 | HOST-037: the reverse proxy | Approved for stage 3 (R-213); on the hub only (R-302) | The design of Section 12 and its review; the trial of two programs |
 | HOST-038: domain names and certificates | Not approved; the direction is decided (R-302 asks for the design) | Section 12 and its review, then a question for the operator |
 | HOST-039: the Compose file from a repository | Approved for stage 3 (R-214) | Task H6 |
@@ -897,13 +897,13 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-049: the images of LinuxServer.io as the base of the catalogue | Not approved; the direction is decided (R-319) | Section 15, its security read, OD-HOST-50 to OD-HOST-53 |
 | HOST-050: the hub as the proxy manager, with streams | Not approved; the direction is decided (R-319) | Section 16, its security read, OD-HOST-46 to OD-HOST-49 |
 
-One question remains for the operator from this table: "Do you approve HOST-030 and HOST-032 to
-HOST-036 for stage 2?" It is decision OD-HOST-13 of
-[hosted-applications-plan.md](../plans/hosted-applications-plan.md).
+The question of this table, "Do you approve HOST-030 and HOST-032 to HOST-036 for stage 2?", was decision OD-HOST-13 of [hosted-applications-plan.md](../plans/hosted-applications-plan.md). R-445 (operator, 2026-11-23) approves all six.
 
-## 10. A proposed exception to the rules of a file: an entry that may hold the socket of the engine (R-247)
+## 10. A proposed exception to the rules of a file: an entry that may hold the socket of the engine (R-247; withdrawn)
 
-This section is a proposal. It is not in contract K10 and no reviewer has read it. R-247 (operator,
+**Withdrawn (2026-11-22, R-371).** No entry of the catalogue may hold the socket of the engine, and Anima does not host the real Arcane program. This section stays as a record of the text and of its read; it is not put in contract K10 and is not built. OD-HOST-28 and OD-HOST-31 to OD-HOST-33 are closed.
+
+This section is a proposal. It is not in contract K10. A separate reviewer read the first form of its text; Section 10.1 is the second form, which no reviewer has read. R-247 (operator,
 2026-11-19) says that Arcane is an entry of the tested catalogue with an exception to the profile
 `contained`, so that it may mount the socket of Docker, and that the exact exception goes through a
 security review before any code. Nothing that installs Arcane is merged until the operator has
@@ -914,33 +914,87 @@ administrator of the machine on a system engine, and has the rights of the owner
 an engine of a user. The settings "All containers", "Protected" and "The hub may delete volumes"
 limit Anima. They do not limit a person or a key inside such a program.
 
-### 10.1 The proposed text, for Section 6.4.4 of K10
+### 10.1 The proposed text, second form, for Section 6.4.4 of K10
+
+This is the second form. A separate reviewer read the first form and found that it gave more
+than R-247 (SF-339 to SF-353 of [security-findings.md](../security-findings.md)). This form has
+each change of text that the reviewer proposed. No reviewer has read this form.
 
 "**Excepted entries.** The applications program holds a list of excepted entries. The list is fixed
-in the program: the hub cannot add an entry and cannot change one. Each entry of the list has a
-name, the repository of one image and one digest of that image. A release of the applications
-program changes the list; nothing else does.
+in the program: the hub cannot add an entry and cannot change one. A release of the applications
+program changes the list; nothing else does. A release can mark an entry as withdrawn.
 
-An excepted entry is a service of a file whose `image` is exactly the repository and the digest of
-an entry of the list. For such a service, and for no other service of the file, one more mount is
-permitted: the type `bind`, the source `engine-socket`, and the target `/var/run/docker.sock`. The
-applications program writes the real path of the socket of the engine in the place of the source.
-Each other rule of this section applies to the service with no change: its ports, its other
-mounts, its limits, its labels, and each key that is not in the list of keys.
+Each entry of the list has a name, the SHA-256 of one Compose file, the digest of each image of
+that file, and a list of variables with the form of the value of each. The digest of an image is
+that of the image index, or the list holds one digest for each architecture. The reference of the
+image is `repository@sha256:…` with the host of the registry and no tag. After the pull the
+program checks that the identifier of the image is one that the list holds for the architecture of
+the machine.
 
-The applications program refuses the mount (`not_at_machine`) unless the owner named the entry in
-the setting 'Programs that control Docker' of the machine. The setting is empty after the install.
-The screen that sets it says: 'This program controls Docker on this machine, and so can do all on
-this machine. What a person does inside it is outside the rules of Anima.'
+An excepted entry is an `application_apply` whose Compose file, as it came, has exactly the
+SHA-256 of an entry. A file with a different SHA-256 gets no exception. The environment file of
+such an item holds exactly the variables of the list, each in its form; a different name, a name
+that is missing, and a value in a different form are refused (`file_not_permitted`). A variable
+fills only a value of `environment` or the published port; never `image`, a mount, or a key. The
+applications program makes each secret of the entry itself at the machine, at random; the hub does
+not send it and cannot read it.
 
-An excepted entry is never updated by `pull`: its image is the digest of the list. A new version
-comes with a new list. `application_back` applies the rule again with the list of today.
+The file of an entry has one service. It has no `command`, no `entrypoint`, no `user`, no
+`configs`, no `tmpfs` and no `labels`. It has two mounts and no other: one volume for its data, and
+one mount of the type `bind` with the source `engine-socket` and the target
+`/var/run/docker.sock`. The applications program writes, in the place of the source, the path that
+the administrator of the machine recorded for this purpose with 'Manage applications': on a system
+engine and a rootless engine the real path of the socket after each link is resolved; on an engine
+in a virtual machine the path of the socket in that machine. It refuses the mount when none is
+recorded. A read-only mount of a socket limits nothing, and this text makes no such claim.
 
-The first entry of the list is the manager of Arcane. The agent of Arcane is a second entry."
+The port of an excepted entry is always on `127.0.0.1`. 'Open to the network' does not apply to it.
 
-And for Section 3 of K10, in the paragraph of what a person who controls the hub can do: "On a
-machine whose setting 'Programs that control Docker' names an entry, that person can install that
-entry, and thus a program that is the administrator of the machine."
+An excepted entry is installed only as the first apply of an application that has no volume, no
+`binds/` and no kept version. An application that holds an excepted entry takes no file other than
+the file of that entry in the list of today; each other file is refused (`file_not_permitted`). A
+machine has at most one application for each entry.
+
+The applications program refuses the item (`not_at_machine`) unless the administrator of the
+machine named the entry in the setting 'Programs that control Docker', in the settings file of
+Section 6.4.2. The setting is empty after the install. When the hub and device pair of Section
+6.4.2 changes, the setting is empty again. When the setting does not name the entry, or the entry
+is withdrawn, or the list of today does not hold the file and the digest of the running version,
+the applications program refuses `application_apply`, `application_back` and the `start` and
+`restart` of `container_action` for it (`not_at_machine`), and it asks the administrator at the
+machine if it stops the container. `container_follow` refuses a container of an excepted entry
+(`not_at_machine`); its log is read at the machine.
+
+The screen that sets the setting says: 'This program controls Docker on this machine, and so can
+do all on this machine: read and change each file, each container and each setting of Anima, also
+the protected ones. Anyone who can sign in to it can do this. Anyone who controls your hub can
+install it and can then sign in to it. Its removal does not undo what was done with it.' The
+screen shows the version and the date of each entry. The hub shows a machine whose list is older
+than the list that the hub knows, and offers no install of the entry there.
+
+An excepted entry is never updated by `pull`: its images are the digests of the list. A new
+version comes with a new list. `application_back` applies each rule again with the list of today.
+
+An entry is in the list only when a test by hand (task AR0 of the extensions plan) shows that its
+fixed file leaves no account with a known password and no open first-run page at any time after
+the start.
+
+The first entry of the list is the manager of Arcane. The agent of Arcane is a second entry with
+its own name in the setting. It is not in the list before the review of task AR6 has no open
+finding of severity high. Its file publishes no port. The address of its manager is a variable
+whose form is `127.0.0.1` with a port, or an address of the network of Anima; each other address
+is refused. The screen that names it says also: 'Anyone who is an administrator in the Arcane
+manager, and anyone who controls your hub, controls this machine.'"
+
+For the table of settings of Section 6.4.2, one row: "Programs that control Docker | None | The
+names of the excepted entries that may mount the socket of the engine (R-247)". After "the hub
+cannot set one": "apart from a person inside an excepted entry on a system engine".
+
+For Section 3 of K10, in the paragraph of what a person who controls the hub can do: "On a machine
+whose setting 'Programs that control Docker' names an entry, a person who controls the hub, and
+each program of the user of the daemon, can install that entry and can become the administrator of
+the machine through it. No other setting of Section 6.4.2 and no list of the machine limits what
+is done inside that program; on a system engine it can change those settings."
 
 ### 10.2 What this text adds to the answer of the operator
 
@@ -972,6 +1026,32 @@ R-247 asks for the test of Arcane by hand first. It needs a container that holds
 engine, so it gives the image of a different publisher the control of that engine. This session
 did not run it on the build machine: it was told to install nothing and change no setting there.
 It is a step for the operator, or for a session on a machine that he names for it.
+
+### 10.5 What the review leaves for the operator
+
+Three points that no change of the text removes and no ruling accepts. Each is an open decision of
+[hosted-applications-plan.md](../plans/hosted-applications-plan.md).
+
+- **OD-HOST-31 (SF-351).** R-247 told him that a person who controls the hub "can install a
+  program that is the administrator". The review adds: the hub is also the sign-in of Arcane, the
+  path to it, and the source of the manager address of an agent. So a hub that is taken over is
+  the administrator of each machine that names the entry. A: accept it, with the sentence on the
+  screen. B: Arcane signs in at the machine with a password that only the administrator sets
+  there; no sign-in through the hub. C: wait for the key of the device (task W7) and a signature
+  of the operator. The reviewer recommends A now and C when W7 exists. This session agrees.
+- **OD-HOST-32 (SF-352).** On a system engine, a program of the user of the daemon can install the
+  entry with no hub, and so reach the administrator. He accepted R-236 when no rule of the machine
+  permitted the socket. A: accept it. B: on a system engine the administrator starts the first
+  install of an excepted entry at the machine, with a command of the applications program. C:
+  wait for W7. The reviewer recommends B: one command for each machine, and R-226 stays whole.
+  This session agrees.
+- **OD-HOST-33 (SF-353).** Each local user of the machine reaches the port of Arcane on
+  `127.0.0.1`. A: accept it, said on the screen. B: no published port; the hub reaches the
+  container through the applications program (not designed). The reviewer recommends A until B is
+  designed. This session agrees.
+
+On OD-HOST-28 the reviewer recommends option B also, and adds: the same for `application_back` of
+such an entry; a stop and a restart by an API key stay.
 
 ## 11. The port of an application through the link: design options (task H35, R-250)
 
@@ -1384,7 +1464,7 @@ is an error. A need that has no mark is an error.
 | Mark | What it needs | State |
 | --- | --- | --- |
 | `network-port` | A port on each address of the machine. The mark has the port and its protocols (`tcp`, `udp`). The machine needs "Open to the network" (R-229) | Permitted. The ports on an address other than `127.0.0.1` must be exactly the ports of the marks |
-| `engine-socket` | The socket of the engine (R-247) | Refused until the exception of Section 10 exists. Nothing installs such an entry |
+| `engine-socket` | The socket of the engine (R-247) | Refused. No rule permits it (R-371). Nothing installs such an entry |
 | `host-network` | The network of the machine itself, for example for the discovery of devices | Refused. No rule permits it |
 | `device` | A device of the machine, for example a USB stick or a graphics processor | Refused. No rule permits it |
 
@@ -1596,6 +1676,12 @@ An entry with a refused mark is not listed until a rule permits its mark.
 
 Not proposed: Watchtower, because it updates images by itself (ETH-004, HOST-044); a VPN server
 such as WireGuard, because it needs a capability of the kernel that no mark names.
+
+ARTEX (https://github.com/BaaRai/ARTEX) is not in this list of thirty and is not an image of
+LinuxServer.io. It is a first-party recipe (HOST-053 of
+[hosted-applications-plan.md](../plans/hosted-applications-plan.md); direction decided, R-433;
+OD-HOST-59 to OD-HOST-64 decided). The format is this section. The requirement is not approved
+as a whole.
 
 ## 14. The PostgreSQL entry (R-216, R-301, task H24)
 
@@ -1928,7 +2014,7 @@ with no credential.
 | device | 2 | Tier 3 until a setting of the machine permits a device | `minisatip`, `oscam` |
 | shell without credential | 2 | A credential that the install can make, for each image (the user and password of `openssh-server`, the user of the web page of Syncthing) | `openssh-server`, `syncthing` |
 | privileged | 1 | Tier 3 | `kasm` |
-| engine socket | 1 | Tier 3 until the exception of R-247 (task H34) | `sealskin` |
+| engine socket | 1 | Tier 3 (R-371: no entry holds the socket) | `sealskin` |
 
 The ten entries are tier 2: no test on a machine ran (HT-114 is the check by a person).
 The device of hardware decoding of Jellyfin is an optional part that is off; the streams of

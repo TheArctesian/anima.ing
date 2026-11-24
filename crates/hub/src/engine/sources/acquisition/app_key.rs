@@ -1,11 +1,5 @@
-//! The operator's App key: read and checked, and the short token it signs (SRC-002, PRJ-018,
-//! K-E1 Section 7). Pure: the time and the random source are parameters.
-//!
-//! The PEM is parsed with `rustls-pki-types` and the token is an RS256 JWT signed with `ring`.
+//! The operator App key and the short token it signs (SRC-002, PRJ-018, K-E1 Section 7).
 //! Nothing here is `Debug` or logged: a refusal names the field, never the value.
-//!
-//! [`AppSigner`] is the key of an App; [`AppKey`] is that key bound to one installation. The
-//! connect flow signs as the App before it knows the installation (PRJ-039).
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -16,15 +10,12 @@ use ring::{
 use rustls_pki_types::{PrivateKeyDer, pem::PemObject as _};
 use zeroize::Zeroizing;
 
-/// The longest PEM text the hub reads.
 pub const MAX_PEM_BYTES: usize = 16 * 1024;
-/// The smallest RSA key the hub signs with.
 const MIN_KEY_BITS: usize = 2048;
-/// The longest App ID or installation ID, in digits.
 const MAX_ID_DIGITS: usize = 20;
-/// How far back the token's `iat` is set, for a source whose clock is behind.
+/// Set back for a source whose clock is behind.
 const ISSUED_BEFORE: TimeDelta = TimeDelta::seconds(60);
-/// How long the token is valid after `now`; GitHub accepts at most ten minutes.
+/// GitHub accepts at most ten minutes.
 const VALID_FOR: TimeDelta = TimeDelta::seconds(540);
 
 /// Why an App key was refused. Names the field, never its value (LOG-007, PRJ-018).
@@ -54,32 +45,27 @@ impl KeyRefusal {
     }
 }
 
-/// The signing failed: the random source gave nothing. Fixed words.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("the App token could not be signed")]
 pub struct SignFailed;
 
-/// A checked key of one App, ready to sign as the App before an installation is chosen. No
-/// `Debug` and no `Clone`: it holds the private key.
+/// Signs as the App before an installation is chosen (PRJ-039).
 pub struct AppSigner {
     pub app_id: u64,
     pair: RsaKeyPair,
 }
 
-/// A checked App key bound to one installation, ready to sign. No `Debug` and no `Clone`: it
-/// holds the private key.
 pub struct AppKey {
     signer: AppSigner,
     installation_id: String,
 }
 
-/// Digits only, 1 to 20 of them: the only App ID or installation ID that enters a path.
+/// The only App ID or installation ID that enters a path.
 #[must_use]
 pub fn digits(text: &str) -> bool {
     !text.is_empty() && text.len() <= MAX_ID_DIGITS && text.bytes().all(|b| b.is_ascii_digit())
 }
 
-/// The RSA key pair in `pem`: at most 16 KiB of PEM, at least 2048 bits.
 fn pair(pem: &[u8]) -> Result<RsaKeyPair, KeyRefusal> {
     if pem.len() > MAX_PEM_BYTES {
         return Err(KeyRefusal::TooLong);
@@ -106,8 +92,6 @@ fn pair(pem: &[u8]) -> Result<RsaKeyPair, KeyRefusal> {
 }
 
 impl AppSigner {
-    /// Reads and checks the key of App `app_id`.
-    ///
     /// # Errors
     /// [`KeyRefusal::AppId`] for App ID 0; the key's refusal otherwise.
     pub fn read(app_id: u64, pem: &[u8]) -> Result<Self, KeyRefusal> {
@@ -120,8 +104,6 @@ impl AppSigner {
         })
     }
 
-    /// This key for installation `installation_id`.
-    ///
     /// # Errors
     /// [`KeyRefusal::InstallationId`] when it is not 1 to 20 digits.
     pub fn bind(self, installation_id: &str) -> Result<AppKey, KeyRefusal> {
@@ -134,9 +116,6 @@ impl AppSigner {
         })
     }
 
-    /// The RS256 JWT that signs in as the App: `iss` is the App ID, `iat` a minute before
-    /// `now`, `exp` nine minutes after.
-    ///
     /// # Errors
     /// [`SignFailed`] when the random source fails.
     pub fn token(
@@ -165,7 +144,6 @@ impl AppSigner {
         Ok(jwt)
     }
 
-    /// The public key, for tests that check a signature.
     #[cfg(test)]
     #[must_use]
     pub fn public_key(&self) -> &[u8] {
@@ -174,11 +152,8 @@ impl AppSigner {
 }
 
 impl AppKey {
-    /// Reads and checks the three parts of a GitHub App key, in this order: the App ID, the
-    /// installation ID, the key.
-    ///
     /// # Errors
-    /// [`KeyRefusal`] for the first part that is not right.
+    /// [`KeyRefusal`] for the first of App ID, installation ID and key that is not right.
     pub fn read(app_id: &str, installation_id: &str, pem: &[u8]) -> Result<Self, KeyRefusal> {
         let app_id = Some(app_id)
             .filter(|id| digits(id))
@@ -191,7 +166,6 @@ impl AppKey {
         AppSigner::read(app_id, pem)?.bind(installation_id)
     }
 
-    /// `<App ID>/<installation ID>`: the account's instance key.
     #[must_use]
     pub fn instance_key(&self) -> String {
         format!("{}/{}", self.signer.app_id, self.installation_id)
@@ -202,8 +176,6 @@ impl AppKey {
         &self.installation_id
     }
 
-    /// The App token that asks the source for an installation token ([`AppSigner::token`]).
-    ///
     /// # Errors
     /// [`SignFailed`] when the random source fails.
     pub fn token(
@@ -214,7 +186,6 @@ impl AppKey {
         self.signer.token(now, random)
     }
 
-    /// The public key, for tests that check a signature.
     #[cfg(test)]
     #[must_use]
     pub fn public_key(&self) -> &[u8] {

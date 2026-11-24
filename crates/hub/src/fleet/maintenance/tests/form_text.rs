@@ -1,5 +1,4 @@
-//! Checking the time zone, the name and the targets of a window typed in the form (MW-001,
-//! MW-003).
+//! The time zone, name and targets typed in the window form (MW-001, MW-003).
 
 use super::validation::{DEVICE, fields, target, weekday_form};
 use crate::fleet::maintenance::{

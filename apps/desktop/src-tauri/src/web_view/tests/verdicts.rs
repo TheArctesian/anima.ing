@@ -1,6 +1,3 @@
-//! D-4, WEB-008: every verdict on a server-trust challenge, and the answer the trust hook
-//! gives `WebKit` for it (R-069: a mismatched certificate is cancelled).
-
 use std::cell::Cell;
 
 use crate::web_view::{
@@ -124,7 +121,6 @@ fn d_4_an_address_matches_with_or_without_brackets_in_any_spelling() {
     );
 }
 
-/// The answer and shown verdict for a challenge, and how often system trust was asked.
 fn answered(
     pin: Option<&Pin>,
     opened_on: &str,
@@ -170,8 +166,6 @@ fn r_069_a_mismatched_certificate_is_cancelled_and_shown_whatever_the_system_tru
     }
 }
 
-/// The pin accepts its own certificate and leaves other hosts to the system, asking it
-/// nothing; without a pin a trusted chain gets the system's handling.
 #[test]
 fn web_008_accept_and_default_ask_the_system_only_without_a_pin() {
     let pin = pin("https://router.lan/");
@@ -288,8 +282,7 @@ fn d_4_a_pin_holds_whatever_the_challenge_spells_its_host() {
     }
 }
 
-/// R-069: the hook hands `WebKit` exactly the safe answer; a cancel is never the system's
-/// handling, which would let a system-trusted certificate past a pin.
+/// R-069: a cancel is never the system's handling, which would let a trusted certificate past a pin.
 #[cfg(target_os = "macos")]
 #[test]
 fn r_069_each_answer_maps_to_its_one_disposition() {

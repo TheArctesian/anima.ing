@@ -1,7 +1,4 @@
-//! The opening's outcomes after the upgrade (K4 Sections 8.2, 8.3 and 8.6): a changed host
-//! key ends `HOST_KEY_MISMATCH` before any authentication request, a refused, missing or
-//! unreadable credential ends `AUTH_FAILED`, and a device that only prompts gets the
-//! password, for at most 4 rounds of at most 4 prompts (D-5).
+//! The opening's outcomes after the upgrade (K4 Sections 8.2, 8.3, 8.6); at most 4 rounds of 4 prompts (D-5).
 
 mod waking;
 
@@ -22,7 +19,6 @@ use crate::fleet::{
     trust::PublicKey,
 };
 
-/// A host key the fake server does not present.
 fn other_key() -> PublicKey {
     let key = PrivateKey::from(Ed25519Keypair::from_seed(&[42; 32]));
     PublicKey::from_blob(key.public_key().to_bytes().unwrap()).unwrap()
@@ -56,7 +52,6 @@ async fn sec_007_k4_8_3_a_changed_host_key_is_4001_and_the_device_sees_no_sign_i
     );
 }
 
-/// The client opens the terminal and hears `AUTH_FAILED` with 1011; the event says `message`.
 async fn refused(pool: &PgPool, bench: &super::Bench, message: &str) {
     let mut client = socket::open(&bench.url).await;
     assert_eq!(client.ended().await, ("AUTH_FAILED".to_owned(), Some(1011)));
@@ -67,7 +62,6 @@ async fn refused(pool: &PgPool, bench: &super::Bench, message: &str) {
     assert!(!received.contains(PASSWORD), "no secret reaches the client");
 }
 
-/// Stores `secret` as `docker-host`'s SSH credential, replacing the password.
 async fn store(pool: &PgPool, bench: &super::Bench, secret: SshSecret) {
     let mut conn = pool.acquire().await.unwrap();
     credentials::store_ssh(
@@ -80,8 +74,6 @@ async fn store(pool: &PgPool, bench: &super::Bench, secret: SshSecret) {
     .unwrap();
 }
 
-/// The keyboard-interactive requests the server heard, after the client heard `AUTH_FAILED`
-/// with the refused sign-in's message.
 async fn prompted(pool: &PgPool, script: Script) -> usize {
     let mut bench = bench(pool, Setup::script(script)).await;
     refused(pool, &bench, "The device refused the SSH sign-in.").await;
@@ -132,8 +124,7 @@ async fn d_3_no_stored_credential_is_auth_failed_and_nothing_is_sent(pool: PgPoo
     assert_eq!(bench.ssh.heard_so_far(), [], "no authentication request");
 }
 
-/// The device moved to `localhost` after its password was entered for loopback: the same
-/// address, another host text, so the key matches and still nothing is sent (SEC-011).
+/// Same address, another host text: the key matches and still nothing is sent (SEC-011).
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
@@ -254,7 +245,6 @@ async fn d_5_a_device_that_accepts_the_fourth_answer_gives_a_shell(pool: PgPool)
     assert_eq!(client.close().await, Some(1000));
 }
 
-/// The device's key, as text, and the same key locked with "the right passphrase".
 fn keys() -> (Vec<u8>, Vec<u8>) {
     let key = PrivateKey::from(Ed25519Keypair::from_seed(&[9; 32]));
     let bcrypt = Kdf::Bcrypt {
@@ -268,8 +258,6 @@ fn keys() -> (Vec<u8>, Vec<u8>) {
     (text(&key), text(&locked))
 }
 
-/// With `key` and `passphrase` stored, the session ends `AUTH_FAILED` saying the key cannot
-/// be read, and the device sees no key.
 async fn unreadable(pool: &PgPool, key: Vec<u8>, passphrase: Option<Vec<u8>>) {
     let mut bench = bench(pool, Setup::default()).await;
     let secret = SshSecret::PrivateKey {

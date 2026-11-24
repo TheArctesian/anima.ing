@@ -8,7 +8,7 @@
   import { checkConnect, EMPTY_FORM, KEY_FILE_UNREADABLE, keyFileProblem, restorePem, type ConnectField, type ConnectProblem } from './connect';
 
   interface Props {
-    /** Sends the connection; the dialog keeps no copy of what it passes (PRJ-018). */
+    /** The dialog keeps no copy of what it passes (PRJ-018). */
     onConnect: (input: GithubAppInput) => Promise<HubResult<unknown>>;
     onClose: () => void;
   }
@@ -23,10 +23,7 @@
 
   const problemOf = (field: ConnectField): string => problems.find((problem) => problem.field === field)?.message ?? '';
 
-  /**
-   * Empties the field the moment it starts to leave. A closing dialog keeps its last content on screen until the fade
-   * ends; the key must not stay in the DOM for that time (F-8).
-   */
+  /** A closing dialog keeps its content on screen until the fade ends; the key must not stay in the DOM that long (F-8). */
   function drop(node: HTMLInputElement): { duration: number } {
     node.value = '';
     return { duration: duration.instant };
@@ -39,7 +36,7 @@
     flushSync();
   }
 
-  /** Reads a chosen `.pem` file in the browser into the key field; the file goes nowhere else. */
+  /** The chosen `.pem` file is read in the browser and goes nowhere else. */
   async function choose(event: Event & { currentTarget: HTMLInputElement }): Promise<void> {
     const file = event.currentTarget.files?.[0];
     if (file === undefined) return;
@@ -71,7 +68,6 @@
     }
     problems = [];
     busy = true;
-    // The key is on its way: the dialog holds none, whatever the hub answers.
     forgetKey();
     const result = await onConnect(checked.input);
     busy = false;
@@ -97,18 +93,18 @@
       <fieldset class="fields" disabled={busy}>
         <div class="field">
           <label for="{ids}-label">Name</label>
-          <input id="{ids}-label" type="text" autocomplete="off" spellcheck="false" bind:value={form.label} aria-invalid={problemOf('label') !== ''} />
-          <small class="problem">{problemOf('label')}</small>
+          <input id="{ids}-label" type="text" autocomplete="off" spellcheck="false" bind:value={form.label} aria-invalid={problemOf('label') !== ''} aria-describedby="{ids}-label-problem" />
+          <small id="{ids}-label-problem" class="problem">{problemOf('label')}</small>
         </div>
         <div class="field">
           <label for="{ids}-appId">App ID</label>
-          <input id="{ids}-appId" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" bind:value={form.appId} aria-invalid={problemOf('appId') !== ''} />
-          <small class="problem">{problemOf('appId')}</small>
+          <input id="{ids}-appId" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" bind:value={form.appId} aria-invalid={problemOf('appId') !== ''} aria-describedby="{ids}-appId-problem" />
+          <small id="{ids}-appId-problem" class="problem">{problemOf('appId')}</small>
         </div>
         <div class="field">
           <label for="{ids}-installationId">Installation ID</label>
-          <input id="{ids}-installationId" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" bind:value={form.installationId} aria-invalid={problemOf('installationId') !== ''} />
-          <small class="problem">{problemOf('installationId')}</small>
+          <input id="{ids}-installationId" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" bind:value={form.installationId} aria-invalid={problemOf('installationId') !== ''} aria-describedby="{ids}-installationId-problem" />
+          <small id="{ids}-installationId-problem" class="problem">{problemOf('installationId')}</small>
         </div>
         <div class="field">
           <label for="{ids}-privateKey">Private key</label>
@@ -121,11 +117,11 @@
             spellcheck="false"
             bind:value={form.privateKey}
             aria-invalid={problemOf('privateKey') !== ''}
-            aria-describedby="{ids}-key-hint"
+            aria-describedby="{ids}-key-hint {ids}-privateKey-problem"
           />
           <small id="{ids}-key-hint">Paste the whole key or choose the .pem file below.</small>
           <input bind:this={fileField} type="file" accept=".pem,application/x-pem-file" aria-label="Choose the .pem file" onchange={choose} />
-          <small class="problem">{problemOf('privateKey')}</small>
+          <small id="{ids}-privateKey-problem" class="problem">{problemOf('privateKey')}</small>
         </div>
       </fieldset>
       <p class="failure" role="alert">{failure}</p>

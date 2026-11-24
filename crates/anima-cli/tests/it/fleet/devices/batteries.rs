@@ -1,5 +1,4 @@
-//! The batteries of a device in `anima device get` and in `anima_device_get` (MET-032,
-//! CMD-030): the last state from the device, the charge from its `BATTERY_PERCENT` series.
+//! The batteries of a device in `anima device get` and `anima_device_get` (MET-032, CMD-030).
 
 use serde_json::{Value, json};
 
@@ -7,7 +6,6 @@ use super::{detail, fixture_devices, signed_in};
 use crate::kit::fake_hub::{FakeHub, data};
 use crate::mcp::session::{Desk, LOGIN_TOKEN, hub};
 
-/// A laptop: one battery that discharges, one that is full and has no reading this hour.
 fn laptop() -> (Value, Value) {
     let devices = fixture_devices();
     let mut device = detail(&devices[0]);

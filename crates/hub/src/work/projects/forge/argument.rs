@@ -1,6 +1,5 @@
-//! A request the provider would not build because of an argument the caller gave (a file path
-//! or a ref): `VALIDATION` naming that argument, with fixed words, before anything is sent
-//! (K-E1 Section 13.8). Never the path or the ref itself (LOG-007). Pure.
+//! A refused path or ref becomes `VALIDATION` with fixed words before anything is sent (K-E1
+//! Section 13.8); the error never holds the path or the ref (LOG-007).
 
 use async_graphql::Result;
 use source_exchange::{Problem, Request};

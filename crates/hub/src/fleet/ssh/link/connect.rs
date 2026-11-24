@@ -1,6 +1,5 @@
-//! Opening a link (P2-003, P2-004): the accepted host key, the host resolved once and each
-//! address checked, a connection to a checked address, the key pinned in the key exchange
-//! (SEC-007) and the sign-in with the stored credential (OD-9). I/O edge; nothing here logs.
+//! Opening a link (P2-003, P2-004, OD-9): the host is resolved once, each address checked, and
+//! the accepted key pinned in the key exchange (SEC-007). Nothing here logs.
 
 use std::{sync::Arc, time::Duration};
 
@@ -17,26 +16,16 @@ use crate::fleet::{
     trust,
 };
 
-/// The longest a link takes to open, from the host-key read to the end of the sign-in.
 const OPENING: Duration = Duration::from_secs(10);
-/// The longest one address may take to accept the TCP connection, so an address that drops
-/// packets does not use up [`OPENING`] before the next address is tried.
+/// So an address that drops packets does not use up [`OPENING`] before the next is tried.
 const ADDRESS_WAIT: Duration = Duration::from_secs(3);
-/// Keep-alive interval; [`KEEPALIVE_MAX`] unanswered end the connection.
 const KEEPALIVE: Duration = Duration::from_secs(10);
 const KEEPALIVE_MAX: usize = 3;
-/// A link with no traffic but keep-alives for this long ends itself, so a caller that keeps
-/// one too long does not hold the device's connection open.
+/// So a caller that keeps a link too long does not hold the device's connection open.
 const IDLE: Duration = Duration::from_secs(60);
-/// Messages from the device held per channel before russh stops reading the connection, so
-/// a device that floods a channel stalls instead of growing a buffer. Each is at most one SSH
-/// packet (32 KiB by default).
+/// So a device that floods a channel stalls instead of growing a buffer.
 const CHANNEL_BUFFER: usize = 8;
 
-/// Opens a signed-in connection to `device` within [`OPENING`].
-///
-/// # Errors
-/// [`Error::Timeout`] when [`OPENING`] passes first; otherwise as [`opened`].
 pub(super) async fn open(
     db: &PgPool,
     vault: &credentials::Vault,
@@ -48,7 +37,6 @@ pub(super) async fn open(
         .map_err(|_| Error::Timeout)?
 }
 
-/// Each step in order: host key, addresses, connection, pin, sign-in.
 async fn opened(
     db: &PgPool,
     vault: &credentials::Vault,
@@ -75,12 +63,6 @@ async fn opened(
     Ok(handle)
 }
 
-/// Resolves the device's host once and connects to the first checked address that answers
-/// within [`ADDRESS_WAIT`].
-///
-/// # Errors
-/// [`Error::Unresolved`], [`Error::RefusedTarget`] when `policy` refuses any address, and
-/// [`Error::Unreachable`] when no address answers.
 async fn reach(policy: &AddressPolicy, device: &Device) -> Result<Reached, Error> {
     let addresses = targets::resolve_checked(&device.host, device.ssh.port, policy)
         .await
@@ -93,9 +75,7 @@ async fn reach(policy: &AddressPolicy, device: &Device) -> Result<Reached, Error
     Err(Error::Unreachable)
 }
 
-/// Signs in as the device's user with its stored credential, opened only for the host this
-/// link resolved (SEC-011). The decrypted secret is dropped, its bytes zeroed, before this
-/// returns.
+/// The credential opens only for the host this link resolved (SEC-011), and is zeroed before this returns.
 async fn sign_in(
     db: &PgPool,
     vault: &credentials::Vault,
@@ -114,8 +94,6 @@ async fn sign_in(
     signed_in.map_err(Error::from)
 }
 
-/// The link's SSH client configuration: the hub's host key order, keep-alives, an idle end
-/// and a small channel buffer for backpressure.
 fn config() -> Arc<client::Config> {
     Arc::new(client::Config {
         preferred: ssh::preferred(),

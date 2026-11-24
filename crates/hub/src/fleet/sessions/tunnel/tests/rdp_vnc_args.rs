@@ -4,12 +4,9 @@ use std::collections::HashSet;
 
 use guac_protocol::Decoder;
 
-/// guacd 1.6.0's reply to `select,rdp`, recorded from `guacamole/guacd:1.6.0`.
 const RDP: &[u8] = include_bytes!("fixtures/guacd-1.6.0-rdp-args.guac");
-/// guacd 1.6.0's reply to `select,vnc`, recorded from `guacamole/guacd:1.6.0`.
 const VNC: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-args.guac");
 
-/// The RDP names K4 Section 3 gives a value.
 const RDP_NAMES: [&str; 18] = [
     "hostname",
     "port",
@@ -31,7 +28,6 @@ const RDP_NAMES: [&str; 18] = [
     "disable-paste",
 ];
 
-/// The VNC names K4 Section 3 gives a value.
 const VNC_NAMES: [&str; 6] = [
     "hostname",
     "port",
@@ -50,7 +46,6 @@ const WOL_NAMES: [&str; 5] = [
     "wol-wait-time",
 ];
 
-/// The names after the version in the fixture's one `args` instruction.
 fn names(fixture: &[u8]) -> Vec<String> {
     let mut instructions = Decoder::new().feed(fixture).unwrap();
     assert_eq!(instructions.len(), 1, "one instruction per fixture");

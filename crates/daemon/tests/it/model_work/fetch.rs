@@ -1,6 +1,3 @@
-//! The child fetch process (task L1-6b): the child in its mode, and the daemon side with a
-//! stalled and a crashed child.
-
 use std::io::{Read as _, Write as _};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -30,15 +27,12 @@ fn order(root: &Path) -> FetchOrder {
     }
 }
 
-/// Runs the child with `input` and the environment `variables`, and gives its reply. An input
-/// that ends a line stays open until the child ends, as the daemon keeps it.
 fn child(input: &[u8], variables: &[(&str, &str)]) -> String {
     let (reply, code) = child_ending(input, variables);
     assert_eq!(code, Some(0));
     reply
 }
 
-/// The reply and the exit code of the child.
 fn child_ending(input: &[u8], variables: &[(&str, &str)]) -> (String, Option<i32>) {
     let mut child = Command::new(DAEMON)
         .arg(FETCH_MODE)
@@ -72,11 +66,11 @@ fn the_child_refuses_to_work_with_any_environment_variable() {
     let text = line(&order(root.path()));
     assert_eq!(
         child(&text, &[("ANIMA_DAEMON_TOKEN", "x")]),
-        "source_failed\n"
+        "fetch_failed\n"
     );
     assert_eq!(
         child(&text, &[("HTTPS_PROXY", "http://127.0.0.1:1")]),
-        "source_failed\n"
+        "fetch_failed\n"
     );
 }
 
@@ -103,7 +97,6 @@ async fn the_daemon_reads_the_cause_of_its_child() {
     assert_eq!(outcome, Err(Cause::RuntimeNotConfigured));
 }
 
-/// A program file below `root` with the shell `body`.
 fn script(root: &Path, body: &str) -> std::path::PathBuf {
     use std::os::unix::fs::PermissionsExt as _;
     let path = root.join("child");
@@ -121,7 +114,7 @@ async fn a_stalled_child_is_ended_at_the_deadline_and_the_daemon_goes_on() {
     );
     let started = Instant::now();
     let outcome = fetch_in_child(&program, &order(root.path()), Duration::from_secs(2)).await;
-    assert_eq!(outcome, Err(Cause::SourceFailed));
+    assert_eq!(outcome, Err(Cause::FetchFailed));
     assert!(started.elapsed() < Duration::from_secs(10));
     let pid = std::fs::read_to_string(root.path().join("pid")).expect("a pid");
     let gone = (0..50).any(|_| {
@@ -136,18 +129,27 @@ async fn a_stalled_child_is_ended_at_the_deadline_and_the_daemon_goes_on() {
 }
 
 #[tokio::test]
-async fn a_crashed_child_or_one_with_a_false_reply_is_source_failed() {
+async fn a_crashed_child_or_one_with_a_false_reply_is_fetch_failed() {
     let root = tempfile::tempdir().expect("a folder");
     let cases = [
         "echo done; kill -SEGV $$",
-        "echo done; exit 3",
+        "echo source_failed; exit 3",
         "echo listener",
+        "echo '/home/x/evil.tar.gz: boom' >&2; echo 'archive /x'",
     ];
     for body in cases {
         let program = script(root.path(), body);
         let outcome = fetch_in_child(&program, &order(root.path()), Duration::from_secs(10)).await;
-        assert_eq!(outcome, Err(Cause::SourceFailed), "{body}");
+        assert_eq!(outcome, Err(Cause::FetchFailed), "{body}");
     }
+}
+
+#[tokio::test]
+async fn a_source_error_that_the_child_reports_stays_source_failed() {
+    let root = tempfile::tempdir().expect("a folder");
+    let program = script(root.path(), "echo source_failed");
+    let outcome = fetch_in_child(&program, &order(root.path()), Duration::from_secs(10)).await;
+    assert_eq!(outcome, Err(Cause::SourceFailed));
 }
 
 #[test]

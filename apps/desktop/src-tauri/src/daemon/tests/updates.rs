@@ -1,8 +1,4 @@
-//! The update of the installed copy with the app (HMD-055), with stand-in daemons in a temporary
-//! HOME: each answers `--version` as told and records each other run with the version of the
-//! installed copy and the inode of `anima-daemon.previous` at that moment, so their `stop` and
-//! `install` are the fake service manager. The real `~/.local/bin`, unit, `launchctl` and
-//! `systemctl` are never touched.
+//! The update of the installed copy with the app (HMD-055); the stand-ins' `stop` and `install` are the service manager.
 
 use std::{
     fs,
@@ -18,23 +14,17 @@ use std::{
 use super::rig::{NEVER, Rig, WIDE, names_in, rig};
 use crate::daemon::{
     DaemonError,
-    signature::Identity,
     update::{STOP_ARGS, Swap, Updated, previous, update_here},
-    version::{Decision, decide, parse},
+    version::{Decision, Version, decide, parse},
 };
 
-/// How a stand-in answers `--version`.
 pub(super) const OLD: &str = "echo 'anima-daemon 0.1.9'";
 pub(super) const NEW: &str = "echo 'anima-daemon 0.1.10'";
-/// A daemon from before `--version`: it prints the usage and fails.
 const NO_VERSION: &str = "echo 'usage: anima-daemon run' >&2; exit 2";
-/// What the stand-ins record as the version of the copy.
 pub(super) const OLD_COPY: &str = "copy:anima-daemon 0.1.9";
 pub(super) const NEW_COPY: &str = "copy:anima-daemon 0.1.10";
 
-/// A stand-in daemon named `label` that answers `--version` with `version` and records each
-/// other run as `<label> <args> copy:<version of the copy> prev:<inode of the copy of before>`,
-/// then runs `then`.
+/// Records each run but `--version` as `<label> <args> copy:<version of the copy> prev:<inode of the copy of before>`.
 fn stand_in(rig: &Rig, label: &str, version: &str, then: &str) -> String {
     let copy = rig.installed();
     format!(
@@ -50,8 +40,6 @@ fn write_program(path: &Path, text: &str) {
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).expect("chmod");
 }
 
-/// A rig whose installed copy (`old`) answers `installed` and whose carried daemon (`new`)
-/// answers `carried` and runs `then` for each other command.
 pub(super) fn installed(installed: &str, carried: &str, then: &str) -> (Rig, String, String) {
     let rig = rig("exit 0");
     rig.local_bin();
@@ -63,25 +51,50 @@ pub(super) fn installed(installed: &str, carried: &str, then: &str) -> (Rig, Str
 }
 
 fn update(rig: &Rig) -> Result<Updated, DaemonError> {
-    update_with(rig, WIDE, Identity::Kept)
+    update_with(rig, WIDE)
 }
 
-/// The update with `restart` as the deadline of each `stop` and `install`, for a carried daemon
-/// of `identity`.
-pub(super) fn update_with(
-    rig: &Rig,
-    restart: Duration,
-    identity: Identity,
-) -> Result<Updated, DaemonError> {
+#[derive(Clone, Copy)]
+pub(super) struct Checks {
+    pub restart: Duration,
+    pub sealed: bool,
+    pub signed: fn(&Path) -> bool,
+    pub healthy: fn(Version) -> bool,
+}
+
+impl Default for Checks {
+    fn default() -> Self {
+        Self {
+            restart: WIDE,
+            sealed: true,
+            signed: |_| true,
+            healthy: |_| true,
+        }
+    }
+}
+
+pub(super) fn update_with(rig: &Rig, restart: Duration) -> Result<Updated, DaemonError> {
+    update_checked(
+        rig,
+        &Checks {
+            restart,
+            ..Checks::default()
+        },
+    )
+}
+
+pub(super) fn update_checked(rig: &Rig, checks: &Checks) -> Result<Updated, DaemonError> {
     let env = rig.here().env;
     update_here(&Swap {
         copy: &rig.installed(),
         carried: &rig.source,
         user: rig.user,
         env: &env,
-        restart,
+        restart: checks.restart,
         stop: &NEVER,
-        identity,
+        sealed: checks.sealed,
+        signed: &checks.signed,
+        healthy: &checks.healthy,
     })
 }
 
@@ -145,7 +158,11 @@ fn hmd_055_the_unit_stops_then_a_new_file_takes_the_place_then_the_unit_starts()
          aside; no enrolment"
     );
     assert_eq!(STOP_ARGS, ["stop"]);
-    assert_eq!(bin(&rig), ["anima-daemon"]);
+    assert_eq!(
+        bin(&rig),
+        ["anima-daemon", "anima-daemon.0.1.9"],
+        "the copy of before stays under its version"
+    );
 }
 
 #[test]
@@ -232,7 +249,6 @@ fn hmd_055_a_stop_that_fails_changes_nothing() {
 
 #[test]
 fn hmd_055_a_copy_that_fails_after_the_stop_puts_the_copy_of_before_back_and_starts_it() {
-    // The carried daemon becomes unreadable at its stop: the copy then starts, and fails.
     let (rig, old, _) = installed(OLD, NEW, "[ \"$1\" = stop ] && chmod 000 \"$0\"; exit 0");
     let old_inode = inode(&rig.installed());
 
@@ -277,7 +293,7 @@ fn hmd_055_an_update_cut_between_its_renames_puts_the_copy_of_before_back_first(
 }
 
 #[test]
-fn hmd_055_an_update_cut_before_its_start_starts_the_unit_and_forgets_the_copy_of_before() {
+fn hmd_055_an_update_cut_before_its_start_starts_the_unit_and_keeps_the_copy_of_before() {
     let (rig, _, new) = installed(NEW, NEW, "exit 0");
     write_program(
         &previous(&rig.installed()),
@@ -289,5 +305,5 @@ fn hmd_055_an_update_cut_before_its_start_starts_the_unit_and_forgets_the_copy_o
 
     assert_eq!(copy_text(&rig), new);
     assert_eq!(rig.runs().matches(" install ").count(), 1);
-    assert_eq!(bin(&rig), ["anima-daemon"]);
+    assert_eq!(bin(&rig), ["anima-daemon", "anima-daemon.0.1.9"]);
 }

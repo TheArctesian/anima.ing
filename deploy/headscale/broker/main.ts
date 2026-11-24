@@ -1,10 +1,6 @@
 /**
- * The broker process on the VPS (R-055, VP-8, BD-7): systemd starts one for each connection
- * to /run/anima-broker/broker.sock (`Accept=yes`, `MaxConnections=1`). With no argument it
- * serves one request from stdin to stdout. `audit` runs the audit alone (the audit timer, H2).
- * `count-nodes` prints the node count and `check` asks the running socket for the node list;
- * the install (`harden.sh broker`) uses both. The units run the serve and audit entry points
- * under `flock /var/lib/anima-broker/lock`, so only one of them reads and writes the state.
+ * The broker process on the VPS (R-055, VP-8, BD-7). With no argument it serves one request from stdin to stdout;
+ * `audit` is for the audit timer (H2); `count-nodes` and `check` are for `harden.sh broker`.
  */
 
 import { connect } from 'node:net';
@@ -31,7 +27,6 @@ const CHECK_MS = 55_000;
 const MAX_OUTPUT_BYTES = 1_048_576;
 const USAGE = 64;
 
-/** Reads a stream up to `limit` bytes; null when it is longer. */
 async function capped(stream: ReadableStream<Uint8Array>, limit: number): Promise<string | null> {
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -44,11 +39,8 @@ async function capped(stream: ReadableStream<Uint8Array>, limit: number): Promis
 }
 
 /**
- * Runs `headscale <step>` in the Headscale container. The argv never holds a pre-auth key. It
- * does hold the auth ID of `register` (`--auth-id=`): the broker never logs it, but the docker
- * CLI's argv is visible in /proc to other local users unless /proc is mounted with hidepid=2,
- * and Docker's event log records each `exec` command (L1). Only a Headscale admin can use an
- * auth ID. stderr is dropped because it can echo the arguments.
+ * The argv never holds a pre-auth key; the auth ID of `register` in it is visible in /proc and Docker's event log
+ * (L1); only a Headscale admin can use an auth ID. stderr is dropped because it can echo the arguments.
  */
 export async function headscale(step: Step): Promise<string> {
   const child = Bun.spawn([...HEADSCALE, ...step], { stdin: 'ignore', stdout: 'pipe', stderr: 'ignore', env: STEP_ENV, timeout: STEP_MS, killSignal: 'SIGKILL' });
@@ -59,7 +51,6 @@ export async function headscale(step: Step): Promise<string> {
   return output;
 }
 
-/** The first line of the stream, at most `limit` bytes are read; null on EOF or time-out with nothing read. */
 export async function readLine(stream: ReadableStream<Uint8Array>, limit: number, ms: number): Promise<string | null> {
   const reader = stream.getReader();
   const chunks: Uint8Array[] = [];
@@ -102,7 +93,7 @@ async function serveOnce(): Promise<number> {
   return 0;
 }
 
-/** `headscale`, refusing a change that could not finish before the request deadline (H1). */
+/** Refuses a change that could not finish before the request deadline (H1). */
 function guarded(started: number): Runner {
   return withDeadline(headscale, started + REQUEST_MS, Date.now);
 }

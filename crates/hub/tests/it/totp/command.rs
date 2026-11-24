@@ -1,6 +1,5 @@
-//! `anima-hub operator totp`: the URI goes only to a terminal, `--disable` turns the second
-//! factor off and `--new` prints a secret for `operator create`; `operator show` (SEC-002,
-//! D-9, LOG-007, FRN-003, FRN-004).
+//! `anima-hub operator`: the TOTP URI goes only to a terminal (SEC-002, D-9, LOG-007, FRN-003,
+//! FRN-004).
 
 use std::{io::Write as _, process::Stdio};
 
@@ -15,19 +14,14 @@ use crate::{
     start::url_for,
 };
 
-/// Runs `anima-hub` with the test database and a throwaway key and no standard input; returns
-/// (success, stdout, stderr). Standard output is a pipe, never a terminal.
 fn hub_command(pool: &PgPool, args: &[&str]) -> (bool, String, String) {
     hub_command_with(pool, args, b"")
 }
 
-/// [`hub_command`] with `input` on standard input.
 fn hub_command_with(pool: &PgPool, args: &[&str], input: &[u8]) -> (bool, String, String) {
     run_hub(pool, args, Stdio::piped(), input)
 }
 
-/// Runs `anima-hub` with `stdin` as its standard input, and writes `input` to it when it is a
-/// pipe.
 fn run_hub(pool: &PgPool, args: &[&str], stdin: Stdio, input: &[u8]) -> (bool, String, String) {
     let database = pool.connect_options().get_database().unwrap().to_owned();
     let mut url_file = tempfile::NamedTempFile::new().unwrap();
@@ -65,9 +59,6 @@ async fn enrolled(pool: &PgPool) -> bool {
         .unwrap()
 }
 
-/// Standard output here is always a pipe, so the success path that prints the URI on a real
-/// terminal is not covered by these tests; `access::enrol_totp` and its URI are tested in
-/// `totp.rs` and the access unit tests.
 #[sqlx::test(migrations = "./migrations")]
 async fn log_007_operator_totp_refuses_to_print_the_uri_into_a_pipe(pool: PgPool) {
     set_operator(&pool).await;
@@ -129,7 +120,6 @@ async fn frn_003_operator_show_prints_the_operator_and_its_second_factor(pool: P
     assert_eq!(show(&pool), json!({ "name": USERNAME, "totp": true }));
 }
 
-/// `operator totp --new` once, parsed: the secret text and the URI.
 fn new_totp(pool: &PgPool, username: &str) -> (String, String) {
     let (ok, stdout, stderr) = hub_command(pool, &["operator", "totp", username, "--new"]);
     assert!(ok, "{stderr}");
@@ -160,7 +150,6 @@ async fn frn_004_totp_new_prints_a_secret_and_saves_nothing(pool: PgPool) {
     assert!(!enrolled(&pool).await);
 }
 
-/// `operator create` with three lines on standard input, the second with a CRLF ending.
 fn create(pool: &PgPool, password: &str, secret: &str, typed: &str) -> (bool, String, String) {
     let input = format!("{password}\n{secret}\r\n{typed}\n");
     hub_command_with(pool, &["operator", "create", USERNAME], input.as_bytes())
@@ -214,7 +203,6 @@ async fn sec_002_frn_004_operator_create_saves_both_factors_and_uses_the_code(po
     assert!(signed_in(&login(&later, PASSWORD, Some(&next_code)).await));
 }
 
-/// The two ends of a new pseudo-terminal: the controller, and the terminal side as a file.
 #[cfg(unix)]
 fn pseudo_terminal() -> (std::os::fd::OwnedFd, std::fs::File) {
     use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};

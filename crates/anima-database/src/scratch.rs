@@ -1,5 +1,4 @@
-//! A scratch database for the tests: a new cluster in a temporary folder, run by this
-//! computer's PostgreSQL 17. The folder name has a space, as `Application Support` has.
+//! A scratch PostgreSQL 17 cluster for the tests; its folder name has a space, as `Application Support` has.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -10,7 +9,6 @@ use tempfile::TempDir;
 use crate::cluster::{self, SUPERUSER};
 use crate::{Layout, Limits, Lock, Program, Server, Settings, Tree};
 
-/// Where a package puts PostgreSQL 17.
 const KNOWN_TREES: [&str; 3] = [
     "/opt/homebrew/opt/postgresql@17",
     "/usr/local/opt/postgresql@17",
@@ -27,6 +25,15 @@ pub const LIMITS: Limits = Limits {
     stop: Duration::from_secs(30),
 };
 
+/// `backup` refuses a folder that the group can write to, whatever the umask (0002 on Ubuntu).
+pub fn private_folder() -> TempDir {
+    use std::os::unix::fs::PermissionsExt as _;
+    tempfile::Builder::new()
+        .permissions(std::fs::Permissions::from_mode(0o700))
+        .tempdir()
+        .unwrap()
+}
+
 pub struct Database {
     pub tree: Tree,
     pub layout: Layout,
@@ -35,7 +42,6 @@ pub struct Database {
 }
 
 impl Database {
-    /// A new cluster; no server runs yet.
     pub fn new() -> Self {
         let folder = tempfile::tempdir().unwrap();
         let layout = Layout::new(folder.path().join("db root"), folder.path().join("s")).unwrap();
@@ -56,7 +62,6 @@ impl Database {
         server
     }
 
-    /// The tree's `psql`, signed in as the superuser on `database`, with no start-up file.
     /// No password: the test runs as the operating-system user that the cluster admits.
     pub fn psql(&self, database: &str) -> Command {
         let mut psql = Command::new(self.psql_program());
@@ -68,12 +73,10 @@ impl Database {
         psql
     }
 
-    /// Runs one statement as the superuser in the `postgres` database; `Err` when it fails.
     pub fn sql(&self, statement: &str) -> Result<String, String> {
         self.sql_in("postgres", statement)
     }
 
-    /// Runs statements as the superuser in `database`; the answer of the last one.
     pub fn sql_in(&self, database: &str, statements: &str) -> Result<String, String> {
         let output = self
             .psql(database)
@@ -88,7 +91,6 @@ impl Database {
         }
     }
 
-    /// One statement as `login` with `password`, as a client with a password signs in.
     pub fn sql_as(&self, login: &str, password: &str, statement: &str) -> Result<String, String> {
         let output = Command::new(self.psql_program())
             .env_clear()
@@ -124,8 +126,6 @@ impl Database {
     }
 }
 
-/// # Panics
-/// When this computer has no PostgreSQL 17.
 pub fn local_tree() -> Tree {
     let named = std::env::var_os("ANIMA_POSTGRES_TREE").map(PathBuf::from);
     let known = KNOWN_TREES.map(PathBuf::from);

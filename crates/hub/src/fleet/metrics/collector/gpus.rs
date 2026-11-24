@@ -1,9 +1,5 @@
-//! The GPUs of one collection (MET-006 to MET-009, D-30): whether it looks for the device's
-//! GPUs, which vendors' fixed reads it runs, and the samples of the GPUs it knows.
-//!
-//! `discovery` decides when to look and numbers what it finds, `answers` reads each vendor's
-//! output, `sysfs` splits the AMD files by card and `samples` makes the samples; all pure.
-//! `reads` runs the reads on the link.
+//! The GPUs of one collection (MET-006 to MET-009, D-30).
+//! Only `reads` uses the link; the other modules are pure.
 
 pub(super) mod answers;
 pub(super) mod discovery;
@@ -26,27 +22,21 @@ use crate::fleet::{
 };
 use discovery::Look;
 
-/// What one collection does about GPUs, decided from its reading before the GPU reads run.
 pub(super) struct Plan {
     look: Option<Look>,
     known: Option<Discovered>,
     commands: Vec<GpuCommand>,
 }
 
-/// The GPU part of a collection: what the hub now knows of the device's GPUs, whether this
-/// collection looked (so what it knows is to be stored), and the samples.
 #[derive(Debug)]
 pub(super) struct GpuRound {
     pub(super) known: Option<Discovered>,
+    /// This collection looked, so `known` is to be stored.
     pub(super) discovered_now: bool,
     pub(super) samples: Vec<Sample>,
 }
 
 impl Plan {
-    /// The plan of the collection taken at `at` of a device running `os`, whose `reading`
-    /// gives its boot time, with the GPUs `known` before. It runs the reads of the vendors
-    /// known and of those its look includes, so a device without GPUs that is not looked at
-    /// runs none.
     pub(super) fn new(
         os: OperatingSystem,
         known: Option<Discovered>,
@@ -73,13 +63,10 @@ impl Plan {
         }
     }
 
-    /// The reads to run, in order.
     pub(super) fn commands(&self) -> &[GpuCommand] {
         &self.commands
     }
 
-    /// The round's GPU part from the `answers` of [`Plan::commands`]: after a look, what it
-    /// found merged into what was known; otherwise what was known.
     pub(super) fn finish(self, answers: &[(GpuVendor, Answer)]) -> GpuRound {
         let discovered_now = self.look.is_some();
         let known = match &self.look {

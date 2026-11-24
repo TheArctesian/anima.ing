@@ -1,6 +1,4 @@
-//! K-E1 Section 13.1, "Request budget": one GraphQL request asks GitHub at most 100 times for an
-//! API key and 200 times for a login or browser token. The reads past the budget are refused
-//! with fixed words, and a normal page with its checks stays well inside it.
+//! K-E1 Section 13.1, "Request budget".
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -9,14 +7,12 @@ use super::{Forge, forge, merges::clean, nodes, pull, sha, tokens::key};
 
 const SPENT: &str = "This request asked GitHub too many times. Ask for less at once.";
 
-/// Two aliased lists of 50 pull requests, each with its mergeability and checks.
 const TWICE: &str = "query($repository: ID!) { \
     a: pullRequests(repository: $repository, first: 50) { edges { node { number \
       mergeability { state } checks { state } } } } \
     b: pullRequests(repository: $repository, first: 50, state: ALL) { edges { node { number \
       mergeability { state } checks { state } } } } }";
 
-/// GitHub lists `count` open, clean pull requests, each with one passed check and no status.
 fn listed(forge: &Forge, count: u64) {
     let pulls: Vec<Value> = (1..=count).map(|n| pull(n, "open")).collect();
     forge.ok("/pulls", &Value::Array(pulls));
@@ -34,7 +30,6 @@ fn listed(forge: &Forge, count: u64) {
     }
 }
 
-/// The messages of the errors of `response`.
 fn messages(response: &Value) -> Vec<String> {
     let errors = response["errors"].as_array().map_or(&[][..], Vec::as_slice);
     errors

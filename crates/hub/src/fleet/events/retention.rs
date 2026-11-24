@@ -2,19 +2,17 @@
 
 use chrono::{DateTime, Days, Months, NaiveDate, Utc};
 
-/// A partitioned log. Its floor is in `events.drop_day_partitions_before`.
+/// Its floor is in `events.drop_day_partitions_before`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Log {
     /// `event_log`: the period the operator set (D-25), at least 30 days.
     Events,
-    /// `audit_log`: 1 year.
     Audit,
 }
 
 pub(super) const LOGS: [Log; 2] = [Log::Events, Log::Audit];
 
 impl Log {
-    /// The table name the partition functions accept.
     pub(super) const fn table(self) -> &'static str {
         match self {
             Self::Events => "event_log",
@@ -22,9 +20,7 @@ impl Log {
         }
     }
 
-    /// Partitions for UTC days before this one may be dropped at `now`, when `event_log` keeps
-    /// `events_keep`. It is one day later than the database allows, so a hub clock slightly
-    /// ahead of the database clock is never refused; the extra day is dropped on the next run.
+    /// One day later than the database allows, so a hub clock slightly ahead of it is never refused.
     pub(super) fn first_kept_day(self, now: DateTime<Utc>, events_keep: Days) -> NaiveDate {
         let now = now.naive_utc();
         let bound = match self {

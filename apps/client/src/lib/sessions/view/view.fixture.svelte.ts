@@ -1,6 +1,3 @@
-// Test support: a fake sessions API, a hand-driven ResizeObserver, a fake system clipboard and Web Animations
-// stand-in for mounting `SessionView` in jsdom with the real terminal link on `FakeTerminalSocket` and the real
-// xterm.js (its DOM renderer runs in jsdom).
 import { flushSync, mount, unmount } from 'svelte';
 import { vi } from 'vitest';
 import { UNREACHABLE, type HubResult, type Hub } from '$lib/hub/hub';
@@ -12,7 +9,6 @@ import Hubbed from './filing/hubbed.fixture.svelte';
 import SessionView from './SessionView.svelte';
 import { sessionStart } from './start';
 
-/** Every call the fake API heard, in order per method. */
 export interface ApiCalls {
   startSession: [string, SessionDisplay][];
   endSession: string[];
@@ -20,14 +16,12 @@ export interface ApiCalls {
   acceptHostKey: [string, string][];
 }
 
-/** What the fake hub answers; tests change it between steps. */
 export interface HubAnswers {
   endReason: SessionEndReason | null;
   test: HubResult<ConnectionTest>;
   accept: (fingerprint: string) => HubResult<AcceptedHostKey>;
   /** The device's copy and paste flags, or `'unanswered'` when the hub does not answer them. */
   transfer: SessionTransfer | 'unanswered';
-  /** `startSession` says it sent a Wake-on-LAN packet. */
   wakeSent: boolean;
 }
 
@@ -89,11 +83,9 @@ export const flags = $state({ visible: true, focused: true });
 
 type Callback = (entries: { contentRect: { width: number; height: number } }[]) => void;
 
-/** A ResizeObserver that reports only when a test calls `resize`. */
 export class FakeResizeObserver {
   static observers: FakeResizeObserver[] = [];
 
-  /** Report a new content size to every observer. */
   static resize(width: number, height: number): void {
     for (const observer of FakeResizeObserver.observers) observer.callback([{ contentRect: { width, height } }]);
   }
@@ -109,10 +101,8 @@ export class FakeResizeObserver {
   }
 }
 
-/** The system clipboard as `navigator.clipboard` sees it. */
 export const systemClipboard = {
   written: [] as string[],
-  /** How many times the clipboard was read. */
   reads: 0,
   text: '',
   refuse: false,
@@ -127,7 +117,6 @@ export const systemClipboard = {
   },
 };
 
-/** Install the fakes jsdom lacks; returns the function that removes them. */
 export function installBrowserFakes(): () => void {
   const saved = globalThis.ResizeObserver;
   FakeResizeObserver.observers = [];
@@ -166,7 +155,6 @@ export function installBrowserFakes(): () => void {
 
 export const DEVICE = { id: 'device-1', name: 'web-01' };
 
-/** Let pending promises (the fake hub's answers) settle, then flush Svelte's updates. */
 export async function settle(): Promise<void> {
   for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
   flushSync();
@@ -179,7 +167,6 @@ export interface ViewHeard {
   hooks: ScreenHooks | undefined;
 }
 
-/** Mount a `SessionView` for `DEVICE` on the real link over `FakeTerminalSocket`, with `flags` as its flags. */
 export function showView(wrap: (open: ScreenOpener) => ScreenOpener = (open) => open, hub?: Hub) {
   const { api, calls, answers } = fakeApi();
   const heard: ViewHeard = { ended: [], titles: [], hooks: undefined };
@@ -222,7 +209,6 @@ export async function connectView(width = 800, height = 600): Promise<FakeTermin
   return socket;
 }
 
-/** xterm.js's hidden text field, which takes the keyboard. */
 export function textareaOf(target: HTMLElement): HTMLTextAreaElement {
   const field = target.querySelector<HTMLTextAreaElement>('textarea.xterm-helper-textarea');
   if (field === null) throw new Error('no terminal text field');

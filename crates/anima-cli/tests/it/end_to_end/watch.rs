@@ -1,5 +1,4 @@
-//! `anima event watch --json` on the real hub's subscription (K1 `eventAdded`): the event of a
-//! sign-in made while it runs arrives as one JSON line, and SIGINT stops it.
+//! `anima event watch --json` on the real hub's subscription (K1 `eventAdded`).
 
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt as _;
@@ -13,11 +12,9 @@ use tokio::io::{AsyncBufReadExt as _, BufReader};
 use super::words;
 use crate::kit::real_hub::{RealHub, USERNAME};
 
-/// How long the whole watch may take.
 const DEADLINE: Duration = Duration::from_secs(30);
 
-/// How long one sign-in's event is waited for before another sign-in: the watch may not have
-/// subscribed yet when the first one happens, and nothing outside the hub shows when it has.
+/// Sign in again after this: nothing outside the hub shows when the watch has subscribed.
 const EACH_TRY: Duration = Duration::from_millis(250);
 
 #[sqlx::test(migrations = "../hub/migrations")]

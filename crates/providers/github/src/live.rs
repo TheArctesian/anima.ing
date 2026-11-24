@@ -1,12 +1,6 @@
-//! Live reads of one repository: pull requests, issues, comments, workflow runs, checks,
-//! commits, branches, releases and the code (PRJ-030 to PRJ-034).
-//!
-//! Pure, like the sync: each module builds a [`Request`] and parses the [`Response`] to plain
-//! types of this crate. The hub sends the request and reads the `Link` header itself, and
-//! takes only the page number from it ([`paging::next_page`]). Text from GitHub (titles,
-//! bodies, logins, names) stays a plain `String`; the hub cuts it and never renders it as
-//! HTML. A value GitHub may add to an open set maps to an `Unknown` or `Other` variant, so
-//! one new value never fails a whole list.
+//! Live reads of one repository (PRJ-030 to PRJ-034).
+//! Text from GitHub stays a plain `String` that the hub never renders as HTML. A value that
+//! GitHub adds to an open set maps to an `Unknown` or `Other` variant, so it never fails a list.
 
 pub mod checks;
 pub mod comments;
@@ -27,7 +21,6 @@ use source_exchange::{Body, Problem, Request, Response};
 use crate::name;
 use crate::problem::problem;
 
-/// Which pull requests or issues a list asks for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StateFilter {
     Open,
@@ -45,9 +38,7 @@ impl StateFilter {
     }
 }
 
-/// `GET /repos/{repository}{tail}` with `filters`, and with the page when one is given. The
-/// repository is `owner/name`; one that cannot go into a path is refused before any path is
-/// built, with fixed words.
+/// A repository that cannot go into a path is refused, with fixed words, before any path is built.
 pub(crate) fn get(
     repository: &str,
     tail: &str,
@@ -80,8 +71,7 @@ pub(crate) fn get(
     })
 }
 
-/// The body of a 200 reply as `T`. Any other status, a body larger than the hub reads and a
-/// body that is not `T` are each a problem with fixed words, never a piece of GitHub's reply.
+/// Each failure is a problem with fixed words, never a piece of GitHub's reply.
 pub(crate) fn read<T: DeserializeOwned>(
     response: &Response<'_>,
     subject: &str,
@@ -119,7 +109,6 @@ pub(crate) struct User {
     login: String,
 }
 
-/// A login, or `ghost` when GitHub gives no user (a deleted account).
 pub(crate) fn login(user: Option<User>) -> String {
     user.map_or_else(|| GHOST.to_owned(), |user| user.login)
 }

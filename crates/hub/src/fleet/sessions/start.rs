@@ -1,7 +1,3 @@
-//! Starting a session (K4 §1, K3 `start`): checks the device and the display, holds the
-//! device to its session limit (`limit`), wakes it when it is Down (`waking`), writes the row
-//! and its audit entry, and issues the single-use ticket.
-
 mod limit;
 mod moved;
 mod waking;
@@ -36,14 +32,12 @@ use crate::{
 pub(super) use moved::refuse_moved;
 pub use waking::Waking;
 
-/// What the operator asks for: a device, a protocol and the view the client will show, and
-/// what waking the device needs (`startSession` gives it; `None` sends no packet).
 #[derive(Clone, Debug)]
 pub struct StartRequest {
     pub device: DeviceId,
     pub protocol: Protocol,
     pub display: DisplayRequest,
-    /// What a wake needs; `None` never wakes the device, whatever its status.
+    /// `None` never wakes the device, whatever its status.
     pub wake: Option<Waking>,
 }
 
@@ -61,7 +55,6 @@ pub const DEFAULT_DPI: i32 = 96;
 
 type Display = guac_protocol::Display;
 
-/// One side or the DPI as `u32` when within `min..=max`, else the field's error.
 fn bounded(value: i64, (min, max): (u32, u32), field: &'static str) -> Result<u32, FieldError> {
     u32::try_from(value)
         .ok()
@@ -69,18 +62,15 @@ fn bounded(value: i64, (min, max): (u32, u32), field: &'static str) -> Result<u3
         .ok_or_else(|| FieldError::new(field, format!("Enter a value from {min} to {max}.")))
 }
 
-/// Longest `DisplayInput.timezone` a ticket holds, in bytes: the longest IANA zone name has
-/// 32, and `guac_protocol::is_zone_name` allows 64.
+/// The longest IANA zone name has 32 bytes; `guac_protocol::is_zone_name` allows 64.
 const MAX_TIMEZONE_BYTES: usize = 64;
 
-/// The time zone a ticket holds: the requested one when it is a zone name of at most
-/// `MAX_TIMEZONE_BYTES`, else none, so the tunnel uses UTC (K4 §3, R-032 E-6). Never a
-/// refusal, and a ticket never holds arbitrary client text.
+/// Never a refusal: anything else is dropped so the tunnel uses UTC, and a ticket never holds
+/// arbitrary client text (K4 §3, R-032 E-6).
 pub(super) fn held_timezone(requested: Option<String>) -> Option<String> {
     requested.filter(|zone| zone.len() <= MAX_TIMEZONE_BYTES && guac_protocol::is_zone_name(zone))
 }
 
-/// The display within K4 §4's bounds, else an error for each field outside them.
 pub(super) fn checked_display(display: &DisplayRequest) -> Result<Display, Vec<FieldError>> {
     let side = (Display::MIN_SIDE_PX, Display::MAX_SIDE_PX);
     let width = bounded(display.width_px, side, "display.widthPx");
@@ -99,8 +89,7 @@ pub(super) fn checked_display(display: &DisplayRequest) -> Result<Display, Vec<F
     }
 }
 
-/// The host as an IP literal `policy` refuses, as a field error. Host names are checked when
-/// the tunnel connects, because they resolve only then.
+/// Host names are checked when the tunnel connects, because they resolve only then.
 fn host_problem(host: &str, policy: &AddressPolicy) -> Option<FieldError> {
     let ip = host.parse::<IpAddr>().ok()?.to_canonical();
     (!policy.permits(ip)).then(|| {
@@ -113,8 +102,8 @@ fn host_problem(host: &str, policy: &AddressPolicy) -> Option<FieldError> {
     })
 }
 
-/// Why `protocol` is off for `device`, if it is (K4 Section 1). The tunnel checks it again
-/// when it opens, because the operator may turn the protocol off in between.
+/// The tunnel checks it again when it opens, because the operator may turn the protocol off
+/// in between (K4 Section 1).
 pub(super) const fn protocol_off(device: &Device, protocol: Protocol) -> Option<Conflict> {
     match protocol {
         Protocol::Ssh if !device.ssh.enabled => Some(Conflict::SshDisabled),
@@ -124,16 +113,12 @@ pub(super) const fn protocol_off(device: &Device, protocol: Protocol) -> Option<
     }
 }
 
-/// Whether an RDP session needs an accepted server certificate: always, unless the device
-/// uses standard RDP security (no TLS, so no certificate) or the operator chose to ignore
-/// the certificate (K4 Section 1, SEC-007).
+/// Standard RDP security has no TLS, so no certificate (K4 Section 1, SEC-007).
 pub(super) fn certificate_required(rdp: &RdpSettings) -> bool {
     rdp.security != RdpSecurity::Rdp && !rdp.ignore_certificate
 }
 
-/// What the device must have accepted before `protocol` may start: an SSH host key, or an
-/// RDP server certificate when [`certificate_required`]; VNC pins nothing (K4 Sections 1
-/// and 6).
+/// VNC pins nothing (K4 Sections 1 and 6).
 async fn trust_missing(
     db: &PgPool,
     device: &Device,
@@ -153,8 +138,6 @@ async fn trust_missing(
     Ok(missing)
 }
 
-/// The device's state allows a session: display and host acceptable, the protocol on, and
-/// what it pins accepted.
 async fn admit(
     db: &PgPool,
     live: &Live,
@@ -180,39 +163,22 @@ async fn admit(
     Ok(display)
 }
 
-/// Random bytes from the operating system.
 fn random_token() -> Result<TicketToken, Error> {
     let mut bytes = [0; TOKEN_BYTES];
     getrandom::fill(&mut bytes).map_err(Error::Random)?;
     Ok(TicketToken::from_random(bytes))
 }
 
-/// Starts a session (K3, K4 §1): refuses a missing device (`NotFound`), a display outside
-/// K4 §4's bounds or a host that is an IP literal the target rule or the hub's deny list
-/// refuses (`Validation`), and the protocol turned off, an SSH session without an accepted
-/// host key, an RDP session without an accepted server certificate when it needs one, or a
-/// device with as many live sessions as its limit allows (`Conflict`, RA-036). A time zone
-/// that is not a zone name is dropped, so the tunnel uses UTC.
-/// When `req.wake` says the device is asleep, it has a MAC address and its site has a wake
-/// relay, a Wake-on-LAN packet goes first and the ticket holds `wake_sent` when it was sent;
-/// a wake that fails leaves `wake_sent` false and the start goes on. Then, in one
-/// transaction, it counts the device's live sessions again under the device's start lock, so
-/// two starts cannot both pass the limit, writes the live session row and the audit entry
-/// `session.start`, and holds a ticket that the protocol's tunnel redeems once within 30 s
-/// from `client`. Tickets that expired unredeemed are swept first. A start the ticket table
-/// would refuse is refused before any packet is sent, and so is one the limit refuses,
-/// unless another start passed the same early count and wins the device's lock. Once the row
-/// commits, its start is published on `live`'s feed of changes (RA-034); a refused or
-/// rolled-back start publishes nothing.
+/// Starts a session (K3, K4 §1); a failed wake leaves `wake_sent` false and the start goes on.
 ///
-/// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
-/// not yet see the row; the start is then not published, the row ends here with
-/// `HUB_SHUTDOWN` and its audit entry (that end is published), and the start is
-/// `Unavailable`.
+/// The live sessions are counted again under the device's start lock, so two starts cannot both
+/// pass the limit. The tunnel redeems the ticket once within 30 s from `client`. A start is
+/// published (RA-034) only once its row commits; a row committed during shutdown ends with
+/// `HUB_SHUTDOWN`.
 ///
 /// # Errors
-/// As above; `Unavailable` when too many tickets are pending or the hub is shutting down;
-/// `Database`, `Devices`, `Events` or `Random` when a dependency fails.
+/// `NotFound`, `Validation`, `Conflict` (RA-036); `Unavailable` when too many tickets are pending
+/// or the hub is shutting down; `Database`, `Devices`, `Events` or `Random`.
 #[expect(
     clippy::too_many_arguments,
     reason = "K3 fixes start's parameters (R-032 E-1)"
@@ -261,9 +227,8 @@ pub async fn start(
     live.issue(token.hash(), pending.clone())
         .map_err(|_| Error::Unavailable)?;
     if let Err(error) = tx.commit().await {
-        // The commit may have reached the database before it failed, leaving a live row.
-        // The ticket goes back without its token: never redeemable, and the sweep ends any
-        // such row `TIMEOUT` at expiry (a missing row is a no-op for `end_row`).
+        // The commit may have reached the database; the ticket goes back without its token,
+        // so it is never redeemable and the sweep ends any such row `TIMEOUT` at expiry.
         if let Some(ticket) = live.withdraw(pending.session) {
             live.restore(vec![ticket]);
         }
@@ -278,9 +243,7 @@ pub async fn start(
     Ok(ticket)
 }
 
-/// Ends the committed row of a ticket `shut_down` withdrew before the row was visible to it,
-/// with `HUB_SHUTDOWN` and its audit entry naming the ticket's operator and client, then
-/// publishes that end. A row `shut_down` did end is left as it is.
+/// For a ticket `shut_down` withdrew before its row was visible; a row it did end is left as is.
 async fn end_shut_down(
     db: &PgPool,
     live: &Live,
@@ -305,8 +268,7 @@ async fn end_shut_down(
     Ok(())
 }
 
-/// The live row, returned as written, and the audit entry `session.start`; the change never
-/// holds the token.
+/// The audit change never holds the token.
 async fn write_start(
     conn: &mut PgConnection,
     device: &Device,

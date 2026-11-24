@@ -1,5 +1,4 @@
-//! `credentials.secrets` through the public SSH and password functions (SEC-003, SEC-005,
-//! DEV-011, DEV-015), and the operational keys through K1 and the daemon routes (R-147).
+//! `credentials.secrets` and the operational keys (SEC-003, SEC-005, DEV-011, DEV-015, R-147).
 
 mod batch;
 mod concurrency;
@@ -27,7 +26,7 @@ use sqlx::PgPool;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
-/// The device host every secret here is entered for and opened for (SEC-011).
+/// Every secret here is entered for and opened for this host (SEC-011).
 const HOST: &str = "pve-01.lan";
 const PASSWORD: &str = "correct horse battery staple";
 const KEY: &str =
@@ -66,7 +65,6 @@ async fn store(pool: &PgPool, vault: &Vault, id: DeviceId, s: SshSecret) -> Resu
     store_ssh(&mut pool.acquire().await.unwrap(), vault, (id, HOST), s).await
 }
 
-/// Stores a password sealed with `vault(1)`, the vault these tests open with.
 async fn store_pw(
     pool: &PgPool,
     id: DeviceId,

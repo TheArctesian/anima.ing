@@ -1,6 +1,4 @@
-//! `CheckConfig` and the config types of K1, as the API returns them. No secret is part of
-//! any of them: a secret header's value is null, the sign-in is only its kind, and an SNMP
-//! check shows no community or password (LOG-007, SEC-003, SEC-005).
+//! No config type the API returns holds a secret (LOG-007, SEC-003, SEC-005).
 
 use async_graphql::{Context, Object, Result, SimpleObject, Union};
 

@@ -1,5 +1,4 @@
-//! No HTTP secret is returned, audited, recorded, broadcast or logged (SEC-003, LOG-007,
-//! K1 `HttpHeader.value`).
+//! No HTTP secret is returned, audited, recorded, broadcast or logged (SEC-003, LOG-007, K1 `HttpHeader.value`).
 
 use std::fmt::Write as _;
 
@@ -133,8 +132,7 @@ fixture_test! {
         for secret in SECRETS {
             assert_absent(secret, &places);
         }
-        // The response may show the URL it was given, but no log, audit row, event or
-        // broadcast may carry more of it than its origin.
+        // No log, audit row, event or broadcast carries more of the URL than its origin.
         for leaked in ["q-secret-xyz", "frag", "/p/q"] {
             assert_absent(leaked, &[places[3], places[4], places[6], places[7]]);
         }
@@ -179,7 +177,6 @@ fixture_test! {
             .unwrap();
         assert_eq!(opened.password.unwrap().expose(), PASSWORD.as_bytes());
         assert_eq!(opened.headers[0].expose(), AUTHORIZATION.as_bytes());
-        // No secret was sent, so the audit entry records none.
         let audits = rows(&pool, "audit_log").await;
         assert!(audits[1]["change"].get("sealed").is_none(), "{}", audits[1]["change"]);
     }
@@ -191,12 +188,10 @@ fixture_test! {
         let vars = json!({ "id": id, "input": { "config": blank(other) } });
         let error = error_json(&with_variables(&schema, UPDATE, vars).await);
         assert_eq!(validation_fields(&error), ["config"]);
-        // Nothing changed: the stored secrets still open, and no second audit row exists.
         let opened = checks::load_http_secrets(&pool, &vault(), id.parse().unwrap())
             .await.unwrap().unwrap().secrets.unwrap();
         assert_eq!(opened.password.unwrap().expose(), PASSWORD.as_bytes());
         assert_eq!(rows(&pool, "audit_log").await.len(), 1);
-        // The same origin with another path keeps the secrets.
         let same_origin = "https://web.lan/other/path";
         let vars = json!({ "id": id, "input": { "config": blank(same_origin) } });
         let updated = with_variables(&schema, UPDATE, vars).await;
@@ -252,8 +247,7 @@ async fn log_007_a_check_input_that_does_not_parse_is_refused_without_quoting_it
         let body = serde_json::to_string(&response).unwrap();
         let debug = format!("{:?}", response.errors);
         assert_absent(secret, &[&body, &debug, &log]);
-        // Either the input reached the check parser, which answers VALIDATION, or GraphQL
-        // validation refused its shape first with a message that names types, not values.
+        // GraphQL validation may refuse the shape first, with a message that names types, not values.
         let error = error_json(&response);
         let refused = error["extensions"]["code"].as_str();
         assert!(

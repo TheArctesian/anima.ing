@@ -3,18 +3,12 @@ import { grouped, tierCounts, type Group, type TierChoice } from './entry';
 
 export type ReadStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
-/**
- * The catalogue of applications that ships with Anima (task H38). The hub reads it from its own binary, so it is read
- * when the operator first opens it and again only when the operator asks.
- */
+/** The hub reads the catalogue from its own binary, so it is read when first opened and again only on request (H38). */
 export class CatalogueStore {
   status = $state<ReadStatus>('idle');
-  /** Why the list did not load, in the hub's words. */
   problem = $state('');
   entries = $state.raw<readonly CatalogueEntry[]>([]);
-  /** The identifier of the entry whose description is shown; null when none is. */
   selected = $state<string | null>(null);
-  /** The search of the list: a part of a name or a tag. */
   search = $state('');
   /** The tier that the list shows (OD-HOST-50). */
   tier = $state<TierChoice>('ALL');
@@ -22,12 +16,11 @@ export class CatalogueStore {
 
   constructor(private readonly calls: CatalogueCalls) {}
 
-  /** The entry that is shown, if it is still in the list. */
   get shown(): CatalogueEntry | null {
     return this.entries.find((entry) => entry.id === this.selected) ?? null;
   }
 
-  /** The entries that the search and the tier keep, in groups by category (task H39). */
+  /** Grouped by category (H39). */
   get groups(): Group<CatalogueEntry>[] {
     return grouped(this.entries, this.search, this.tier);
   }
@@ -37,13 +30,11 @@ export class CatalogueStore {
     return tierCounts(this.entries);
   }
 
-  /** Shows the entries that hold `search` in their name or a tag, of the tier `tier`. */
   filter(search: string, tier: TierChoice): void {
     this.search = search;
     this.tier = tier;
   }
 
-  /** Selects the entry `step` places after the selected one in the list as it is shown; the first one when none is. */
   move(step: number): void {
     const shown = this.groups.flatMap((group) => group.entries);
     if (shown.length === 0) return;
@@ -68,7 +59,6 @@ export class CatalogueStore {
     this.status = 'ready';
   }
 
-  /** Reads when nothing was read yet. */
   async open(): Promise<void> {
     if (this.status === 'idle') await this.load();
   }

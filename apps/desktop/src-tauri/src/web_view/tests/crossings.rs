@@ -1,5 +1,4 @@
-//! WP-31 "Shell interface", LOG-007: the `web-view` event payloads are exactly the client's
-//! shapes, and every error crosses as `{ code }` with a code the client reads.
+//! WP-31, LOG-007: every `web-view` error crosses as `{ code }` with a code the client reads.
 
 use serde_json::json;
 use tauri::Url;

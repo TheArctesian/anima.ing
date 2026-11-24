@@ -1,5 +1,3 @@
-//! The transport rules of K8 Section 1 (MET-020): no redirect, no proxy, no cookie.
-
 #[cfg(unix)]
 use std::fs::Permissions;
 #[cfg(unix)]
@@ -36,7 +34,6 @@ async fn met_020_a_redirect_is_a_failed_request_and_is_not_followed() {
     );
 }
 
-/// A folder that only this user can reach, as the folder of the socket of the link must be.
 fn private_folder() -> tempfile::TempDir {
     let folder = tempfile::tempdir().expect("a folder");
     #[cfg(unix)]
@@ -64,9 +61,7 @@ async fn k8_1_a_push_reaches_the_hub_through_the_socket_of_the_link() {
     );
 }
 
-/// R-172, SF-004: after its update, a daemon that was enrolled at a port of the link pushes
-/// through the socket in its own folder, to a peer that passes the check, and the port gets no
-/// request and no token (R-317: also on macOS, until the move).
+/// R-172, SF-004, R-317: a daemon enrolled at a port of the link pushes through its own socket.
 #[tokio::test]
 async fn k8_1_a_daemon_with_the_old_link_origin_pushes_by_its_socket_and_sends_nothing_to_the_port()
 {
@@ -152,8 +147,7 @@ async fn k8_6_a_refusal_reads_through_the_client() {
     assert_eq!(answer, Answer::Refused(RefusalCode::WrongDevice));
 }
 
-/// The child half of the proxy test: it runs only when the parent started it with the hub's
-/// address, and a proxy address in every proxy variable.
+/// The child half of the proxy test; it runs only when the parent starts it.
 #[tokio::test]
 async fn proxy_child() {
     let Ok(address) = std::env::var("ANIMA_TEST_HUB") else {
@@ -266,8 +260,6 @@ async fn k8_1_a_2xx_that_is_not_the_routes_success_status_is_a_failure() {
     assert_eq!(answer, Answer::Failed(Cause::Status(202)));
 }
 
-/// A hub that sends the headers of a 200 and then `body` after `pause`, with the length it
-/// promises (K8 answers are small; the body is what the client waits for).
 async fn slow_hub(promised: usize, body: Vec<u8>, pause: std::time::Duration) -> Url {
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -299,8 +291,7 @@ async fn met_020_a_body_that_trickles_in_after_the_headers_ends_in_a_timeout() {
     assert!(started.elapsed() < std::time::Duration::from_secs(5));
 }
 
-/// A renewal answer with `padding` spaces before the JSON, so a cut at the limit leaves only
-/// spaces and cannot be read.
+/// Spaces before the JSON, so a cut at the limit leaves nothing readable.
 fn padded_renewal(padding: usize) -> Vec<u8> {
     let json = format!(
         r#"{{"token":"{}","expiresAt":"2030-01-01T00:00:00Z"}}"#,

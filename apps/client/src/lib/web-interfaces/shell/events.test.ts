@@ -61,7 +61,6 @@ describe('webViewEventFrom (WP-31 shell interface)', () => {
   });
 
   it('never throws and never passes a shape it did not check, for arbitrary payloads', () => {
-    // A fixed-seed generator, so a failure is the same on every run.
     let seed = 0x5eed;
     const next = () => (seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31;
     const pick = <T>(choices: readonly T[]): T => choices[Math.floor(next() * choices.length)] as T;

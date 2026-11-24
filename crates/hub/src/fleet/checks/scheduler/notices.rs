@@ -1,5 +1,4 @@
-//! What the scheduler tells operators: a device's status change and a late check, each as
-//! a stored event, the change also as a live signal (LOG-004, LOG-010, CHK-010).
+//! LOG-004, LOG-010, CHK-010.
 
 use std::collections::HashMap;
 
@@ -20,10 +19,8 @@ use crate::{
     status::Status,
 };
 
-/// Brings `known` up to date with the device's status; returns whether the device is
-/// settled. A change is stored as an event first and published only once stored, so a
-/// failed write leaves the device unsettled for the next tick (LOG-004). A deleted device
-/// is settled and forgotten.
+/// A change is published only once stored, so a failed write leaves the device unsettled
+/// for the next tick (LOG-004).
 pub(super) async fn settle(
     ctx: &Context,
     known: &mut HashMap<DeviceId, Status>,
@@ -69,7 +66,6 @@ pub(super) async fn settle(
     true
 }
 
-/// Logs why the device stays unsettled; always false.
 fn unsettled(device: DeviceId, what: &'static str, error: &dyn std::fmt::Display) -> bool {
     warned(Some(device), what, error);
     false
@@ -80,7 +76,6 @@ fn forget(known: &mut HashMap<DeviceId, Status>, device: DeviceId) -> bool {
     true
 }
 
-/// Writes the Error event for a late check (CHK-010); returns whether it was written.
 pub(super) async fn report_late(ctx: &Context, check: &Due, now: DateTime<Utc>) -> bool {
     let names = async {
         let name = checks::get(&ctx.db, check.id).await?.name;
@@ -113,7 +108,6 @@ pub(super) async fn report_late(ctx: &Context, check: &Due, now: DateTime<Utc>) 
     }
 }
 
-/// Writes one event in its own short transaction.
 async fn write_event(
     ctx: &Context,
     event: NewEvent,

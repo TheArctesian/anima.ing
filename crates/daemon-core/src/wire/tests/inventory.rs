@@ -1,6 +1,4 @@
-//! The tool inventory of a batch (K8 Section 4; CAP-020, CAP-024, CAP-029): optional, so an
-//! older daemon's batch is taken as it was; held to fixed alphabets and counts; a tool name the
-//! hub does not know is dropped, not refused.
+//! K8 Section 4; CAP-020, CAP-024, CAP-029.
 
 use proptest::prelude::*;
 use serde_json::json;
@@ -27,6 +25,7 @@ fn not_usable(name: &str, reason: Reason) -> BatchTool {
 
 fn mac() -> BatchInventory {
     BatchInventory {
+        remote_access: None,
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),
@@ -59,6 +58,7 @@ fn cap_029_a_batch_without_an_inventory_is_taken_and_leaves_it_unchanged() {
 fn cap_020_an_inventory_reaches_the_hub_with_its_tools_in_name_order() {
     let accepted = checked(with(|_| {})).unwrap();
     let expected = Inventory {
+        remote_access: None,
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),
@@ -260,8 +260,6 @@ fn any_tool() -> impl Strategy<Value = BatchTool> {
 }
 
 proptest! {
-    /// Whatever a device sends, the check never panics, and what it takes holds only text of the
-    /// fixed alphabets, known tool names and at most the counts of K8 Section 4.
     #[test]
     fn cap_031_any_inventory_is_refused_or_taken_within_the_rules(
         os_version in "\\PC{0,10}",
@@ -269,6 +267,7 @@ proptest! {
         targets in proptest::collection::vec("[a-z0-9_.\\- A]{0,10}", 0..8),
     ) {
         let sent = BatchInventory {
+            remote_access: None,
             architecture: Architecture::X86_64,
             os: Os::Linux,
             os_version,

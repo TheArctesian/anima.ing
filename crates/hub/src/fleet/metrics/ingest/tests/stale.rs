@@ -1,8 +1,4 @@
-//! MET-018, R-098 a: a daemon is stale after more than 30 seconds with no accepted batch, with
-//! one event when it goes stale and one when it sends again; a refused batch does not count, a
-//! batch of only unknown series does, a daemon that never pushed is never marked, a device
-//! switched away from the daemon is marked without an event, and one device that cannot be
-//! marked does not keep the others from being marked.
+//! Stale daemons (MET-018, R-098 a).
 
 use axum::http::StatusCode;
 use chrono::{DateTime, DurationRound as _, TimeDelta, Utc};
@@ -12,7 +8,6 @@ use sqlx::PgPool;
 use super::{database_now, enrolled_pve, push, pve};
 use crate::fleet::{events::Bus, metrics::ingest::stale::mark_stale};
 
-/// A batch of pve-01 with one point at `at` of `kind`.
 fn batch(at: DateTime<Utc>, kind: &str) -> Value {
     let at = at.duration_trunc(TimeDelta::seconds(10)).unwrap();
     json!({
@@ -22,7 +17,6 @@ fn batch(at: DateTime<Utc>, kind: &str) -> Value {
     })
 }
 
-/// The metrics events of pve-01, oldest first.
 async fn events(pool: &PgPool) -> Vec<String> {
     sqlx::query_scalar(
         "SELECT message FROM events.event_log WHERE source = 'metrics' AND device_id = $1 \

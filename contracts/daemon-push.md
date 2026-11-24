@@ -105,6 +105,7 @@ This contract and the work route contract K10 ([work-route.md](work-route.md); a
 | Route | Credential | Body limit | Success |
 | --- | --- | --- | --- |
 | `POST /daemon/v1/enrol` | Enrolment code, in the body | 4 KiB | 200, `Enrolled` |
+| `POST /daemon/v1/threads/entries` | Daemon token, `Authorization: Bearer` | 512 KiB | 200, `ThreadUploadReceipt` (Section 4.2) |
 | `POST /daemon/v1/push` | Daemon token, `Authorization: Bearer` | 512 KiB (MET-017) | 204, empty; or 200, `Accepted` (Section 8) |
 | `POST /daemon/v1/renew` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, `Renewed` |
 | `POST /daemon/v1/update/record` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, `ReleaseRecord` (Section 8) |
@@ -263,6 +264,15 @@ Request:
   `DIR`: the bytes of the files of the data of the hub, which the daemon measures, with no `disk_percent`: the
   total and the free space of that file system are those of the pool. It sends no `load_1`, `load_5`,
   `load_15`, `uptime_seconds`, network kind, drive kind or GPU kind, `gpus` as `[]`, and no `drives`.
+- `inventory.remoteAccess` (OS3-R11): optional `{ "sshUser": "admin", "rdpUser": "admin" }`;
+  either user may be null. Each supplied user is 1–64 ASCII letters, digits, underscores, dots or hyphens.
+  The daemon reads the root-installed `/etc/anima/remote-access.json` and announces only services accepting
+  a loopback connection on standard ports 22/3389. Missing configuration advertises nothing. Older hubs
+  ignore this member. The authenticated batch can initialize only its own device, whose host must be an
+  Anima private-link IPv6 address. The hub initializes untouched settings once; existing settings and later
+  owner changes win. No credential, host-key acceptance or certificate bypass is supplied by this member.
+  This is shared by CLI and GUI device connections; no new GraphQL operation or MCP secret tool is added.
+
 - `inventory`: optional; the tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be
   assigned). The daemon probes its tools at start and every 15 minutes and sends the whole inventory in its
   first batch after start, again whenever a probe result changes, and again when 24 hours have passed since it
@@ -478,6 +488,55 @@ The hub:
   A daemon that has never pushed is not marked, and `metricsStale` is true for it. Stale changes no check:
   a stale daemon is never a Down check.
 
+### 4.1 Agent thread summaries (TH20, R-431)
+
+`agentThreads` is optional. An absent member leaves stored thread data unchanged. The member has
+`count` (zero or more, at most 2³² − 1), `countRevision` and `summaries` (zero to 256 rows).
+`count` gives the device's total after the exclusions of AIS-008. The device persists revisions
+across restarts, increasing the revision of a count or row when it changes. Every revision
+is an integer from 1 to 2⁵³ − 1. A batch can send a subset of summaries.
+
+A summary has `runnerId` (a non-nil UUID, unique within the list), `program` (`claude_code` or
+`codex`), `state` (`starting`, `working`, `needs_you`, `idle`, `stopped` or `unknown`), `title`
+(at most 80 characters, no control characters), `startedAt` and `activityAt` (Section 1 times,
+with activity at or after start), and `revision`. The optional `repository` is the normalized
+repository name of `agentUsage.sessionDays.repository`. A summary carries no local path or
+full transcript. The daemon applies the exclusions of AIS-008 before it collects and sends the
+count or rows. A malformed member refuses the batch.
+
+The hub writes the count and rows in the push transaction. It takes the device from the
+authenticated push and keys each row by that device and `runnerId`. It assigns a stable UUID to
+each row. Only a strictly greater revision replaces a stored count or row. Device deletion
+removes its thread data.
+
+After commit, a push with this member gets `200 Accepted` with `agentThreads`. This receipt
+contains `countRevision` as stored and `summaries` in request order, each with `runnerId`, the
+hub `id` and the stored `revision`. This member can appear alongside any other optional member
+of `Accepted`. A daemon clears a pending summary or count only if this explicit receipt covers
+its revision. An old hub can still acknowledge the metrics batch without this receipt.
+
+The transcript upload is separate from the metrics push. It uses daemon authentication,
+requires local transcript opt-in, and acknowledges the highest contiguous stored sequence after
+commit. See [agent threads, Section 6.3.1](../docs/proposals/agent-threads.md#631-th20-approved-hub-sync-contract).
+An approval or transcript entry does not go in `agentThreads`.
+
+### 4.2 Agent thread entries (TH21, R-431)
+
+`POST /daemon/v1/threads/entries` takes `device`, `summary` (as in Section 4.1), and
+`entries`, with 1 to 12 entries in sequence order. Each entry has a `sequence` from 1 to
+2⁵³ − 1 and a normalized `content` object, at most 32 KiB as JSON. The daemon assigns
+contiguous sequence numbers. On Unix, uploads require a private `thread-sync.json` in the
+daemon's home with `{"shareTranscripts": true}`. Missing or invalid settings leave sharing off.
+The daemon uses a private journal to keep queued entries across restarts. It discards
+queued content when sharing is disabled or a thread is excluded. A placeholder can
+occupy the sequence of an entry whose receipt was lost before sharing was disabled.
+
+The daemon token determines the device. The hub locks that device, checks that its
+token still works, and writes the summary and entries in one transaction. A request
+that skips a sequence is `MALFORMED`. A retry can repeat stored sequences and does not
+change their content. After commit, the hub returns the thread `id` and `lastSequence`,
+the highest contiguous stored sequence. An upload does not refresh the device's metrics.
+
 ## 5. Renewal (MET-013)
 
 The daemon calls renew with its current token when fewer than 30 days remain, at most once an hour. The body is
@@ -613,8 +672,9 @@ different version, and the batch had an `update` member, it answers 200 with `Ac
 { "update": { "version": "0.3.0", "again": false } }
 ```
 
-- 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member and no
-  `agentUsage.accounts` member always gets 204, so a daemon older than R-139 keeps working.
+- 200 and 204 acknowledge the metrics batch. A push with no optional answer member gets 204.
+  For thread summaries, only the explicit `agentThreads` receipt acknowledges their revisions
+  (Section 4.1).
 - `accountSalt` (R-313, AIS-022): in each answer to a batch with an `agentUsage.accounts` member,
   the account salt of the hub, 32 bytes in standard base64. The hub makes it once, from a random source,
   and keeps it in its database; it does not change. The daemon keeps it in its state folder with the token

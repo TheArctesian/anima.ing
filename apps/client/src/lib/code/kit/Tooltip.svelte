@@ -15,7 +15,8 @@
 
   /*
    * A hover tip (02 section 3.3): it opens after `duration.fast` on hover, at once on keyboard focus, 4 px from the
-   * trigger, and closes on Escape, leaving or blur (WCAG 1.4.13). The panel is opaque (glass is on hold).
+   * trigger, and closes on Escape, leaving, a press or blur (WCAG 1.4.13): a press acts, so its tip would only cover what
+   * the press opens (the band's tip lay over the runner's line). The panel is opaque (glass is on hold).
    */
   const { text, children, side = 'above' }: Props = $props();
   let open = $state(false);
@@ -56,13 +57,19 @@
     else control.setAttribute('aria-describedby', next.join(' '));
   });
 
+  /** The run across that a tip may cover: the Code page's own when the trigger is in it, else the window. */
+  function roomOf(trigger: HTMLElement): { left: number; right: number } | undefined {
+    const box = trigger.closest('[data-code-page]')?.getBoundingClientRect();
+    return box === undefined ? undefined : { left: box.left, right: box.right };
+  }
+
   function place(panel: HTMLElement): void {
     if (anchor === undefined) return;
     const spot = tipPlace(
       anchor.getBoundingClientRect(),
       { width: panel.offsetWidth, height: panel.offsetHeight },
       { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight },
-      { side, gap: Number.parseFloat(getComputedStyle(panel).marginBlockEnd) || 0 },
+      { side, gap: Number.parseFloat(getComputedStyle(panel).marginBlockEnd) || 0, room: roomOf(anchor) },
     );
     panel.style.insetInlineStart = `${String(spot.left)}px`;
     panel.style.insetBlockStart = `${String(spot.top)}px`;
@@ -77,6 +84,7 @@
     if (event.pointerType !== 'touch') later();
   }}
   onpointerleave={close}
+  onpointerdown={close}
   {onfocusin}
   onfocusout={close}
   {onkeydown}

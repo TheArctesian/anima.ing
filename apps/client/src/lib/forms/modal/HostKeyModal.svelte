@@ -7,7 +7,6 @@
   interface Props {
     open: boolean;
     hostKey: HostKey;
-    /** True when the key differs from the pinned one (SEC-007). */
     changed: boolean;
     /** True when the test ran against the saved record: the hub pins a key to a saved device only (D-5). */
     saved: boolean;

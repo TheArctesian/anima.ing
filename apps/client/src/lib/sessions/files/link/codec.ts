@@ -48,9 +48,7 @@ export type HubMessage =
   | { readonly kind: 'refused'; readonly reason: Refusal }
   | { readonly kind: 'ping' };
 
-/** The client's `ping` (K4 §9). */
 export const PING_MESSAGE = '{"type":"ping"}';
-/** The client's `cancel` (K4 §9). */
 export const CANCEL_MESSAGE = '{"type":"cancel"}';
 
 /** An RFC 3339 time as the hub writes one (chrono). */
@@ -74,10 +72,7 @@ export function isByteCount(size: unknown): size is number {
   return typeof size === 'number' && Number.isSafeInteger(size) && size >= 0;
 }
 
-/**
- * The text message for `request`, or `undefined` when the hub would refuse it (a path outside K4 §9, a size that is
- * not a byte count, a message over `TEXT_MAX_BYTES`): such a request is never sent.
- */
+/** The text message for `request`, or `undefined` when the hub would refuse it (K4 §9): such a request is never sent. */
 export function encodeRequest(request: FilesRequest): string | undefined {
   if (!isSendablePath(request.path)) return undefined;
   if (request.type === 'upload' && !isByteCount(request.size)) return undefined;
@@ -87,7 +82,6 @@ export function encodeRequest(request: FilesRequest): string | undefined {
 
 type Fields = Readonly<Record<string, unknown>>;
 
-/** `value` as an object with exactly `keys`, each once; anything else is `undefined`. */
 function shaped(value: unknown, keys: readonly string[]): Fields | undefined {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
   const own = Object.keys(value);
@@ -116,7 +110,6 @@ function listing(fields: Fields): HubMessage | undefined {
   return { kind: 'entries', listing: { path, entries: read } };
 }
 
-/** The message `fields` holds, by its `type`, when it has exactly that message's keys and valid values. */
 function message(fields: Fields): HubMessage | undefined {
   const keys = Object.keys(fields).length;
   switch (fields.type) {
@@ -137,12 +130,7 @@ function message(fields: Fields): HubMessage | undefined {
   }
 }
 
-/**
- * Read a text message from the hub. The set is closed (K4 §9): another `type`, a missing or extra key, another JSON
- * value, a size that is not a byte count, an unknown kind or reason, a time that is not RFC 3339 or more than
- * `ENTRIES_MAX` entries give `undefined`, and the link closes (fail closed): unlike the terminal, a files message
- * the client misreads could save or send the wrong bytes.
- */
+/** The set is closed (K4 §9): any other message gives `undefined` and the link closes, since a misread files message could save or send the wrong bytes. */
 export function decodeHubMessage(text: string): HubMessage | undefined {
   let value: unknown;
   try {

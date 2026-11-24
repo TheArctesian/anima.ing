@@ -1,12 +1,9 @@
 import { graphql } from '$lib/hub/generated';
 import type { Hub, HubResult, Sink } from '$lib/hub/hub';
 
-// The six documents of the three-press GitHub connection (PRJ-039, PRJ-041). `api.ts` is full, so they live here.
+// The GitHub connection (PRJ-039, PRJ-041).
 
-/**
- * Whether the hub can start the flow in a browser, in a document of its own: a hub of before the field refuses the whole
- * document, and only this answer then counts as "cannot" (K-E1 Section 7a).
- */
+/** A document of its own: a hub of before the field refuses the whole document (K-E1 Section 7a). */
 const GITHUB_BROWSER_FLOW = graphql(`
   query GithubBrowserFlow {
     sources {
@@ -115,7 +112,7 @@ const GITHUB_CONNECT_CHANGED = graphql(`
 export type ConnectPhase = 'WAITING_FOR_BROWSER' | 'AT_GITHUB' | 'APP_CREATED' | 'CONNECTED' | 'FAILED' | 'CANCELLED';
 export type ConnectFailure = 'EXPIRED' | 'EXCHANGE_REFUSED' | 'GITHUB_UNREACHABLE' | 'REPLY_UNUSABLE' | 'KEY_REFUSED';
 
-/** The attempt the hub holds. It has no key, code, ticket or state (PRJ-041). Text from GitHub is `appSlug` and `ownerLogin`. */
+/** Holds no key, code, ticket or state (PRJ-041). Text from GitHub is `appSlug` and `ownerLogin`. */
 export interface ConnectAttempt {
   readonly id: string;
   readonly phase: ConnectPhase;
@@ -129,21 +126,15 @@ export interface ConnectAttempt {
   readonly appSettingsUrl: string | null;
   readonly failure: ConnectFailure | null;
   readonly message: string | null;
-  /** The new account, from CONNECTED on: only what the state line needs. */
   readonly account: { readonly health: string; readonly pausedBy: string | null } | null;
 }
 
-/** The calls of the connection. The one-time link is returned to the caller once and kept nowhere. */
+/** The one-time link is returned to the caller once and kept nowhere. */
 export interface GithubConnectApi {
-  /**
-   * The hub page where a browser continues the flow, or null when the hub cannot start it in a browser: it says so, it is
-   * a hub of before the field, or it did not answer.
-   */
   browserPage(): Promise<string | null>;
   current(): Promise<HubResult<ConnectAttempt | null>>;
-  /** The personal account only: the client sends no organisation. */
   start(): Promise<HubResult<ConnectAttempt>>;
-  /** ONE-TIME: a new link; an earlier one stops working. */
+  /** A new one-time link; an earlier one stops working. */
   link(id: string): Promise<HubResult<string>>;
   cancel(id: string): Promise<HubResult<ConnectAttempt>>;
   watch(sink: Sink<ConnectAttempt>): () => void;

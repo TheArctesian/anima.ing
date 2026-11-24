@@ -1,4 +1,4 @@
-//! From readings to samples (MET-002, D-4, D-5).
+//! MET-002, D-4, D-5.
 
 use std::time::Duration;
 

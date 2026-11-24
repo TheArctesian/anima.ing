@@ -1,5 +1,3 @@
-//! `anima source pause <id-or-label>` and `anima source resume <id-or-label>`.
-
 use super::account::resolve;
 use super::documents::{SourcePause, source_pause};
 use super::render;

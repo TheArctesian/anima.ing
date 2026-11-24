@@ -1,5 +1,4 @@
-//! Which tool inventories a `capabilities` filter keeps (CAP-030): a tool only where it is
-//! usable, a build target only where it is installed, both together.
+//! Which tool inventories a `capabilities` filter keeps (CAP-030).
 
 use daemon_core::inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict};
 
@@ -7,6 +6,7 @@ use crate::fleet::metrics::CapabilityFilter;
 
 fn mac() -> Inventory {
     Inventory {
+        remote_access: None,
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),

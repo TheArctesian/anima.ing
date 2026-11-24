@@ -1,4 +1,4 @@
-//! `anima web` against the scripted hub (CMD-020, CMD-021, CMD-024).
+//! CMD-020, CMD-021, CMD-024.
 
 use serde_json::{Value, json};
 
@@ -123,7 +123,6 @@ async fn cmd_020_web_create_and_update_send_the_input_flags() {
     );
 }
 
-/// The `WebCurrent` answer: one device that holds the web interface `WEB`.
 fn current_page() -> Value {
     data(json!({ "devices": {
         "edges": [{ "node": { "webInterfaces": [web(None)] } }],

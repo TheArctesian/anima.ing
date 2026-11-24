@@ -1,6 +1,3 @@
-//! `anima-link` in the release (S12 2.2, D-2, review S-5): built by `/bin/sh link/build.sh` from
-//! the clone with a fixed Go environment, after `go mod verify`, and staged for each platform.
-
 use std::path::Path;
 
 use super::{STAGE, args};

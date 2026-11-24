@@ -1,5 +1,4 @@
-//! `Device` as the GraphQL type K1 describes, with the fields that join the checks domain
-//! (R-011): `status`, `checks`, `uptime` and the resolved `ip`; and the remote access fields
+//! `Device` (K1), with the fields that join the checks domain (R-011) and remote access
 //! (RA-020, RA-030..033).
 
 use std::sync::Arc;

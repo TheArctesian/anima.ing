@@ -29,7 +29,6 @@ afterEach(tearDown);
 const status = (metricsStale: boolean) => ({ DaemonStatus: { device: { id: 'd1', metricsSource: 'DAEMON', metricsStale } } });
 const REVOKED = { RevokeDaemonToken: { revokeDaemonToken: { id: 'd1', metricsSource: 'DAEMON', metricsStale: true } } };
 
-/** How many times what lies below moved while `step` ran. */
 async function flipsDuring(step: () => Promise<unknown>): Promise<number> {
   const before = flips.count;
   await step();

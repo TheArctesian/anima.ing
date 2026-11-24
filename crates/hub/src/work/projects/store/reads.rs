@@ -1,6 +1,5 @@
-//! What the API reads: pages of projects, the repositories, resources and signs of a set of
-//! projects in one query each (R-014), and one repository with its account for a live read.
-//! I/O only.
+//! The repositories, resources and signs of a set of projects are read in one query each
+//! (R-014).
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -15,7 +14,6 @@ pub(in crate::work::projects) struct ProjectRow {
     pub id: ProjectId,
     pub slug: String,
     pub name: String,
-    /// The name in lower case: the first part of the page order.
     pub sort_name: String,
     pub rank: Option<i64>,
 }
@@ -70,7 +68,7 @@ const BROWSE_FROM: &str = "FROM projects.projects p
        SELECT 1 FROM projects.repositories kept WHERE kept.project_id = p.id AND kept.left_out_at IS NULL
     ))";
 
-/// Up to `limit` matching projects after `after`. Unknown metadata sorts last.
+/// Unknown metadata sorts last.
 pub(in crate::work::projects) async fn page(
     db: &PgPool,
     (left_out, browse): (bool, &ProjectBrowse),
@@ -91,6 +89,8 @@ pub(in crate::work::projects) async fn page(
             AND ($6::text IS NULL OR r.primary_language = $6)
             AND ($7::integer IS NULL OR r.size_kib >= $7)
             AND ($8::integer IS NULL OR r.size_kib <= $8)
+            AND ($10::uuid IS NULL OR p.group_id = $10)
+            AND (NOT $11 OR p.group_id IS NULL)
          )
          SELECT id, slug, name, sort_name,
                 CASE WHEN $5 <> 'name' THEN rank END AS rank
@@ -108,6 +108,8 @@ pub(in crate::work::projects) async fn page(
     .bind(browse.min_size_kib)
     .bind(browse.max_size_kib)
     .bind(after.and_then(|a| a.rank))
+    .bind(browse.group_id())
+    .bind(browse.ungrouped.unwrap_or(false))
     .fetch_all(db)
     .await
 }
@@ -125,7 +127,6 @@ pub(in crate::work::projects) async fn languages(
     .await
 }
 
-/// The project with this slug.
 pub(in crate::work::projects) async fn by_slug(
     db: &PgPool,
     slug: &str,
@@ -138,7 +139,6 @@ pub(in crate::work::projects) async fn by_slug(
     .await
 }
 
-/// The project with this id.
 pub(in crate::work::projects) async fn by_id(
     db: &PgPool,
     id: ProjectId,
@@ -151,7 +151,6 @@ pub(in crate::work::projects) async fn by_id(
     .await
 }
 
-/// The repositories of `projects`, each project's first one first.
 pub(in crate::work::projects) async fn repositories(
     db: &PgPool,
     projects: &[ProjectId],
@@ -168,7 +167,6 @@ pub(in crate::work::projects) async fn repositories(
     .await
 }
 
-/// The resources of `projects`.
 pub(in crate::work::projects) async fn resources(
     db: &PgPool,
     projects: &[ProjectId],
@@ -182,7 +180,6 @@ pub(in crate::work::projects) async fn resources(
     .await
 }
 
-/// The signs of the repositories of `projects` that are not left out, each once.
 pub(in crate::work::projects) async fn evidence(
     db: &PgPool,
     projects: &[ProjectId],
@@ -198,8 +195,6 @@ pub(in crate::work::projects) async fn evidence(
     .await
 }
 
-/// What a live read needs of one repository: its name, the account that reads it and the
-/// operator's choices.
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub(in crate::work::projects) struct ReachRow {
     pub full_name: String,
@@ -210,7 +205,6 @@ pub(in crate::work::projects) struct ReachRow {
     pub gone: bool,
 }
 
-/// The repository with this id, with its account.
 pub(in crate::work::projects) async fn reach(
     db: &PgPool,
     id: RepositoryId,

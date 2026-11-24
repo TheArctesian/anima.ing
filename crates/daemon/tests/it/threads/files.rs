@@ -22,16 +22,22 @@ async fn files(client: &mut Client, thread: Uuid, query: &str) -> Outcome {
 async fn started(client: &mut Client, work: std::path::PathBuf) -> Uuid {
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: work,
             mode: Mode::FullAccess,
             model: None,
             effort: None,
+            speed: None,
             prompt: "Look at the code".to_owned(),
             program_path: None,
+            draft: None,
+            attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
-    let Outcome::Started { thread } = client.done(start).await else {
+    let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
     thread

@@ -1,5 +1,4 @@
-//! The state of a place, inside or outside, from the location samples (K-E6 Section 4;
-//! REM-006). Pure. A new fix inside a place that is inside is not an arrival.
+//! Inside or outside a place, from the location samples (K-E6 Section 4; REM-006). Pure.
 
 use chrono::{DateTime, Utc};
 
@@ -12,7 +11,7 @@ use crate::{
     ids::{PlaceId, SampleId},
 };
 
-/// One row of `reminders.place_state`. A place with no row is outside.
+/// A place with no row in `reminders.place_state` is outside.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlaceState {
     pub place: PlaceId,
@@ -21,10 +20,8 @@ pub struct PlaceState {
     pub sample: SampleId,
 }
 
-/// The changes that `samples` make to `states`, in the order of the time of each sample. A
-/// sample with no time, no position, no accuracy or an accuracy worse than 200 m changes no
-/// state (R-145). A sample older than the sample of a state does not change that state, so a
-/// late import never makes an arrival in the past.
+/// A sample with no time, position or accuracy, or one worse than 200 m, changes nothing
+/// (R-145); a sample older than a state's leaves it, so a late import makes no past arrival.
 #[must_use]
 pub fn place_changes(
     states: &[PlaceState],

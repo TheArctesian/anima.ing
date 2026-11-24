@@ -1,0 +1,282 @@
+use serde_json::{Value, json};
+
+use crate::{FIELD, Limits, Reason, shortened};
+
+fn events(count: usize, odd: &[(usize, Value)]) -> Value {
+    let rows: Vec<Value> = (0..count)
+        .map(|row| {
+            odd.iter()
+                .find(|(place, _)| *place == row)
+                .map_or_else(
+                    || {
+                        json!({
+                            "id": format!("ev-{row:04}"),
+                            "severity": "INFO",
+                            "message": format!("check ping of nas-{} passed in {} ms", row % 7, 20 + row % 5),
+                            "latencyMs": 20 + row % 5,
+                        })
+                    },
+                    |(_, value)| value.clone(),
+                )
+        })
+        .collect();
+    json!({ "events": rows, "nextCursor": "c-200" })
+}
+
+fn rows_of(answer: &Value) -> &Vec<Value> {
+    answer["events"].as_array().expect("a list")
+}
+
+#[test]
+fn sha_001_a_row_that_reports_a_fault_or_is_not_like_the_others_stays() {
+    let odd = [
+        (
+            57,
+            json!({"id": "ev-0057", "severity": "ERROR", "message": "disk is full", "latencyMs": 22}),
+        ),
+        (
+            90,
+            json!({"id": "ev-0090", "severity": "INFO", "message": "check ping passed", "latencyMs": 9000}),
+        ),
+        (
+            120,
+            json!({"id": "ev-0120", "severity": "INFO", "message": "ok", "latencyMs": 21, "rebootedBy": "ana"}),
+        ),
+        (
+            150,
+            json!({"id": "ev-0150", "severity": "INFO", "message": "ok", "latencyMs": 21, "lastError": "connection refused"}),
+        ),
+    ];
+    let whole = events(200, &odd);
+    let short = shortened(&whole, &Limits::default()).expect("a long list is shortened");
+    let cut = &short.cuts()[0];
+    assert_eq!((cut.list.as_str(), cut.rows), ("events", 200));
+    assert_eq!(cut.kept.get(&57), Some(&Reason::Error));
+    assert!(matches!(
+        cut.kept.get(&90),
+        Some(Reason::Rare | Reason::Far)
+    ));
+    assert_eq!(cut.kept.get(&120), Some(&Reason::Rare));
+    assert_eq!(cut.kept.get(&150), Some(&Reason::Error));
+    let answer = short.marked("0".repeat(24).as_str(), "anima_original_get");
+    for (_, row) in &odd {
+        assert!(rows_of(&answer).contains(row), "{row}");
+    }
+}
+
+#[test]
+fn sha_001_a_number_far_from_the_others_keeps_its_row() {
+    let rows: Vec<Value> = (0..200_u32)
+        .map(|row| json!({"name": format!("disk-{row}"), "usedBytes": if row == 77 { 9_000_000 } else { 1_000 + row * 13 }}))
+        .collect();
+    let short = shortened(&json!({ "disks": rows }), &Limits::default()).expect("shortened");
+    assert_eq!(short.cuts()[0].kept.get(&77), Some(&Reason::Far));
+    assert_eq!(short.cuts()[0].kept.len(), 15);
+}
+
+#[test]
+fn sha_001_one_of_a_few_values_that_are_equally_frequent_is_not_rare() {
+    let short = shortened(&events(200, &[]), &Limits::default()).expect("shortened");
+    assert_eq!(short.cuts()[0].kept.len(), 15);
+}
+
+#[test]
+fn sha_001_the_rows_that_must_stay_are_kept_above_the_limit() {
+    let odd: Vec<(usize, Value)> = (0..60)
+        .map(|row| (row * 3, json!({"id": format!("ev-{row}"), "severity": "INFO", "message": format!("backup {row} failed"), "latencyMs": 20})))
+        .collect();
+    let whole = events(200, &odd);
+    let short = shortened(&whole, &Limits::default()).expect("shortened");
+    let errors = short.cuts()[0]
+        .kept
+        .values()
+        .filter(|reason| **reason == Reason::Error)
+        .count();
+    assert_eq!(errors, 60);
+}
+
+#[test]
+fn sha_001_a_field_named_for_a_fault_that_holds_nothing_keeps_no_row() {
+    let rows: Vec<Value> = (0..100)
+        .map(|row| json!({"name": format!("nas-{row}"), "lastError": null, "failedChecks": 0, "note": "x".repeat(40)}))
+        .collect();
+    let short = shortened(&json!({ "devices": rows }), &Limits::default()).expect("shortened");
+    assert_eq!(short.cuts()[0].kept.len(), 15);
+}
+
+#[test]
+fn sha_003_a_kept_row_is_not_changed_and_the_order_stays() {
+    let whole = events(
+        200,
+        &[(
+            57,
+            json!({"id": "x", "severity": "ERROR", "message": "m", "latencyMs": 1}),
+        )],
+    );
+    let short = shortened(&whole, &Limits::default()).expect("shortened");
+    let places: Vec<usize> = short.cuts()[0].kept.keys().copied().collect();
+    let answer = short.marked("h", "t");
+    let kept: Vec<&Value> = places
+        .iter()
+        .map(|place| &rows_of(&whole)[*place])
+        .collect();
+    assert_eq!(rows_of(&answer).iter().collect::<Vec<_>>(), kept);
+    assert_eq!(answer["nextCursor"], whole["nextCursor"]);
+    let fields: Vec<&String> = answer.as_object().expect("an object").keys().collect();
+    assert_eq!(fields, ["events", "nextCursor", FIELD]);
+}
+
+#[test]
+fn sha_004_the_mark_says_what_was_left_out_and_how_to_get_it() {
+    let short = shortened(&events(200, &[]), &Limits::default()).expect("shortened");
+    let answer = short.marked("abc123", "anima_original_get");
+    let mark = &answer[FIELD];
+    assert_eq!(mark["handle"], "abc123");
+    assert_eq!(mark["tool"], "anima_original_get");
+    let list = &mark["lists"][0];
+    assert_eq!(
+        (list["list"].as_str(), list["rows"].as_u64()),
+        (Some("events"), Some(200))
+    );
+    let kept = list["kept"].as_u64().expect("a number");
+    assert_eq!(list["leftOut"].as_u64(), Some(200 - kept));
+    assert_eq!(rows_of(&answer).len() as u64, kept);
+    assert_eq!(list["keptFor"]["first"], 4);
+    assert_eq!(list["keptFor"]["last"], 2);
+    let note = mark["note"].as_str().expect("a text");
+    assert!(
+        note.contains("NOT the whole answer") && note.contains("anima_original_get"),
+        "{note}"
+    );
+}
+
+#[test]
+fn sha_005_the_same_answer_gives_the_same_bytes() {
+    let whole = events(
+        300,
+        &[(
+            7,
+            json!({"id": "q", "severity": "WARNING", "message": "slow", "latencyMs": 400}),
+        )],
+    );
+    let once = shortened(&whole, &Limits::default())
+        .expect("shortened")
+        .marked("h", "t");
+    let twice = shortened(&whole, &Limits::default())
+        .expect("shortened")
+        .marked("h", "t");
+    assert_eq!(once.to_string(), twice.to_string());
+}
+
+#[test]
+fn sha_007_a_small_answer_a_short_list_and_a_small_saving_stay_as_they_are() {
+    let limits = Limits::default();
+    assert_eq!(shortened(&events(4, &[]), &limits), None);
+    assert_eq!(shortened(&events(15, &[]), &limits), None);
+    assert_eq!(shortened(&json!([1, 2, 3]), &limits), None);
+    let all_errors: Vec<(usize, Value)> = (0..200)
+        .map(|row| (row, json!({"id": row, "message": "fatal"})))
+        .collect();
+    assert_eq!(shortened(&events(200, &all_errors), &limits), None);
+    let mut marked = events(200, &[]);
+    marked[FIELD] = json!(true);
+    assert_eq!(shortened(&marked, &limits), None);
+}
+
+#[test]
+fn sha_003_a_list_inside_an_object_is_found_and_a_list_of_numbers_is_not_touched() {
+    let inner = events(120, &[]);
+    let whole = json!({ "page": { "entries": inner["events"] }, "samples": (0..500).collect::<Vec<u32>>() });
+    let short = shortened(&whole, &Limits::default()).expect("shortened");
+    assert_eq!(short.cuts().len(), 1);
+    assert_eq!(short.cuts()[0].list, "page.entries");
+    assert_eq!(short.marked("h", "t")["samples"], whole["samples"]);
+}
+
+struct Dice(u64);
+
+impl Dice {
+    fn roll(&mut self, sides: u64) -> u64 {
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        (self.0 >> 33) % sides
+    }
+}
+
+#[test]
+fn sha_001_sha_003_on_many_built_lists_no_fault_is_lost_and_no_row_is_changed() {
+    let mut dice = Dice(22);
+    for _ in 0..200 {
+        let count = usize::try_from(16 + dice.roll(400)).expect("small");
+        let rows: Vec<Value> = (0..count)
+            .map(|row| match dice.roll(40) {
+                0 => json!({"id": row, "state": "UP", "note": "the job crashed", "ms": dice.roll(50)}),
+                1 => json!({"id": row, "state": "DEGRADED", "note": "fine", "ms": dice.roll(50)}),
+                2 => json!({"id": row, "state": "UP", "note": "fine", "ms": 90_000 + dice.roll(50)}),
+                3 => json!({"id": row, "state": "UP", "note": "fine", "ms": dice.roll(50), "extra": true}),
+                _ => json!({"id": row, "state": "UP", "note": "fine", "ms": dice.roll(50)}),
+            })
+            .collect();
+        let whole = json!({ "rows": rows });
+        let Some(short) = shortened(&whole, &Limits::default()) else {
+            continue;
+        };
+        let answer = short.marked("h", "t");
+        let kept = answer["rows"].as_array().expect("a list");
+        let mut next = kept.iter().peekable();
+        for row in &rows {
+            let stays = next.peek().is_some_and(|kept| *kept == row);
+            if stays {
+                next.next();
+            }
+            let odd = row["note"] != "fine"
+                || row["state"] != "UP"
+                || row.get("extra").is_some()
+                || row["ms"].as_u64() >= Some(90_000);
+            assert!(stays || !odd, "lost {row}");
+        }
+        assert_eq!(
+            next.next(),
+            None,
+            "a kept row is not a row of the original, or the order changed"
+        );
+    }
+}
+
+#[test]
+fn sha_001_a_value_of_one_row_stays_also_when_the_field_has_many_usual_values() {
+    let states = ["A", "B", "C", "D", "E", "F", "G"];
+    let rows: Vec<Value> = (0..400)
+        .map(|row| {
+            let state = if row == 211 {
+                "OFFLINE"
+            } else {
+                states[row % 7]
+            };
+            json!({"name": format!("cam-{row}"), "state": state, "note": "x".repeat(30)})
+        })
+        .collect();
+    let short = shortened(&json!({ "devices": rows }), &Limits::default()).expect("shortened");
+    assert_eq!(short.cuts()[0].kept.get(&211), Some(&Reason::Rare));
+    assert!(
+        short.cuts()[0].kept.len() <= 16,
+        "{}",
+        short.cuts()[0].kept.len()
+    );
+}
+
+#[test]
+fn sha_007_an_answer_with_many_small_lists_inside_kept_rows_is_not_touched() {
+    let rows: Vec<Value> = (0..600)
+        .map(|row| json!({"id": row, "message": "backup failed", "tags": (0..20).map(|tag| format!("t{tag}")).collect::<Vec<_>>()}))
+        .collect();
+    assert_eq!(
+        shortened(&json!({ "events": rows }), &Limits::default()),
+        None
+    );
+}
+
+mod gates;
+mod lines;

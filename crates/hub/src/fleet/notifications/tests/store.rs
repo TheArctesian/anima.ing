@@ -1,5 +1,3 @@
-//! What the store reads back: channels, check state, deliveries and settings.
-
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;

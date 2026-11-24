@@ -1,5 +1,3 @@
-//! The gateway signs in to a VNC device with each method, and takes a refusal as one.
-
 use aes::cipher::{BlockCipherDecrypt as _, KeyInit as _};
 use anima_gateway::handshake::Credential;
 use anima_gateway::vnc::{Account, Method, SignInError, offered, sign_in};
@@ -11,37 +9,32 @@ const ACCOUNT: Account<'static> = Account {
     username: "ada",
     password: "secret12",
 };
-/// The 1024-bit prime of RFC 2409 (the second Oakley group), in hexadecimal.
+/// The 1024-bit prime of RFC 2409 (the second Oakley group).
 const PRIME: &str = "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74\
                      020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F1437\
                      4FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED\
                      EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE65381FFFFFFFFFFFFFFFF";
-/// The bytes of the prime and of the public numbers.
 const KEY_BYTES: usize = 128;
 
 fn prime() -> BigUint {
     BigUint::parse_bytes(PRIME.as_bytes(), 16).expect("a number")
 }
 
-/// `number` in `KEY_BYTES` bytes.
 fn key_bytes(number: &BigUint) -> Vec<u8> {
     let bytes = number.to_bytes_be();
     [vec![0; KEY_BYTES - bytes.len()], bytes].concat()
 }
 
-/// What a device sends to open Apple's method: generator 2, the prime, its public number.
 fn apple_opening(public: &BigUint) -> Vec<u8> {
     [vec![0, 2, 0, 128], key_bytes(&prime()), key_bytes(public)].concat()
 }
 
-/// Not random, so each run is the same.
 fn counting(buffer: &mut [u8]) {
     for (at, byte) in buffer.iter_mut().enumerate() {
         *byte = u8::try_from(at % 251).expect("under 251") + 1;
     }
 }
 
-/// A device that offers `types`, and the gateway's end of its connection.
 async fn device(types: &[u8]) -> (DuplexStream, DuplexStream) {
     let (gateway, mut device) = duplex(1 << 16);
     device.write_all(b"RFB 003.889\n").await.expect("banner");
@@ -67,7 +60,6 @@ async fn accept(device: &mut DuplexStream, result: u32) {
         .expect("name");
 }
 
-/// What the gateway sent so far, after the 12 bytes of its version.
 async fn sent(device: &mut DuplexStream, count: usize) -> Vec<u8> {
     let mut bytes = vec![0; 12 + count];
     device
@@ -143,7 +135,6 @@ async fn apples_method_carries_the_account_to_a_device_that_can_read_it() {
             [Credential::Username, Credential::Password].as_slice()
         )
     );
-    // The device's side of the key exchange.
     let device_private = BigUint::from(0x1234_5678_9abc_def0_u64);
     let device_public = BigUint::from(2u8).modpow(&device_private, &prime());
     device
@@ -183,14 +174,12 @@ async fn the_method_follows_what_the_hub_has() {
 
 #[tokio::test]
 async fn an_account_is_never_sent_by_a_weaker_method_than_the_hub_expects() {
-    // The account's password does not go out as a VNC password.
     let (mut gateway, _device) = device(&[2, 1]).await;
     let no_apple = offered(&mut gateway).await.expect("offered");
     assert!(matches!(
         no_apple.method(true, true),
         Err(SignInError::NoMethod)
     ));
-    // A device that asks for no sign-in, while the hub has a password for it, is refused.
     let (mut gateway, _device) = device(&[1]).await;
     let open = offered(&mut gateway).await.expect("offered");
     assert!(matches!(
@@ -202,7 +191,6 @@ async fn an_account_is_never_sent_by_a_weaker_method_than_the_hub_expects() {
         Err(SignInError::NoMethod)
     ));
     assert_eq!(open.method(false, false).expect("a method"), Method::None);
-    // Methods the gateway does not have.
     let (mut gateway, _device) = device(&[19, 33]).await;
     let unknown = offered(&mut gateway).await.expect("offered");
     assert!(matches!(
@@ -255,7 +243,6 @@ async fn a_peer_that_is_not_a_vnc_server_of_version_3_8_is_refused() {
     ));
 }
 
-/// The gateway's answer to a device that opens Apple's method with `opening`.
 async fn apple_answer_to(
     opening: &[u8],
     account: Account<'_>,
@@ -279,12 +266,10 @@ async fn key_exchange_numbers_that_would_show_the_password_are_refused() {
             Err(SignInError::BadNumbers)
         )
     };
-    // A key of one byte, or longer than the limit: nothing more is read.
     assert!(bad(vec![0, 2, 0, 1, 251, 5]).await);
     assert!(bad(vec![0, 2, 0xff, 0xff]).await);
-    // A public number of 1: the secret would be 1 for anyone.
+    // A public number of 1 makes the secret 1 for anyone.
     assert!(bad(apple_opening(&BigUint::from(1u8))).await);
-    // A small prime written in 128 bytes, and an even number in place of a prime.
     let small = [
         vec![0, 2, 0, 128],
         key_bytes(&BigUint::from(251u8)),
@@ -299,7 +284,6 @@ async fn key_exchange_numbers_that_would_show_the_password_are_refused() {
     ]
     .concat();
     assert!(bad(even).await);
-    // A generator of 1.
     let mut generator_one = apple_opening(&five);
     generator_one[1] = 1;
     assert!(bad(generator_one).await);

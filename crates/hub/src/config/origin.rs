@@ -1,18 +1,11 @@
 //! The public origin, accepted only in the one spelling a browser sends in `Origin` (D-3).
-//!
-//! Rules: scheme `https`, or `http` only for a loopback host (`localhost`, `127.0.0.0/8`,
-//! `[::1]`) so tests can run without TLS; a lowercase host; a port only when it is not the
-//! scheme default and has no leading zeros; nothing else (no userinfo, path, query, fragment
-//! or trailing slash). A host is a dotted-quad IPv4 address, a bracketed IPv6 address, or a
-//! DNS name whose last label is not numeric (browsers read `127.1` or `0x7f000001` as an
-//! address and send it differently). A trailing-dot host (`hub.anima.ing.`) is refused on
-//! purpose: browsers send it as typed, so it would be a second spelling of the same origin.
+//! `http` is allowed for a loopback host so tests run without TLS. A numeric last label must be
+//! a dotted quad and a trailing-dot host is refused: browsers send each as another spelling.
 
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 use super::Error;
 
-/// `text` unchanged when it is a canonical origin.
 pub(super) fn canonical(variable: &'static str, text: &str) -> Result<String, Error> {
     match check(text) {
         Ok(()) => Ok(text.to_owned()),
@@ -24,8 +17,7 @@ pub(super) fn canonical(variable: &'static str, text: &str) -> Result<String, Er
     }
 }
 
-/// `text` with everything before the last `@` replaced by `***`, so an error never echoes a
-/// password typed into the URL, with or without a scheme (LOG-007).
+/// An error never echoes a password typed into the URL, with or without a scheme (LOG-007).
 fn without_userinfo(text: &str) -> String {
     match text.rfind('@') {
         Some(at) => format!("***{}", &text[at..]),

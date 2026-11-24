@@ -8,7 +8,6 @@ const DISPLAY: SessionDisplay = { widthPx: 1280, heightPx: 800, dpi: 96, timezon
 const TARGET = { deviceId: 'device-1', display: DISPLAY };
 const SETUP = { origin: 'https://hub.anima.ing', WebSocket: FAKE_TERMINAL_SOCKET, size: () => ({ cols: 80, rows: 24 }), onbytes: () => undefined };
 
-/** A sessions API that issues a new ticket per call and records every call. */
 function fakeApi(tunnelPath = '/terminal', wakeSent = false) {
   const calls: { startSession: string[]; endSession: string[] } = { startSession: [], endSession: [] };
   let issued = 0;

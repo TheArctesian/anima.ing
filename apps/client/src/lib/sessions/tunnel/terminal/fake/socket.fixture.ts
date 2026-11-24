@@ -1,5 +1,4 @@
-// Test support: the hub's side of one terminal WebSocket (K4 §8), driven by hand. Pass `FAKE_TERMINAL_SOCKET`
-// as `WebSocket` to `openTerminalLink` or `startTerminal`. No vitest import here.
+// The hub's side of one terminal WebSocket (K4 §8): pass `FAKE_TERMINAL_SOCKET` as `WebSocket`. No vitest import here.
 import type { SocketConstructor } from '../../state';
 
 interface CloseEvent {
@@ -8,7 +7,6 @@ interface CloseEvent {
   wasClean: boolean;
 }
 
-/** One frame the client sent: text, or binary bytes. */
 export type SentFrame = string | Uint8Array;
 
 export class FakeTerminalSocket {
@@ -16,14 +14,12 @@ export class FakeTerminalSocket {
   static readonly OPEN = 1;
   static readonly CLOSING = 2;
   static readonly CLOSED = 3;
-  /** Every socket made since the last `reset`, oldest first. */
   static made: FakeTerminalSocket[] = [];
 
   static reset(): void {
     FakeTerminalSocket.made = [];
   }
 
-  /** The latest socket; throws when none was made. */
   static latest(): FakeTerminalSocket {
     const socket = FakeTerminalSocket.made.at(-1);
     if (socket === undefined) throw new Error('no terminal socket was made');
@@ -32,9 +28,7 @@ export class FakeTerminalSocket {
 
   readyState = FakeTerminalSocket.CONNECTING;
   binaryType: BinaryType = 'blob';
-  /** Every frame the client sent, in order. */
   readonly frames: SentFrame[] = [];
-  /** The code the client closed with, when it closed first. */
   closedByClient: number | undefined;
   onopen: ((event: unknown) => void) | null = null;
   onclose: ((event: CloseEvent) => void) | null = null;
@@ -52,7 +46,6 @@ export class FakeTerminalSocket {
     this.frames.push(frame);
   }
 
-  /** The text messages the client sent, parsed. */
   messages(): Record<string, unknown>[] {
     return this.frames.filter((frame): frame is string => typeof frame === 'string').map((text) => JSON.parse(text) as Record<string, unknown>);
   }
@@ -78,7 +71,6 @@ export class FakeTerminalSocket {
     this.onopen?.({});
   }
 
-  /** The hub sends terminal output. */
   output(bytes: Uint8Array | string): void {
     const data = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes;
     // Built here, not sliced from `data`: the encoder may belong to another realm than the `ArrayBuffer` the link tests.
@@ -87,12 +79,10 @@ export class FakeTerminalSocket {
     this.onmessage?.({ data: buffer });
   }
 
-  /** The hub sends one control message. */
   control(message: unknown): void {
     this.onmessage?.({ data: typeof message === 'string' ? message : JSON.stringify(message) });
   }
 
-  /** The hub sends `end` with `reason`. */
   end(reason: string): void {
     this.control({ type: 'end', reason });
   }
@@ -109,5 +99,4 @@ export class FakeTerminalSocket {
   }
 }
 
-/** `FakeTerminalSocket` typed as the WebSocket constructor the link takes. */
 export const FAKE_TERMINAL_SOCKET = FakeTerminalSocket as unknown as SocketConstructor;

@@ -1,5 +1,4 @@
-//! The read of a repository: the metadata, the SHA-256 values, the variants and the refusal
-//! of a source that is not approved (LIBM-002 to LIBM-006).
+//! The read of a repository (LIBM-002 to LIBM-006).
 
 use sha2::{Digest, Sha256};
 

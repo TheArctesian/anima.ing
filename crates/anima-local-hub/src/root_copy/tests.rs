@@ -8,7 +8,6 @@ use super::list::Kind;
 use super::{RootCopyError, entries};
 use crate::Folders;
 
-/// A hub root as a stopped hub leaves it, without a real database: the files only.
 fn root() -> (TempDir, Folders) {
     let folder = tempfile::tempdir().unwrap();
     let root = folder.path().join("hub");
@@ -87,7 +86,6 @@ fn rol_054_a_copy_keeps_the_mode_of_a_secret_file() {
     assert!(matches!(&key.kind, Kind::File { bytes: 5, sha256 } if sha256.len() == 64));
 }
 
-/// Each change that makes a copy useless for a way back, and the words of its fault.
 #[test]
 fn rol_054_the_check_of_an_entry_finds_a_file_that_is_gone_changed_or_opened_to_others() {
     type Change = (&'static str, fn(&Path), &'static str);

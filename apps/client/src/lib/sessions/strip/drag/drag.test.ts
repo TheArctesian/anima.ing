@@ -17,7 +17,6 @@ function box(left: number, top: number, width: number, height: number): DOMRect 
   return new DOMRect(left, top, width, height);
 }
 
-/** Strip-local translate of `node`, as the engine draws it. */
 function shown(node: HTMLElement): [number, number] {
   const [x = 0, y = 0] = node.style.translate
     .split(' ')
@@ -37,7 +36,6 @@ interface Rig {
   readonly dragOut: ReturnType<typeof vi.fn<() => Promise<boolean>>>;
 }
 
-/** Three 100 px tabs, 10 px apart, in a strip 0..400 × 0..40; a tab's box follows its DOM place and translate. */
 function rig(overrides: Partial<DragOptions> = {}): Rig {
   const strip = document.createElement('div');
   document.body.append(strip);
@@ -77,7 +75,6 @@ function pointer(node: HTMLElement, type: string, x: number, y = 18): void {
   node.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 7, clientX: x, clientY: y }));
 }
 
-/** Drags from `fromX` through `points` (x at time t, and y) and releases at the last one. */
 function drag(node: HTMLElement, clock: { now: number }, fromX: number, points: [number, number, number?][]): void {
   clock.now = 0;
   pointer(node, 'pointerdown', fromX);
@@ -196,7 +193,6 @@ it('MOT-031 / MOT-035: the release spring starts with the pointer velocity, one 
     [80, 50],
     [110, 100],
   ]);
-  // 60 px in 100 ms = 600 px/s; centre 110 projects to 110 + 0.6 × 499 ≈ 409, the last place.
   expect(order()).toEqual(['b', 'c', 'a']);
   const momentum = runs.filter((run) => run.options.stiffness === spring.momentum.stiffness);
   expect(momentum.map((run) => run.options.velocity)).toEqual([600, 0]);
@@ -208,14 +204,12 @@ it('MOT-031 / MOT-035: a release moving down starts the Y spring with the pointe
     [80, 50, 28],
     [110, 100, 38],
   ]);
-  // 20 px down in 100 ms = 200 px/s, while the tab itself follows with resistance.
   const momentum = runs.filter((run) => run.options.stiffness === spring.momentum.stiffness);
   expect(momentum.map((run) => run.options.velocity)).toEqual([600, 200]);
 });
 
 it('MOT-032: the new place comes from the projected position, not the release position', () => {
   const slow = rig();
-  // Released 20 px right of its place after a pause: no velocity, it stays.
   drag(slow.tabs[0] as HTMLElement, slow.clock, 50, [
     [70, 0],
     [70, 500],
@@ -224,7 +218,6 @@ it('MOT-032: the new place comes from the projected position, not the release po
 
   runs.length = 0;
   const flick = rig();
-  // Released at the same place while moving right at about 222 px/s: the projection passes place 1.
   drag(flick.tabs[0] as HTMLElement, flick.clock, 50, [[70, 90]]);
   expect(flick.order()).toEqual(['b', 'a', 'c']);
 });

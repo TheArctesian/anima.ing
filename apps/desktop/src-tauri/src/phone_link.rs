@@ -1,10 +1,6 @@
-//! This phone's link to a hub (mobile plan M3-1; MOB-031, MOB-032, MOB-035, MOB-036). A phone cannot start
-//! `anima-link`, so the Go link runs inside the app as a library. The commands are the desktop link's:
-//! `link_join`, `link_status` and `link_leave`, with the same answers, so the client reaches the hub at
-//! `http://127.0.0.1:<port>` on every platform. No rule of the link is here (REPO-003).
-//!
-//! The invite is the one value that comes from the web view. It reaches the library in memory only, is
-//! wiped after the call and is never logged (MOB-035, LOG-007).
+//! This phone's link to a hub (mobile plan M3-1; MOB-031, MOB-032, MOB-035, MOB-036). No rule of the link is here (REPO-003).
+//! The Go link runs inside the app as a library; the commands and their answers are the desktop link's.
+//! The invite reaches the library in memory only, is wiped after the call and is never logged (MOB-035, LOG-007).
 
 #[expect(
     dead_code,
@@ -25,26 +21,23 @@ use tauri::{AppHandle, Manager, Runtime, State, Webview};
 
 pub use error::LinkError;
 
-/// The folders of this phone's link, in the app's own data folder.
 pub struct PhoneLink {
-    /// The identity of the device that joined; there only after a join.
+    /// The joined device's identity; present only after a join.
     folder: PathBuf,
     /// The folder of a join in progress.
     next: PathBuf,
-    /// The local port, kept so that the hub's address, and the token kept for it, stay the same.
+    /// Kept so the hub's address, and the token kept for it, stay the same.
     port: PathBuf,
     /// The one join or leave that may run at a time.
     changing: Mutex<()>,
 }
 
-/// What a join gives, as on the desktop: the new key's short form and the local port.
 #[derive(Debug, Serialize)]
 pub struct Joined {
     fingerprint: String,
     port: u16,
 }
 
-/// The link's state, as the desktop's `link_status` gives it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LinkStatus {
@@ -61,7 +54,6 @@ pub struct LinkStatus {
 }
 
 impl PhoneLink {
-    /// The link's folders below the app's data folder `data`.
     pub fn below(data: &Path) -> Self {
         Self {
             folder: data.join("link"),
@@ -75,19 +67,11 @@ impl PhoneLink {
         self.folder.is_dir()
     }
 
-    #[cfg(target_os = "android")]
-    pub(crate) fn metrics_socket(&self, origin: &str, account: &str) -> Option<PathBuf> {
-        let key = listener_key(origin)?;
-        (account.strip_prefix("link:")? == key)
-            .then(|| self.folder.join(format!("metrics-{key}.sock")))
-    }
-
     fn saved_port(&self) -> Option<u16> {
         fs::read_to_string(&self.port).ok()?.trim().parse().ok()
     }
 
-    /// Starts the link of the device that joined; a link that runs stays. The saved port first, so that the
-    /// address does not change; a port that another program holds is replaced and saved (MOB-036).
+    /// The saved port comes first so the address stays; a port another program holds is replaced (MOB-036).
     pub fn start(&self) -> Result<u16, LinkError> {
         if !self.joined() {
             return Err(LinkError::Folder);
@@ -105,7 +89,6 @@ impl PhoneLink {
         Ok(port)
     }
 
-    /// Joins with `invite` into a new folder, then puts it in place of the old one and starts the link.
     fn join(&self, invite: &str) -> Result<Joined, LinkError> {
         let _changing = self.changing.try_lock().map_err(|_| LinkError::Busy)?;
         library::stop();
@@ -148,7 +131,6 @@ impl PhoneLink {
     }
 }
 
-/// The port of a loopback address such as `127.0.0.1:41234`.
 fn port_of(local: &str) -> Option<u16> {
     local
         .rsplit_once(':')?
@@ -158,7 +140,6 @@ fn port_of(local: &str) -> Option<u16> {
         .filter(|port| *port != 0)
 }
 
-/// Removes `folder` and what it holds; a folder that is not there is not an error.
 fn remove(folder: &Path) -> io::Result<()> {
     match fs::remove_dir_all(folder) {
         Err(error) if error.kind() != io::ErrorKind::NotFound => Err(error),
@@ -166,7 +147,6 @@ fn remove(folder: &Path) -> io::Result<()> {
     }
 }
 
-/// Keeps the app's link and starts it when this phone joined a hub. An app with no data folder has no link.
 pub fn manage<R: Runtime>(app: &AppHandle<R>) {
     if let Ok(data) = app.path().app_local_data_dir() {
         let link = PhoneLink::below(&data);
@@ -214,13 +194,26 @@ pub fn link_status(link: State<'_, PhoneLink>) -> LinkStatus {
     link.status()
 }
 
-/// The key of the link that owns this origin. A reused port must not give another hub an old token.
+/// The key of the link that owns this origin, so a reused port never gives another hub an old token.
 pub(crate) fn listener_key(origin: &str) -> Option<String> {
     let running = library::status();
+    scoped_link_key(origin, &running).map(str::to_owned)
+}
+
+pub(crate) fn metrics_socket(origin: &str, account: &str) -> Option<PathBuf> {
+    let running = library::status();
+    let key = scoped_link_key(origin, &running)?;
+    if account.strip_prefix("link:")? != key {
+        return None;
+    }
+    running.metrics_socket
+}
+
+fn scoped_link_key<'a>(origin: &str, running: &'a library::Running) -> Option<&'a str> {
     (running.up
         && !running.device_key.is_empty()
         && origin.strip_prefix("http://") == Some(running.local.as_str()))
-    .then_some(running.device_key)
+    .then_some(running.device_key.as_str())
 }
 
 #[tauri::command]

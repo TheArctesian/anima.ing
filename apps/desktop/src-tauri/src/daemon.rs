@@ -1,24 +1,10 @@
-//! The desktop app installs the metrics daemon on the computer it runs on (MET-019, D-10 d): it
-//! copies the daemon it carries to `~/.local/bin`, enrols it with a code from the hub and has it
-//! install its own user unit or `LaunchAgent`. User level only; nothing runs as root.
-//!
-//! Only the main web view may ask (WEB-007), and it passes only the code and the hub's origin,
-//! both checked here. The code reaches the daemon on standard input only, and no log line, error
-//! or argument holds it (LOG-007). The shell wipes its own copy of the code (`Zeroizing`); the
-//! copies in the IPC message and in the web view are not wiped.
-//!
-//! A bundle carries the daemon with the other programs (HMD-052, R-206): the bundle step of the
-//! builder (`src/builder/carried/`) and `trial-bundle.sh` build `anima-daemon` from the same
-//! commit and name it in `bundle.externalBin`. A debug build carries none and says so, and the
-//! client shows the install command instead.
-//!
-//! The removal (HMD-056) runs the daemon's own `uninstall`, then deletes the copy
-//! ([`removal`]); the client calls it at the sign-out of a hosted hub and revokes the daemon at
-//! the hub itself.
-//!
-//! At each start the app replaces an installed copy that is older than the daemon it carries,
-//! and the unit starts again with the same token (HMD-055, [`update`]).
+//! Installs the carried metrics daemon for this user, never as root (MET-019, D-10 d, HMD-052,
+//! HMD-055, HMD-056). Only the main web view may ask (WEB-007). The enrolment code reaches the
+//! daemon on standard input only; no log line, error or argument holds it (LOG-007).
+//! Only the shell's own copy of the code is wiped (`Zeroizing`); the IPC message and the web view keep theirs.
 
+#[cfg(unix)]
+pub(crate) mod at_start;
 mod error;
 mod installing;
 #[cfg(unix)]
@@ -51,6 +37,8 @@ use tauri::{Runtime, State, Webview};
 use tauri_plugin_log::log;
 use zeroize::Zeroizing;
 
+#[cfg(unix)]
+pub use at_start::{Notices, update_at_start};
 pub use error::DaemonError;
 pub use installing::Installing;
 use request::{EnrolmentCode, HubOrigin};
@@ -64,19 +52,15 @@ use trust::User;
 const ENROL_DEADLINE: Duration = Duration::from_secs(60);
 /// `uninstall` runs at most two steps of 30 s each and deletes a Keychain item; the rest is margin.
 const UNINSTALL_DEADLINE: Duration = Duration::from_secs(120);
-/// `install` runs up to five steps of 30 s each (two take the unit of the old program out,
-/// R-126), one retried after a pause; the rest is margin. Its read of the token in the
-/// Keychain stops after 5 s (R-322), so a prompt that nobody answers no longer
-/// holds it: the deadline is for slow service managers, and the update uses it too.
+/// `install` runs up to five steps of 30 s each (R-126), one retried; its Keychain read stops
+/// after 5 s (R-322), so the deadline is for slow service managers.
 const INSTALL_DEADLINE: Duration = Duration::from_secs(240);
 
-/// Where accounts and groups are read, to find the user's private group.
 #[cfg(unix)]
 const PASSWD: &str = "/etc/passwd";
 #[cfg(unix)]
 const GROUP: &str = "/etc/group";
 
-/// This computer as the install needs it: the bundled daemon, the user and the daemon's variables.
 struct Here {
     source: PathBuf,
     home: PathBuf,
@@ -85,15 +69,13 @@ struct Here {
     env: Vec<(&'static str, OsString)>,
 }
 
-/// What bounds each daemon run: its deadline, and the app's stop on exit.
 struct Limits<'a> {
     enrol: Duration,
     install: Duration,
     stop: &'a AtomicBool,
 }
 
-/// Copies the daemon into place, enrols it with `code` at `hub`, then has it install its unit.
-/// Each run starts the path that was checked. Returns that path.
+/// Each run starts the path that was checked.
 fn install_here(
     here: &Here,
     code: &EnrolmentCode,
@@ -128,8 +110,6 @@ fn install_here(
     Ok(installed)
 }
 
-/// This computer, read from the process: `HOME` must be an absolute path. An account file that
-/// cannot be read means no private group, so a folder its group may write is refused.
 fn here(source: PathBuf) -> Result<Here, DaemonError> {
     let home = home_folder()?;
     #[cfg(unix)]
@@ -144,7 +124,6 @@ fn here(source: PathBuf) -> Result<Here, DaemonError> {
     })
 }
 
-/// The home folder of this user: `HOME` (`USERPROFILE` on Windows), an absolute path.
 fn home_folder() -> Result<PathBuf, DaemonError> {
     std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
         .map(PathBuf::from)
@@ -152,8 +131,8 @@ fn home_folder() -> Result<PathBuf, DaemonError> {
         .ok_or(DaemonError::NoHome)
 }
 
-/// The user of this process, with their private group. An account file that cannot be read
-/// means no private group, so a folder its group may write is refused.
+/// An account file that cannot be read means no private group, so a folder its group may write
+/// is refused.
 #[cfg(unix)]
 pub(crate) fn this_user() -> User {
     let uid = nix::unistd::getuid().as_raw();
@@ -165,8 +144,8 @@ pub(crate) fn this_user() -> User {
     }
 }
 
-/// The daemon beside `executable`, in a release build only: a debug build's target folder may
-/// hold a daemon built from another commit, which is never offered.
+/// A debug build's target folder may hold a daemon built from another commit, which is never
+/// offered.
 fn bundled(executable: &Path, release: bool) -> Result<PathBuf, DaemonError> {
     if !release {
         return Err(DaemonError::NotBundled);
@@ -176,7 +155,6 @@ fn bundled(executable: &Path, release: bool) -> Result<PathBuf, DaemonError> {
         .ok_or(DaemonError::NotBundled)
 }
 
-/// The daemon this app carries, when it carries one.
 fn carried() -> Result<PathBuf, DaemonError> {
     if !cfg!(any(target_os = "macos", target_os = "linux", windows)) {
         return Err(DaemonError::Unavailable);
@@ -185,14 +163,12 @@ fn carried() -> Result<PathBuf, DaemonError> {
     bundled(&executable, !cfg!(debug_assertions))
 }
 
-/// Refuses every caller but the main web view; the capability already does, this is the second
-/// wall (WEB-007).
+/// Refuses every caller but the main web view, a second wall behind the capability (WEB-007).
 fn from_main(label: &str) -> Result<(), DaemonError> {
     crate::web_view::caller(label).map_err(|_| DaemonError::Caller)
 }
 
-/// Checks the request, claims the one install and runs it off the async runtime. The claim
-/// goes with the work, so it is freed when the work ends.
+/// The claim moves into the work, so it is freed when the work ends even if no `await` resumes.
 async fn install<R: Runtime>(
     webview: &Webview<R>,
     installing: &Installing,
@@ -216,7 +192,6 @@ async fn install<R: Runtime>(
         .unwrap_or(Err(DaemonError::Failed))
 }
 
-/// Claims the one install or removal and takes the daemon off this computer, off the async runtime.
 async fn remove<R: Runtime>(
     webview: &Webview<R>,
     installing: &Installing,
@@ -240,9 +215,8 @@ async fn remove<R: Runtime>(
         .unwrap_or(Err(DaemonError::Failed))
 }
 
-/// The origin that the daemon is enrolled at: the `https` origin that the web view names, or,
-/// for a hub that the app reaches through its link at `http://127.0.0.1:<port>`, the socket
-/// that the link of that port made for the daemon (HMD-054). The web view never names a path.
+/// A hub behind the link at `http://127.0.0.1:<port>` becomes its daemon socket; the web view
+/// never names a path (HMD-054).
 fn hub_origin(origin: &str) -> Option<HubOrigin> {
     HubOrigin::parse(origin).or_else(|| {
         let socket = crate::link::daemon_socket(request::link_port(origin)?)?;
@@ -250,61 +224,12 @@ fn hub_origin(origin: &str) -> Option<HubOrigin> {
     })
 }
 
-/// Replaces an installed copy of the daemon that is older than the one this app carries and
-/// starts its unit again, off the async runtime (HMD-055). It holds the one install while it
-/// runs; when an install or a removal already runs, it does nothing at this start.
-#[cfg(unix)]
-pub fn update_at_start(installing: &Installing) {
-    let (Ok(carried), Ok(home)) = (carried(), home_folder()) else {
-        return;
-    };
-    let Ok(claim) = installing.claim() else {
-        log::info!("the daemon was not compared with the one of the app: an install runs");
-        return;
-    };
-    tauri::async_runtime::spawn_blocking(move || {
-        let copy = placement::destination(&home);
-        let env = run::daemon_env(&home, |name| std::env::var_os(name));
-        let swap = update::Swap {
-            copy: &copy,
-            carried: &carried,
-            user: this_user(),
-            env: &env,
-            restart: INSTALL_DEADLINE,
-            stop: &claim.stop,
-            identity: signature::of_program(&carried),
-        };
-        match update::update_here(&swap) {
-            Ok(update::Updated::Replaced) => {
-                log::info!("the daemon on this computer was replaced by the newer one of the app");
-            }
-            Ok(update::Updated::KeptNewer) => {
-                log::info!(
-                    "the daemon on this computer is newer than the one of the app; it stays"
-                );
-            }
-            Ok(update::Updated::CarriedUnknown) => {
-                log::warn!("the version of the daemon of the app could not be read; no update");
-            }
-            Ok(update::Updated::KeptForKeychain) => {
-                log::warn!(
-                    "the daemon on this computer is older than the one of the app, but this build has no Developer ID signature: the Keychain would ask again for the new daemon, so it stays (R-321)"
-                );
-            }
-            Ok(update::Updated::NoCopy | update::Updated::Unchanged) => {}
-            Err(error) => log::warn!("the daemon was not updated: {}", error.code()),
-        }
-    });
-}
-
-/// Whether this build of the app carries the daemon, so the client can offer to install it.
 #[tauri::command]
 pub async fn daemon_bundled<R: Runtime>(webview: Webview<R>) -> Result<bool, DaemonError> {
     from_main(webview.label())?;
     Ok(carried().is_ok())
 }
 
-/// Installs the daemon on this computer for this user with `code` from the hub at `origin`.
 #[tauri::command]
 pub async fn daemon_install<R: Runtime>(
     webview: Webview<R>,
@@ -320,9 +245,7 @@ pub async fn daemon_install<R: Runtime>(
     result
 }
 
-/// Takes the daemon off this computer for this user (HMD-056): its unit, its token and its copy.
-/// It takes no argument: the paths are the ones that the install uses. True when a copy of the
-/// daemon was here.
+/// Takes the daemon's unit, token and copy off this computer (HMD-056); true when a copy was here.
 #[tauri::command]
 pub async fn daemon_remove<R: Runtime>(
     webview: Webview<R>,

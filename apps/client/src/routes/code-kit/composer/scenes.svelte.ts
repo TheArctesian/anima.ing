@@ -10,10 +10,6 @@ export { ATTACHMENTS };
 
 const OK: Promise<Outcome> = Promise.resolve({ ok: true });
 
-/**
- * A made-up engine that can do everything, for the specimen: it keeps its queue in the page and sends nothing
- * anywhere. `fails` makes each send fail with those words.
- */
 export class SceneEngine implements ComposerEngine {
   phase = $state<'idle' | 'running' | 'ended'>('idle');
   queued = $state<readonly Queued[]>([]);
@@ -27,7 +23,6 @@ export class SceneEngine implements ComposerEngine {
   readonly catalogue = pickerCatalogue;
   readonly sources = FIXTURE_SOURCES;
   readonly #fails: string | null;
-  /** Why the queue sends nothing on its own: the line under the queued messages. */
   readonly queueWaits: string | null;
   #serial = 0;
 
@@ -60,8 +55,9 @@ export class SceneEngine implements ComposerEngine {
 
   sendQueued = (id: string): Promise<Outcome> => this.unqueue(id);
 
-  choose = (next: Choice): void => {
+  choose = (next: Choice): Promise<Outcome> => {
     this.choice = next;
+    return OK;
   };
 }
 

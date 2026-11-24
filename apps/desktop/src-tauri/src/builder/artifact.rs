@@ -1,6 +1,5 @@
-//! Where a build leaves its files, and the checks that a file there is the build's own (BLD-043,
-//! BLD-047). The build wrote the folder, so a path is used only when it is a regular file inside
-//! the clone: a link to `~/.ssh` or elsewhere is refused before it is uploaded.
+//! A path is used only when it is a regular file inside the clone: a link to `~/.ssh` or elsewhere
+//! is refused before it is uploaded (BLD-043, BLD-047).
 
 use std::{
     ffi::OsString,
@@ -18,24 +17,19 @@ use super::{
     job::{Target, Version},
 };
 
-/// Stable artefact prefix the hub, the site and Section 3.10.4 use (`Anima.dmg`,
-/// `Anima_{version}_amd64.AppImage`, `Anima.app.tar.gz`).
+/// The stable artefact prefix that the hub, the site and Section 3.10.4 use.
 const PRODUCT: &str = "Anima";
-/// `productName` in `tauri.conf.json`. Tauri names the `.app` folder and the first
-/// component of the DMG and `AppImage` after it. Official artefact file names stay
-/// `Anima` (UPD-010), so [`stabilize_names`] renames the DMG and `AppImage` after bundling.
+/// `productName` in `tauri.conf.json`. Artefact names stay `Anima` (UPD-010), so
+/// [`stabilize_names`] renames them.
 const DISPLAY: &str = "Anima.ing";
-/// The app's own executable in `Contents/MacOS`: the Cargo binary name.
 const MAC_EXECUTABLE: &str = "anima-desktop";
 
-/// Where cargo writes what it builds in `clone`. Every step is told this folder
-/// (`CARGO_TARGET_DIR`), so a `target-dir` in the builder's own cargo configuration cannot move
-/// the bundle to a place the later steps do not look in.
+/// Every step gets this folder as `CARGO_TARGET_DIR`, so a builder's own cargo `target-dir` cannot
+/// move the bundle.
 pub fn target_folder(clone: &Path) -> PathBuf {
     clone.join("target")
 }
 
-/// The folder `tauri bundle` writes for `target`.
 fn bundle_folder(clone: &Path, target: Target) -> PathBuf {
     match target {
         Target::LinuxX86_64 => target_folder(clone).join("release/bundle"),
@@ -46,7 +40,6 @@ fn bundle_folder(clone: &Path, target: Target) -> PathBuf {
     }
 }
 
-/// The file the updater downloads: the `AppImage` on Linux, the archived app on macOS.
 pub fn updater_file(clone: &Path, target: Target, version: &Version) -> PathBuf {
     let folder = bundle_folder(clone, target);
     match target {
@@ -61,7 +54,7 @@ pub fn updater_file(clone: &Path, target: Target, version: &Version) -> PathBuf 
     }
 }
 
-/// The DMG people download, made on macOS only (BLD-063).
+/// Made on macOS only (BLD-063).
 pub fn dmg_file(clone: &Path, target: Target, version: &Version) -> Option<PathBuf> {
     match target {
         Target::LinuxX86_64 | Target::WindowsX86_64 => None,
@@ -72,15 +65,14 @@ pub fn dmg_file(clone: &Path, target: Target, version: &Version) -> Option<PathB
     }
 }
 
-/// The macOS app folder Tauri writes for `productName`.
 pub fn mac_app(clone: &Path) -> PathBuf {
     bundle_folder(clone, Target::DarwinUniversal).join(format!("macos/{DISPLAY}.app"))
 }
 
-/// Deletes the folder `tauri bundle` writes for `target`, so no file of an earlier attempt can be
-/// taken for this one's (D1 of the projects and builds proposal): the checkout keeps cargo's
-/// `target/`. The build wrote the folders above it, so a link among them is refused, never
-/// followed, and a link at the folder itself is removed as a link.
+/// No file of an earlier attempt can be taken for this one's (D1 of the projects and builds
+/// proposal).
+/// A link among the folders above it is refused, never followed; a link at the folder is removed as
+/// a link.
 pub fn clear_bundle(clone: &Path, target: Target) -> Result<(), BuilderError> {
     let folder = bundle_folder(clone, target);
     let kind = match fs::symlink_metadata(&folder) {
@@ -107,11 +99,9 @@ pub fn clear_bundle(clone: &Path, target: Target) -> Result<(), BuilderError> {
     .map_err(|_| BuilderError::Bundle)
 }
 
-/// Renames Tauri's `productName`-based DMG and `AppImage` to the stable `Anima_*` names
-/// the hub and the site expect (UPD-010). The `.app` folder keeps the display name;
-/// the updater archive is still written to `Anima.app.tar.gz`. When Tauri wrote no
-/// `productName` file, the stable name must be there already (a commit whose `productName`
-/// was still `Anima`).
+/// Gives the DMG and `AppImage` the stable `Anima_*` names (UPD-010). When Tauri wrote no
+/// `productName`
+/// file, the stable name must be there already (a commit whose `productName` was still `Anima`).
 pub fn stabilize_names(
     clone: &Path,
     target: Target,
@@ -137,8 +127,7 @@ pub fn stabilize_names(
     fs::rename(&produced, &wanted).map_err(|_| BuilderError::Bundle)
 }
 
-/// `path` when it is a regular file, not a link, inside `clone` once every link in its folders
-/// is followed.
+/// A regular file, not a link, inside `clone` once every link in its folders is followed.
 pub fn own_file(clone: &Path, path: &Path) -> Result<PathBuf, BuilderError> {
     let kind = fs::symlink_metadata(path).map_err(|_| BuilderError::Bundle)?;
     let real = fs::canonicalize(path).map_err(|_| BuilderError::Bundle)?;
@@ -148,9 +137,9 @@ pub fn own_file(clone: &Path, path: &Path) -> Result<PathBuf, BuilderError> {
         .ok_or(BuilderError::Bundle)
 }
 
-/// Opens the build's own file at `path` for reading, once (D-13): never through a link, and only
-/// when it has one name, so a hard link to a file outside the clone is refused. Hash and read
-/// from this one descriptor, so the bytes recorded are the bytes checked.
+/// Never through a link, and only with one name, so a hard link to a file outside the clone is
+/// refused (D-13).
+/// Hash and read from this one descriptor, so the bytes recorded are the bytes checked.
 pub fn open_own(clone: &Path, path: &Path) -> Result<File, BuilderError> {
     let real = own_file(clone, path)?;
     #[cfg(windows)]
@@ -169,9 +158,8 @@ pub fn open_own(clone: &Path, path: &Path) -> Result<File, BuilderError> {
     }
 }
 
-/// The app's own executable, once its `Contents/MacOS` holds exactly it and the seven carried
-/// programs (INS-002, S12 2.3). Any other set of files fails, so nothing unchecked is notarized
-/// and shipped.
+/// `Contents/MacOS` must hold exactly it and the seven carried programs, so nothing unchecked is
+/// notarized and shipped (INS-002, S12 2.3).
 pub fn mac_executable(clone: &Path, app: &Path) -> Result<PathBuf, BuilderError> {
     let folder = own_folder(clone, &app.join("Contents/MacOS"))?;
     let entries = fs::read_dir(&folder).map_err(|_| BuilderError::Bundle)?;
@@ -189,8 +177,8 @@ pub fn mac_executable(clone: &Path, app: &Path) -> Result<PathBuf, BuilderError>
     own_file(clone, &folder.join(MAC_EXECUTABLE))
 }
 
-/// `folder` when it is a real folder inside `clone` with no link anywhere on the way from the
-/// clone to it, so a check of the files below it checks the build's own files.
+/// No link anywhere on the way from the clone, so a check of the files below it checks the build's
+/// own files.
 pub fn own_folder(clone: &Path, folder: &Path) -> Result<PathBuf, BuilderError> {
     let kind = fs::symlink_metadata(folder).map_err(|_| BuilderError::Bundle)?;
     let root = fs::canonicalize(clone).map_err(|_| BuilderError::Bundle)?;
@@ -203,10 +191,9 @@ pub fn own_folder(clone: &Path, folder: &Path) -> Result<PathBuf, BuilderError> 
         .ok_or(BuilderError::Bundle)
 }
 
-/// Opens cargo's output at `path` for reading: a regular file inside the clone, never through a
-/// link. Cargo gives its output a second name in `deps/`, so the one-name rule of [`open_own`]
-/// cannot hold; the staged file must then pass the `lipo` or ELF check, which no key or other
-/// text file passes. The Mach-O check of the app reads each file's first bytes through it too.
+/// Cargo gives its output a second name in `deps/`, so the one-name rule of [`open_own`] cannot
+/// hold;
+/// the staged file must then pass the `lipo` or ELF check, which no key or other text file passes.
 pub fn open_built(clone: &Path, path: &Path) -> Result<File, BuilderError> {
     #[cfg(windows)]
     return anima_windows::files::read(&own_file(clone, path)?, false)
@@ -223,9 +210,8 @@ pub fn open_built(clone: &Path, path: &Path) -> Result<File, BuilderError> {
     }
 }
 
-/// Copies cargo's output `from` to `to`, a new file in a folder inside the clone, mode 0755.
-/// What is at `to` is removed first and never followed, so a link a build planted there cannot
-/// make the copy write outside the clone.
+/// What is at `to` is removed first and never followed, so a planted link cannot make the copy
+/// write outside the clone.
 pub fn stage(clone: &Path, from: &Path, to: &Path) -> Result<(), BuilderError> {
     let mut input = open_built(clone, from)?;
     let folder = to.parent().ok_or(BuilderError::Bundle)?;
@@ -252,7 +238,6 @@ pub fn stage(clone: &Path, from: &Path, to: &Path) -> Result<(), BuilderError> {
     output.sync_all().map_err(|_| BuilderError::Bundle)
 }
 
-/// The first bytes of the build's own file at `path`, at most `count`.
 pub fn header(clone: &Path, path: &Path, count: u64) -> Result<Vec<u8>, BuilderError> {
     let mut bytes = Vec::new();
     open_own(clone, path)?
@@ -262,8 +247,8 @@ pub fn header(clone: &Path, path: &Path, count: u64) -> Result<Vec<u8>, BuilderE
     Ok(bytes)
 }
 
-/// Whether `lipo -archs` printed exactly the two architectures `x86_64` and `arm64` (UPD-011). A
-/// third slice, as `x86_64h`, which an Intel Mac would prefer, is checked by nobody, so it fails.
+/// UPD-011. A third slice such as `x86_64h`, which an Intel Mac would prefer, is checked by nobody,
+/// so it fails.
 pub fn universal(archs: &[String]) -> bool {
     let mut words: Vec<&str> = archs
         .iter()
@@ -273,8 +258,7 @@ pub fn universal(archs: &[String]) -> bool {
     words == ["arm64", "x86_64"]
 }
 
-/// Whether `notarytool submit --wait` printed Apple's final answer as Accepted (BLD-085). Its
-/// progress lines say `Current status: ...`; only the final `status:` line counts.
+/// BLD-085. Progress lines say `Current status: ...`; only the final `status:` line counts.
 pub fn notarized(lines: &[String]) -> bool {
     lines.iter().any(|line| line.trim() == "status: Accepted")
 }

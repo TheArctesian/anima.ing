@@ -1,6 +1,5 @@
-//! `acceptServerCertificate` (SEC-007, LOG-005): the operator confirms the fingerprint of the
-//! certificate a connection test saw at the device's host and RDP port, and the hub stores it
-//! with an audit entry, in one transaction.
+//! `acceptServerCertificate` (SEC-007, LOG-005): the certificate and its audit entry are stored
+//! in one transaction.
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -18,22 +17,13 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The certificate the operator accepts: the device and the fingerprint they compared.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::trust) struct CertificateAcceptance {
     pub(in crate::fleet::trust) device: DeviceId,
     pub(in crate::fleet::trust) fingerprint: CertificateFingerprint,
 }
 
-/// Accepts the certificate a connection test saw at the device's host and RDP port within
-/// the last 15 minutes before `by.at`, when its fingerprint is the one given. What is stored
-/// comes from that observation, never from the request. Replacing a certificate writes the
-/// audit entry (`accept` on the device) with the old and new fingerprints; accepting the one
-/// already stored changes nothing and writes nothing.
-///
-/// # Errors
-/// `NotFound` for an unknown device; `Conflict` when no certificate was seen or it has
-/// another fingerprint; `Database`, `Devices` or `Events` when a dependency fails.
+/// What is stored comes from the connection test's observation, never from the request.
 pub(in crate::fleet::trust) async fn accept_server_certificate(
     db: &PgPool,
     sightings: &Sightings,

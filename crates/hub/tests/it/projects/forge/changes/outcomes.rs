@@ -1,8 +1,4 @@
-//! K-E1 Sections 13.6 and 13.7, decisions item 7: every answer to a sent change reaches the
-//! client as its K7 code and fixed words, never GitHub's text, and leaves an audit entry with
-//! its outcome; a change whose answer was lost is unknown, recorded, and sent once; a change
-//! that was sent is recorded even when the client goes away, and one that GitHub made, or may
-//! have made, and that cannot be recorded says so in fixed words (PRJ-028).
+//! Each answer to a sent change reaches the client in fixed words, never GitHub's text (K-E1 13.6, 13.7; PRJ-028).
 
 use std::{sync::Arc, time::Duration};
 
@@ -17,12 +13,10 @@ use crate::{
     projects::forge::{BASE, forge, reply, tokens::key},
 };
 
-/// K-E1 Section 13.6: GitHub made the change and the hub could not record it.
+/// K-E1 Section 13.6.
 pub const MADE_UNRECORDED: &str = "GitHub made the change, but the hub could not record it.";
-/// As [`MADE_UNRECORDED`], when no whole answer came back.
 const MAYBE_UNRECORDED: &str = "GitHub may have made the change, but the hub could not record \
     it. Look before you try again.";
-/// Makes every record of a change to a repository fail.
 pub const NO_RECORDS: &str = "ALTER TABLE events.audit_log ADD CONSTRAINT \
     no_repository_entries CHECK (target_type <> 'repository')";
 
@@ -207,8 +201,6 @@ async fn prj_028_a_change_that_may_have_been_made_and_cannot_be_recorded_says_so
     assert_eq!(audits(&pool).await, Vec::<Value>::new());
 }
 
-/// A client that goes away after the hub sent the change drops its request: GitHub has the
-/// change all the same, so the hub still records it, as it records a VPN broker change.
 #[sqlx::test(migrations = "./migrations")]
 async fn prj_028_a_sent_change_is_recorded_even_when_the_client_goes_away(pool: PgPool) {
     let forge = forge(&pool).await;
@@ -234,7 +226,7 @@ async fn prj_028_a_sent_change_is_recorded_even_when_the_client_goes_away(pool: 
         response = &mut post => panic!("finished before the client left: {response}"),
         () = heard => {}
     }
-    // The client goes away: hyper drops the handler future of a closed connection.
+    // hyper drops the handler future of a closed connection.
     drop(post);
     gate.add_permits(1);
     for _ in 0..300 {

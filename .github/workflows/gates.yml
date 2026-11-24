@@ -15,11 +15,12 @@
 # puts the branch of a fork in this repository to check it. No `run` script holds an
 # expression: each value comes in through `env`. Each action is pinned to a commit.
 #
-# What a Linux machine does not run or prove, so a Mac must (`bun run gates:fast` or
-# `bun run gates` there): the tests of `check-mach-o.sh` and one test of
-# `trial-bundle.sh --marks`, which skip off macOS; the Keychain store of the daemon and its
-# LaunchAgent; the access-control tests of `link/statedir`; the macOS parts of the desktop
-# shell, with the trust hook that `pinning` proves.
+# What a Linux machine does not run or prove: the tests of `check-mach-o.sh`, which skip off
+# macOS; the Keychain store of the daemon and its LaunchAgent; the access-control tests of
+# `link/statedir`; the macOS parts of the desktop shell, with the trust hook that `pinning`
+# proves. The job `macos` runs them (deploy/bin/macos-tests) for `dev`, a train and a run that
+# a person starts, as the job `windows` does; the push of any other branch does not run it, so
+# a change of that code still needs `bun run gates:fast` on a Mac before the push.
 #
 name: gates
 
@@ -143,8 +144,10 @@ jobs:
   windows:
     needs: base
     # dev, a train, or a run that a person started by hand (`gh workflow run gates.yml --ref <branch>`),
-    # the only way to run the Windows gates for a branch before it reaches dev.
-    if: (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true'
+    # the only way to run the Windows gates for a branch before it reaches dev. Never in a call
+    # (`ref` is set): a called run has the event of its caller, so a trial of the release, a
+    # `workflow_dispatch`, would run it beside the Windows and Mac jobs of the release.
+    if: ${{ !inputs.ref && (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true' }}
     permissions:
       contents: read
     uses: ./.github/workflows/windows-trial.yml
@@ -152,6 +155,45 @@ jobs:
       ref: ${{ inputs.ref }}
       dev_sha: ${{ needs.base.outputs.dev_sha }}
       base_ref: ${{ inputs.base_ref || 'origin/phase-2' }}
+
+  # The tests that only a Mac runs (deploy/bin/macos-tests, the same file as the job gates-macos of
+  # the release): for the same runs as the job windows. It reads no cache: the one macOS cache, the
+  # sccache of the release under `main`, was not found by the last release, and a dependency cache
+  # would save the 8 of 42 minutes that the dependencies take (quality/README.md, "The gates on GitHub").
+  macos:
+    needs: base
+    if: ${{ !inputs.ref && (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true' }}
+    runs-on: macos-15
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - name: Merge the dev of this run into the checkout
+        env:
+          DEV_SHA: ${{ needs.base.outputs.dev_sha }}
+        run: /bin/sh .github/workflows/gates-merge.sh
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: link/go.mod
+          cache: false
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
+        with:
+          tool: cargo-nextest@0.9.151
+      - name: Install PostgreSQL 17
+        run: brew install postgresql@17
+      - name: Run the tests that only a Mac runs
+        env:
+          CARGO_INCREMENTAL: "0"
+        run: sh deploy/bin/macos-tests
 
   rust-lint:
     needs: base
@@ -338,7 +380,7 @@ jobs:
   # One name for a rule of the repository: it passes when each job above passed.
   passed:
     if: always()
-    needs: [base, rust-lint, windows-lint, rust-test, go, bun, windows]
+    needs: [base, rust-lint, windows-lint, rust-test, go, bun, windows, macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -351,6 +393,7 @@ jobs:
         run: |
           set -eu
           echo "results: $RESULTS"
-          # windows runs only for dev and trains. A Rust or Go job may be skipped only when the job
-          # base said that the changes do not need it (`--jobs`); any other skip fails.
-          echo "$RESULTS" | jq -e --arg rust "${RUST_NEEDED:-}" --arg go "${GO_NEEDED:-}" 'to_entries | all(.value.result == "success" or (.value.result == "skipped" and (.key == "windows" or ($rust == "false" and (.key == "rust-lint" or .key == "windows-lint" or .key == "rust-test")) or ($go == "false" and .key == "go"))))' > /dev/null
+          # windows and macos run only for dev, trains and runs started by hand. A Rust or Go job may
+          # be skipped only when the job base said that the changes do not need it (`--jobs`); any
+          # other skip fails.
+          echo "$RESULTS" | jq -e --arg rust "${RUST_NEEDED:-}" --arg go "${GO_NEEDED:-}" 'to_entries | all(.value.result == "success" or (.value.result == "skipped" and (.key == "windows" or .key == "macos" or ($rust == "false" and (.key == "rust-lint" or .key == "windows-lint" or .key == "rust-test")) or ($go == "false" and .key == "go"))))' > /dev/null

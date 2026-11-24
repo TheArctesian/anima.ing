@@ -1,8 +1,4 @@
-//! What a tick tells live views about devices: heartbeat signals after commit, and one
-//! stored event plus one signal per status change, from the scheduler's beats or the push
-//! route's (LOG-004, LOG-010). What it tells the operator's channels: one notification per
-//! selected channel, queued in the beat's transaction, none under maintenance (NOT-001, D-16,
-//! Section 6.5).
+//! Signals, events and notifications from a tick (LOG-004, LOG-010, NOT-001, D-16, Section 6.5).
 
 use chrono::TimeDelta;
 use tokio::sync::broadcast::Receiver;

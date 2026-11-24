@@ -1,13 +1,8 @@
-//! The open ports of this computer (HMD-049) as the shell asks `anima-link ports`, with a
-//! stand-in link program.
-
 use std::fs;
 
 use super::super::open_ports::{OpenPorts, ask, may_open, open_ports};
 use super::runs::stand_in;
 
-/// `anima-link ports` as the shell asks it: the list is the file `open` beside the program.
-/// Each call is noted.
 const PORTS_LINK: &str = r#"
 here=$(dirname "$0")
 echo "$*" >> "$here/calls"
@@ -56,6 +51,16 @@ fn hmd_049_the_person_turns_a_port_on_and_off_and_the_list_is_read_back() {
             format!("ports -state {state} off 5900"),
         ]
     );
+    if cfg!(target_os = "linux") {
+        assert_eq!(
+            ask(&program, &device, Some((3389, true))).unwrap().open,
+            [22, 3389]
+        );
+        assert_eq!(
+            ask(&program, &device, Some((3389, false))).unwrap().open,
+            [22]
+        );
+    }
 }
 
 #[test]
@@ -63,7 +68,10 @@ fn hmd_049_a_port_that_the_link_may_not_open_is_not_asked_for() {
     let folder = tempfile::tempdir().unwrap();
     let program = stand_in(folder.path(), PORTS_LINK);
     let device = folder.path().join("device");
-    for port in [80, 8080, 3389] {
+    for port in [80, 8080, 3389]
+        .into_iter()
+        .filter(|port| *port != 3389 || !cfg!(target_os = "linux"))
+    {
         assert!(
             ask(&program, &device, Some((port, true))).is_err(),
             "{port}"

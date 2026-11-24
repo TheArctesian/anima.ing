@@ -58,7 +58,7 @@ pub enum Source {
     Access,
     Hub,
     Metrics,
-    // The notification dispatcher (NOT-004). K1 names it `NOTIFICATION`.
+    // The notification dispatcher (NOT-004).
     #[graphql(name = "NOTIFICATION")]
     Notifications,
     // The VPN reader's key and node warnings (VPN-010, VPN-011).
@@ -218,6 +218,8 @@ pub enum AuditAction {
     Fetch,
     /// A span of location samples that was read (K-E4 Section 13).
     Read,
+    /// A sealed record that a client opened for the operator (VLT-004, K-E5 Section 3).
+    Reveal,
 }
 
 impl AuditAction {
@@ -245,6 +247,7 @@ impl AuditAction {
             Self::Merge => "merge",
             Self::Fetch => "fetch",
             Self::Read => "read",
+            Self::Reveal => "reveal",
         }
     }
 }

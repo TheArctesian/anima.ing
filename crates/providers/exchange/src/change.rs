@@ -1,11 +1,5 @@
-//! The named changes a source may make, and how a provider says what one means on the wire
-//! (PRJ-027 to PRJ-035, OD-E14).
-//!
-//! [`crate::Method`] keeps its single `GET`: a sync can still not express a write. A write is a
-//! [`Change`], a closed set built only from checked parts. A provider's [`Changes::render`]
-//! turns one into a [`Rendered`] request whose path is made of fixed segments and checked parts
-//! only, and whose verb the variant fixes; [`Changes::settle`] reads the reply into a closed
-//! [`Settled`], never quoting it.
+//! The named changes a source may make (PRJ-027 to PRJ-035, OD-E14).
+//! [`crate::Method`] stays `GET`, so a sync cannot write; a write is only a closed [`Change`].
 
 mod rendered;
 mod settled;
@@ -114,7 +108,6 @@ impl Change {
         }
     }
 
-    /// The repository the change is made in.
     #[must_use]
     pub const fn repository(&self) -> &RepositoryName {
         match self {

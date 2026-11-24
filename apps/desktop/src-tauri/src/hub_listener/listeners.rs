@@ -1,8 +1,4 @@
-//! Who listens on a loopback port, read from what the system lists (F-10). Pure: text in,
-//! listeners out, and the verdict over them.
-//!
-//! Linux lists every user's sockets in `/proc/net/tcp` and `/proc/net/tcp6` with their owner.
-//! macOS `lsof`, run as this user, lists only this user's processes.
+//! F-10.
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -13,7 +9,6 @@ use crate::link::DeviceState;
 /// The state number of a listening socket in `/proc/net/tcp`.
 const LISTEN: &str = "0A";
 
-/// Who listens on the port of a hub address.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Owner {
@@ -21,23 +16,19 @@ pub enum Owner {
     Own,
     /// A process of another user, or one that is not the app's own device link.
     Other,
-    /// Nothing.
     #[serde(rename = "none")]
     Nobody,
 }
 
-/// Which listeners the system's list holds, which decides how far a wildcard reaches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Listed {
-    /// Every user's (Linux `/proc/net`). A wildcard `::` reaches IPv4 too (dual stack), so a
-    /// stranger's `::` listener counts against an IPv4 address.
+    /// Linux `/proc/net`: a stranger's wildcard `::` listener also reaches IPv4 (dual stack).
     EveryUser,
-    /// This user's only (macOS `lsof`). A wildcard reaches its own family only, so this user's
-    /// `::` listener never vouches for an IPv4 address.
+    /// macOS `lsof`: a wildcard reaches its own family only, so this user's `::` never vouches for
+    /// IPv4.
     ThisUser,
 }
 
-/// Whether a socket bound to `bound` can take a connection to `target`.
 pub fn covers(bound: IpAddr, target: IpAddr, listed: Listed) -> bool {
     let (bound, target) = (bound.to_canonical(), target.to_canonical());
     match bound {
@@ -49,7 +40,6 @@ pub fn covers(bound: IpAddr, target: IpAddr, listed: Listed) -> bool {
     }
 }
 
-/// One listening socket: its address, port and, where the system tells it, its owner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Listener {
     pub address: IpAddr,
@@ -57,9 +47,6 @@ pub struct Listener {
     pub uid: Option<u32>,
 }
 
-/// The listening sockets in the text of `/proc/net/tcp` (`ipv6` false) or `/proc/net/tcp6`.
-/// A line that is not of the form is passed over. An IPv4-mapped address (`::ffff:a.b.c.d`)
-/// is read as the IPv4 address.
 pub fn proc_net_tcp(text: &str, ipv6: bool) -> Vec<Listener> {
     text.lines()
         .skip(1)
@@ -87,8 +74,7 @@ fn proc_line(line: &str, ipv6: bool) -> Option<Listener> {
     })
 }
 
-/// One 32-bit word as the kernel prints it: eight hexadecimal digits of the word in this
-/// machine's byte order.
+/// The kernel prints each 32-bit word in this machine's byte order.
 fn proc_word(hex: &str) -> Option<[u8; 4]> {
     if hex.len() != 8 || !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return None;
@@ -107,10 +93,9 @@ fn proc_ipv6(hex: &str) -> Option<Ipv6Addr> {
     Some(Ipv6Addr::from(octets))
 }
 
-/// The listening sockets in `lsof -F nt` output: a `t` line (`tIPv4` or `tIPv6`) before each
-/// `n` line (`n<address>:<port>`, the address `*`, an IPv4 address or an IPv6 address in
-/// brackets). `*` is the unspecified address of the `t` family; a `*` of no known family is
-/// passed over. `lsof` gives no owner; the caller asked it for this user's processes only.
+/// In `lsof -F nt` output a `t` line gives the family of the `n` lines after it, and `*` is that
+/// family's unspecified address. `lsof` gives no owner; the caller asked for this user's processes
+/// only.
 pub fn lsof_names(text: &str) -> Vec<Listener> {
     let mut family: Option<IpAddr> = None;
     let mut found = Vec::new();
@@ -149,8 +134,7 @@ fn lsof_name(name: &str, wildcard: Option<IpAddr>) -> Option<Listener> {
     })
 }
 
-/// Whether `listeners` let a connection to `target`:`port` reach only this user: at least one
-/// covers it, and each one that covers it is this user's (`uid`, or no owner told).
+/// At least one listener covers the target, and each one that covers it is this user's.
 pub fn only_own(
     listeners: &[Listener],
     listed: Listed,
@@ -165,14 +149,12 @@ pub fn only_own(
         && covering.all(|listener| listener.uid.is_none_or(|owner| owner == uid))
 }
 
-/// Whether the app's own device link permits `port` to be `own`: a port that is not the device
-/// link's saved port, or the device link up on the port it reported (F-10).
+/// The device link's saved port counts as own only while the app's own link serves it (F-10).
 pub fn link_permits(link: &DeviceState, port: u16) -> bool {
     link.port != Some(port) || link.serves(port)
 }
 
-/// The verdict: `accepts` when a connection was accepted, `own` when only this user's
-/// processes listen. A listener of this user that did not accept in time still counts as one.
+/// A listener of this user that did not accept in time still counts as own.
 pub fn verdict(accepts: bool, own: bool) -> Owner {
     match (accepts, own) {
         (_, true) => Owner::Own,

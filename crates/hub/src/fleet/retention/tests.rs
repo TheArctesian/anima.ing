@@ -1,6 +1,3 @@
-//! Unit tests of the pure rules. Behaviour against the database and GraphQL is tested in
-//! `tests/it/retention`.
-
 use chrono::Days;
 
 use super::{

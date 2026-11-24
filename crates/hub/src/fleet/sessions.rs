@@ -1,11 +1,5 @@
-//! Remote sessions: the record of every session (RA-008) and the single-use tickets that open
-//! a tunnel (K4 §1, API-009). SSH sessions run on the terminal tunnel (`terminal`, K4 §8),
-//! pinned to the host key `trust` holds (SEC-006, SEC-007); RDP and VNC sessions on the
-//! Guacamole tunnel (`tunnel`). The connection test (`connection_test`) reads a host's key or
-//! an RDP server's certificate into `trust::Sightings`, and `acceptHostKey` or
-//! `acceptServerCertificate` in `trust` records it (DEV-013, SEC-006, SEC-007).
-//! Wake-on-LAN (`wake`) runs on a site's wake relay over the hub's SSH link (`ssh::link`,
-//! RA-031). The SSH client the terminal and the connection test use is in `ssh`.
+//! Remote sessions and the single-use tickets that open a tunnel (RA-008, K4 §1, API-009).
+//! SSH sessions are pinned to the host key `trust` holds (SEC-006, SEC-007).
 
 mod admission;
 mod connection_test;
@@ -56,7 +50,6 @@ pub use tickets::{PendingTicket, Presented, Ticket};
 pub use tunnel::tunnel_router;
 pub use wake::{Error as WakeError, WakeSent, graphql::Mutation as WakeMutation, wake};
 
-/// What a sessions operation looked for and did not find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Missing {
     Device(DeviceId),
@@ -92,14 +85,11 @@ pub enum Conflict {
     /// The device has as many live sessions as its limit allows (RA-036).
     #[error("This device has reached its session limit.")]
     SessionLimit,
-    /// The stored credential for the protocol was entered for another host than the device's
-    /// host now; nothing was sent (SEC-011).
+    /// The stored credential was entered for another host; nothing was sent (SEC-011).
     #[error("{}", credential_moved(*.0))]
     CredentialMoved(Protocol),
 }
 
-/// The words of [`Conflict::CredentialMoved`] for `protocol`, which every refusal of a moved
-/// credential uses: at start, in the tunnels and for files.
 pub(in crate::fleet::sessions) const fn credential_moved(protocol: Protocol) -> &'static str {
     match protocol {
         Protocol::Ssh => {
@@ -126,7 +116,6 @@ pub enum Error {
     Validation(Vec<FieldError>),
     #[error(transparent)]
     Conflict(Conflict),
-    /// Too many tickets are pending, or the hub is shutting down.
     #[error("no session can start now")]
     Unavailable,
     /// The messages stay generic: the source errors may hold SQL text (API-010).
@@ -147,14 +136,12 @@ pub enum Error {
     Context(#[from] locations::Error),
 }
 
-/// The device, or `NotFound` for it.
 async fn find_device(db: &PgPool, id: DeviceId) -> Result<Device, Error> {
     devices::get(db, id)
         .await
         .map_err(|error| device_error(id, error))
 }
 
-/// A devices error reading device `id`, with a missing device as `NotFound` for it.
 fn device_error(id: DeviceId, error: devices::Error) -> Error {
     match error {
         devices::Error::NotFound(_) => Error::NotFound(Missing::Device(id)),
@@ -162,9 +149,8 @@ fn device_error(id: DeviceId, error: devices::Error) -> Error {
     }
 }
 
-/// Ends, with `HUB_SHUTDOWN` at `now`, every session a previous hub process left open, each
-/// with its `session.end` audit entry and no event (D-13). The hub calls it once at start,
-/// before it serves; returns how many rows it ended.
+/// Ends every session a previous hub process left open, with an audit entry and no event (D-13).
+/// Call it once at start, before the hub serves.
 ///
 /// # Errors
 /// `Database` or `Events` when the rows or audit entries cannot be written; then none is.
@@ -172,9 +158,7 @@ pub async fn close_stale(db: &PgPool, now: DateTime<Utc>) -> Result<u64, Error> 
     end::close_stale(db, now).await
 }
 
-/// Opens this hub process's sessions: ends what a previous process left open, as
-/// [`close_stale`] does, and only then returns the `Live` that issues tickets, with how many
-/// rows it ended (R-040, D-13). The hub calls it once, before it serves.
+/// Ends what a previous process left open before it returns the `Live` that issues tickets (R-040, D-13).
 ///
 /// # Errors
 /// As [`close_stale`]; then no `Live` is returned.
@@ -183,13 +167,8 @@ pub async fn open(db: &PgPool, now: DateTime<Utc>) -> Result<(Live, u64), Error>
     Ok((Live::default(), ended))
 }
 
-/// Ends every session this hub holds with `HUB_SHUTDOWN` at `now`, then refuses new ones
-/// (D-10). The hub calls it once on graceful shutdown, with the `Live` it serves, when the
-/// shutdown signal arrives and before the runtime stops: tunnels are upgraded connections,
-/// which the server's graceful drain does not end. It returns when every open
-/// tunnel has written its end, or after `live`'s tunnel end wait (5 s by default); pending
-/// tickets' rows end with their audit entry. What it misses, the next start's
-/// [`close_stale`] ends.
+/// Call on graceful shutdown: tunnels are upgraded connections, which the server's drain does not end (D-10).
+/// What it misses within the tunnel end wait, the next start's [`close_stale`] ends.
 ///
 /// # Errors
 /// `Database` or `Events` when a pending ticket's row or audit entry cannot be written.

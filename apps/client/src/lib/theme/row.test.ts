@@ -84,7 +84,6 @@ it('UI-005: the "could not save" message goes once a later choice is saved', () 
   expect(localStorage.getItem('anima.theme')).toBe('system');
 });
 
-/** A browser with view transitions: records each start and keeps the update for the test to run as the next frame. */
 function viewTransitions(): { starts: number; frame: () => void } {
   const pending: (() => void)[] = [];
   const record = { starts: 0, frame: () => { for (const update of pending.splice(0)) update(); } };

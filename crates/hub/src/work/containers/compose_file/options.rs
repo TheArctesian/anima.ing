@@ -1,24 +1,15 @@
-//! The options of `docker run`: what each becomes in a Compose file, and whether it takes a
-//! value. The converter must know each option of Docker, also those that it does not
-//! convert, to find where the options end and the image starts.
+//! The converter knows each option of Docker, also those it does not convert, to find where
+//! the options end and the image starts.
 
 use super::docker_run::Note;
 
-/// What the converter does with one option.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Reads {
-    // Options with no value.
-    /// A key whose value is true.
     Truth(&'static str),
-    /// Nothing changes in the file; the result has a note.
     Noted(Note),
     NoHealthcheck,
-    /// An option of Docker that has no key in the file.
     Flag,
-    // Options with a value.
-    /// A key with one text.
     Text(&'static str),
-    /// A key with a list of texts.
     List(&'static str),
     Name,
     Volume,
@@ -30,13 +21,11 @@ pub(super) enum Reads {
     StopTimeout,
     Gpus,
     HealthCommand,
-    /// A key of `healthcheck` with one text.
     Health(&'static str),
     HealthRetries,
     LogDriver,
     LogOption,
     Ulimit,
-    /// An option of Docker with a value, that has no key in the file.
     Value,
 }
 
@@ -123,7 +112,6 @@ const CONVERTED: [(&str, Reads); 71] = [
     ("label-file", Reads::List("label_file")),
 ];
 
-/// The options of Docker with a value that the converter does not convert.
 const WITH_VALUE: [&str; 29] = [
     "annotation",
     "attach",
@@ -156,7 +144,6 @@ const WITH_VALUE: [&str; 29] = [
     "volume-driver",
 ];
 
-/// The options of Docker with no value that the converter does not convert.
 const WITH_NO_VALUE: [&str; 7] = [
     "disable-content-trust",
     "oom-kill-disable",
@@ -167,8 +154,6 @@ const WITH_NO_VALUE: [&str; 7] = [
     "help",
 ];
 
-/// What the converter does with the option `--name`; `None` for an option that Docker does
-/// not have.
 pub(super) fn long(name: &str) -> Option<Reads> {
     let converted = CONVERTED.iter().find(|(option, _)| *option == name);
     converted.map(|(_, reads)| *reads).or_else(|| {
@@ -180,7 +165,6 @@ pub(super) fn long(name: &str) -> Option<Reads> {
     })
 }
 
-/// What the converter does with the option of one letter.
 pub(super) fn short(letter: char) -> Option<Reads> {
     let name = match letter {
         'a' => "attach",

@@ -1,7 +1,5 @@
 //! Tunnel tickets (K4 §1, API-009): 32 random bytes shown once as base64url; only their
 //! SHA-256 is kept, in memory (LOG-007).
-//!
-//! Pure: the random bytes and the time are parameters (CQ-021).
 
 use std::{fmt, time::Duration};
 
@@ -16,31 +14,26 @@ use crate::{
     ids::{DeviceId, SessionId},
 };
 
-/// Random bytes in a ticket token.
 pub(super) const TOKEN_BYTES: usize = 32;
 
-/// Length of a token's text: 32 bytes in unpadded base64url.
+/// 32 bytes in unpadded base64url.
 const TOKEN_CHARS: usize = 43;
 
 /// A ticket is redeemable this long after it is issued (K4 §1).
 pub(super) const LIFETIME: TimeDelta = TimeDelta::seconds(30);
 
-/// How long the opening of a ticket with `wake_sent` waits for the device, in place of the
-/// usual 8 seconds (K4 Section 1): a device that was asleep needs time to boot.
+/// In place of the usual 8 seconds: a device that was asleep needs time to boot (K4 Section 1).
 pub(super) const WOKEN_OPENING: Duration = Duration::from_secs(120);
 
-/// How often such an opening tries the device again while it does not answer.
 pub(super) const RECONNECT: Duration = Duration::from_secs(2);
 
 /// The files tunnel's path (K4 Section 1 `tunnelPath`, Section 9).
 pub(super) const FILES_PATH: &str = "/files";
 
-/// A token as the client holds it. Wiped on drop. Implements no `Debug`, `Display`, `Clone`
-/// or `Serialize`, so it cannot reach a log or an error (LOG-007).
+/// No `Debug`, `Display`, `Clone` or `Serialize`, so it cannot reach a log or an error (LOG-007).
 pub(super) struct TicketToken(Zeroizing<String>);
 
 impl TicketToken {
-    /// Encodes the random bytes, then wipes them.
     pub(super) fn from_random(mut bytes: [u8; TOKEN_BYTES]) -> Self {
         let text = Zeroizing::new(URL_SAFE_NO_PAD.encode(bytes));
         zeroize::Zeroize::zeroize(&mut bytes);
@@ -51,18 +44,15 @@ impl TicketToken {
         &self.0
     }
 
-    /// The hash the ticket table is keyed by.
     pub(super) fn hash(&self) -> TicketHash {
         hash_of(self.expose()).expect("a ticket token encodes 32 bytes")
     }
 }
 
-/// The SHA-256 of a token's bytes: the only form of a token the hub keeps.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) struct TicketHash([u8; 32]);
 
-/// The hash of a presented token, or `None` if the text cannot be a token. Only canonical
-/// unpadded base64url of exactly 32 bytes is accepted, so each token has one spelling.
+/// Only canonical unpadded base64url is accepted, so each token has one spelling.
 pub(super) fn hash_of(presented: &str) -> Option<TicketHash> {
     if presented.len() != TOKEN_CHARS {
         return None;
@@ -74,15 +64,12 @@ pub(super) fn hash_of(presented: &str) -> Option<TicketHash> {
     Some(TicketHash(Sha256::digest(&*bytes).into()))
 }
 
-/// What `startSession` or `openFiles` gives the client once: the session, its protocol, the
-/// token and the tunnel's path the token opens.
 pub struct Ticket {
     pub session: SessionId,
     pub protocol: Protocol,
     token: TicketToken,
     pub expires_at: DateTime<Utc>,
-    /// Where the client opens the tunnel: the protocol's, or [`FILES_PATH`] for a files
-    /// ticket (K4 Section 1 `tunnelPath`).
+    /// The protocol's, or [`FILES_PATH`] for a files ticket (K4 Section 1 `tunnelPath`).
     pub tunnel_path: &'static str,
     /// `startSession` sent a Wake-on-LAN packet first (K4 Section 1 `wakeSent`).
     pub wake_sent: bool,
@@ -105,7 +92,6 @@ impl Ticket {
         }
     }
 
-    /// A ticket for the files tunnel of the live SSH session `session` (K4 Section 9).
     pub(super) const fn files(
         session: SessionId,
         token: TicketToken,
@@ -141,7 +127,6 @@ impl fmt::Debug for Ticket {
     }
 }
 
-/// An issued, unredeemed ticket: what the tunnel needs to open the session it was issued for.
 /// The display values are as the client sent them, already within bounds (GW-012).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PendingTicket {
@@ -154,19 +139,14 @@ pub struct PendingTicket {
     /// As the client sent it; the tunnel checks its shape before guacd sees it.
     pub timezone: Option<String>,
     pub expires_at: DateTime<Utc>,
-    /// A Wake-on-LAN packet was sent first: the opening waits up to 120 seconds for the
-    /// device and tries it again every 2 seconds while it does not answer.
     pub wake_sent: bool,
 }
 
 impl PendingTicket {
-    /// Expired at, not only after, `expires_at`.
     pub(super) fn is_expired(&self, now: DateTime<Utc>) -> bool {
         now >= self.expires_at
     }
 
-    /// Whether the ticket opens a tunnel for `presented` at `now`: not expired, from the
-    /// client it was issued to, on its own tunnel path (K4 Section 1 `tunnelPath`).
     pub(super) fn admits(&self, presented: &Presented<'_>, now: DateTime<Utc>) -> bool {
         !self.is_expired(now)
             && self.client == presented.client
@@ -174,13 +154,11 @@ impl PendingTicket {
     }
 }
 
-/// A token as a tunnel request presents it: from which client, on which path, and where
-/// that route says each protocol's tickets go. Holds the token borrowed, never copied.
+/// Holds the token borrowed, never copied.
 #[derive(Clone, Copy)]
 pub struct Presented<'a> {
     pub token: &'a str,
     pub client: ClientAddr,
-    /// The route's own path.
     pub path: &'a str,
     /// Where a ticket for each protocol is opened: `Protocol::tunnel_path` in the hub.
     pub tunnel_path: fn(Protocol) -> &'static str,

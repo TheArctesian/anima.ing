@@ -37,12 +37,8 @@ function parseTargets(targets: unknown): DaemonRelease['sha256'] | null {
 }
 
 /**
- * The release a `release.json` describes, or `null` for "no release": the development form, or any file whose shape
- * is wrong. A malformed file never makes a command (MET-019).
- *
- * The release build writes (T6d) either `{"release": null}` or
- * `{"release": {"version": "1.2.3", "targets": {"linux-x86_64": {"sha256": "<64 lowercase hex>"}, ...}}}`;
- * a target without an entry has no download.
+ * `null` for the development form `{"release": null}` or a file of the wrong shape: a malformed file never makes a command
+ * (MET-019). The release build (T6d) writes `{"release": {"version", "targets": {"<target>": {"sha256"}}}}`.
  */
 export function parseRelease(file: unknown): DaemonRelease | null {
   if (!isRecord(file) || !isRecord(file['release'])) return null;
@@ -55,7 +51,7 @@ export function parseRelease(file: unknown): DaemonRelease | null {
 /** The release this client was built with (WP-54 D-10 c). */
 export const BUILT_RELEASE: DaemonRelease | null = parseRelease(releaseFile);
 
-/** The target a browser's platform text names, or `null` when it cannot be known (MET-019). Browsers hide the CPU of a Mac. */
+/** `null` when the target cannot be known (MET-019); browsers hide the CPU of a Mac. */
 export function targetOfPlatform(platform: string, userAgent: string): DaemonTarget | null {
   const text = `${platform} ${userAgent}`.toLowerCase();
   if (text.includes('android') || text.includes('iphone') || text.includes('ipad')) return null;

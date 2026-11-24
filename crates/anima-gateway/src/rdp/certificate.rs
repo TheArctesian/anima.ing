@@ -1,7 +1,5 @@
-//! TLS to an RDP device. The device's certificate is one it made for itself, so no chain
-//! is checked: the opening compares the certificate with the one the operator accepted
-//! (SEC-007), as the hub's own certificate read does. The handshake's signatures are
-//! checked.
+//! TLS to an RDP device: no chain is checked, as the opening compares the certificate with the
+//! one the operator accepted (SEC-007). The handshake's signatures are checked.
 
 use std::sync::Arc;
 
@@ -10,7 +8,6 @@ use rustls::crypto::{CryptoProvider, verify_tls12_signature, verify_tls13_signat
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use rustls::{ClientConfig, DigitallySignedStruct, SignatureScheme};
 
-/// Takes any certificate chain. The caller decides by the certificate's fingerprint.
 #[derive(Debug)]
 struct AnyChain(Arc<CryptoProvider>);
 
@@ -51,8 +48,7 @@ impl ServerCertVerifier for AnyChain {
     }
 }
 
-/// The TLS settings for a device: any certificate chain, no server name, and no resumed
-/// session, which the sign-in inside TLS does not allow (MS-CSSP).
+/// No resumed session: the sign-in inside TLS does not allow one (MS-CSSP).
 pub(super) fn any_certificate() -> Result<ClientConfig, rustls::Error> {
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let mut config = ClientConfig::builder_with_provider(Arc::clone(&provider))

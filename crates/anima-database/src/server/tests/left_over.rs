@@ -1,5 +1,3 @@
-//! A server, or only its `postmaster.pid`, that an earlier copy left.
-
 use std::fs;
 use std::mem;
 use std::path::Path;
@@ -28,7 +26,6 @@ fn a_server_left_by_a_killed_copy_is_stopped_before_the_next_start() {
 #[test]
 fn a_stale_file_that_names_another_program_gets_no_signal_and_blocks_no_start() {
     let database = Database::new();
-    // A live process of this user that is not PostgreSQL, with the number a dead server left.
     let mut bystander = Command::new("sleep")
         .arg("600")
         .stdout(Stdio::null())

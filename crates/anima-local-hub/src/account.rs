@@ -1,7 +1,5 @@
-//! `anima-local-hub account`: the operator account of this hub, made on the hub computer only
-//! (F-4, F-8). It runs the installed hub's `operator` commands. Each secret passes through
-//! standard input and standard output only; nothing of them is written, logged or put on a
-//! command line here (LOG-007).
+//! `anima-local-hub account`: the operator account, made on the hub computer only (F-4, F-8).
+//! Secrets pass only through standard input and output; none is written, logged or put on a command line (LOG-007).
 
 use std::fs;
 use std::io;
@@ -20,11 +18,9 @@ use crate::{Folders, run};
 #[cfg(all(test, unix))]
 mod tests;
 
-/// The most characters of an operator's name.
 const NAME_LIMIT: usize = 64;
 
-/// An operator's name: 1 to 64 of `A-Z a-z 0-9 . _ -`, starting with a letter or a digit so
-/// that the hub never reads it as an option.
+/// An operator's name; a first letter or digit keeps the hub from reading it as an option.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Name(String);
 
@@ -52,16 +48,13 @@ impl Name {
     }
 }
 
-/// What the operator asks for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     /// `anima-hub operator show`: one JSON line, the name and whether TOTP is set, or `null`.
     Status,
-    /// `anima-hub operator totp <name> --new`: a new TOTP secret on standard output. It saves
-    /// nothing.
+    /// `anima-hub operator totp <name> --new`: a new TOTP secret on standard output; it saves nothing.
     TotpNew(Name),
-    /// `anima-hub operator create <name>`: the password, the secret and a code on standard
-    /// input; it makes or replaces the operator in one step.
+    /// `anima-hub operator create <name>`: password, secret and code on standard input; it makes or replaces the operator.
     Create(Name),
 }
 
@@ -81,16 +74,12 @@ pub enum AccountError {
     Untrusted(PathBuf),
 }
 
-/// Group or others may read, write or enter.
 #[cfg(unix)]
 const GROUP_OR_OTHERS: u32 = 0o077;
-/// Group or others may write.
 #[cfg(unix)]
 const GROUP_OR_OTHERS_WRITE: u32 = 0o022;
 
-/// Refuses the program unless the hub root, each folder from it down to the program, and the
-/// program are this user's own, are not symbolic links, and no other user can change them. It
-/// changes nothing.
+/// Refuses the program unless it, the hub root and each folder between are this user's own, not symbolic links, and unchangeable by other users.
 fn trusted(folders: &Folders, program: &Path) -> Result<(), AccountError> {
     #[cfg(unix)]
     let uid = nix::unistd::Uid::effective().as_raw();
@@ -127,8 +116,6 @@ fn trusted(folders: &Folders, program: &Path) -> Result<(), AccountError> {
     Ok(())
 }
 
-/// The installed hub's command for `action`, with the database URL file of the hub's runtime
-/// login and the key file, and nothing else of the environment. Pure.
 #[must_use]
 fn command(folders: &Folders, action: &Action) -> Spec {
     let args: Vec<&str> = match action {
@@ -150,7 +137,7 @@ fn command(folders: &Folders, action: &Action) -> Spec {
     }
 }
 
-/// Whether a `run` holds this root and its last state is `ready`: the database runs.
+/// A `ready` state of a running `run` means the database runs.
 #[must_use]
 fn hub_is_ready(folders: &Folders) -> bool {
     run::is_running(folders)
@@ -160,8 +147,7 @@ fn hub_is_ready(folders: &Folders) -> bool {
         )
 }
 
-/// Runs the command of `action` with `input` as its standard input and `output` as its
-/// standard output. Its standard error is not kept: the caller tells a fixed message.
+/// Runs the command of `action`; its standard error is dropped, and the caller tells a fixed message.
 ///
 /// # Errors
 /// [`AccountError::NotReady`] before anything runs when the hub is not ready,

@@ -29,7 +29,6 @@ fn a_missing_hold_program_could_not_start() {
 fn ending_a_hold_ends_its_program_and_what_the_program_started() {
     let mut rig = Rig::new(Os::Linux);
     let mark = format!("anima-hold-test-{}", std::process::id());
-    // The stand-in starts a second process, as `systemd-inhibit` starts its command.
     rig.platform.inhibit = rig.stand_in("inhibit", &format!("sh -c 'sleep 30; : {mark}' & wait"));
     let held = hold::idle(&rig.platform).expect("a hold");
     assert!(eventually(|| running(&mark)));
@@ -212,7 +211,6 @@ fn when_the_setting_cannot_be_set_back_the_watcher_stays_to_do_it_at_the_end() {
     rig.platform.followed = followed.id();
     let marker = rig.marker();
     let log = rig.dir.path().join("calls");
-    // `sudo` refuses the first set-back only.
     let once = rig.dir.path().join("refused-once");
     let body = format!(
         "case \"$*\" in *'disablesleep 0') [ -e '{once}' ] || {{ : > '{once}'; exit 1; }};; esac; echo \"sudo $*\" >> '{log}'",

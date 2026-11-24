@@ -8,7 +8,6 @@
 
   const { stages }: Props = $props();
 
-  /** What a screen reader hears after the stage's name. */
   const SPOKEN: Record<StageMark, string> = {
     done: 'done',
     current: 'in progress',
@@ -18,7 +17,7 @@
   };
 </script>
 
-<!-- Each mark changes when its stage ends, with no easing and no repeating motion (5.7.3 Connection steps, MOT-009, MOT-011). -->
+<!-- No easing and no repeating motion (5.7.3 Connection steps, MOT-009, MOT-011). -->
 <ol class="track" aria-label="Stages">
   {#each stages as stage (stage.name)}
     <li class="stage {stage.mark}">
@@ -56,7 +55,6 @@
     letter-spacing: var(--tracking-small);
   }
 
-  /* The rail between two marks: done stages join with the success colour, the rest stay quiet. */
   .stage:not(:last-child)::after {
     position: absolute;
     inset-block-start: var(--space-2);
@@ -132,7 +130,6 @@
     background: transparent;
   }
 
-  /* Read by a screen reader, not drawn: the mark carries it visually. */
   .spoken {
     position: absolute;
     inline-size: 1px;

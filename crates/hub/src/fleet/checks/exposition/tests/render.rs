@@ -1,4 +1,4 @@
-//! The renderer and the label values (INT-001, INT-002).
+//! INT-001, INT-002.
 
 use proptest::prelude::*;
 use uuid::Uuid;
@@ -57,7 +57,6 @@ fn one(check: CheckSample) -> Snapshot {
     }
 }
 
-/// The sample lines of one family.
 fn samples<'a>(text: &'a str, family: &str) -> Vec<&'a str> {
     text.lines()
         .filter(|line| {
@@ -179,8 +178,6 @@ fn int_002_hostile_label_values_cannot_break_out() {
     );
 }
 
-/// Reads one quoted label value from the start of `text`, undoing the escapes. Returns the
-/// value and the rest after the closing quote, or `None` when the quoting is broken.
 fn unquote(text: &str) -> Option<(String, &str)> {
     let mut chars = text.strip_prefix('"')?.char_indices();
     let mut value = String::new();
@@ -200,8 +197,6 @@ fn unquote(text: &str) -> Option<(String, &str)> {
 }
 
 proptest! {
-    /// A check name of any characters renders as one well-formed status line whose
-    /// `check_name` reads back as the cleaned name (INT-002).
     #[test]
     fn int_002_any_check_name_renders_one_well_formed_line(name in any::<String>()) {
         let text = render(&one(check(&name, Up)));

@@ -1,6 +1,5 @@
-//! The hub's own daemon in the hosted mode (HMD-071, task HM-T35 of hosted-mode.md): the hub
-//! serves the routes of K8 to that daemon on a private Unix socket in its container, and at
-//! the start it can write one enrolment code for its own device to a private file.
+//! The hub's own daemon in the hosted mode (HMD-071): K8 routes on a private Unix socket, and one
+//! enrolment code in a private file.
 
 use std::{collections::BTreeMap, path::PathBuf};
 
@@ -9,24 +8,20 @@ use super::{Error, optional_socket};
 pub(super) const OWN_DAEMON_SOCKET: &str = "ANIMA_OWN_DAEMON_SOCKET";
 pub(super) const OWN_DAEMON_CODE_FILE: &str = "ANIMA_OWN_DAEMON_CODE_FILE";
 
-/// The message of the refusal of an own daemon outside the hosted mode, for [`Error`].
 pub(super) const OWN_DAEMON_RULE: &str = "must be set only with ANIMA_HOSTED_CLOUD_KEY_FILE: \
                                            only a hosted hub has a daemon of its own (HMD-071)";
-/// The message of the refusal of a code file with no socket, for [`Error`].
 pub(super) const CODE_FILE_RULE: &str = "must be set only with ANIMA_OWN_DAEMON_SOCKET: the \
                                           code is for the daemon that reaches the hub there";
 
-/// Where the hub's own daemon reaches the hub, and where the hub writes a code for it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OwnDaemon {
     /// The socket that serves only the routes of K8, each request as from the hub's device.
     pub socket: PathBuf,
-    /// The file for one enrolment code of the hub's device, written at the start; `None` when
-    /// the daemon has its token already.
+    /// One enrolment code of the hub's device, written at the start; `None` when the daemon has
+    /// its token.
     pub code_file: Option<PathBuf>,
 }
 
-/// The own daemon of a hosted hub, or `None` when the socket is unset or empty.
 pub(super) fn own_daemon(
     env: &BTreeMap<String, String>,
     hosted: bool,
@@ -57,6 +52,7 @@ mod tests {
             ("ANIMA_LINK_SOCKET", socket.as_str()),
             ("ANIMA_LINK_CONTROL", control.as_str()),
             ("ANIMA_HOSTED_CLOUD_KEY_FILE", key.as_str()),
+            ("ANIMA_PROBE_DENY", "10.130.6.0/24"),
         ];
         all.extend_from_slice(more);
         env(&all)

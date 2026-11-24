@@ -1,6 +1,4 @@
-//! Graceful shutdown and the second-signal emergency exit.
-/// The first stop signal. A second one ends the process at once, without waiting for the
-/// sessions or the drain.
+/// A second stop signal ends the process at once, without waiting for the sessions or the drain.
 pub(crate) async fn first_stop_signal() {
     stop_signal().await;
     tracing::info!("hub stopping");
@@ -11,8 +9,7 @@ pub(crate) async fn first_stop_signal() {
     });
 }
 
-/// Resolves on Ctrl-C or SIGTERM. A signal that cannot be watched is logged and never
-/// resolves, so the other one still stops the hub.
+/// A signal that cannot be watched never resolves, so the other one still stops the hub.
 #[cfg(unix)]
 async fn stop_signal() {
     let interrupt = async {

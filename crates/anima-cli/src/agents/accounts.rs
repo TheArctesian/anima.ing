@@ -1,7 +1,5 @@
-//! `anima agents accounts`: the account, the plan and the limits that each agent program of
-//! this computer said to the runner (THR-132). It reads the local socket of this user only; the
-//! name of an account is often an address of the person, so no MCP tool gives it (THR-132).
-//! `anima agents models`: the models that each program offers for a start (TH104).
+//! `anima agents accounts` (THR-132) and `anima agents models` (TH104).
+//! An account name is often the person's address, so no MCP tool gives it (THR-132).
 
 use agent_threads::control::{AccountRow, Action, ModelRow, Outcome};
 use agent_threads::drive::Limit;
@@ -13,8 +11,6 @@ use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::{Cell, Table, Tone};
 
-/// `anima agents accounts`.
-///
 /// # Errors
 /// [`Failure`] when the runner is not there.
 pub async fn accounts(invocation: &Invocation) -> Result<(), Failure> {
@@ -31,26 +27,24 @@ pub async fn accounts(invocation: &Invocation) -> Result<(), Failure> {
     invocation.output.data(&accounts, |rows| table(rows))
 }
 
-/// `anima agents models`: the models that each program named when its newest thread started.
-///
 /// # Errors
 /// [`Failure`] when the runner is not there.
 pub async fn models(invocation: &Invocation) -> Result<(), Failure> {
     let mut link = RunnerLink::connect().await?;
-    let Outcome::Models { models } = accepted(link.call(Action::Models).await?)? else {
+    let Outcome::Models { models, .. } = accepted(link.call(Action::Models).await?)? else {
         return Ok(());
     };
     if models.is_empty() {
-        invocation
-            .output
-            .message("No program of this computer named its models yet. Start a thread first.");
+        invocation.output.message(
+            "No agent program of this computer gave its models: none was found, or none answered.",
+        );
         return Ok(());
     }
     invocation.output.data(&models, |rows| model_table(rows))
 }
 
 fn model_table(rows: &[ModelRow]) -> Table {
-    let mut table = Table::new(vec!["PROGRAM", "MODEL", "NAME", "EFFORTS"]);
+    let mut table = Table::new(vec!["PROGRAM", "MODEL", "NAME", "EFFORTS", "SPEEDS"]);
     for row in rows {
         let program = super::threads::shown::program_words(program_key(row.program));
         for model in &row.models {
@@ -59,11 +53,18 @@ fn model_table(rows: &[ModelRow]) -> Table {
             } else {
                 model.efforts.join(", ")
             };
+            let speeds: Vec<&str> = model.speeds.iter().map(|speed| speed.id.as_str()).collect();
+            let name = if model.legacy {
+                format!("{} (older)", model.name)
+            } else {
+                model.name.clone()
+            };
             table.row(vec![
                 Cell::new(program),
                 Cell::new(&model.value),
-                Cell::new(&model.name),
+                Cell::new(&name),
                 Cell::toned(&efforts, Tone::Muted),
+                Cell::toned(&speeds.join(", "), Tone::Muted),
             ]);
         }
     }
@@ -91,7 +92,6 @@ fn table(rows: &[AccountRow]) -> Table {
     table
 }
 
-/// Each limit as `window used% (resets HH:MM)`, the limits joined by `; `.
 fn limits_text(limits: &[Limit]) -> String {
     if limits.is_empty() {
         return "-".to_owned();

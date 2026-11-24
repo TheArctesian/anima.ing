@@ -1,5 +1,3 @@
-//! `anima route check <id>`: reads the proof of the name once. One failed read changes nothing.
-
 use super::documents::{RouteCheck, route_check};
 use super::shown;
 use crate::failure::Failure;

@@ -1,5 +1,4 @@
-//! `anima audit list`: who changed what (K1 `audit`), newest first, in pages (CMD-026), with
-//! who did it: a person, an AI agent or the hub (LOG-012, LOG-020).
+//! `anima audit list` (K1 `audit`, CMD-026, LOG-012, LOG-020).
 
 use super::documents::{AuditList, audit_list};
 use crate::connection_page;

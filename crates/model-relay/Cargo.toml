@@ -1,0 +1,35 @@
+[package]
+name = "model-relay"
+description = "The relay between an agent program of a thread and its model provider, on the loopback address, in pass-through (Section 7 of docs/proposals/shortened-answers.md, task SA6)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# A fresh per-holder CA and leaf; private keys never leave memory.
+rcgen.workspace = true
+bytes.workspace = true
+# The secret of a thread comes from the OS random source.
+getrandom.workspace = true
+http-body-util.workspace = true
+# One HTTP/1.1 server connection for each agent connection, one client connection for each request.
+hyper = { version = "1", features = ["http1", "server", "client"] }
+hyper-util.workspace = true
+# The provider is reached with TLS and the web PKI roots: ring, no OpenSSL.
+rustls.workspace = true
+# The secret of a request is compared in constant time.
+subtle.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-rustls.workspace = true
+tracing.workspace = true
+webpki-roots.workspace = true
+
+[dev-dependencies]
+# The example stops with Ctrl-C; a test of a wait runs with a clock that it moves.
+tokio = { workspace = true, features = ["signal", "test-util"] }
+tracing-subscriber.workspace = true

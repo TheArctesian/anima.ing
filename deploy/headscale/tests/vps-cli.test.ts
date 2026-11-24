@@ -1,4 +1,3 @@
-// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import { HARDEN_TIMEOUT_MS, fakeHost, removeHosts, mutatingCalls, VPN_SESSION, VPS_DIR } from "./vps-host.ts";

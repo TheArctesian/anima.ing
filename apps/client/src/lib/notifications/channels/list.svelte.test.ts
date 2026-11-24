@@ -46,7 +46,6 @@ function row(target: HTMLElement, name: string): HTMLElement {
   return found;
 }
 
-/** The row's values by their labels; the last delivery's lines joined by " / ". */
 function values(element: HTMLElement): Record<string, string> {
   const pairs = [...element.querySelectorAll('dl > div')].map((pair) => [
     pair.querySelector('dt')?.textContent.trim() ?? '',
@@ -81,7 +80,6 @@ it('NOT-002, D-17: one channel of each kind shows its name, kind, on by default 
     ['Email', 'mail.example.net', 'No'],
     ['Apprise', 'https://apprise.example.net', 'No'],
   ]);
-  // Email shows the server, never its recipients.
   expect(target.textContent).not.toContain('ops@example.net');
 });
 

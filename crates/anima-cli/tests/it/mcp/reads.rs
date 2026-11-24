@@ -1,4 +1,4 @@
-//! One call of each read tool T7 left without a test, against the scripted hub (MCP-009).
+//! MCP-009.
 
 use serde_json::{Value, json};
 
@@ -8,7 +8,6 @@ use crate::kit::fake_hub::data;
 pub const DEVICE: &str = "0190a000-0000-7000-8002-000000000001";
 pub const SESSION: &str = "0190a000-0000-7000-8009-000000000001";
 
-/// A K1 `Session` as the session documents select it; ended when `reason` is given.
 pub fn session_row(reason: Option<&str>) -> Value {
     json!({
         "id": SESSION, "deviceId": DEVICE, "deviceName": "web-1", "protocol": "SSH",
@@ -206,7 +205,6 @@ async fn frn_009_link_devices_returns_the_devices_with_their_names_cleaned() {
     session.finish().await;
 }
 
-/// One audit edge with `who` (its actor kind, token kind and key name).
 fn audit_edge(id: u32, who: &Value) -> Value {
     let mut node = json!({
         "id": format!("0190a000-0000-7000-8031-{id:012}"), "at": "2026-11-13T09:00:00Z",

@@ -8,14 +8,12 @@
   import { nextIndex, type SplitChoice } from './split';
 
   interface Props {
-    /** The main action's words, and its icon (UI-026). */
+    /** The main action's words (UI-026). */
     label: string;
     /** The main button's accessible name when its words alone are too short: "SSH to nas" for "SSH". */
     mainLabel?: string | undefined;
     icon?: IconName | undefined;
-    /** The other ways to do it, in the menu behind the chevron. */
     choices: readonly SplitChoice[];
-    /** Named for assistive technology: "More ways to connect to web-1". */
     menuLabel: string;
     tone?: 'primary' | 'secondary';
     onMain: (button: HTMLElement) => void;
@@ -66,7 +64,6 @@
     items[next]?.focus();
   }
 
-  /** A press outside closes the menu. */
   function onOutside(event: PointerEvent): void {
     if (open && root !== undefined && event.target instanceof Node && !root.contains(event.target)) open = false;
   }
@@ -74,7 +71,7 @@
 
 <svelte:document onpointerdown={onOutside} />
 
-<!-- A split button (UR-7, D16): the usual action, and a chevron for the other ways to do it. -->
+<!-- UR-7, D16 -->
 <span class="split {tone}" bind:this={root}>
   <button type="button" class="main" tabindex="0" aria-label={mainLabel} onclick={(event) => { onMain(event.currentTarget); }} {@attach press()}>
     {#if icon !== undefined}<Icon name={icon} size="sm" />{/if}{label}

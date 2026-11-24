@@ -1,6 +1,4 @@
-//! Processes that leave the step's process group with `setsid`, as `pg_ctl` does, are ended too
-//! (S-1, D-20), and processes the app did not start through a step are left alone. Linux only:
-//! there is no subreaper on macOS.
+//! S-1, D-20.
 
 use std::{
     path::Path,
@@ -31,7 +29,6 @@ async fn s_1_a_process_that_left_the_group_with_setsid_does_not_outlive_the_step
     let running = Running::default();
     let (sink, _) = collecting();
     let claim = running.claim(Arc::clone(&sink)).unwrap();
-    // The reviewer's case: an escaped process that writes after the step has ended.
     let script = format!(
         "setsid sh -c 'sleep 2; echo late > {}' & sleep 0.5",
         marker.display()
@@ -50,7 +47,6 @@ async fn s_1_a_server_started_like_pg_ctl_is_ended_with_the_step() {
     let running = Running::default();
     let (sink, _) = collecting();
     let claim = running.claim(Arc::clone(&sink)).unwrap();
-    // pg_ctl starts the server in a session of its own and returns at once.
     let script = "setsid sleep 60 </dev/null >/dev/null 2>&1 & echo \"$!\"";
     let kept = claim
         .read(&command(&["-c", script]), Path::new("/bin/sh"), Vec::new())
@@ -101,8 +97,7 @@ async fn d_20_an_orphan_no_step_started_is_never_killed_and_never_waited_for() {
     let running = Running::default();
     let (sink, _) = collecting();
     let claim = running.claim(Arc::clone(&sink)).unwrap();
-    // Not through a step: an opener the app ran, whose browser left in a session of its own and
-    // was re-parented to this process, the subreaper.
+    // An opener the app ran outside a step leaves a child that is re-parented to this subreaper.
     let opener = std::process::Command::new("/bin/sh")
         .args([
             "-c",

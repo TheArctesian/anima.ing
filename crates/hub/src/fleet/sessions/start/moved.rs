@@ -1,10 +1,5 @@
-//! A start refused because the device's stored credential for the protocol was entered for
-//! another host than the device's host now (SEC-011). `startSession` asks before `start`, so the
-//! operator gets the refusal instead of a session that ends at once; the tunnels check again
-//! when they open the credential, so a host changed after the start still sends nothing.
-//!
-//! The credential is opened only to read the host it is bound to, and dropped at once: nothing
-//! leaves the hub. It stays stored, so the device opens sessions again if its host goes back.
+//! Refuses a start whose stored credential was entered for another host (SEC-011); the tunnels check again on open.
+//! The credential is opened only to read its bound host and is dropped at once.
 //! No log or message here holds a host or a secret (LOG-007).
 
 use chrono::{DateTime, Utc};
@@ -20,14 +15,7 @@ use crate::{
     ids::DeviceId,
 };
 
-/// Refuses a start of `protocol` on the device when its stored credential for that protocol
-/// was entered for another host, with one Warning event at `now`. The request caused the
-/// refusal, so the event records `by`, the request's kind (LOG-013). A device with no stored
-/// credential is not refused here.
-///
-/// # Errors
-/// `Conflict(CredentialMoved)` as above; `NotFound` for an unknown device; `Credentials`,
-/// `Events` or `Database` when a dependency fails.
+/// The request caused the refusal, so the event records `by`, the request's kind (LOG-013).
 pub(in crate::fleet::sessions) async fn refuse_moved(
     (db, vault, bus): (&PgPool, &Vault, &Bus),
     (device, protocol): (DeviceId, Protocol),
@@ -57,7 +45,6 @@ pub(in crate::fleet::sessions) async fn refuse_moved(
     }
 }
 
-/// The Warning event of a refused start, in the words of the refusal, by `actor`.
 fn event(device: &Device, conflict: Conflict, actor: ActorKind) -> NewEvent {
     NewEvent {
         severity: Severity::Warning,

@@ -1,7 +1,8 @@
 use std::fs;
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _, symlink};
 
-use super::{FileError, Root, copy_path, read, replace};
+use super::super::access::{Groups, Listing, Member, Writer};
+use super::{FileError, Root, copy_path, read, replace, writer};
 
 fn home() -> (tempfile::TempDir, u32) {
     let home = tempfile::tempdir().expect("a temporary home");
@@ -9,12 +10,28 @@ fn home() -> (tempfile::TempDir, u32) {
     (home, user)
 }
 
+fn groups(members: &[(&str, u32)]) -> Groups {
+    let members: Vec<Member> = members
+        .iter()
+        .map(|(name, uid)| Member {
+            name: (*name).to_owned(),
+            uid: Some(*uid),
+        })
+        .collect();
+    Groups::new(move |group| Listing {
+        name: format!("group{group}"),
+        members: Some(members.clone()),
+    })
+}
+
 #[test]
 fn mcp_031_032_a_file_is_replaced_whole_with_its_mode_and_one_copy_of_it_as_it_was() {
     let (home, user) = home();
+    let only_root = groups(&[("root", 0)]);
     let root = Root {
         home: home.path(),
         user,
+        groups: &only_root,
     };
     let path = home.path().join(".cursor/mcp.json");
     fs::create_dir(home.path().join(".cursor")).expect("folder");
@@ -29,7 +46,6 @@ fn mcp_031_032_a_file_is_replaced_whole_with_its_mode_and_one_copy_of_it_as_it_w
         0o640
     );
     assert_eq!(fs::read_to_string(copy_path(&path)).expect("copy"), "first");
-    // A second change keeps the first copy: it is the file as it was before Anima.
     replace(root, &path, Some("second"), "third").expect("replace");
     assert_eq!(fs::read_to_string(copy_path(&path)).expect("copy"), "first");
     let names: Vec<_> = fs::read_dir(home.path().join(".cursor"))
@@ -42,9 +58,11 @@ fn mcp_031_032_a_file_is_replaced_whole_with_its_mode_and_one_copy_of_it_as_it_w
 #[test]
 fn mcp_031_a_file_that_is_not_there_is_made_private_with_its_folder_and_no_copy() {
     let (home, user) = home();
+    let only_root = groups(&[("root", 0)]);
     let root = Root {
         home: home.path(),
         user,
+        groups: &only_root,
     };
     let path = home.path().join(".copilot/mcp-config.json");
     assert!(read(root, &path).expect("read").is_none());
@@ -59,9 +77,11 @@ fn mcp_031_a_file_that_is_not_there_is_made_private_with_its_folder_and_no_copy(
 #[test]
 fn mcp_034_a_symbolic_link_at_the_file_or_at_a_folder_is_refused_and_its_target_stays() {
     let (home, user) = home();
+    let only_root = groups(&[("root", 0)]);
     let root = Root {
         home: home.path(),
         user,
+        groups: &only_root,
     };
     let elsewhere = home.path().join("elsewhere.json");
     fs::write(&elsewhere, "theirs").expect("target");
@@ -88,15 +108,17 @@ fn mcp_034_a_symbolic_link_at_the_file_or_at_a_folder_is_refused_and_its_target_
 #[test]
 fn mcp_034_a_file_or_a_folder_that_others_can_write_and_a_file_too_large_are_refused() {
     let (home, user) = home();
+    let only_root = groups(&[("root", 0)]);
     let root = Root {
         home: home.path(),
         user,
+        groups: &only_root,
     };
     fs::create_dir(home.path().join(".cursor")).expect("folder");
     let path = home.path().join(".cursor/mcp.json");
     fs::write(&path, "{}").expect("file");
     fs::set_permissions(&path, fs::Permissions::from_mode(0o666)).expect("mode");
-    assert!(matches!(read(root, &path), Err(FileError::Shared)));
+    assert!(matches!(read(root, &path), Err(FileError::Shared(_))));
     fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("mode");
     fs::set_permissions(
         home.path().join(".cursor"),
@@ -105,7 +127,7 @@ fn mcp_034_a_file_or_a_folder_that_others_can_write_and_a_file_too_large_are_ref
     .expect("mode");
     assert!(matches!(
         replace(root, &path, None, "ours"),
-        Err(FileError::Shared)
+        Err(FileError::Shared(_))
     ));
     fs::set_permissions(
         home.path().join(".cursor"),
@@ -116,11 +138,12 @@ fn mcp_034_a_file_or_a_folder_that_others_can_write_and_a_file_too_large_are_ref
         read(
             Root {
                 home: home.path(),
-                user: user + 1
+                user: user + 1,
+                groups: &only_root,
             },
             &path
         ),
-        Err(FileError::Shared)
+        Err(FileError::Shared(_))
     ));
     fs::write(&path, vec![b' '; 1024 * 1024 + 1]).expect("large");
     assert!(matches!(read(root, &path), Err(FileError::TooLarge)));
@@ -138,9 +161,11 @@ fn mcp_034_a_file_or_a_folder_that_others_can_write_and_a_file_too_large_are_ref
 fn mcp_032_034_a_link_at_the_name_of_the_copy_is_refused_and_a_file_changed_meanwhile_is_not_overwritten()
  {
     let (home, user) = home();
+    let only_root = groups(&[("root", 0)]);
     let root = Root {
         home: home.path(),
         user,
+        groups: &only_root,
     };
     fs::create_dir(home.path().join(".cursor")).expect("folder");
     let path = home.path().join(".cursor/mcp.json");
@@ -153,7 +178,6 @@ fn mcp_032_034_a_link_at_the_name_of_the_copy_is_refused_and_a_file_changed_mean
     ));
     assert_eq!(fs::read_to_string(&path).expect("kept"), "first");
     fs::remove_file(copy_path(&path)).expect("link");
-    // The agent saved the file after it was read.
     fs::write(&path, "theirs").expect("file");
     assert!(matches!(
         replace(root, &path, Some("first"), "second"),
@@ -163,19 +187,38 @@ fn mcp_032_034_a_link_at_the_name_of_the_copy_is_refused_and_a_file_changed_mean
 }
 
 #[test]
-fn mcp_034_a_file_of_the_private_group_of_the_user_is_not_shared() {
+fn r_exactgroup_a_file_that_its_group_can_write_is_shared_only_when_the_group_has_a_different_member()
+ {
     let (home, user) = home();
+    let only_root = groups(&[("root", 0)]);
     let path = home.path().join("file");
     fs::write(&path, "{}").expect("file");
     fs::set_permissions(&path, fs::Permissions::from_mode(0o664)).expect("mode");
     let metadata = fs::metadata(&path).expect("metadata");
     assert_eq!(
-        super::open_to_others(&metadata, user),
-        metadata.gid() != user
+        writer(&metadata, user, &groups(&[("me", user), ("root", 0)])),
+        None
     );
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o646)).expect("mode");
-    assert!(super::open_to_others(
-        &fs::metadata(&path).expect("metadata"),
-        user
+    let shared = groups(&[("me", user), ("alice", user + 1)]);
+    assert_eq!(
+        writer(&metadata, user, &shared),
+        Some(Writer::Member {
+            group: format!("group{}", metadata.gid()),
+            member: "alice".to_owned()
+        })
+    );
+    let root = Root {
+        home: home.path(),
+        user,
+        groups: &shared,
+    };
+    assert!(matches!(
+        read(root, &path),
+        Err(FileError::Shared(others)) if others.path == path
     ));
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o646)).expect("mode");
+    assert_eq!(
+        writer(&fs::metadata(&path).expect("metadata"), user, &only_root),
+        Some(Writer::Everyone)
+    );
 }

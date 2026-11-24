@@ -1,6 +1,5 @@
-//! Validation of operator input for sites and devices (DEV-010, VPN-001).
-//!
-//! Every function is pure. Validators report all field errors at once so the form can show them together.
+//! Pure validation of operator input for sites and devices (DEV-010, VPN-001). Validators
+//! report every field error at once, so the form shows them together.
 
 mod remote;
 
@@ -21,12 +20,11 @@ pub use crate::api_errors::FieldError;
 
 const NAME_MAX: usize = 64;
 const TAG_MAX: usize = 32;
-/// What a blank kind becomes; K1's schema default for `kind` is the same text.
+/// K1's schema default for `kind` is the same text.
 pub(in crate::fleet::devices) const DEFAULT_KIND: &str = "server";
 const DEFAULT_SSH_PORT: i32 = 22;
 const TAGS_MAX: usize = 32;
 
-/// Collects field errors while the remaining fields are still checked.
 #[derive(Default)]
 struct Problems(Vec<FieldError>);
 
@@ -129,8 +127,7 @@ pub(super) fn validate_change(input: &DeviceChangeInput) -> Result<DeviceChange,
     problems.finish(Some(checked))
 }
 
-/// Checks a new site (VPN-001). The subnet arrives parsed as a `Cidr`, which rejects host bits;
-/// overlap with other sites is the database's job.
+/// Checks a new site (VPN-001); `Cidr` rejects host bits and the database rejects overlaps.
 ///
 /// # Errors
 /// Every invalid field, all at once.
@@ -148,8 +145,7 @@ fn length_between(text: &str, max: usize) -> bool {
     (1..=max).contains(&text.chars().count())
 }
 
-/// A device's name: its daemon keeps every name of up to `DEVICE_NAME_CHARS` characters (K8
-/// Section 3, MET-012), so the length comes from the daemon's rule.
+/// The daemon keeps names of up to `DEVICE_NAME_CHARS` characters (K8 Section 3, MET-012).
 fn device_name(text: &str) -> Result<String, FieldError> {
     name(text, "name", DEVICE_NAME_CHARS)
 }
@@ -194,7 +190,6 @@ fn kind(text: &str) -> Result<String, FieldError> {
     }
 }
 
-/// Trimmed tags without repeats, in first-seen order.
 fn tags(raw: &[String]) -> Result<Vec<String>, FieldError> {
     if raw.len() > TAGS_MAX {
         return Err(FieldError::new(

@@ -1,6 +1,5 @@
-//! What an API key may not do: the D-23 root fields, by any spelling of the document, and any
-//! mutation with a READ key. Each is refused with FORBIDDEN before any resolver runs (D-23,
-//! WP-43 A-6, R-084, CR-8, R-100, API-003).
+//! An API key's refused root fields and a READ key's mutations get FORBIDDEN before any
+//! resolver runs (D-23, WP-43 A-6, R-084, CR-8, R-100, API-003).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -8,10 +7,7 @@ use sqlx::PgPool;
 use super::{CREATE, ME, REVOKE, count, input, kind_refused, made, signed_in};
 use crate::hub::{Hub, PASSWORD, USERNAME, error};
 
-/// Every root field an API key may never select (D-23, A-6; `enrolDaemon` and
-/// `revokeDaemonToken` by name before they have resolvers, R-084, CR-8; pinning a device
-/// identity, moving or deleting a device, R-100; VPN keys, registration and renewal, VP-7;
-/// connecting GitHub from the hub, PRJ-039, PRJ-041).
+/// D-23, A-6, R-084, CR-8, R-100, VP-7, PRJ-039, PRJ-041.
 const REFUSED: [&str; 36] = [
     "createApiKey",
     "revokeApiKey",
@@ -51,9 +47,6 @@ const REFUSED: [&str; 36] = [
     "cancelGithubConnect",
 ];
 
-/// Documents that select `name` at the root: plainly, through an alias, an inline fragment, a
-/// fragment spread, beside other fields, with arguments, and in an operation of a
-/// multi-operation document that is not the one named to run. Each with its operation name.
 fn spellings(name: &str) -> Vec<(String, Option<&'static str>)> {
     let (keyword, root) = if name == "apiKeys" {
         ("query", "Query")
@@ -85,7 +78,6 @@ fn spellings(name: &str) -> Vec<(String, Option<&'static str>)> {
     ]
 }
 
-/// Posts `document` with `token`, naming the operation `operation` to run.
 async fn post_named(hub: &Hub, token: &str, document: &str, operation: Option<&str>) -> Value {
     let mut body = json!({ "query": document, "variables": {} });
     if let Some(operation) = operation {
@@ -101,7 +93,6 @@ async fn post_named(hub: &Hub, token: &str, document: &str, operation: Option<&s
     serde_json::from_str(&text).unwrap()
 }
 
-/// The row counts a resolver of the D-23 list would change.
 async fn footprint(pool: &PgPool) -> Vec<i64> {
     let mut counts = Vec::new();
     for table in [
@@ -183,7 +174,6 @@ async fn d_23_an_api_key_cannot_select_any_root_fragment(pool: PgPool) {
     }
 }
 
-/// The root mutation fields of the hub schema, by introspection with `token`.
 async fn mutation_fields(hub: &Hub, token: &str) -> Vec<String> {
     let query = "{ __schema { mutationType { fields { name } } } }";
     let schema = hub.post(Some(token), query, json!({})).await;

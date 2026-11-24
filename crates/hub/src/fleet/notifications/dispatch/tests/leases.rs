@@ -1,6 +1,4 @@
-//! Leases: two dispatchers never send one row twice within a lease, a lease that ends lets
-//! another dispatcher send, a late outcome changes nothing in a row another claim holds, and a
-//! send whose outcome is never written ends with the row's tries (D-16, NOT-001).
+//! Dispatch leases (D-16, NOT-001).
 
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
@@ -25,8 +23,7 @@ use crate::{
     },
 };
 
-/// An egress that refuses every loopback target: each send fails as `TARGET_NOT_PERMITTED`,
-/// a permanent failure.
+/// Refuses loopback, so each send fails permanently as `TARGET_NOT_PERMITTED`.
 fn refusing() -> Egress {
     Egress::new(AddressPolicy::default())
 }
@@ -61,7 +58,6 @@ async fn d_16_a_claimed_row_waits_out_its_lease_then_another_dispatcher_sends_it
     let hooks = channel(&pool, "hooks", webhook(&server)).await;
     let t0 = start(&pool).await;
     let queued = queue(&pool, hooks, None, t0).await;
-    // A dispatcher claims the row and stops before it sends.
     let lost = store::claim_due(&pool, t0, LEASE, 1).await.unwrap();
     assert_eq!(lost.len(), 1);
     let other = dispatcher(&pool, egress);
@@ -82,12 +78,10 @@ async fn d_16_a_late_retryable_failure_leaves_a_row_another_dispatcher_sent(pool
     let t0 = start(&pool).await;
     let queued = queue(&pool, hooks, None, t0).await;
     let slow = store::claim_due(&pool, t0, LEASE, 1).await.unwrap();
-    // Its lease ends; another dispatcher sends the row.
     dispatcher(&pool, egress).tick(t0 + LEASE).await;
     let defaults = store::installation_settings(&pool).await.unwrap();
 
-    // The first dispatcher's send fails afterwards (here: it does not trust the target's
-    // certificate, so the handshake fails).
+    // `local()` does not trust the target's certificate, so the late send fails.
     let late = dispatcher(&pool, local())
         .finish(&slow[0], &defaults, t0 + LEASE + TimeDelta::seconds(1))
         .await
@@ -139,11 +133,9 @@ async fn d_16_a_late_reschedule_leaves_another_dispatchers_lease_whole(pool: PgP
     let queued = queue(&pool, hooks, None, t0).await;
     let defaults = store::installation_settings(&pool).await.unwrap();
     let a = store::claim_due(&pool, t0, LEASE, 1).await.unwrap();
-    // A stalls past its lease; B claims the row and is sending under its own lease.
     let b_now = t0 + LEASE;
     let b = store::claim_due(&pool, b_now, LEASE, 1).await.unwrap();
-    // A's send fails with a retryable failure (it does not trust the target), and A writes at
-    // its own tick's time, which would make the row due at t0 + 1 min.
+    // A writes its retryable failure at t0, which would make the row due at t0 + 1 min.
     dispatcher(&pool, local())
         .finish(&a[0], &defaults, t0)
         .await
@@ -234,8 +226,7 @@ async fn d_16_the_spawned_dispatcher_tries_a_queued_row(pool: PgPool) {
     let hooks = channel(&pool, "hooks", webhook(&server)).await;
     let t0 = start(&pool).await;
     let queued = queue(&pool, hooks, None, t0).await;
-    // The spawned dispatcher trusts only the built-in roots, so its try reaches the target and
-    // fails the handshake with the test certificate.
+    // The spawned dispatcher trusts only the built-in roots, so the test certificate fails it.
     let sending = Sending {
         vault: vault(),
         policy: AddressPolicy::default().allowing_loopback(),

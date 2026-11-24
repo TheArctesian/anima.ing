@@ -79,6 +79,7 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.21",
  "uuid",
 ]
@@ -161,6 +162,7 @@ dependencies = [
  "open",
  "power",
  "rcgen",
+ "remote-login",
  "reqwest 0.12.28",
  "rustix",
  "rustls",
@@ -222,8 +224,10 @@ dependencies = [
  "http-body",
  "http-body-util",
  "keyring",
+ "nix 0.31.3",
  "portable-pty",
  "proptest",
+ "remote-login",
  "reqwest 0.12.28",
  "rmcp",
  "rsa 0.9.10",
@@ -235,6 +239,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1 0.11.0",
+ "sha2 0.11.1",
+ "shortening",
  "sqlx",
  "tempfile",
  "thiserror 2.0.21",
@@ -252,6 +258,7 @@ name = "anima-daemon"
 version = "0.1.0"
 dependencies = [
  "agent-threads",
+ "anima-daemon",
  "anima-windows",
  "axum",
  "base64 0.23.1",
@@ -265,7 +272,10 @@ dependencies = [
  "hyper-util",
  "hyperlocal-with-windows",
  "keyring",
+ "model-relay",
+ "nix 0.29.0",
  "plist",
+ "redaction",
  "reqwest 0.12.28",
  "rpassword",
  "rustix",
@@ -4796,6 +4806,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "model-relay"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "getrandom 0.4.3",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "rcgen",
+ "rustls",
+ "subtle",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+ "tracing-subscriber",
+ "webpki-roots 1.0.11",
+]
+
+[[package]]
 name = "module-lattice"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6642,6 +6672,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "remote-login"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "thiserror 2.0.21",
+ "tokio",
+ "whoami 2.1.3",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7677,6 +7717,13 @@ name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
+
+[[package]]
+name = "shortening"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "signal-hook-registry"

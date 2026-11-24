@@ -1,5 +1,5 @@
-//! What the API may show of an attempt: its phase, its failure, the App GitHub made and the
-//! snapshot that carries them (K1 `GithubConnectAttempt`). No key, ticket, cookie or state.
+//! What the API may show of an attempt (K1 `GithubConnectAttempt`): no key, ticket, cookie or
+//! state.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

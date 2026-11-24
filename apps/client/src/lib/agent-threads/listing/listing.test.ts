@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { orderedThreads } from '../state';
 import type { ThreadRow } from '../thread';
-import { listed, titleOf, type Listing } from './listing';
+import { foreseen, listed, titleOf, type Listing } from './listing';
 import { NO_MARKS } from './shelf';
 import { outcomeFrom } from '../live/run';
 
@@ -11,7 +11,7 @@ function row(id: string, title: string): ThreadRow {
 }
 
 function listing(thread: string, fields: Partial<Listing>): Listing {
-  return { thread, pinned: false, archived: false, title: null, removed: false, marks: NO_MARKS, ...fields };
+  return { thread, pinned: false, archived: false, title: null, removed: false, marks: NO_MARKS, startedByAnima: false, ...fields };
 }
 
 describe('TH46: how the person lists a thread', () => {
@@ -55,5 +55,16 @@ describe('TH46: how the person lists a thread', () => {
     });
     expect(outcomeFrom({ outcome: 'listings', listings: [{ pinned: true }] })).toBeNull();
     expect(outcomeFrom({ outcome: 'refused', why: { refusal: 'running' } })).toEqual({ outcome: 'refused', why: 'running' });
+  });
+});
+
+describe('foreseen', () => {
+  const now = new Date('2026-11-22T21:00:00Z');
+
+  it('settles as the runner does: a settle ends a snooze, a take-back of a thread not settled changes nothing', () => {
+    const snoozed: Listing = { thread: 't', pinned: false, archived: false, title: null, removed: false, startedByAnima: true, marks: { ...NO_MARKS, snoozedAt: now, snoozedUntil: now } };
+    expect(foreseen(snoozed, 't', { change: 'settle', on: true }, now)?.marks).toEqual({ ...NO_MARKS, settledAt: now });
+    expect(foreseen(undefined, 't', { change: 'settle', on: false }, now)?.marks).toEqual(NO_MARKS);
+    expect(foreseen(undefined, 't', { change: 'remove' }, now)).toBeNull();
   });
 });

@@ -1,4 +1,3 @@
-// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync } from "node:fs";
 import { join } from "node:path";
@@ -56,8 +55,6 @@ describe.skipIf(process.platform === "win32")("harden.sh ssh", () => {
     expect(run.out).not.toContain("AAAA");
   });
 
-  // The files an AlmaLinux 10 VPS may carry: the permitrootlogin migration (01- or 25-),
-  // Red Hat's defaults (50-redhat.conf, X11Forwarding yes) and cloud-init's.
 });
 
 describe.skipIf(process.platform === "win32")("harden.sh ssh against other drop-ins", () => {

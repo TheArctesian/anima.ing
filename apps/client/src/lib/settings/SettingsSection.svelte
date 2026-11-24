@@ -4,21 +4,17 @@
   import SectionLabel from '$lib/page/SectionLabel.svelte';
 
   interface Props {
-    /** The heading's id; the section is named by it, and the page's index links to it. */
     id: string;
     title: string;
     icon: IconName;
-    /** One line under the heading saying what the section is for; the device's Settings tab has none (D17). */
+    /** The device's Settings tab has none (D17). */
     description?: string | undefined;
-    /** The section's rows (`SettingRow`), with a hairline between each. */
     children: Snippet;
   }
 
   const { id, title, icon, description, children }: Props = $props();
 </script>
 
-<!-- One Settings subject (SET-001) in the website's language (UR-7, D6, D9): a small head of icon, rule and words,
-     a line saying what it is for, then hairline rows; no card. -->
 <section aria-labelledby={id} aria-describedby={description === undefined ? undefined : `${id}-about`} data-section={id}>
   <SectionLabel text={title} {icon} level={2} {id} />
   {#if description !== undefined}<p id="{id}-about">{description}</p>{/if}

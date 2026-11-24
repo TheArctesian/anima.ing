@@ -25,7 +25,6 @@
 <SettingRow label="Theme">
   <Segmented label="Theme" options={THEMES.map((each) => ({ value: each.id, label: each.label }))} value={theme} onchange={choose} />
   {#snippet message()}
-    <!-- Only a refused save shows a message: the row stays one line until then. -->
     {#if problem !== null}<p role="alert">{problem}</p>{/if}
   {/snippet}
 </SettingRow>

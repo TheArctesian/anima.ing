@@ -1,5 +1,3 @@
-//! `anima file remove`, `anima file archive add` and `anima file archive remove`.
-
 use super::documents::{
     ArchiveAdd, ArchiveRemove, AttachmentRemove, archive_add, archive_remove, attachment_remove,
 };

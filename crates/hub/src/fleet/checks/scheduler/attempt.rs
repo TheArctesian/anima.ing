@@ -1,8 +1,5 @@
-//! One attempt of one due check: observe, record on the current state and publish
-//! (CHK-001, CHK-002, CHK-003, CHK-006).
-//!
-//! Maintenance is decided when the beat is recorded, so a window that starts or ends shows
-//! on the check's next beat; the status rules apply it to the stored state at once.
+//! CHK-001, CHK-002, CHK-003, CHK-006. Maintenance is decided when the beat is recorded, so a
+//! window that starts or ends shows on the check's next beat.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -33,28 +30,23 @@ use crate::{
     status::Status,
 };
 
-/// What probes need: the vault that opens HTTP and SNMP secrets and the addresses they may
-/// reach.
-/// The policy always refuses loopback, link-local and multicast addresses; the
-/// deny list only refuses more.
 pub struct Probing {
     pub vault: Vault,
     pub policy: AddressPolicy,
-    /// `host:port` of the Tailscale `LocalAPI` proxy; `None` when none is configured (D-4).
+    /// `host:port` of the Tailscale `LocalAPI` proxy (D-4).
     pub localapi: Option<String>,
 }
 
-/// What the attempts share.
 pub(super) struct Context {
     pub(super) db: PgPool,
     pub(super) bus: Bus,
     pub(super) probing: Probing,
-    /// The domain expiry probes' state, with the RDAP bootstrap file they share (D-29).
+    /// The domain expiry probes share one RDAP bootstrap file (D-29).
     pub(super) rdap: Rdap,
 }
 
 impl Context {
-    /// The shared state of the attempts; the RDAP probes reach only what `probing` permits.
+    /// The RDAP probes reach only what `probing` permits.
     pub(super) fn new(db: PgPool, bus: Bus, probing: Probing) -> Self {
         let rdap = Rdap::new(probing.policy.clone());
         Self {
@@ -66,17 +58,14 @@ impl Context {
     }
 }
 
-/// What an attempt left behind, for the scheduler's bookkeeping.
 #[derive(Debug)]
 pub(super) struct Finished {
     pub(super) check: CheckId,
     pub(super) device: DeviceId,
-    /// The check's new timing when a beat was written; `None` when nothing was.
     pub(super) recorded: Option<Timing>,
 }
 
-/// Logs a failed read or write about one check at this I/O boundary; the error text holds
-/// no SQL, URL, header or secret (LOG-007).
+/// The error text holds no SQL, URL, header or secret (LOG-007).
 pub(super) fn warn(due: &Due, what: &str, error: &dyn std::fmt::Display) {
     tracing::warn!(
         domain = "checks",
@@ -87,20 +76,18 @@ pub(super) fn warn(due: &Due, what: &str, error: &dyn std::fmt::Display) {
     );
 }
 
-/// What became of an attempt.
 enum Outcome {
-    /// The beat, and whether maintenance covered the check when it was recorded.
+    /// The `bool`: maintenance covered the check when the beat was recorded.
     Written(Beat, bool),
-    /// Nothing to record: the check is paused, has a newer beat or was deleted.
     Skipped,
-    /// A read or write failed; it was logged. `probed` tells whether the probe ran first.
-    Failed { probed: bool },
+    Failed {
+        probed: bool,
+    },
 }
 
-/// Runs the attempt. After a failed read or write the check is tried again only after its
-/// retry interval, so a write that keeps failing neither probes on every tick nor starves
-/// the other checks (CHK-001). A Down beat of an ICMP check may repair its method within
-/// this attempt, so the permit covers the repair's connects (CHK-013).
+/// A failed read or write retries only after the retry interval, so it neither probes on every
+/// tick nor starves the other checks (CHK-001). An ICMP Down beat may repair its method here,
+/// so the permit covers the repair's connects (CHK-013).
 pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished {
     let mut finished = Finished {
         check: due.id,
@@ -145,8 +132,7 @@ async fn attempt(ctx: &Context, due: &Due, now: DateTime<Utc>) -> Outcome {
     let Some(result) = observe(ctx, due, &device, now).await else {
         return Outcome::Failed { probed: false };
     };
-    // Read for every result, because the settings that decide Down are read only when the
-    // beat is written.
+    // Read for every result: the settings that decide Down are read only when the beat is written.
     let in_maintenance = match in_maintenance(&ctx.db, &device, (due.id, due.parent), now).await {
         Ok(covered) => covered,
         Err(error) => {
@@ -178,9 +164,8 @@ async fn attempt(ctx: &Context, due: &Due, now: DateTime<Utc>) -> Outcome {
     }
 }
 
-/// Moves the due time past the retry interval, unless a beat moved it meanwhile. A probe that
-/// ran counts as the last query for the check's floor, though no beat recorded it: a domain
-/// expiry check whose RDAP server was asked waits its whole interval (R-102).
+/// A probe that ran counts as the last query for the check's floor, though no beat recorded
+/// it (R-102).
 async fn back_off(ctx: &Context, due: &Due, now: DateTime<Utc>, probed: bool) {
     let retry = TimeDelta::seconds(i64::from(due.settings.retry_interval_seconds));
     let queried_at = if probed { Some(now) } else { due.last_beat_at };
@@ -191,8 +176,7 @@ async fn back_off(ctx: &Context, due: &Due, now: DateTime<Utc>, probed: bool) {
     }
 }
 
-/// The raw result of the attempt, or `None` when a database read failed. PUSH checks are
-/// not probed: being due means no push came (CHK-002).
+/// PUSH checks are not probed: being due means no push came (CHK-002).
 async fn observe(
     ctx: &Context,
     due: &Due,
@@ -233,10 +217,8 @@ async fn observe(
     }
 }
 
-/// Probes the HTTP configuration stored now, read with its secrets, never the one read at
-/// tick time: the secrets go only where they were given for (SEC-005). Secrets that do not
-/// open, or no longer match the configuration, fail the probe with a fixed message and send
-/// nothing (CHK-001). `None` when the read failed.
+/// Probes the configuration stored now with its secrets, never the one read at tick time: the
+/// secrets go only where they were given for (SEC-005).
 async fn observe_http(
     ctx: &Context,
     due: &Due,
@@ -252,8 +234,6 @@ async fn observe_http(
     Some(probe(target, &config, setup.secrets.as_ref(), env).await)
 }
 
-/// The result of an attempt whose secrets did not load: a fixed message for secrets that do
-/// not open or are unbound, or `None` when the read failed (it is logged).
 fn unopened(due: &Due, error: &Error) -> Option<ProbeResult> {
     match error {
         Error::Unreadable(_) => Some(ProbeResult::failed(&Failure::BadConfig)),
@@ -266,12 +246,8 @@ fn unopened(due: &Due, error: &Error) -> Option<ProbeResult> {
     }
 }
 
-/// Probes the SNMP configuration stored now, read with its secrets, like [`observe_http`]:
-/// the secrets go only to the version and user name they were given for (SEC-005), and only to
-/// the device host they were entered for, which is the host this attempt probes (SEC-010).
-/// Secrets entered for another host are removed and an event says so; nothing is sent. The
-/// request ids and salt are drawn here; if the OS random source fails, nothing is recorded and
-/// the failure is logged, as for a failed read.
+/// The secrets go only to the version, user name and device host they were given for (SEC-005,
+/// SEC-010); secrets for another host are removed and nothing is sent.
 async fn observe_snmp(
     ctx: &Context,
     (due, device): (&Due, &Device),
@@ -299,13 +275,8 @@ async fn observe_snmp(
     }
 }
 
-/// Whether maintenance covers the check: the device's manual flag, or an active window on
-/// the device, the check, its group or a tag (CHK-006). The scheduler and the push route
-/// both ask it, so every beat is recorded under the same cover. The pair is the check and
-/// its group.
-///
-/// # Errors
-/// `Database` when the windows cannot be read.
+/// The scheduler and the push route both ask this, so every beat is recorded under the same
+/// cover (CHK-006).
 pub(in crate::fleet::checks) async fn in_maintenance(
     db: &PgPool,
     device: &Device,

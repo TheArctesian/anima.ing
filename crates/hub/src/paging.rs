@@ -1,8 +1,5 @@
-//! Cursor pagination shared by every list in the API (API-006, K1, R-014).
-//!
-//! K1's `PageInfo` has only `hasNextPage` and `endCursor`. async-graphql's built-in connection
-//! type adds backward paging fields that K1 does not have, so domains use this type instead.
-//! Cursors stay opaque and each domain encodes its own.
+//! Cursor pagination for every API list (API-006, K1, R-014).
+//! async-graphql's connection type adds backward paging that K1 lacks; domains use this type.
 
 use async_graphql::SimpleObject;
 

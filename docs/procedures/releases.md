@@ -119,7 +119,22 @@ Windows job requires Authenticode signing; the installer and sidecars must have 
 timestamped publisher signature. The isolated `sign` job then adds the Tauri updater
 signature after all platform jobs pass. The publish job checks hashes and signatures
 before it writes the versioned files, then writes `windows-x86_64/latest.json` last.
-Windows participates in the release decision, including recovery from a missing feed.
+
+**The switch of Windows.** The Windows part of the `release` workflow runs only while the repository variable
+`ANIMA_PUBLIC_WINDOWS` is `on`. While it is not `on` (unset, or any other value), the job
+`windows` does not run, in a release or in a trial, and no job needs its files: a release
+signs, checks and publishes macOS and Linux, and writes no `windows-x86_64/latest.json` and no
+`anima/<version>/anima-windows-x86_64.zip`. The release decision then does not read the
+Windows feed, so a missing Windows feed does not make each push to `main` a release. While
+the switch is `on`, Windows takes part in the release decision, including recovery from a
+missing feed: while no Windows feed exists, the next push to `main` is a release of each platform.
+The site (repository `anima-site`, `src/lib/release/release.ts`) lists only macOS and Linux,
+and on 2026-11-22 no Windows feed was ever published, so no Windows client reads a feed that a
+release leaves out. The trials of Windows that `gates` runs for `dev` and each train do not
+read this switch. If the switch is set to `on` and later removed again, the Windows feed stays
+at its last version and its clients get no update until the switch is `on` again. To build Windows again, the operator first puts
+the two secrets below in `release-windows`, then sets
+`gh variable set ANIMA_PUBLIC_WINDOWS --body on --repo TheArctesian/anima.ing`.
 
 Before a signed trial, the operator configures environment `release-windows` with
 `WINDOWS_CERTIFICATE` (base64 PFX containing one code-signing private key) and
@@ -162,7 +177,7 @@ Do not start a trial for the commit of a release that is still running, and the 
 
 ### The daemon alone (task U2)
 
-A release also publishes `anima-daemon` for each target, with its signed release record, for the update of the machines (task U6 of the [update plan](../plans/daemon-and-hub-update-plan.md); nothing reads these files yet). After the job `publish`, the job `daemon-publish` puts, for `linux-x86_64` and for `darwin-universal`: `<target>/<version>/anima-daemon`, then `<target>/<version>/release-record.json`, then `<target>/<version>/release-record.json.sig`. The record is signed with the updater key in the job `sign`; no new secret and no new switch. `deploy/release/replaces-from` holds the lowest daemon version that the release can replace (`0.0.0`: each). The fields and the check are in the update plan, "The release record as built".
+A release also publishes `anima-daemon` for each target, with its signed release record, for the update of the machines (task U6 of the [update plan](../plans/daemon-and-hub-update-plan.md); nothing reads these files yet). After the job `publish`, the job `daemon-publish` puts, for `linux-x86_64` and for `darwin-universal`: `<target>/<version>/anima-daemon` and `<target>/<version>/anima-link`, then `<target>/<version>/release-record.json`, then `<target>/<version>/release-record.json.sig`; last, `install/<version>/anima-install.sh`, the script of the one-line install (`deploy/bin/anima-install` of the release commit; HM-T33, R-361). The record lists the SHA-256 of both programs. The summary of the job gives the SHA-256 of the script and of the four programs, for the line. The record is signed with the updater key in the job `sign`; no new secret and no new switch. `deploy/release/replaces-from` holds the lowest daemon version that the release can replace (`0.0.0`: each). The fields and the check are in the update plan, "The release record as built".
 
 To check the files of a release by hand:
 
@@ -219,6 +234,7 @@ Read from GitHub on 2026-11-19 with `gh`. The operator, or the orchestrating ses
 | Branch rule set `main line` | Active since 2026-11-19 (id 27625577). Target `main`. Deletions are restricted and force pushes are blocked. No bypass. The orchestrating session made it on the instruction of the operator |
 | Branch `dev` | Exists since 2026-11-19, made at `eb226c8d` |
 | Variable `ANIMA_PUBLIC_RELEASES` | Does not exist: public releases are off |
+| Variable `ANIMA_PUBLIC_WINDOWS` | Does not exist on 2026-11-22: each release and each trial leaves Windows out ("The switch of Windows") |
 | Environment `release` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-sign` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-publish` | Permits tags `v*` only (rule id 67371066); the jobs `bucket` and `publish` of a run of `main` are refused until the branch `main` is added ("To switch public releases on"). No required reviewer. Administrators can bypass |
@@ -317,6 +333,7 @@ A Mac with 0.2.1 from the DMG: the application reads its feed at start and each 
 
 | What | Why a trial does not show it | What is done, and what to do |
 | --- | --- | --- |
+| The puts of `<target>/<version>/anima-link` and `install/<version>/anima-install.sh`, and the SHA-256 values in the summary of `daemon-publish` (HM-T33, R-361) | A trial runs the job `daemon` and writes the records with `anima-link`, but never runs `daemon-publish` | After the first release: `curl -fsSI` of the five files gives `200` with the immutable cache, and `curl -fsSL <url> \| sha256sum` gives the value of the record and of the summary |
 | The environment `release-publish` refuses a run of `main` | A trial never uses that environment | Step 1 of "To switch public releases on". If it is not done, the job `bucket` fails in the first minute |
 | The bucket token is wrong, has no right for `anima-releases`, or is of a different account than `RELEASES_ENDPOINT` | A trial has no token. The orchestrating session set the two secrets from a file of the operator (R-195); no run used them | The job `bucket` reads one object with them in the first minute. The variable has the right form (`https://<32 hex characters>.r2.cloudflarestorage.com`, read on 2026-11-19) |
 | The token can read but cannot write | The job `bucket` only reads | The first write is a file of Linux under a new version folder; the feeds are not changed when it fails. Make a token with "Object Read & Write" for that bucket, set the two secrets, and select "Re-run failed jobs" |
@@ -366,7 +383,7 @@ Built, and never run with a switch on. A release of the desktop application can 
 | `tap` | `Formula/anima.rb` in `TheArctesian/homebrew-anima`: `brew install thearctesian/anima/anima` | `HOMEBREW_TAP_DEPLOY_KEY`, `release-tap` |
 | `crate` | The crate `anima-cli` on crates.io, with the version of the release | `CARGO_REGISTRY_TOKEN`, `release-crate` |
 
-The job `cli`, with no secret, makes the files first: each `anima` is the program inside the application that the same run built (the macOS one has its Developer ID signature), and the job starts the Linux program to see that it runs alone. A trial runs `cli` and none of the three jobs above.
+The job `cli`, with no secret, makes the files first: each `anima` is the program inside the application that the same run built (the macOS one has its Developer ID signature), and the job starts the Linux program to see that it runs alone. A trial runs `cli` and none of the three jobs above. Each archive also carries the licence files of `deploy/release/licences.txt` beside `anima`, and the formula installs them in its prefix (`LICENSE`, and the `NOTICE` and `LICENSE-APACHE` of `crates/shortening`, whose Apache-2.0 parts need them in each copy); the bundles that the release workflow and the Windows trial build carry them under `licences/` (task B8k). The bundles of the Builds view carry them too (`bundle_settings` of `builder/carried.rs`).
 
 **The switch of its own.** The three jobs run only while `ANIMA_PUBLIC_RELEASES` and a second variable, `ANIMA_PUBLIC_CLI`, are both `on`. The second does not exist today. So the first release of the desktop application does not depend on these jobs, and the desktop jobs never wait for them.
 
@@ -417,8 +434,10 @@ What is not known until the first run: if the Linux program starts on a computer
 The branch workflow [TestFlight](../../.github/workflows/testflight.yml) runs on a push to
 `dev` or `main`. Once the workflow is on `main`, GitHub enables manual dispatch and
 the scheduled check. The check runs every 20 minutes and dispatches any new `dev`
-revision that the merge train pushed with GitHub's workflow token. Each build gets a unique number from the workflow run sequence. The iOS release version still comes
-from the first-parent history of `main`.
+revision that the merge train pushed with GitHub's workflow token. Each build gets a
+unique number from the workflow run sequence. Public builds take their version from
+the first-parent history of `main`. Internal builds use the same number with a minimum
+version of 0.8.40, which sorts above the old manual build 0.8.39.
 The job uses GitHub's `xcode-27` image and checks for iOS SDK 27 or later before
 building. The generated project targets iOS 17, which meets Apple's minimum deployment
 target of iOS 15 for uploads from April 2027.
@@ -426,7 +445,7 @@ target of iOS 15 for uploads from April 2027.
 | Branch | GitHub environment | GitHub variable | TestFlight group |
 | --- | --- | --- | --- |
 | `dev` | `release` | `ANIMA_TESTFLIGHT_DEV=on` | Anima Internal |
-| `main` | `release` | `ANIMA_TESTFLIGHT_MAIN=on` | Anima External |
+| `main` | `release` | `ANIMA_TESTFLIGHT_MAIN=on` | [Public TestFlight beta](https://testflight.apple.com/join/SwDsVg4Z) |
 
 The operator authorized the `release` environment to allow deployments from `dev` and
 `main`. Both jobs use the existing iOS secrets. The operator supplies
@@ -440,9 +459,12 @@ Keep automatic distribution off for Anima Internal. Xcode marks `dev` uploads as
 TestFlight Internal Only. The signed archive carries the export exemption recorded for
 build 900.0.4. Review that declaration before releasing changes that affect the app's
 encryption or its linked libraries. After processing, the workflow checks Apple's recorded
-build audience and testing status, then adds the build to Anima Internal. The `main` job creates Anima External when needed,
-assigns the processed build, enables automatic tester notification and submits it for
-Beta App Review when Apple requires it. The operator supplies the app's beta review
+build audience and testing status, then adds the build to Anima Internal. When it
+publishes the newest internal build, it keeps that build and one rollback in the group.
+Older internal iOS builds are removed from the group and can be added back in App Store
+Connect before they expire. The `main` job
+looks up the external group by the public invite URL used on the Anima website. It assigns the processed build, enables automatic tester notification and
+submits it for Beta App Review when Apple requires it. The operator supplies the app's beta review
 contact, sign-in instructions and export compliance answers in App Store Connect.
 External testers get the build when Apple clears it. Add the testers you want in the
 external group in App Store Connect.

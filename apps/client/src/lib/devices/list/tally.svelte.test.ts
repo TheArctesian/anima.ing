@@ -22,7 +22,6 @@ it('before the first list the line says that it loads, and no count is read', ()
   show({ tally: null });
   expect(document.querySelector('[role="status"]')?.textContent).toBe('Loading the devices');
   expect(document.querySelector('[role="group"]')).toBeNull();
-  // The hidden count only gives the line its height.
   expect(document.querySelector('button')?.getAttribute('aria-hidden')).toBe('true');
 });
 

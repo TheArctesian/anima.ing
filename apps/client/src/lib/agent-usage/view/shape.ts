@@ -2,22 +2,17 @@ import type { AgentSource } from '$lib/hub/generated/graphql';
 import type { AgentUsageView, UsageSums } from '../api';
 import type { Count } from '../query';
 
-// What the page draws from the hub's sums. Pure: the same view and choices give the same shapes.
-
 const DAY_MS = 86_400_000;
 
-/** All the tokens of a group: input, output and both cache counts. */
 export function totalTokens(sums: UsageSums): number {
   return sums.inputTokens + sums.outputTokens + sums.cacheReadTokens + sums.cacheWriteTokens;
 }
 
-/** What `count` counts in a group; a cost with no known price counts as none. */
 export function countOf(sums: UsageSums, count: Count): number {
   if (count === 'tokens') return totalTokens(sums);
   return count === 'sessions' ? sums.sessions : (sums.estimatedCostUsd ?? 0);
 }
 
-/** One program and model: the row of the table that limits the chart. */
 export interface Picked {
   readonly source: AgentSource | null;
   readonly model: string | null;
@@ -27,11 +22,9 @@ export interface DayBar {
   /** `YYYY-MM-DD`, UTC. */
   readonly day: string;
   readonly value: number;
-  /** The share of the tallest day, 0 to 1. */
   readonly height: number;
 }
 
-/** One bar for each UTC day of the view, in order, a day with no use included; only the rows of `picked` when one is given. */
 export function dayBars(view: Pick<AgentUsageView, 'firstDay' | 'lastDay' | 'days'>, count: Count, picked: Picked | null): DayBar[] {
   const sums = new Map<string, number>();
   for (const row of view.days) {
@@ -56,14 +49,10 @@ export interface RepositoryLine {
   readonly repository: string | null;
   readonly sessions: number;
   readonly estimatedCostUsd: number | null;
-  /** The newest UTC day with use, when the hub gave it. */
   readonly lastDay: string | null;
 }
 
-/**
- * The repositories, newest use first; with the same newest day, or none known, the larger estimate first; the use with
- * no repository is last (AIS-020).
- */
+/** Newest use first, then the larger estimate; the use with no repository last (AIS-020). */
 export function repositoryLines(view: Pick<AgentUsageView, 'repositories' | 'newest'>): RepositoryLine[] {
   const newest = new Map<string | null, string>();
   for (const { repository, day } of view.newest) {
@@ -83,7 +72,6 @@ export function repositoryLines(view: Pick<AgentUsageView, 'repositories' | 'new
   });
 }
 
-/** "last use today", "last use yesterday", "last use 3 days ago", from two UTC days; nothing for a day that is not known. */
 export function lastUseWords(lastDay: string | null, today: string): string {
   if (lastDay === null) return '';
   const days = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${lastDay}T00:00:00Z`)) / DAY_MS);
@@ -92,7 +80,6 @@ export function lastUseWords(lastDay: string | null, today: string): string {
   return days === 1 ? 'last use yesterday' : `last use ${String(days)} days ago`;
 }
 
-/** The share of `value` in `whole`, 0 to 1; none of nothing. */
 export function share(value: number, whole: number): number {
   return whole <= 0 ? 0 : Math.min(1, Math.max(0, value / whole));
 }
@@ -102,7 +89,6 @@ export interface TokenPart {
   readonly tokens: number;
 }
 
-/** The four kinds of tokens of a group, in the order of the bar. */
 export function tokenParts(sums: UsageSums): TokenPart[] {
   return [
     { label: 'Input', tokens: sums.inputTokens },
@@ -112,14 +98,12 @@ export function tokenParts(sums: UsageSums): TokenPart[] {
   ];
 }
 
-/** `2026-11-19` as `19 Nov`: the ends of the chart. */
 export function shortDay(day: string): string {
   const at = new Date(`${day}T00:00:00Z`);
   if (Number.isNaN(at.getTime())) return day;
   return `${String(at.getUTCDate())} ${at.toLocaleString('en', { month: 'short', timeZone: 'UTC' })}`;
 }
 
-/** The host that each named repository starts with, with its `/` (`github.com/`); empty when they do not share one. */
 export function sharedHost(lines: readonly Pick<RepositoryLine, 'repository'>[]): string {
   const names = lines.flatMap((line) => (line.repository === null ? [] : [line.repository]));
   const first = names[0];

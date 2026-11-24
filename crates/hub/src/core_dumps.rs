@@ -1,9 +1,7 @@
-//! Keeps the hub's memory out of core dumps (WP-36 D-45, R-117, SEC-004): the updater key's seed,
-//! the vault key and the R2 token live in it. Compose also sets the core size limit to 0; this
-//! covers a hub started any other way.
+//! Keeps the hub memory, which holds the updater key seed, the vault key and the R2 token, out
+//! of core dumps (WP-36 D-45, R-117, SEC-004).
 
-/// Marks the process not dumpable, so a crash writes no core file and other processes of the
-/// same user cannot attach to it. Linux only; elsewhere it does nothing.
+/// Linux only; elsewhere it does nothing.
 ///
 /// # Errors
 ///
@@ -29,7 +27,6 @@ mod tests {
     const PROBE: &str = "ANIMA_CORE_DUMPS_PROBE";
     const MARK: &str = "core dumps forbidden";
 
-    /// The child turns dumping off and checks; the parent checks that the child ran this test.
     #[test]
     fn d_45_the_hub_process_is_not_dumpable() {
         if std::env::var_os(PROBE).is_some() {

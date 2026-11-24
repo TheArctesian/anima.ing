@@ -1,10 +1,6 @@
-//! The notifications GraphQL part: root `Query` and `Mutation` for notification channels (K1;
-//! API-003, NOT-002, NOT-003, SEC-005, LOG-005, LOG-007).
-//!
-//! `NotificationChannel` and the types below it live in the sub-modules. A mutation writes its
-//! change, one audit entry and one event in one transaction. No secret is ever returned,
-//! audited, recorded as an event or written to the log; the channel input refuses to quote
-//! what it could not read.
+//! K1; API-003, NOT-002, NOT-003. A mutation writes its change, one audit entry and one event
+//! in one transaction. No secret is returned, audited, recorded as an event or logged, and the
+//! channel input does not quote what it could not read (SEC-005, LOG-005, LOG-007).
 
 mod check;
 mod deliveries;

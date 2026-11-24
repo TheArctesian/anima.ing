@@ -1,6 +1,5 @@
-//! `GET /files/v1/attachments/{id}`: the plain bytes as a stream, with the stored media type,
-//! as an attachment. A file that starts as a JPEG is sent without its location metadata, and
-//! the stored piece does not change (FIL-003). The download writes one audit entry and no event.
+//! `GET /files/v1/attachments/{id}`: the plain bytes as an attachment. A JPEG is sent without its
+//! location metadata, and the stored piece does not change (FIL-003). One audit entry, no event.
 
 use std::{io, sync::Arc};
 
@@ -57,8 +56,7 @@ pub(super) async fn download(
     }
 }
 
-/// The attachment, its plain bytes and whether they are cleaned; the audit entry is written
-/// before the first byte goes.
+/// The audit entry is written before the first byte goes.
 async fn sent(
     files: &Files,
     (operator, client): (Operator, ClientAddr),
@@ -73,8 +71,7 @@ async fn sent(
         let sealed = pieces.get(&attachment.key_name, &attachment.hash).await?;
         Ok::<_, Error>(opened(sealed, key.clone(), attachment.hash.clone()))
     };
-    // The first pass only decides, before the first byte goes, whether the copy can be
-    // cleaned; the second pass is the copy.
+    // The first pass decides, before the first byte goes, whether the copy can be cleaned.
     let cleaned = cleanable(open().await?).await?;
     let plain = open().await?;
     let mut tx = files.db.begin().await?;
@@ -95,12 +92,7 @@ async fn sent(
     Ok((attachment, body, cleaned))
 }
 
-/// Whether the hub can remove the location metadata of `plain`: it starts as a JPEG and its
-/// segments up to the image data are whole. A file that cannot be cleaned is sent as it is
-/// (K-E4 Section 9). Reads no further than the image data.
-///
-/// # Errors
-/// `Damaged` when the piece does not open.
+/// A file that cannot be cleaned is sent as it is (K-E4 Section 9).
 async fn cleanable(mut plain: PlainStream) -> Result<bool, Error> {
     let mut cleaner = Cleaner::new();
     let mut first = true;
@@ -154,8 +146,8 @@ fn response(attachment: &Attachment, body: Body, cleaned: bool) -> Response {
         .into_response()
 }
 
-/// `attachment; filename*=UTF-8''<name>`, each byte outside the RFC 5987 attribute characters
-/// percent-encoded, so that no name can end the header or add one.
+/// Each byte outside the RFC 5987 attribute characters is percent-encoded, so no name can end the
+/// header or add one.
 fn disposition(name: &str) -> String {
     let mut encoded = String::with_capacity(name.len() * 3);
     for byte in name.bytes() {

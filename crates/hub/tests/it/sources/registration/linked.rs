@@ -20,7 +20,6 @@ use crate::{
     sources::{Kit, kit},
 };
 
-/// What `Source.connectPageUrl` of GitHub says on `hub`.
 async fn connect_page(hub: &crate::hub::Hub, token: Option<&str>) -> serde_json::Value {
     let answer = hub
         .post(token, "query { sources { key connectPageUrl } }", json!({}))
@@ -30,8 +29,6 @@ async fn connect_page(hub: &crate::hub::Hub, token: Option<&str>) -> serde_json:
     github.unwrap()["connectPageUrl"].clone()
 }
 
-/// The same hub in the link mode, as a hub of the pool or of this computer runs: with the
-/// public origin that `given` names, or with none.
 fn linked(kit: &Kit, given: Option<&str>) -> crate::hub::Hub {
     let mut env = std::collections::BTreeMap::from([(
         "ANIMA_LINK_SOCKET".to_owned(),

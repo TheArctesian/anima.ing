@@ -1,5 +1,4 @@
-// Test support: the hub's side of one session WebSocket, driven by hand under the real Guacamole client
-// (K4 §4, §5). Pass `FAKE_TUNNEL_SOCKET` as `WebSocket` to `openTunnel` or `startTunnel`. No vitest import here.
+// The hub's side of one session WebSocket under the real Guacamole client (K4 §4, §5): pass `FAKE_TUNNEL_SOCKET` as `WebSocket`. No vitest import here.
 import type { SocketConstructor } from '../state';
 
 type Listener = (event: { code: number; reason: string; wasClean: boolean }) => void;
@@ -9,10 +8,7 @@ export function codePoints(text: string): number {
   return [...text].length;
 }
 
-/**
- * One Guacamole instruction as the hub relays it: `<len>.<opcode>,<len>.<arg>,…;`, each length in code points
- * (K4 §4). A character outside the BMP counts once here but twice in a JavaScript string's `length`.
- */
+/** `<len>.<opcode>,<len>.<arg>,…;` with lengths in code points (K4 §4): a character outside the BMP counts once. */
 export function encodeInstruction(opcode: string, ...args: readonly (string | number)[]): string {
   return `${[opcode, ...args].map((element) => `${String(codePoints(String(element)))}.${String(element)}`).join(',')};`;
 }
@@ -39,7 +35,6 @@ export function decodeInstructions(message: string): string[][] {
   return instructions;
 }
 
-/** Base64 of UTF-8 text, as a `blob` carries it. */
 function base64(text: string): string {
   return btoa(String.fromCharCode(...new TextEncoder().encode(text)));
 }
@@ -49,14 +44,12 @@ export class FakeTunnelSocket {
   static readonly OPEN = 1;
   static readonly CLOSING = 2;
   static readonly CLOSED = 3;
-  /** Every socket made since the last `reset`, oldest first. */
   static made: FakeTunnelSocket[] = [];
 
   static reset(): void {
     FakeTunnelSocket.made = [];
   }
 
-  /** The latest socket; throws when none was made. */
   static latest(): FakeTunnelSocket {
     const socket = FakeTunnelSocket.made.at(-1);
     if (socket === undefined) throw new Error('no tunnel socket was made');
@@ -64,9 +57,7 @@ export class FakeTunnelSocket {
   }
 
   readyState = FakeTunnelSocket.CONNECTING;
-  /** Raw text messages the client sent. */
   readonly sent: string[] = [];
-  /** The code the client closed with, when it closed first. */
   closedByClient: number | undefined;
   onopen: ((event: unknown) => void) | null = null;
   onclose: Listener | null = null;
@@ -116,7 +107,6 @@ export class FakeTunnelSocket {
     this.onmessage?.({ data: message });
   }
 
-  /** The gateway sends one instruction. */
   instruction(opcode: string, ...args: readonly (string | number)[]): void {
     this.receive(encodeInstruction(opcode, ...args));
   }
@@ -138,7 +128,6 @@ export class FakeTunnelSocket {
     this.instruction('error', 'Aborted. See logs.', status);
   }
 
-  /** The gateway sends `disconnect`. */
   disconnect(): void {
     this.instruction('disconnect');
   }
@@ -157,5 +146,4 @@ export class FakeTunnelSocket {
   }
 }
 
-/** `FakeTunnelSocket` typed as the WebSocket constructor the tunnel takes. */
 export const FAKE_TUNNEL_SOCKET = FakeTunnelSocket as unknown as SocketConstructor;

@@ -1,11 +1,6 @@
-//! One named change to a READY repository (OD-E14; K-E1 Sections 13.2 and 13.6): the engine
-//! sends it once, the held answers it made old are dropped, and every change that was sent is
-//! recorded with what came of it before the caller hears the outcome.
-//!
-//! The send, the forgetting and the record run to the end in a task of their own: a client that
-//! goes away while GitHub works still leaves the record of the change GitHub made (as the VPN
-//! broker's changes do, LOG-005). No transaction is open while the change is on the network:
-//! the record begins after GitHub's answer. A change the engine did not send records nothing.
+//! One named change to a READY repository (OD-E14; K-E1 Sections 13.2 and 13.6).
+//! The send and the record run in a task of their own, so a client that goes away still leaves
+//! the record (LOG-005). No transaction is open while the change is on the network.
 
 use async_graphql::{Context, Result};
 use source_exchange::{Change, Receipt, Settled};

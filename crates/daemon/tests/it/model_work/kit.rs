@@ -1,5 +1,3 @@
-//! What the tests of model work share: an archive in memory, the folders, the node.
-
 use std::io::Write as _;
 use std::path::Path;
 use std::time::Instant;
@@ -13,11 +11,8 @@ use daemon_core::model_work::releases::{Release, SourceEntry, Sources};
 use daemon_core::wire::{WorkArchitecture, WorkOs};
 use uuid::Uuid;
 
-/// The scripted runtime. It reads `mode` beside it: `exit` ends at once, `any` listens on
-/// 0.0.0.0, else it listens on 127.0.0.1. It writes the names of its environment to `env`, and
-/// before it listens it starts a child that leaves the session and process group (`setsid`)
-/// and writes its process id to `child`. That child sleeps; in the mode `escape` it listens
-/// on 0.0.0.0 instead.
+/// Its `setsid` child writes its id to `child` at once, so a check that ends the tree early
+/// still leaves the id for the test.
 pub const FAKE_RUNTIME: &str = r#"#!/usr/bin/perl
 use strict;
 use IO::Socket::INET;
@@ -50,8 +45,7 @@ my $s = IO::Socket::INET->new(LocalAddr => $host, LocalPort => $port, Listen => 
 while (1) { my $c = $s->accept(); close($c) if $c; }
 "#;
 
-/// Whether a server can be contained here: on Linux the cgroup v2 of the daemon must be
-/// delegated to this user. A test that starts a server is skipped, with a message, when not.
+/// On Linux a server is contained only when the daemon's cgroup v2 is delegated to this user.
 #[cfg_attr(
     not(target_os = "linux"),
     expect(
@@ -68,7 +62,9 @@ pub fn contained() -> Option<std::fs::File> {
             anima_daemon::model::tree::linux::end_cgroup(&path);
             Some(lock)
         } else {
-            eprintln!("skipped: no delegated cgroup v2 here; HT-119 covers pop-os");
+            eprintln!(
+                "skipped: no cgroup v2 delegated by systemd here (run in `systemd-run --user --scope -p Delegate=yes`); HT-119 covers pop-os"
+            );
             None
         }
     }
@@ -103,28 +99,34 @@ pub fn containment_lock() -> std::fs::File {
 
 pub const PROGRAM: &str = "bin/llama-server";
 
-/// A `.tar.gz` of `entries`: (path, mode, bytes), or a link when the bytes are `None`.
-/// One entry of a test archive: its path, its mode, and its bytes (`None` for a link).
+/// Path, mode and bytes; `None` bytes make a link to `/etc/passwd`.
 pub type Entry<'a> = (&'a str, u32, Option<&'a [u8]>);
 
 pub fn archive(entries: &[Entry<'_>]) -> std::fs::File {
+    linked_archive(&[], entries)
+}
+
+pub fn linked_archive(links: &[(&str, &str)], entries: &[Entry<'_>]) -> std::fs::File {
+    let links = links.iter().map(|(path, to)| (*path, 0o777, None, *to));
+    let entries = entries
+        .iter()
+        .map(|(path, mode, bytes)| (*path, *mode, *bytes, "/etc/passwd"));
     let mut file = tempfile::tempfile().expect("a file");
     {
         let gz = flate2::write::GzEncoder::new(&mut file, flate2::Compression::fast());
         let mut tar = tar::Builder::new(gz);
-        for (path, mode, bytes) in entries {
-            // The name is written as raw bytes, so a test can make a name that the builder
-            // of the `tar` crate would refuse.
+        for (path, mode, bytes, to) in links.chain(entries) {
+            // Raw bytes let a test make a name that the `tar` crate's builder would refuse.
             let mut header = tar::Header::new_old();
             header.as_old_mut().name[..path.len()].copy_from_slice(path.as_bytes());
-            header.set_mode(*mode);
+            header.set_mode(mode);
             let data = bytes.unwrap_or_default();
             header.set_size(data.len() as u64);
             if bytes.is_some() {
                 header.set_entry_type(tar::EntryType::Regular);
             } else {
                 header.set_entry_type(tar::EntryType::Symlink);
-                header.set_link_name("/etc/passwd").expect("a link name");
+                header.as_old_mut().linkname[..to.len()].copy_from_slice(to.as_bytes());
             }
             header.set_cksum();
             tar.append(&header, data).expect("an entry");
@@ -148,7 +150,6 @@ pub fn folders(root: &Path) -> Folders {
     }
 }
 
-/// What a test unpack writes, with the reserve `reserve`.
 pub fn target(folders: &Folders, reserve: u64) -> anima_daemon::model::install::Target {
     anima_daemon::model::install::Target {
         folders: folders.clone(),
@@ -191,8 +192,7 @@ pub fn entry() -> SourceEntry {
     }
 }
 
-/// A node whose servers take a port of `ports`; each test that starts a server has its own
-/// range, as the tests run in parallel processes.
+/// Each test that starts a server has its own port range: the tests run in parallel processes.
 pub fn node(root: &Path) -> Node {
     node_on(root, 41_000..=41_999)
 }

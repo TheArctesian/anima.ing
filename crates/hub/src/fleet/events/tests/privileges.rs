@@ -1,6 +1,4 @@
-//! The runtime role may append to the logs but never change or remove an entry, and gets its
-//! rights on everything else from migration 0001's default privileges (K2 "Roles", R-016,
-//! LOG-006).
+//! K2 "Roles" (R-016, LOG-006): the runtime role appends to the logs and never changes or removes an entry.
 
 use serde_json::json;
 use sqlx::{PgConnection, PgPool};
@@ -9,8 +7,6 @@ use uuid::Uuid;
 use super::{day, device_event, new_audit};
 use crate::fleet::events::{Bus, audit, record};
 
-/// Statements the runtime role must not be able to run against the logs or their partitions.
-/// The partitions are those `write_both` creates.
 const TAMPERING: [&str; 17] = [
     "update events.audit_chain set hash = previous",
     "delete from events.audit_chain",
@@ -31,8 +27,7 @@ const TAMPERING: [&str; 17] = [
     "drop table events.event_log_20300505",
 ];
 
-/// Temporary objects that shadow every type name the partition function could resolve through
-/// `pg_temp`; each domain's CHECK records that it ran as the function owner.
+/// Every type name the partition function could resolve through `pg_temp`.
 const SHADOWED_TYPES: [&str; 7] = [
     "date",
     "text",
@@ -47,7 +42,6 @@ pub(super) async fn execute(conn: &mut PgConnection, sql: &str) {
     sqlx::query(sql).execute(conn).await.unwrap();
 }
 
-/// Runs `sql` and returns its SQLSTATE, or `None` if it succeeded.
 pub(super) async fn refusal(conn: &mut PgConnection, sql: &str) -> Option<String> {
     let error = sqlx::query(sql).execute(conn).await.err()?;
     let code = error
@@ -56,8 +50,7 @@ pub(super) async fn refusal(conn: &mut PgConnection, sql: &str) -> Option<String
     Some(code.map_or_else(|| error.to_string(), Into::into))
 }
 
-/// Runs `body` on `conn` as `anima_runtime`. `conn` must be detached from the pool (R-019), so
-/// the role dies with the connection.
+/// `conn` must be detached from the pool (R-019), so the role dies with the connection.
 pub(super) async fn as_runtime<T>(
     conn: &mut PgConnection,
     body: impl AsyncFnOnce(&mut PgConnection) -> T,
@@ -66,7 +59,7 @@ pub(super) async fn as_runtime<T>(
     body(conn).await
 }
 
-/// Records one event and one audit entry on a day without partitions.
+/// A day without partitions, so the write creates the 2030-05-05 ones.
 async fn write_both(conn: &mut PgConnection) -> Result<(), String> {
     let at = day(2030, 5, 5);
     record(conn, &Bus::new(1), at, device_event("as hub"))
@@ -128,8 +121,7 @@ async fn log_006_runtime_role_cannot_run_code_as_the_partition_owner_through_pg_
     assert_eq!(injected, Vec::<String>::new(), "code ran as the owner");
 }
 
-/// The bodies are also schema-qualified, so the attack above needs both defences removed;
-/// this pins the search path on its own.
+/// Schema-qualified bodies also stop the `pg_temp` attack, so this pins the search path on its own.
 #[sqlx::test(migrations = "./migrations")]
 async fn log_006_partition_functions_run_as_owner_with_pg_temp_searched_last(pool: PgPool) {
     let functions: Vec<(String, bool, Vec<String>)> = sqlx::query_as(

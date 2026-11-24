@@ -1,6 +1,4 @@
-//! `anima workflow rerun` and `anima workflow cancel`: run a workflow run again, or only its
-//! failed jobs, or cancel it, through the hub (PRJ-029, PRJ-034). Each reads the run first,
-//! shows its commit in the question and sends that commit, so a run that changed is refused.
+//! `anima workflow rerun` and `cancel` (PRJ-029, PRJ-034): the confirmed commit is sent, so a changed run is refused.
 
 use serde_json::Value;
 

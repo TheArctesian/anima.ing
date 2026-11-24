@@ -1,7 +1,4 @@
-//! `anima mcp`: an MCP server on standard input and output for coding agents (MCP-001..016).
-//! It uses the context and token of every other command, checks the token once with `me`,
-//! then lists the tools that the saved permissions, the flags and the token allow (MCP-002,
-//! MCP-003, MCP-015).
+//! MCP-001 to MCP-016.
 
 pub mod approval;
 pub mod arguments;
@@ -22,6 +19,8 @@ use crate::auth::documents::{Me, me};
 use crate::failure::Failure;
 use crate::hub::{Token, TokenKind};
 use crate::invocation::Invocation;
+use crate::shortening::commands::ShorteningCommand;
+use crate::shortening::{Shortening, remove_old_of_each_hub};
 use catalogue::ToolSet;
 use install::InstallCommand;
 use permission_commands::{PermissionsCommand, saved};
@@ -46,6 +45,9 @@ enum McpCommand {
     /// List the coding agents, or put `anima mcp` into them or take it out (MCP-027, MCP-028).
     #[command(flatten)]
     Agents(InstallCommand),
+    /// Shorten long answers, measure the saving, or read the original of one (SHA-015 to SHA-018).
+    #[command(subcommand)]
+    Shortening(ShorteningCommand),
 }
 
 /// The flags at start, for this run only. They only narrow the saved states, except that
@@ -61,6 +63,9 @@ struct StartFlags {
     /// Turn every change tool off, whatever is saved.
     #[arg(long)]
     read_only: bool,
+    /// Give each answer whole in this run, whatever `anima mcp shortening` saved (SHA-017).
+    #[arg(long)]
+    no_shortening: bool,
 }
 
 impl McpArgs {
@@ -74,6 +79,7 @@ impl McpArgs {
             None => start(self.start, invocation).await,
             Some(McpCommand::Permissions(command)) => command.run(invocation),
             Some(McpCommand::Agents(command)) => command.run(invocation),
+            Some(McpCommand::Shortening(command)) => command.run(invocation),
         }
     }
 }
@@ -81,10 +87,11 @@ impl McpArgs {
 /// Checks the token with `me` before any protocol output, then serves.
 async fn start(flags: StartFlags, invocation: &Invocation) -> Result<(), Failure> {
     let permissions = saved(invocation)?;
-    // Every request of the server declares an AI agent, the check below too (LOG-016).
+    // Every request declares an AI agent, the `me` check too (LOG-016).
     let hub = invocation.hub()?.declaring_agent();
     hub.run::<Me>(me::Variables).await?;
     let token = hub.token().map_or(TokenKind::Login, Token::kind);
+    let no_shortening = flags.no_shortening;
     let flags = Flags {
         toolsets: flags.toolsets,
         allow_write: flags.allow_write,
@@ -93,7 +100,11 @@ async fn start(flags: StartFlags, invocation: &Invocation) -> Result<(), Failure
     let rows = select(tools::catalogue(), Some(token), &permissions, &flags);
     let picture = statement(&rows);
     let origin = hub.origin().as_text();
-    let server = Server::new(hub, token, rows);
+    let shortening = Shortening::from_setting(invocation.config_dir()?, &origin, no_shortening);
+    if shortening.store().is_some() {
+        remove_old_of_each_hub(invocation.config_dir()?, std::time::SystemTime::now());
+    }
+    let server = Server::new(hub, token, rows).with_shortening(shortening);
     invocation.output.note(&format!(
         "anima mcp: {} tools for {origin} on standard input and output. {picture}",
         server.tool_count(),

@@ -6,11 +6,8 @@ import type { WebCertificatePin } from './api';
 export type WebMode = 'EMBEDDED' | 'SYSTEM_BROWSER';
 
 /**
- * What the tab body shows. `untrusted` is the first-visit prompt (WEB-008); `mismatch` is the stop of SEC-007, and
- * accepting there needs a second, explicit step (`confirming`); `failed` and `down` are error pages with Reload
- * (WEB-010); `refused` has no Reload, since the interface itself cannot be opened. `reading` and `browser` belong
- * to the system-browser mode. A `reason` is a short code, never text from the hub or a page (LOG-007). `since` is
- * when the page began to load, in the milliseconds of the `now` the caller passes.
+ * `mismatch` is the stop of SEC-007, and accepting there needs a second step (`confirming`) (WEB-008, WEB-010).
+ * A `reason` is a short code, never text from the hub or a page (LOG-007).
  */
 export type WebStep =
   | { readonly step: 'loading'; readonly since: number }
@@ -24,7 +21,6 @@ export type WebStep =
   | { readonly step: 'reading' }
   | { readonly step: 'browser' };
 
-/** One web tab: its mode and the pin it holds, which an accept replaces, and the step it is at. */
 export interface WebTab {
   readonly mode: WebMode;
   readonly pin: Fingerprint | null;
@@ -45,10 +41,7 @@ export type WebTabEvent =
   | { readonly event: 'accept' }
   | { readonly event: 'accepted'; readonly result: HubResult<WebCertificatePin> };
 
-/**
- * How long a page may load before the tab shows the error page. The web view reports no load failure for a device
- * that does not answer (T3: wry has no hook for it), only a `LOADING` that never ends.
- */
+/** The web view reports no load failure for a device that does not answer (T3: wry has no hook), only an endless `LOADING`. */
 export const LOAD_TIMEOUT_MS = 30_000;
 
 /** Fixed texts; the hub's and the shell's own messages are not shown (R-035, LOG-007). */
@@ -69,10 +62,8 @@ export function modeFor(url: string, pinning: boolean): WebMode | null {
   return null;
 }
 
-/** What a tab starts as. */
 export interface WebTabStart {
   readonly url: string;
-  /** The hub's pin for the interface, as K1 sends it. */
   readonly pinned: string | null;
   readonly pinning: boolean;
   readonly down: boolean;
@@ -84,7 +75,6 @@ function entry(mode: WebMode, pin: Fingerprint | null, now: number): WebStep {
   return pin === null ? { step: 'reading' } : { step: 'browser' };
 }
 
-/** The tab for an interface at `url`; a URL that is not `http` or `https`, or an unreadable pin, opens nothing. */
 export function startTab({ url, pinned, pinning, down, now }: WebTabStart): WebTab {
   const chosen = modeFor(url, pinning);
   const mode = chosen ?? 'SYSTEM_BROWSER';
@@ -110,7 +100,6 @@ function heard(tab: WebTab, event: WebViewEvent, now: number): WebStep | undefin
   if (tab.mode !== 'EMBEDDED' || (current.step !== 'loading' && current.step !== 'loaded')) return undefined;
   switch (event.kind) {
     case 'LOADING':
-      // A new navigation starts its own wait; the same one goes on waiting.
       return current.step === 'loading' ? undefined : { step: 'loading', since: now };
     case 'LOADED':
       return { step: 'loaded', url: event.url };
@@ -125,7 +114,6 @@ function acceptProblem(result: HubResult<WebCertificatePin>): string {
   return !result.ok && result.error.code === 'unreachable' ? PROBLEM.unreachable : PROBLEM.accept;
 }
 
-/** The tab after the hub's answer to an accept of `presented`. */
 function accepted(tab: WebTab, presented: Fingerprint, result: HubResult<WebCertificatePin>, now: number): WebTab {
   // The hub answers with the pin it now holds; anything but the fingerprint shown is not this accept.
   if (result.ok && fingerprintFrom(result.value.pinnedFingerprintSha256) === presented) {
@@ -143,14 +131,12 @@ function accepting(current: WebStep): WebStep | undefined {
 
 type StepEvent = Exclude<WebTabEvent, { event: 'accepted' }>;
 
-/** The step after a confirm, a back or an accept: the operator's way through a prompt. */
 function prompted(current: WebStep, event: Extract<StepEvent, { event: 'confirm' | 'back' | 'accept' }>): WebStep | undefined {
   if (event.event === 'accept') return accepting(current);
   if (current.step !== 'mismatch' || current.confirming === (event.event === 'confirm')) return undefined;
   return { ...current, confirming: event.event === 'confirm' };
 }
 
-/** The step after a failure, the device going Down, or a reload; a stop or a refusal stays. */
 function interrupted(tab: WebTab, event: Extract<StepEvent, { event: 'failed' | 'down' | 'reload' | 'tick' }>, now: number): WebStep | undefined {
   const { current } = tab;
   const { step } = current;
@@ -187,11 +173,7 @@ function stepFor(tab: WebTab, event: StepEvent, now: number): WebStep | undefine
   }
 }
 
-/**
- * The tab `event` leads to at `now` (milliseconds), or undefined when it does not apply. Answers apply only in the
- * step that asked for them, so a late answer or a second click does nothing; the pin changes only on the hub's
- * accept.
- */
+/** Answers apply only in the step that asked for them; the pin changes only on the hub's accept. */
 export function transition(tab: WebTab, event: WebTabEvent, now: number): WebTab | undefined {
   if (event.event === 'accepted') return tab.current.step === 'accepting' ? accepted(tab, tab.current.presented, event.result, now) : undefined;
   const current = stepFor(tab, event, now);
@@ -203,10 +185,7 @@ export function viewShows(current: WebStep): boolean {
   return current.step === 'loading' || current.step === 'loaded';
 }
 
-/**
- * The TLS status in the toolbar (WEB-005): no TLS; the pin on its own origin; the system's trust, claimed only for
- * a page that loaded; a certificate shown for a decision or changed; or not known yet (a page loading or not shown).
- */
+/** The TLS status in the toolbar (WEB-005); the system's trust is claimed only for a page that loaded. */
 export type TlsStatus =
   | { readonly tls: 'plain' | 'trusted' | 'untrusted' | 'changed' | 'unknown' }
   | { readonly tls: 'pinned'; readonly pin: Fingerprint };
@@ -215,7 +194,7 @@ function onOrigin(url: string, shown: string): boolean {
   return URL.canParse(url) && URL.canParse(shown) && new URL(url).origin === new URL(shown).origin;
 }
 
-/** The TLS status of `shown`, for an interface at `url`, at `current`; the pin counts only on its origin (D-4). */
+/** The pin counts only on its own origin (D-4). */
 export function tlsStatus(url: string, shown: string, pin: Fingerprint | null, current: WebStep): TlsStatus {
   if (schemeOf(shown) !== 'https:') return { tls: 'plain' };
   if (current.step === 'mismatch') return { tls: 'changed' };
@@ -224,10 +203,7 @@ export function tlsStatus(url: string, shown: string, pin: Fingerprint | null, c
   return current.step === 'loaded' ? { tls: 'trusted' } : { tls: 'unknown' };
 }
 
-/**
- * Whether opening `url` in the system browser needs the certificate read and compared first: an `https` URL on
- * the pinned origin. A different fingerprint stops the open (WEB-008).
- */
+/** An `https` URL on the pinned origin is compared first; a different fingerprint stops the open (WEB-008). */
 export function checksBeforeBrowser(interfaceUrl: string, url: string, pin: Fingerprint | null): boolean {
   return pin !== null && schemeOf(url) === 'https:' && onOrigin(interfaceUrl, url);
 }
@@ -245,10 +221,7 @@ export interface WebTabTarget {
   readonly pinned: string | null;
 }
 
-/**
- * What a change of the interface means for a running tab (H-4, WEB-008): nothing; `adopt`, when the hub now holds the
- * pin this tab accepted itself; or `restart`, when the URL changed (the hub dropped the pin) or another pin came.
- */
+/** `adopt` when the hub now holds the pin this tab accepted itself; else a changed URL or pin restarts (H-4, WEB-008). */
 export function changeOf(target: WebTabTarget, url: string, pinned: string | null, held: Fingerprint | null): 'same' | 'adopt' | 'restart' {
   if (url !== target.url) return 'restart';
   if (pinned === target.pinned) return 'same';

@@ -1,19 +1,18 @@
-/**
- * The frames of the local socket of the thread runner (TH14, THR-128), as the desktop shell passes them: the threads that
- * the daemon of this computer runs, their updates, and the calls that drive them. Each frame crosses a process
- * boundary, so each field is checked; a frame that does not read is left out.
- */
+/** Frames of the thread runner's local socket (TH14, THR-128); each crosses a process boundary, so each field is checked. */
 
-import { filesFrom, type FoundFile } from './files';
+import { attachedFrom, promptFilesFrom, type AttachAction, type Attached, type PromptFiles } from './attachments';
+import { usageFrom, workspaceFrom, type RunUsage, type RunWorkspace } from './details';
+import { folderOutcomeFrom, type FolderOutcome } from './files';
+import { modelListsFrom, type ModelLists } from './models';
 import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
 import type { Program } from '../thread';
+import { lastTurnFrom, queuedFrom, type LastTurn, type QueuedPrompt } from './queue';
 
 export type RunState = 'starting' | 'working' | 'needs_you' | 'idle' | 'stopped' | 'unknown';
 export type Mode = 'full_access' | 'accept_edits' | 'ask' | 'plan';
-export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra';
 export type RequestKind = 'command' | 'file_change' | 'tool' | 'question';
 
-/** A thread that the runner started. */
 export interface RunRow {
   readonly id: string;
   readonly program: Program;
@@ -29,6 +28,13 @@ export interface RunRow {
   readonly ended: string | null;
   /** The runner's IDs of the requests that wait for an answer. */
   readonly open: readonly string[];
+  /** The prompts that wait for the turn to end, oldest first (TH109). */
+  readonly queued?: readonly QueuedPrompt[];
+  readonly lastTurn?: LastTurn | null;
+  readonly effort?: Effort | null;
+  /** Where the thread works, and the use of tokens that the program last said (TH112). */
+  readonly workspace?: RunWorkspace | null;
+  readonly usage?: RunUsage | null;
 }
 
 export interface Question {
@@ -63,7 +69,8 @@ export type Change =
   | { readonly change: 'said'; readonly event: Said }
   | { readonly change: 'asked'; readonly request: string; readonly ask: Ask }
   | { readonly change: 'closed'; readonly request: string; readonly why: string }
-  | { readonly change: 'prompt'; readonly text: string; readonly source: string }
+  /** `images` and `files`: what went with the prompt (TH111). */
+  | ({ readonly change: 'prompt'; readonly text: string; readonly source: string } & PromptFiles)
   | { readonly change: 'state'; readonly state: RunState; readonly row: RunRow };
 
 export interface Update {
@@ -72,19 +79,7 @@ export interface Update {
   readonly change: Change;
 }
 
-export type Refusal =
-  | 'unknown_thread'
-  | 'folder_not_permitted'
-  | 'program_not_found'
-  | 'program_does_not_answer'
-  | 'bad_value'
-  | 'request_gone'
-  | 'answer_does_not_fit'
-  | 'not_running'
-  | 'holder'
-  | 'from_an_agent'
-  | 'running'
-  | 'over_limit';
+export type Refusal = (typeof REFUSALS)[number];
 
 export interface Limits {
   readonly depth: number;
@@ -99,12 +94,12 @@ export type Outcome =
   | { readonly outcome: 'threads'; readonly threads: readonly RunRow[]; readonly holder?: string }
   | { readonly outcome: 'limits'; readonly limits: Limits }
   | { readonly outcome: 'stopped'; readonly allEnded: boolean }
-  /** How the person lists each thread that has a listing (TH46). */
   | { readonly outcome: 'listings'; readonly listings: readonly Listing[] }
-  /** What the project files of a folder make the program do with no question (THR-046); empty when nothing. */
-  | { readonly outcome: 'folder'; readonly notice: readonly string[] }
-  /** The files and folders of the folder of a thread, the best match first; `more` when more matched (TH108). */
-  | { readonly outcome: 'files'; readonly paths: readonly FoundFile[]; readonly more: boolean }
+  /** A folder's notice (THR-046), the files of a thread's folder (TH108), or the folders in a folder (TH113). */
+  | FolderOutcome
+  /** The models that each program named at the start of its newest thread (TH104). */
+  | { readonly outcome: 'models'; readonly models: ModelLists }
+  | Attached
   /**
    * `said`: the words of the runner for a refusal that names a program and its path; `answered`: the other copies of a
    * program that did not answer, which did (TH97).
@@ -117,7 +112,6 @@ export type Answer =
   | { readonly answer: 'deny'; readonly message: string }
   | { readonly answer: 'choose'; readonly answers: readonly (readonly [string, string])[] };
 
-/** A call to the runner, in the form of its socket. */
 export type Action =
   | { readonly call: 'list' }
   | {
@@ -131,28 +125,35 @@ export type Action =
       /** The copy of the program to run; only a copy that the runner finds is taken (TH97). */
       readonly program_path?: string;
     }
-  | { readonly call: 'send'; readonly thread: string; readonly text: string }
+  /** `attachments`: the IDs of files that the person attached for this prompt (TH111). */
+  | { readonly call: 'send'; readonly thread: string; readonly text: string; readonly attachments?: readonly string[] }
+  | AttachAction
   | { readonly call: 'answer'; readonly thread: string; readonly request: string; readonly answer: Answer }
   | { readonly call: 'interrupt'; readonly thread: string }
   | { readonly call: 'stop'; readonly thread: string }
   | { readonly call: 'raise_limit' }
   | { readonly call: 'folder'; readonly folder: string }
+  /** The folders in an absolute folder, to choose a project by browsing (TH113); hidden ones only with `hidden`. */
+  | { readonly call: 'folders'; readonly folder: string; readonly hidden?: boolean }
   | { readonly call: 'listings' }
   | { readonly call: 'change_listing'; readonly thread: string; readonly change: ListingChange }
   /** The `@` list of the composer (TH108): at most `most` paths that match `query`; `most` is 1 to 200. */
-  | { readonly call: 'files'; readonly thread: string; readonly query: string; readonly most: number };
-
-/**
- * The sentence of the operator at the soft limit (THR-114), the same words as `anima agents start` and the runner.
- * Kept word for word.
- */
-export const OVER_LIMIT = 'You are over the recommended guidance and at risk of cyberpsychosis from running this many sessions. Do you want to raise the limit?';
+  | { readonly call: 'files'; readonly thread: string; readonly query: string; readonly most: number }
+  | { readonly call: 'models' }
+  /** The queue of a thread (TH109): only the person changes it. */
+  | { readonly call: 'queue'; readonly thread: string; readonly text: string }
+  | { readonly call: 'requeue'; readonly thread: string; readonly queued: string; readonly text: string }
+  | { readonly call: 'unqueue'; readonly thread: string; readonly queued: string }
+  | { readonly call: 'send_queued'; readonly thread: string; readonly queued: string }
+  /** The model, the effort or the mode of a thread from its next turn (TH110): only the person. */
+  | { readonly call: 'set'; readonly thread: string; readonly model?: string; readonly effort?: Effort; readonly mode?: Mode };
 
 const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask', 'plan'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
-const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit'];
+const REFUSALS = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full', 'cannot_change', 'too_large', 'cannot_attach'] as const;
+const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'];
 
 type Fields = Record<string, unknown>;
 
@@ -172,7 +173,6 @@ function strings(value: unknown): readonly string[] | null {
   return Array.isArray(value) && value.every((each) => typeof each === 'string') ? (value as string[]) : null;
 }
 
-/** A row of the runner, or `null` when it does not read. */
 export function runRowFrom(value: unknown): RunRow | null {
   if (!isRecord(value)) return null;
   const id = str(value.id);
@@ -185,7 +185,7 @@ export function runRowFrom(value: unknown): RunRow | null {
   const open = strings(value.open);
   if (id === null || program === null || folder === null || mode === null || state === null || title === null || open === null) return null;
   if (started === null || Number.isNaN(started.getTime())) return null;
-  return { id, program, folder, mode, model: str(value.model), state, session: str(value.session), title, started, ended: str(value.ended), open };
+  return { id, program, folder, mode, model: str(value.model), state, session: str(value.session), title, started, ended: str(value.ended), open, queued: queuedFrom(value.queued), lastTurn: lastTurnFrom(value.last_turn), effort: oneOf<Effort>(value.effort, EFFORTS), workspace: workspaceFrom(value.workspace), usage: usageFrom(value.usage) };
 }
 
 function questionFrom(value: unknown): Question | null {
@@ -264,7 +264,7 @@ function changeFrom(value: Fields): Change | null {
     case 'prompt': {
       const text = str(value.text);
       const source = str(value.source);
-      return text === null || source === null ? null : { change: 'prompt', text, source };
+      return text === null || source === null ? null : { change: 'prompt', text, source, ...promptFilesFrom(value) };
     }
     case 'state': {
       const state = oneOf<RunState>(value.state, STATES);
@@ -276,7 +276,6 @@ function changeFrom(value: Fields): Change | null {
   }
 }
 
-/** One update of the runner, or `null` for a frame that does not read or a change the page does not draw. */
 export function updateFrom(value: unknown): Update | null {
   if (!isRecord(value)) return null;
   const thread = str(value.thread);
@@ -306,16 +305,15 @@ function refusedFrom(value: unknown): Outcome | null {
   return { outcome: 'refused', why, ...(said === null ? {} : { said }), ...(answered.length === 0 ? {} : { answered }) };
 }
 
-/** The notice of a folder (THR-046), or the files of the folder of a thread (TH108). */
-function folderFrom(value: Fields): Outcome | null {
-  if (value.outcome === 'files') {
-    const paths = filesFrom(value.paths);
-    return paths === null ? null : { outcome: 'files', paths, more: value.more === true };
+function listsFrom(value: Fields): Outcome | null {
+  if (value.outcome === 'models') {
+    const models = modelListsFrom(value.models);
+    return models === null ? null : { outcome: 'models', models };
   }
-  return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
+  const listings = listingsFrom(value.listings);
+  return listings === null ? null : { outcome: 'listings', listings };
 }
 
-/** The result of a call, or `null` when it does not read. */
 export function outcomeFrom(value: unknown): Outcome | null {
   if (!isRecord(value)) return null;
   switch (value.outcome) {
@@ -330,31 +328,17 @@ export function outcomeFrom(value: unknown): Outcome | null {
     case 'stopped':
       return { outcome: 'stopped', allEnded: value.all_ended === true };
     case 'folder':
+    case 'folders':
     case 'files':
-      return folderFrom(value);
-    case 'listings': {
-      const listings = listingsFrom(value.listings);
-      return listings === null ? null : { outcome: 'listings', listings };
-    }
+      return folderOutcomeFrom(value);
+    case 'listings':
+    case 'models':
+      return listsFrom(value);
+    case 'attached':
+      return attachedFrom(value);
     case 'refused':
       return refusedFrom(value.why);
     default:
       return null;
   }
 }
-
-/** A refusal of the runner in words for the person; the same words as `anima agents`. */
-export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
-  unknown_thread: 'No thread of this computer has that ID.',
-  folder_not_permitted: 'That folder is not an absolute folder of this computer.',
-  program_not_found: 'That program is not on the PATH of your login, or that path is not a copy the runner finds.',
-  program_does_not_answer: 'The program did not answer.',
-  bad_value: "A value is not permitted (a model name takes letters, digits, '.', '_', '-', '[' and ']').",
-  request_gone: 'That request is answered, closed, or its program ended.',
-  answer_does_not_fit: 'That answer does not fit the request.',
-  not_running: 'The program of that thread is not running.',
-  holder: 'The holder of the programs did not take the command.',
-  from_an_agent: 'Only the person can answer a request, raise the limit, start a thread, change the list of threads or list the files of a thread: this call came from a process of an agent.',
-  running: 'The program of that thread still runs: stop it first, then remove it from the list.',
-  over_limit: OVER_LIMIT,
-};

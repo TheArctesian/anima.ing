@@ -23,7 +23,7 @@ export interface StatusRow {
   to: string;
 }
 
-/** What the operator typed. Number fields stay text so that "abc" in the port box is reportable. */
+/** Number fields stay text so that "abc" in the port box is reportable. */
 export interface CheckFormValues extends ProbeValues {
   type: CheckType;
   name: string;
@@ -57,7 +57,7 @@ export interface CheckFormValues extends ProbeValues {
     timeoutMs: string;
   };
   dns: { name: string; recordType: DnsRecordType; resolver: string; expected: string };
-  /** Shown once the push check is saved; the token is part of the path. */
+  /** The token is part of the path. */
   push: { path: string };
   group: { childIds: string[] };
   domainExpiry: DomainExpiryValues;
@@ -171,11 +171,10 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields, daysLeft
     case 'DomainExpiryConfig':
       return { ...values, domainExpiry: withDomainExpiryConfig(config, daysLeft) };
     default:
-      return withTransportConfig(values, config); // Typed: the remaining members are ICMP, TCP and TLS.
+      return withTransportConfig(values, config);
   }
 }
 
-/** The four settings as the form holds them. */
 export function defaultsText(defaults: CheckDefaults): Pick<CheckFormValues, keyof CheckDefaults> {
   return {
     intervalSeconds: String(defaults.intervalSeconds),
@@ -185,11 +184,7 @@ export function defaultsText(defaults: CheckDefaults): Pick<CheckFormValues, key
   };
 }
 
-/**
- * CHK-009: the form values for a new check of `type` with the K1 defaults, or for editing `check`.
- * An existing check keeps its own type; `type` is then ignored. No secret is ever filled in.
- * The hub's default check settings (D-26) are applied by the form, when they arrive (`untouchedSettings`).
- */
+/** CHK-009: an existing check keeps its own type and no secret is filled in; the form applies the hub defaults (D-26). */
 export function checkValues(check: CheckFields | null, type: CheckType): CheckFormValues {
   if (check === null) return blank(type);
   return withConfig(

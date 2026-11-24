@@ -21,13 +21,11 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-/** Let the fake hub's answers arrive, then flush Svelte's updates. */
 async function settle() {
   for (let turn = 0; turn < 5; turn += 1) await new Promise((resolve) => setTimeout(resolve, 0));
   flushSync();
 }
 
-/** The prompt over a fake hub; `refuseCredential` makes the hub refuse the save, `setCredential` replaces it. */
 function showPrompt(protocol: RemoteProtocol, required: string[], hub: { refuseCredential?: boolean } & Partial<SessionsApi> = {}) {
   const { refuseCredential = false, ...calls } = hub;
   const fake = fakeHub({ refuseCredential });
@@ -66,7 +64,6 @@ function type(name: string, value: string) {
   flushSync();
 }
 
-/** A save that answers only when the test calls `answer`, so the prompt can be seen while it waits. */
 function heldSave() {
   const held: { calls: number; answer: (stored: boolean) => void } = { calls: 0, answer: () => undefined };
   const setCredential: SessionsApi['setCredential'] = () => {

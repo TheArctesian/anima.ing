@@ -5,7 +5,7 @@ export interface BuildsPanelPorts {
   /** With the operator's session (BLD-025). */
   readonly api: Pick<BuildsApi, 'builders' | 'revoke'>;
   readonly shell: Pick<BuilderShell, 'checkTools'>;
-  /** Called after builder `id` was revoked, so this computer forgets its token when the ID is its own. */
+  /** After a revoke, this computer forgets its token when `id` is its own. */
   readonly revoked: (id: string) => Promise<void>;
 }
 
@@ -14,7 +14,6 @@ export class BuildsPanel {
   tools = $state<ToolCheck | null>(null);
   toolsFailed = $state(false);
   builders = $state<readonly Builder[]>([]);
-  /** Whether the list of builders has been read once, so that an empty list is not shown before it is known. */
   buildersLoaded = $state(false);
   listProblem = $state<string | null>(null);
   revoking = $state<string | null>(null);
@@ -25,7 +24,7 @@ export class BuildsPanel {
     this.#ports = ports;
   }
 
-  /** Reads the tools and the builders; each part fails on its own. */
+  /** Each part fails on its own. */
   async load(): Promise<void> {
     await Promise.all([this.#loadTools(), this.loadBuilders()]);
   }

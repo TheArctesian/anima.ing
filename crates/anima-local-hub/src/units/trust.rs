@@ -1,5 +1,4 @@
-//! Whether somebody else could swap what the unit runs at each login: the unit file, or the
-//! program it names.
+//! Whether somebody else could swap the unit file or the program it names.
 
 #[cfg(unix)]
 use std::fs;
@@ -13,11 +12,8 @@ const STICKY: u32 = 0o1000;
 #[cfg(unix)]
 const GROUP_OR_OTHERS_WRITE: u32 = 0o022;
 
-/// The first folder, from `folder` up to `/`, that a user other than `uid` and root can
-/// rename an entry of. `None` when there is none.
-///
-/// A folder with the sticky bit passes: there a user can rename only an entry of their own.
-/// Access control lists are not read (the agent reads them on Linux only, MET-019).
+/// The first folder, up to `/`, whose entries a user other than `uid` and root can rename.
+/// Access control lists are not read (MET-019).
 ///
 /// # Errors
 /// When `folder` or a folder above it cannot be looked at.
@@ -42,28 +38,38 @@ mod tests {
     #[cfg(unix)]
     use std::fs;
     #[cfg(unix)]
-    use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+    use std::path::Path;
 
     use super::open_to_others;
+    use crate::programs::tests::private_folder;
 
     fn me() -> u32 {
         nix::unistd::Uid::effective().as_raw()
     }
 
+    fn make_private(folder: &Path) {
+        fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(folder)
+            .unwrap();
+    }
+
     #[test]
     fn a_folder_that_only_this_user_and_root_can_change_up_to_the_top_passes() {
-        let folder = tempfile::tempdir().unwrap();
+        let folder = private_folder();
         let deep = folder.path().join("a/b");
-        fs::create_dir_all(&deep).unwrap();
+        make_private(&deep);
 
         assert_eq!(open_to_others(&deep, me()).unwrap(), None);
     }
 
     #[test]
     fn a_folder_above_that_others_can_write_is_found() {
-        let folder = tempfile::tempdir().unwrap();
+        let folder = private_folder();
         let (open, deep) = (folder.path().join("a"), folder.path().join("a/b"));
-        fs::create_dir_all(&deep).unwrap();
+        make_private(&deep);
         for mode in [0o777, 0o775, 0o757] {
             fs::set_permissions(&open, fs::Permissions::from_mode(mode)).unwrap();
 
@@ -75,9 +81,9 @@ mod tests {
 
     #[test]
     fn a_shared_folder_with_the_sticky_bit_passes() {
-        let folder = tempfile::tempdir().unwrap();
+        let folder = private_folder();
         let (shared, deep) = (folder.path().join("a"), folder.path().join("a/b"));
-        fs::create_dir_all(&deep).unwrap();
+        make_private(&deep);
         fs::set_permissions(&shared, fs::Permissions::from_mode(0o1777)).unwrap();
 
         assert_eq!(open_to_others(&deep, me()).unwrap(), None);
@@ -85,7 +91,7 @@ mod tests {
 
     #[test]
     fn a_folder_of_another_user_is_found() {
-        let folder = tempfile::tempdir().unwrap();
+        let folder = private_folder();
 
         let found = open_to_others(folder.path(), me() + 1).unwrap();
 

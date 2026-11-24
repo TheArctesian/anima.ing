@@ -1,10 +1,5 @@
-//! The GitHub source for Projects (SRC-006, PRO-003, PRJ-016).
-//!
-//! Pure: no network, no clock, no hub imports (REPO-E-002). The engine owns the token and
-//! the transport. It calls [`begin`] to start a run, asks [`next_request`] what to fetch,
-//! fetches it, and hands the response to [`normalise`] with the same slice of state. A run
-//! lists the repositories the installation can see, then reads the signs of each one whose
-//! push time or default branch changed: its file tree, deployments and default branch history.
+//! The GitHub source for Projects (SRC-006, PRO-003, PRJ-016). Pure: no network, no clock, no
+//! hub imports (REPO-E-002); the engine owns the token and the transport.
 
 mod app_token;
 mod changes;
@@ -91,11 +86,8 @@ pub fn next_request(state: &Value) -> Option<Request> {
     }
 }
 
-/// Turns the response to `request` into records, the new slice and problems. A response that
-/// is not the answer to [`next_request`] of this slice, or a status with no rule, gives no
-/// records, the slice unchanged and a problem: the engine fails the run. A body larger than the
-/// hub reads fails the run only for the listing; for a tree or a deployments reply it is that
-/// repository's problem, and the run proceeds to its history.
+/// A response that is not the answer to [`next_request`], or a status with no rule, fails the
+/// run. A body too large fails the run only for the listing; elsewhere it is the repository's.
 #[must_use]
 pub fn normalise(request: &Request, response: &Response<'_>, state: &Value) -> Normalised<Record> {
     let slice = Slice::read(state);
@@ -118,9 +110,7 @@ fn out_of_step(slice: &Slice) -> Normalised<Record> {
     )
 }
 
-/// Takes a repository out of the slice: its queued signs and what was seen of it. The intake
-/// calls this for a repository the operator left out, so no tree request is made for it
-/// (PRO-002) and restoring it reads its signs again.
+/// Takes a repository out of the slice, so no tree request is made for it (PRO-002).
 #[must_use]
 pub fn forget_repository(state: &Value, external_id: &str) -> Value {
     let mut slice = Slice::read(state);

@@ -1,5 +1,4 @@
-//! `anima file upload <path>` and `anima file download <id> --output <path>`: the bytes stream
-//! from a file of this computer and into a new one, never through a terminal (FIL-005).
+//! `anima file upload` and `anima file download`: bytes never pass through a terminal (FIL-005).
 
 use std::path::{Path, PathBuf};
 
@@ -137,8 +136,7 @@ impl DownloadArgs {
             Ok(downloaded) => downloaded,
             Err(error) => {
                 drop(file);
-                // The refusal is the failure to report; a partial file that is gone already is
-                // not a second one.
+                // The refusal is the failure to report; a partial file already gone is not a second one.
                 let _ = tokio::fs::remove_file(&self.output).await;
                 return Err(error.into());
             }

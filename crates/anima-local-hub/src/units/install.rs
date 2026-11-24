@@ -1,13 +1,12 @@
-//! `anima-local-hub install`, `remove`, `start` and `stop`: the copy of the programs, the unit
-//! file, and the commands that start and stop the unit. The commands run through a function the caller
-//! gives, so a test runs none of them.
+//! `anima-local-hub install`, `remove`, `start` and `stop`. Each command runs through a function
+//! the caller gives, so a test runs none of them.
 
 use std::fs;
 #[cfg(unix)]
 use std::fs::OpenOptions;
 use std::io::{self, Write as _};
 #[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -54,8 +53,7 @@ pub enum InstallError {
     NotInstalled,
     #[error("another change of the hub runs")]
     Busy,
-    /// An older copy of the application would put older programs over a database that newer
-    /// ones may have changed.
+    /// Older programs would run on a database that newer ones may have changed.
     #[error(
         "this application (version {carried}) is older than the hub's programs (version {installed}); \
          install it with --step-back to put the older programs in place"
@@ -63,9 +61,6 @@ pub enum InstallError {
     OlderThanInstalled { carried: String, installed: String },
 }
 
-/// Installs or updates the hub of `request`: copies `source`, stops a hub that runs, puts the
-/// copy in place, writes the unit file and starts the unit. Returns the unit file.
-///
 /// A fault before the stop leaves a running hub as it was.
 ///
 /// # Errors
@@ -91,7 +86,6 @@ pub fn install(
     replace(request, source, run, Then::Start)
 }
 
-/// What the unit does after the programs were replaced.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Then {
     Start,
@@ -99,8 +93,7 @@ pub(super) enum Then {
     StayStopped,
 }
 
-/// The steps of [`install`]: copy, stop, wait, put in place, write the unit file, and start
-/// the unit when `then` says so. A start takes the operator's stop mark away.
+/// A start takes the operator's stop mark away.
 pub(super) fn replace(
     request: &Request<'_>,
     source: &Carried,
@@ -130,8 +123,7 @@ pub(super) fn replace(
     Ok(file)
 }
 
-/// Stops the unit and removes the unit file and the copied programs. The database, the key
-/// and the logs stay.
+/// The database, the key and the logs stay.
 ///
 /// # Errors
 /// When the running hub does not stop, or a file cannot be removed.
@@ -157,8 +149,7 @@ pub fn remove(
     Ok(())
 }
 
-/// Stops the unit now and waits until the hub stopped. The unit stays installed: it starts
-/// again at the next login or at [`start`] (FRN-006).
+/// The unit stays installed: it starts again at the next login or at [`start`] (FRN-006).
 ///
 /// # Errors
 /// When the unit tool cannot be run, or the hub does not stop in the request's limit.
@@ -175,7 +166,7 @@ pub fn stop(
     wait_until_stopped(request)
 }
 
-/// Starts the installed unit. A unit that launchd has loaded already is left as it is.
+/// A unit that launchd has loaded already is left as it is.
 ///
 /// # Errors
 /// [`InstallError::NotInstalled`] when there is no unit to start, or when a command fails.
@@ -208,7 +199,6 @@ pub(super) fn start_unit(
     run_steps(&request.start_again(&request.unit_file()), &mut run)
 }
 
-/// Whether the unit file and the copied programs are there.
 #[must_use]
 pub fn is_installed(request: &Request<'_>) -> bool {
     request.unit_file().is_file() && programs::are_in_place(request.folders)
@@ -256,8 +246,8 @@ pub(super) fn write_error(path: &Path) -> impl FnOnce(io::Error) -> InstallError
     }
 }
 
-/// Refuses a hub folder, or a folder of the unit file, that another user can change. A folder
-/// that is not there yet is made by `install` with the right mode.
+/// Refuses a hub folder, or a folder of the unit file, that another user can change.
+/// A folder that is not there yet is made by `install` with the right mode.
 pub(super) fn check_private(request: &Request<'_>) -> Result<(), InstallError> {
     let root = request.folders.root();
     if root.exists() {
@@ -278,12 +268,17 @@ fn private(folder: &Path, uid: u32) -> Result<(), InstallError> {
     }
 }
 
-/// Writes the unit file whole, in a folder that only this user (or root) can change: the
-/// unit tool runs what the file names at each login.
+/// Only this user (or root) may change the folder: the unit tool runs what the file names at login.
 fn write_unit(file: &Path, text: &str, uid: u32) -> Result<(), InstallError> {
     let folder = file.parent().unwrap_or(file);
+    // Mode 0755 whatever the umask: with 0002 (Ubuntu) a folder made here would be open to
+    // the group, and `private` would refuse it.
     #[cfg(unix)]
-    fs::create_dir_all(folder).map_err(write_error(folder))?;
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o755)
+        .create(folder)
+        .map_err(write_error(folder))?;
     #[cfg(windows)]
     owner_only::folder(folder).map_err(write_error(folder))?;
     private(folder, uid)?;

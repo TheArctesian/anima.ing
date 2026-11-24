@@ -5,8 +5,7 @@ import { HUB_ORIGIN } from '../../synthetic/access';
 import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 import { HEIGHT, MODES, storedSettings } from '../shots';
 
-// The kit of the Code section (stage 1 of the T3 Code copy), each primitive in each state. It needs a build made with
-// `VITE_ANIMA_SPECIMEN=1` and runs only when asked, `GALLERY_CODE_KIT=1`; pictures go to `gallery-shots/code-kit/<mode>/`.
+// Needs a build made with `VITE_ANIMA_SPECIMEN=1`.
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-kit/', import.meta.url));
 const SETTLE_MS = 300;
@@ -14,9 +13,7 @@ const MARGIN = 12;
 
 interface KitShot {
   readonly name: string;
-  /** The part to frame, found by its `data-kit` mark. */
   readonly part: string;
-  /** Puts the part in the state to shoot; returns the floating layer that the picture must hold too. */
   readonly act?: (page: Page, part: Locator) => Promise<Locator | undefined>;
 }
 
@@ -39,14 +36,13 @@ const openMenu = (name: string, key?: string) => async (page: Page, part: Locato
   return menu;
 };
 
-/** Scrolls the part to the middle of the window, so a menu or a tip has room on the side it asks for. */
+/** The middle of the window gives a menu or a tip room on the side it asks for. */
 async function centre(part: Locator): Promise<void> {
   await part.evaluate((node) => {
     node.scrollIntoView({ block: 'center' });
   });
 }
 
-/** Sets the reader settings of D12 on the kit page by their radios, then leaves the part as it rests. */
 const reader = (...choices: readonly string[]) => async (page: Page, part: Locator) => {
   for (const name of choices) await page.getByRole('radio', { name, exact: true }).click();
   await page.mouse.move(0, 0);
@@ -119,7 +115,6 @@ const SHOTS: readonly KitShot[] = [
   { name: 'reader-wide-lane', part: 'approval-long', act: reader('Wide') },
 ];
 
-/** The smallest box that holds the part and its floating layer, with a margin, inside the window. */
 async function frame(page: Page, part: Locator, layer: Locator | undefined): Promise<{ x: number; y: number; width: number; height: number }> {
   const boxes = [await part.boundingBox(), layer === undefined ? null : await layer.boundingBox()].filter((box) => box !== null);
   const left = Math.max(0, Math.min(...boxes.map((box) => box.x)) - MARGIN);

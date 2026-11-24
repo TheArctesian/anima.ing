@@ -1,17 +1,11 @@
-//! What the client's instructions mean for the device (K4 Section 4): keys, the pointer,
-//! the clipboard, the answer to a frame and the end. The hub's relay has already let
-//! through only the instructions of its list; the gateway reads them again with its own
-//! limits and ignores what it has no use for.
-//!
-//! Pure: no I/O.
+//! The client's instructions for the device (K4 Section 4), read again with the gateway's own
+//! limits after the hub's relay. Pure: no I/O.
 
 use base64::Engine as _;
 use guac_protocol::Instruction;
 
-/// The longest clipboard text taken from the client, in bytes.
 const LONGEST_PASTE: usize = 1 << 18;
 
-/// What the client asked for.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Input {
     /// A key by its X11 keysym: VNC uses the same number.
@@ -25,18 +19,13 @@ pub(super) enum Input {
         y: usize,
         buttons: u8,
     },
-    /// The client's clipboard text, complete.
     Paste(String),
-    /// The client drew the frame with this timestamp.
     Drawn(String),
-    /// The client's view has this size now.
     View(usize, usize),
     Disconnect,
-    /// Nothing for the device.
     Nothing,
 }
 
-/// The client's clipboard stream while it arrives: `clipboard`, `blob`s, `end`.
 #[derive(Default)]
 pub(super) struct Clipboard {
     /// The stream index and the text so far; `None` in the text once it is too long.
@@ -44,7 +33,6 @@ pub(super) struct Clipboard {
 }
 
 impl Clipboard {
-    /// Reads one instruction from the client.
     pub(super) fn read(&mut self, instruction: &Instruction) -> Input {
         let args = &instruction.args;
         let number = |at: usize| args.get(at).and_then(|text| text.parse::<u32>().ok());
@@ -112,7 +100,6 @@ impl Clipboard {
     }
 }
 
-/// `mouse,<x>,<y>,<mask>`.
 fn pointer(x: Option<u32>, y: Option<u32>, mask: Option<u32>) -> Input {
     match (x, y, mask) {
         (Some(x), Some(y), Some(mask)) => Input::Pointer {
@@ -124,7 +111,6 @@ fn pointer(x: Option<u32>, y: Option<u32>, mask: Option<u32>) -> Input {
     }
 }
 
-/// The device's clipboard `text` as a stream to the client: `clipboard`, `blob`s, `end`.
 pub(super) fn copy_to_client(text: &str) -> Vec<Instruction> {
     /// The stream for clipboard text; images use stream 0.
     const STREAM: &str = "1";

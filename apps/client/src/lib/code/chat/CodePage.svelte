@@ -6,14 +6,21 @@
   import { moved, type KeyAction } from '$lib/agent-threads/keys';
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
+  import { shownTitle, UNTITLED } from '$lib/agent-threads/thread';
   import LimitDialog from '$lib/agent-threads/view/LimitDialog.svelte';
-  import NewThread from '$lib/agent-threads/view/NewThread.svelte';
   import { isMac } from '$lib/platform/mac';
   import { fillRoom } from '$lib/scroll/room';
+  import { detailedRun } from '../aside/place';
+  import { DetailsShown } from '../aside/shown.svelte';
+  import ThreadAside from '../aside/ThreadAside.svelte';
   import { inboxEngine } from '../inbox/engine';
+  import { projectsOf } from '../inbox/inbox';
+  import PanelToggles from '../panel/PanelToggles.svelte';
   import InboxColumn from '../inbox/InboxColumn.svelte';
   import { InboxView } from '../inbox/view.svelte';
   import CommandPalette from '../palette/CommandPalette.svelte';
+  import DraftThread from '../draft/DraftThread.svelte';
+  import { ThreadDraft } from '../draft/thread-draft.svelte';
   import ChatHeader from '../shell/ChatHeader.svelte';
   import HistoryButtons from '../shell/HistoryButtons.svelte';
   import InboxRail from '../shell/InboxRail.svelte';
@@ -22,7 +29,8 @@
   import { applyReader, storedReader } from '../settings/reader';
   import ChatColumn from './ChatColumn.svelte';
   import ChatFoot from './ChatFoot.svelte';
-  import { heldWidth, INBOX_WIDTH, storedWidth, storeWidth } from './inbox-width';
+  import RunnerNotice from './notice/RunnerNotice.svelte';
+  import { heldWidth, INBOX_WIDTH, InboxWidth, storeWidth } from '../shell/inbox-width.svelte';
   import { pageKey } from './page-keys';
   import { paletteHost } from './palette-host';
   import ThreadBody from './ThreadBody.svelte';
@@ -40,22 +48,21 @@
   applyReader(document.documentElement, storedReader(globalThis.localStorage));
   let inboxOpen = $state(true);
   /** Below 768 px the list is a sheet over the page, closed at first, as T3 Code's (08 inbox 4, band 22). */
-  let narrow = $state(false);
+  const sizes = new InboxWidth(globalThis.localStorage ?? null);
+  const narrow = $derived(sizes.narrow);
   let sheetOpen = $state(false);
   const shown = $derived(narrow ? sheetOpen : inboxOpen);
-  let room = $state(0);
-  let width = $state(storedWidth(globalThis.localStorage ?? null));
-  const held = $derived(heldWidth(width, room));
+  const held = $derived(sizes.held);
   let renaming = $state(false);
   const visits = new Visits();
-  let toolsOpen = $state(false);
-  let starting = $state(false);
+  /** The new thread that is not started yet (T3's draft): the chat column shows it in place of a thread. */
+  let draft = $state<ThreadDraft | null>(null);
   let field = $state<HTMLInputElement>();
   let page = $state<HTMLElement>();
   let inbox = $state<ReturnType<typeof InboxColumn>>();
   /** The thread the keys opened, said to a screen reader when focus stays where it was (09 finding 13). */
   let said = $state('');
-  const linkWords = $derived(live === null ? null : live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder);
+  const linkWords = $derived(live === null ? null : (live.daemon ?? (live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder)));
   const newOff = $derived(live === null ? 'Threads start in the desktop application.' : live.linked === false ? 'The thread runner is not running.' : null);
   /** The row of the open thread, for the band. */
   const palette = $derived(
@@ -63,19 +70,43 @@
       rows: store.listedRows,
       failed: store.listProblem !== null || live?.linked === false,
       chosen: store.chosen,
-      newThread: newOff === null ? () => (starting = true) : undefined,
+      newThread: newOff === null ? newThread : undefined,
+      addProject: newOff === null ? () => (draft = (draft ?? new ThreadDraft(open?.folder ?? null)).addProject()) : undefined,
       open: (id) => void choose(id),
       settings: () => void goto(resolve('/settings')),
     }),
   );
   const open = $derived(store.chosen === null ? undefined : ((store.listedRows ?? []).find((row) => row.id === store.chosen) ?? (store.thread?.id === store.chosen ? store.thread : undefined)));
+  /** The run of the open thread, when the card has something real of it to show: only then is there a details toggle. */
+  const details = new DetailsShown();
+  const detailed = $derived(detailedRun(draft === null ? store.liveThread?.row : undefined, store.chosen, details.choices));
 
-  async function choose(id: string): Promise<void> {
+  /** Opens a new thread in the project of the open one, as T3's New thread does. */
+  function newThread(): void {
+    if (newOff !== null) return;
     if (narrow) sheetOpen = false;
+    draft = new ThreadDraft(open?.folder ?? null);
+  }
+
+  /** Opens `id`; `started`: the draft's send started it, from the runner's `Started` answer alone. */
+  async function choose(id: string, started = false, sent: { text: string; at: Date } | null = null): Promise<void> {
+    if (narrow) sheetOpen = false;
+    draft = null;
     visits.opened(id);
-    await store.open(id);
+    await store.open(id, started, sent);
     await tick();
     page?.querySelector<HTMLElement>(`[data-thread="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
+  }
+
+  /** Stops each thread whose program runs, so the holder of this build takes over (TH98). */
+  async function stopRunning(): Promise<void> {
+    const running = [...(live?.threads.values() ?? [])].map((thread) => thread.row).filter((row) => row.state !== 'stopped' && row.state !== 'unknown');
+    await Promise.all(running.map((row) => live?.call({ call: 'stop', thread: row.id })));
+  }
+
+  function openedTitle(id: string): string {
+    const row = (store.listedRows ?? []).find((each) => each.id === id);
+    return row === undefined ? UNTITLED : shownTitle(row);
   }
 
   /** After a key opened `id`: focus follows in the list; elsewhere the title is said (09 finding 13). */
@@ -83,7 +114,7 @@
     await choose(id);
     const row = page?.querySelector<HTMLElement>(`.inbox [data-thread="${CSS.escape(id)}"] > .main`);
     if (row !== null && row !== undefined && from instanceof Element && from.closest('.inbox [data-thread]') !== null) row.focus();
-    else said = `Opened ${(store.listedRows ?? []).find((each) => each.id === id)?.title ?? 'Untitled thread'}`;
+    else said = `Opened ${openedTitle(id)}`;
   }
 
   /** Shows or hides the list; focus moves to the toggle in its new place (09 finding 14). */
@@ -97,7 +128,6 @@
   async function raise(threads: LiveThreads): Promise<CallResult> {
     const result = await threads.raiseLimit();
     if (result.ok && result.outcome.outcome === 'started') {
-      starting = false;
       void choose(result.outcome.thread);
     }
     return result;
@@ -121,9 +151,8 @@
       case 'leave':
         if (target instanceof HTMLElement) target.blur();
         return true;
+      // The timeline folds each work group by itself (T3 Code): there is no switch of every tool call.
       case 'tools':
-        toolsOpen = !toolsOpen;
-        return true;
       case 'find':
       case 'help':
         return false;
@@ -136,18 +165,19 @@
     if (action === null) return;
     if (action.kind === 'new') {
       event.preventDefault();
-      if (newOff === null) starting = true;
+      newThread();
       return;
     }
     if (own(action.kind) || run(action as KeyAction, event.target)) event.preventDefault();
   }
 
-  /** The page's own keys beyond THR-016 (T3 Code): ⌘B, ⌘[ and ⌘], ⇧⌘S and ⇧⌘P; false for a thread key. */
+  /** The page's own keys beyond THR-016 (T3 Code): ⌘B, ⌘[ and ⌘], ⇧⌘S, ⇧⌘P and ⇧⌘B; false for a thread key. */
   function own(kind: string): boolean {
     if (kind === 'inbox') void toggleInbox();
     else if (kind === 'back' || kind === 'forward') step(kind === 'back' ? -1 : 1);
     else if ((kind === 'settle' || kind === 'pin') && store.chosen !== null) inbox?.toggleMark(store.chosen, kind);
-    else return kind === 'settle' || kind === 'pin';
+    else if (kind === 'details' && detailed !== undefined) details.toggle(detailed.id);
+    else return kind === 'settle' || kind === 'pin' || kind === 'details';
     return true;
   }
 
@@ -155,28 +185,17 @@
     const id = visits.step(by);
     if (id !== undefined) void store.open(id);
   }
-
-  /** The list's width: T3's rail drags it between 208 px and the room that leaves 640 px for the chat. */
-  function measure(node: HTMLElement): () => void {
-    const narrowQuery = matchMedia('(width < 48rem)');
-    const follow = (): void => {
-      narrow = narrowQuery.matches;
-    };
-    const watcher = new ResizeObserver(() => (room = node.clientWidth));
-    follow();
-    narrowQuery.addEventListener('change', follow);
-    watcher.observe(node);
-    return () => {
-      narrowQuery.removeEventListener('change', follow);
-      watcher.disconnect();
-    };
-  }
 </script>
 
 <svelte:window {onkeydown} />
 
+{#snippet toggles()}
+  <!-- Only the parts with real content have a toggle: the details now; the terminal and the right panel when built. -->
+  <span data-details-toggle><PanelToggles parts={['details']} open={{ details: detailed !== undefined && details.open(detailed.id), terminal: false, panel: false }} keys={{ details: mac ? '⇧⌘B' : 'Ctrl+Shift+B' }} ontoggle={() => detailed !== undefined && details.toggle(detailed.id)} /></span>
+{/snippet}
+
 <!-- The page Code as T3 Code lays it out (02 section 4): the inbox column beside the chat column, each under its band. -->
-<div class="code" class:folded={!inboxOpen} class:narrow class:sheet={narrow && sheetOpen} style:--inbox-width="{held}px" data-code-page bind:this={page} {@attach fillRoom()} {@attach measure}>
+<div class="code" class:folded={!inboxOpen} class:narrow class:sheet={narrow && sheetOpen} style:--inbox-width="{held}px" data-code-page bind:this={page} {@attach fillRoom()} {@attach sizes.measure}>
   <!-- T3's toggle stands in the corner, 13 px in, whether the list shows or not (08 band 18). -->
   <span class="corner"><InboxToggle open={shown} key={mac ? '⌘B' : 'Ctrl+B'} ontoggle={() => void toggleInbox()} /></span>
   <!-- Hidden, not unmounted: the band's title opens a thread's menu through it, and the list keeps its place. -->
@@ -185,50 +204,44 @@
       <span class="name">Code</span>
       {#if !narrow}<HistoryButtons canGoBack={visits.canGoBack} canGoForward={visits.canGoForward} onback={() => step(-1)} onforward={() => step(1)} keys={mac ? { back: '⌘[', forward: '⌘]' } : { back: 'Ctrl+[', forward: 'Ctrl+]' }} />{/if}
     </TopBand>
-    <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} onShow={() => (narrow ? (sheetOpen = true) : (inboxOpen = true))} bind:field />
+    <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={newThread} onShow={() => (narrow ? (sheetOpen = true) : (inboxOpen = true))} bind:field />
     {#if !narrow && inboxOpen}
       <InboxRail
         width={held}
         min={INBOX_WIDTH.min}
-        max={heldWidth(Number.POSITIVE_INFINITY, room)}
-        onwidth={(next) => (width = heldWidth(next, room))}
+        max={heldWidth(Number.POSITIVE_INFINITY, sizes.room)}
+        onwidth={(next) => (sizes.width = heldWidth(next, sizes.room))}
         ondone={() => storeWidth(globalThis.localStorage ?? null, held)}
         onreset={() => {
-          width = INBOX_WIDTH.default;
-          storeWidth(globalThis.localStorage ?? null, width);
+          sizes.width = INBOX_WIDTH.default;
+          storeWidth(globalThis.localStorage ?? null, sizes.width);
         }}
       />
     {/if}
   </aside>
   {#if narrow && sheetOpen}<button type="button" class="scrim" aria-label="Close the thread list" tabindex="-1" onclick={() => (sheetOpen = false)}></button>{/if}
-  <ChatColumn>
+  <ChatColumn room={detailed === undefined ? 0 : details.room}>
     {#snippet header()}
       <ChatHeader
-        thread={open}
+        thread={draft === null ? open : undefined}
+        end={detailed === undefined ? undefined : toggles}
         inset={!shown || narrow}
-        onproject={newOff === null ? () => (starting = true) : undefined}
+        onproject={newOff === null ? newThread : undefined}
         onactions={(anchor) => (open === undefined ? undefined : inbox?.openThreadMenu(open.id, anchor, () => (renaming = true)))}
         onrename={(title) => (open === undefined ? Promise.resolve(null) : (inbox?.renameThread(open.id, title) ?? Promise.resolve(null)))}
         {renaming}
         onrenaming={(on) => (renaming = on)}
       />
     {/snippet}
-    {#snippet notice()}{#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}{/snippet}
-    <ThreadBody {store} now={view.moment} {toolsOpen} />
-    {#snippet composer()}{#if store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
+    {#snippet aside()}{#if detailed !== undefined}<ThreadAside row={detailed} shown={details} />{/if}{/snippet}
+    {#snippet notice()}{#if linkWords !== null}<RunnerNotice words={linkWords} onStop={live?.linked === true ? stopRunning : undefined} />{/if}{/snippet}
+    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id, true, draft?.sent ?? null)} />{:else}<ThreadBody {store} now={view.moment} />{/if}
+    {#snippet composer()}{#if draft === null && store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>
 <p class="said" role="status">{said}</p>
 <CommandPalette host={palette} />
 {#if live !== null}
-  <NewThread
-    open={starting}
-    onStart={(action) => live.call(action)}
-    onStarted={(id) => void choose(id)}
-    onClose={() => {
-      starting = false;
-    }}
-  />
   <LimitDialog open={live.overLimit !== null} onRaise={() => raise(live)} onKeep={() => live.keepLimit()} />
 {/if}
 
@@ -303,14 +316,6 @@
 
   .name {
     color: var(--code-quiet-text);
-  }
-
-  .link {
-    margin: 0;
-    padding: var(--space-2) var(--space-5);
-    border-block-end: var(--border-thin) solid var(--border-subtle);
-    color: var(--text);
-    font-size: var(--code-text-small);
   }
 
   /* Below 768 px the list is a sheet over the page, all but 12 px of its width, over a scrim (T3 Code's mobile sidebar). */

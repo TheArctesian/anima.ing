@@ -1,7 +1,5 @@
-//! The Settings panel's view of what `anima mcp` may do for one hub (MCP-018). The panel reads
-//! and changes the same file the command line does, through the command line's own library
-//! functions: this module adds the origin check, the folder and the error codes, nothing else.
-//! No token is read, and the `anima` program is not started.
+//! The Settings panel's view of MCP permissions (MCP-018), through the command line's own library.
+//! This module reads no token and does not start the `anima` program.
 
 use std::path::{Path, PathBuf};
 
@@ -13,14 +11,7 @@ use anima_cli::mcp::permission_change::{Change, Shown, edit, read};
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use tauri_plugin_log::log;
 
-/// Why the permissions were not read or saved. Carries no path and no file text (LOG-007).
-///
-/// - `invalid_hub`: the hub address is not an origin.
-/// - `no_folder`: the computer has no configuration folder.
-/// - `unreadable`: the file cannot be read or is not a valid configuration.
-/// - `unwritable`: the file cannot be written.
-/// - `invalid_change`: the change names a tool or tool set that does not exist.
-/// - `failed`: anything else.
+/// Carries no path and no file text (LOG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum PermissionsError {
     #[error("the hub address is not valid")]
@@ -98,7 +89,7 @@ fn write_in(
         .map_err(|failure| PermissionsError::from_failure(&failure))
 }
 
-/// Runs a blocking file job off the async runtime and logs only its code.
+/// Logs only the error's code.
 async fn run<T: Send + 'static>(
     job: impl FnOnce(Option<PathBuf>) -> Result<T, PermissionsError> + Send + 'static,
 ) -> Result<T, PermissionsError> {

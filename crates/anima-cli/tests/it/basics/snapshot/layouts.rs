@@ -1,5 +1,4 @@
-//! `anima snapshot push` in repositories that are not one plain checkout: a sparse checkout, a
-//! linked worktree, tags that git would follow, submodules and nested repositories (JOB-017).
+//! `anima snapshot push` in repositories that are not one plain checkout (JOB-017).
 
 use super::repos::Repos;
 

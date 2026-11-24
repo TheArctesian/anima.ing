@@ -18,13 +18,11 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-/** Let the fake hub's answers arrive, then flush Svelte's updates. */
 async function settle() {
   for (let turn = 0; turn < 5; turn += 1) await new Promise((resolve) => setTimeout(resolve, 0));
   flushSync();
 }
 
-/** The modal over a fake hub whose device's accepted certificate is an old one; `api` replaces calls. */
 async function showModal(api: Partial<SessionsApi> = {}) {
   const fake = fakeHub({ acceptedFingerprint: 'sha256:old' });
   const heard = { closed: 0, accepted: 0 };
@@ -169,14 +167,12 @@ describe('certificate modal scrim and keys (SEC-007)', () => {
 });
 
 describe('MOT-007, MV-004: the modal keeps its layout while it reads', () => {
-  /** What lies above the actions, as tag and label: rows that appear later would push the buttons down. */
   const layout = () => {
     const surface = dialog()?.querySelector('.content');
     const above = [...(surface?.children ?? [])].filter((element) => !element.classList.contains('actions'));
     const rows = [...(surface?.querySelectorAll('dl > *') ?? [])].map((row) => `${row.tagName}:${row.tagName === 'DT' ? row.textContent : ''}`);
     return { above: above.map((element) => element.tagName), rows };
   };
-  /** Each row's hidden copy of the longest value it can show, which sets the row's height in both states. */
   const reservesOf = () =>
     [...(dialog()?.querySelectorAll('dd > [data-reserve]') ?? [])].map((reserve) => ({
       hidden: reserve.getAttribute('aria-hidden') === 'true',
@@ -218,7 +214,6 @@ describe('MOT-007, MV-004: the modal keeps its layout while it reads', () => {
 });
 
 describe('certificate modal outcomes (CR-3, SEC-007)', () => {
-  /** A connection test answer as the hub gives it for one outcome of the RDP read. */
   const answered = (over: Partial<{ message: string | null; reachable: boolean; certificateChanged: boolean; certificateMatched: boolean; serverCertificate: typeof CERTIFICATE | null }>) => ({
     testConnection: () =>
       Promise.resolve({

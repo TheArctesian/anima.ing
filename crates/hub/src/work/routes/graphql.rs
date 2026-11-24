@@ -1,14 +1,16 @@
 //! The routes GraphQL part: root `Query` and `Mutation` (K1; HOST-046, task H21).
 //!
-//! A read key may read the routes: no field holds a certificate or a key. Each change is for a
-//! person only, with a login or a browser token and a second factor on the account
-//! (SF-232, HM-D14): the three mutations are in `API_KEY_REFUSED_ROOTS`, and each
-//! resolver checks the kind of the token again. A public route is added only from the Anima app
-//! in a browser, by a person with no agent declared: never by a login token, which the `anima`
-//! command and an agent hold (SF-330). On a hub that is not on Unix the routes
-//! cannot serve, so adding and checking a route is refused: "Routing needs a hub on Linux."
-//! (R-366). Each change writes one audit entry and one
-//! event in its own transaction.
+//! A read key may read the routes: no field holds a certificate or a key. Each change needs a
+//! login or a browser token: the three mutations are in `API_KEY_REFUSED_ROOTS`, and each
+//! resolver checks the kind of the token again, so no API key and no builder token changes a
+//! route. One rule for each caller (R-384): the person, the app, `anima` and an agent add and
+//! remove a route with no approval; a public route still serves only after the consent at the
+//! machine (OD-HOST-43). Adding and checking a route also need a second factor on the account
+//! (SF-232, HM-D14), except on a hosted hub, which has none (R-430). Removing one
+//! needs only the signed-in token: a removal only takes a name and its reach away, and it
+//! cannot change, point again or make a route. On a hub that is not on Unix the routes cannot
+//! serve, so adding and checking a route is refused: "Routing needs a hub on Linux." (R-366).
+//! Each change writes one audit entry and one event in its own transaction.
 
 mod trail;
 mod types;
@@ -18,11 +20,7 @@ use std::{str::FromStr, sync::Arc};
 use async_graphql::{Context, ID, Object, Result};
 
 use self::types::{AddedView, RouteFields, RouteView, shape};
-use super::{
-    Error, NewRoute, Settings, SystemDns,
-    kinds::{Access, KindRefusal},
-    proof::Resolver,
-};
+use super::{Error, NewRoute, Settings, SystemDns, kinds::KindRefusal, proof::Resolver};
 use crate::{
     api_errors::{
         ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool, schema_dependency,
@@ -30,7 +28,7 @@ use crate::{
     clock::Clock,
     config::Config,
     fleet::{
-        access::{self, Authenticated, Identity, operator_only},
+        access::{self, Authenticated, operator_only},
         devices,
         events::Trail,
         targets::AddressPolicy,
@@ -70,7 +68,6 @@ fn to_graphql(error: Error) -> async_graphql::Error {
         Error::ListenPortTaken => invalid(&[FieldError::new("listenPort", error.to_string())]),
         Error::Unresolved => invalid(&[FieldError::new("deviceId", error.to_string())]),
         Error::NameTaken | Error::OtherTarget => coded(error.to_string(), ErrorCode::Conflict),
-        Error::PublicNeedsPerson => coded(error.to_string(), ErrorCode::Forbidden),
         Error::NeedsLinuxHub => coded(error.to_string(), ErrorCode::Unavailable),
         other => internal(other),
     }
@@ -92,16 +89,18 @@ const fn refusal_field(refusal: &KindRefusal) -> &'static str {
     }
 }
 
-/// True when the request is a person signed in to the Anima app in a browser, with no agent
-/// declared: the one caller who may make an application public (SF-330).
-fn in_browser(ctx: &Context<'_>) -> bool {
-    ctx.data_opt::<Identity>()
-        .is_some_and(Identity::is_person_in_browser)
-}
-
-/// A person with a login or browser token, whose account has a second factor (HM-D14).
-async fn person_with_second_factor(ctx: &Context<'_>, root: &str) -> Result<()> {
+/// A login or browser token, whose account has a second factor (HM-D14). A hosted hub asks
+/// for no second factor (R-430): its accounts sign in only through Anima.ing and
+/// have no TOTP of the hub (R-129). The hub knows that it is hosted from how it was started
+/// (`ANIMA_HOSTED_CLOUD_KEY_FILE`), never from the request.
+async fn signed_in_for_routes(ctx: &Context<'_>, root: &str) -> Result<()> {
     operator_only(ctx, root)?;
+    if schema_dependency::<Arc<Config>>(ctx)?
+        .hosted_cloud_key_file
+        .is_some()
+    {
+        return Ok(());
+    }
     let status = access::operator_status(pool(ctx)?)
         .await
         .map_err(internal)?;
@@ -109,7 +108,7 @@ async fn person_with_second_factor(ctx: &Context<'_>, root: &str) -> Result<()> 
         Ok(())
     } else {
         Err(coded(
-            "Turn on the second factor of the account before an application is made public.",
+            "Turn on the second factor of the account before a route is added or checked.",
             ErrorCode::Forbidden,
         ))
     }
@@ -172,10 +171,7 @@ impl Mutation {
     ) -> Result<AddedView> {
         super::routing_here(cfg!(unix)).map_err(to_graphql)?;
         let shape = shape(&input);
-        if shape.access == Access::Public && !in_browser(ctx) {
-            return Err(to_graphql(Error::PublicNeedsPerson));
-        }
-        person_with_second_factor(ctx, "addApplicationRoute").await?;
+        signed_in_for_routes(ctx, "addApplicationRoute").await?;
         let new = NewRoute {
             application: parse(&input.application_id, "applicationId")?,
             device: parse(&input.device_id, "deviceId")?,
@@ -206,7 +202,7 @@ impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn check_application_route(&self, ctx: &Context<'_>, id: ID) -> Result<RouteView> {
         super::routing_here(cfg!(unix)).map_err(to_graphql)?;
-        person_with_second_factor(ctx, "checkApplicationRoute").await?;
+        signed_in_for_routes(ctx, "checkApplicationRoute").await?;
         let id = parse(&id, "id")?;
         let settings = settings(ctx)?;
         let resolver: Arc<dyn Resolver> = match ctx.data_opt::<Dns>() {
@@ -236,14 +232,17 @@ impl Mutation {
 
     #[graphql(guard = "Authenticated")]
     async fn remove_application_route(&self, ctx: &Context<'_>, id: ID) -> Result<ID> {
-        person_with_second_factor(ctx, "removeApplicationRoute").await?;
+        operator_only(ctx, "removeApplicationRoute")?;
         let route = parse(&id, "id")?;
         let trail = Trail::from_context(ctx)?;
+        // The target of a route never changes after it is added (SF-233), so the route read
+        // before the delete is the route that the delete takes away.
+        let removed = super::get(pool(ctx)?, route).await.map_err(to_graphql)?;
         let mut tx = begin(ctx).await?;
-        let (device, name) = super::remove(&mut tx, route).await.map_err(to_graphql)?;
+        let (device, _) = super::remove(&mut tx, route).await.map_err(to_graphql)?;
         let device = devices::get(pool(ctx)?, device).await.map_err(internal)?;
         trail
-            .write(&mut tx, trail::removed(route, &name, &device))
+            .write(&mut tx, trail::removed(&removed, &device))
             .await
             .map_err(internal)?;
         commit(tx).await?;

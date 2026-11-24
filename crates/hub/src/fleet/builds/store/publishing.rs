@@ -1,6 +1,4 @@
-//! SQL of publishing (D-25, D-26): the job the hub owns once its files are in, the hold that
-//! keeps one publisher on it, the files the upload URLs were given for and the feed folders
-//! written.
+//! SQL of publishing (D-25, D-26).
 
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
@@ -22,8 +20,7 @@ pub(in crate::fleet::builds) async fn is_publishing(
     Ok(publish_attempt(db, job).await?.is_some())
 }
 
-/// Ends the builder's lease and gives the job to the publisher in one statement, so an
-/// `uploading` job always has a lease or a publisher (D-25).
+/// One statement, so an `uploading` job always has a lease or a publisher (D-25).
 pub(in crate::fleet::builds) async fn hand_to_publisher(
     conn: &mut PgConnection,
     job: BuildJobId,
@@ -41,9 +38,7 @@ pub(in crate::fleet::builds) async fn hand_to_publisher(
     Ok(())
 }
 
-/// The job the publisher may take at `now`, the oldest first, locked until the transaction
-/// ends, with the tries it has had; a job another transaction holds is skipped (D-25). A job
-/// whose upload URLs end after `expired_by` waits (D-28).
+/// A job whose upload URLs end after `expired_by` waits (D-28).
 pub(in crate::fleet::builds) async fn next_publishable(
     conn: &mut PgConnection,
     now: DateTime<Utc>,
@@ -85,9 +80,7 @@ pub(in crate::fleet::builds) async fn extend_upload_expiry(
     Ok(())
 }
 
-/// Whether try `attempt` still holds the job at `by`: the hub publishes it, no later try took
-/// it, and its hold runs past `by` (D-25). The last fence before a write; `by` leaves room for
-/// the write itself.
+/// The last fence before a write (D-25); `by` leaves room for the write itself.
 pub(in crate::fleet::builds) async fn still_held(
     db: impl PgExecutor<'_>,
     job: BuildJobId,
@@ -106,8 +99,7 @@ pub(in crate::fleet::builds) async fn still_held(
     .await?)
 }
 
-/// Records that the publisher is about to write the job's feed, keeping the first time
-/// (D-25): from then on the feed may name the job's files.
+/// From the first mark on, the feed may name the job's files (D-25).
 pub(in crate::fleet::builds) async fn mark_feed_sent(
     db: impl PgExecutor<'_>,
     job: BuildJobId,
@@ -121,7 +113,6 @@ pub(in crate::fleet::builds) async fn mark_feed_sent(
     Ok(())
 }
 
-/// Whether a feed write was ever sent for the job (D-25).
 pub(in crate::fleet::builds) async fn feed_sent(
     db: impl PgExecutor<'_>,
     job: BuildJobId,
@@ -134,8 +125,6 @@ pub(in crate::fleet::builds) async fn feed_sent(
     Ok(sent.unwrap_or(false))
 }
 
-/// The jobs the hub was given to publish, locked, the oldest first; for a hub whose publishing
-/// is off (D-25).
 pub(in crate::fleet::builds) async fn handed_over(
     conn: &mut PgConnection,
 ) -> Result<Vec<BuildJob>, Error> {
@@ -163,7 +152,6 @@ pub(in crate::fleet::builds) async fn is_published(
     .await?)
 }
 
-/// Keeps the publisher off the job until `until`; with `attempt`, records it as that try.
 pub(in crate::fleet::builds) async fn hold(
     conn: &mut PgConnection,
     job: BuildJobId,
@@ -183,7 +171,6 @@ pub(in crate::fleet::builds) async fn hold(
     Ok(())
 }
 
-/// The publisher's try on the job, or `None` when the hub does not publish it.
 pub(in crate::fleet::builds) async fn publish_attempt(
     db: impl PgExecutor<'_>,
     job: BuildJobId,
@@ -198,7 +185,6 @@ pub(in crate::fleet::builds) async fn publish_attempt(
     Ok(attempt.flatten())
 }
 
-/// The files the job was given upload URLs for (D-26), by name.
 pub(in crate::fleet::builds) async fn files_of(
     db: impl PgExecutor<'_>,
     job: BuildJobId,
@@ -215,7 +201,6 @@ pub(in crate::fleet::builds) async fn files_of(
         .collect())
 }
 
-/// The feed the builder proposed for the job.
 pub(in crate::fleet::builds) async fn feed_of(
     db: impl PgExecutor<'_>,
     job: BuildJobId,

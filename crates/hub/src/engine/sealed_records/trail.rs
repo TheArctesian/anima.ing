@@ -1,5 +1,5 @@
-//! The audit entry and the event of each change (LOG-004, LOG-005). Pure. An entry names the
-//! owner record, the extension and the count of the bytes, and never a byte (VLT-004).
+//! An entry names the owner record, the extension and the byte count, never a byte (LOG-004,
+//! LOG-005, VLT-004).
 
 use serde_json::json;
 
@@ -36,6 +36,11 @@ pub(super) fn kept(record: &Record, made: bool) -> TrailEntry {
 
 pub(super) fn removed(record: &Record) -> TrailEntry {
     entry(record, AuditAction::Delete, "deleted")
+}
+
+/// The entry of a reveal: the client opens the record for the operator after it (VLT-004).
+pub(super) fn revealed(record: &Record) -> TrailEntry {
+    entry(record, AuditAction::Reveal, "revealed")
 }
 
 pub(super) fn offered(id: KeyOfferId, bytes: usize) -> TrailEntry {

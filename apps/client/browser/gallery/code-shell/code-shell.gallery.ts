@@ -6,18 +6,15 @@ import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 import { HEIGHT, MODES, storedSettings, type Mode } from '../shots';
 import { installDesktopShell, type Scenario } from '../threads/desktop-shell';
 import { EVERY_STATE as UNMARKED, IDS } from '../threads/scenario';
+import { outsideFilter, outsideMarked } from './outside';
+import { addProject, card, newThread, openModels } from './draft';
 
-// Stage 2 of the T3 Code copy (TC2): the inbox of the page Code in each state, and the whole page. The page is only in
-// the desktop application, so the gallery stands in for its shell with the made-up threads of the threads gallery. It
-// runs only when asked, `GALLERY_CODE_SHELL=1`; pictures go to `gallery-shots/code-shell/<mode>/`.
+// The page Code is only in the desktop application, so the gallery stands in for its shell (TC2).
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-shell/', import.meta.url));
 const SETTLE_MS = 400;
 const MARGIN = 12;
-/**
- * The threads of the threads gallery with the marks the runner keeps (TH61): one settled by hand, the pinned "Port the
- * battery meter" snoozed for two hours (a snooze takes a thread out of the pinned group), and one woken by hand.
- */
+/** The marks the runner keeps (TH61); a snooze takes a thread out of the pinned group. */
 const MARKS: Readonly<Record<string, Record<string, string>>> = {
   [IDS.earlier]: { settled_at: '@-100' },
   [IDS.pinnedFile]: { snoozed_at: '@-30', snoozed_until: '@120' },
@@ -32,18 +29,66 @@ const EVERY_STATE: Scenario = {
       .map(([thread, marks]) => ({ thread, pinned: false, archived: false, title: null, removed: false, ...marks })),
   ],
 };
+const OUTSIDE = outsideMarked(EVERY_STATE);
+/** The models of the two programs, as a runner that asked them before any thread answers `models` (TH104). */
+const MODELS: Scenario = {
+  ...EVERY_STATE,
+  models: [
+    {
+      program: 'claude_code',
+      models: [
+        { value: 'opus', name: 'Opus 4.7', efforts: ['low', 'medium', 'high', 'xhigh', 'max'], default_effort: 'high' },
+        { value: 'sonnet', name: 'Sonnet 4.6', efforts: ['low', 'medium', 'high'], default_effort: 'medium' },
+        { value: 'haiku', name: 'Haiku 4.5', efforts: [], default_effort: null },
+      ],
+    },
+    {
+      program: 'codex',
+      models: [
+        { value: 'gpt-5.4-codex', name: 'GPT-5.4 Codex', efforts: ['minimal', 'low', 'medium', 'high', 'xhigh'], default_effort: 'medium' },
+        { value: 'gpt-5.4-mini', name: 'GPT-5.4 mini', efforts: ['low', 'medium', 'high'], default_effort: 'medium' },
+      ],
+    },
+  ],
+};
+/** The line under the list must hold a long reason whole. */
+const MODELS_SAID = 'claude exited before it answered: the session could not start because the account has no access to the requested model list';
+const DISK: Scenario = { ...EVERY_STATE, disk: { '/Users/you': ['anima', 'notes', 'spikes', 'site'], '/Users/you/site': ['public', 'src'] } };
 const EMPTY: Scenario = { ...EVERY_STATE, rows: [], running: [], listings: [], updates: [] };
+const TALKED = 'Why does the gates run stop at limits?';
+/** The idle thread works in a linked worktree on a branch, with the context window its program last said (TH112). */
+const DETAILED: Scenario = {
+  ...EVERY_STATE,
+  running: EVERY_STATE.running.map((row) =>
+    row['title'] === TALKED
+      ? { ...row, workspace: { kind: 'worktree', top: '/Users/you/anima', branch: 'code/gates-limits' }, usage: { context: 48_200, window: 200_000, input: 1_200, output: 3_400, cost_usd: 0.42 } }
+      : row,
+  ),
+};
+
+/** At 1440 px the card stands inline; at 1280 px the canvas is under T3's 1012 px, so it opens as a popover. */
+async function openDetails(page: Page, inbox: Locator, popover: boolean): Promise<readonly Locator[]> {
+  if (!popover) await page.setViewportSize({ width: 1440, height: HEIGHT });
+  // The context window is off by default, as in T3.
+  await page.evaluate(() => localStorage.setItem('anima.code.details-items', JSON.stringify({ context: true })));
+  await card(inbox, TALKED).click();
+  if (popover) {
+    await page.getByRole('button', { name: 'Toggle thread details' }).click();
+    // The pointer leaves the toggle after the click, so its tooltip does not cover the popover.
+    await page.mouse.move(700, HEIGHT / 2);
+  }
+  await expect(page.getByRole('complementary', { name: 'Thread details' })).toBeVisible();
+  return [];
+}
 
 interface Shot {
   readonly name: string;
   readonly scenario?: Scenario;
-  /** The whole window, not the inbox column. */
   readonly window?: true;
   /** Puts the page in the state to shoot; returns the floating layers the picture must hold too. */
   readonly act?: (page: Page, inbox: Locator) => Promise<readonly Locator[]>;
 }
 
-const card = (inbox: Locator, title: string): Locator => inbox.getByRole('button', { name: new RegExp(title) }).first();
 
 async function openCode(page: Page): Promise<Locator> {
   await page.goto(`${HUB_ORIGIN}/code`);
@@ -157,15 +202,48 @@ const SHOTS: readonly Shot[] = [
   {
     name: 'inbox-hidden',
     window: true,
-    act: async (page, inbox) => {
-      await inbox.getByRole('button', { name: 'Thread list' }).click();
-      await expect(page.getByRole('button', { name: 'Thread list' })).toHaveAttribute('aria-pressed', 'false');
+    act: async (page) => {
+      // T3 Code keeps the toggle in the corner of the page, outside the column it hides.
+      await page.getByRole('button', { name: /^Toggle the thread list/ }).click();
+      await expect(page.getByRole('button', { name: /^Toggle the thread list/ })).toHaveAttribute('aria-pressed', 'false');
       return [];
     },
   },
+  { name: 'details-inline', window: true, scenario: DETAILED, act: (page, inbox) => openDetails(page, inbox, false) },
+  { name: 'details-popover', window: true, scenario: DETAILED, act: (page, inbox) => openDetails(page, inbox, true) },
+  { name: 'new-thread', window: true, act: (page, inbox) => newThread(page, inbox, false) },
+  { name: 'new-thread-project', window: true, act: (page, inbox) => newThread(page, inbox, true) },
+  { name: 'new-thread-models-claude', window: true, scenario: MODELS, act: (page, inbox) => openModels(page, inbox, null) },
+  { name: 'new-thread-models-codex', window: true, scenario: MODELS, act: (page, inbox) => openModels(page, inbox, 'Codex') },
+  { name: 'new-thread-models-failed', window: true, scenario: { ...EVERY_STATE, modelsSaid: MODELS_SAID }, act: (page, inbox) => openModels(page, inbox, null, false) },
+  {
+    name: 'new-thread-no-project',
+    scenario: EMPTY,
+    window: true,
+    act: async (page, inbox) => {
+      await inbox.getByRole('button', { name: 'New thread' }).click();
+      await page.mouse.move(1000, HEIGHT / 2);
+      await expect(page.getByRole('heading', { name: 'Add a project to start' })).toBeVisible();
+      return [];
+    },
+  },
+  {
+    name: 'new-thread-scratch',
+    window: true,
+    act: async (page, inbox) => {
+      await newThread(page, inbox, false);
+      await page.getByRole('button', { name: 'or start without a project' }).click();
+      await expect(page.getByRole('heading', { name: 'What should we work on?' })).toBeVisible();
+      return [];
+    },
+  },
+  { name: 'add-project-sources', window: true, scenario: DISK, act: (page, inbox) => addProject(page, inbox, false) },
+  { name: 'add-project-folder', window: true, scenario: DISK, act: (page, inbox) => addProject(page, inbox, true) },
+  { name: 'outside-hidden', scenario: OUTSIDE, act: (page, inbox) => outsideFilter(page, inbox, false) },
+  { name: 'outside-shown', scenario: OUTSIDE, act: (page, inbox) => outsideFilter(page, inbox, true) },
 ];
 
-/** The box of the inbox column with its floating layers, in the page. */
+
 async function frame(inbox: Locator, layers: readonly Locator[]): Promise<{ x: number; y: number; width: number; height: number }> {
   const boxes = (await Promise.all([inbox, ...layers].map((each) => each.boundingBox()))).filter((box) => box !== null);
   const left = Math.max(0, Math.min(...boxes.map((box) => box.x)) - MARGIN);
@@ -206,7 +284,7 @@ for (const chosen of MODES.filter((mode) => !mode.dyslexic && mode.width === 128
   });
 }
 
-// The whole page Code at 1440 wide, a thread open, the bar of Anima folded to its icons (OD-THR60).
+// The whole page Code at 1440 wide (OD-THR60).
 for (const theme of ['dark', 'light'] as const) {
   const base = MODES.find((mode) => mode.theme === theme && !mode.dyslexic);
   if (base === undefined) continue;
@@ -224,9 +302,8 @@ for (const theme of ['dark', 'light'] as const) {
       await page.screenshot({ path: `${FOLDER}${wide.folder}/00-page.png` });
     });
 
-    // The lists of the composer on the real page: they hang over the card, above the timeline (TC4, "Popup design").
-    // The engine gives the composer no files yet, so "@" shows the empty list; "/" lists the built-in commands.
-    for (const [name, text, shows] of [['14-mention-list.png', 'Read @', 'No matching files or folders.'], ['15-command-list.png', '/', null]] as const) {
+    // TC4 "Popup design": the engine gives the composer no files yet, so "@" shows the empty list.
+    for (const [name, text, shows] of [['14-mention-list.png', 'Read @', 'The runner cannot search the folder of a chat yet.'], ['15-command-list.png', '/', null]] as const) {
       test(name, async ({ page }) => {
         mkdirSync(`${FOLDER}${wide.folder}`, { recursive: true });
         const inbox = await prepare(page, wide, EVERY_STATE);

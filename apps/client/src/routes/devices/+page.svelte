@@ -13,14 +13,15 @@
   import { hubIsHosted } from '$lib/hosted/mark';
   import { enrolAtAddress, enrolThisComputer, type DeviceEnrolment } from '$lib/hosted/this-computer';
   import { enrolLinkedDevice } from '$lib/devices/enrollment/enrol-linked-device';
-  import { enableAndroidMetrics } from '$lib/metrics/mobile/report';
+  import { enableMobileMetrics } from '$lib/metrics/mobile/report';
   import { clearPendingEnrolment, pendingEnrolment } from '$lib/devices/enrollment/pending-enrolment';
   import { VPN_SITE } from '$lib/devices/form/site';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Modal from '$lib/forms/modal/Modal.svelte';
+  import AccessSetup from '$lib/link/ports/AccessSetup.svelte';
   import InviteMaker from '$lib/link/InviteMaker.svelte';
   import { createClock } from '$lib/nav/clock.svelte';
-  import { isAndroid, isIPad } from '$lib/platform/mobile';
+  import { isAndroid, isIPad, isMobile } from '$lib/platform/mobile';
   import { linkApi } from '$lib/link/api';
   import { useHub } from '$lib/hub/context';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
@@ -50,7 +51,7 @@
     ...inventory,
     link: readLink,
     linkDevices: link.devices,
-    ...(android ? { enableMetrics: (host: string) => enableAndroidMetrics(hub, host) } : {}),
+    ...(platform.deviceLink && isMobile(navigator) ? { enableMetrics: (host: string) => enableMobileMetrics(hub, host) } : {}),
   };
   const tablet = deviceName === 'iPad' || (android && Math.min(screen.width, screen.height) >= 600);
   const mobileDevice = { name: deviceName, kind: tablet ? 'tablet' : 'phone' };
@@ -144,6 +145,8 @@
     void openWebInterface(sessions, webViewShell(), { device, webInterface, origin: button.getBoundingClientRect() });
   }
 </script>
+
+{#if platform.thisMachine}<AccessSetup automatic onSaved={() => { listVersion += 1; }} />{/if}
 
 <section>
   {#key listVersion}

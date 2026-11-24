@@ -1,13 +1,10 @@
 //! Keeps the Android web view above the on-screen keyboard (MOB-011, mobile plan M4-1).
-//!
-//! The app draws edge to edge, so Android does not make the web view shorter when the keyboard opens, and the web view
-//! does not tell the page that the keyboard is there. `KeyboardPlugin.kt` makes the web view end where the keyboard
-//! starts. On iOS the web view reports the keyboard itself, and the plugin does nothing.
+//! The app draws edge to edge, so Android does not shorten the web view; iOS reports the keyboard itself.
 
 use tauri::Runtime;
 use tauri::plugin::{Builder, TauriPlugin};
 
-/// The plugin. Register it once, in the mobile application.
+/// Register it once, in the mobile application.
 #[must_use]
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("keyboard")

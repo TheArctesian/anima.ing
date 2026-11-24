@@ -1,5 +1,4 @@
-// What the synthetic hub saw, so a spec can assert on it. Only facts about headers are kept, never a header's value
-// (LOG-007): a cookie or an authorization value is never stored here.
+// What the synthetic hub saw. Only facts about headers are kept, never a header's value (LOG-007).
 
 export type Channel = 'graphql' | 'graphql-socket' | 'terminal' | 'tunnel';
 
@@ -11,7 +10,6 @@ export interface RecordedRequest {
   readonly hadAuthorization: boolean;
   readonly hadCookie: boolean;
   readonly origin: string | null;
-  /** Whether the hub treated the request as signed in. */
   readonly signedIn: boolean;
 }
 
@@ -21,7 +19,6 @@ export interface Recorder {
   readonly foreignRequests: number;
   /** The origins (never paths or queries) that were refused. */
   readonly foreignOrigins: readonly string[];
-  /** Requests of one channel, or of one GraphQL operation. */
   where(match: { channel?: Channel; operation?: string }): RecordedRequest[];
 }
 

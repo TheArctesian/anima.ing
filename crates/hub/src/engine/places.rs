@@ -1,6 +1,5 @@
-//! Places: where things are, as every extension names them (K-E4 Section 8; PLC-001 to
-//! PLC-006). A place is a record with the reference `place:<PlaceId>`; the operator's name is
-//! its title and a geocoder never changes it.
+//! Places (K-E4 Section 8; PLC-001 to PLC-006): records with the reference `place:<PlaceId>`.
+//! The operator name is the title of a place, and a geocoder never changes it.
 
 pub mod graphql;
 mod inputs;
@@ -28,22 +27,21 @@ use crate::{
     ids::{PlaceId, SiteId},
 };
 
-/// A holder of a `PlaceId` could not answer now. The message holds no detail.
+/// The message holds no detail.
 #[derive(Debug, thiserror::Error)]
 #[error("the {0} domain could not count or move its places")]
 pub struct Unavailable(pub &'static str);
 
-/// Why a places operation failed. Messages hold no SQL and no input value.
+/// Messages hold no SQL and no input value.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// Some input is not valid; each [`Fault`] names a field.
     #[error("the place input is not valid")]
     Invalid(Vec<Fault>),
     #[error("no such place")]
     NotFound,
-    /// The place was merged into another one and cannot be changed (PLC-004).
+    /// A merged place cannot be changed (PLC-004).
     #[error("the place was merged into another place")]
     Merged,
     /// The place has references and no replacement was given (PLC-005).
@@ -55,21 +53,16 @@ pub enum Error {
     Holder(#[from] Unavailable),
 }
 
-/// A later domain that keeps a `PlaceId` in its own table. It gives itself to the places
-/// domain at wiring, so that `places` never imports its store (PLC-004, PLC-005).
+/// A later domain that keeps a `PlaceId` gives itself at wiring, so `places` never imports
+/// its store (PLC-004, PLC-005).
 #[async_trait]
 pub trait Holder: Send + Sync {
-    /// The domain, for the answer of a refused delete.
     fn name(&self) -> &'static str;
 
-    /// How many rows of the domain hold `place`.
-    ///
     /// # Errors
     /// [`Unavailable`] when the domain cannot count.
     async fn count(&self, conn: &mut PgConnection, place: PlaceId) -> Result<u64, Unavailable>;
 
-    /// Points every row that holds `from` at `to`; returns how many.
-    ///
     /// # Errors
     /// [`Unavailable`] when the domain cannot move its rows.
     async fn move_all(
@@ -80,7 +73,6 @@ pub trait Holder: Send + Sync {
     ) -> Result<u64, Unavailable>;
 }
 
-/// Every [`Holder`] of the hub, built once in wiring.
 #[derive(Clone, Default)]
 pub struct Holders(Vec<Arc<dyn Holder>>);
 
@@ -99,7 +91,7 @@ fn invalid(field: &'static str, message: &'static str) -> Error {
     Error::Invalid(vec![Fault { field, message }])
 }
 
-/// The place `id`, which must exist and not be merged; its row is locked.
+/// The row of the place is locked.
 async fn live(conn: &mut PgConnection, id: PlaceId) -> Result<Place, Error> {
     let place = store::get(conn, id, true).await?.ok_or(Error::NotFound)?;
     if place.merged_into.is_some() {
@@ -109,7 +101,7 @@ async fn live(conn: &mut PgConnection, id: PlaceId) -> Result<Place, Error> {
     }
 }
 
-/// How deep `parent` sits (a top-level place is 1), when a place may go inside it.
+/// A top-level place is at depth 1.
 async fn parent_depth(
     conn: &mut PgConnection,
     parent: PlaceId,
@@ -129,8 +121,6 @@ async fn parent_depth(
     Ok(chain.len())
 }
 
-/// Makes a place (PLC-001, PLC-002).
-///
 /// # Errors
 /// `Invalid` for a field to fix, a parent that does not exist or a tree deeper than 5 levels;
 /// `Database`. The caller rolls back.
@@ -150,8 +140,7 @@ pub async fn create(
     Ok(store::insert(conn, Uuid::now_v7().into(), &draft, at).await?)
 }
 
-/// Changes a place (PLC-001 to PLC-003). Returns the place and the names of the fields that
-/// changed; nothing is written when none did.
+/// Nothing is written when no field changed.
 ///
 /// # Errors
 /// `NotFound`, `Merged`, `Invalid` as [`create`], and a place inside itself; `Database`.
@@ -178,8 +167,7 @@ pub async fn update(
     Ok((store::update(conn, id, &draft, at).await?, changed))
 }
 
-/// Links a site to a place, or with `None` removes the link (PLC-006). One site has at most one
-/// place.
+/// One site has at most one place (PLC-006).
 ///
 /// # Errors
 /// `NotFound` when the place does not exist; `Merged`; `Database`.
@@ -204,16 +192,13 @@ pub async fn set_site(
     })
 }
 
-/// The places that are not merged, by name.
-///
 /// # Errors
 /// `Database`.
 pub async fn list(db: &PgPool) -> Result<Vec<Place>, Error> {
     Ok(store::list(db).await?)
 }
 
-/// The place `id`, or the one it was merged into: `place:<id>` still resolves after a merge
-/// (PLC-004). `None` when no place has this ID.
+/// `place:<id>` still resolves after a merge (PLC-004).
 ///
 /// # Errors
 /// `Database`.
@@ -230,8 +215,7 @@ pub async fn current(db: &PgPool, id: PlaceId) -> Result<Option<Place>, Error> {
     Ok(place)
 }
 
-/// The place of `site`, when the site is linked to one (PLC-006). The row is locked until
-/// the caller's transaction ends.
+/// The row is locked until the transaction of the caller ends.
 ///
 /// # Errors
 /// `Database`.
@@ -242,8 +226,6 @@ pub async fn place_of_site(
     Ok(store::site_place(conn, site).await?)
 }
 
-/// The sites that point at each of `places` (PLC-006).
-///
 /// # Errors
 /// `Database`.
 pub async fn sites_of(
@@ -258,7 +240,6 @@ pub async fn sites_of(
     Ok(found)
 }
 
-/// The titles of the records of kind `place`, for `links` (K-E4 Section 4).
 struct PlaceTitles;
 
 #[async_trait]
@@ -283,7 +264,6 @@ impl Titles for PlaceTitles {
     }
 }
 
-/// The places' [`Titles`], for the wiring of `links`.
 #[must_use]
 pub fn record_titles() -> Arc<dyn Titles> {
     Arc::new(PlaceTitles)

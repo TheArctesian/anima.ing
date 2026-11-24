@@ -1,8 +1,5 @@
-//! A loopback hub origin as the desktop client saves it (F-1): `http://127.0.0.1:<port>` and
-//! nothing more. `localhost` and `[::1]` are refused: a desktop loopback hub is on
-//! `127.0.0.1` only, so one address is checked. Pure.
+//! A desktop loopback hub origin is `http://127.0.0.1:<port>` only; `localhost` and `[::1]` are refused (F-1).
 
-/// The port of the origin, or none when it is not `http://127.0.0.1:<port>`.
 pub fn port(origin: &str) -> Option<u16> {
     let port = origin.strip_prefix("http://127.0.0.1:")?;
     let digits =

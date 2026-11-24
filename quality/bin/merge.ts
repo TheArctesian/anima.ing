@@ -1,11 +1,7 @@
-// Merges one branch into `dev`: `bun quality/bin/merge.ts <branch> [--push]`, in a clean worktree
-// that is on `dev`. It writes the generated files again in place of a merge of them, gives each
-// placeholder its number (PLN-021), makes the merge commit and runs the document gates on that
-// commit (`src/merge/commit.ts` says why in that order); if they fail, the commit is removed.
-// Without `--push` it pushes nothing and prints the command. It never pushes to `main`.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { undoMerge } from "../src/merge/commit.ts";
+import { mergeEach } from "../src/merge/each.ts";
 import { finishMerge } from "../src/merge/finish.ts";
 import { conflictsForAHand, gatesRefusal, GENERATED, parseMergeRule, type CheckRun } from "../src/merge/rules.ts";
 import { REPO_ROOT } from "../src/repository.ts";
@@ -22,7 +18,6 @@ function stop(code: number, message: string): never {
   process.exit(code);
 }
 
-/** Runs a step of the merge; a step that fails undoes the merge and ends the program. */
 function step(argv: string[]): string {
   const done = run(argv);
   if (!done.ok) {
@@ -32,7 +27,6 @@ function step(argv: string[]): string {
   return done.out;
 }
 
-/** With the rule `fullGates: github`, the gates of the tip of the branch must have passed on GitHub. */
 function requireGatesOnGitHub(commit: string): void {
   const repository = process.env["GITHUB_REPOSITORY"] ?? run(["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"], true).out.trim();
   const answer = run(["gh", "api", `repos/${repository}/commits/${commit}/check-runs`, "--jq", ".check_runs"], true);
@@ -41,7 +35,12 @@ function requireGatesOnGitHub(commit: string): void {
   if (refusal !== undefined) stop(5, `${refusal}; the rule is fullGates "github" (quality/merge-rule.json)`);
 }
 
-const branch = process.argv.slice(2).find((each) => !each.startsWith("--"));
+const named = process.argv.slice(2).filter((each) => !each.startsWith("--"));
+if (process.argv.includes("--each")) {
+  if (named.length === 0) stop(2, "usage: bun quality/bin/merge.ts --each <branch>...");
+  process.exit(mergeEach(REPO_ROOT, named) ? 0 : 1);
+}
+const branch = named[0];
 const push = process.argv.includes("--push");
 if (branch === undefined) stop(2, "usage: bun quality/bin/merge.ts <branch> [--push]");
 const rule = parseMergeRule(readFileSync(join(REPO_ROOT, "quality", "merge-rule.json"), "utf8"));

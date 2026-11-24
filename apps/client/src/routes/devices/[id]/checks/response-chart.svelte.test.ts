@@ -35,7 +35,6 @@ function chart(beats: ChartBeat[]) {
   return props;
 }
 
-/** The x and y of each point of each drawn line. */
 function drawn(): number[][][] {
   return [...document.querySelectorAll('polyline')].map((line) =>
     (line.getAttribute('points') ?? '').split(' ').map((pair) => pair.split(',').map(Number)),

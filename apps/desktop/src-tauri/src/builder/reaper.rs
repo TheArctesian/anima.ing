@@ -1,23 +1,10 @@
-//! Ends the processes a build step started that still carry the step's marker, including those
-//! that left the step's process group with `setsid` (`pg_ctl` does). On Linux this process is
-//! the child subreaper of its descendants, so an escaped process is re-parented here rather than
-//! to `init`; each step's processes carry a marker variable, and after the step, and on cancel,
-//! every live descendant with the step's marker is killed and reaped (BLD-026, D-20).
-//!
-//! Only processes that still carry the marker are reaped. A hostile step can escape: a process
-//! started without the variable (`setsid env -u ANIMA_BUILD_STEP ...`) is not seen. The step
-//! sandbox (the issue #1 follow-up) closes that. A process the app did not start through a step
-//! is never marked, so it is never killed, and the sweep never waits for it.
-//!
-//! On macOS there is no subreaper: only the step's process group is killed, and a process that
-//! called `setsid` outlives the step (a known limit).
-//!
-//! The parsers are pure; reading `/proc` and sending signals is the edge.
+//! On Linux this process is the child subreaper of its descendants: every live descendant with the
+//! step's marker is killed and reaped after the step and on cancel (BLD-026, D-20). A process the
+//! app did not start through a step is never marked, so it is never killed or waited for.
+//! A process started without the marker, and on macOS (no subreaper) any that called `setsid`, escapes.
 
-/// The variable that marks a build step's processes; its value is the step's own.
 pub const MARKER: &str = "ANIMA_BUILD_STEP";
 
-/// One process as `/proc/<pid>/stat` describes it.
 #[cfg_attr(
     not(target_os = "linux"),
     expect(dead_code, reason = "only the Linux subreaper reads the process table")
@@ -31,8 +18,7 @@ pub struct Process {
     pub zombie: bool,
 }
 
-/// Reads `/proc/<pid>/stat`. The command name is in parentheses and may hold anything, spaces
-/// and parentheses included, so the fields are read after the last `)`.
+/// The command name may hold spaces and parentheses, so the fields are read after the last `)`.
 #[cfg_attr(
     not(target_os = "linux"),
     expect(dead_code, reason = "only the Linux subreaper reads the process table")
@@ -53,7 +39,6 @@ pub fn process_of(pid: i32, stat: &str) -> Option<Process> {
     })
 }
 
-/// Every process below `root` in `all`, children before grandchildren.
 #[cfg_attr(
     not(target_os = "linux"),
     expect(dead_code, reason = "only the Linux subreaper reads the process table")
@@ -72,7 +57,6 @@ pub fn descendants(root: i32, all: &[Process]) -> Vec<Process> {
     found
 }
 
-/// Whether the `NUL`-separated environment `environ` holds exactly `MARKER=<value>`.
 #[cfg_attr(
     not(target_os = "linux"),
     expect(dead_code, reason = "only the Linux subreaper reads the process table")
@@ -98,12 +82,10 @@ mod linux {
 
     use super::{Process, descendants, marked, process_of};
 
-    /// An environment is read up to this many bytes; the marker is near its end at most this far.
     const ENVIRON_MAX_BYTES: u64 = 1 << 20;
     const ROUNDS: usize = 200;
     const PAUSE: Duration = Duration::from_millis(10);
 
-    /// Makes this process the child subreaper of its descendants; once per process.
     pub fn become_subreaper() {
         static ONCE: Once = Once::new();
         ONCE.call_once(|| {
@@ -135,9 +117,8 @@ mod linux {
         i32::try_from(std::process::id()).unwrap_or(i32::MAX)
     }
 
-    /// Sends SIGKILL to `pid` if it carries the marker `value`; whether it was sent. The pidfd is
-    /// opened before the marker is read, so the signal reaches the process that was read even if
-    /// it ended and its ID was reused meanwhile. Without pidfd (Linux before 5.3), `kill`.
+    /// The pidfd is opened before the marker is read, so the signal reaches the process that was
+    /// read even if its ID was reused meanwhile. Without pidfd (Linux before 5.3), `kill`.
     fn kill_if_marked(pid: i32, value: &str) -> bool {
         let Some(id) = rustix::process::Pid::from_raw(pid) else {
             return false;
@@ -155,7 +136,6 @@ mod linux {
         }
     }
 
-    /// Sends SIGKILL to every live descendant that carries the marker `value`; returns them.
     pub fn kill_marked(value: &str) -> Vec<i32> {
         let all = processes();
         descendants(me(), &all)
@@ -165,12 +145,10 @@ mod linux {
             .collect()
     }
 
-    /// Kills every descendant with the marker `value` until none is left, and reaps those that
-    /// were re-parented here. It waits only for processes seen with the marker or in the step's
-    /// process `group`. Zombies of another session re-parented here (they called `setsid`) are
-    /// reaped when seen but never waited for, and a child the app waits for elsewhere, in this
-    /// session, is never taken from it. Run it after the step's own process was waited for.
-    /// Blocking: at most `ROUNDS` pauses.
+    /// Waits only for processes seen with the marker or in the step's process `group`; a child the
+    /// app
+    /// waits for elsewhere, in this session, is never taken from it. Run it after the step's own
+    /// process was waited for.
     pub fn sweep(value: &str, group: Option<i32>) {
         let mut killed: HashSet<i32> = HashSet::new();
         for _ in 0..ROUNDS {

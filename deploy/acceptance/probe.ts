@@ -1,13 +1,9 @@
-// A live probe of a running hub by its origin (criteria 4, 12 and 13; SEC-001, SEC-002, API-003, INT-001 to
-// INT-003, D-3, D-4, D-23, D-24, R-100). Run it from the repository root:
+// A live probe of a running hub (SEC-001, SEC-002, API-003, INT-001 to INT-003, D-3, D-4, D-23, D-24, R-100):
 //   bun deploy/acceptance/probe.ts https://hub.anima.ing [--key-file <path>] [--ca <pem file>]
-// Each check prints `ok <check>` or `FAIL <check>: <reason>`, then a summary line. A reason is fixed text: it may
-// name a status code, a header or a K7 error code, never a key, a cookie, a header value or a body (A-2).
+// Prints `ok <check>` or `FAIL <check>: <reason>`, then a summary; a reason never quotes what the hub sent (A-2).
 // Exit codes: 0 every check passed, 1 a check failed, 2 bad usage, an unusable key or CA file, or no hub answer.
-// The key is read only from `--key-file` (an `anima_` API key; a READ key proves criterion 13), never from argv or
-// the environment. Every document sent with it is invalid, so nothing can change even if the hub failed to refuse.
-// TLS is always verified; `--ca` adds a trusted certificate for a local hub. Plain http is allowed only for a
-// loopback host. Redirects are never followed, so the key never leaves the origin.
+// The key (a READ key) is read only from `--key-file`; every document sent with it is invalid, so nothing changes.
+// Redirects are never followed, so the key never leaves the origin.
 import { constants } from "node:fs";
 import { open, type FileHandle } from "node:fs/promises";
 import { parseArgs } from "node:util";
@@ -20,11 +16,9 @@ import { IMMUTABLE, NO_CACHE, cacheVerdict, fixedHeadersVerdict, immutableAssetP
 const KEY_SHAPE = /^anima_[A-Za-z0-9_-]{43}$/;
 const EXPOSITION_TYPE = "text/plain; version=0.0.4; charset=utf-8";
 const USAGE = "usage: probe.ts <https://hub origin> [--key-file <path>] [--ca <pem file>]";
-/** One deadline for the whole run: a safety net behind the per-request timeouts, with no test of its own. */
 const RUN_LIMIT_MS = 120_000;
 const NO_ANSWER = "no answer (network, TLS, timeout or too large)";
 
-/** One check's result: `undefined` passed, else the fixed reason it failed. */
 interface Check {
   name: string;
   reason: string | undefined;
@@ -38,12 +32,10 @@ function check(name: string, answer: Answer | undefined, verdict: Verdict): Chec
   return { name, reason: answer === undefined ? NO_ANSWER : verdict(answer) };
 }
 
-/** The verdict, once the answer is a 200. */
 function served(verdict: Verdict): Verdict {
   return (answer) => (answer.status === 200 ? verdict(answer) : `answered status ${String(answer.status)}, not 200`);
 }
 
-/** The cache rule and the K7 headers on one hashed asset the page names. */
 async function assetChecks(target: Target, index: Answer | undefined): Promise<Check[]> {
   const path = index === undefined ? undefined : immutableAssetPath(index.body);
   if (path === undefined) {
@@ -69,7 +61,6 @@ async function corsClientCheck(target: Target): Promise<Check> {
   return { name: "cors-client-origins", reason: undefined };
 }
 
-/** The checks that need no secret: K7 headers, the cookie and CORS refusals, and the closed `/metrics`. */
 async function* signedOutChecks(target: Target, health: Answer): AsyncGenerator<Check> {
   yield check("health", health, served((answer) => (answer.body.trim() === "ok" ? undefined : "the body is not ok")));
   const index = await ask(target, "/");
@@ -89,7 +80,6 @@ async function* signedOutChecks(target: Target, health: Answer): AsyncGenerator<
   yield check("metrics-without-token", metrics, (answer) => refusals.metricsRefusedVerdict(answer.status));
 }
 
-/** The scrape with the key, then each rule on its text. Lines with a problem are skipped by the rules. */
 function expositionChecks(scraped: Answer | undefined): Check[] {
   const scrape = check("metrics-with-key", scraped, served((answer) =>
     answer.headers.get("content-type") === EXPOSITION_TYPE ? undefined : "the content-type is not the K7 text format"));
@@ -111,7 +101,6 @@ function expositionChecks(scraped: Answer | undefined): Check[] {
   ];
 }
 
-/** The checks with the operator's key: the exposition, then the READ and key-kind refusals. */
 async function* keyChecks(target: Target, key: string): AsyncGenerator<Check> {
   const authorization = { authorization: `Bearer ${key}` };
   yield* expositionChecks(await ask(target, "/metrics", { headers: authorization }));
@@ -130,7 +119,7 @@ function errorCode(error: unknown): string {
   return typeof code === "string" && /^[A-Z0-9_]+$/.test(code) ? code : "read error";
 }
 
-/** At most `limit` bytes of an open file; more is refused. The size `fstat` gives is not trusted (S-C6). */
+/** The size `fstat` gives is not trusted (S-C6). */
 async function boundedText(handle: FileHandle, limit: number): Promise<string | undefined> {
   const buffer = Buffer.alloc(limit + 1);
   let length = 0;
@@ -140,7 +129,6 @@ async function boundedText(handle: FileHandle, limit: number): Promise<string | 
   return length > limit ? undefined : buffer.subarray(0, length).toString("utf8");
 }
 
-/** The text of a small regular file; `what` names it in a fixed message. Warns when others may read a key file. */
 async function readSmallFile(path: string, what: "key file" | "CA file", limit: number): Promise<string> {
   const unreadable = `the ${what} is not a regular file of at most ${String(limit)} bytes`;
   try {
@@ -167,7 +155,7 @@ async function readSmallFile(path: string, what: "key file" | "CA file", limit: 
   }
 }
 
-/** The API key in the file, trimmed; refused unless it has the `anima_` key shape, so no other file is sent. */
+/** Refused unless it has the `anima_` key shape, so no other file is sent. */
 async function readKey(path: string): Promise<string> {
   const key = (await readSmallFile(path, "key file", 4096)).trim();
   if (!KEY_SHAPE.test(key)) {
@@ -195,7 +183,7 @@ async function parseRequest(args: string[]): Promise<Request> {
     const options = { "key-file": { type: "string" }, ca: { type: "string" } } as const;
     parsed = parseArgs({ args, options, allowPositionals: true, strict: true });
   } catch {
-    // The parser's message quotes the argument, and a pasted key may be one, so it is not shown.
+    // The parser's message quotes the argument, which may be a pasted key.
     throw new ProbeError(USAGE);
   }
   const origin = parsed.positionals.length === 1 ? hubOrigin(parsed.positionals[0] ?? "") : undefined;
@@ -206,7 +194,6 @@ async function parseRequest(args: string[]): Promise<Request> {
   return { target: { origin, ca }, keyFile: parsed.values["key-file"] };
 }
 
-/** Prints each check as it ends; returns how many ran and how many failed. */
 async function report(groups: AsyncGenerator<Check>[]): Promise<{ total: number; failed: number }> {
   let total = 0;
   let failed = 0;
@@ -220,7 +207,6 @@ async function report(groups: AsyncGenerator<Check>[]): Promise<{ total: number;
   return { total, failed };
 }
 
-/** Runs the probe for these arguments and returns the exit code; checks go to stdout, problems to stderr. */
 async function main(args: string[]): Promise<number> {
   try {
     if (proxyConfigured(process.env)) {
@@ -249,7 +235,6 @@ async function main(args: string[]): Promise<number> {
 }
 
 if (import.meta.main) {
-  // A reader that closes the pipe early ends the run with fixed text, never a stack trace.
   process.stdout.on("error", () => {
     process.stderr.write("probe: the output closed\n");
     process.exit(2);

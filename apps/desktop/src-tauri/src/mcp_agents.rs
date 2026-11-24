@@ -1,7 +1,5 @@
-//! The Settings part "Coding agents" (MCP-039): the entry `anima` in each coding agent on this
-//! computer, read and changed through the library of `anima mcp install`. This module adds the
-//! caller check, the installed `anima`, and the error codes, nothing else. The `anima` program is
-//! not started, and no token is read.
+//! This module adds the caller check, the installed `anima` and the error codes (MCP-039).
+//! It starts no `anima` program and reads no token.
 
 use anima_cli::mcp::install::setup::{Action, Here, check_command};
 use anima_cli::mcp::install::{Asked, Row, change, listing};
@@ -11,14 +9,7 @@ use tauri_plugin_log::log;
 
 use crate::command_line;
 
-/// Why the agents were not read or changed. Carries no path and no file text (LOG-007).
-///
-/// - `caller`: not the main web view (WEB-007).
-/// - `no_command_line`: the command line tool is not installed, so no entry can name it.
-/// - `command`: the installed `anima` is not a fixed program that only this user can replace.
-/// - `user`: the home folder does not belong to the user that runs the application.
-/// - `failed`: anything else, also a change that names no agent or asks to force one: the page
-///   asks for each agent that it listed, and never forces (MCP-029, MCP-036).
+/// Carries no path and no file text (LOG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum AgentsError {
     #[error("only the main window may ask")]
@@ -56,8 +47,6 @@ impl Serialize for AgentsError {
     }
 }
 
-/// What the page asks: the action (uninstall or install), the agents by id (all when empty), and
-/// whether an entry that starts a different program may be taken out (MCP-036).
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Wanted {
@@ -70,7 +59,6 @@ pub struct Wanted {
 
 static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-/// Runs `job` with this computer and the installed `anima`, off the async runtime.
 async fn with<R: Runtime>(
     webview: Webview<R>,
     job: impl FnOnce(&Here, &anima_cli::mcp::install::setup::Checked) -> Vec<Row> + Send + 'static,
@@ -110,8 +98,7 @@ const fn action(uninstall: bool) -> Action {
     }
 }
 
-/// Each coding agent with its state and what `uninstall` or the install would touch (MCP-027,
-/// MCP-029). It changes nothing.
+/// Changes nothing (MCP-027, MCP-029).
 #[tauri::command]
 pub async fn mcp_agents_read<R: Runtime>(
     webview: Webview<R>,
@@ -123,15 +110,14 @@ pub async fn mcp_agents_read<R: Runtime>(
     .await
 }
 
-/// Sets the agents up, or takes the entry out, and answers with each agent as it is afterwards
-/// (MCP-028, MCP-036). One refused agent does not stop the others; its row says why.
+/// One refused agent does not stop the others; its row says why (MCP-028, MCP-036).
 #[tauri::command]
 pub async fn mcp_agents_change<R: Runtime>(
     webview: Webview<R>,
     wanted: Wanted,
 ) -> Result<Vec<Row>, AgentsError> {
-    // The page lists each agent before a change and names each one; "all" and "force" are for
-    // the command line, where the person reads the list in the terminal.
+    // The page names each listed agent; "all" and "force" are for the command line (MCP-029,
+    // MCP-036).
     if wanted.agents.is_empty() || wanted.force {
         return Err(AgentsError::Failed);
     }

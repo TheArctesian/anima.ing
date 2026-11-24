@@ -1,6 +1,6 @@
 { config, lib, pkgs, daemonPackage, workspaceRoot ? ../.., ... }:
 {
-  imports = [ ./branding.nix ./console.nix ./display.nix ./updates.nix ./naming.nix ./control.nix ];
+  imports = [ ./branding.nix ./console.nix ./display.nix ./updates.nix ./naming.nix ./control.nix ./remote.nix ];
   services.anima-os-control = { enable = true; package = import ./control-package.nix { inherit pkgs workspaceRoot; }; };
   system.stateVersion = "26.05";
   boot.loader.systemd-boot.enable = true;
@@ -25,7 +25,6 @@
   networking.wireless.extraConfig = "update_config=0";
   services.resolved.enable = true;
   networking.firewall.enable = true;
-  services.openssh.enable = false;
   users.mutableUsers = false;
   users.users.root.hashedPassword = "!";
   users.users.admin = { isNormalUser = true; extraGroups = [ "wheel" "networkmanager" ]; hashedPasswordFile = "/persist/owner-password"; };
@@ -114,5 +113,5 @@
   services.journald.extraConfig = "SystemMaxUse=128M";
   systemd.targets.reboot.unitConfig = { JobTimeoutSec = "60s"; JobTimeoutAction = "reboot-force"; };
   systemd.settings.Manager = { RuntimeWatchdogSec = "20s"; RebootWatchdogSec = "60s"; };
-  environment.etc."anima-preview".text = "Experimental UEFI preview. Enrollment/monitoring and local Podman only; managed jobs/agents are not integrated.\n";
+  environment.etc."anima-preview".text = "Anima OS. Enrollment/monitoring and local Podman; managed jobs/agents are not integrated.\n";
 }

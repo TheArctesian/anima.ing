@@ -1,5 +1,4 @@
-//! One tick against the database: beats, first runs, pause, the in-flight guard and the
-//! limits (CHK-001, CHK-003, CHK-005, HUB-003).
+//! One tick against the database (CHK-001, CHK-003, CHK-005, HUB-003).
 
 use chrono::TimeDelta;
 
@@ -88,7 +87,6 @@ tick_test! {
         let next = stored(&pool, slept).await.state.next_due_at;
         assert_eq!(next, Some(now + TimeDelta::seconds(10)));
 
-        // A hub that ran all the time records the push that did not come.
         let later = now + TimeDelta::seconds(20);
         due_at(&pool, awake, later - TimeDelta::seconds(1)).await;
         due_at(&pool, slept, later + TimeDelta::hours(1)).await;

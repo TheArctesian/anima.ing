@@ -1,4 +1,4 @@
-//! `update` (D-6): the programs change only when the application carries others.
+//! `update` (D-6).
 
 use std::cell::Cell;
 use std::fs;
@@ -9,7 +9,7 @@ use anima_database::Platform;
 use tempfile::TempDir;
 
 use super::{Outcome, update};
-use crate::programs::tests::carried;
+use crate::programs::tests::{carried, private_folder};
 use crate::units::install::InstallError;
 use crate::units::install::{self, Request, is_installed};
 use crate::{Carried, Folders};
@@ -18,12 +18,11 @@ struct Rig {
     folder: TempDir,
     folders: Folders,
     source: Carried,
-    /// The version of the programs that the application carries.
     version: Cell<&'static str>,
 }
 
 fn rig() -> Rig {
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let folders = Folders::new(folder.path().join("home/hub"), folder.path().join("s")).unwrap();
     let source = carried(folder.path(), "one");
     Rig {
@@ -61,7 +60,6 @@ impl Rig {
         (outcome.unwrap().replaced(), ran)
     }
 
-    /// Updates with each step answered by `answer`.
     fn outcome(
         &self,
         platform: Platform,
@@ -119,7 +117,6 @@ impl Rig {
     }
 }
 
-/// What a test does to a rig, with what it is.
 type Act = (&'static str, fn(&Rig));
 
 mod fifo;
@@ -150,7 +147,6 @@ fn a_copy_that_is_the_same_runs_no_step_and_stays_as_it_is() {
     rig.install();
     let marker = rig.folders.programs().join("bin/kept");
     fs::write(&marker, "this file is not in the source").unwrap();
-    // A hub that runs: nothing is to be started.
     let _runs = crate::run::lock(&rig.folders).unwrap();
 
     let (updated, ran) = rig.update();

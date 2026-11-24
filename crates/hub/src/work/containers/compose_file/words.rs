@@ -1,10 +1,8 @@
-//! The words of a shell command line, for the `docker run` converter. It expands nothing and
-//! runs nothing: it reads single quotes, double quotes, the backslash and the line
-//! continuation, and it refuses each form that a shell would run or fill.
+//! The words of a shell command line for the `docker run` converter. It expands and runs nothing,
+//! and refuses each form that a shell would run or fill.
 //!
-//! Each word is text for a Compose file. A `$NAME` or `${NAME}` that a shell would fill stays
-//! as it is, because Compose fills it when it starts the project. A `$` that the shell would
-//! keep as a character becomes `$$`, which is how Compose writes that character.
+//! A `$NAME` or `${NAME}` stays for Compose to fill; a literal `$` becomes `$$`, as Compose writes
+//! it.
 
 use super::docker_run::{Refusal, RefusalCode};
 
@@ -15,7 +13,6 @@ pub(super) struct Word {
     pub at: u32,
 }
 
-/// The words of a command line.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(super) struct Split {
     pub words: Vec<Word>,
@@ -34,10 +31,6 @@ struct Reader<'a> {
 
 type Step = Result<(), Refusal>;
 
-/// The words of `command`.
-///
-/// # Errors
-/// [`Refusal`] with the fixed code of the first form that the converter does not read.
 pub(super) fn split(command: &str) -> Result<Split, Refusal> {
     let characters: Vec<char> = command.trim_end().chars().collect();
     let mut reader = Reader {
@@ -87,7 +80,6 @@ impl Reader<'_> {
         self.split.words.extend(self.word.take());
     }
 
-    /// Adds a character that is itself: a `$` is written as Compose writes it.
     fn keep(&mut self, character: char) {
         self.word().push(character);
         if character == '$' {
@@ -97,7 +89,6 @@ impl Reader<'_> {
         self.next += 1;
     }
 
-    /// One step outside quotes.
     fn outside(&mut self, character: char) -> Step {
         let following = self.characters.get(self.next + 1).copied();
         match character {
@@ -127,17 +118,15 @@ impl Reader<'_> {
         }
     }
 
-    /// Whether a shell would put the home folder in place of a `~` here: at the start of a
-    /// word, or after a `=` or a `:` in it.
+    /// Whether a shell expands a `~` here: at the start of a word, or after a `=` or a `:` in it.
     fn tilde_expands(&self) -> bool {
         self.word
             .as_ref()
             .is_none_or(|word| word.text.ends_with(['=', ':']))
     }
 
-    /// Whether the `{` here starts a list (`{a,b}`) or a range (`{1..3}`) that a shell would
-    /// make into more than one word. A comma in quotes also counts: the converter refuses
-    /// more than a shell would, never less.
+    /// Whether the `{` starts a list or a range that a shell expands; a quoted comma also counts:
+    /// the converter refuses more than a shell would, never less.
     fn brace_expands(&self) -> bool {
         let rest = &self.characters[self.next + 1..];
         let mut depth = 1_usize;
@@ -156,7 +145,6 @@ impl Reader<'_> {
         false
     }
 
-    /// A text in single quotes: each character is itself.
     fn single(&mut self) -> Step {
         let opened = self.next;
         self.word();
@@ -179,7 +167,6 @@ impl Reader<'_> {
         }
     }
 
-    /// A text in double quotes: the shell fills a variable and reads a backslash in it.
     fn double(&mut self) -> Step {
         let opened = self.next;
         self.word();
@@ -205,8 +192,7 @@ impl Reader<'_> {
         }
     }
 
-    /// A backslash. Before a line break it joins two lines. In double quotes it is itself
-    /// before each character that is not special there.
+    /// A backslash joins lines; in double quotes it is itself before a character not special there.
     fn escaped(&mut self, quoted: bool) -> Step {
         self.next += 1;
         if self.peek() == Some('\r') && self.characters.get(self.next + 1) == Some(&'\n') {
@@ -226,8 +212,6 @@ impl Reader<'_> {
         Ok(())
     }
 
-    /// A `$`: a variable that stays for Compose, a form that the converter refuses, or the
-    /// character itself.
     fn dollar(&mut self, quoted: bool) -> Step {
         match self.characters.get(self.next + 1).copied() {
             Some('(') => self.refuse(RefusalCode::CommandSubstitution),

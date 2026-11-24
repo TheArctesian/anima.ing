@@ -1,5 +1,4 @@
-//! The only SQL of the schema `agent_usage` (K2 1020-1039). Every text from a device reaches a
-//! statement as a bound value, never as SQL.
+//! Device text reaches a statement only as a bound value, never as SQL (K2 1020-1039).
 
 use std::collections::HashMap;
 
@@ -16,7 +15,7 @@ use crate::ids::DeviceId;
 mod sessions;
 pub(super) use sessions::sessions;
 
-/// Keeps `state` as the usage state of `device`; the same state again changes nothing.
+/// The same state again changes nothing.
 pub(super) async fn write_state(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -34,9 +33,7 @@ pub(super) async fn write_state(
     Ok(())
 }
 
-/// Stores `days` of `device`: upserts each session with the start, end and repository of its
-/// last entry in `days`, replaces the prompts, tool calls and model rows of each session day,
-/// then sets the model of each session touched. Five statements whatever the number of entries.
+/// Each session takes the values of its last entry; five statements whatever the number of entries.
 pub(super) async fn write_session_days(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -65,8 +62,6 @@ pub(super) async fn write_session_days(
     Ok(())
 }
 
-/// Upserts one session for each source and ID of `days`, with the values of its last entry;
-/// the row ID of each.
 async fn upsert_sessions(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -113,7 +108,6 @@ async fn upsert_sessions(
         .collect()
 }
 
-/// Replaces the stored day and model rows of each session day of `rows`.
 async fn replace_days(conn: &mut PgConnection, rows: &[(i64, &SessionDay)]) -> Result<(), Error> {
     let sessions: Vec<i64> = rows.iter().map(|(id, _)| *id).collect();
     let days: Vec<NaiveDate> = rows.iter().map(|(_, day)| day.day).collect();
@@ -180,8 +174,7 @@ async fn insert_models(conn: &mut PgConnection, rows: &[(i64, &SessionDay)]) -> 
     Ok(())
 }
 
-/// A K8 count as a `bigint`. K8 keeps each count at most 2^53 − 1, so it always fits; a larger
-/// one is held at `i64::MAX`, which the table's check refuses.
+/// K8 keeps each count at most 2^53 − 1; a larger one becomes `i64::MAX`, which the table's check refuses.
 fn count(value: u64) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
 }
@@ -202,9 +195,7 @@ struct GrainRow {
     cache_write_tokens: f64,
 }
 
-/// The sums `ask` admits, grouped by the dimensions of `by` and always by model: the tokens of
-/// each model, and the sessions, prompts and tool calls of each session under the session's
-/// model. One statement; the dimensions only switch fixed `CASE` parts on and off.
+/// Grouped by `by` and always by model, in one statement whose dimensions only switch fixed `CASE` parts.
 pub(super) async fn grains(
     db: &PgPool,
     ask: &Ask,
@@ -294,7 +285,6 @@ impl TryFrom<GrainRow> for Grain {
     }
 }
 
-/// The usage state of `device`, or of every device when `None`.
 pub(super) async fn states(
     db: &PgPool,
     device: Option<DeviceId>,

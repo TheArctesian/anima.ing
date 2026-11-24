@@ -1,5 +1,3 @@
-//! The SQL of `files.proposal`.
-
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor, types::Json};
 
@@ -78,8 +76,6 @@ pub(in crate::engine::files) async fn insert_proposal(
     .map(drop)
 }
 
-/// Decides a proposal that is still proposed: sets its state and, for a confirm, its fields.
-/// `None` when no proposed proposal has this ID.
 pub(in crate::engine::files) async fn decide(
     conn: &mut PgConnection,
     id: ProposalId,
@@ -113,7 +109,6 @@ pub(in crate::engine::files) async fn proposal(
     row.map(Proposal::try_from).transpose()
 }
 
-/// Up to `limit` proposals, newest first, of `owner` and in `state` when they are given.
 pub(in crate::engine::files) async fn proposals(
     db: impl PgExecutor<'_>,
     owner: Option<&Reference>,

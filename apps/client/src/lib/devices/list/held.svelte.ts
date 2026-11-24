@@ -3,9 +3,7 @@ import { heldOrder } from './held';
 import type { ListEntry } from './look';
 
 /**
- * The rows of a live list in the order the operator sees. While the pointer is on the list, a change that only moves
- * rows (a live status) waits, so the row under the pointer is the row it was; the rows move to their new places when the
- * pointer leaves. A change of `basis` (the sort or the filter that the operator chose) applies at once (5.7.3, Reorder; UR-7 Phase F).
+ * While the pointer is on the list, a change that only moves rows waits until it leaves; a new `basis` applies at once (5.7.3 Reorder).
  * Call during component init; attach `hold` to the list's element.
  */
 export class HeldOrder<T> {
@@ -20,7 +18,6 @@ export class HeldOrder<T> {
     this.#basis = basis;
   }
 
-  /** The entries to render, in the held order while the pointer is on the list. */
   readonly items: readonly ListEntry<T>[] = $derived.by(() => {
     const next = this.#source();
     const basis = this.#basis();
@@ -31,7 +28,6 @@ export class HeldOrder<T> {
     return shown;
   });
 
-  /** Follows the pointer in and out of the list element. */
   readonly hold: Attachment<HTMLElement> = (element) => {
     const enter = (): void => {
       this.#pointerIn = true;

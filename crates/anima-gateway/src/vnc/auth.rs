@@ -1,8 +1,4 @@
-//! The answers of the two sign-in methods that use a password. Pure: the random bytes are
-//! arguments.
-//!
-//! The big numbers of `num-bigint` cannot be zeroed: the secret number and the shared
-//! secret stay in freed memory until it is used again. The byte copies are zeroed.
+//! `num-bigint` numbers cannot be zeroed, so only the byte copies of the secrets are zeroed.
 
 use aes::cipher::{BlockCipherEncrypt as _, KeyInit as _};
 use md5::{Digest as _, Md5};
@@ -11,9 +7,7 @@ use zeroize::Zeroizing;
 
 /// The longest account name or password Apple's method carries, in bytes.
 pub(super) const APPLE_LONGEST: usize = 63;
-/// The lengths of a Diffie-Hellman number taken from a device, in bytes: 1024 bits, what
-/// macOS sends, to 4096 bits. A shorter number lets anyone who sees the exchange find the
-/// secret and read the password; a longer one costs seconds of arithmetic.
+/// 1024 bits (what macOS sends) to 4096: a shorter number exposes the password, a longer one costs seconds.
 pub(super) const KEY_BYTES: std::ops::RangeInclusive<usize> = 128..=512;
 
 /// VNC authentication (RFC 6143 Section 7.2.2): the challenge encrypted with DES under the
@@ -40,19 +34,14 @@ pub(super) struct AppleChallenge {
     pub(super) server_public: Vec<u8>,
 }
 
-/// Why Apple's method cannot be answered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum NoAppleAnswer {
-    /// The account name or the password is longer than the method carries.
     TooLong,
-    /// The device's numbers are not a usable key exchange.
     BadNumbers,
 }
 
-/// The answer to Apple's method: the account name and password, each in 64 bytes ending
-/// with a zero byte, encrypted with AES-128-ECB under the MD5 of the Diffie-Hellman
-/// secret, then the client's public number. `private` is the client's secret number and
-/// `filler` fills the unused bytes of the two fields; both must be random.
+/// Name and password in zero-ended 64-byte fields, AES-128-ECB under the MD5 of the shared
+/// secret, then the client's public number. `private` and `filler` must be random.
 pub(super) fn apple_answer(
     challenge: &AppleChallenge,
     (username, password): (&str, &str),
@@ -96,13 +85,11 @@ pub(super) fn apple_answer(
     Ok(answer)
 }
 
-/// `text` and a zero byte at the start of `field`. `text` is shorter than `field`.
 fn put(field: &mut [u8], text: &[u8]) {
     field[..text.len()].copy_from_slice(text);
     field[text.len()] = 0;
 }
 
-/// The big-endian bytes of `number`, with zeros in front up to `length` bytes.
 fn padded(number: &BigUint, length: usize) -> Vec<u8> {
     let bytes = Zeroizing::new(number.to_bytes_be());
     let mut out = vec![0; length.saturating_sub(bytes.len())];

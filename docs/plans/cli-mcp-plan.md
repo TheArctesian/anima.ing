@@ -1,12 +1,16 @@
 ---
 kind: Plan
 state: In progress
-evidence: The command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built; tasks T11 to T13 build it (R-156), all Not started. Section 11 (2026-11-18) is the direction for `anima tui`, a read-only terminal screen. R-168 (operator, 2026-11-18, first-hand) decided OD-TUI1 to OD-TUI5 and OD-TUI8 and names task TU1. No TUI requirement is approved and no TU task is built.
+evidence: R-440 (operator, first-hand, 2026-11-23) approves ROU-001 to ROU-016; the MCP-006 exception for a routed session or command line still has no effect before RT7. The command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built; tasks T11 to T13 build it (R-156), all Not started. Section 11 (2026-11-18) is the direction for `anima tui`, a read-only terminal screen. R-168 (operator, 2026-11-18, first-hand) decided OD-TUI1 to OD-TUI5 and OD-TUI8 and names task TU1. No TUI requirement is approved and no TU task is built.
 ---
 
 # Anima command line and MCP plan
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
+Version 0.5 (2026-11-22): MCP-033 to MCP-035 count a group that can write a part only when the
+group has a member other than the person and root, and check each link of a chain and the
+interpreter of a script (R-442, 12.8).
 
 Version 0.4 (2026-11-19): Section 12 adds `anima mcp install`, which puts the entry `anima` into the
 configuration of each coding agent on this computer, and its control in the Settings section "MCP"
@@ -82,8 +86,12 @@ The hub has two tokens that a program can hold (design specification INT-003):
 | Login token (user name, password, authenticator code; 30 days) | All operations | The operator at a terminal |
 | API key (`anima_…`, read or write, expiry at most one year) | Not: sessions, files, credentials, trust decisions, device change or delete, retention, builds, VPN keys, API keys | Scripts and coding agents |
 
-- **CMD-010.** `anima auth login` asks for the user name, the password and the authenticator code
-  at the terminal. It must not accept the password as an argument.
+- **CMD-010.** `anima auth login` signs in by a one-time code, as `gh auth login` does
+  (R-381; SGN-NEW-ask to SGN-NEW-status of Section 3b of
+  [vault.md](../../contracts/extensions/vault.md)): it asks whether the hub is hosted by Anima.ing or
+  self-hosted, shows a code and the address of a page, and waits while the person approves the
+  code in the app or a browser. It never asks for a password or an authenticator code. With the app
+  on the computer the app signs `anima` in, and nobody runs it.
 - **CMD-011.** `anima auth login --with-token` reads an API key from standard input.
 - **CMD-012.** The token is kept in the operating system key store (service `ing.anima.cli`,
   account: the hub origin). On Linux with no key store it is a file with mode `0600`, as the agent
@@ -94,6 +102,13 @@ The hub has two tokens that a program can hold (design specification INT-003):
   an error message (LOG-007, SEC-009).
 - **CMD-015.** A context is a name for one hub origin. `anima context add|use|list|remove`. The
   configuration file (`$XDG_CONFIG_HOME/anima/config.json`) holds contexts and no secret.
+- **One sign-in (R-383, R-382; design in Section 3b of
+  [vault.md](../../contracts/extensions/vault.md)).** The app signs `anima` in with a linked token of
+  the kind `command_line`: `anima auth adopt --hub <origin> -` reads it from standard input
+  (SGN-NEW-adopt). Signing out of the app signs `anima` out. `anima auth login` stays for a computer
+  with no app. In a thread, `ANIMA_TOKEN` holds a token of the kind `thread` (SGN-NEW-thread), and
+  `anima` sends the agent declaration (LOG-016) with each request that uses it. The limits of
+  Section 7 stay limits of the MCP server; the command has no limits of its own for an agent.
 
 ## 5. Output and behaviour
 
@@ -242,7 +257,28 @@ Not in the command line, with the reason:
   (R-243, "Multiplexer Q2: automatic for all work."): a tool may start work of a fixed type, or an
   agent run, on the machine that routing picks (ROU-001 to ROU-014 of
   [jobs.md](../proposals/jobs.md)). R-244 (OD-ROU1) adds routed sessions and command lines
-  (ROU-015, ROU-016). Not approved; no effect before the security review RT7.
+  (ROU-015, ROU-016). R-440 approves ROU-001 to ROU-016. The exception still has no
+  effect before the security review RT7. The mechanism is the draft
+  [routed-command-lines.md](../proposals/routed-command-lines.md); no requirement of
+  that document is approved. The texts of K1 and K10 change only with task RT2 and
+  its own acceptance (CON-001).
+  Exception (R-435, OD-AXT42, AXT-096 of
+  [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 6.12): a
+  grant of the operator may let a named agent start a file transfer on a device the grant
+  names. The transfer writes only to the inbox of AXT-092, or reads only from that inbox. The
+  tool must not carry file bytes in its arguments or its result. The hub may open a
+  short-lived SSH session only for the files tunnel (AXT-093). Each transfer is audited
+  (path and size, no content, LOG-007). A size limit applies (OD-AXT45). The exact grant
+  scope is OD-AXT44. An API key must not call `openFiles` (INT-003 is not lifted). Against
+  the recommendation. Not approved; no effect before the security review AX63 and the
+  approval of AXT-090 to AXT-102.
+  Exception (R-439, OD-THR77, THR-177 and THR-180 of
+  [agent-threads.md](../proposals/agent-threads.md) Section 4.16): the holder of a device lease
+  (the caller's hub token, OD-THR78) may use `anima_device_open` on the one device of that
+  lease: read the screen, tap, swipe, type, press a key or a button, and install an app from the
+  thread's own worktree. The tool has no device selector and no command line. It must not
+  confirm the wipe of a phone (THR-187). Each start, end and install is audited (THR-174).
+  No effect before the security review TH145 passes with no High finding open.
 - **MCP-007.** A tool that deletes takes `confirm`, which must be the name of the thing.
 - **MCP-008.** Text that comes from a device or a check (names, log lines, messages) is data. Each
   result gives it in named fields with a length limit, and the server instructions tell the agent
@@ -405,7 +441,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 | `timeline` | `anima_timeline_list` | |
 | `records` | `anima_record_links_list`, `anima_files_list`, `anima_extractions_list`, `anima_locations_list`, `anima_location_context`, `anima_reminders_list`, `anima_reminder_get`, `anima_reminder_firings` | `anima_location_import`, `anima_reminder_add`, `anima_reminder_set`, `anima_reminder_remove`, `anima_reminder_set_enabled`, `anima_reminder_test`, `anima_reminder_snooze`, `anima_reminder_ack`. The three `anima location token` commands have no tool: an ingest token is a secret (K-E4 Section 13). `anima source connect dawarich` has no tool: it takes the API key of the server (R-261). `anima_record_link_add`, `anima_record_link_remove`, `anima_file_remove`, `anima_file_archive_add`, `anima_file_archive_remove`, `anima_extraction_propose`, `anima_extraction_confirm`, `anima_extraction_reject`. `anima file upload` and `anima file download` have no tool: a tool does not carry the bytes of a file (K-E4 Section 13) |
 | `sources` | `anima_sources_overview` (declarations, accounts and their last runs; covers `Query.sources` and `Query.sourceAccounts`) | `anima_source_account_sync`, `anima_source_account_set_paused`, `anima_source_account_remove` L (`confirm` must equal the account label, MCP-007), `anima_github_connect_start` L, `anima_github_connect_cancel` L, and the read tool `anima_github_connect_state` (any token; phase, failure, message, `appSlug`, `ownerLogin`, `installUrl`, `appSettingsUrl`, and the account id, label and health). The start tool returns `{ attempt: { id, phase, expiresAt }, link }` where `link` is the fixed `https://<hub>/connect/github`: no state, no ticket, no attempt id. Alone it does nothing until a signed-in operator presses Continue. The start tool's description tells the agent to give the link to the operator and not to open it. `appSlug`, `ownerLogin` and the label go through `mcp/untrusted.rs` (operator, 2026-11-14; ruling number to be assigned) |
-| `projects` | `anima_projects_search`, `anima_project_get` | `anima_repository_set_left_out` (one tool, `leftOut: bool`), `anima_project_resource_confirm` |
+| `projects` | `anima_projects_search` (with `group` and `ungrouped`), `anima_project_get`, `anima_project_groups_list` (PRO-059) | `anima_repository_set_left_out` (one tool, `leftOut: bool`), `anima_project_resource_confirm`, `anima_project_group_create`, `anima_project_group_rename`, `anima_project_group_delete`, `anima_projects_set_group` (PRO-060 to PRO-063) |
 | `repositories` (operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14) | `anima_pull_requests_list` (`pullRequests`; `detail: true` adds mergeability and checks), `anima_pull_request_get` (`pullRequest`, `issueComments`), `anima_issues_list` (`issues`), `anima_issue_get` (`issue`, `issueComments`), `anima_workflows_list` (`workflows`), `anima_workflow_runs_list` (`workflowRuns`), `anima_workflow_run_get` (`workflowRun`, with jobs), `anima_commits_list` (`commits`), `anima_branches_list` (`branches`), `anima_repository_releases_list` (`repositoryReleases`), `anima_code_directory_list` (`codeDirectory`; names only) | `anima_issue_create` (`createIssue`), `anima_issue_comment_add` (`addIssueComment`), `anima_issue_set_open` (`setIssueOpen`). A write key may call them; they return the issue or the comment without its body. The other GitHub changes have no tool (below) |
 
 Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` takes a secret (`GithubAppInput.privateKey`); `Subscription.sourceAccountChanged` is a subscription, and no subscription has a tool; `Mutation.openGithubConnect` returns a ONE-TIME link that opens the connection in a browser, and a tool may not return one (the hub also refuses it, FORBIDDEN, for a request that declares an agent); `Subscription.githubConnectChanged` is a subscription (operator, 2026-11-14; ruling number to be assigned); `Query.codeFile` returns the content of a file (operator, 2026-11-14; ruling number to be assigned). `Mutation.mergePullRequest` and `Mutation.mergePullRequests`: a merge is a trust decision (MCP-005), and the hub refuses every API key for them; `Mutation.rerunWorkflowRun`, `Mutation.rerunFailedWorkflowJobs` and `Mutation.dispatchWorkflow` run code with the repository's secrets, `Mutation.cancelWorkflowRun` stops a run, and `Mutation.setCommitStatus` can satisfy a required check and open a merge; the hub refuses every API key for each (operator, 2026-11-14; ruling number to be assigned). The command line has all seven, behind a confirmation. Text from GitHub (names, descriptions, paths) goes through `mcp/untrusted.rs` as named, length-limited fields (MCP-008).
@@ -601,6 +637,10 @@ The state of each task is in the table (PLN-006). T1 to T10 are Done: each commi
 | T11 | R-120, the library and the command: the built-in state of the change tools is `allow`, and the switch "Ask before destructive actions" (MCP-024, MCP-025) in `permissions show\|set\|reset` | Opus | security | Not started | — |
 | T12 | R-120, the audit: each destructive call that runs without a question is in the hub's audit log with the tool, the cleaned arguments and the MCP client name (MCP-026) | Opus | security | Not started | — |
 | T13 | R-120, the desktop Settings panel: the switch "Ask before destructive actions", off for a new user (MCP-025), on the library of T11 | Sonnet |  | Not started | — |
+| T14 | R-383, the command: `anima auth adopt --hub <origin> -` (the token on standard input, checked with `me`, stored as CMD-012 says), `anima auth logout --hub <origin>` called by the app, and the agent declaration with each request that uses a thread token from `ANIMA_TOKEN` (K-E5 Section 3b) | Opus | security (E0-6 T9) | Not started. Needs E0-6 T8 | — |
+| T15 | R-382, the desktop app: on each hub, at the sign-in, put `anima` on `PATH` with no click (the checks of INS-002 to INS-009 stay), write the line of `PATH` into the profile of the login shell (zsh, bash or fish) one time, marked as Anima's, never when it is there and never into a link to a place outside the home folder, and name the file; then get the command-line token and run `anima auth adopt`; at the sign-out run `anima auth logout`. After U14 of [daemon-and-hub-update-plan.md](daemon-and-hub-update-plan.md), which changes the same start of the app (`+layout.svelte`) | Opus | security (E0-6 T9) | Not started. Needs T14 and E0-6 T8 | — |
+| T16 | R-381, the command: `anima auth login` by a one-time code (`--hosted`, `--hub`, `--web`, `--clipboard`, `--with-token` for an API key; `--no-input` and `--json` as CMD-020 and CMD-023 say), `anima auth status` and `anima auth logout` in the shape of `gh` (SGN-NEW-ask to SGN-NEW-status); the prompt for a password and a code goes | Opus | security (E0-6 T9) | Not started. Needs E0-6 T8; the hosted path needs HM-T40 of [hosted-mode.md](../proposals/hosted-mode.md) | — |
+| T17 | R-381, the client: the page `/device` of the hub and the same screen in the app: the code, the computer, the address, the time and the plain words of SGN-NEW-approve, then Approve or Deny; the list of sign-ins with revoke | Sonnet | security (E0-6 T9) | Not started. Needs E0-6 T8 | — |
 
 ### Tasks of R-120 (T11 to T13)
 
@@ -1035,17 +1075,32 @@ library (CMD-030: the command line first).
 - **MCP-033.** The entry starts `anima` by an absolute path with the one argument `mcp`. The path is
   the program that runs the command, or the value of `--command`. The command refuses a path that is
   not absolute, that is not a regular file that can be run, or whose file or folder a different user
-  can write. The entry holds no environment variable, no token, no key and no hub address: `anima mcp`
+  can write. It checks each symbolic link on the way to the file, the file, and each folder above
+  them. A different user can write a part when a user other than the person and root owns it, when
+  each user can write it, or when its group can write it and that group has a member other than the
+  person and root: a name in the list of members of the group, or an account whose own (primary)
+  group it is. A group whose members cannot be read counts, and so does each group of a computer
+  that also takes accounts or groups from a directory service, but the private group of an account.
+  A part of root that root's group or, on
+  macOS, the group `admin` can write counts as root's (R-442). The entry holds no environment variable, no token, no key and no hub address: `anima mcp`
   uses the context and the sign-in that the `anima` command already holds (MCP-002).
 - **MCP-034.** The command must refuse a configuration file, and change nothing of it, when: the file
   or a folder of its path below the home folder is a symbolic link; the file is not a regular file; a
-  different user owns it or can write it or its folder; it is larger than 1 MiB; or it cannot be read
+  different user owns it or can write it or its folder (a group counts as MCP-033 says); it is larger than 1 MiB; or it cannot be read
   as its format (MCP-030). It says which agent and why, goes on with the other agents, and ends with a
-  failure. It never follows a path that the file itself names.
+  failure. It never follows a path that the file itself names. When a different user can write the
+  file or its folder, it also names who and gives the member that the person can add themselves.
 - **MCP-035.** Where an agent has its own command to add and remove a server at user scope (12.2), the
   command runs that program with a fixed list of arguments and no shell. It runs the program that
   `PATH` gives, by its absolute path, and prints that path in the list of MCP-029. It passes no
-  secret. It does not read or parse the agent's file.
+  secret. It does not read or parse the agent's file. The program gets the check of MCP-033, and so
+  does the interpreter that a script names on its first line; for `env`, each folder of `PATH` that
+  `env` looks in until it finds the program; an option of `env` or a `PATH=` that changes which
+  program `env` finds fails the check. The program runs with only the folders of `PATH` in which no
+  user other than the person and root can replace a program or make one (the sticky bit does not
+  stop that); `env` looks only there. A program that fails
+  the check is not run: the list names who can change it and gives the command that the person can
+  run themselves.
 - **MCP-036.** `uninstall` removes only an entry that is `set_up`: one that starts the `anima` of
   MCP-033. An entry `anima` that is `different` was not made by this program, or was changed by a
   person: `uninstall` leaves it and says so, unless `--force` is given. The objects that held the
@@ -1105,7 +1160,8 @@ The command writes the configuration of other programs, and its entry makes thos
    MCP-034: a size limit, a depth limit, no path taken from the file.)
 2. Symbolic links: a file or a folder of the path that points elsewhere (MCP-034), and the window
    between the check and the rename (MCP-031: the rename replaces the name and follows no link).
-3. A configuration in a shared folder: a folder or a file that a different user can write (MCP-034).
+3. A configuration in a shared folder: a folder or a file that a different user can write (MCP-034;
+   who counts as a different user: 12.8).
 4. The `anima` of the entry: a fixed absolute path that no different user can replace (MCP-033); what
    an agent starts when that file is later removed or replaced by an update.
 5. The own command of an agent (MCP-035): which program runs, with which arguments, and what a
@@ -1131,7 +1187,7 @@ decides differently.
 | MI2 | The agents of 12.2, their states (MCP-027) and `anima mcp agents`, `install`, `uninstall` with `--agent`, `--dry-run`, `--command`, `--force` (MCP-028, MCP-029, MCP-033, MCP-035, MCP-036), with tests against a temporary home folder (MCP-040) | In progress | `37d557ea` and `5b10f6a6` on the branch `mcp/install`: built and tested against a temporary home folder; not tried with a real agent (HT-062); reviewed (12.6) |
 | MI3 | The mockup of the part "Coding agents" in [docs/mockup](../mockup/README.md) and on the screens canvas (PLN-019) | In progress | The mockup [mcp-agents/index.html](../mockup/mcp-agents/index.html) is drawn and is on the screens canvas; the operator did not see it |
 | MI4 | The shell commands of the desktop application and the part "Coding agents" of the Settings section (MCP-039) | In progress | `3ed276d2` on the branch `mcp/install`: built, with tests of the client part and of the answer of the shell. Not seen: the part is in the desktop application only, and no desktop build was made. The shell commands were not in the review of 12.6 |
-| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The review of the Settings part (MI4) is done (12.7); its corrections are on the branch `mcp/settings-review`. Two findings are open (12.7, rows 2 and 5) |
+| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The review of the Settings part (MI4) is done (12.7); its corrections are on the branch `mcp/settings-review`. Two findings are open (12.7, rows 2 and 5). The exact group check (R-442) is on the branch `cli/mcp-install-exact-group`, with its own review (12.8) |
 | MI6 | The entry HT-062: each agent of 12.2 on a real Mac and a real Linux computer | Not started | |
 
 ### 12.6 The security review of the command line part (2026-11-19)
@@ -1178,3 +1234,94 @@ done (branch `mcp/settings-review`):
 | 5 | Low. The shell did not enforce the list that the page showed: no agent named meant each agent, and the page could ask to force | Partly: the command of the shell now refuses a change that names no agent or asks to force. Open: the shell does not compare the state that the page showed with the state at the change |
 | 6 | Low. Two changes at the same time could race on the own program of an agent | Corrected: one read or change at a time |
 
+### 12.8 The exact group check (2026-11-22)
+
+`anima mcp agents` on the operator's Mac said of Claude Code and Codex "not changed: its program is
+in a folder that a different user can change". Both are installed with Homebrew: `/opt/homebrew/bin`
+and `/opt/homebrew/Caskroom` belong to him, with the group `admin` and mode 0775, and the group
+`admin` of that Mac has only root and him. The check counted each group write bit as a different
+user unless the group was the private group of the person (the number of the group is the number
+of the user). R-442 changes that rule for the program of an agent, for `anima` and for
+the configuration files.
+
+What the check reads, before and after:
+
+| Part | Before | After |
+| --- | --- | --- |
+| A group that can write a part | Counts, unless the group's number is the person's number, or the group is root's | Counts only when the group has a member other than the person and root: on Linux a name in the list of members of each entry of `getent group` with its number, or an account of `getent passwd` whose own group it is; on macOS a name of the group's record, the account of each member that the record names by identifier, or an account whose `PrimaryGroupID` it is (`dscl`). A name with no account counts. Each group is read once for each listing |
+| A group whose members cannot be read | Not read | Counts: no group entry, a failed or slow (10 s) program, more than 16 MiB, a line that cannot be read, a computer whose `/etc/nsswitch.conf` names a source other than `files` and `systemd` for `passwd`, `group` or `initgroups`, or names one of them twice (the private group of an account is read all the same); and on macOS a search path in use that names a directory other than the local one, a group whose members the system calculates (`everyone`, `localaccounts` and five others), a record with no list of members or with a different group number, a nested group, or a member identifier of no local account |
+| A part of root that root's group, or on macOS the group `admin`, can write | Fixed | Fixed, as before (12.7, row 1) |
+| A different owner (not the person or root), a write bit for each user | Counts | Counts, as before |
+| The program on `PATH` and what it links to | The path and the folders above it, and the real file and the folders above it | Each link of the chain, also a link inside a link, the real file, and the folders above each of them |
+| A script | Not read | The interpreter of its first line, and for `env` each folder of `PATH` that `env` looks in until it finds the program, and that program: the first file of that name that the person can run, and each entry of that name before it, in the folders of `PATH` that the program runs with; up to four scripts that start one another. An interpreter that is not a file that the person can run, a script that cannot be read, a line with a blank other than a space or a tab or with a control character, on Linux more than one word after `env` without `-S`, an option of `env` other than `-S` and `-v`, a `PATH=`, a quote, an escape or a variable before the program, and a program that `env` does not find count as not known |
+| The `PATH` that the program runs with | The `PATH` of the caller | Only the folders in which no user other than the person and root can replace a program or make one, also with the sticky bit, as absolute paths (a relative folder is read from the home folder); a folder that is not there counts by the nearest folder above it. The others are left out, not refused (as the folders under `/var/run` that macOS puts on each login `PATH`). With no folder left, the program is not run |
+| The programs that read the members | | `/usr/bin/dscl` and `getent` from a fixed path, only when no user but root can change them, with no environment but `LC_ALL=C`. A program, also an agent's, that runs past its time is stopped, and its output is not waited for past the limit |
+
+When the check refuses, the row says which part, who can change it (the owner, each user, the group
+and its other member, or a group whose members could not be read) and what the person can do
+themselves: the command of the agent's own program, or the member to add to the file.
+
+What it does not cover: a group administrator or a group password of `/etc/gshadow`, which only
+root can read and set, and a member of the private group of the person that a directory service
+gives and `getent` does not list; a library or a module that a program loads when it runs, and an
+entry of a folder of `PATH` that passes the check other than the program that `env` runs (as a link
+to a program of a different user that the agent starts by name); on
+Linux, a program that does not start although the person can run it (its loader is not there, or
+a network file system fails), after which `env` goes on to the next entry of the name, which is not
+read; access lists on Linux and macOS; a part that changes
+between the check and the run. The account database is read with no time limit of its own
+(`getgrgid`, `getpwuid`); a program that a stopped agent's program started (as the native program
+that the `codex` of npm starts) is not stopped.
+
+A reviewer that did not write the code read the change (`b10e185f`) and changed no file. It found
+nothing High. It found sound: each source of a member that fails, or a text that cannot be read, gives
+unread; the programs that read the members are root's, run with no shell and no environment; the
+chain of links covers each case of the check before; nothing that the check of 12.6 and 12.7 refused
+is accepted outside the ruling; the messages carry no text of a file and no control character; the
+Windows check is the same as before. Its findings and what was done:
+
+| # | Finding | Done |
+| --- | --- | --- |
+| 1 | Medium. A directory service need not list each member: SSSD with `ignore_group_members` or without enumeration, winbind without nested groups, and on macOS Active Directory, whose accounts can have a local own group | Corrected: on a computer that takes accounts or groups from a source other than its files and systemd (Linux), or from a directory other than the local one (macOS), each group counts as unread. Each entry of a group number is read |
+| 2 | Medium. On macOS, the members by identifier were compared with the names only by count: a name listed twice hid a different member by identifier | Corrected: each identifier is named by its local account; one of no local account gives unread |
+| 3 | Medium. A folder with the sticky bit that each user can write was fixed on the `PATH` that `env` searches: a different user can make the program there | Corrected: each folder that `env` looks in is checked for who can make an entry in it, also with the sticky bit |
+| 4 | Low. The search of `env` stopped at a file that the person cannot run; `env` goes on to the next folder | Corrected: the program is the first file that the person can run (`access`), and each entry of the name before it is checked |
+| 5 | Low. `env -i` searches folders of its own; a quote or a variable that `env -S` reads changes the name; a program that is not found was accepted | Corrected: each of these counts as not known |
+| 6 | Low. A script that the person cannot read counted as no script, but the system can start it | Corrected: it counts as not known |
+| 7 | Low. Names are split at spaces and colons, and an account is found by its name: a name with a space, or a directory account with the name of the person, could hide a member | Answered: only root or the administrator of a directory can make such a name, and a directory now gives unread (row 1) |
+| 8 | Low. The time limit did not stop a program that a stopped program started and that held its output: `anima mcp agents` and Settings could wait | Corrected: the output is not waited for past the limit. A program that the stopped program started is not stopped (second review, row 6) |
+| 9 | Low. The agent ran with the whole `PATH`, but only the folders up to the interpreter were checked | Answered: a check of each folder of `PATH` refused each agent on macOS (second review, row 1). A program that the agent starts by name is not covered, as a library that it loads |
+| 10 | Low. The message tells the person to run, by hand, a program that a different user can change | Answered: the task asks for that command; the message first names who can change it, so that the person decides |
+| 11 | Low. On Linux, a member of the group 0 is not root, so a part of root that the group 0 can write could be read | Answered: kept by the ruling, as 12.7, row 1 |
+
+The same reviewer then read the corrections (`aa6c5f02`). It found each of the eleven rows corrected or
+answered, and these new findings:
+
+| # | Finding | Done |
+| --- | --- | --- |
+| 1 | High. The check of each folder of `PATH` (row 9) refused Claude Code and Codex of Homebrew on each Mac: macOS puts folders under `/var/run/com.apple.security.cryptexd` on each login `PATH`; they are not there, and `/private/var/run` belongs to root with the group `daemon` (mode 0775), whose member is the account `daemon` | Corrected: only the folders that `env` looks in, up to the program that it runs, are checked. Shown on the operator's Mac with a temporary home folder: Claude Code and Codex are `not set up`, with the command that `install` runs |
+| 2 | Medium. RHEL names `sss` in `nsswitch.conf` also with no directory, and gives a user with a private group the mask 002: each group, also the private group of the person, was unread, which the check of 12.6 accepted | Corrected: the private group of an account (the number and the name of the account, and its own group) is read also when a directory service gives accounts |
+| 3 | Low. macOS: the search policy of the custom path was read, not the search path in use | Corrected: `SearchPath` is read |
+| 4 | Low. A line of `nsswitch.conf` that comes again counts, and `initgroups` was not read | Corrected: a database named twice, or `initgroups` with a different source, gives unread |
+| 5 | Low. Only the interpreter of the first entry with an execute bit was followed | Corrected with row 4 above: the entry that the person can run is followed |
+| 6 | Low. A process group of its own keeps Ctrl-C from the agent's program, and stops a helper of a program that ended | Corrected: no process group of its own; the output is not waited for past the limit. A program that ended but left its output open past the limit still counts as failed, which is the safe reading |
+
+A different reviewer, new to the change, then read only those corrections (`39f9e533`). It found
+nothing High, found the check of each folder that `env` looks in sound, and found these:
+
+| # | Finding | Done |
+| --- | --- | --- |
+| 1 | Medium. The private group of a different account was read with a directory service: without enumeration, `getent` does not list that account, so the group of a directory user `bob` had no member | Corrected: the account whose private group it is counts as a member, found by its number |
+| 2 | Medium. With only the folders that `env` looks in checked, the agent's program ran with the whole `PATH`: a program that it or a server that it starts (`npx`, `uvx`) finds by name came from a folder that was not checked | Corrected: the program runs with only the folders of `PATH` that pass the check, and `env` is read over the same folders. A folder that a different user can write is left out, not refused |
+| 3 | Low. `env` goes on to the next folder when the program that it found does not start (its interpreter cannot be run, or is a folder), to an entry that was not read | Corrected: each interpreter must be a file that the person can run, so `env` stops at the program that was read. The loader of Linux is not read (the limits above) |
+| 4 | Low. The kernel splits the first line only at spaces and tabs, and Linux gives `env` the rest of the line as one word: a line of Windows (`\r`) or `node --flag` made `env` look for a different name | Corrected: such a line counts as not known |
+| 5 | Low. glibc also reads `passwd files sss`, with a blank in place of the colon | Corrected: such a line counts |
+| 6 | Low. The account database has no time limit of its own; a program that a stopped program started lives on | Answered: written in the limits above |
+
+The same reviewer read those corrections (`fa677281`): nothing High or Medium, each finding fixed or
+answered. Its new findings, each Low, were corrected in the next commit: a relative or empty folder of
+`PATH` was given to the program as it was, so a program in a different folder found a different one
+(now absolute; with no folder the program is not run); a dangling link of the name after the program
+that `env` runs refused the agent (the check now stops at that program); glibc ends the name of a
+database also at the other blanks. The entries of a folder that passes, other than the program that
+`env` runs, are not read (the limits above).

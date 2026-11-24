@@ -1,21 +1,11 @@
-//! The head of one HTTP/1.1 request from the internet, read and written again before it goes to
-//! the application (Section 12.3, SF-229). Pure.
-//!
-//! The proxy removes each `Forwarded`, `X-Forwarded-*` and `X-Real-IP` header that the client
-//! sent and each header of the hub or the door, then sets `X-Forwarded-For` and
-//! `X-Forwarded-Proto` from what it knows. It removes each cookie of a hub. The `Host` must be
-//! the name of the TLS SNI field, or the answer is 421. One request goes on each connection to
-//! the application (`Connection: close`), so each request of the client is read here; a body
-//! must have one `Content-Length` of digits only, and never with a `Transfer-Encoding`; a header
-//! name with `_` is refused, so that no application reads it as a name with `-`
-//! (SF-326). A WebSocket upgrade with its `Sec-WebSocket-Key` keeps its
-//! `Connection: upgrade`; without the key the request is a plain one (SF-332).
+//! The head of one HTTP/1.1 request, written again before it goes to the application (Section
+//! 12.3, SF-229, SF-332). Pure. One request goes on each connection to the application
+//! (`Connection: close`), so each request of the client is read here (SF-326).
+//! The `Host` must be the TLS SNI name or the answer is 421; a body has one digits-only `Content-Length`, never with a `Transfer-Encoding`.
 
 use std::net::IpAddr;
 
-/// The longest head that the proxy reads.
 pub const HEAD_MAX: usize = 16 * 1024;
-/// The most header lines.
 const HEADERS_MAX: usize = 100;
 /// Headers that the client may not set: the proxy sets them, or the hub or the door uses them.
 const DROPPED: [&str; 7] = [
@@ -27,12 +17,10 @@ const DROPPED: [&str; 7] = [
     "te",
     "trailer",
 ];
-/// Prefixes of headers that the client may not set.
 const DROPPED_PREFIXES: [&str; 2] = ["x-forwarded-", "x-anima-"];
 /// The prefixes of the names of the cookies of a hub (`__Host-anima`, R-111).
 const HUB_COOKIES: [&str; 2] = ["__host-anima", "anima_"];
 
-/// An answer of the proxy itself, in place of the application's.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     BadRequest = 400,
@@ -60,7 +48,6 @@ impl Status {
         }
     }
 
-    /// The whole answer, with no body of an application.
     #[must_use]
     pub fn answer(self) -> Vec<u8> {
         format!(
@@ -72,15 +59,12 @@ impl Status {
     }
 }
 
-/// A request head that passed [`rewrite`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rewritten {
-    /// The head to send to the application.
     pub head: Vec<u8>,
     /// The bytes of the body that follow the head.
     pub body: u64,
-    /// A WebSocket upgrade with its key: after an answer `101`, the bytes go both ways as they
-    /// are.
+    /// A WebSocket upgrade with its key: after a `101` the bytes go both ways as they are.
     pub upgrade: bool,
     /// The path of the request, for the redirect of port 80 only. Never logged.
     pub target: String,
@@ -95,8 +79,6 @@ pub fn end_of_head(bytes: &[u8]) -> Option<usize> {
         .map(|at| at + 4)
 }
 
-/// Writes the head again for the application of `sni`, for the client at `client`.
-///
 /// # Errors
 /// The [`Status`] that the proxy answers in place of the application.
 pub fn rewrite(head: &[u8], sni: &str, client: IpAddr) -> Result<Rewritten, Status> {
@@ -151,7 +133,6 @@ pub fn rewrite(head: &[u8], sni: &str, client: IpAddr) -> Result<Rewritten, Stat
     })
 }
 
-/// What the headers of a request say of its host, its body and an upgrade.
 #[derive(Default)]
 struct Framing {
     host: Option<String>,
@@ -162,7 +143,6 @@ struct Framing {
 }
 
 impl Framing {
-    /// Notes one header by its name in lower case.
     fn note(&mut self, lower: &str, value: &str) -> Result<(), Status> {
         match lower {
             "host" | "content-length" if self.seen(lower) => return Err(Status::BadRequest),
@@ -184,7 +164,6 @@ impl Framing {
         }
     }
 
-    /// The length of the body and whether the request is a WebSocket upgrade with its key.
     fn body(&self) -> Result<(u64, bool), Status> {
         match (self.chunked, self.length) {
             (true, Some(_)) => Err(Status::BadRequest),
@@ -201,7 +180,6 @@ impl Framing {
     }
 }
 
-/// The target of `METHOD target HTTP/1.x`, which must be a path.
 fn request_target(line: &str) -> Result<String, Status> {
     let mut parts = line.split(' ');
     let (Some(method), Some(target), Some(version), None) =
@@ -221,7 +199,6 @@ fn request_target(line: &str) -> Result<String, Status> {
     Ok(target.to_owned())
 }
 
-/// A `Content-Length` value: digits only, with no sign, space or list.
 fn content_length(value: &str) -> Result<u64, Status> {
     if value.is_empty() || !value.bytes().all(|b| b.is_ascii_digit()) {
         return Err(Status::BadRequest);
@@ -229,9 +206,8 @@ fn content_length(value: &str) -> Result<u64, Status> {
     value.parse().map_err(|_| Status::BadRequest)
 }
 
-/// One header line as name and value; a folded line or a bad name is refused. A name is a
-/// token of RFC 9110 without `_`: a server that reads `_` as `-` would take `X_Forwarded_For`
-/// for a header that the proxy removes.
+/// A name is an RFC 9110 token without `_`: a server that reads `_` as `-` would take
+/// `X_Forwarded_For` for a header that the proxy removes.
 fn header(line: &str) -> Result<(&str, &str), Status> {
     let (name, value) = line.split_once(':').ok_or(Status::BadRequest)?;
     let token = |b: u8| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^`|~".contains(&b);
@@ -252,7 +228,6 @@ fn dropped(lower: &str) -> bool {
             .any(|prefix| lower.starts_with(prefix))
 }
 
-/// The `Cookie` value without the cookies of a hub; `None` when none is left.
 fn without_hub_cookies(value: &str) -> Option<String> {
     let kept: Vec<&str> = value
         .split(';')
@@ -270,7 +245,6 @@ fn without_hub_cookies(value: &str) -> Option<String> {
     (!kept.is_empty()).then(|| kept.join("; "))
 }
 
-/// Whether the `Host` header names `sni`, with no port or port 443.
 fn same_host(host: &str, sni: &str) -> bool {
     let name = host.strip_suffix(":443").unwrap_or(host);
     let name = name.strip_suffix('.').unwrap_or(name);

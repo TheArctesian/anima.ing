@@ -1,5 +1,4 @@
-//! `anima session watch`: one line for each start and end of a session, from every client (K1
-//! `sessionChanged`).
+//! `anima session watch` (K1 `sessionChanged`).
 
 use super::documents::{SessionChanged, session_changed};
 use crate::failure::Failure;

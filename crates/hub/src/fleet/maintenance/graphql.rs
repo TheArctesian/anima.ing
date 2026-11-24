@@ -1,7 +1,4 @@
-//! The maintenance GraphQL part: root `Query` and `Mutation` (K1; API-003, MW-001 to MW-004).
-//!
-//! Each mutation validates, then writes its change, one audit entry and one event in one
-//! transaction: if any step fails, nothing is stored.
+//! K1 (API-003, MW-001 to MW-004): each mutation stores its change, audit entry and event in one transaction.
 
 mod error;
 mod input;

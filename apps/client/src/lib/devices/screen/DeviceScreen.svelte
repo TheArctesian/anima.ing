@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { CardDevice } from '$lib/devices/api';
   import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
   import { COLLAPSED } from '$lib/events/resize/resize';
@@ -7,6 +7,9 @@
   import '$lib/events/resize/geometry.css';
   import { hubIsHosted } from '$lib/hosted/mark';
   import { useHub } from '$lib/hub/context';
+  import { comparable } from '$lib/hosted/this-computer';
+  import { watchLocalDisk, type LocalDisk } from '$lib/metrics/mobile/local-disk';
+  import { isApple } from '$lib/platform/mobile';
   import { capabilities } from '$lib/platform/platform';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
@@ -60,6 +63,15 @@
   const tags = new Tags(hub);
   const sites = new Sites(hub);
   const list = $derived(listing.list);
+  let localDisk = $state<LocalDisk>();
+  const shownDevices = $derived(list?.devices.map((device) =>
+    localDisk !== undefined && device.readings != null && comparable(device.host) === localDisk.host
+      ? { ...device, readings: { ...device.readings, diskPercent: localDisk.percent, diskMount: null, otherDrives: 0 } }
+      : device,
+  ) ?? []);
+  onMount(() => {
+    if (capabilities().runnerReport && isApple(navigator)) return watchLocalDisk(hub, (disk) => (localDisk = disk));
+  });
   /** The session opens from the button, which is still shown; then the list shows VNC on (R-079). */
   const sharing = $derived<CardScreenSharing | undefined>(
     screenSharing === undefined
@@ -161,11 +173,11 @@
           {/if}
         </div>
       {:else if phoneLayout()}
-        <PhoneRows devices={list.devices} beats={listing.beats} {query} {onConnect} />
+        <PhoneRows devices={shownDevices} beats={listing.beats} {query} {onConnect} charges={listing.charges} memory={listing.memory} />
       {:else if query.view === 'table'}
-        <DeviceTable devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} charges={listing.charges} memory={listing.memory} />
+        <DeviceTable devices={shownDevices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} charges={listing.charges} memory={listing.memory} />
       {:else}
-        <DeviceGrid devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} charges={listing.charges} memory={listing.memory} />
+        <DeviceGrid devices={shownDevices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} charges={listing.charges} memory={listing.memory} />
       {/if}
       {#if !listing.skeleton && list?.hasNextPage === true}
         <div class="more">

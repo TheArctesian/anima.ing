@@ -1,8 +1,5 @@
 # shellcheck shell=bash
-# Which ports are open to the internet: the ports the Anima table keeps open, the
-# operator's allow file, the public sockets and firewalld's openings, and the guard that
-# refuses to close any of them silently (VPS-002, VPS-005). Sourced by harden.sh; needs its
-# say, refuse, fail and path, and SS, SYSTEMCTL, FIREWALL_CMD and ALLOW_CLOSING.
+# Which ports are open to the internet, and the guard that refuses to close one silently (VPS-002, VPS-005).
 
 ALLOWED_PUBLIC=" 22/tcp 443/tcp 3478/udp 41641/udp "
 LOCAL_ALLOW=/etc/anima/firewall-allow
@@ -17,8 +14,6 @@ is_vpn_address() {
   [ "$a" -eq 100 ] && [ "$b" -ge 64 ] && [ "$b" -le 127 ]
 }
 
-# Print the operator's extra public ports from LOCAL_ALLOW, one PORT/PROTO per line. The
-# file may only open single tcp or udp ports to the internet; any other line is an error.
 local_accepts() {
   local file line
   file=$(path "$LOCAL_ALLOW")
@@ -35,13 +30,11 @@ local_accepts() {
   done <"$file"
 }
 
-# True when the Anima table leaves PORT/PROTO open to the internet.
 kept_open() {
   case "$ALLOWED_PUBLIC$(local_accepts | tr '\n' ' ') " in *" $1 "*) return 0 ;; esac
   return 1
 }
 
-# Print "PORT/PROTO NETID ADDRESS PROCESS" for each socket reachable from outside.
 public_sockets() {
   local sockets netid local_address rest port host scope
   sockets=$($SS -Htulpn) || return 1
@@ -60,11 +53,7 @@ public_sockets() {
   done <<<"$sockets"
 }
 
-# Print one line per entry of `firewall-cmd --zone=ZONE --list-all` that can let traffic
-# in: "PORT/PROTO" for each port, "service NAME" for each service, and "ZONE:KEY" for
-# anything else that is set (sources, protocols, forward-ports, source-ports, masquerade,
-# rich rules, a target other than default, keys a newer firewalld adds). Interfaces,
-# priorities, intra-zone forwarding and ICMP blocks let nothing in from outside.
+# Interfaces, priorities, intra-zone forwarding and ICMP blocks let nothing in from outside.
 zone_entries() {
   $FIREWALL_CMD --zone="$1" --list-all | awk -v zone="$1" '
     /^\t/ { if (key != "") value[key] = value[key] " " $0; next }
@@ -88,8 +77,6 @@ zone_entries() {
     }'
 }
 
-# Print the ports of firewalld service $2 in zone $1, or "service:NAME" when the service
-# also opens protocols or source ports or includes other services.
 service_openings() {
   local service_info port
   service_info=$($FIREWALL_CMD --info-service="$2") || { say "service:$2 firewalld zone $1 (unknown service)"; return; }
@@ -101,9 +88,7 @@ service_openings() {
   fi
 }
 
-# Print the stock form of policy $1, as `firewall-cmd --info-policy` prints it (firewalld
-# 2.4.3 on AlmaLinux 10), without the priority line. allow-host-ipv6 is built in; Docker
-# adds docker-forwarding for its own bridges. Nothing is printed for any other name.
+# The stock `--info-policy` output of firewalld 2.4.3 on AlmaLinux 10, without the priority line.
 stock_policy() {
   case $1 in
     allow-host-ipv6)
@@ -121,15 +106,11 @@ stock_policy() {
     '  source-ports:' '  icmp-blocks:' '  rich rules:'
 }
 
-# Print policy $1's --info-policy output in a form to compare: no " (active)" after the
-# name (the running firewall-cmd adds it, firewall-offline-cmd does not), no trailing
-# blanks, no priority line (only allow-host-ipv6's priority is fixed; Docker sets its
-# own), sorted.
+# The running firewall-cmd adds " (active)" and firewall-offline-cmd does not; Docker sets its own priority.
 policy_form() {
   sed -e 's/[[:space:]]*$//' -e '1s/ (active)$//' -e '/^  priority:/d' | LC_ALL=C sort
 }
 
-# True when policy $1 is in its stock form, priority included for allow-host-ipv6.
 stock_policy_in_force() {
   local shown
   [ -n "$(stock_policy "$1")" ] || return 1
@@ -138,9 +119,6 @@ stock_policy_in_force() {
   [ "$(policy_form <<<"$shown")" = "$(stock_policy "$1" | policy_form)" ]
 }
 
-# Print "TOKEN firewalld ..." for each policy and direct rule firewalld has beside its
-# zones. Only allow-host-ipv6 and docker-forwarding in their stock form let nothing in;
-# any other active policy, or either of those changed in any way, is a token.
 firewalld_extras() {
   local policy
   while read -r policy _; do
@@ -153,9 +131,7 @@ firewalld_extras() {
   fi
 }
 
-# Print "PORT/PROTO firewalld zone ZONE ..." for each opening firewalld has now, and a
-# token (ZONE:KEY, service:NAME, policy:NAME, direct-rules) for anything else that could
-# let traffic in: the guard refuses those too, because no port check can see through them.
+# Tokens for anything else that could let traffic in, because no port check can see through them.
 firewalld_openings() {
   local zones zone entry
   $SYSTEMCTL is-active --quiet firewalld.service || return 0
@@ -174,7 +150,6 @@ firewalld_openings() {
   firewalld_extras
 }
 
-# Print each public listener the Anima table does not leave open (VPS-002).
 listener_violations() {
   local sockets port socket
   sockets=$(public_sockets) || { say "ss -Htulpn failed"; return; }
@@ -184,8 +159,7 @@ listener_violations() {
   done <<<"$sockets"
 }
 
-# Print each port that is open to the internet now and that the Anima table would close,
-# unless --allow-closing names it. SSH (22/tcp) moves to the VPN on purpose (VPS-001).
+# SSH (22/tcp) moves to the VPN on purpose (VPS-001).
 closing_ports() {
   local sockets port what
   sockets=$(public_sockets) || { say "unknown (ss -Htulpn failed)"; return; }
@@ -193,8 +167,7 @@ closing_ports() {
     case $port in '' | 22/tcp) continue ;; esac
     if kept_open "$port"; then continue; fi
     case ",$ALLOW_CLOSING," in *",$port,"*) continue ;; esac
-    # Docker's DNAT runs before the input chain, so the Anima table does not close a port
-    # Docker publishes; daemon.json moves it to 127.0.0.1 when the container is recreated.
+    # Docker's DNAT runs before the input chain, so the Anima table cannot close a port Docker publishes.
     case $what in
       *'(("docker-proxy",'* | *'(("dockerd",'*)
         say "note: $port ($what) is published by Docker, not closed by this firewall; see guide 4.4" >&2
@@ -204,7 +177,6 @@ closing_ports() {
   done < <(printf '%s\n' "$sockets"; firewalld_openings)
 }
 
-# Refuse while the firewall would silently close a port that is in use or allowed now.
 refuse_closing() {
   local closing line
   closing=$(closing_ports)

@@ -1,8 +1,5 @@
-//! What a retention change leaves behind: one audit entry and one event, written in the
-//! mutation's own transaction (LOG-004, LOG-005, LOG-007).
-//!
-//! The event source is `Hub`: a period belongs to no single device. The audit target is the
-//! setting `retention.<subject>`.
+//! A retention change writes its audit entry and event in the mutation's own transaction
+//! (LOG-004, LOG-005, LOG-007).
 
 use serde_json::json;
 
@@ -11,7 +8,6 @@ use crate::fleet::{
     retention::Subject,
 };
 
-/// A subject's period changed from `previous` to `days`.
 pub(super) fn changed(subject: Subject, days: u16, previous: i32) -> TrailEntry {
     TrailEntry {
         source: Source::Hub,

@@ -78,7 +78,6 @@ describe('D-5: RDP follows the pane (RA-004)', () => {
   });
 });
 
-/** A `matchMedia` whose queries a test can fire; `devicePixelRatio` is set by the test. */
 function fakeResolutionQueries() {
   const listeners: (() => void)[] = [];
   Object.defineProperty(window, 'matchMedia', {
@@ -154,7 +153,6 @@ describe('displayScale (D-5)', () => {
   });
 });
 
-/** The rules of a component's stylesheet as Svelte compiles it, by selector without the scoping class. */
 function componentRules(file: string): Map<string, Map<string, string>> {
   const source = readFileSync(new URL(file, import.meta.url), 'utf8');
   const code = (compile(source, { filename: file, css: 'external' }).css?.code ?? '').replaceAll(/\/\*[\s\S]*?\*\//g, '');
@@ -171,7 +169,7 @@ function componentRules(file: string): Map<string, Map<string, string>> {
 
 describe('MAT-008: the remote display', () => {
   const MOTION = ['transform', 'translate', 'scale', 'rotate', 'filter', 'backdrop-filter', 'transition', 'animation', 'opacity'];
-  const rules = componentRules('./RemoteView.svelte');
+  const rules = new Map([...componentRules('./RemoteView.svelte'), ...componentRules('./RemoteDisplay.svelte')]);
 
   it('MAT-008: no rule on the display, the pane or the stage animates, transforms, filters or blurs them', () => {
     for (const selector of ['.display', '.pane', '.stage']) {

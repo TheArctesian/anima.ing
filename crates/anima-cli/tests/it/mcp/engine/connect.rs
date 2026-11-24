@@ -1,7 +1,5 @@
 //! The three Connect GitHub tools against the scripted hub (PRJ-041, MCP-002, MCP-004, MCP-005,
-//! MCP-008, MCP-017): the start tool returns the fixed page and never a ticket, the change tools
-//! are off by default and closed to API keys, text from GitHub comes back cleaned and cut, and
-//! every call declares an AI agent to the hub.
+//! MCP-008, MCP-017).
 
 use serde_json::{Value, json};
 
@@ -11,7 +9,6 @@ use crate::mcp::session::{API_KEY, Desk, LOGIN_TOKEN, hub};
 
 const ID: &str = "0190b000-0000-7000-8000-000000000001";
 const PAGE: &str = "https://hub.example/connect/github";
-/// What the scripted hub would hand to `openGithubConnect`; no tool result may hold it.
 const TICKET: &str = "TICKET-MARKER-0123456789012345678901234567";
 const START: &str = "anima_github_connect_start";
 const STATE: &str = "anima_github_connect_state";
@@ -39,7 +36,6 @@ fn scripted(hub: &FakeHub, started: &Value) {
 #[tokio::test]
 async fn mcp_017_github_connect_start_returns_the_page_and_no_ticket_and_declares_an_agent() {
     let hub = hub().await;
-    // A hub that put a query on the page, as a one-time link would: it must not pass.
     let mut started = attempt("WAITING_FOR_BROWSER");
     started["pageUrl"] = json!(format!("{PAGE}?ticket={TICKET}"));
     scripted(&hub, &started);

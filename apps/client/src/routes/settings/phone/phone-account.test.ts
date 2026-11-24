@@ -5,8 +5,7 @@ import { fakeHub, ok } from '$lib/access/access.fixture';
 import { GATEWAY_KEPT } from '$lib/access/sign-out';
 import PhoneAccount from './PhoneAccount.svelte';
 
-// Sign out of the phone layout: in a phone browser behind the gateway it ends the session of the gateway too (HMD-059);
-// in the app of a phone it ends the Anima.ing account session (MOB-006).
+// Phone sign-out ends the gateway session behind the gateway (HMD-059) and the account session in the app (MOB-006).
 
 const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,

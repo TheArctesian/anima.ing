@@ -77,24 +77,6 @@ export const Devices = graphql(`
   }
 `);
 
-export const DeviceHosts = graphql(`
-  query DeviceHosts($after: String) {
-    devices(first: 200, after: $after) {
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-      edges {
-        node {
-          id
-          host
-          metricsSource
-        }
-      }
-    }
-  }
-`);
-
 export const Tags = graphql(`
   query Tags {
     tags
@@ -201,7 +183,7 @@ void graphql(`
   }
 `);
 
-// The latest readings a card shows; `Devices` and `CardReadingsAdded` spread it (MET-004). Codegen inlines it.
+// The latest readings a card shows (MET-004). Codegen inlines it.
 void graphql(`
   fragment CardReadings on Readings {
     at
@@ -302,35 +284,26 @@ export const ClearVncCredential = graphql(`
   }
 `);
 
-/** One page of the device list, as the hub answers it. */
 export type DevicePage = DevicesQuery['devices'];
 
-/** The latest metric readings of a device card (MET-004). */
 export type Readings = CardReadingsFragment;
 
-/** RA-020. */
 export type { AccessWarning };
 
-/** A device with every field a card or table row shows. */
 export type CardDevice = DevicePage['edges'][number]['node'];
 
-/** One device with everything the detail page and the device form show (DEV-020, D-10, SEC-007). */
 export type DeviceDetail = NonNullable<DeviceQuery['device']>;
 
-/** A site the Add device form can place a device in. */
 export type Site = SitesQuery['sites'][number];
 
-/** The SSH settings after a credential change: `credentialStored` says whether the hub holds a secret now. */
 export type StoredCredential = SetSshCredentialMutation['setSshCredential'];
 
-/** A device's new status, as the hub pushes it (DEV-003). */
 export interface StatusChange {
   readonly deviceId: string;
   readonly status: CardDevice['status'];
   readonly at: string;
 }
 
-/** A device's new readings, as the hub pushes them (MET-004). */
 export interface ReadingsChange {
   readonly deviceId: string;
   readonly readings: Readings;

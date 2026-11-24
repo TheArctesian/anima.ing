@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { NETWORKS, STORAGE } from '../containers.fixture';
-import { countWords, imageRows, networkRows, usageLine, usedBy, volumeRows } from './rows';
+import { countWords, imageRows, networkRows, usageLine, usedBy } from './rows';
 
 it('HOST-020: each image has its size, the part only it uses, and the containers that use it', () => {
   const table = imageRows(STORAGE.images);
@@ -11,11 +11,7 @@ it('HOST-020: each image has its size, the part only it uses, and the containers
   expect(table.rows[1]?.cells).toEqual(['f59abe656b69', '13.6MB', '13.6MB', 'Not used']);
 });
 
-it('HOST-020: each volume has its size and the containers that mount it, and each network its containers', () => {
-  expect(volumeRows(STORAGE.volumes).rows.map((row) => row.cells)).toEqual([
-    ['tracks-data', '232.9MB', 'local', 'tracks-app-1'],
-    ['old-data', '1.2GB', 'local', 'Not used'],
-  ]);
+it('HOST-020: each network has its containers', () => {
   expect(networkRows(NETWORKS).rows.map((row) => row.cells)).toEqual([
     ['tracks_default', 'bridge', 'local', 'Outside too', 'tracks-app-1, tracks-worker-1'],
     ['backend', 'bridge', 'local', 'Inside the device only', 'None'],
@@ -37,7 +33,7 @@ it('HOST-020: the space a clean-up can free is what Docker says for the type', (
 });
 
 it('HOST-020: one thing is counted in the singular, and an image with no tag shows its repository alone', () => {
-  expect([countWords(1, 'images'), countWords(1, 'volumes'), countWords(1, 'networks'), countWords(0, 'images'), countWords(2, 'volumes')]).toEqual(['1 image', '1 volume', '1 network', '0 images', '2 volumes']);
+  expect([countWords(1, 'images'), countWords(1, 'networks'), countWords(0, 'images'), countWords(2, 'networks')]).toEqual(['1 image', '1 network', '0 images', '2 networks']);
   const untagged = STORAGE.images.map((image) => ({ ...image, repository: 'example/tracks', tag: null }));
   expect(imageRows(untagged).rows[0]?.cells[0]).toBe('example/tracks');
 });

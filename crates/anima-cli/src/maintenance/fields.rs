@@ -1,7 +1,3 @@
-//! The flags of a maintenance window, one for each field of the K1 `MaintenanceWindowInput`
-//! (kebab-case), and the JSON input they make. Create and update each deserialise that JSON
-//! into their own generated input type, so serde checks every value.
-
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 

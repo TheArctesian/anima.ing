@@ -101,7 +101,6 @@ fn f_6_the_link_keeps_its_state_below_the_hub_root_and_sends_to_the_hubs_socket(
 
 #[test]
 fn f_6_a_socket_path_that_the_system_cannot_have_is_refused_before_the_link_starts() {
-    // The database's socket fits; the link's control socket, deeper below the root, does not.
     let root = |length: usize| {
         let root = PathBuf::from(format!("/{}", "r".repeat(length - 1)));
         Folders::new(root, PathBuf::from("/srv/s")).unwrap()
@@ -157,8 +156,7 @@ fn net_003_the_hub_listens_on_loopback_and_no_network_is_permitted_by_address() 
         value(&spec.env, "ANIMA_FILES_DIR"),
         Some("/srv/hub root/files")
     );
-    // NET-001: the link mode permits this computer and the link's devices; the hub refuses
-    // a list of networks beside the link's socket.
+    // NET-001: the hub refuses a list of networks beside the link's socket.
     for owned_by_s5 in [
         "ANIMA_PUBLIC_ORIGIN",
         "ANIMA_PERMITTED_NETWORKS",
@@ -235,6 +233,7 @@ fn hmd_069_a_run_of_the_pool_gives_the_hub_its_public_origin_and_its_web_client(
         cloud_key_file: None,
         public_origin: Some("https://hub.anima.ing".to_owned()),
         web_root: Some(PathBuf::from("/opt/anima/web")),
+        probe_deny: None,
     };
     let pool = hosted(local, &told);
     assert_eq!(
@@ -242,6 +241,29 @@ fn hmd_069_a_run_of_the_pool_gives_the_hub_its_public_origin_and_its_web_client(
         Some("https://hub.anima.ing")
     );
     assert_eq!(value(&pool.env, "ANIMA_WEB_ROOT"), Some("/opt/anima/web"));
+}
+
+#[test]
+fn r_030_a_hub_of_the_pool_never_reaches_the_networks_that_its_run_denies() {
+    let local = hub(
+        &carried(),
+        &folders(),
+        "127.0.0.1:8443".parse().unwrap(),
+        "127.0.0.1:50123".parse().unwrap(),
+    );
+    let bridge = "10.130.6.0/24,fd42:4b84:1ad:7923::/64,203.0.113.7/32";
+    let told = Pool {
+        cloud_key_file: Some(PathBuf::from("/etc/anima/cloud.key")),
+        probe_deny: Some(bridge.to_owned()),
+        ..Pool::default()
+    };
+    let pool = hosted(local.clone(), &told);
+    assert_eq!(value(&pool.env, "ANIMA_PROBE_DENY"), Some(bridge));
+    assert_eq!(
+        value(&hosted(local, &Pool::default()).env, "ANIMA_PROBE_DENY"),
+        None,
+        "a hub of the desktop keeps the default of the hub"
+    );
 }
 
 #[test]

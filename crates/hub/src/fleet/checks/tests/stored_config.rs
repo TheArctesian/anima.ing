@@ -1,5 +1,4 @@
-//! The stored JSON form of a check configuration: camelCase keys, the API's enum names, and
-//! no unknown keys (CHK-009).
+//! The stored JSON form of a check configuration (CHK-009).
 
 use crate::fleet::checks::config::{CheckConfig, HttpConfig, IpVersion};
 

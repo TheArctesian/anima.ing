@@ -1,9 +1,4 @@
-//! The child fetch process (Section 4): the daemon program in the mode [`FETCH_MODE`]. It
-//! refuses to work with any environment variable, reads its order as one line of JSON on its
-//! standard input, and ends when that input closes (the daemon ended) or, on Linux, when its
-//! parent changes. It downloads the archive into an unnamed file, verifies the SHA-256 before
-//! it opens the archive, unpacks it within a deadline into the folder that the daemon made, and
-//! writes one word on its standard output. It holds no token, no hub origin and no proxy.
+//! The child fetch process (Section 4): it holds no token, no hub origin and no proxy, and verifies the SHA-256 before it opens the archive.
 
 use std::fs::File;
 use std::io::{BufRead as _, BufReader, Read as _, Seek as _, SeekFrom, Stdin, Write as _};
@@ -20,10 +15,9 @@ use crate::model::{folders, unpack};
 /// The first argument of the program in this mode.
 pub const FETCH_MODE: &str = "__model-fetch";
 
-/// The exit code of a child that ends because the daemon ended.
 const PARENT_GONE: i32 = 3;
 
-/// Runs the child and exits: code 0 with a reply word, or another code at a fault.
+/// Exits 0 with a reply word, or another code at a fault.
 pub fn run() -> ! {
     let word = reply(work());
     let mut out = std::io::stdout().lock();
@@ -33,7 +27,7 @@ pub fn run() -> ! {
 
 fn work() -> Result<(), Cause> {
     if !environment_empty(std::env::vars_os().map(|(name, _)| name)) {
-        return Err(Cause::SourceFailed);
+        return Err(Cause::FetchFailed);
     }
     let mut input = BufReader::new(std::io::stdin());
     let mut line = String::new();
@@ -49,32 +43,24 @@ fn work() -> Result<(), Cause> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .map_err(|_| Cause::SourceFailed)?;
+        .map_err(|_| Cause::FetchFailed)?;
     let fetched = super::download(
         &order.address,
         checked.hosts,
         order.size_bytes,
         &mut archive,
     );
-    let sha = runtime
-        .block_on(tokio::time::timeout(
-            download_deadline(order.size_bytes),
-            fetched,
-        ))
-        .map_err(|_| Cause::SourceFailed)??;
+    let sha = within(&runtime, download_deadline(order.size_bytes), fetched)
+        .ok_or(Cause::SourceFailed)??;
     within_deadline(move || finish(archive, &sha, &order, checked))
 }
 
-/// Ends this process when the daemon ends: on Linux by the parent-death signal and a check of
-/// the parent, and on each system when the standard input of the daemon closes.
 fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
     #[cfg(target_os = "linux")]
     {
         use rustix::process::{Signal, getppid, set_parent_process_death_signal};
-        // The signal is set first, then the parent is checked, so a daemon that ends between
-        // the two is still seen. On Linux the signal fires when the THREAD that spawned this
-        // child exits, not the process: the daemon must spawn it from a long-lived worker of
-        // its async runtime, never from `spawn_blocking`.
+        // The signal is set before the parent check, so a daemon that ends between the two is still seen.
+        // The signal fires when the spawning thread ends, so the daemon spawns this from a long-lived worker.
         if set_parent_process_death_signal(Some(Signal::KILL)).is_err() {
             std::process::exit(PARENT_GONE);
         }
@@ -99,8 +85,16 @@ fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
     });
 }
 
-/// Runs `unpack` on a thread and waits at most [`UNPACK_DEADLINE`]; past it the child gives
-/// back `archive_rejected`, and its exit ends the thread.
+/// The timer is made inside the runtime; one made before `block_on` has no reactor and panics.
+fn within<T>(
+    runtime: &tokio::runtime::Runtime,
+    deadline: std::time::Duration,
+    work: impl Future<Output = T>,
+) -> Option<T> {
+    runtime.block_on(async { tokio::time::timeout(deadline, work).await.ok() })
+}
+
+/// Past [`UNPACK_DEADLINE`] the child gives back `archive_rejected`, and its exit ends the thread.
 fn within_deadline(
     unpack: impl FnOnce() -> Result<(), Cause> + Send + 'static,
 ) -> Result<(), Cause> {
@@ -111,9 +105,6 @@ fn within_deadline(
         .map_err(|_| Cause::ArchiveRejected)?
 }
 
-/// Verifies the SHA-256 `sha` of a downloaded `archive`, then unpacks it into the folder of
-/// `order`. Blocking.
-///
 /// # Errors
 /// `checksum` when the SHA-256 differs; the causes of [`unpack::unpack`].
 pub fn finish(
@@ -131,4 +122,33 @@ pub fn finish(
     let into = Path::new(&order.unpack_folder);
     let holds = || folders::free_bytes(into).is_ok_and(|free| free >= order.reserve);
     unpack::unpack(archive, checked.format, into, holds)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::within;
+
+    fn runtime() -> tokio::runtime::Runtime {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn work_on_a_thread_with_no_runtime_ends_with_its_value() {
+        assert_eq!(
+            within(&runtime(), Duration::from_secs(5), async { 7 }),
+            Some(7)
+        );
+    }
+
+    #[test]
+    fn work_past_its_deadline_gives_nothing() {
+        let slow = async { tokio::time::sleep(Duration::from_secs(60)).await };
+
+        assert_eq!(within(&runtime(), Duration::from_millis(10), slow), None);
+    }
 }

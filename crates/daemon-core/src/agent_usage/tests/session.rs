@@ -1,5 +1,4 @@
-//! A session made of several files: a sub-agent's use adds to its session's, and what is sent
-//! keeps the K8 limits (AIS-018, K8 Section 4).
+//! AIS-018, K8 Section 4.
 
 use super::tally;
 use crate::agent_usage::{MAX_MODELS, OTHER_MODEL, Session, Source};

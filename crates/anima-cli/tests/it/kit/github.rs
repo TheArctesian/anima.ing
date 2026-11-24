@@ -1,5 +1,5 @@
-//! A loopback GitHub for the real hub: the hub's own test stub, shared by path so both suites
-//! script one stub, with GitHub's listing and file trees. Never the real GitHub.
+//! A loopback GitHub, never the real one: the hub's own test stub, shared by path so both suites
+//! script one stub.
 
 #[path = "../../../../hub/tests/it/sources/stub.rs"]
 #[expect(
@@ -20,8 +20,6 @@ fn ok(body: &Value) -> Reply {
     }
 }
 
-/// The installation lists the repositories `full_names`, ids from 1, each with one file
-/// `Dockerfile` and no deployments.
 pub fn repositories(stub: &Stub, full_names: &[&str]) {
     let listed: Vec<Value> = (1_u64..)
         .zip(full_names)

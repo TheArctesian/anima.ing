@@ -1,5 +1,4 @@
-//! How the publisher of a base model joins the approved list, by the setting and the actor
-//! (LIBM-003, R-343).
+//! How the publisher of a base model joins the approved list (LIBM-003, R-343).
 
 use crate::fleet::compute::library::publisher::{PublisherApproval, Widening, widening};
 

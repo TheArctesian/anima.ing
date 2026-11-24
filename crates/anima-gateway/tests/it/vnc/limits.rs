@@ -1,5 +1,3 @@
-//! What a device may not send, and what it may send slowly.
-
 use anima_gateway::screen::Area;
 use anima_gateway::vnc::{Device, Event, Malformed};
 
@@ -71,8 +69,7 @@ fn packed_data_a_device_may_not_send_ends_the_session() {
     let packed = |area, encoding, bytes: &[u8]| {
         rfb::update(&[Deflater::default().packed_as(area, encoding, bytes)])
     };
-    // A zlib bomb: 100 kB of zeros pack to about 120 bytes, which a rectangle of one pixel
-    // may send, and inflate to far more than one pixel needs.
+    // A zlib bomb: 100 kB of zeros pack to about 120 bytes, which one pixel may send.
     assert_eq!(
         refusal(&packed(pixel, 6, &vec![0; 100_000])),
         Some(Malformed::TooManyBytes)
@@ -94,7 +91,6 @@ fn packed_data_a_device_may_not_send_ends_the_session() {
         refusal(&packed(block, 16, &[130, 1, 2, 3, 4, 5, 6, 9])),
         Some(Malformed::BadTile)
     );
-    // Bytes after the last tile.
     assert_eq!(
         refusal(&packed(block, 16, &[1, 1, 2, 3, 7])),
         Some(Malformed::BadTile)
@@ -111,8 +107,6 @@ fn packed_data_a_device_may_not_send_ends_the_session() {
 
 #[test]
 fn an_update_that_trickles_in_costs_no_more_than_one_that_comes_at_once() {
-    // 20 000 one-pixel rectangles in reads of 16 bytes: each read looks at the rectangle
-    // it completes, not at the whole update again.
     let pixel = Area {
         x: 3,
         y: 3,
@@ -153,7 +147,6 @@ fn a_rectangle_is_drawn_as_soon_as_it_is_whole() {
     let bytes = rfb::update(&[rfb::raw(first, &[9; 48]), rfb::raw(second, &[7; 48])]);
     let mut device = Device::default();
     let mut screen = screen();
-    // All of the first rectangle and a part of the second.
     let events = device
         .receive(&bytes[..bytes.len() - 10], &mut screen)
         .expect("read");
@@ -201,7 +194,6 @@ fn a_new_size_is_told_so_the_whole_screen_can_be_asked_for() {
         device.receive(&update, &mut screen).expect("read"),
         [Event::Resized, Event::Updated]
     );
-    // A larger screen, and a rectangle that fills it: the limit counts for the new size.
     let large = Area {
         x: 0,
         y: 0,

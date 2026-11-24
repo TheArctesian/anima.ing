@@ -1,11 +1,6 @@
-//! `setRdpCredential`, `clearRdpCredential`, `setVncCredential` and `clearVncCredential`: the
-//! password goes to `credentials`, sealed for its device and kind, and the audit entry and the
-//! event name only the protocol and "password" (DEV-011, SEC-003, SEC-005, LOG-005, LOG-007).
-//!
-//! Each runs in one transaction. `credentials` takes its per-device advisory lock, the one lock
-//! whose order `credentials` asks of its callers; the device read takes no row lock. A set
-//! reads the device first, to bind the password to the device's host now (SEC-011). The SSH
-//! credential works the same way.
+//! The audit entry and the event name only the protocol and "password" (DEV-011, SEC-003,
+//! SEC-005, LOG-005, LOG-007). `credentials` takes its per-device advisory lock; the device read
+//! takes no row lock. A set reads the device first, to bind the password to its host now (SEC-011).
 
 use async_graphql::{Context, ID, Result};
 

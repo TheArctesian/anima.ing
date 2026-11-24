@@ -36,8 +36,9 @@ pub(super) enum ChannelKind {
     Ntfy,
     Email,
     Apprise,
+    Mobile,
 }
-mirror!(Kind => ChannelKind { Webhook, Ntfy, Email, Apprise });
+mirror!(Kind => ChannelKind { Webhook, Ntfy, Email, Apprise, Mobile });
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
 #[graphql(name = "NotificationKind")]

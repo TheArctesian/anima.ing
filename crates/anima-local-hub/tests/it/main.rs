@@ -1,12 +1,4 @@
-//! The real program with the real hub, database and gateway (one-click plan S4).
-//!
-//! The hub, the database program and the gateway are the ones this workspace builds: `cargo
-//! nextest run --workspace` and `cargo test --workspace` build them beside this program. The
-//! PostgreSQL tree is the one the gates already need.
-//!
-//! `anima-link` is a Go program that needs a relay on the network, so each test puts a
-//! stand-in script beside links to the built programs, in a `programs` folder of its own. The
-//! stand-in prints the link's ready line and waits for SIGTERM: the tests stay offline.
+//! `anima-link` needs a relay, so each test runs a stand-in that prints its ready line.
 
 use std::io::{BufRead as _, BufReader, Read as _, Write as _};
 use std::net::{SocketAddr, TcpStream};
@@ -29,7 +21,6 @@ fn local_hub() -> PathBuf {
     )
 }
 
-/// The stand-in for `anima-link hub`: the ready line of the real one, on standard error.
 #[cfg(unix)]
 const LINK: &str = r#"#!/bin/sh
 trap 'exit 0' TERM
@@ -37,7 +28,6 @@ echo 'time=2026-11-15T10:00:00Z level=INFO msg="the hub link is ready" relay=sta
 while :; do sleep 0.1; done
 "#;
 
-/// The folder cargo builds every program of the workspace into.
 fn built() -> PathBuf {
     let folder = local_hub().parent().unwrap().to_path_buf();
     for name in ["anima-hub", "anima-database", "anima-gateway"] {
@@ -49,12 +39,10 @@ fn built() -> PathBuf {
     folder
 }
 
-/// A folder with the built programs and the stand-in link, as `install` would carry them.
 fn programs(rig: &Rig) -> PathBuf {
     platform::programs(rig.folder.path(), &built())
 }
 
-/// The PostgreSQL 17 the gates already need (`quality/bin/with-postgres.ts`); never skipped.
 fn tree() -> PathBuf {
     let named = std::env::var_os("ANIMA_POSTGRES_TREE").map(PathBuf::from);
     let known = [
@@ -74,7 +62,6 @@ struct Rig {
     folder: TempDir,
 }
 
-/// A `run` that is killed with its members when a test fails before it stops it.
 struct Running(Child);
 
 impl Drop for Running {
@@ -89,6 +76,13 @@ impl Rig {
         let folder = tempfile::tempdir().unwrap();
         #[cfg(windows)]
         anima_windows::files::protect(folder.path()).unwrap();
+        // Closed to the group whatever the umask: a backup refuses a group-writable folder.
+        #[cfg(unix)]
+        std::fs::set_permissions(
+            folder.path(),
+            std::os::unix::fs::PermissionsExt::from_mode(0o700),
+        )
+        .unwrap();
         Self { folder }
     }
 
@@ -109,7 +103,6 @@ impl Rig {
         program
     }
 
-    /// Starts `run` and waits for its `ready` line.
     fn run(&self) -> Running {
         let mut child = self
             .command("run")
@@ -179,7 +172,6 @@ fn hub_address(status: &serde_json::Value) -> SocketAddr {
     status["hub"].as_str().unwrap().parse().unwrap()
 }
 
-/// `anima-hub health`, the probe that the Docker installation uses.
 fn hub_is_healthy(address: SocketAddr) -> bool {
     let mut command = Command::new(platform::program(&built(), "anima-hub"));
     platform::environment(&mut command);
@@ -191,7 +183,6 @@ fn hub_is_healthy(address: SocketAddr) -> bool {
         .success()
 }
 
-/// The first line of the hub's answer to a request from loopback.
 fn status_line_of(address: SocketAddr, path: &str) -> String {
     let mut stream = TcpStream::connect(address).unwrap();
     stream.set_read_timeout(Some(LIMIT)).unwrap();
@@ -205,7 +196,6 @@ fn status_line_of(address: SocketAddr, path: &str) -> String {
     answer.lines().next().unwrap_or_default().to_owned()
 }
 
-/// Nothing of the group is left: no hub on its port, no database socket, a clean shutdown.
 fn assert_all_stopped(rig: &Rig, address: SocketAddr) {
     let status = rig.status();
     assert_eq!(status["running"], false, "{status}");
@@ -249,14 +239,13 @@ fn f_6_the_hub_is_in_the_link_mode_and_its_link_is_up() {
     let running = rig.run();
     let address = hub_address(&rig.status());
 
-    // NET-001 in the link mode: this computer is a permitted client; the hub's API answers.
+    // NET-001: in the link mode this computer is a permitted client.
     assert_eq!(status_line_of(address, "/health"), "HTTP/1.1 200 OK");
     let graphql = status_line_of(address, "/graphql");
     assert!(
         graphql.starts_with("HTTP/1.1 ") && !graphql.contains("403"),
         "{graphql}"
     );
-    // The hub made the link's socket in the short socket folder (S5).
     platform::assert_socket(&rig.folder.path().join("s/link.sock"));
     let started = Instant::now();
     while rig.status()["link"]["state"] != "up" {
@@ -308,8 +297,6 @@ fn a_second_run_of_the_same_folder_ends_with_code_10() {
     assert!(stop(running).success());
 }
 
-/// No unit tool runs: a hub that is not installed has nothing to update, so the test needs
-/// neither `launchctl` nor `systemctl`.
 #[test]
 fn update_of_a_hub_that_is_not_installed_prints_one_json_line_and_changes_nothing() {
     let rig = Rig::new();

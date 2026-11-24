@@ -27,6 +27,7 @@ name = "anima"
 path = "src/main.rs"
 
 [dependencies]
+remote-login = { path = "../remote-login" }
 # One body type for every request: the serialised document is wiped when it drops.
 bytes.workspace = true
 # API-key expiry from a number of days (`key create --expires 90d`).
@@ -62,6 +63,10 @@ rmcp = { workspace = true, features = ["elicitation"] }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# The handle of the original of a shortened answer (SHA-011).
+sha2.workspace = true
+# The rules of a shortened MCP answer (SHA-001 to SHA-009).
+shortening = { path = "../shortening" }
 # The token file and the configuration are written to a temporary file, then renamed (CMD-012).
 tempfile.workspace = true
 thiserror.workspace = true
@@ -98,6 +103,9 @@ tokio = { workspace = true, features = ["process"] }
 [target.'cfg(unix)'.dependencies]
 # `O_NOFOLLOW` for other programs' configuration files (MCP-034); the user ID of the process for session files.
 rustix = { version = "1.1", features = ["fs", "process"] }
+# `anima mcp install`: the members of a group and the names of accounts (R-442), and
+# whether the person can run a program that `env` would find.
+nix = { version = "0.31", default-features = false, features = ["fs", "user"] }
 
 [target.'cfg(windows)'.dependencies]
 anima-windows = { path = "../anima-windows" }

@@ -7,12 +7,10 @@
   interface Props {
     /** The page's name: the visible `h1`, and the window title "<title> – Anima.ing" (NAV-010). */
     title: string;
-    /** A secondary line under the title. */
     detail?: string;
     /** A short label over the title, led by an icon: where the page sits (UR-7). */
     eyebrow?: { readonly text: string; readonly icon: IconName } | undefined;
-    /** The page's actions, at the trailing end; they move under the title in a narrow window. */
-    actions?: Snippet;
+    actions?: Snippet | undefined;
   }
 
   const { title, detail, eyebrow, actions }: Props = $props();

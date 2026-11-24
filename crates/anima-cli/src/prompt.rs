@@ -1,7 +1,4 @@
-//! Questions at the terminal (CMD-023). A question is asked only when standard input is a
-//! terminal and `--no-input` is not set; otherwise the command fails and names the flag that
-//! gives the answer. Secrets are read with echo off from before their question is shown
-//! ([`Hidden`], CMD-010).
+//! Without a terminal or with `--no-input`, a question fails and names the flag that gives the answer (CMD-023).
 
 mod hidden;
 mod line;
@@ -14,7 +11,6 @@ pub use self::hidden::Hidden;
 use crate::failure::Failure;
 use crate::output::text::clean;
 
-/// The longest answer read from the terminal.
 const MAX_ANSWER: usize = 1024;
 
 #[derive(Clone, Copy, Debug)]
@@ -34,8 +30,7 @@ impl Prompter {
         }
     }
 
-    /// Gets ready to read `what` from standard input: at a terminal the command would wait
-    /// without a word, so it says so on standard error, or under `--no-input` refuses.
+    /// At a terminal the command would wait without a word, so it says so, or refuses under `--no-input`.
     ///
     /// # Errors
     /// [`Failure::Usage`] when standard input is a terminal and `--no-input` is set.
@@ -55,20 +50,16 @@ impl Prompter {
         Ok(())
     }
 
-    /// Whether a question can be asked.
     #[must_use]
     pub const fn interactive(self) -> bool {
         self.stdin_terminal && !self.no_input
     }
 
-    /// Whether [`Prompter::confirm`] asks a person, rather than taking `--yes` or failing.
     #[must_use]
     pub const fn asks(self) -> bool {
         !self.yes && self.interactive()
     }
 
-    /// Asks for `what` with echo; fails naming `flag` when it cannot ask.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask; [`Failure::Input`] when the terminal fails.
     pub fn ask(self, what: &str, flag: &str) -> Result<String, Failure> {
@@ -88,19 +79,15 @@ impl Prompter {
         Ok(line.trim().to_owned())
     }
 
-    /// Asks for a secret with echo off (CMD-010, CMD-025); fails naming `flag` when it cannot.
-    /// For a secret that follows another question, ask both through one [`Prompter::hide`].
+    /// For a secret that follows another question, ask both through one [`Prompter::hide`] (CMD-010).
     ///
     /// # Errors
-    /// [`Failure::Usage`] when it cannot ask; [`Failure::Cancelled`] for Ctrl-C;
-    /// [`Failure::Input`] for an answer over the limit, the end of input, or a terminal that
-    /// fails.
+    /// [`Failure::Usage`] when it cannot ask; [`Failure::Cancelled`] for Ctrl-C; [`Failure::Input`] otherwise.
     pub fn ask_secret(self, what: &str, flag: &str) -> Result<Zeroizing<String>, Failure> {
         self.hide(what, flag)?.ask_secret(what)
     }
 
-    /// Turns the terminal's echo off for questions asked one after another, so that nothing
-    /// typed ahead between them is echoed (CMD-010); fails naming `flag` when it cannot ask.
+    /// Keeps echo off across several questions, so nothing typed ahead between them is echoed (CMD-010).
     ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask; [`Failure::Input`] when the terminal fails.
@@ -111,12 +98,10 @@ impl Prompter {
         Hidden::start().map_err(|error| terminal_failure(&error))
     }
 
-    /// Lets the command go on when the operator agrees to `question`: `--yes`, or `y` at the
-    /// terminal (CMD-024). The one way every confirmation ends.
+    /// The one way every confirmation ends: `--yes`, or `y` at the terminal (CMD-024).
     ///
     /// # Errors
-    /// [`Failure::Usage`] naming `--yes` when it cannot ask; [`Failure::Declined`] when the
-    /// answer is not yes.
+    /// [`Failure::Usage`] naming `--yes` when it cannot ask; [`Failure::Declined`] for any other answer.
     pub fn confirm(self, question: &str) -> Result<(), Failure> {
         if self.yes {
             return Ok(());
@@ -129,13 +114,11 @@ impl Prompter {
     }
 }
 
-/// What a prompt shows for `what`. Callers build `what` from names the hub gave, so it is
-/// cleaned here and no caller can forget (S1).
+/// Callers build `what` from names the hub gave, so it is cleaned here (S1).
 fn prompt_text(what: &str) -> String {
     format!("{}: ", clean(what))
 }
 
-/// Yes is `y` or `yes` in any case, nothing else; anything else declines (CMD-024).
 fn decision(answer: &str) -> Result<(), Failure> {
     if matches!(answer.to_ascii_lowercase().as_str(), "y" | "yes") {
         Ok(())

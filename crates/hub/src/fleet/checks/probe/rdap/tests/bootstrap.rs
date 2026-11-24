@@ -1,4 +1,4 @@
-//! The IANA bootstrap file (D-29, RFC 9224): parsing, the suffix match and its refusals.
+//! D-29, RFC 9224.
 
 use proptest::prelude::*;
 
@@ -7,7 +7,6 @@ use crate::fleet::checks::probe::{
     rdap::bootstrap::{Bootstrap, Unreadable},
 };
 
-/// A file shaped as IANA publishes it, with the entries the tests need.
 const FILE: &str = r#"{
   "version": "1.0",
   "publication": "2026-11-01T00:00:00Z",
@@ -43,12 +42,10 @@ fn d_29_a_domain_is_asked_at_the_https_base_of_its_tld() {
         query("www.example.com").unwrap(),
         "https://rdap.verisign.example/com/v1/domain/www.example.com"
     );
-    // A base URL without a trailing slash still keeps its path.
     assert_eq!(
         query("example.uk").unwrap(),
         "https://rdap.nominet.example/uk/domain/example.uk"
     );
-    // Suffixes compare without regard to case; IDN TLDs come in their A-label form.
     assert_eq!(
         query("example.xn--p1ai").unwrap(),
         "https://rdap.rf.example/domain/example.xn--p1ai"
@@ -76,8 +73,6 @@ fn d_29_a_suffix_matches_whole_labels_only() {
 
 #[test]
 fn p_6_a_service_without_an_https_base_gives_no_address() {
-    // Neither plain HTTP nor a base URL with credentials is used, and a shorter suffix never
-    // stands in for the service that matches.
     assert_eq!(query("example.plain"), Err(Failure::RdapNotHttps));
     assert_eq!(query("example.user"), Err(Failure::RdapNotHttps));
 }
@@ -103,8 +98,7 @@ fn d_29_a_body_that_is_not_the_bootstrap_object_is_unreadable() {
 }
 
 proptest! {
-    /// P3-003: the bootstrap file comes from the network, so no bytes make the parser or the
-    /// match panic, and every address it gives is HTTPS.
+    /// P3-003: the bootstrap file comes from the network.
     #[test]
     fn p3_003_any_bytes_parse_without_a_panic(body in proptest::collection::vec(any::<u8>(), 0..512)) {
         if let Ok(read) = Bootstrap::parse(&body)
@@ -114,7 +108,6 @@ proptest! {
         }
     }
 
-    /// P3-003: service lists of any strings give HTTPS addresses only, under the base given.
     #[test]
     fn p3_003_any_services_give_https_addresses_only(
         suffix in "[a-z]{1,4}",

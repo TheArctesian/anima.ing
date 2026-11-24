@@ -4,13 +4,9 @@ import { LINK_SITE, type NewSite } from '$lib/devices/form/site';
 import type { CreateDeviceInput } from '$lib/hub/generated/graphql';
 import type { HubResult } from '$lib/hub/hub';
 
-/** What the silent add needs; each part is injected, so that tests need no shell and no hub. */
 export interface ThisComputerParts {
-  /** This computer as the shell reads it; `null` when it cannot. */
   readonly device: () => Promise<CloudDevice | null>;
-  /** The devices on the link of the hub, with the name the hub gave each one. */
   readonly linkDevices: () => Promise<HubResult<readonly { readonly name: string; readonly address: string }[]>>;
-  /** The host of every device of the hub. */
   readonly hosts: () => Promise<HubResult<readonly string[]>>;
   readonly sites: () => Promise<HubResult<readonly { readonly id: string; readonly name: string; readonly subnet: string }[]>>;
   readonly createSite: (name: string, subnet: string) => Promise<HubResult<{ readonly id: string }>>;
@@ -19,10 +15,7 @@ export interface ThisComputerParts {
 
 const GROUP = /^[0-9a-f]{1,4}$/;
 
-/**
- * A host in the one form that compares: an IPv6 address as its eight groups with no leading zeros, in lower case and
- * without brackets, so `FD41:4E49:4D41:0:0:0:0:7` is `fd41:4e49:4d41::7`. Any other host is its lower-case text.
- */
+/** An IPv6 host compares as its eight lower-case groups without leading zeros or brackets; any other host as its lower-case text. */
 export function comparable(host: string): string {
   const text = normalizeHost(host).toLowerCase();
   const [head = '', tail, extra] = text.split('::');
@@ -36,7 +29,6 @@ export function comparable(host: string): string {
   return groups.map((group) => Number.parseInt(group, 16).toString(16)).join(':');
 }
 
-/** An existing site for the managed address range, or a newly created one. */
 export async function networkSite(parts: Pick<ThisComputerParts, 'sites' | 'createSite'>, network: NewSite): Promise<string | null> {
   const sites = await parts.sites();
   if (!sites.ok) return null;
@@ -46,10 +38,6 @@ export async function networkSite(parts: Pick<ThisComputerParts, 'sites' | 'crea
   return created.ok ? created.value.id : null;
 }
 
-/**
- * The link address of this computer when no device of the hub has it as its host; `null` when this computer is not on
- * the link, is a device already, or a read failed (a partial answer could hide its device).
- */
 async function addressOnLink(device: CloudDevice, parts: ThisComputerParts): Promise<string | null> {
   const linked = await parts.linkDevices();
   if (!linked.ok) return null;
@@ -82,11 +70,7 @@ async function add(parts: ThisComputerParts): Promise<DeviceEnrolment> {
 /** The add that runs now; a second page that opens meanwhile waits for it, so it cannot add the computer twice. */
 let running: Promise<DeviceEnrolment> | null = null;
 
-/**
- * Adds the computer the app runs on to the devices of a hosted hub, with no question (HMD-044, R-136): its host is its
- * address on the link of the hub, in the site `Link`. `true` when it added a device. It does nothing when a device has
- * that host already, and every failure is quiet: the device list stays as it is, and the next start tries again.
- */
+/** Adds this computer with no question (HMD-044, R-136); every failure is quiet and the next start tries again. */
 export function enrolThisComputer(parts: ThisComputerParts): Promise<DeviceEnrolment> {
   running ??= add(parts)
     .catch((): DeviceEnrolment => 'failed')

@@ -1,5 +1,4 @@
-//! WP-10 handoff 4: nothing in the hub's router writes a request's URI or query to the
-//! process log, so a token put in a URL never reaches it (LOG-007).
+//! The router writes no request URI or query to the process log (WP-10 handoff 4, LOG-007).
 
 use std::{
     io,
@@ -17,7 +16,6 @@ use crate::hub::{Hub, set_operator, start};
 
 const MARKER: &str = "SECRET-MARKER";
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 pub(super) struct Capture(pub(super) Arc<Mutex<Vec<u8>>>);
 
@@ -35,7 +33,6 @@ impl io::Write for Capture {
     }
 }
 
-/// A request to `/graphql?token=MARKER` with `method`, `content_type`, `bearer` and `body`.
 fn marked(method: &str, content_type: &str, bearer: Option<&str>, body: &str) -> Request<Body> {
     let mut request = Request::builder()
         .method(method)
@@ -52,8 +49,7 @@ async fn log_007_a_token_in_the_url_never_reaches_the_process_log(pool: PgPool) 
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in sessions::leak: a second registered dispatcher makes each callsite ask every
-    // dispatcher, so another test thread cannot cache this test's callsites as disabled.
+    // A second dispatcher keeps another test thread from caching these callsites as disabled.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();
@@ -64,21 +60,18 @@ async fn log_007_a_token_in_the_url_never_reaches_the_process_log(pool: PgPool) 
     let token = hub.token().await;
     let json = "application/json";
     let requests = [
-        // Signed in, and failing in a resolver.
         marked(
             "POST",
             json,
             Some(&token),
             r#"{"query":"{ device(id: \"x\") { id } }"}"#,
         ),
-        // Signed in and answered.
         marked(
             "POST",
             json,
             Some(&token),
             r#"{"query":"{ sites { name } }"}"#,
         ),
-        // Refused: no token, a bad token, not JSON, not GraphQL, a GET that is no upgrade.
         marked("POST", json, None, r#"{"query":"{ sites { name } }"}"#),
         marked(
             "POST",

@@ -54,9 +54,7 @@ async fn api_003_t3_signed_out_documents_that_fail_validation_get_one_unauthenti
         "query($x: NoSuchType) { __typename }".to_owned(),
         "query @nosuch { __typename }".to_owned(),
         format!("mutation {{ {login} }} fragment F on Operator {{ nosuch }}"),
-        // A field typo inside an allowed `login` names a type too.
         "mutation { login(input: { username: \"a\", password: \"b\" }) { tokn } }".to_owned(),
-        // So do the existence checks a valid name passes: same answer as an unknown one.
         "{ __typename } fragment F on Device { id }".to_owned(),
         "query($x: Device) { __typename }".to_owned(),
     ];
@@ -73,7 +71,6 @@ async fn api_003_t3_signed_out_documents_that_fail_validation_get_one_unauthenti
         assert_eq!(body["data"], json!(null));
         assert_eq!(body["errors"].as_array().map(Vec::len), Some(1));
     }
-    // T8 round 2: an `operationName` the document lacks, and a syntax error.
     let named = async_graphql::Request::new("query A { __typename }")
         .operation_name("hunter2-correct-horse");
     let unparsed = async_graphql::Request::new("{ __typename ");

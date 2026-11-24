@@ -16,17 +16,15 @@ interface Connection<T> {
   readonly read: ForgeRead;
 }
 
-/** One page of a list as the hub sent it: its rows, the cursor of the next page, and when the hub read it. */
 export const pageOf = <T>({ edges, pageInfo, read }: Connection<T>): ForgePage<T> => ({
   rows: edges.map((edge) => edge.node),
   next: pageInfo.hasNextPage ? pageInfo.endCursor : null,
   read,
 });
 
-/** A list's answer as one page, or the hub's refusal as it came. */
 export const paged = <T>(result: HubResult<Connection<T>>): HubResult<ForgePage<T>> => (result.ok ? { ok: true, value: pageOf(result.value) } : result);
 
-/** What a list call is asked: the next page's cursor, and `fresh` to skip the hub's short cache (PRJ-032). */
+/** `fresh` skips the hub's short cache (PRJ-032). */
 export interface PageAsk {
   readonly after?: string | null;
   readonly fresh?: boolean;

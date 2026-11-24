@@ -8,12 +8,16 @@
 //! [`socket`], [`login`], [`record`] and [`log`].
 
 mod accounts;
+mod attachments;
 mod calls;
 pub mod codex;
+mod git;
 mod holder_events;
+pub mod launcher;
 mod listings;
 pub mod log;
 pub mod login;
+mod models;
 pub mod peer;
 pub mod record;
 mod silence;
@@ -27,7 +31,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use agent_threads::control::{Limits, Reply, RunState};
+use agent_threads::control::{Change, Limits, Reply};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -57,16 +61,14 @@ enum Waits {
         thread: Uuid,
         back: Caller,
         prompt: String,
+        /// The files of the draft, now of the thread, for the first prompt (TH111).
+        files: Vec<Uuid>,
     },
     Stop {
         back: Caller,
     },
     /// The last line of a prompt; the prompt is shown as sent when the holder takes it.
-    Send {
-        thread: Uuid,
-        back: Caller,
-        text: String,
-    },
+    Send(calls::SentPrompt),
     /// The line of an answer; the request closes when the holder takes it (THR-030).
     Answer(Pending),
 }
@@ -80,9 +82,15 @@ struct Pending {
     back: Caller,
 }
 
-/// The link to the holder was lost while a command was sent.
+/// Why steps of a thread did not all go.
 #[derive(Debug)]
-struct LinkDown;
+enum NotSent {
+    /// The link to the holder was lost while a command was sent.
+    LinkDown,
+    /// The record was not written, so a turn that leaves the profile of the folder of Anima did
+    /// not go (THR-041); the other steps went.
+    Held,
+}
 
 /// The runner: its threads, its link to the holder and its clients.
 pub struct Runner {
@@ -123,8 +131,17 @@ pub struct Runner {
     /// What the programs said of their accounts (THR-051) and their models (TH104): in memory
     /// only.
     said: accounts::Said,
+    model_asks: models::Asks,
+    /// The skills of Codex in the folders of new threads (TH117): in memory only.
+    folder_skills: calls::FolderSkills,
     /// The last walk of the folder of each thread, for the `@` list (TH108): in memory only.
     walked: calls::Walked,
+    /// The files that the person attached for a prompt (TH111).
+    attached: attachments::Attachments,
+    /// What the launcher of the Git engine knows of the threads that run.
+    rights: launcher::SharedRights,
+    /// The Git engine of the threads (TH116).
+    git: git::Gits,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -160,6 +177,7 @@ pub async fn run(
     let _lock = record::lock(&dir)?;
     let saved = record::read(&dir)?;
     let env = login::environment(&daemon_env).await;
+    let (rights, gits) = git::Gits::make(&env, &daemon_env, &dir);
     tokio::pin!(stop);
     let link = tokio::select! {
         link = link::reach_patiently(program, &dir) => link,
@@ -192,6 +210,11 @@ pub async fn run(
         sign_in_told: BTreeMap::new(),
         walked: calls::Walked::default(),
         said: accounts::Said::default(),
+        model_asks: models::Asks::default(),
+        folder_skills: calls::FolderSkills::default(),
+        attached: attachments::Attachments::at(&dir),
+        rights,
+        git: gits,
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -204,82 +227,57 @@ pub async fn run(
 }
 
 impl Runner {
-    fn restore(&mut self, saved: Vec<thread::Saved>) {
-        for saved in saved {
-            let codex = calls::codex_of(&saved.row, saved.effort);
-            let mut thread = Thread::restore(saved, codex);
-            // The microseconds of the clock are more than the updates of any run before.
-            thread.number_from(u64::try_from(chrono::Utc::now().timestamp_micros()).unwrap_or(0));
-            let id = thread.row.id;
-            let steps = thread.settle_answering();
-            self.threads.insert(id, thread);
-            for step in steps {
-                if let Step::Change(change) = step {
-                    self.publish(id, change);
-                }
-            }
-        }
-    }
-
     /// The loop of the runner: the holder, the clients, and the stop.
     async fn serve(&mut self, listener: tokio::net::UnixListener, stop: impl Future<Output = ()>) {
         let (sender, mut incoming) = mpsc::channel(256);
         let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
         tokio::pin!(stop);
         let mut look = tokio::time::interval(Duration::from_secs(10));
-        let Some(mut asked) = self.asks.receiver.take() else {
+        let (Some(mut asked), Some(mut listed), Some(mut made)) = (
+            self.asks.receiver.take(),
+            self.model_asks.receiver.take(),
+            self.asks.made.take(),
+        ) else {
             return;
         };
         loop {
             tokio::select! {
-                event = self.link.events.recv() => match event {
-                    Some(event) => self.holder_event(event).await,
-                    None => self.reconnect().await,
-                },
+                event = self.link.events.recv() => self.heard_holder(event).await,
                 Some(call) = incoming.recv() => self.call(call).await,
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
-                _ = look.tick() => {
-                    self.end_the_silent().await;
-                    self.replace_older_holder().await;
-                }
+                Some((program, models)) = listed.recv() => self.models_asked(program, models),
+                Some(worktree) = made.recv() => self.worktree_made(worktree).await,
+                _ = look.tick() => self.look_around().await,
                 () = &mut stop => break,
             }
         }
         accepting.abort();
     }
 
-    /// A new link to the holder. The commands that the holder did not answer go again with
-    /// their own IDs, so that a line the holder already wrote is not written twice and each call
-    /// that waits gets its answer; a start waits for the holder to say what it holds.
-    async fn reconnect(&mut self) {
-        tracing::warn!("the link to the holder closed; connecting again");
-        self.holder.fits = false;
-        self.holder.newer = false;
-        // Until the next hello nothing is known of the holder: no Quit goes to a new one.
-        self.holder.older = false;
-        let next = self.link.next_id();
-        self.link = link::reach_patiently(&self.program, &self.dir).await;
-        self.link.go_on_from(next);
-        self.send_again().await;
-    }
-
-    /// Sends each command that the holder did not answer again, in the order it went first.
-    async fn send_again(&mut self) {
-        let again: Vec<Command> = self.unanswered.values().cloned().collect();
-        for command in again {
-            if let Err(error) = self.link.resend(&command).await {
-                tracing::warn!(%error, "the holder did not take a command sent again");
-                return;
-            }
+    /// An event of the holder, or a new link when the old one closed.
+    async fn heard_holder(&mut self, event: Option<crate::threads::wire::Event>) {
+        match event {
+            Some(event) => self.holder_event(event).await,
+            None => self.reconnect().await,
         }
     }
 
+    /// What the runner looks at every ten seconds: the silent starts, the old files of prompts,
+    /// an older holder, and the records of the Git engine.
+    async fn look_around(&mut self) {
+        self.end_the_silent().await;
+        self.attached.expire(std::time::Instant::now());
+        self.replace_older_holder().await;
+        self.git_touch();
+    }
+
     /// Does a step of a thread that is not a command to the holder.
-    fn own_step(&mut self, id: Uuid, step: Step) {
+    fn own_step(&mut self, id: Uuid, step: Step, last_write: Option<u64>) {
         let program = self.threads.get(&id).map(|thread| thread.row.program);
         match (step, program) {
             (Step::Log(what), _) => self.note(Kind::Stop, Some(id), what),
             (Step::Change(change), _) => self.publish(id, change),
+            (Step::Queued(queued), _) => self.queued_went(id, queued, last_write),
             (Step::Account(facts), Some(program)) => {
                 self.said.accounts.note(program, *facts, chrono::Utc::now());
             }
@@ -289,25 +287,56 @@ impl Runner {
             // A fact of a thread that is gone has no program to keep it for; a command is never
             // here, as `apply` sends it to the holder.
             (Step::Account(_) | Step::Models(_), None)
-            | (Step::Write(_) | Step::Mark | Step::EndChildren | Step::EndProgram, _) => {}
+            | (
+                Step::Write(_)
+                | Step::Mark
+                | Step::EndChildren
+                | Step::EndProgram
+                | Step::Workspace,
+                _,
+            ) => {}
         }
     }
 
     /// Does the steps of a thread, in order. Gives the ID of the command of the last line
-    /// written, or [`LinkDown`] when a command did not reach the holder.
-    async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, LinkDown> {
+    /// written, [`NotSent::LinkDown`] when a command did not reach the holder, or
+    /// [`NotSent::Held`] when a line was held back.
+    async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, NotSent> {
         let key = id.to_string();
         let mut last_write = None;
+        let (mut held, mut put_back) = (false, false);
         for step in steps {
+            if let Step::Write(line) = &step
+                && self.held_back(id, line)
+            {
+                held = true;
+                continue;
+            }
+            if let (true, Step::Queued(queued)) = (held, &step) {
+                put_back |= self.waits_first(id, queued);
+                continue;
+            }
+            // The row of the queue after the prompt left it is not true now: the row of the
+            // put back is.
+            if put_back && matches!(step, Step::Change(Change::State { .. })) {
+                continue;
+            }
             let Some(action) = step.command(&key) else {
-                self.own_step(id, step);
+                if step == Step::Workspace {
+                    self.look_at_workspace(id).await;
+                    self.git_turn_ended(id);
+                }
+                self.own_step(id, step, last_write);
                 continue;
             };
             let write = matches!(action, Action::Write { .. });
-            let command = self.command(action).await.ok_or(LinkDown)?;
+            let command = self.command(action).await.ok_or(NotSent::LinkDown)?;
             if write {
                 last_write = Some(command);
             }
+        }
+        if held {
+            return Err(NotSent::Held);
         }
         Ok(last_write)
     }
@@ -318,7 +347,10 @@ impl Runner {
         let Some(thread) = self.threads.get_mut(&id) else {
             return;
         };
+        // A row that changed can change the rights of the launcher: a mode, a stop.
+        let row = matches!(change, agent_threads::control::Change::State { .. });
         let reply = Reply::Update(Box::new(thread.note(change)));
+        self.rights_if(row);
         self.watchers
             .retain(|watcher| socket::tell(watcher, &reply));
     }
@@ -346,31 +378,6 @@ impl Runner {
                 tracing::warn!(%error, "the holder did not take a command");
                 kept.then_some(id)
             }
-        }
-    }
-
-    /// Writes the record, after it lets go of the oldest stopped threads.
-    fn save(&mut self) {
-        let mut stopped: Vec<(chrono::DateTime<chrono::Utc>, Uuid)> = self
-            .threads
-            .values()
-            .filter(|thread| thread.row.state == RunState::Stopped)
-            .map(|thread| (thread.row.started, thread.row.id))
-            .collect();
-        stopped.sort();
-        let over = stopped.len().saturating_sub(STOPPED_KEPT);
-        for (_, id) in stopped.into_iter().take(over) {
-            self.threads.remove(&id);
-            self.read_up_to.remove(&id);
-        }
-        let record = record::Record {
-            limits: self.limits,
-            threads: self.threads.values().map(Thread::saved).collect(),
-            listings: self.listings.values().cloned().collect(),
-            projects: self.projects.clone(),
-        };
-        if let Err(error) = record::write(&self.dir, &record) {
-            tracing::warn!(%error, "the record of the runner was not written");
         }
     }
 }

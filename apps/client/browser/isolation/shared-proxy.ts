@@ -1,8 +1,6 @@
 import { startDenyProxy, type DenyProxy } from './deny-proxy';
 
-// One proxy per engine and per `playwright test` run, so the check can tell which engine made an attempt. The runner's main
-// process loads the config first and starts them; each worker loads the config again and finds the addresses in the
-// environment it inherited.
+// One proxy per engine per run: the main process starts them, and each worker finds their addresses in the environment it inherited.
 
 const HANDLES = Symbol.for('anima.denyProxies');
 

@@ -1,6 +1,3 @@
-//! `anima web update`: changes a web interface's address, label or place to open. The flags are
-//! laid over the current values, which are read first.
-
 use super::current;
 use super::documents::{WebUpdate, web_update};
 use super::fields::WebChanges;

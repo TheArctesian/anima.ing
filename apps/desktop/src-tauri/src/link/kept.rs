@@ -1,9 +1,5 @@
-//! The device link kept by a unit of the user (HMD-058, R-240): the link program is copied out
-//! of the application to a folder that the app makes in its own folder (not `~/.local/bin`,
-//! whose mode the person sets), `anima-link unit install` writes and starts the unit,
-//! and the app watches the running link in place of a child of its own. The link then runs
-//! while the person is logged in, with the app closed. No rule of the unit is here: the link
-//! program has them (`link/unit`).
+//! HMD-058, R-240. The link program is copied to a folder that the app makes in its own folder (not
+//! `~/.local/bin`, whose mode the person sets). No rule of the unit is here: `link/unit` has them.
 
 use std::{
     ffi::OsString,
@@ -46,24 +42,19 @@ pub use unix::{environment, socket_of_user};
 /// `unit install` runs up to three steps of 30 s each, one of them twice.
 const UNIT_LIMIT: Duration = Duration::from_secs(150);
 const ASK_LIMIT: Duration = Duration::from_secs(3);
-/// How long the link of a new unit has to answer on its port.
 const READY_LIMIT: Duration = Duration::from_secs(20);
 const READY_POLL: Duration = Duration::from_millis(250);
 
-/// One device link for a unit: the copy of the program that the unit runs, its state folder
-/// and its port.
 #[derive(Debug, Clone)]
 pub struct Kept {
     pub program: PathBuf,
     pub folder: PathBuf,
     pub port: u16,
-    /// The socket that the link makes for the daemon of this user (K8 Section 1, HMD-054); none
-    /// when its folder cannot be a private one.
+    /// HMD-054; none when its folder cannot be a private one.
     pub daemon_socket: Option<PathBuf>,
     pub env: Vec<(&'static str, OsString)>,
 }
 
-/// The name of the socket in the folder of the daemon, as the daemon knows it.
 const DAEMON_SOCKET: &str = "link.sock";
 /// The longest path that the link takes for a socket.
 const LONGEST_SOCKET: usize = 100;
@@ -81,7 +72,6 @@ fn ask(kept: &Kept, args: &[&str], limit: Duration) -> Option<Vec<u8>> {
 }
 
 impl Kept {
-    /// Writes the unit and starts it; a unit that runs is started again with this program.
     pub fn install(&self) -> Result<(), LinkError> {
         let folder = self.folder.to_str().ok_or(LinkError::Folder)?;
         let listen = format!("127.0.0.1:{}", self.port);
@@ -104,7 +94,6 @@ impl Kept {
         })
     }
 
-    /// This link with the copy of the program at `program`.
     fn with_program(&self, program: PathBuf) -> Self {
         Self {
             program,
@@ -112,16 +101,15 @@ impl Kept {
         }
     }
 
-    /// Stops the unit and deletes its file. A unit that is not there is not an error.
     pub fn remove(&self) -> Result<(), LinkError> {
         ask(self, &["unit", "remove"], UNIT_LIMIT)
             .map(drop)
             .ok_or(LinkError::Failed)
     }
 
-    /// Whether the installed unit runs the link of this folder. The file and the label of the
-    /// unit are the same for each copy of the app, so a unit that is there can be the unit of a
-    /// different folder: that one is never changed or removed from here.
+    /// The unit's file and label are the same for each copy of the app, so a unit of a different
+    /// folder
+    /// is never changed or removed from here.
     pub fn keeps_this_folder(&self) -> bool {
         let Some(folder) = self.folder.to_str() else {
             return false;
@@ -132,7 +120,7 @@ impl Kept {
             .is_some_and(|unit| printed::unit_runs_folder(&unit, folder))
     }
 
-    /// Removes the unit and writes why to the log: each removal by the app has its line.
+    /// Each removal by the app has its line in the log.
     pub fn remove_because(&self, reason: &'static str) -> Result<(), LinkError> {
         let result = self.remove();
         match &result {
@@ -142,23 +130,18 @@ impl Kept {
         result
     }
 
-    /// The port that the running link listens on; none while no link runs on this folder.
     pub fn serving(&self) -> Option<u16> {
         let folder = self.folder.to_str()?;
         let status = ask(self, &["ctl", "-state", folder, "status"], ASK_LIMIT)?;
         printed::link_local(&status)
     }
 
-    /// Whether the link of the unit made the socket of the daemon.
     fn has_daemon_socket(&self) -> bool {
         self.daemon_socket.as_deref().is_some_and(socket_present)
     }
 
-    /// Gives the unit the link program of this app when its copy holds different bytes or is
-    /// not at [`destination`] of `application`, and starts the unit again when the program
-    /// changed or when the unit was made before the socket of the daemon (HMD-054). An earlier
-    /// copy is deleted once the unit runs the new one. A copy that cannot be written stays, and
-    /// the unit runs on. Returns the link to watch.
+    /// Restarts the unit when the program changed or the unit predates the daemon socket (HMD-054).
+    /// A copy that cannot be written stays, and the unit runs on.
     pub fn refresh(self, carried: &Path, application: &Path) -> Self {
         let copy = destination(application);
         let changed = self.program != copy || !same(carried, &self.program);
@@ -191,10 +174,6 @@ impl Kept {
         moved
     }
 
-    /// Installs and starts the unit again. The copy of the link program is made again from
-    /// `carried` in `application` when it is gone. False when the folder of the link is not
-    /// marked for a unit, when there is no program to run, or when the link program refuses the
-    /// unit.
     pub fn put_back(&self, carried: Option<&Path>, application: Option<&Path>) -> bool {
         if !folder::wants_unit(&self.folder) {
             return false;
@@ -208,8 +187,6 @@ impl Kept {
             .is_some_and(|placed| self.with_program(placed).install().is_ok())
     }
 
-    /// Has the app watch the running link, and put the unit back when the link stays down
-    /// (something outside the app removed the unit or ended its link).
     pub fn watch(self, device: &DeviceLink) {
         let port = self.port;
         let repair = Mutex::new(Repair::default());
@@ -237,8 +214,6 @@ impl Kept {
     }
 }
 
-/// The link of `folder` as a unit of the user keeps it, with the copy of the program that a
-/// unit runs now ([`current_copy`]).
 fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     let home = crate::user_folders::home().ok_or(LinkError::NoHome)?;
     let application = crate::user_folders::of_this_user().ok_or(LinkError::NoHome)?;
@@ -255,16 +230,12 @@ fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     })
 }
 
-/// The link of `folder` when a unit of the user keeps it now: a unit for a different folder
-/// is not it.
 pub fn now(folder: &Path, port: u16) -> Option<Kept> {
     at(folder, port)
         .ok()
         .filter(|link| link.program.is_file() && link.keeps_this_folder())
 }
 
-/// The socket for the daemon of the link that a unit keeps on `port`, when that link made it.
-/// None for a different port, for a link that the app runs itself, and before the socket is there.
 pub fn daemon_socket(port: u16) -> Option<PathBuf> {
     let folders = folders().ok()?;
     if folder::read_port(&folders.device) != Some(port) {
@@ -276,7 +247,6 @@ pub fn daemon_socket(port: u16) -> Option<PathBuf> {
         .flatten()
 }
 
-/// Waits until the link of the unit answers on its port.
 fn answers(link: &Kept, limit: Duration) -> bool {
     let end = Instant::now() + limit;
     loop {
@@ -290,12 +260,7 @@ fn answers(link: &Kept, limit: Duration) -> bool {
     }
 }
 
-/// Hands the link of `folder` to a unit of the user (HMD-058): the program is copied out of the
-/// app, the child of the app stops, the unit starts, and the app watches it once it answers. A
-/// unit whose link does not answer is removed again.
-///
-/// # Errors
-/// The step that stopped it, in fixed words for the log.
+/// HMD-058. A unit whose link does not answer is removed again.
 fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result<(), &'static str> {
     let home = crate::user_folders::home().ok_or("no home folder")?;
     let application = crate::user_folders::of_this_user().ok_or("no home folder")?;
@@ -318,7 +283,6 @@ fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result
         let _ = link.remove_because("its link did not answer on its port");
         return Err("the link of the unit did not answer on its port");
     }
-    // A copy of an earlier app is no longer run by the unit.
     let earlier = earlier_copy(&home);
     if earlier != link.program {
         unplace(&earlier);
@@ -327,8 +291,6 @@ fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result
     Ok(())
 }
 
-/// Hands the link to a unit of the user; when that fails, the app runs the link again, so it
-/// works while the app is open.
 pub fn keep_or_run(device: &DeviceLink, program: PathBuf, folder: &Path, port: u16) {
     match keep(device, &program, folder, port) {
         Ok(()) => log::info!("a unit of the user keeps the device link"),
@@ -339,7 +301,6 @@ pub fn keep_or_run(device: &DeviceLink, program: PathBuf, folder: &Path, port: u
     }
 }
 
-/// Hands the link that the app runs for `folder` to a unit of the user, unless one keeps it.
 pub fn hand_over(device: &DeviceLink, program: PathBuf, folder: &Path) {
     let Some(port) = folder::read_port(folder) else {
         log::warn!("the device link has no saved port: no unit of the user is made");
@@ -351,17 +312,11 @@ pub fn hand_over(device: &DeviceLink, program: PathBuf, folder: &Path) {
     }
 }
 
-/// How long after a hosted hub gave its access the link of a computer that was joined already
-/// is handed to a unit: after the sign-in of that moment, which uses the link, has ended.
+/// The sign-in of that moment, which uses the link, ends before the hand-over.
 const HAND_OVER_AFTER: Duration = Duration::from_secs(45);
 
-/// The hub of this run is a hosted one (HMD-058): from now a unit of the user keeps the link of
-/// this device. The shell learns it in two places: the cloud gives this device its access (a
-/// sign-in), and the client asks for this computer as a hosted hub lists it (each start of an
-/// app that is signed in already; it asks so only for a hosted hub). A join that follows hands
-/// the link over. With `joined`, the device is on the link of the hub already: its folder is
-/// marked, and the link is handed over a short time later, so that a sign-in of now is not cut.
-/// If the app stops before that, its next start hands the link over.
+/// HMD-058: from now a unit of the user keeps the link of this device. With `joined`, the hand-over
+/// waits so that a sign-in of now is not cut; if the app stops first, its next start hands over.
 pub fn hosted_hub_opened<R: Runtime>(webview: &Webview<R>, joined: bool) {
     let device = Arc::clone(&webview.state::<Arc<DeviceLink>>());
     let first = !device.in_background();

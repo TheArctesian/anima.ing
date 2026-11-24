@@ -111,8 +111,7 @@ void graphql(`
   }
 `);
 
-// The Phase 2 config shapes (CHK-009), spread into `CheckFields` above: the hub declares them (WP-29), so the form
-// opens a saved Docker, systemd, SNMP or Tailscale ping check with its own settings.
+// The Phase 2 config shapes (CHK-009, WP-29), spread into `CheckFields` above.
 void graphql(`
   fragment DockerCheckConfig on DockerConfig {
     __typename
@@ -235,8 +234,7 @@ const SetCheckPaused = graphql(`
   }
 `);
 
-// Own documents (WP-50 F-3, R-085): `Check.notifications` is @pending, so a hub without it fails these two documents
-// only; the check's own documents never select it and the rest of the form still loads and saves.
+// Own documents (WP-50 F-3, R-085): `Check.notifications` is @pending, so a hub without it fails only these two documents.
 export const CheckNotifications = graphql(`
   query CheckNotifications($id: ID!) {
     check(id: $id) {
@@ -261,22 +259,20 @@ export const SetCheckNotifications = graphql(`
   }
 `);
 
-/** A heartbeat the hub just recorded, with the check and device it belongs to. */
 export type NewHeartbeat = HeartbeatAddedSubscription['heartbeatAdded'];
 
-/** A check with its full configuration, as the check list and the check form need it (CHK-005, CHK-007, Section 6.4). */
+/** CHK-005, CHK-007, Section 6.4. */
 export type DeviceCheck = NonNullable<DeviceChecksQuery['device']>['checks'][number];
 
-/** The values a new check starts with (D-26). */
+/** D-26. */
 export type CheckDefaults = CheckDefaultsQuery['checkDefaults'];
 
-/** One page of a check's heartbeats, newest first. */
+/** Newest first. */
 export type HeartbeatPage = NonNullable<CheckHeartbeatsQuery['check']>['heartbeats'];
 
-/** Checks and their heartbeats through a `Hub` (CQ-045). */
+/** CQ-045. */
 export function checksApi(hub: Hub) {
   return {
-    /** The device's checks; `null` when the hub has no such device. */
     forDevice: async (deviceId: string): Promise<HubResult<readonly DeviceCheck[] | null>> => {
       const result = await hub.request(DeviceChecks, { deviceId });
       return result.ok ? { ok: true, value: result.value.device?.checks ?? null } : result;
@@ -294,17 +290,16 @@ export function checksApi(hub: Hub) {
       const result = await hub.request(UpdateCheck, { id, input });
       return result.ok ? { ok: true, value: result.value.updateCheck } : result;
     },
-    /** Resolves to the deleted ID; a group's children are the hub's to handle. */
+    /** A group's children are the hub's to handle. */
     delete: async (id: string): Promise<HubResult<string>> => {
       const result = await hub.request(DeleteCheck, { id });
       return result.ok ? { ok: true, value: result.value.deleteCheck } : result;
     },
-    /** Pause or resume a check (CHK-005). */
+    /** CHK-005. */
     setPaused: async (id: string, paused: boolean): Promise<HubResult<DeviceCheck>> => {
       const result = await hub.request(SetCheckPaused, { id, paused });
       return result.ok ? { ok: true, value: result.value.setCheckPaused } : result;
     },
-    /** Listen for new heartbeats of every device; returns the function that stops listening. */
     watchHeartbeats: (sink: Sink<NewHeartbeat>): (() => void) =>
       hub.subscribe(
         HeartbeatAdded,
@@ -324,14 +319,13 @@ export function checksApi(hub: Hub) {
   };
 }
 
-/** The default check settings of the hub (D-26) as plain functions of a `Hub`. */
+/** D-26. */
 export function checkDefaultsApi(hub: Hub) {
   return {
     get: async (): Promise<HubResult<CheckDefaults>> => {
       const result = await hub.request(CheckDefaultsDocument, {});
       return result.ok ? { ok: true, value: result.value.checkDefaults } : result;
     },
-    /** The defaults as the hub now holds them. */
     set: async (input: CheckDefaultsInput): Promise<HubResult<CheckDefaults>> => {
       const result = await hub.request(SetCheckDefaultsDocument, { input });
       return result.ok ? { ok: true, value: result.value.setCheckDefaults } : result;

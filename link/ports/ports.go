@@ -1,8 +1,4 @@
-// Package ports is the list of open ports of a device (HMD-049): the local
-// ports of this computer that its hub may reach through the link (HMD-048).
-// The list is a file in the state directory of the device. The hub cannot
-// change it; only the person on the computer can. It is empty until the
-// person turns a port on.
+// Package ports is a device's list of local ports that its hub may reach (HMD-048, HMD-049); only the person on the computer changes it.
 package ports
 
 import (
@@ -14,27 +10,23 @@ import (
 )
 
 // ErrNotAllowed means that the port cannot be in the list on this system.
-var ErrNotAllowed = errors.New("ports: only 22 (SSH), 5900 (screen sharing) and, on Windows, 3389 (remote desktop) can be open")
+var ErrNotAllowed = errors.New("ports: only 22 (SSH), 5900 (screen sharing) and, on Windows or Linux, 3389 (remote desktop) can be open")
 
-// fileName is the file of the list: a JSON array of port numbers.
 const fileName = "open-ports"
 
-// Allowed reports whether a port can be in the list on the system goos (a
-// value of runtime.GOOS).
+// Allowed reports whether a port can be in the list on the system goos, a value of runtime.GOOS.
 func Allowed(port uint16, goos string) bool {
 	switch port {
 	case 22, 5900:
 		return true
 	case 3389:
-		return goos == "windows"
+		return goos == "windows" || goos == "linux"
 	default:
 		return false
 	}
 }
 
-// List reads the open ports, in order. An absent file is an empty list. A
-// port that this system does not allow is left out, also when the file
-// names it.
+// List reads the open ports, in order. An absent file is an empty list, and a port this system does not allow is left out.
 func List(dir *statedir.Dir) ([]uint16, error) {
 	var named []uint16
 	if err := dir.Read(fileName, &named); err != nil {
@@ -53,9 +45,7 @@ func List(dir *statedir.Dir) ([]uint16, error) {
 	return open, nil
 }
 
-// IsOpen reports whether a port is in the list now. It reads the file at
-// each call, so that a change applies with no restart. A list that cannot
-// be read has no open port.
+// IsOpen reports whether a port is in the list now; it reads the file at each call, and an unreadable list opens no port.
 func IsOpen(dir *statedir.Dir, port uint16) bool {
 	open, err := List(dir)
 	return err == nil && slices.Contains(open, port)

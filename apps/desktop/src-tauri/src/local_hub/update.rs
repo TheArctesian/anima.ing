@@ -1,9 +1,5 @@
-//! The hub's programs after an update of the application (one-click plan S12). The hub runs a
-//! copy of the programs, so a new application alone changes nothing for it. At each start the
-//! shell runs `anima-local-hub update` from the application: that program replaces the copy
-//! when the application carries other programs, and starts the hub on them. A hub that is not
-//! installed, or that has the same programs, is left as it is. The database, the key and the
-//! link's state are never touched.
+//! The hub runs a copy of the programs, so each start runs `anima-local-hub update` from the application.
+//! The database, the key and the link's state are never touched.
 
 use std::{ffi::OsString, path::Path};
 
@@ -15,19 +11,14 @@ pub(super) fn update_args(tree: &Path) -> [OsString; 3] {
     ["update".into(), "--tree".into(), tree.into()]
 }
 
-/// What the program did with the hub's programs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Updated {
-    /// The hub runs the programs of this application now.
     Replaced,
-    /// Nothing to do: no hub is installed, or it has these programs.
     Unchanged,
-    /// The hub has programs of a higher version, and they stay.
     KeptNewer,
 }
 
-/// What the program answered: `{"updated":true}`, `{"updated":false}` or
-/// `{"updated":false,"older":true}` when this application is older than the hub's programs.
+/// `{"updated":bool}`, with `"older":true` when this application is older than the hub's programs.
 pub(super) fn parse_updated(printed: &[u8]) -> Result<Updated, LocalHubError> {
     let answer: serde_json::Value =
         serde_json::from_slice(printed).map_err(|_| LocalHubError::Failed)?;
@@ -40,14 +31,12 @@ pub(super) fn parse_updated(printed: &[u8]) -> Result<Updated, LocalHubError> {
     }
 }
 
-/// Asks the carried program to update the hub, and tells what it did.
 pub(super) fn update(carried: &Carried) -> Result<Updated, LocalHubError> {
     let args = update_args(&carried.tree);
     parse_updated(&ask(carried, &args.each_ref(), INSTALL_LIMIT)?)
 }
 
-/// The update as one piece of work that holds the one change until it ends, or `None` when
-/// another change runs: an install, remove, start or stop must not run beside it.
+/// Holds the one change until it ends: an install, remove, start or stop must not run beside it.
 pub(super) fn claimed(
     changing: &Changing,
     carried: Carried,
@@ -59,8 +48,6 @@ pub(super) fn claimed(
     })
 }
 
-/// Updates the hub on this computer in the background, once, when this build carries the
-/// programs.
 pub fn at_start(changing: &Changing) {
     let Some(work) = carried()
         .ok()

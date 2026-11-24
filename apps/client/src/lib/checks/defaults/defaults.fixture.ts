@@ -1,5 +1,4 @@
-// Test support: a hub that answers the two default-check-settings operations from canned results and records
-// what it was sent, and synthetic values that differ from the K1 input defaults (60, 3, 20, 1000).
+// `STORED` differs from each K1 input default (60, 3, 20, 1000).
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import { flushSync } from 'svelte';
@@ -23,7 +22,6 @@ export function failure(code: HubError['code'], message = 'secret hub text'): Hu
   return { ok: false, error: { code, message, fields: [] } as HubError };
 }
 
-/** `answers` maps an operation to its result; an operation without one is `unreachable`. */
 export function fakeHub(answers: Partial<Record<Operation, HubResult<unknown> | Promise<HubResult<unknown>>>>): { hub: Hub; sent: SentRequest[] } {
   const sent: SentRequest[] = [];
   const hub = {

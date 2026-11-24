@@ -4,7 +4,7 @@ import type { Hub, HubResult } from '$lib/hub/hub';
 import { retentionApi } from '$lib/retention/api';
 import type { HubKept } from './kept';
 
-// K1 has no count of checks: the page counts the checks of each device, 200 devices a page.
+// K1 has no count of checks, so the page counts the checks of each device.
 const HubKeptCounts = graphql(`
   query HubKeptCounts($after: String) {
     devices(first: 200, after: $after) {
@@ -47,7 +47,7 @@ async function readCounts(hub: Hub): Promise<Counts> {
   return { devices, checks: null };
 }
 
-/** What the hub keeps, from the hub: the counts of its devices and of its checks, and its retention periods (HMD-073). */
+/** What the hub keeps (HMD-073). */
 export async function readKept(hub: Hub): Promise<HubKept> {
   const [counts, periods] = await Promise.all([readCounts(hub), retentionApi(hub).list()]);
   return { ...counts, periods: periods.ok ? periods.value : null };

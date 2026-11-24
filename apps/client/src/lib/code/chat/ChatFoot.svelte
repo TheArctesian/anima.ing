@@ -1,5 +1,8 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+  import { queueAction } from '$lib/agent-threads/live/drive';
   import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
+  import type { ModelLists } from '$lib/agent-threads/live/models';
   import type { LiveThread } from '$lib/agent-threads/live/timeline';
   import { folderName, programName } from '$lib/agent-threads/thread';
   import AskCard from '$lib/agent-threads/view/AskCard.svelte';
@@ -16,6 +19,21 @@
   const { thread, live, id }: Props = $props();
   const questions = $derived(thread?.asks.filter((open) => open.ask.kind === 'question') ?? []);
   const NO_RUNNER = { ok: false, words: 'The thread runner is not running.' } as const;
+  let lists = $state<ModelLists>({});
+  const program = $derived(thread?.row.program);
+  const runState = $derived(thread?.row.state);
+
+  // The runner's model lists (TH104): asked when the foot opens, and again at each change of the run's state while
+  // its program has no list, because a program has a list only after its first thread started.
+  $effect(() => {
+    if (live === null) return;
+    void runState;
+    const known = program !== undefined && untrack(() => lists[program]) !== undefined;
+    if (known) return;
+    void live.call({ call: 'models' }).then((answer) => {
+      if (answer.ok && answer.outcome.outcome === 'models') lists = answer.outcome.models;
+    });
+  });
 </script>
 
 <!--
@@ -32,9 +50,14 @@
   <Composer
     row={thread?.row ?? null}
     draft={id}
-    onSend={(text) => live?.call({ call: 'send', thread: id, text }) ?? Promise.resolve(NO_RUNNER)}
+    onSend={(text, files) => live?.call({ call: 'send', thread: id, text, ...(files === undefined ? {} : { attachments: files }) }) ?? Promise.resolve(NO_RUNNER)}
+    onAttach={(act, thread) => live?.call({ ...act, thread }) ?? Promise.resolve(NO_RUNNER)}
     onInterrupt={() => live?.call({ call: 'interrupt', thread: id }) ?? Promise.resolve(NO_RUNNER)}
     onStop={() => live?.call({ call: 'stop', thread: id }) ?? Promise.resolve(NO_RUNNER)}
+    onQueue={(act) => live?.call(queueAction(act, id)) ?? Promise.resolve(NO_RUNNER)}
+    onSet={(change) => live?.call({ call: 'set', thread: id, ...change }) ?? Promise.resolve(NO_RUNNER)}
+    models={program === undefined ? undefined : lists[program]}
+    onFiles={(query, most) => live?.files(id, query, most) ?? Promise.resolve(NO_RUNNER)}
   />
 </div></div>
 

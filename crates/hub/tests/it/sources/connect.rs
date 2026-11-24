@@ -1,6 +1,5 @@
-//! `connectGithubApp`: the key is proved with a mint before anything is stored (SRC-003,
-//! SRC-008, PRJ-018); a bad key, a refused key or an unreachable source stores nothing. The
-//! connect flow's `establish` leaves the same rows, audit entry and event (PRJ-039).
+//! `connectGithubApp` proves the key with a mint before it stores anything (SRC-003, SRC-008,
+//! PRJ-018); `establish` leaves the same rows (PRJ-039).
 
 use anima_hub::{
     engine::sources::{Connection, establish},
@@ -192,8 +191,6 @@ async fn d_23_an_api_key_is_forbidden_on_connect_and_remove(pool: PgPool) {
     assert!(listed["errors"].is_null(), "an API key may list: {listed}");
 }
 
-/// What one connect left behind for the account `id`: its row, its key, its audit entry (the
-/// change without the instance key) and its event, minus ids, times and the client address.
 async fn left_behind(pool: &PgPool, id: SourceAccountId) -> (Value, Value, Value, String) {
     let account: Value = sqlx::query_scalar(
         "SELECT jsonb_build_object('source', source, 'label', label, \

@@ -1,5 +1,4 @@
-//! K8 Section 5, MET-013: a renewal is stored only while the token it presents still works, even
-//! when that token was checked a moment earlier.
+//! K8 Section 5, MET-013.
 
 use chrono::TimeDelta;
 use daemon_core::wire::DaemonToken;

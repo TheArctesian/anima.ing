@@ -1,5 +1,4 @@
-//! A daemon batch's write: its samples at their own times, and the minute, hour and day rows
-//! of each (MET-015, DB-008, K8 Section 4). Every statement runs in the caller's transaction.
+//! MET-015, DB-008, K8 Section 4. Every statement runs in the caller's transaction.
 
 use std::collections::BTreeSet;
 
@@ -11,19 +10,14 @@ use crate::{
     ids::DeviceId,
 };
 
-/// One value of a pushed point: the mean of its window as a sample at `at`, and the highest
-/// sample of the window when the batch had one (CPU and GPU use only).
 pub(in crate::fleet::metrics) struct PointValue {
     pub(in crate::fleet::metrics) at: DateTime<Utc>,
     pub(in crate::fleet::metrics) sample: Sample,
     pub(in crate::fleet::metrics) max: Option<f64>,
 }
 
-/// The upsert of one aggregate table from the samples just kept: each bucket's new samples are
-/// folded first, then merged into the stored row as a mean weighted by count. The new mean is
-/// a sum of `value / n`, and the merge moves the stored mean by a share of the difference, so
-/// neither overflows for finite values of at least zero, however large (MET-002). The max
-/// column takes the window's max where the batch had one, else the mean.
+/// Means are sums of `value / n` and merges move by a share of the difference, so neither
+/// overflows for finite values of at least zero (MET-002).
 macro_rules! aggregate {
     ($table:literal) => {
         concat!(
@@ -50,8 +44,7 @@ macro_rules! aggregate {
     };
 }
 
-/// A value whose series and time are stored already is skipped, and so is its share of the
-/// aggregates, so a batch sent twice adds nothing twice. Returns how many samples it kept.
+/// A value already stored is skipped with its aggregate share, so a resent batch adds nothing.
 const ADD_POINTS_SQL: &str = concat!(
     "WITH pushed AS ( \
         SELECT s.id AS series_id, w.at, w.value, w.max \
@@ -73,8 +66,6 @@ const ADD_POINTS_SQL: &str = concat!(
     " SELECT count(*) FROM kept"
 );
 
-/// How many series of the device were created at or after `since`, and how many of the
-/// series of `samples` it does not have yet, each counted once.
 const NEW_SERIES_SQL: &str = "\
     SELECT (SELECT count(*) FROM metrics.series \
             WHERE device_id = $1 AND created_at >= $2) \
@@ -85,9 +76,7 @@ const NEW_SERIES_SQL: &str = "\
                 SELECT 1 FROM metrics.series s \
                 WHERE s.device_id = $1 AND s.kind = w.kind AND s.label = w.label))";
 
-/// How many series `device` will have created at or after `since` once the series of `samples`
-/// it lacks are added (R-098 e, CR-20). The creation time is the hub's, so a batch cannot move
-/// a series out of the count by the times of its points.
+/// The creation time is the hub's, so a batch cannot move a series out of the count (R-098 e, CR-20).
 pub(in crate::fleet::metrics) async fn created_series(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -106,8 +95,6 @@ pub(in crate::fleet::metrics) async fn created_series(
     Ok(count)
 }
 
-/// Writes `values` of `device`, whose series exist, with their aggregate rows, after creating
-/// the sample partition of each UTC day they fall on; how many samples were new.
 pub(in crate::fleet::metrics) async fn add_points(
     conn: &mut PgConnection,
     device: DeviceId,

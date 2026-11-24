@@ -1,5 +1,5 @@
-//! The answers of live reads held in hub memory (K-E1 Section 13.1). Pure: the time is a
-//! parameter (CQ-021). Raw bodies only; nothing of it reaches the database or a log.
+//! The answers of live reads held in hub memory (K-E1 Section 13.1); nothing of them reaches the
+//! database or a log.
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -14,7 +14,6 @@ pub(super) const STALE_FOR: TimeDelta = TimeDelta::hours(1);
 /// A read asked `fresh` still takes an answer younger than this.
 pub(super) const FRESH_FLOOR: TimeDelta = TimeDelta::seconds(5);
 
-/// How much the cache holds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Bounds {
     pub entries: usize,
@@ -23,14 +22,13 @@ pub(super) struct Bounds {
     pub body: usize,
 }
 
-/// The bounds of K-E1 Section 13.1: 2,000 entries, 64 MiB, no body over 512 KiB.
+/// The bounds of K-E1 Section 13.1.
 pub(super) const BOUNDS: Bounds = Bounds {
     entries: 2_000,
     bytes: 64 * 1024 * 1024,
     body: 512 * 1024,
 };
 
-/// What an answer is held under: the account, the path and the query, sorted.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) struct Key {
     account: SourceAccountId,
@@ -88,8 +86,6 @@ impl Replies {
         }
     }
 
-    /// The answer under `key` when `keep` allows serving it at `now` without a new read: kept
-    /// and inside its window, and, when `keep` asks for a fresh read, younger than five seconds.
     pub(super) fn fresh(&mut self, key: &Key, keep: Keep, now: DateTime<Utc>) -> Option<Held> {
         if !keep.is_kept() {
             return None;
@@ -104,8 +100,6 @@ impl Replies {
         })
     }
 
-    /// The answer under `key` when it was read at most an hour before `now`: what a failed
-    /// refresh serves, marked stale.
     pub(super) fn stale(&mut self, key: &Key, keep: Keep, now: DateTime<Utc>) -> Option<Held> {
         if !keep.is_kept() {
             return None;
@@ -118,8 +112,6 @@ impl Replies {
         })
     }
 
-    /// Holds `held` under `key` for as long as `keep` says. An answer `keep` never keeps, or
-    /// one over the body bound, is not held, and the older answer under `key` goes too.
     pub(super) fn keep(&mut self, key: Key, keep: Keep, held: Held) {
         self.discard(&key);
         let Some(fresh_for) = keep.fresh_for(&held.body) else {
@@ -147,7 +139,6 @@ impl Replies {
         }
     }
 
-    /// Drops the answers of `account` whose path is `prefix` or lies below it.
     pub(super) fn forget(&mut self, account: SourceAccountId, prefix: &str) {
         let prefix = prefix.trim_end_matches('/');
         let below = |path: &str| {
@@ -157,7 +148,6 @@ impl Replies {
         self.discard_where(|key| key.account == account && below(&key.path));
     }
 
-    /// Drops every answer of `account`: it was removed.
     pub(super) fn forget_account(&mut self, account: SourceAccountId) {
         self.discard_where(|key| key.account == account);
     }
@@ -174,7 +164,6 @@ impl Replies {
         }
     }
 
-    /// How many answers are held, and their bytes.
     #[cfg(test)]
     pub(super) fn size(&self) -> (usize, usize) {
         (self.entries.len(), self.bytes)
@@ -192,7 +181,6 @@ impl Replies {
             .map(|(key, _)| key.clone())
     }
 
-    /// Drops the answer under `key`: a newer reply said something else.
     pub(super) fn discard(&mut self, key: &Key) {
         if let Some(entry) = self.entries.remove(key) {
             self.bytes -= entry.held.body.len();

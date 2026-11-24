@@ -1,6 +1,5 @@
-//! The firings that go to the open applications (K-E6 Section 5; REM-008, REM-009). An
-//! application has `Subscription.reminderFirings` open; the sender gives it each firing at the
-//! send and then queues nothing to a channel.
+//! The firings that go to the open applications over `Subscription.reminderFirings` (K-E6
+//! Section 5; REM-008, REM-009).
 
 use tokio::sync::broadcast;
 
@@ -27,31 +26,26 @@ impl Default for Live {
 }
 
 impl Live {
-    /// How many subscriptions are open now. A subscription that the client closed is not
-    /// counted after its stream is dropped.
+    /// A subscription that the client closed is not counted after its stream is dropped.
     #[must_use]
     pub fn open(&self) -> usize {
         self.sender.receiver_count()
     }
 
-    /// A receiver of each firing that is sent from now on. It is one open subscription until it
-    /// is dropped.
+    /// One open subscription until it is dropped.
     #[must_use]
     pub fn subscribe(&self) -> broadcast::Receiver<Firing> {
         self.sender.subscribe()
     }
 
-    /// Gives `firing` to each open subscription, with the words that can be on a lock screen.
     pub(super) fn publish(&self, firing: Firing) {
-        // `send` fails only when no subscription is open. The firing is in the database, so
-        // nothing is lost and nothing is reported.
+        // Fails only with no subscription open; the firing is in the database, so nothing is lost.
         let _ = self.sender.send(for_a_device(firing));
     }
 }
 
-/// The firing as it leaves the hub for the notification of a device (REM-009). For Class C: as
-/// it is stored. For Class A or B: the fixed body and no subject, so that no title and no value
-/// of a private record is in the payload; the application reads the firing after it is unlocked.
+/// Class A or B leaves with the fixed body and no subject, so no title or value of a private record
+/// is in the payload (REM-009).
 #[must_use]
 pub fn for_a_device(firing: Firing) -> Firing {
     match firing.class {

@@ -1,4 +1,4 @@
-//! `anima place` against the scripted hub (PLC-001, PLC-004, PLC-005, PLC-006).
+//! PLC-001, PLC-004, PLC-005, PLC-006.
 
 use serde_json::{Value, json};
 

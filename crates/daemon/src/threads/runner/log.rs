@@ -20,10 +20,18 @@ pub const LIMIT: u64 = 1024 * 1024;
 #[serde(rename_all = "snake_case")]
 pub enum Kind {
     Start,
+    /// Fixed pass-through lifecycle words only; no address or credential (TH118).
+    Relay,
     Prompt,
     Answer,
     Stop,
     Refusal,
+    /// The person changed the model, the effort or the mode of a thread (TH110).
+    Change,
+    /// A file for a prompt came whole (TH111).
+    Attach,
+    /// The person asked the Git engine to change a worktree, its history or a remote (TH116).
+    Git,
 }
 
 /// One line: the time, the kind, the thread, what the runner could see of the source, and a

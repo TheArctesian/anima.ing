@@ -1,10 +1,5 @@
-//! The daemon's copy of the operational keys of its device, and the rules that keep it a copy
-//! (K-E5 Section 2.1, R-147). Pure: the time is a parameter (CQ-021).
-//!
-//! The cache holds one version of each key. After each answer of the hub that had `keys`, it
-//! drops each key that is not in `current` and each key whose version is not the current one,
-//! and asks for the current versions it does not hold. When the last such answer is more than
-//! 7 days old, the whole cache goes. Nothing here implements `Debug`: a cache holds values.
+//! The daemon's copy of its device's operational keys (K-E5 Section 2.1, R-147).
+//! Nothing here implements `Debug`: a cache holds values.
 
 use std::collections::BTreeMap;
 
@@ -14,7 +9,6 @@ use daemon_core::wire::{FetchedKey, KeyValue, KeyVersion, versions_fit};
 /// How long the cache lives without an answer of the hub that had `keys` (R-147).
 pub const CACHE_LIFE: TimeDelta = TimeDelta::days(7);
 
-/// The cached keys by name, and the time of the last answer of the hub that had `keys`.
 #[derive(Default)]
 pub struct KeyCache {
     keys: BTreeMap<String, FetchedKey>,
@@ -22,7 +16,6 @@ pub struct KeyCache {
 }
 
 impl KeyCache {
-    /// A cache of `keys`, last told the current versions at `answered_at`.
     #[must_use]
     pub fn of(keys: Vec<FetchedKey>, answered_at: Option<DateTime<Utc>>) -> Self {
         Self {
@@ -34,7 +27,6 @@ impl KeyCache {
         }
     }
 
-    /// The version of each cached key, by name: the `held` of a push.
     #[must_use]
     pub fn held(&self) -> Vec<KeyVersion> {
         self.keys
@@ -46,10 +38,7 @@ impl KeyCache {
             .collect()
     }
 
-    /// Takes the hub's `current` list, told at `now`: drops each key that is not in it or is at
-    /// another version, and returns the versions to fetch. A list that breaks the rules of a
-    /// list (too long, a name twice, a name that is not a key name) is ignored whole, and the
-    /// cache stays as it was.
+    /// Returns the versions to fetch; a list that breaks the rules is ignored whole.
     pub fn apply(&mut self, current: &[KeyVersion], now: DateTime<Utc>) -> Vec<KeyVersion> {
         if !versions_fit(current) {
             return Vec::new();
@@ -67,7 +56,6 @@ impl KeyCache {
             .collect()
     }
 
-    /// Keeps `fetched` when it is a version the hub named in `wanted`; whether it was kept.
     pub fn keep(&mut self, fetched: FetchedKey, wanted: &[KeyVersion]) -> bool {
         let named = wanted
             .iter()
@@ -78,8 +66,6 @@ impl KeyCache {
         named
     }
 
-    /// Whether the whole cache must go at `now`: it holds keys and no answer with `keys` came
-    /// in the last 7 days.
     #[must_use]
     pub fn is_stale(&self, now: DateTime<Utc>) -> bool {
         !self.keys.is_empty()
@@ -88,12 +74,10 @@ impl KeyCache {
                 .is_none_or(|answered| now - answered > CACHE_LIFE)
     }
 
-    /// Drops every key.
     pub fn forget(&mut self) {
         self.keys.clear();
     }
 
-    /// The value of the key named `name`, when the cache holds it.
     #[must_use]
     pub fn value(&self, name: &str) -> Option<&KeyValue> {
         self.keys.get(name).map(|key| &key.value)
@@ -104,7 +88,6 @@ impl KeyCache {
         self.keys.is_empty()
     }
 
-    /// The cached keys, by name.
     pub fn keys(&self) -> impl Iterator<Item = &FetchedKey> {
         self.keys.values()
     }

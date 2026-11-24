@@ -1,7 +1,5 @@
-//! SNMP check secrets against the database: sealed apart from `config`, bound to their check,
-//! version, user name and device host, opened only for the probe of that host, and kept on
-//! update only for the same version, user name and host (SEC-003, SEC-005, SEC-010, LOG-007,
-//! D-5).
+//! SNMP secrets are sealed apart from `config`, bound to check, version, user and host, and opened
+//! only for the probe of that host (SEC-003, SEC-005, SEC-010, LOG-007, D-5).
 
 use anima_hub::{
     fleet::{

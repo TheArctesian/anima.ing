@@ -1,5 +1,4 @@
-//! `anima catalogue show <id>`: one entry of the catalogue, with the names of its environment
-//! variables (never a value) and its Compose file (task H38).
+//! `anima catalogue show` (task H38): environment variables by name, never a value.
 
 use super::documents::{CatalogueShow, catalogue_show};
 use super::list::{NOT_TESTED, words};

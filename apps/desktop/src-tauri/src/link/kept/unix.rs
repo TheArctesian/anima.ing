@@ -1,4 +1,3 @@
-//! Unix file placement for the persistent device link.
 use super::{DAEMON_SOCKET, LONGEST_SOCKET};
 use std::{
     ffi::OsString,
@@ -7,9 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// The folder of the daemon of this user, where the daemon itself looks for it: on macOS
-/// `~/Library/Application Support/anima-daemon`, else `$XDG_CONFIG_HOME/anima-daemon` or
-/// `~/.config/anima-daemon`.
+/// Where the daemon itself looks for its folder.
 pub fn daemon_folder(home: &Path, macos: bool, config_home: Option<&Path>) -> PathBuf {
     if macos {
         return home.join("Library/Application Support/anima-daemon");
@@ -20,12 +17,7 @@ pub fn daemon_folder(home: &Path, macos: bool, config_home: Option<&Path>) -> Pa
         .join("anima-daemon")
 }
 
-/// The socket for the daemon in `folder`, once the folder is there and private: it is made
-/// with mode 0700 when it is absent. None when the link would refuse the socket, so that the
-/// link still starts: the folder is a link, belongs to a different user or gives its group or
-/// others any access; a folder above it can be replaced by another user (`foldersAbove` of the
-/// link); a file at the path is not a socket of this user with no access for others; or the
-/// path is too long for a socket.
+/// None when the link would refuse the socket (`foldersAbove` of the link), so that the link still starts.
 pub fn private_socket(folder: &Path) -> Option<PathBuf> {
     let _ = DirBuilder::new().recursive(true).mode(0o700).create(folder);
     let me = nix::unistd::getuid().as_raw();
@@ -40,14 +32,11 @@ pub fn private_socket(folder: &Path) -> Option<PathBuf> {
         .then_some(socket)
 }
 
-/// No bit of the group or of others: the last two octal digits are zero.
 fn no_access_for_others(found: &fs::Metadata) -> bool {
     found.mode().is_multiple_of(0o100)
 }
 
-/// Whether no other user can replace a folder above `folder` on its real path: each is root's or
-/// this user's, and others cannot write to it, or it has the sticky bit. The link checks the
-/// same before it makes the socket.
+/// The link makes the same check before it makes the socket.
 fn kept_above(folder: &Path, me: u32) -> bool {
     let Ok(real) = fs::canonicalize(folder) else {
         return false;
@@ -60,9 +49,7 @@ fn kept_above(folder: &Path, me: u32) -> bool {
     })
 }
 
-/// The socket for the daemon in the folder of the daemon of the user of `home`
-/// ([`daemon_folder`], [`private_socket`]): the unit and the link that the app runs itself both
-/// make it there, so a daemon finds the link whichever runs.
+/// The unit and the link that the app runs both make the socket here, so a daemon finds the link whichever runs.
 pub fn socket_of_user(home: &Path) -> Option<PathBuf> {
     let config_home = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
     private_socket(&daemon_folder(
@@ -72,8 +59,7 @@ pub fn socket_of_user(home: &Path) -> Option<PathBuf> {
     ))
 }
 
-/// What `anima-link unit` may see of the app's environment: the home folder, and on Linux the
-/// folders that name the configuration and the session of the user.
+/// The only parts of the app's environment that `anima-link unit` may see.
 pub fn environment(read: impl Fn(&str) -> Option<OsString>) -> Vec<(&'static str, OsString)> {
     ["HOME", "TMPDIR", "XDG_CONFIG_HOME", "XDG_RUNTIME_DIR"]
         .into_iter()

@@ -12,7 +12,6 @@ fn write_key(folder: &Path, name: &str, byte: u8) {
     .unwrap();
 }
 
-/// The identifier the credential vault gives a key of 32 bytes `byte`.
 fn credential_id(byte: u8) -> String {
     key_id(&[byte; KEY_LEN])
 }

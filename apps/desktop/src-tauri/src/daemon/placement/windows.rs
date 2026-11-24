@@ -1,4 +1,3 @@
-//! Protected Windows executable placement; stop the previous task before replacing its image.
 use super::run::{Run, daemon_env, run};
 use std::{
     fs::{self, OpenOptions},
@@ -18,6 +17,9 @@ pub enum PlacementError {
     Source,
     #[error("the daemon could not be copied or replaced")]
     Write,
+    #[expect(dead_code, reason = "made only by the update, which runs on Unix")]
+    #[error("the new copy of the daemon did not pass its check")]
+    Refused,
 }
 
 pub fn destination(home: &Path) -> PathBuf {

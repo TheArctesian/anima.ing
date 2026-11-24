@@ -1,6 +1,6 @@
 import type { RdpResizeMethod, RdpSecurity } from '$lib/hub/generated/graphql';
 
-/** The RDP security modes, as the choice names them; Standard RDP says it is weak (RA-020). */
+/** Standard RDP says it is weak (RA-020). */
 export const RDP_SECURITY: readonly { value: RdpSecurity; label: string }[] = [
   { value: 'ANY', label: 'Any (server chooses)' },
   { value: 'NLA', label: 'Network Level Authentication' },
@@ -15,7 +15,7 @@ export const RDP_RESIZE: readonly { value: RdpResizeMethod; label: string }[] = 
   { value: 'RECONNECT', label: 'Reconnect' },
 ];
 
-/** The RDP on/off settings, each a switch that saves at once (D17). */
+/** Each is a switch that saves at once (D17). */
 export const RDP_FLAGS = [
   { key: 'audioOut', label: 'Play device sound' },
   { key: 'microphone', label: 'Send microphone' },

@@ -1,10 +1,6 @@
 //! The HTTP routes of Connect GitHub (K-E1 Section 7a, K7): fixed paths, no path parameters,
-//! each logged by its template only, behind the permitted-networks layer.
-//!
-//! `GET /connect/github` (with a ticket, or the fixed confirm page), `POST /connect/github/open`
-//! (the browser session from Anima.ing's own origin), `GET /connect/github/start`, `/created` and
-//! `/installed`. Every answer carries `no-store`, `no-referrer`, `nosniff`, HSTS, COOP and a
-//! policy of its own. The binding cookie is the only thing that ties a browser to the attempt.
+//! each logged by its template only, behind the permitted-networks layer. The binding cookie is
+//! the only thing that ties a browser to the attempt.
 
 use axum::{
     Router,
@@ -36,15 +32,13 @@ use crate::{
 
 /// The binding cookie (K7).
 const COOKIE: &str = "__Host-anima-connect";
-/// What every `Set-Cookie` of [`COOKIE`] carries besides its value and `Max-Age`.
 const ATTRIBUTES: &str = "Path=/; Secure; HttpOnly; SameSite=Lax";
 /// How long the cookie lives, in seconds: past the attempt's 55 minutes.
 const COOKIE_SECONDS: u32 = 3600;
-/// How the manifest treats the webhook (K-E1 Section 1; the live check may change it).
+/// How the manifest treats the webhook (K-E1 Section 1).
 const WEBHOOK: Webhook = Webhook::InactiveAtHub;
 const START_PATH: &str = "/connect/github/start";
 
-/// What the routes share: the parts a run needs, the attempt and the hub's public origin.
 #[derive(Clone)]
 pub struct GithubFlow {
     pub scheduling: Scheduling,
@@ -52,7 +46,6 @@ pub struct GithubFlow {
     pub origin: PublicOrigin,
 }
 
-/// The Connect GitHub routes, with the headers every answer carries.
 pub fn router(flow: GithubFlow) -> Router {
     Router::new()
         .route(PAGE_PATH, get(page))
@@ -64,7 +57,6 @@ pub fn router(flow: GithubFlow) -> Router {
         .with_state(flow)
 }
 
-/// Sets the fixed headers on every answer, and the plain policy unless the page has its own.
 async fn protect(mut response: Response) -> Response {
     let headers = response.headers_mut();
     let fixed = [
@@ -89,7 +81,6 @@ async fn protect(mut response: Response) -> Response {
     response
 }
 
-/// A page with `status` and `body`.
 fn html(status: StatusCode, body: String) -> Response {
     (
         status,
@@ -103,7 +94,6 @@ fn notice(status: StatusCode, notice: Notice) -> Response {
     html(status, pages::notice(notice))
 }
 
-/// Clears the binding cookie on the done and failure pages.
 fn clear_binding(mut response: Response) -> Response {
     let cleared = format!("{COOKIE}=; Max-Age=0; {ATTRIBUTES}");
     if let Ok(value) = HeaderValue::from_str(&cleared) {
@@ -112,7 +102,7 @@ fn clear_binding(mut response: Response) -> Response {
     response
 }
 
-/// `303` to `location`, which may hold a one-time value: marked sensitive.
+/// `location` may hold a one-time value, so it is marked sensitive.
 fn see_other(location: &str, cookie: Option<HeaderValue>) -> Response {
     let Ok(mut value) = HeaderValue::from_str(location) else {
         return notice(StatusCode::INTERNAL_SERVER_ERROR, Notice::TryAgain);
@@ -126,7 +116,6 @@ fn see_other(location: &str, cookie: Option<HeaderValue>) -> Response {
     response
 }
 
-/// The `Set-Cookie` value that binds the browser with `binding`; marked sensitive.
 fn set_cookie(binding: &Minted) -> Option<HeaderValue> {
     let text = Zeroizing::new(format!(
         "{COOKIE}={}; Max-Age={COOKIE_SECONDS}; {ATTRIBUTES}",
@@ -137,7 +126,6 @@ fn set_cookie(binding: &Minted) -> Option<HeaderValue> {
     Some(value)
 }
 
-/// Binds this browser to the attempt with `claim`, then sends it to the form page.
 fn bind(
     attempts: &Attempts,
     now: chrono::DateTime<chrono::Utc>,
@@ -243,10 +231,8 @@ async fn back_from_create(
     }
 }
 
-/// `GET /connect/github/installed?installation_id&setup_action&state`: the browser is back from
-/// Install. The ID is checked with GitHub before anything is stored, and the bound browser's page
-/// waits a bounded time for the attempt to end. The bound browser with a state that does not
-/// match, or with none, only wakes the poll; any other browser changes nothing.
+/// `GET /connect/github/installed?installation_id&setup_action&state`: back from Install. The ID
+/// is checked with GitHub before anything is stored; a browser that is not bound changes nothing.
 async fn back_from_install(
     State(flow): State<GithubFlow>,
     headers: HeaderMap,

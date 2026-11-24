@@ -1,13 +1,11 @@
 import type { HubError, HubResult } from '$lib/hub/hub';
-import type { CatalogueEntry } from '$lib/catalogue/api';
+import type { CatalogueCalls, CatalogueEntry } from '$lib/catalogue/api';
 import type { Container, ContainerCalls, ContainerDetail, ContainerLog, ContainerNetwork, ContainerStorage, ImageUpdate } from './api';
-
-// Test support: containers in the hub's shape, and calls that answer with them and record what the screen asked.
 
 export const APP_ID = `4f5c1d2e3a4b${'0'.repeat(52)}`;
 
 export function container(change: Partial<Container>): Container {
-  return { id: APP_ID, name: 'tracks-app-1', image: 'example/tracks:0.36', state: 'RUNNING', status: 'Up 3 hours (healthy)', health: 'HEALTHY', ports: ['0.0.0.0:3000->3000/tcp'], createdAt: '2026-11-18T08:00:00Z', composeProject: 'tracks', composeService: 'app', composeProjectState: 'PARTLY_RUNNING', ...change };
+  return { id: APP_ID, name: 'tracks-app-1', image: 'example/tracks:0.36', state: 'RUNNING', status: 'Up 3 hours (healthy)', health: 'HEALTHY', ports: ['0.0.0.0:3000->3000/tcp'], createdAt: '2026-11-18T08:00:00Z', composeProject: 'tracks', composeService: 'app', composeWorkingDir: null, composeFiles: [], composeProjectState: 'PARTLY_RUNNING', ...change };
 }
 
 export const CONTAINERS: readonly Container[] = [
@@ -25,7 +23,6 @@ export const LOG: ContainerLog = {
   cut: false,
 };
 
-/** The details of `tracks-app-1`: a health check, a volume and a bind mount, one network. */
 export const DETAIL: ContainerDetail = {
   id: APP_ID,
   name: 'tracks-app-1',
@@ -92,10 +89,6 @@ const GENERATED = {
   install: { refusal: 'GENERATED_NEEDS_DIGEST', reason: 'Anima did not test this entry: it is generated from the data of its publisher. To install it, a person confirms the digest of its image.', needsOpenToNetwork: false },
 } as const;
 
-/**
- * Tasks H38 and H39: two tested entries and two generated ones (a shell that no one read, and one with a stream and an
- * optional device).
- */
 export const ENTRIES: readonly CatalogueEntry[] = [
   entry('owntracks-recorder', 'OwnTracks Recorder', { lastMachineTest: '2026-11-20', tags: ['location'] }),
   entry('postgresql', 'PostgreSQL', { kind: 'DATABASE', tags: ['database'] }),
@@ -136,14 +129,12 @@ function entry(id: string, name: string, changes: Partial<CatalogueEntry>): Cata
   };
 }
 
-export interface FakeCalls extends ContainerCalls {
-  /** Each read of details, in order: the container. */
+export interface FakeCalls extends ContainerCalls, CatalogueCalls {
   readonly detailsAsked: string[];
   storageAsked: number;
   networksAsked: number;
   updatesAsked: number;
   entriesAsked: number;
-  /** Each log read, in order: the container and the number of lines. */
   readonly logsAsked: [string, number][];
   listsAsked: number;
   /** What the next call answers instead of its answer. */

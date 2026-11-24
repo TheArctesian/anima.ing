@@ -1,5 +1,4 @@
-//! Hub faults reach the process log by kind and cause chain, never with SQL or a token (K7,
-//! LOG-007, API-010, H-5).
+//! Hub faults reach the process log without SQL or a token (K7, LOG-007, API-010, H-5).
 
 use std::{
     io,
@@ -18,7 +17,6 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 
 use crate::hub::{Hub, PASSWORD, USERNAME, set_operator, start};
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 pub struct Capture(Arc<Mutex<Vec<u8>>>);
 
@@ -65,7 +63,6 @@ async fn log_002_the_hub_router_logs_each_request_by_its_route() {
     assert_eq!(paths, [&json!("/health"), &json!("/graphql")], "{served:?}");
 }
 
-/// A hub whose database cannot be reached: each query fails with a pool or I/O error.
 fn unreachable_hub() -> Hub {
     let pool = PgPoolOptions::new()
         .acquire_timeout(Duration::from_millis(300))
@@ -87,7 +84,6 @@ async fn api_010_h_5_an_unreachable_database_is_logged_by_kind_at_both_edges() {
         login["errors"][0]["extensions"]["code"], "UNAVAILABLE",
         "{login}"
     );
-    // The source is a pool timeout or a connection error, logged by kind.
     let resolver = r#""message":"request failed: database_unreachable: database "#;
     assert_eq!(
         capture.text().matches(resolver).count(),

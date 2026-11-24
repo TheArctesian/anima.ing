@@ -1,12 +1,12 @@
-//! The Windows application registers the same commands as the other desktop applications
-//! (WIN1). The gates of a branch run on Linux, where `desktop/windows.rs` is not compiled; a
-//! command that only `desktop.rs` registers leaves its module unused on Windows, and that build
-//! fails with `-D warnings` only in the Windows job of `dev` (seen 2026-11-20 and 2026-11-21).
+//! Linux gates do not compile `desktop/windows.rs`, so this test keeps its command list in step with `desktop.rs` (WIN1).
 
 use std::collections::BTreeSet;
 
-/// Commands that only the macOS and Linux application registers, each with its reason.
-const NOT_ON_WINDOWS: [(&str, &str); 5] = [
+const NOT_ON_WINDOWS: [(&str, &str); 6] = [
+    (
+        "daemon::at_start::daemon_update_notice",
+        "tells the page what the update of the daemon at the start did; module daemon::at_start is Unix only (HMD-055)",
+    ),
     (
         "daemon::keychain::daemon_keychain_waits",
         "reads the mark of a daemon that waits in the macOS Keychain; module daemon::keychain is Unix only (R-322)",
@@ -29,10 +29,8 @@ const NOT_ON_WINDOWS: [(&str, &str); 5] = [
     ),
 ];
 
-/// Commands that only the Windows application registers, each with its reason.
 const ONLY_ON_WINDOWS: [(&str, &str); 0] = [];
 
-/// The paths of the commands in the `generate_handler!` list of `source`.
 fn commands(source: &str) -> BTreeSet<&str> {
     let start = source.find("generate_handler![").expect("a command list");
     let list = &source[start..];

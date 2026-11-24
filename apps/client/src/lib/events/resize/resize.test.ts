@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COLLAPSED, THIRD, TWO_THIRDS, draggedHeight, keyStop, releasedStop, snapsOf } from './resize';
 
-// A 900 px page with a 40 px collapsed panel: snaps at 40, 297 and 594.
 const snaps = snapsOf(40, 900);
 
 describe('snapsOf', () => {

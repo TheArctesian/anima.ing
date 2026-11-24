@@ -43,7 +43,6 @@ pub struct CommandOutput {
     /// stopped reading at the cap.
     pub exit_status: Option<u32>,
     pub stdout: Vec<u8>,
-    /// The output reached [`OUTPUT_CAP`] and the rest was not read.
     pub cut: bool,
 }
 

@@ -54,7 +54,6 @@ describe('display size (D-7)', () => {
   });
 });
 
-/** A hand-driven timer: `run` fires every callback whose time has come. */
 function manualTimer() {
   let now = 0;
   let next = 0;

@@ -1,7 +1,3 @@
-//! The upload of a job's files (BLD-060, BLD-063, D-22): only the presigned URL's own headers to
-//! an `https` address for the job's own object, only the bytes the bundle record names, the
-//! shell's own `SHA256SUMS`, and no redirect followed.
-
 use std::{fs, path::Path};
 
 use tokio::{
@@ -34,7 +30,6 @@ fn upload(url: &str, headers: &[(&str, &str)]) -> Upload {
     }
 }
 
-/// The job's object the test uploads.
 const OBJECT: &str = "linux-x86_64/0.1.12/Anima_0.1.12_amd64.AppImage";
 
 const FIXED: [(&str, &str); 3] = [
@@ -91,8 +86,7 @@ fn bld_060_any_other_address_header_or_length_is_refused() {
     }
 }
 
-/// S-5: a URL the hub gave for another object, of another job or another version, is refused,
-/// so the bytes of this file never reach it.
+/// S-5.
 #[test]
 fn bld_060_an_upload_goes_only_to_the_jobs_own_object() {
     let base = "https://account.r2.cloudflarestorage.com/anima-releases";
@@ -119,7 +113,6 @@ fn bld_060_a_release_build_sends_over_https_only() {
     assert!(sendable(&https, false));
 }
 
-/// UPD-010: the shell writes `SHA256SUMS` from the bundle's own files, one line each, by name.
 #[test]
 fn upd_010_the_sums_list_each_file_by_name() {
     let file = |name: &str, digit: &str| ReleaseFile {
@@ -186,8 +179,6 @@ fn bld_063_the_dmg_is_a_macos_file_only() {
     );
 }
 
-/// A one-request HTTP server on this computer that answers `status`, sending `location` along;
-/// returns its URL and the request it got.
 async fn one_request(
     status: &'static str,
     location: String,

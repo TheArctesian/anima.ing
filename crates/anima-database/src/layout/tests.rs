@@ -10,7 +10,6 @@ fn user(home: &str) -> UserFolders {
     }
 }
 
-/// A socket folder for which the socket file's whole path has exactly `bytes` bytes.
 fn socket_folder_for(bytes: usize) -> PathBuf {
     let file = "/.s.PGSQL.5432".len();
     PathBuf::from(format!("/{}", "s".repeat(bytes - file - 1)))
@@ -104,7 +103,6 @@ fn macos_ignores_the_xdg_folders() {
     );
 }
 
-/// The names are what the server, the roles and the hub's `ANIMA_DATABASE_URL_FILE` rely on.
 #[test]
 fn a_root_with_a_space_gives_these_exact_paths() {
     let layout = Layout::new(PathBuf::from("/var/db root"), PathBuf::from("/run/pg")).unwrap();

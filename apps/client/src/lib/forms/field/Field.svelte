@@ -6,15 +6,12 @@
 
   interface Props {
     label: string;
-    /** Stacked puts the label above the control; inline puts it in a column beside the control, as a settings row does. */
     layout?: 'stacked' | 'inline';
-    /** A format the operator needs to fill the field correctly. It stays visible (UI-028). */
+    /** It stays visible (UI-028). */
     constraint?: string;
-    /** What is wrong with the value now. Empty or missing means nothing is wrong. */
     error?: string;
-    /** A default, an explanation or an allowed range: the HelpTip next to the label. */
     help?: Snippet;
-    /** The control. Spread `link` onto it: its id, description and validity come from this field. */
+    /** Spread `link` onto the control. */
     children: Snippet<[link: ControlLinks]>;
   }
 

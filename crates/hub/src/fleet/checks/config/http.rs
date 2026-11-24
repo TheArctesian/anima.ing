@@ -1,4 +1,4 @@
-//! HTTP check configuration: the stored part, free of secrets (LOG-007).
+//! The stored part of an HTTP check holds no secret (LOG-007).
 
 use serde::{Deserialize, Serialize};
 
@@ -25,8 +25,7 @@ pub struct StatusRange {
     pub to: u16,
 }
 
-/// A request header. `value` is `None` for a secret header (Authorization,
-/// Proxy-Authorization, Cookie): its value lives in [`HttpSecrets`].
+/// `value` is `None` for a secret header; its value lives in [`HttpSecrets`].
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HttpHeader {
@@ -34,7 +33,7 @@ pub struct HttpHeader {
     pub value: Option<String>,
 }
 
-/// Which authentication the check uses; the secret part is in [`HttpSecrets`].
+/// The secret part lives in [`HttpSecrets`].
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "UPPERCASE", deny_unknown_fields)]
 pub enum HttpAuth {
@@ -59,7 +58,6 @@ const fn timeout_ms() -> u32 {
     10_000
 }
 
-/// The stored, secret-free part of an HTTP check.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HttpConfig {
@@ -158,7 +156,6 @@ impl HttpConfig {
         for header in &self.headers {
             rules::header_name("headers", &header.name)?;
             match &header.value {
-                // A secret value must never sit in the stored JSON.
                 Some(_) if is_secret_header(&header.name) => {
                     return Err(err("headers", Reason::Invalid));
                 }

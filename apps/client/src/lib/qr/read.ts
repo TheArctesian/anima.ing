@@ -1,4 +1,4 @@
-/** Decode pixels on this device. Neither the image nor its contents leave the client. */
+/** Neither the image nor its contents leave the client. */
 export async function qrText(canvas: HTMLCanvasElement, source: CanvasImageSource, width: number, height: number): Promise<string | null> {
   if (width === 0 || height === 0) return null;
   const scale = Math.min(1, 1024 / Math.max(width, height));

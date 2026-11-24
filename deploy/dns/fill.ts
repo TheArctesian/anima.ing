@@ -1,11 +1,10 @@
 // Fills the address placeholders of anima.ing.records.json after checking each value.
-// Usage, from the repository root: bun deploy/dns/fill.ts [--out FILE] [RECORD_NAME ...]
-// `--out FILE`, when given, must be the first argument.
+// Usage: bun deploy/dns/fill.ts [--out FILE] [RECORD_NAME ...]; `--out FILE` must be the first argument.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isPublicAddress, isVpnAddress } from './address.ts';
 
-/** A value or argument that must not be written into the records. Messages never contain the value. */
+/** Its messages never contain the value. */
 export class FillError extends Error {
   override name = 'FillError';
 }
@@ -41,10 +40,6 @@ function fillRecord(record: unknown, env: Env): unknown {
   return JSON.parse(text);
 }
 
-/**
- * Returns the records JSON with every placeholder in the selected records filled from `env`.
- * `names` selects records by name; empty selects all. Throws FillError when a value fails its check.
- */
 export function fillRecords(template: string, names: readonly string[], env: Env): string {
   const zone = JSON.parse(template) as Zone;
   for (const name of names) {

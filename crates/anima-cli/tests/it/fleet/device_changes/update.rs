@@ -1,4 +1,4 @@
-//! `anima device update` against the scripted hub (CMD-020).
+//! CMD-020.
 
 use serde_json::json;
 
@@ -44,14 +44,7 @@ async fn cmd_020_device_update_lays_a_group_flag_over_the_current_group() {
     let hub = FakeHub::start().await;
     hub.answer(
         "DeviceCurrent",
-        data(json!({ "device": {
-            "ssh": { "enabled": true, "port": 22, "username": "root", "auth": "PRIVATE_KEY" },
-            "rdp": { "enabled": false, "port": 3389, "username": "admin", "domain": null,
-                "security": "NLA", "ignoreCertificate": false, "resizeMethod": "DISPLAY_UPDATE",
-                "audioOut": true, "microphone": false, "sharedDrive": false },
-            "vnc": { "enabled": false, "port": 5900, "username": null },
-            "transfer": { "upload": true, "download": false, "copy": true, "paste": true },
-        }})),
+        current(&json!({ "enabled": true, "port": 22, "username": "root", "auth": "PRIVATE_KEY" })),
     )
     .answer(
         "DeviceUpdate",
@@ -84,4 +77,47 @@ async fn cmd_020_device_update_lays_a_group_flag_over_the_current_group() {
         !document.contains("credentialStored") && !document.contains("hostKey"),
         "the current values hold no credential"
     );
+}
+
+fn current(ssh: &serde_json::Value) -> serde_json::Value {
+    data(json!({ "device": {
+        "ssh": ssh,
+        "rdp": { "enabled": false, "port": 3389, "username": "admin", "domain": null,
+            "security": "NLA", "ignoreCertificate": false, "resizeMethod": "DISPLAY_UPDATE",
+            "audioOut": true, "microphone": false, "sharedDrive": false },
+        "vnc": { "enabled": false, "port": 5900, "username": null },
+        "transfer": { "upload": true, "download": false, "copy": true, "paste": true },
+    }}))
+}
+
+#[tokio::test]
+async fn first_ssh_login_enables_password_access_with_one_flag() {
+    for explicit_off in [false, true] {
+        let hub = FakeHub::start().await;
+        hub.answer(
+            "DeviceCurrent",
+            current(&json!({"enabled": false, "port": 22, "username": "", "auth": "PRIVATE_KEY"})),
+        )
+        .answer("DeviceUpdate", data(json!({"updateDevice": saved("nas")})));
+        let mut args = vec![
+            "device",
+            "update",
+            DEVICE,
+            "--ssh-username",
+            "operator",
+            "--hub",
+            &hub.origin,
+        ];
+        if explicit_off {
+            args.extend(["--ssh-enabled", "false"]);
+        }
+        let run = signed_in().run(&args).await;
+        assert_eq!(run.code, 0, "{run:?}");
+        assert_eq!(
+            sent(&hub, "DeviceUpdate")["input"]["ssh"],
+            json!({
+                "enabled": !explicit_off, "port": 22, "username": "operator", "auth": "PASSWORD"
+            })
+        );
+    }
 }

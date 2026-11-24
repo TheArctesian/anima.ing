@@ -1,10 +1,6 @@
-//! The metrics GraphQL part: `Query.capabilities` (K1; CAP-030), `Subscription.metricsAdded`
-//! (K1; API-003, MET-005, D-9), `enrolDaemon` and `revokeDaemonToken` (K1, K8 Section 3;
-//! MET-012, MET-013), and `setDaemonNeed` (K1; R-364).
-//!
-//! The metric types are served from `model.rs`; the `Device` fields that return them
-//! (`readings`, `metrics`, `gpus`) belong to the devices domain. Each mutation writes its
-//! change, one audit entry and one event in one transaction; neither entry holds the code.
+//! The metrics GraphQL part (K1, K8 Section 3; CAP-030, API-003, MET-005, MET-012, MET-013,
+//! R-364, D-9). Each mutation writes its change, one audit entry and one event in one
+//! transaction; neither entry holds the code.
 
 use async_graphql::futures_util::stream::{self, Stream};
 use async_graphql::{Context, Error as GraphQlError, ID, Object, Result, Subscription};

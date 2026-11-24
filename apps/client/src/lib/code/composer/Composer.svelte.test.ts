@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { CallResult } from '$lib/agent-threads/live/live.svelte';
 import type { RunRow } from '$lib/agent-threads/live/run';
 import Composer from './Composer.svelte';
+import type { QueueOfRow } from './engine';
 import { pointAt } from './editor/view/points';
 
 const ROW: RunRow = { id: 'c1', program: 'claude_code', folder: '/work/anima', mode: 'ask', model: null, state: 'working', session: null, title: 'Fix the gate', started: new Date(0), ended: null, open: [] };
@@ -175,5 +176,31 @@ describe('the queue of the composer across chats and states', () => {
     props.row = null;
     flushSync();
     expect(document.body.textContent).toContain('no program of this computer runs it');
+  });
+});
+
+describe('the composer over the queue of the runner', () => {
+  it('queues through the runner and holds nothing in the window', async () => {
+    const acts: unknown[] = [];
+    const props = $state({
+      row: { ...ROW, id: 'c-runner', queued: [{ id: 'p1', text: 'held by the runner' }] } as (RunRow & QueueOfRow) | null,
+      draft: 'c-runner',
+      onSend: () => Promise.resolve(WENT),
+      onInterrupt: () => Promise.resolve(WENT),
+      onStop: () => Promise.resolve(WENT),
+      onQueue: (act: unknown) => {
+        acts.push(act);
+        return Promise.resolve(WENT);
+      },
+    });
+    app = mount(Composer, { target: document.body, props });
+    flushSync();
+    expect(bubbles()).toEqual(['held by the runner']);
+    type('then test');
+    press('Enter', { metaKey: true });
+    await settled();
+    expect(acts).toEqual([{ call: 'queue', text: 'then test' }]);
+    // The runner has not said so yet: the window adds no bubble of its own.
+    expect(bubbles()).toEqual(['held by the runner']);
   });
 });

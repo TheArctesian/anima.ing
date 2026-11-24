@@ -1,23 +1,19 @@
-//! The X.224 exchange that opens every RDP connection (MS-RDPBCGR 2.2.1.1 and 2.2.1.2), as
-//! bytes: the Connection Request with an RDP Negotiation Request the hub sends, and the
-//! Connection Confirm it reads back. Pure. A length from the server is checked before it is
-//! used, and a reply that does not fit is [`Malformed`], never a panic.
+//! The X.224 exchange that opens every RDP connection (MS-RDPBCGR 2.2.1.1 and 2.2.1.2).
+//! A length from the server is checked before it is used; a reply that does not fit is [`Malformed`].
 
 /// Standard RDP security: no TLS, so no certificate.
 pub(in crate::fleet::sessions) const PROTOCOL_RDP: u32 = 0;
 pub(in crate::fleet::sessions) const PROTOCOL_SSL: u32 = 0x1;
 pub(in crate::fleet::sessions) const PROTOCOL_HYBRID: u32 = 0x2;
 pub(in crate::fleet::sessions) const PROTOCOL_HYBRID_EX: u32 = 0x8;
-/// Every protocol that starts with a TLS handshake and that the hub asks for: TLS, NLA (`CredSSP`
-/// over TLS) and NLA with the early authorisation result.
+/// The TLS protocols the hub asks for: TLS, NLA and NLA with the early authorisation result.
 pub(in crate::fleet::sessions) const TLS_PROTOCOLS: u32 =
     PROTOCOL_SSL | PROTOCOL_HYBRID | PROTOCOL_HYBRID_EX;
 
 /// The TPKT header (RFC 1006): version, reserved, then the whole packet's length.
 pub(in crate::fleet::sessions) const TPKT_HEADER: usize = 4;
 const TPKT_VERSION: u8 = 3;
-/// Longest confirm the hub reads, header included. A real one is 19 bytes (11 without
-/// negotiation data); this leaves room for X.224 user data the hub ignores.
+/// A real confirm is 19 bytes; the rest leaves room for X.224 user data the hub ignores.
 pub(in crate::fleet::sessions) const MAX_CONFIRM: usize = 64;
 const REQUEST_LENGTH: usize = 19;
 
@@ -34,24 +30,19 @@ const NEGOTIATION_FAILURE: u8 = 0x03;
 /// Every negotiation structure is 8 bytes: type, flags, length (2), value (4).
 const NEGOTIATION_LENGTH: u8 = 8;
 
-/// What the server chose.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::fleet::sessions) enum Negotiated {
-    /// One of the requested TLS protocols: a TLS handshake comes next.
     Tls(u32),
     /// Standard RDP security only, chosen or the only one an older server knows.
     Standard,
-    /// An RDP Negotiation Failure with its code (for example `SSL_NOT_ALLOWED_BY_SERVER`).
     Failure(u32),
 }
 
-/// The reply is not an X.224 Connection Confirm the hub can read.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("the reply is not an X.224 connection confirm")]
 pub(in crate::fleet::sessions) struct Malformed;
 
-/// The Connection Request asking for `requested` (a set of the `PROTOCOL_*` flags), with no
-/// routing token or cookie: the hub names no user.
+/// No routing token or cookie: the hub names no user.
 pub(in crate::fleet::sessions) fn connection_request(requested: u32) -> [u8; REQUEST_LENGTH] {
     let mut packet = [0; REQUEST_LENGTH];
     let total = u16::try_from(REQUEST_LENGTH)
@@ -61,7 +52,6 @@ pub(in crate::fleet::sessions) fn connection_request(requested: u32) -> [u8; REQ
     // The length indicator counts the TPDU header after itself.
     packet[4] = FIXED_PART + NEGOTIATION_LENGTH;
     packet[5] = CONNECTION_REQUEST;
-    // Destination and source references and the class stay zero.
     let negotiation = &mut packet[TPKT_HEADER + 1 + usize::from(FIXED_PART)..];
     negotiation[0] = NEGOTIATION_REQUEST;
     negotiation[2..4].copy_from_slice(&u16::from(NEGOTIATION_LENGTH).to_le_bytes());
@@ -69,9 +59,6 @@ pub(in crate::fleet::sessions) fn connection_request(requested: u32) -> [u8; REQ
     packet
 }
 
-/// How many bytes of the confirm follow its TPKT `header`, when the header is version 3 and
-/// the packet is long enough for a confirm and at most [`MAX_CONFIRM`].
-///
 /// # Errors
 /// [`Malformed`] for any other header.
 pub(in crate::fleet::sessions) fn confirm_length(
@@ -87,8 +74,7 @@ pub(in crate::fleet::sessions) fn confirm_length(
     }
 }
 
-/// What the server chose, from the confirm's bytes after the TPKT header, given what the hub
-/// `requested`. A choice the hub did not ask for is [`Malformed`].
+/// What the server chose; a choice the hub did not ask for is [`Malformed`].
 ///
 /// # Errors
 /// [`Malformed`] when the bytes are not a Connection Confirm with a valid negotiation part.
@@ -109,7 +95,6 @@ pub(in crate::fleet::sessions) fn negotiated(
     }
 }
 
-/// The RDP Negotiation Response or Failure at the start of `bytes`.
 fn negotiation_reply(bytes: &[u8], requested: u32) -> Result<Negotiated, Malformed> {
     let Some(&[kind, _flags, length_low, length_high, a, b, c, d]) =
         bytes.get(..usize::from(NEGOTIATION_LENGTH))

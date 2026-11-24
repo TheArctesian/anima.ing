@@ -16,6 +16,7 @@
   import { SvelteSet } from 'svelte/reactivity';
   import GroupHead from './groups/GroupHead.svelte';
   import SelectBar from './groups/SelectBar.svelte';
+  import { SharedProjectGroups } from './groups/shared.svelte';
   import { ProjectGroups } from './groups/groups.svelte';
   import { sectionsByGroup, storedClosed, storedShowBy, storeView, type ShowBy } from './groups/view';
 
@@ -26,11 +27,12 @@
      * on this computer): GitHub cannot open such a hub in a browser, so only the key file of a GitHub App connects it.
      */
     keyFileOnly?: boolean;
-    /** The operator's groups of cards, kept on this computer (PRO-059). */
-    projectGroups?: ProjectGroups;
+    /** Groups of cards for the active hub (PRO-059, G2). */
+    projectGroups?: ProjectGroups | SharedProjectGroups;
   }
 
   const { store, keyFileOnly = false, projectGroups = new ProjectGroups(localStorage) }: Props = $props();
+  const shared = $derived(projectGroups instanceof SharedProjectGroups ? projectGroups : null);
   let showing = $state<'main' | 'leftOut'>('main');
   const projects = $derived(showing === 'main' ? store.main : store.leftOut);
   /** The one group the operator chose to see, or all of them (R-224). */
@@ -40,7 +42,7 @@
   /** The group heads that are closed: a group ID, or "" for "Ungrouped". */
   const closed = new SvelteSet<string>(storedClosed(localStorage));
   $effect(() => storeView(localStorage, showBy, [...closed]));
-  const byOwnGroup = $derived(showing === 'main' && showBy === 'group');
+  const byOwnGroup = $derived(showing === 'main' && showBy === 'group' && shared?.unserved !== true);
   const grouped = $derived(showing === 'main' && store.byName && !byOwnGroup);
   const byGroup = $derived(GROUP_ORDER.map((group) => ({ group, title: GROUP_TITLES[group], projects: projects.filter((project) => groupOf(project) === group) })));
   /** The main view in groups, problems first, or in the operator's groups; the left-out view is one plain group. */
@@ -97,16 +99,23 @@
   <!-- With no project and no filter there is nothing to sort or to filter, so the controls are not drawn. -->
   {#if projects.length > 0 || store.filtered || !store.byName}
     <div class="tools">
-      {#if showing === 'main' && store.byName}<Segmented label="Show by" size="sm" options={SHOW_BY} bind:value={showBy} />{/if}
+      {#if showing === 'main' && store.byName && shared?.unserved !== true}<Segmented label="Show by" size="sm" options={SHOW_BY} bind:value={showBy} />{/if}
       {#if grouped && projects.length > 0}<Segmented label="Which group" size="sm" options={choices} bind:value={only} />{/if}
       <ProjectBrowse {store} />
-      {#if projects.length > 0}
+      {#if projects.length > 0 && shared?.unserved !== true}
         <span class="select"><FormButton size="sm" tone={selecting ? 'secondary' : 'ghost'} aria-pressed={selecting} onclick={toggleSelecting}>Select</FormButton></span>
       {/if}
     </div>
   {/if}
+  {#if shared?.unserved}
+    <Notice tone="info" title="Groups need a newer hub" line="This hub is older than project groups. Update the hub to group your projects." />
+  {:else if shared?.problem}
+    <ErrorState message={`Project groups did not sync. ${shared.problem}`} onRetry={() => void shared?.refresh()} />
+  {:else if shared?.importUnserved}
+    <Notice tone="info" title="Earlier groups need a newer hub" line="Your earlier groups are kept on this device. Shared groups still work. Update the hub, then reopen Projects to sync the earlier groups." />
+  {/if}
   {#if selecting}
-    <SelectBar groups={projectGroups} {selected} shown={shownIds} onDone={toggleSelecting} />
+    <SelectBar groups={projectGroups} canEdit={shared === null || shared.ready} {selected} shown={shownIds} onDone={toggleSelecting} />
   {/if}
   {#if store.refusal !== null}
     <Notice tone="error" title="The hub refused" line={store.refusal.message} />

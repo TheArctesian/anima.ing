@@ -2,10 +2,7 @@ import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from '../test-hub';
 import { openDevices } from './screens';
 
-// Plan criterion 3 (ruled in R-087): in the web client the Web button opens a new browser tab straight to the device, with
-// `noopener` and `noreferrer`, for `http:` and `https:` addresses only. When an interface has a pinned certificate the button
-// opens a menu, and each choice shows its own pin, tied to it by `aria-describedby` (WEB-011, D-5). `lib/web-interfaces/open`
-// has jsdom tests; these run the real engines, where the tab, the opener and the referrer are the browser's own.
+// Plan criterion 3 (R-087, WEB-011, D-5), in the real engines, where the tab, the opener and the referrer are the browser's own.
 
 const MAC_MINI_PAGE = 'http://mac-mini.annex.example:3000/status';
 const NAS_ADMIN_PAGE = 'https://nas.annex.example:5001/';
@@ -14,7 +11,7 @@ const NAS_ADMIN_PIN = '5C:0E:8B:4D:1F:7A:2C:93:3F:2A:9C:41:D0:7B:58:E6:A1:C4:E9:
 const WINDOW_OPEN = 'animaWindowOpenCalls';
 
 interface DevicePages {
-  /** The `Referer` each device page request carried: WebKit sends the header with an empty value, the others leave it out. */
+  /** WebKit sends `Referer` with an empty value; the others leave it out. */
   readonly referers: string[];
 }
 
@@ -28,7 +25,6 @@ async function serveDevicePages(context: BrowserContext): Promise<DevicePages> {
   return { referers };
 }
 
-/** Records each `window.open` the page makes, with its arguments, and still makes it. */
 async function watchWindowOpen(context: BrowserContext): Promise<void> {
   await context.addInitScript((name) => {
     const calls: unknown[][] = [];
@@ -67,7 +63,6 @@ test('WEB-011, D-5: the Web button of one unpinned interface opens a new tab str
   expect(await tab.evaluate(() => [window.opener, document.referrer])).toEqual([null, '']);
   expect(device.referers).toEqual(device.referers.map(() => ''));
   expect(device.referers.length).toBeGreaterThan(0);
-  // The client's own page stays where it was: no web view tab replaced it, and nothing was added to its session strip.
   expect(page.url()).toBe('https://hub.anima.ing/devices');
   await expect(page.getByRole('tab')).toHaveCount(0);
 });
@@ -102,13 +97,11 @@ test('WEB-011, D-5: with a pinned certificate the button opens a menu, each choi
   const menu = page.getByRole('group', { name: 'Web interfaces of nas' });
   const admin = menu.getByRole('button', { name: /^Admin/ });
   const files = menu.getByRole('button', { name: /^Files/ });
-  // The pin is outside the choice's name, in its own element, which the choice names as its description.
   const pinId = await admin.getAttribute('aria-describedby');
   expect(pinId).toBeTruthy();
   await expect(page.locator(`[id="${pinId ?? ''}"]`)).toContainText(NAS_ADMIN_PIN);
   await expect(admin).toHaveAccessibleDescription(new RegExp(NAS_ADMIN_PIN));
   await expect(admin).not.toHaveAccessibleName(new RegExp(NAS_ADMIN_PIN));
-  // The unpinned choice has no pin and no description to borrow another's.
   await expect(files).not.toHaveAttribute('aria-describedby', /.+/);
   await expect(files).toHaveAccessibleDescription('');
   await expect(menu.getByText(NAS_ADMIN_PIN)).toHaveCount(1);

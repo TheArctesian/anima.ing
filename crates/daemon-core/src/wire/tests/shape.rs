@@ -1,11 +1,10 @@
-//! The point, value and GPU rules of a batch (K8 Section 4): each refuses its own case only.
+//! K8 Section 4.
 
 use chrono::TimeDelta;
 
 use super::*;
 use crate::wire::{BatchGpu, BatchPoint, GpuVendor};
 
-/// `count` points ending at the example's newest, 10 seconds apart, each with one CPU mean.
 fn cpu_points(count: i32) -> impl FnOnce(&mut Batch) {
     move |batch: &mut Batch| {
         batch.series.truncate(1);

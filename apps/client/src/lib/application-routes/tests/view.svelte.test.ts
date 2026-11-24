@@ -2,9 +2,10 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
+import AddRoute from '../AddRoute.svelte';
 import RoutesSection from '../RoutesSection.svelte';
 import { RoutesStore } from '../store.svelte';
-import { NO_SECOND_FACTOR, NOT_LINUX_ERROR, NOW, fakeCalls, route, type FakeCalls } from './routes.fixture';
+import { KEY_REFUSED, NO_SECOND_FACTOR, NOT_LINUX_ERROR, NOW, fakeCalls, route, type FakeCalls } from './routes.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -72,6 +73,8 @@ it('H21: Needs you keeps only the routes that need the operator', async () => {
 
 it('H21: Add a route is off with the reason that the hub keeps no record of the applications; a click asks nothing', async () => {
   await open();
+  mount(AddRoute, { target: document.body });
+  flushSync();
   const add = button('Add a route');
   expect(add?.getAttribute('aria-disabled')).toBe('true');
   expect(reasonOf(add)).toContain('task H6');
@@ -85,7 +88,6 @@ it('H21: no routes shows the empty state, which says that a new route is private
   await open();
   expect(text()).toContain('No routes yet');
   expect(text()).toContain('A new route is private');
-  expect(button('Add a route')?.getAttribute('aria-disabled')).toBe('true');
 });
 
 it('H21: the loading state shows while the hub answers, and a failed list shows its reason and a retry', async () => {
@@ -120,7 +122,7 @@ it('H21: the page of a route gives its state, its checks, its traffic and Make p
   expect(text()).toContain('Waits for consent at the machine');
   const checks = document.querySelector('ul[aria-label="Checks"]')?.textContent ?? '';
   expect(checks).toContain('The name is proven');
-  expect(checks).toContain('Not given');
+  expect(checks).toContain('Not needed while the route is private');
   expect(checks).toContain('Valid');
   const makePublic = document.querySelector('section[aria-label="Make public"] button');
   expect(makePublic?.getAttribute('aria-disabled')).toBe('true');
@@ -171,15 +173,24 @@ it('SF-232: Check now shows the refusal of the hub on the page of the route', as
   expect(document.querySelector('[role="alert"]')?.textContent).toContain('Turn on the second factor');
 });
 
-it('H21: Remove is off with its reason: it needs a fresh code of the second factor, which the hub cannot check yet', async () => {
+it('H21: Remove asks first, then removes the route and shows the list; a refusal stays in the dialog', async () => {
   await open();
   row('vault.example.com')?.click();
   flushSync();
-  const remove = button('Remove route');
-  expect(remove?.getAttribute('aria-disabled')).toBe('true');
-  const reason = document.getElementById(remove?.getAttribute('aria-describedby') ?? '');
-  expect(reason?.textContent).toContain('a fresh code of your second factor');
-  remove?.click();
+  button('Remove route')?.click();
   flushSync();
-  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  const dialog = () => document.querySelector('[role="dialog"]');
+  expect(dialog()?.textContent).toContain('You cannot undo this.');
+  expect(dialog()?.textContent).toContain('vault.example.com stops reaching');
+  expect(dialog()?.textContent).toContain('Delete the DNS records');
+  calls.removeFails = KEY_REFUSED;
+  [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((each) => each.textContent.trim() === 'Remove route')?.click();
+  await settle();
+  expect(dialog()?.textContent).toContain('This token cannot do that.');
+  calls.removeFails = undefined;
+  [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((each) => each.textContent.trim() === 'Remove route')?.click();
+  await settle();
+  expect(calls.removed).toEqual(['route-vault', 'route-vault']);
+  expect(row('vault.example.com')).toBeUndefined();
+  expect(row('wiki.example.com')).toBeDefined();
 });

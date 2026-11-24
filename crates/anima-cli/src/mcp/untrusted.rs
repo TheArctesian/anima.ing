@@ -1,26 +1,19 @@
-//! Text from devices and other people goes to the agent only after this (MCP-008): device and
-//! check names, event messages, log lines and VPN host names could hold control characters or
-//! text written to steer the agent. Each string is cleaned and capped, and a whole result is
-//! kept under [`RESULT_CAP`] bytes so it fits the agent's context.
+//! Text from devices and other people reaches the agent only through this (MCP-008).
 
 use serde_json::{Map, Value};
 
 use crate::output::text::{clean, clean_lines};
 
-/// The longest string in a result, in characters, except a log line.
 pub const TEXT_CAP: usize = 500;
 
-/// The longest log line (`text` of a build log line), in characters.
 pub const LOG_LINE_CAP: usize = 2_000;
 
-/// The longest `body` (a pull request, an issue or a comment from GitHub), in characters. The hub
-/// keeps up to 20,000; an agent gets 4,000, with a mark where the rest was cut (MCP-008).
+/// The hub keeps up to 20,000 characters of a GitHub body; an agent gets this many (MCP-008).
 pub const BODY_CAP: usize = 4_000;
 
 /// The largest result, in bytes of JSON: about 15,000 tokens.
 pub const RESULT_CAP: usize = 60_000;
 
-/// `text` without control characters, cut to `cap` characters with a visible marker.
 #[must_use]
 pub fn capped(text: &str, cap: usize) -> String {
     cut(clean(text), cap)
@@ -41,24 +34,17 @@ fn cut(cleaned: String, cap: usize) -> String {
     format!("{kept}…[cut: {} more characters]", length - cap)
 }
 
-/// The one field of the result of a tool that keeps its line breaks and gets [`BODY_CAP`]:
-/// the Compose file of `anima_compose_from_run` (HOST-022) and of `anima_catalogue_show`
-/// (task H38), at the top level of its result.
+/// The one field per tool that keeps its line breaks (HOST-022, task H38).
 const LINES_KEPT: [(&str, &str); 2] = [
     ("anima_compose_from_run", "composeFile"),
     ("anima_catalogue_show", "composeFile"),
 ];
 
-/// `value` with every string cleaned and capped; the key `text` (a log line) gets the
-/// larger cap, and the key `body` (Markdown from GitHub) keeps its line breaks and gets
-/// [`BODY_CAP`].
 #[must_use]
 pub fn cleaned(value: Value) -> Value {
     cleaned_under(value, TEXT_CAP)
 }
 
-/// The result of the tool `tool`, cleaned as [`cleaned`] does; the field that [`LINES_KEPT`]
-/// names for the tool keeps its line breaks and gets [`BODY_CAP`].
 #[must_use]
 pub fn cleaned_result(tool: &str, value: Value) -> Value {
     let kept = LINES_KEPT.iter().find(|(name, _)| *name == tool);
@@ -109,8 +95,6 @@ fn cleaned_under(value: Value, cap: usize) -> Value {
     }
 }
 
-/// `result` cut to [`RESULT_CAP`]: the last entries of its longest top-level list go first.
-/// A cut result says so in `truncated` and `note`, with how to get the rest.
 #[must_use]
 pub fn fitted(mut result: Map<String, Value>) -> Map<String, Value> {
     if size(&result) <= RESULT_CAP {
@@ -236,7 +220,6 @@ mod tests {
         let kept = cleaned_result("anima_compose_from_run", result.clone());
         assert_eq!(kept["composeFile"], file);
         assert_eq!(kept["service"], "a b");
-        // The same key in a different tool, or deeper in the result, is a plain text.
         let other = cleaned_result("anima_device_get", result);
         let text = other["composeFile"].as_str().unwrap_or_default();
         assert!(

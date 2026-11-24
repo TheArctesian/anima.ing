@@ -9,7 +9,6 @@
   import RetentionRow from './RetentionRow.svelte';
 
   const api = retentionApi(useHub());
-  /** `null` while loading or after a failed load. */
   let periods = $state<readonly RetentionPeriod[] | null>(null);
   let loadFailed = $state(false);
   let retrying = $state(false);
@@ -42,7 +41,7 @@
     void load();
   });
 
-  /** Sends one subject's days and, when the hub accepts, shows the period it returns (HUB-005). */
+  /** Shows the period the hub returns (HUB-005). */
   async function save(subject: RetentionPeriod['subject'], days: number): Promise<HubResult<RetentionPeriod>> {
     const result = await api.set(subject, days);
     if (result.ok) periods = periods?.map((each) => (each.subject === subject ? result.value : each)) ?? null;
@@ -81,7 +80,6 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    /* The note and the notice beside Retry fill the same block, the height of a button (MOT-007). */
     min-block-size: var(--space-8);
     padding: var(--space-3) var(--space-4);
     border-block-start: var(--border-thin) solid var(--border-strong);

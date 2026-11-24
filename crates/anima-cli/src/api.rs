@@ -1,5 +1,4 @@
-//! `anima api`: sends a GraphQL document the operator wrote and prints the hub's whole answer.
-//! The document is not checked against K1 here; the hub checks it.
+//! `anima api`: the document is not checked against K1 here; the hub checks it.
 
 use std::path::PathBuf;
 

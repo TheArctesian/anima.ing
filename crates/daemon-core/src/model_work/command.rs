@@ -1,6 +1,4 @@
-//! The command line and the environment of a runtime (Section 2.1, SEC-C-001, SEC-C-007): made
-//! from the code of the daemon, the typed settings and the values that the daemon owns. No word
-//! of the hub reaches the command line but the numbers of [`ServerSettings`].
+//! A runtime's command line and environment (Section 2.1, SEC-C-001, SEC-C-007); no word of the hub reaches the command line but the numbers of [`ServerSettings`].
 
 use std::path::Path;
 
@@ -9,10 +7,9 @@ use super::settings::{GpuLayers, ServerSettings};
 /// The variable that holds the API key of a `llama_server` (never on its command line).
 pub const LLAMA_KEY_VARIABLE: &str = "LLAMA_API_KEY";
 
-/// The parallel slots until the fit estimate of task L1-15 exists.
 pub const PARALLEL_SLOTS: u32 = 1;
 
-/// The arguments of a `llama_server` in router mode (RTC-005) on `127.0.0.1:<port>`.
+/// A `llama_server` in router mode (RTC-005) on `127.0.0.1:<port>`.
 #[must_use]
 pub fn llama_arguments(settings: &ServerSettings, port: u16) -> Vec<String> {
     let mut words: Vec<String> = [
@@ -48,9 +45,7 @@ pub fn llama_arguments(settings: &ServerSettings, port: u16) -> Vec<String> {
     words
 }
 
-/// The whole environment of a runtime process: its temporary folder as `HOME` and `TMPDIR`,
-/// `PATH` set to the `bin` folder of the runtime only, the fixed offline values, and the
-/// variable of the API key. Nothing else: no proxy, no token, no `DYLD_*`, no `LD_PRELOAD`.
+/// The whole environment of a runtime: nothing else, so no proxy, no token, no `DYLD_*` and no `LD_PRELOAD`.
 #[must_use]
 pub fn environment(temporary: &Path, bin: &Path, key: &str) -> Vec<(String, String)> {
     let temporary = temporary.display().to_string();
@@ -64,4 +59,26 @@ pub fn environment(temporary: &Path, bin: &Path, key: &str) -> Vec<(String, Stri
         ("DO_NOT_TRACK".to_owned(), "1".to_owned()),
         (LLAMA_KEY_VARIABLE.to_owned(), key.to_owned()),
     ]
+}
+
+/// Never `--trust-remote-code`, only safetensors weights and no request logs (Section 2.1, SEC-C-008).
+/// The API key is in the environment, never on the command line.
+#[must_use]
+pub fn vllm_arguments(copy: &Path, port: u16) -> Vec<String> {
+    let copy = copy.display().to_string();
+    [
+        "serve",
+        &copy,
+        "--host",
+        "127.0.0.1",
+        "--port",
+        &port.to_string(),
+        "--load-format",
+        "safetensors",
+        "--tokenizer",
+        &copy,
+        "--disable-log-requests",
+    ]
+    .map(str::to_owned)
+    .to_vec()
 }

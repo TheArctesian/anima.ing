@@ -10,13 +10,24 @@ it('R-222: the index has VPN for a hub with a VPN, and leaves it out for a hub t
 
 it('R-224, OD-THR61: the index is in four groups, and each entry names its group', () => {
   const entries = indexOf({ ...DESKTOP, vpn: true });
-  expect(entries.map((entry) => entry.title)).toEqual(['Account', 'Hub', 'Routes', 'Notifications', 'Default check settings', 'Data retention', 'Stay awake', 'Appearance', 'Updates', 'MCP', 'Code appearance', 'Integrations', 'API keys', 'VPN']);
+  expect(entries.map((entry) => entry.title)).toEqual(['Account', 'Hub', 'Routes in Hosting', 'Notifications', 'Default check settings', 'Data retention', 'Stay awake', 'Appearance', 'App and tools', 'MCP', 'Code appearance', 'Integrations', 'API keys', 'VPN']);
   expect([...new Set(entries.map((entry) => entry.group))]).toEqual(['Hub and account', 'This computer', 'Code', 'Connections']);
   expect(entries.find((entry) => entry.title === 'Appearance')?.group).toBe('This computer');
 });
 
-it('H21: Routes is in the group Hub and account, after Hub, on each platform', () => {
+it('HSE-010: the index still finds Routes, after Hub, and opens it in Hosting', () => {
   const browser = indexOf({ keyStore: false, stayAwake: false, desktopRows: false, mcpPermissions: false, vpn: false });
-  expect(browser.slice(0, 2).map((entry) => entry.title)).toEqual(['Account', 'Routes']);
-  expect(indexOf({ ...DESKTOP, vpn: true }).find((entry) => entry.title === 'Routes')?.group).toBe('Hub and account');
+  expect(browser.slice(0, 2).map((entry) => entry.title)).toEqual(['Account', 'Routes in Hosting']);
+  expect(indexOf({ ...DESKTOP, vpn: true }).find((entry) => entry.title === 'Routes in Hosting')?.href).toBe('/hosting/routes');
+});
+
+
+it('indexes conditional local sections only when their content is present', () => {
+  const hidden = indexOf({ ...DESKTOP, vpn: false });
+  expect(hidden.some((entry) => entry.id === 'settings-local-hub')).toBe(false);
+  expect(hidden.some((entry) => entry.id === 'settings-link-devices')).toBe(false);
+  const shown = indexOf({ ...DESKTOP, vpn: false, remoteAccess: true, localHub: true, linkDevices: true });
+  expect(shown.find((entry) => entry.id === 'settings-remote-access')?.group).toBe('This computer');
+  expect(shown.find((entry) => entry.id === 'settings-local-hub')?.group).toBe('This computer');
+  expect(shown.find((entry) => entry.id === 'settings-link-devices')?.group).toBe('Hub and account');
 });

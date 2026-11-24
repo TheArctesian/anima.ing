@@ -17,10 +17,8 @@ import { saveCheck } from './save';
 import type { DeviceSession } from './sessions/sessions';
 import type { TabName } from './tabs/tabs';
 
-/** One heartbeat in a check's history (CHK-003). */
 export type HistoryBeat = NonNullable<HeartbeatPage>['edges'][number]['node'];
 
-/** The heartbeat history of the check whose row is open (D-10). */
 export interface OpenHistory {
   readonly checkId: string;
   readonly pages: Pages<HistoryBeat>;
@@ -29,7 +27,6 @@ export interface OpenHistory {
 /** Heartbeats per history page (D-10). */
 export const HISTORY_PAGE = 100;
 
-/** Sessions per page of the Sessions tab. */
 const SESSION_PAGE = 50;
 
 /** Heartbeats have no ID; one check records at most one per instant. */
@@ -37,16 +34,12 @@ function sameBeat(a: HistoryBeat, b: HistoryBeat): boolean {
   return Date.parse(a.at) === Date.parse(b.at);
 }
 
-/** Whether `beat` is newer than the check's last one; a late beat does not overwrite the row. */
+/** A late beat does not overwrite the row. */
 function newer(beat: HistoryBeat, last: HistoryBeat | null | undefined): boolean {
   return last == null || !(Date.parse(beat.at) < Date.parse(last.at));
 }
 
-/**
- * The device the detail page shows and the hub calls behind it: the device, its checks, the open heartbeat
- * history, the live updates, and the data of each tab (D-5, D-9, D-10, D-11). The route builds it only for a
- * well-formed ID; a malformed one is "Device not found" without a `Detail` (D-14).
- */
+/** The device of the detail page and its hub calls (D-5, D-9, D-10, D-11, D-14). */
 export class Detail {
   device = $state.raw<DeviceDetail | null>(null);
   /** The hub has no such device, or the ID is malformed. */
@@ -56,7 +49,7 @@ export class Detail {
   checksError = $state.raw<HubError | null>(null);
   liveError = $state.raw<HubError | null>(null);
   history = $state.raw<OpenHistory | null>(null);
-  /** The device's last heartbeats for its bar in the phone layout (mockup 5); `null` until `loadBeats` has them. */
+  /** `null` until `loadBeats` has them. */
   beats = $state.raw<readonly Beat[] | null>(null);
 
   readonly id: DeviceId;
@@ -84,7 +77,6 @@ export class Detail {
     this.feed.filter = { ...DEFAULT_LOG_FILTER, since: 'all', deviceId: id };
   }
 
-  /** Loads the device and starts the live updates; `stop` ends both. */
   start(): void {
     this.#stopped = false;
     void this.load();
@@ -101,7 +93,7 @@ export class Detail {
     });
   }
 
-  /** Ends the live updates; answers still on their way are dropped (D-11). */
+  /** Answers still on their way are dropped (D-11). */
   stop(): void {
     this.#stopped = true;
     this.#stopLive?.();
@@ -144,7 +136,6 @@ export class Detail {
     this.missing = result.value === null;
   }
 
-  /** Loads the checks the first time a tab needs them, and again after a failure. */
   async loadChecks(): Promise<void> {
     if (this.#checksAsked && this.checksError === null) return;
     this.#checksAsked = true;
@@ -154,7 +145,7 @@ export class Detail {
     if (result.ok) this.checks = result.value ?? [];
   }
 
-  /** Loads the device's last heartbeats once; live beats join them (D-6). A failure leaves the bar empty: the checks below show the hub's error. */
+  /** A failure leaves the bar empty; the checks show the hub's error (D-6). */
   async loadBeats(): Promise<void> {
     if (this.beats !== null) return;
     const result = await deviceBeats(this.#hub, this.id);
@@ -166,14 +157,13 @@ export class Detail {
     this.device = next;
   }
 
-  /** DEV-014: confirmed in the Settings tab; the hub deletes the rest (DEV-015). `onDeleted` runs after the hub has. */
+  /** The hub deletes the rest of the device (DEV-014, DEV-015). */
   async deleteDevice(onDeleted: () => void): Promise<HubResult<unknown>> {
     const result = await this.#devices.delete(this.id);
     if (result.ok) onDeleted();
     return result;
   }
 
-  /** Puts the check a create, an update or a pause returns into the list, when that call succeeded. */
   async applyCheck(pending: Promise<HubResult<DeviceCheck>>): Promise<HubResult<unknown>> {
     const result = await pending;
     if (result.ok) this.putCheck(result.value);
@@ -194,7 +184,6 @@ export class Detail {
     return result;
   }
 
-  /** A check the hub returned after a create, an update or a pause: it replaces the old one or joins the list. */
   putCheck(check: DeviceCheck): void {
     const known = this.checks ?? [];
     this.checks = known.some((other) => other.id === check.id)
@@ -207,7 +196,6 @@ export class Detail {
     if (this.history?.checkId === id) this.closeHistory();
   }
 
-  /** Opens one check's history and loads its first page; another open history closes (D-10). */
   openHistory(checkId: string): void {
     if (this.history?.checkId === checkId) return;
     this.history?.pages.stop();
@@ -226,7 +214,6 @@ export class Detail {
     this.device = { ...this.device, status: change.status };
   }
 
-  /** A new heartbeat updates its check's row and the open history (D-11, New heartbeat role). */
   #onBeat(added: NewHeartbeat): void {
     if (added.deviceId !== this.id) return;
     if (this.beats !== null) this.beats = addBeat(this.beats, beatOf(added));

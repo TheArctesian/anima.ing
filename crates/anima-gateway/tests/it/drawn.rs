@@ -1,5 +1,4 @@
-//! A client for the tests: it draws Guacamole instructions as guacamole-common-js does,
-//! after each one has gone over the wire and through the hub's decoder.
+//! A test client that draws Guacamole instructions as guacamole-common-js does.
 
 use base64::Engine as _;
 use guac_protocol::{Decoder, Instruction, encode};
@@ -10,14 +9,11 @@ const SCREEN: &str = "0";
 /// The channel mask guacd sends with opaque drawing (`GUAC_COMP_OVER`).
 const OVER: &str = "14";
 
-/// What a client shows, and what it received.
 #[derive(Default)]
 pub(crate) struct Drawn {
     pub(crate) width: usize,
     pub(crate) rgb: Vec<u8>,
-    /// The bytes of every instruction on the wire.
     pub(crate) wire_bytes: usize,
-    /// The opcodes, in order.
     pub(crate) opcodes: Vec<String>,
     /// The mimetype of each image.
     pub(crate) images: Vec<String>,
@@ -32,7 +28,6 @@ fn numbers<const N: usize>(args: &[String]) -> [usize; N] {
 }
 
 impl Drawn {
-    /// A client that shows a black screen of this size.
     pub(crate) fn black(width: usize, height: usize) -> Self {
         Self {
             width,
@@ -41,7 +36,6 @@ impl Drawn {
         }
     }
 
-    /// The same picture, with nothing counted as received yet.
     pub(crate) fn counted_from_here(self) -> Self {
         Self {
             width: self.width,
@@ -50,7 +44,6 @@ impl Drawn {
         }
     }
 
-    /// Receives one frame.
     pub(crate) fn receive(&mut self, frame: &[Instruction]) {
         for instruction in frame {
             let wire = encode(instruction);
@@ -134,7 +127,6 @@ impl Drawn {
     }
 }
 
-/// An image as its size and RGB pixels.
 fn decode(mimetype: &str, bytes: &[u8]) -> (usize, usize, Vec<u8>) {
     match mimetype {
         "image/png" => {

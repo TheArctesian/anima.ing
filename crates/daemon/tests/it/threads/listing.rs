@@ -5,7 +5,8 @@ use agent_threads::control::{Action, Listing, ListingChange, Outcome, Refusal, R
 use agent_threads::drive::{Mode, Program};
 use uuid::Uuid;
 
-use super::runner::{CLAUDE, Client, Kit};
+use super::attach::CLAUDE_KEEPS;
+use super::runner::{CLAUDE, Client, Kit, state_is};
 
 async fn change(client: &mut Client, thread: Uuid, change: ListingChange) -> Outcome {
     let id = client.call(Action::ChangeListing { thread, change }).await;
@@ -71,16 +72,22 @@ async fn th46_a_thread_that_runs_is_not_removed_and_a_stopped_one_leaves_the_lis
     let mut client = kit.client().await;
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: kit.path("work"),
             mode: Mode::FullAccess,
             model: None,
             effort: None,
+            speed: None,
             prompt: "Run the command".to_owned(),
             program_path: None,
+            draft: None,
+            attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
-    let Outcome::Started { thread } = client.done(start).await else {
+    let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
     assert_eq!(
@@ -156,4 +163,155 @@ async fn th61_a_settle_and_a_snooze_are_kept_after_a_restart_and_a_bad_snooze_is
         .expect("the wake is kept")
         .marks;
     assert!(marks.snoozed_until.is_none() && marks.woke_at.is_some());
+}
+
+/// Stops `thread` and waits until the runner shows it stopped.
+async fn stopped(client: &mut Client, thread: Uuid) {
+    let stop = client.call(Action::Stop { thread }).await;
+    client.done(stop).await;
+    for _ in 0..40 {
+        if state_of(client, thread).await == Some(RunState::Stopped) {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    }
+    panic!("the thread did not stop");
+}
+
+#[tokio::test]
+async fn thr_041_a_thread_with_no_project_runs_in_a_new_folder_that_stays_when_it_is_removed() {
+    let kit = Kit::with(CLAUDE_KEEPS);
+    let mut client = kit.client().await;
+    client.call(Action::Watch).await;
+    let start = client
+        .call(Action::Start {
+            provider_address: None,
+            program: Program::ClaudeCode,
+            folder: std::path::PathBuf::new(),
+            mode: Mode::FullAccess,
+            model: None,
+            effort: None,
+            speed: None,
+            prompt: "look".to_owned(),
+            program_path: None,
+            draft: None,
+            attachments: Vec::new(),
+            worktree: false,
+            base: None,
+        })
+        .await;
+    let Outcome::Started { thread, folder } = client.done(start).await else {
+        panic!("the thread started");
+    };
+    let scratch = std::fs::canonicalize(kit.path("Anima Scratch")).expect("the scratch folder");
+    assert_eq!(folder.parent(), Some(scratch.as_path()), "{folder:?}");
+    client.until(state_is(RunState::Idle)).await;
+    assert!(
+        folder.join("prompts.jsonl").is_file(),
+        "the program runs in the new folder"
+    );
+    stopped(&mut client, thread).await;
+    let removed = change(&mut client, thread, ListingChange::Remove).await;
+    assert!(matches!(removed, Outcome::Listings { .. }), "{removed:?}");
+    assert!(folder.join("prompts.jsonl").is_file(), "the folder stays");
+}
+
+#[tokio::test]
+async fn thr_041_a_refused_start_with_no_project_leaves_no_folder() {
+    let kit = Kit::with(CLAUDE);
+    let mut client = kit.client().await;
+    let start = client
+        .call(Action::Start {
+            provider_address: None,
+            program: Program::ClaudeCode,
+            folder: std::path::PathBuf::new(),
+            mode: Mode::FullAccess,
+            model: Some("not a model".to_owned()),
+            effort: None,
+            speed: None,
+            prompt: "look".to_owned(),
+            program_path: None,
+            draft: None,
+            attachments: Vec::new(),
+            worktree: false,
+            base: None,
+        })
+        .await;
+    assert_eq!(
+        client.done(start).await,
+        Outcome::Refused {
+            why: Refusal::BadValue
+        }
+    );
+    let left = std::fs::read_dir(kit.path("Anima Scratch"))
+        .expect("the start made its folder before the model was checked")
+        .count();
+    assert_eq!(left, 0, "the folder of the refused start is removed");
+}
+
+#[tokio::test]
+async fn th61_a_thread_the_runner_started_is_listed_as_started_by_anima_after_a_restart() {
+    let mut kit = Kit::with(CLAUDE);
+    let mut client = kit.client().await;
+    // A thread of a session file that the person pinned: the runner did not start it.
+    let other = Uuid::now_v7();
+    change(&mut client, other, ListingChange::Pin { on: true }).await;
+    let start = client
+        .call(Action::Start {
+            provider_address: None,
+            program: Program::ClaudeCode,
+            folder: kit.path("work"),
+            mode: Mode::FullAccess,
+            model: None,
+            effort: None,
+            speed: None,
+            prompt: "Run the command".to_owned(),
+            program_path: None,
+            draft: None,
+            attachments: Vec::new(),
+            worktree: false,
+            base: None,
+        })
+        .await;
+    let Outcome::Started { thread, .. } = client.done(start).await else {
+        panic!("the thread started");
+    };
+    let mut marked = false;
+    for _ in 0..40 {
+        marked = listings(&mut client)
+            .await
+            .iter()
+            .any(|listing| listing.thread == thread && listing.started_by_anima);
+        if marked {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    }
+    assert!(marked, "the session the program said is marked");
+    // A change of the person keeps the mark.
+    change(&mut client, thread, ListingChange::Pin { on: true }).await;
+    // The thread leaves the runner, so only its listing can hold the mark across the restart.
+    stopped(&mut client, thread).await;
+    change(&mut client, thread, ListingChange::Remove).await;
+    assert_eq!(
+        state_of(&mut client, thread).await,
+        None,
+        "the runner forgot it"
+    );
+    drop(client);
+
+    kit.end_runner();
+    kit.start();
+    let mut client = kit.client().await;
+    let kept = listings(&mut client).await;
+    let started: Vec<Uuid> = kept
+        .iter()
+        .filter(|listing| listing.started_by_anima)
+        .map(|listing| listing.thread)
+        .collect();
+    assert_eq!(started, vec![thread], "only the thread the runner started");
+    assert!(
+        kept.iter()
+            .any(|listing| listing.thread == other && listing.pinned)
+    );
 }

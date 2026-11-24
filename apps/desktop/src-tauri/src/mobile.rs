@@ -1,18 +1,14 @@
-//! The mobile application: the window, the hub access token, the device link and the sign-in to the
-//! Anima.ing account (MOB-002, MOB-031; mobile plan M3-4).
-//! This file wires; it holds no rules.
+//! The mobile application (MOB-002, MOB-031; mobile plan M3-4). This file wires; it holds no rules.
 
 use tauri::RunEvent;
 
 use crate::{cloud, phone_browser, phone_link};
 
 pub(crate) mod account_session;
-#[cfg(target_os = "android")]
 mod metrics;
 mod runner;
 pub(crate) mod tokens;
 
-/// Starts the mobile application. iOS and Android call it; it returns when the application ends.
 #[tauri::mobile_entry_point]
 pub fn run() {
     tauri::Builder::default()
@@ -37,11 +33,8 @@ pub fn run() {
             cloud::cloud_sign_in_poll,
             cloud::cloud_sign_in_resume,
             cloud::cloud_sign_out,
-            #[cfg(target_os = "android")]
             metrics::mobile_metrics_enrolled,
-            #[cfg(target_os = "android")]
             metrics::mobile_metrics_enrol,
-            #[cfg(target_os = "android")]
             metrics::mobile_metrics_push,
             cloud::in_app::cloud_sign_in_session,
             cloud::cloud_hub,

@@ -1,6 +1,3 @@
-//! Tests of the tunnel: the pure rules (`connect` values, the client and gateway rules and the
-//! end table) and the tunnel over real sockets (`wire`).
-
 mod arguments;
 mod client;
 mod ending;
@@ -25,11 +22,9 @@ use crate::fleet::devices::{
 use crate::fleet::sessions::Desktop;
 use crate::ids::{DeviceId, SiteId};
 
-/// The device's id: its shared drive's folder name.
 const DEVICE_ID: &str = "0190a000-0000-7000-8002-0000000000aa";
 
-/// A device at `host` with RDP on port 3390 as `ops` in `LAB` and VNC on port 5901 as
-/// `viewer`; SSH is off. Every RDP switch is on, so each value K4 Section 3 sets is set.
+/// Every RDP switch is on, so each value K4 Section 3 sets is set.
 fn device(host: &str) -> Device {
     Device {
         id: DEVICE_ID.parse::<DeviceId>().unwrap(),
@@ -74,22 +69,19 @@ fn device(host: &str) -> Device {
     }
 }
 
-/// The one instruction `wire` holds, decoded as the tunnel task decodes it.
 fn decoded(wire: &str) -> Instruction {
     let mut instructions = Decoder::new().feed(wire.as_bytes()).unwrap();
     assert_eq!(instructions.len(), 1, "one instruction in {wire:?}");
     instructions.remove(0)
 }
 
-/// A relay for a `desktop` session on [`device`] after `edit`.
 fn relay_for(desktop: Desktop, edit: impl FnOnce(&mut Device)) -> Relay {
     let mut device = device("desk.lab");
     edit(&mut device);
     Relay::new(Policy::of(desktop, &device))
 }
 
-/// A relay for an RDP session with the database's defaults: copy and paste on, no
-/// microphone and no shared drive.
+/// The database's defaults: no microphone and no shared drive.
 fn relay() -> Relay {
     relay_for(Desktop::Rdp, |device| {
         device.rdp.microphone = false;
@@ -97,7 +89,6 @@ fn relay() -> Relay {
     })
 }
 
-/// A relay after guacd has asked for `names` with `required`.
 fn prompted(names: &[&str]) -> Relay {
     let mut relay = relay();
     relay.on_gateway(Instruction::new("required", names.iter().copied()));

@@ -4,9 +4,7 @@ import type { Hub, HubResult } from '$lib/hub/hub';
 import { notificationsApi, type NotificationChannel } from '$lib/notifications/api';
 import type { CheckNotificationsInput, StoredChannels } from './channels';
 
-/** The calls of the Notifications part of the check form. */
 export interface ChannelCalls {
-  /** Every channel the operator has made, for the checklist. */
   channels: () => Promise<HubResult<readonly NotificationChannel[]>>;
   load: (checkId: string) => Promise<HubResult<StoredChannels>>;
   save: (checkId: string, input: CheckNotificationsInput) => Promise<HubResult<StoredChannels>>;
@@ -33,12 +31,12 @@ function channelCalls(hub: Hub): ChannelCalls {
   };
 }
 
-/** Svelte's error for a context nobody set; its message carries the name in development and the docs URL in production. */
+/** The message of Svelte's missing-context error carries the name in development and the docs URL in production. */
 function isMissingContext(error: unknown): boolean {
   return error instanceof Error && error.message.includes('missing_context');
 }
 
-/** The calls of the hub above the form, or `null` when there is none: the form then has no Notifications part. Call it while the component is created. */
+/** Call it while the component is created. */
 export function contextChannelCalls(): ChannelCalls | null {
   try {
     return channelCalls(useHub());

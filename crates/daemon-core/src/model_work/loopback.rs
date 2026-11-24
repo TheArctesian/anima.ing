@@ -1,10 +1,7 @@
-//! The loopback verdict over the socket table of the process tree of a server (Section 9,
-//! RTC-006, SEC-C-001), and the readers of the two forms of that table. Pure: the daemon reads
-//! the table from the system and never connects to find a socket.
+//! The loopback verdict over a server's socket table (Section 9, RTC-006, SEC-C-001); the daemon never connects to find a socket.
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
-/// The protocol of a socket.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Protocol {
     Tcp,
@@ -19,16 +16,12 @@ pub struct Socket {
     pub port: u16,
 }
 
-/// The verdict over the table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Verdict {
-    /// Each socket is on loopback.
     Loopback,
-    /// One socket is not: the daemon ends the tree and reports `listener`.
     Exposed(Socket),
 }
 
-/// Whether `address` is `127.0.0.1`, `::1` or `::ffff:127.0.0.1`. No other address counts.
 #[must_use]
 pub fn is_loopback(address: IpAddr) -> bool {
     match address {
@@ -37,7 +30,6 @@ pub fn is_loopback(address: IpAddr) -> bool {
     }
 }
 
-/// The verdict over `sockets`.
 #[must_use]
 pub fn verdict(sockets: &[Socket]) -> Verdict {
     sockets
@@ -46,8 +38,7 @@ pub fn verdict(sockets: &[Socket]) -> Verdict {
         .map_or(Verdict::Loopback, |socket| Verdict::Exposed(*socket))
 }
 
-/// Whether one socket of `sockets` listens on `port` on loopback: the server is ready, and the
-/// listener of the port belongs to its tree.
+/// A loopback TCP listener on `port` means the server is ready and the listener belongs to its tree.
 #[must_use]
 pub fn listens(sockets: &[Socket], port: u16) -> bool {
     sockets.iter().any(|socket| {
@@ -72,8 +63,7 @@ fn hex_v6(text: &str) -> Option<IpAddr> {
     Some(IpAddr::V6(Ipv6Addr::from(bytes)))
 }
 
-/// Reads one Linux table (`/proc/<pid>/net/tcp`, `tcp6`, `udp` or `udp6`): each listening TCP
-/// socket (state `0A`) and each bound UDP socket, with its inode.
+/// Reads one `/proc/<pid>/net` table: each listening TCP socket (state `0A`) and bound UDP socket, with its inode.
 #[must_use]
 pub fn read_proc_net(text: &str, protocol: Protocol) -> Vec<(Socket, u64)> {
     text.lines()
@@ -122,7 +112,6 @@ fn lsof_name(name: &str, protocol: Protocol) -> Option<Socket> {
     })
 }
 
-/// One file of the `lsof` output, as its lines arrive.
 #[derive(Default)]
 struct LsofFile<'a> {
     protocol: Option<Protocol>,
@@ -154,10 +143,7 @@ impl LsofFile<'_> {
     }
 }
 
-/// Reads the field output of `lsof -F PnT` (macOS): a file starts at its `f` line, and has a
-/// `P` line (the protocol), an `n` line (the local address) and `T` lines. A TCP socket counts
-/// when it has `TST=LISTEN`; a UDP socket counts always. A name that does not read counts as
-/// exposed.
+/// Reads `lsof -F PnT` output (macOS); a name that does not read counts as exposed.
 #[must_use]
 pub fn read_lsof(text: &str) -> Vec<Socket> {
     let mut files = vec![LsofFile::default()];

@@ -25,12 +25,10 @@ export const TOOL_NAMES: Readonly<Record<BuilderTool, string>> = {
 const OS_NAMES: Readonly<Record<BuilderPlatform['os'], string>> = { LINUX: 'Linux', MACOS: 'macOS', WINDOWS: 'Windows' };
 const ARCH_NAMES: Readonly<Record<BuilderPlatform['arch'], string>> = { X86_64: 'x86-64', AARCH64: 'Apple silicon (arm64)' };
 
-/** A platform as the operator reads it, for example "Linux, x86-64". */
 export function platformText(platform: BuilderPlatform): string {
   return `${OS_NAMES[platform.os]}, ${ARCH_NAMES[platform.arch]}`;
 }
 
-/** This computer's platform line of the row; `null` until the shell has answered. */
 export function thisPlatformText(check: ToolCheck | null, failed: boolean): string {
   if (check !== null) return platformText(check);
   return failed ? 'Platform not detected.' : '';
@@ -65,7 +63,6 @@ export function statusText(status: BuilderStatus): string {
   }
 }
 
-/** The builder's line of the row: what it is doing, or what turning it on or off is doing (BLD-020). */
 export function builderText(enrolled: boolean | null, busy: boolean, status: BuilderStatus): string {
   if (busy) return enrolled === true ? 'Turning off…' : 'Enrolling…';
   return enrolled === true ? statusText(status) : 'Off.';

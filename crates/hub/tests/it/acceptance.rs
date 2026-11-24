@@ -27,9 +27,6 @@ const CREATE_CHECK: &str =
 const DELETE_DEVICE: &str = "mutation($id: ID!) { deleteDevice(id: $id) }";
 
 /// Everything of the device that must go with it, each with the count query for its id.
-/// The secret goes by `clear_ssh` and by the secrets foreign key's cascade; each alone is
-/// covered by `credentials::schema::dev_015_deleting_the_device_deletes_its_secrets` and
-/// `devices::credential::dev_015_deleting_a_device_removes_its_secret`.
 const CHAIN: [(&str, &str); 6] = [
     (
         "device",
@@ -105,7 +102,6 @@ fn id_of(response: &Value, field: &str) -> String {
         .to_owned()
 }
 
-/// Gives the device a stored accepted host key and one ended session.
 async fn add_host_key_and_session(pool: &PgPool, device: &str) {
     sqlx::query(
         "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \

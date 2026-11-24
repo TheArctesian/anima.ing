@@ -1,5 +1,4 @@
-//! The UDP socket of one SNMP attempt: bound for the attempt, it sends to the one target and
-//! reads only datagrams from that address and port.
+//! The UDP socket of one SNMP attempt; it reads only datagrams from the target's address and port.
 
 use std::{
     net::{Ipv4Addr, Ipv6Addr, SocketAddr},
@@ -20,10 +19,6 @@ pub(in crate::fleet::checks) struct Link {
 }
 
 impl Link {
-    /// A socket on an ephemeral port of the target's address family.
-    ///
-    /// # Errors
-    /// The socket cannot be bound.
     pub(in crate::fleet::checks) async fn open(peer: SocketAddr) -> Result<Self, Failure> {
         let local = if peer.is_ipv4() {
             SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0))
@@ -37,12 +32,7 @@ impl Link {
         })
     }
 
-    /// Sends `request` and reads replies until `read` takes one, with the round-trip time.
-    /// A datagram from another address or port is dropped unread; `read` gives `None` for a
-    /// reply to another request. The caller's time limit ends the wait.
-    ///
-    /// # Errors
-    /// The send or receive fails, or `read` gives a failure.
+    /// `read` gives `None` for a reply to another request; the caller's time limit ends the wait.
     pub(in crate::fleet::checks) async fn exchange<T>(
         &mut self,
         request: &[u8],

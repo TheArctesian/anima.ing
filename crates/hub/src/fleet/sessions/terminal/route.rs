@@ -1,16 +1,6 @@
 //! `GET /terminal` (K4 Section 8.1, API-009): every refusal happens before the WebSocket
 //! upgrade, with an HTTP status and an empty body.
-//!
-//! The order of the checks (`admission`), as on the Guacamole tunnel:
-//!
-//! 1. The lazy sweep of expired tickets (D-2); if it cannot run, 503 before any token is read.
-//! 2. The token from the query, the client address and the path, then `Live::redeem` (403;
-//!    a ticket whose `tunnelPath` is not `/terminal` is refused and spent too). The token is
-//!    spent before the subprotocol is checked (K4 Section 1).
-//! 3. From here the session task owns the redeemed ticket (`upgrade`), so the session ends
-//!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
-//!    answers this handler: 400 without the subprotocol `anima-terminal` (the session ends
-//!    `PROTOCOL_ERROR`), 503 when the opening fails (`GATEWAY_ERROR`), else the upgrade.
+//! The token is spent before the subprotocol is checked (K4 Section 1).
 //!
 //! Neither the URI, the query nor the token reaches a log, a span or an error (LOG-007).
 
@@ -54,28 +44,20 @@ const HUB_SILENCE: Duration = Duration::from_secs(5);
 /// The longest one write or request to the device may wait (K4 Section 8.5).
 const DEVICE_WAIT: Duration = Duration::from_secs(15);
 
-/// The waits of one terminal session (K4 Section 8.5). Tests shorten them; the hub uses
-/// `Timing::default()`.
+/// The waits of one terminal session (K4 Section 8.5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Timing {
-    /// The whole opening: lookup, connect, key exchange, sign-in and the session channel.
     pub(super) opening: Duration,
     /// The whole opening of a ticket whose start sent a Wake-on-LAN packet (K4 Section 1).
     pub(super) woken_opening: Duration,
-    /// How often that opening tries to connect again while the device does not answer.
     pub(super) reconnect: Duration,
-    /// The WebSocket upgrade after the hub answered.
     pub(super) upgrade: Duration,
-    /// The client's first `resize` after the upgrade.
     pub(super) first_size: Duration,
-    /// Hub silence after which the client gets a `ping`.
     pub(super) hub_silence: Duration,
     /// Client silence after which the session ends `TIMEOUT`, not counting time the client's
     /// input waits on the device; also the longest one send to the client may take.
     pub(super) client_idle: Duration,
-    /// The longest one write of client input to the device, or one PTY, shell or
-    /// window-change request with its answer, may take before the session ends
-    /// `GATEWAY_ERROR`.
+    /// The longest one device write or request with its answer may take before `GATEWAY_ERROR`.
     pub(super) request: Duration,
 }
 
@@ -95,7 +77,6 @@ impl Default for Timing {
 }
 
 impl Timing {
-    /// The limit of `ticket`'s whole opening: longer when its start woke the device.
     pub(super) const fn opening_of(&self, ticket: &PendingTicket) -> Duration {
         if ticket.wake_sent {
             self.woken_opening
@@ -105,7 +86,6 @@ impl Timing {
     }
 }
 
-/// What the terminal route needs: the hub's stores, the live state and the waits.
 #[derive(Clone)]
 pub(super) struct Terminal {
     pub(super) db: PgPool,
@@ -117,9 +97,8 @@ pub(super) struct Terminal {
     pub(super) timing: Timing,
 }
 
-/// The `/terminal` route (K3, K4 Section 8.1) over `serving`. `main.rs` mounts it behind
-/// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`,
-/// so the client address is known.
+/// The `/terminal` route (K3); it needs `access::permitted_networks_layer` (NET-002) and
+/// `ConnectInfo<SocketAddr>`, so the client address is known.
 pub fn terminal_router(serving: &Serving) -> Router {
     router(Terminal {
         db: serving.db.clone(),
@@ -131,7 +110,6 @@ pub fn terminal_router(serving: &Serving) -> Router {
     })
 }
 
-/// The route over `terminal`'s dependencies and waits, at the path K4 Section 1 gives SSH.
 pub(super) fn router(terminal: Terminal) -> Router {
     Router::new()
         .route(PATH, get(open))

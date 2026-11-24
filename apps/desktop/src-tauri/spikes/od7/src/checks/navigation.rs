@@ -1,6 +1,4 @@
-//! Check 4 (WEB-007, D-3): a device web view goes only to `http` and `https`. A hostile page tries
-//! each target itself; then Rust asks for each target, to prove the filter (not just WebKit)
-//! refuses it. Finally the page goes to an http URL, which must be allowed.
+//! Check 4 (WEB-007, D-3): the filter, not only WebKit, keeps a device web view on `http` and `https`.
 
 use std::time::Duration;
 
@@ -39,7 +37,6 @@ pub async fn check(harness: &Harness, journal: &mut Journal, results: &mut Resul
     }
 }
 
-/// The page is still alive after trying `target` if it reported index `index` from http.
 fn page_attempt(
     journal: &mut Journal,
     results: &mut Results,
@@ -72,7 +69,6 @@ fn page_attempt(
     );
 }
 
-/// Rust asks the web view to load `target`; the filter must refuse and the URL stay http.
 async fn rust_attempt(view: &Webview, journal: &mut Journal, results: &mut Results, target: &str) {
     let from = journal.mark();
     let asked = Url::parse(target)

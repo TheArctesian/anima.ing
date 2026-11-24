@@ -1,5 +1,4 @@
-//! Throwaway git repositories for `anima snapshot`: a working repository, a bare repository on
-//! disk as its `origin`, and git with no global or system configuration of this computer.
+//! Throwaway git repositories for `anima snapshot`, with no global or system git configuration.
 
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -9,7 +8,6 @@ use tokio::io::AsyncWriteExt as _;
 
 use crate::kit::{Anima, Outcome};
 
-/// A working repository with one commit on `main`, pushed to a bare `origin`.
 pub struct Repos {
     root: TempDir,
     anima: Anima,
@@ -48,22 +46,18 @@ impl Repos {
         repos
     }
 
-    /// The working repository.
     pub fn work(&self) -> PathBuf {
         self.root.path().join("work")
     }
 
-    /// The bare repository `origin` points at.
     pub fn remote(&self) -> PathBuf {
         self.root.path().join("remote.git")
     }
 
-    /// The folder the program's temporary files go to.
     pub fn temporary(&self) -> PathBuf {
         self.root.path().join("tmp")
     }
 
-    /// An empty folder that is no repository.
     pub fn plain_folder(&self) -> PathBuf {
         self.root.path().join("home")
     }
@@ -74,12 +68,10 @@ impl Repos {
         std::fs::write(file, text).expect("a file");
     }
 
-    /// git in the working repository; it must succeed.
     pub fn git(&self, args: &[&str]) -> String {
         self.git_in(&self.work(), args)
     }
 
-    /// git in `folder`; it must succeed.
     pub fn git_in(&self, folder: &Path, args: &[&str]) -> String {
         let output = self.git_command(folder, args).output().expect("git starts");
         assert!(
@@ -90,7 +82,6 @@ impl Repos {
         String::from_utf8(output.stdout).expect("UTF-8")
     }
 
-    /// git in `folder`, whatever its exit status.
     pub fn git_command(&self, folder: &Path, args: &[&str]) -> std::process::Command {
         let mut command = std::process::Command::new("git");
         command
@@ -104,7 +95,6 @@ impl Repos {
         command
     }
 
-    /// The scratch refs of the bare `origin`, as `<hash> <ref>` lines.
     pub fn remote_scratch_refs(&self) -> String {
         self.git_in(
             &self.remote(),
@@ -116,7 +106,7 @@ impl Repos {
         )
     }
 
-    /// A clone of `origin` that fetched `scratch`; the files of the snapshot are at `FETCH_HEAD`.
+    /// The files of the snapshot are at `FETCH_HEAD`.
     pub fn second_machine(&self, scratch: &str) -> PathBuf {
         let second = self.root.path().join("second");
         let remote = path_text(&self.remote());
@@ -125,12 +115,10 @@ impl Repos {
         second
     }
 
-    /// `anima <args>` in the working repository.
     pub async fn anima(&self, args: &[&str]) -> Outcome {
         self.anima_in(&self.work(), args).await
     }
 
-    /// `anima <args>` in `folder`, standard input a pipe that is closed at once.
     pub async fn anima_in(&self, folder: &Path, args: &[&str]) -> Outcome {
         let mut command = self.anima.command(env!("CARGO_BIN_EXE_anima"));
         command
@@ -151,7 +139,6 @@ impl Repos {
         }
     }
 
-    /// Whether the repository at `folder` has the object `hash`.
     pub fn has_object(&self, folder: &Path, hash: &str) -> bool {
         self.git_command(folder, &["cat-file", "-e", hash])
             .output()
@@ -160,7 +147,6 @@ impl Repos {
             .success()
     }
 
-    /// The blob hash of `text`, from a copy outside every repository.
     pub fn blob_hash(&self, text: &str) -> String {
         let copy = self.root.path().join("outside.txt");
         std::fs::write(&copy, text).expect("a copy");
@@ -169,7 +155,6 @@ impl Repos {
         hash.trim().to_owned()
     }
 
-    /// Everything about the working repository that `snapshot push` must leave as it was.
     pub fn state(&self) -> State {
         let git_dir = self.work().join(".git");
         State {
@@ -206,7 +191,6 @@ pub struct State {
     stash: String,
 }
 
-/// Every file under `folder`, sorted.
 fn files_under(folder: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
     for entry in std::fs::read_dir(folder).expect("a folder") {

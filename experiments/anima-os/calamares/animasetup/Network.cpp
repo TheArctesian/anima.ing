@@ -1,13 +1,14 @@
-#include "Setup.h"
-#include <QProcess>
+#include "Network.h"
+#include <QLabel>
+#include <QVBoxLayout>
 #include <QPushButton>
-#include <QDialog>
-#include <QDialogButtonBox>
-#include <QLineEdit>
+#include <QScrollArea>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QTimer>
-#include <QMessageBox>
 
-static QStringList fields(const QString& line) {
+QLabel* description(const QString& text, QWidget* parent);
+QStringList networkFields(const QString& line) {
     QStringList result; QString word; bool escape = false;
     for (const auto c : line) {
         if (escape) { word += c; escape = false; }
@@ -17,86 +18,112 @@ static QStringList fields(const QString& line) {
     }
     result.append(word); return result;
 }
-static void watchStatus(QWidget* page, QLabel* status) {
-    auto* statusProcess = new QProcess(page);
-    auto updateStatus = [statusProcess] {
-        if (statusProcess->state() == QProcess::NotRunning) statusProcess->start("nmcli", {"-t", "-f", "DEVICE,TYPE,STATE", "device", "status"});
-    };
-    QObject::connect(statusProcess, qOverload<int,QProcess::ExitStatus>(&QProcess::finished), page, [=](int code, QProcess::ExitStatus) {
-        QStringList rows;
-        for (const auto& line : QString::fromUtf8(statusProcess->readAllStandardOutput()).split('\n',Qt::SkipEmptyParts)) {
-            const auto values=fields(line);
-            if (values.size()==3 && (values[1]=="wifi" || values[1]=="ethernet"))
-                rows.append((values[1]=="wifi" ? "Wi-Fi" : "Ethernet") + QString(" · %1 · %2").arg(values[2],values[0]));
-        }
-        status->setText(code != 0 ? "Network status unavailable. Open recovery for diagnostics." : rows.isEmpty() ? "No network adapters detected. You can continue offline." : rows.join("\n"));
-    });
-    auto* timer = new QTimer(page); timer->setInterval(4000); QObject::connect(timer,&QTimer::timeout,page,updateStatus); timer->start(); updateStatus();
+NetworkPage::NetworkPage() {
+    buildPage();
+    devices = new QProcess(this); radio = new QProcess(this);
+    scan = new QProcess(this); connection = new QProcess(this);
+    auto environment = QProcessEnvironment::systemEnvironment();
+    environment.insert("LC_ALL", "C");
+    for (auto* process : {devices, radio, scan, connection}) {
+        process->setProcessEnvironment(environment);
+        auto* timeout = new QTimer(process); timeout->setSingleShot(true);
+        connect(process, &QProcess::started, timeout, [timeout] { timeout->start(45000); });
+        connect(timeout, &QTimer::timeout, process, &QProcess::kill);
+        connect(process, qOverload<int,QProcess::ExitStatus>(&QProcess::finished), timeout, &QTimer::stop);
+    }
+    connect(devices, qOverload<int,QProcess::ExitStatus>(&QProcess::finished), this, [this](int code, auto) { readDevices(code); });
+    connect(radio, qOverload<int,QProcess::ExitStatus>(&QProcess::finished), this, [this](int code, auto) { readRadio(code); });
+    connect(scan, qOverload<int,QProcess::ExitStatus>(&QProcess::finished), this, [this](int code, auto) { readNetworks(code); });
+    connect(connection, qOverload<int,QProcess::ExitStatus>(&QProcess::finished), this, [this](int code, auto) { connectionFinished(code); });
+    connect(devices, &QProcess::errorOccurred, this, [this](auto error) { if (error == QProcess::FailedToStart) readDevices(1); });
+    connect(radio, &QProcess::errorOccurred, this, [this](auto error) { if (error == QProcess::FailedToStart) readRadio(1); });
+    connect(scan, &QProcess::errorOccurred, this, [this](auto error) { if (error == QProcess::FailedToStart) readNetworks(1); });
+    connect(connection, &QProcess::errorOccurred, this, [this](auto error) { if (error == QProcess::FailedToStart) connectionFinished(1); });
+    connect(refresh, &QPushButton::clicked, this, &NetworkPage::scanNetworks);
+    auto* timer = new QTimer(this); timer->setInterval(4000);
+    connect(timer, &QTimer::timeout, this, &NetworkPage::watchDevices);
+    timer->start(); watchDevices();
 }
-static void scanNetworks(QWidget* page, QComboBox* wifi, QPushButton* refresh) {
-    auto* scan = new QProcess(page);
-    QObject::connect(refresh,&QPushButton::clicked,page,[=] {
-        if (scan->state() != QProcess::NotRunning) return;
-        refresh->setEnabled(false); wifi->clear(); scan->start("nmcli", {"-t", "-f", "DEVICE,BSSID,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "yes"});
-    });
-    QObject::connect(scan,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),page,[=](int code,QProcess::ExitStatus) {
-        refresh->setEnabled(true);
-        for (const auto& line : QString::fromUtf8(scan->readAllStandardOutput()).split('\n',Qt::SkipEmptyParts)) {
-            const auto values=fields(line);
-            if (values.size()==5) wifi->addItem(values[2]+" · "+values[3]+"% · "+values[4],QStringList{values[0],values[1]});
-        }
-        if (code != 0 || wifi->count()==0) wifi->addItem("No networks found. Check radio, driver or advanced settings.", "");
-    });
-}
-static QString askPassword(QWidget* page, const QString& name, bool& accepted) {
-    QDialog dialog(page,Qt::Dialog|Qt::FramelessWindowHint); dialog.setObjectName("animaNetworkDialog");
-    dialog.setMinimumWidth(440); auto* form=new QVBoxLayout(&dialog); form->setContentsMargins(28,24,28,24); form->setSpacing(16);
-    auto* heading=description("Connect to Wi-Fi",&dialog); heading->setObjectName("animaDialogHeading"); form->addWidget(heading);
-    form->addWidget(description(name,&dialog));
-    form->addWidget(description("Network password. Leave empty for an open network.",&dialog));
-    auto* password=new QLineEdit(&dialog); password->setEchoMode(QLineEdit::Password); form->addWidget(password);
-    auto* buttons=new QDialogButtonBox(QDialogButtonBox::Cancel|QDialogButtonBox::Ok,&dialog);
-    buttons->button(QDialogButtonBox::Ok)->setText("Connect"); buttons->button(QDialogButtonBox::Ok)->setObjectName("view-button-next"); form->addWidget(buttons);
-    QObject::connect(buttons,&QDialogButtonBox::accepted,&dialog,&QDialog::accept);
-    QObject::connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);
-    password->setFocus(); accepted=dialog.exec()==QDialog::Accepted; return password->text();
-}
-static void connectionFailed(QWidget* page) {
-    QMessageBox dialog(QMessageBox::NoIcon,"","Connection failed. Check the password, or use advanced settings for enterprise networks.",QMessageBox::Ok,page);
-    dialog.setWindowFlags(Qt::Dialog|Qt::FramelessWindowHint); dialog.setObjectName("animaNetworkDialog");
-    dialog.layout()->setContentsMargins(28,24,28,24); dialog.exec();
-}
-QWidget* networkPage() {
-    auto* page = new QWidget; auto* box = new QVBoxLayout(page); box->setContentsMargins(32,28,32,24);
-    auto* title = description("Network", page); title->setObjectName("animaHeading"); box->addWidget(title);
-    box->addWidget(description("Connect now, or continue offline. System network profiles will carry over to the installed server.", page));
-    auto* status = description("Checking network devices…", page); box->addWidget(status);
-    auto* wifi = new QComboBox(page); box->addWidget(wifi);
-    auto* refresh = new QPushButton("Scan Wi-Fi", page); box->addWidget(refresh);
-    auto* connectButton = new QPushButton("Connect selected network", page); box->addWidget(connectButton);
-    auto* advanced = new QPushButton("Advanced network settings…", page); box->addWidget(advanced);
-    box->addWidget(description("For hidden networks, enterprise Wi-Fi or static addresses, use advanced settings. Saving a profile does not prove it connected; check the device status above.", page));
-    for (auto* button : page->findChildren<QPushButton*>()) button->setMaximumWidth(260);
-    wifi->setMaximumWidth(1100);
-    status->setObjectName("animaMuted");
+void NetworkPage::buildPage() {
+    setObjectName("animaNetwork");
+    setStyleSheet("QWidget#animaNetworkRow { border-bottom: 1px solid #2C3036; }"
+                  "QLabel#animaNetworkSection { font-weight: 500; }"
+                  "QPushButton#animaAdvanced { background: transparent; border: none; text-align: left; padding-left: 0; }"
+                  "QPushButton#animaAdvanced:focus { border: 1px solid #88C0D0; }");
+    auto* box = new QVBoxLayout(this); box->setContentsMargins(32,28,32,24); box->setSpacing(16);
+    auto* title = description("Network", this); title->setObjectName("animaHeading"); box->addWidget(title);
+    box->addWidget(description("Connect to a network, or continue offline.", this));
+    auto* wired = new QWidget(this); wired->setObjectName("animaNetworkRow");
+    auto* wiredBox = new QVBoxLayout(wired); wiredBox->setContentsMargins(0,12,0,16); wiredBox->setSpacing(4);
+    auto* wiredTitle = description("Ethernet", wired); wiredTitle->setObjectName("animaNetworkSection"); wiredBox->addWidget(wiredTitle);
+    ethernet = description("Checking connection…", wired); ethernet->setObjectName("animaMuted"); wiredBox->addWidget(ethernet); box->addWidget(wired);
+    auto* heading = new QHBoxLayout; auto* wifi = description("Wi-Fi", this); wifi->setObjectName("animaNetworkSection");
+    heading->addWidget(wifi); heading->addStretch(); refresh = new QPushButton("Refresh", this);
+    refresh->setAccessibleName("Refresh Wi-Fi networks"); refresh->setVisible(false); heading->addWidget(refresh); box->addLayout(heading);
+    message = description("Checking Wi-Fi…", this); message->setObjectName("animaMuted"); box->addWidget(message);
+    enableWifi = new QPushButton("Turn on Wi-Fi", this); enableWifi->hide();
+    box->addWidget(enableWifi,0,Qt::AlignLeft);
+    connect(enableWifi,&QPushButton::clicked,this,&NetworkPage::turnOnWifi);
+    networks = new QScrollArea(this); networks->setWidgetResizable(true); networks->setFrameShape(QFrame::NoFrame);
+    networks->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff); networks->setMinimumHeight(120);
+    auto* content = new QWidget; rows = new QVBoxLayout(content); rows->setContentsMargins(0,0,0,0); rows->setSpacing(0);
+    rows->setAlignment(Qt::AlignTop); networks->setWidget(content); networks->hide(); box->addWidget(networks,1);
+    auto* advanced = new QPushButton("Advanced settings…", this); advanced->setObjectName("animaAdvanced");
+    advanced->setToolTip("Hidden networks, enterprise Wi-Fi and static addresses");
+    auto* advancedBox = new QHBoxLayout; advancedBox->addWidget(advanced); advancedBox->addStretch(); box->addLayout(advancedBox);
+    auto* note = description("Network settings carry over to your installed system.", this); note->setObjectName("animaMuted"); box->addWidget(note);
     box->addStretch();
-    watchStatus(page,status);
-    scanNetworks(page,wifi,refresh);
-    QObject::connect(advanced,&QPushButton::clicked,page,[] { QProcess::startDetached("nm-connection-editor", {}); });
-    QObject::connect(connectButton,&QPushButton::clicked,page,[=] {
-        const auto target = wifi->currentData().toStringList(); if (target.size()!=2) return;
-        bool ok = false;
-        auto secret = askPassword(page,wifi->currentText(),ok);
-        if (!ok) return;
-        auto* process = new QProcess(page); connectButton->setEnabled(false);
-        QObject::connect(process,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),page,[=](int code,QProcess::ExitStatus) {
-            connectButton->setEnabled(true); process->readAllStandardOutput(); process->readAllStandardError();
-            if (code != 0) connectionFailed(page);
-            process->deleteLater();
-        });
-        process->start("nmcli", {"--wait","30","--ask","device","wifi","connect",target[1],"ifname",target[0]});
-        // Password goes over a private pipe, never in arguments or installer logs.
-        process->write(secret.toUtf8()+"\n"); process->closeWriteChannel(); secret.fill(QChar(0));
-    });
-    refresh->click(); return page;
+    connect(advanced,&QPushButton::clicked,this,[] { QProcess::startDetached("nm-connection-editor", {}); });
 }
+void NetworkPage::watchDevices() {
+    if (devices->state() == QProcess::NotRunning && radio->state() == QProcess::NotRunning)
+        devices->start("nmcli", {"-t","-f","DEVICE,TYPE,STATE","device","status"});
+}
+void NetworkPage::readDevices(int code) {
+    const auto output = QString::fromUtf8(devices->readAllStandardOutput()); devices->readAllStandardError();
+    if (code != 0) {
+        wifiAvailable = false; radioEnabled = false; scanned = false; ++generation;
+        ethernet->setText("Connection status unavailable"); refresh->hide(); enableWifi->hide();
+        showMessage("Couldn't check Wi-Fi. Retrying…"); return;
+    }
+    QStringList wired; QStringList wifiDevices;
+    for (const auto& line : output.split('\n',Qt::SkipEmptyParts)) {
+        const auto values = networkFields(line); if (values.size() != 3) continue;
+        if (values[1] == "wifi") wifiDevices.append(values[0] + ":" + values[2]);
+        if (values[1] == "ethernet") {
+            const auto state = values[2] == "connected" ? "Connected" : values[2] == "unavailable" ? "No cable connected" : "Not connected";
+            wired.append(state);
+        }
+    }
+    ethernet->setText(wired.isEmpty() ? "No Ethernet adapter" : wired.join('\n'));
+    wifiDevices.sort();
+    const auto signature = wifiDevices.join("\n");
+    if (wifiSignature != signature) { ++generation; scanned = false; }
+    wifiSignature = signature; wifiAvailable = !wifiDevices.isEmpty();
+    if (!wifiAvailable) {
+        scanned = false; radioEnabled = false; refresh->hide(); enableWifi->hide();
+        showMessage("Wi-Fi unavailable\nNo Wi-Fi adapter detected."); return;
+    }
+    radio->start("nmcli", {"radio","wifi"});
+}
+void NetworkPage::readRadio(int code) {
+    const auto state = QString::fromUtf8(radio->readAllStandardOutput()).trimmed(); radio->readAllStandardError();
+    const bool enabled = code == 0 && state == "enabled";
+    if (radioEnabled != enabled) ++generation;
+    radioEnabled = enabled;
+    enableWifi->setVisible(code == 0 && !radioEnabled);
+    refresh->setVisible(radioEnabled); refresh->setEnabled(!connecting && scan->state() == QProcess::NotRunning);
+    if (!radioEnabled) {
+        scanned = false;
+        showMessage(code == 0 ? "Wi-Fi is turned off." : "Couldn't check Wi-Fi. Retrying…");
+        return;
+    }
+    if (!scanned && !connecting) scanNetworks();
+}
+void NetworkPage::clearNetworks() {
+    while (auto* row = rows->takeAt(0)) { delete row->widget(); delete row; }
+}
+void NetworkPage::showMessage(const QString& text) {
+    networks->hide(); message->setText(text); message->show();
+}
+QWidget* networkPage() { return new NetworkPage; }

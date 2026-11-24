@@ -47,7 +47,6 @@ async function open(answers: Answers = {}): Promise<HTMLElement> {
   return target;
 }
 
-/** Closes the view, as leaving the page does. */
 async function close(): Promise<void> {
   if (app !== undefined) await unmount(app);
   app = undefined;

@@ -8,12 +8,20 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use agent_threads::control::RunState;
+use agent_threads::control::{Refusal, RunState};
 use agent_threads::drive::Program;
 use uuid::Uuid;
 
-/// The time a program has to answer `--version`.
+mod load;
+#[cfg(test)]
+use load::first_load;
+pub use load::{Load, load, probe_wait};
+
+/// The time a program has to answer `--version` on a computer that is not busy; a busy one
+/// gives it more ([`probe_wait`]).
 const PROBE_WAIT: Duration = Duration::from_secs(20);
+/// The most time a program has to answer `--version`, however busy the computer is.
+const PROBE_CAP: Duration = Duration::from_secs(120);
 /// The time a different copy has to answer, when the chosen one did not.
 const OTHER_WAIT: Duration = Duration::from_secs(5);
 /// How long a copy that did not answer is not asked again: a second start in this time gets
@@ -45,6 +53,9 @@ struct Asked {
     stamp: Option<Stamp>,
     at: Instant,
     version: Option<String>,
+    /// How long it was given, and the load of the computer when it was asked.
+    waited: Duration,
+    load: Option<Load>,
 }
 
 /// The copies that were asked, and the started threads that wait for their first line.
@@ -57,22 +68,39 @@ pub struct Silence {
 
 /// The answers of the copies of one start: the chosen copy first, then each other copy when the
 /// chosen one did not answer. A version is `None` for a copy that did not answer in time.
-pub type Answers = Vec<(PathBuf, Option<String>)>;
+#[derive(Clone, Debug, Default)]
+pub struct Answers {
+    pub copies: Vec<(PathBuf, Option<String>)>,
+    /// The time the chosen copy was given.
+    pub waited: Duration,
+    /// The load when it was asked; `None` when it could not be read.
+    pub load: Option<Load>,
+}
 
 /// Asks the chosen copy at `path` for its version and, only when it does not answer, each
-/// different copy of `others`. Runs away from the loop of the runner: it can take 20 seconds
-/// and 5 more for each other copy.
-pub async fn ask(path: PathBuf, others: Vec<PathBuf>, env: Vec<(String, String)>) -> Answers {
-    let first = ask_version(&path, PROBE_WAIT, &env).await;
+/// different copy of `others`, with the time that `load` gives ([`probe_wait`]). Runs away from
+/// the loop of the runner: it can take up to 120 seconds and 5 more for each other copy.
+pub async fn ask(
+    path: PathBuf,
+    others: Vec<PathBuf>,
+    env: Vec<(String, String)>,
+    load: Option<Load>,
+) -> Answers {
+    let waited = probe_wait(load);
+    let first = ask_version(&path, waited, &env).await;
     let silent = first.is_none();
-    let mut answers = vec![(path.clone(), first)];
+    let mut copies = vec![(path.clone(), first)];
     if silent {
         for other in others.into_iter().filter(|other| *other != path) {
             let version = ask_version(&other, OTHER_WAIT, &env).await;
-            answers.push((other, version));
+            copies.push((other, version));
         }
     }
-    answers
+    Answers {
+        copies,
+        waited,
+        load,
+    }
 }
 
 impl Silence {
@@ -84,22 +112,42 @@ impl Silence {
             .asked
             .get(path)
             .filter(|kept| kept.stamp == stamp(path))?;
+        // A silence on a busy computer says nothing of the copy: the next start asks again.
+        let busy = kept.load.is_some_and(Load::busy);
         match kept.version {
             Some(_) => Some(true),
-            None => (kept.at.elapsed() < SILENT_KEPT).then_some(false),
+            None => (!busy && kept.at.elapsed() < SILENT_KEPT).then_some(false),
         }
     }
 
     /// Keeps the answers of one ask.
     pub fn keep(&mut self, answers: &Answers) {
-        for (path, version) in answers {
+        for (path, version) in &answers.copies {
             let asked = Asked {
                 stamp: stamp(path),
                 at: Instant::now(),
                 version: version.clone(),
+                waited: answers.waited,
+                load: answers.load,
             };
             self.asked.insert(path.clone(), asked);
         }
+    }
+
+    /// The refusal of a start whose copy did not answer, with the other copies that did.
+    #[must_use]
+    pub fn refusal(&self, program: Program, path: &Path, copies: &[PathBuf]) -> Refusal {
+        let others = self.answered_others(path, copies);
+        let asked = self.asked.get(path);
+        let waited = asked.map_or(PROBE_WAIT, |asked| asked.waited);
+        let said = not_answered(
+            program,
+            path,
+            (waited, asked.and_then(|asked| asked.load)),
+            &others,
+        );
+        let answered = others.into_iter().map(|(copy, _)| copy).collect();
+        Refusal::ProgramDoesNotAnswer { said, answered }
     }
 
     /// The other copies of `copies` that answered when they were last asked and are the same
@@ -170,16 +218,34 @@ pub const fn name(program: Program) -> &'static str {
     }
 }
 
-/// The words when the chosen copy did not answer `--version`, with the copies that did.
+/// The words when the chosen copy did not answer `--version` in `asked` (the time it was given
+/// and the load then), with the copies that did. On a busy computer the words say so and do
+/// not send the person to a terminal: the copy is likely fine, and the next start asks again.
 #[must_use]
-pub fn not_answered(program: Program, path: &Path, answered: &[(PathBuf, String)]) -> String {
-    let mut words = format!(
-        "The {} at {} did not answer in {} seconds. Run `{} --version` once in a terminal to see what it waits for, or update it.",
-        name(program),
-        path.display(),
-        PROBE_WAIT.as_secs(),
-        path.display(),
-    );
+pub fn not_answered(
+    program: Program,
+    path: &Path,
+    asked: (Duration, Option<Load>),
+    answered: &[(PathBuf, String)],
+) -> String {
+    let (waited, load) = asked;
+    let mut words = match load.filter(|load| load.busy()) {
+        Some(load) => format!(
+            "The {} at {} did not answer `--version` in {} seconds while this computer was busy (load {:.0} on {} cores). Anima asks it again at the next start.",
+            name(program),
+            path.display(),
+            waited.as_secs(),
+            load.one,
+            load.cores,
+        ),
+        None => format!(
+            "The {} at {} did not answer in {} seconds. Run `{} --version` once in a terminal to see what it waits for, or update it.",
+            name(program),
+            path.display(),
+            waited.as_secs(),
+            path.display(),
+        ),
+    };
     for (other, version) in answered {
         let _ = write!(
             words,
@@ -243,6 +309,7 @@ async fn ask_version(path: &Path, wait: Duration, env: &[(String, String)]) -> O
         .kill_on_drop(true)
         .spawn()
         .ok()?;
+    crate::threads::priority::lift_async(&mut child).await;
     let group = child
         .id()
         .and_then(|pid| i32::try_from(pid).ok())

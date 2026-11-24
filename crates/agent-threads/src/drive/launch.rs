@@ -44,6 +44,13 @@ impl Mode {
         }
     }
 
+    /// Whether Codex runs this mode in the sandbox of the folder, where a profile can keep a
+    /// folder in it read-only (THR-041).
+    #[must_use]
+    pub fn folder_sandbox(self) -> bool {
+        self.codex().0 == "workspace-write"
+    }
+
     /// The `sandbox` and the `approvalPolicy` of a Codex thread. `AcceptEdits` has no measured
     /// Codex form; it is the sandbox of the folder with questions when the agent asks.
     #[must_use]
@@ -58,9 +65,19 @@ impl Mode {
     }
 }
 
-/// A model name the person chose: an alias or a full name, of a closed alphabet (THR-040).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// A model name the person chose: an alias or a full name, of a closed alphabet (THR-040). A
+/// name read from a record is checked again.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "String")]
 pub struct Model(String);
+
+impl TryFrom<String> for Model {
+    type Error = DriveError;
+
+    fn try_from(name: String) -> Result<Self, Self::Error> {
+        Self::new(&name)
+    }
+}
 
 impl Model {
     /// # Errors
@@ -86,27 +103,43 @@ impl Model {
     }
 }
 
-/// The effort of the model, from the closed list of `claude --help`.
+/// The effort of the model, from the closed list of `claude --help`, and `none`, `minimal` and
+/// `ultra`, which Codex names for some models: a start or a change takes one of these three only
+/// for a model whose program lists it (TH110, TH117).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Effort {
+    /// No reasoning: `none` of Codex.
+    #[serde(rename = "none")]
+    Off,
+    Minimal,
     Low,
     Medium,
     High,
     Xhigh,
     Max,
+    Ultra,
 }
 
 impl Effort {
     #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::Off => "none",
+            Self::Minimal => "minimal",
             Self::Low => "low",
             Self::Medium => "medium",
             Self::High => "high",
             Self::Xhigh => "xhigh",
             Self::Max => "max",
+            Self::Ultra => "ultra",
         }
+    }
+
+    /// Whether every program has always taken it, so that a start needs no list to take it.
+    #[must_use]
+    pub fn common(self) -> bool {
+        !matches!(self, Self::Off | Self::Minimal | Self::Ultra)
     }
 }
 

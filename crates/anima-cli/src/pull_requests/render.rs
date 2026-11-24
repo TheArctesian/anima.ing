@@ -1,5 +1,4 @@
-//! How pull requests read in a table. The documents select different parts of the K1
-//! `PullRequest`, so each is rendered from its JSON.
+//! The documents select different parts of the K1 `PullRequest`, so each renders from its JSON.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -8,7 +7,6 @@ use crate::forge::comments;
 use crate::forge::render::{checks, flag, many, names, number, text};
 use crate::output::Table;
 
-/// `yes` or `no` for whether GitHub says it can merge; `-` when it was not asked.
 fn can_merge(pull: &Value) -> &'static str {
     match pull
         .get("mergeability")
@@ -20,8 +18,6 @@ fn can_merge(pull: &Value) -> &'static str {
     }
 }
 
-/// The pull requests of a page as rows: number, title, author, branches, draft, can merge,
-/// checks.
 #[must_use]
 pub fn list<T: Serialize>(pulls: &T) -> Table {
     let pulls = serde_json::to_value(pulls).unwrap_or_default();
@@ -58,7 +54,6 @@ pub fn list<T: Serialize>(pulls: &T) -> Table {
     table
 }
 
-/// One pull request as label and value lines, with its comments when they were asked for.
 #[must_use]
 pub fn record<T: Serialize>(pull: &T) -> Table {
     let pull = serde_json::to_value(pull).unwrap_or_default();

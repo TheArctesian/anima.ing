@@ -1,12 +1,8 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
-/**
- * Who listens on the port of a loopback hub address (F-10): `own` is a process of this user (and, for the device link's
- * port, the app's own child); `other` is another user's process; `none` is no process.
- */
+/** Who listens on a loopback hub address's port (F-10); `own` includes the app's own child on the device link's port. */
 export type Listener = 'own' | 'other' | 'none';
 
-/** Why the check gave no answer: the shell's codes, and `unavailable` outside the desktop app. Any other answer is `failed`. */
 export type ListenerProblem = 'caller' | 'bad-origin' | 'unavailable' | 'failed';
 
 export type ListenerResult = { readonly ok: true; readonly listener: Listener } | { readonly ok: false; readonly problem: ListenerProblem };
@@ -14,7 +10,6 @@ export type ListenerResult = { readonly ok: true; readonly listener: Listener } 
 const LISTENERS: readonly unknown[] = ['own', 'other', 'none'] satisfies Listener[];
 const PROBLEMS: readonly unknown[] = ['caller', 'bad-origin'] satisfies ListenerProblem[];
 
-/** Asks the shell who listens at the loopback hub address `origin`. */
 export async function checkHubListener(origin: string): Promise<ListenerResult> {
   if (!isTauri()) return { ok: false, problem: 'unavailable' };
   try {

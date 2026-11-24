@@ -1,6 +1,5 @@
-//! The e-mail channel: a message through an SMTP server, always over implicit TLS or STARTTLS
-//! (NOT-002, D-17). Only the password is sealed; the server, the user name, the sender and the
-//! recipients are shown. Recipient addresses are never written to the process log (K7).
+//! Always implicit TLS or STARTTLS (NOT-002, D-17); only the password is sealed.
+//! Recipient addresses are never written to the process log (K7).
 
 use std::{net::IpAddr, str::FromStr};
 
@@ -30,11 +29,9 @@ const PASSWORD_MAX: usize = 512;
 const ADDRESS_MAX: usize = 320;
 const RECIPIENTS_MAX: usize = 20;
 
-/// What the API shows of an e-mail channel.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(in crate::fleet::notifications) struct EmailSettings {
-    /// A host name or IP literal.
     pub(in crate::fleet::notifications) host: String,
     pub(in crate::fleet::notifications) port: u16,
     pub(in crate::fleet::notifications) security: SmtpSecurity,
@@ -44,12 +41,10 @@ pub(in crate::fleet::notifications) struct EmailSettings {
     pub(in crate::fleet::notifications) password_stored: bool,
 }
 
-/// The SMTP password; an e-mail channel without one seals nothing.
 pub(in crate::fleet::notifications) struct EmailSecrets {
     pub(in crate::fleet::notifications) password: Secret,
 }
 
-/// An e-mail channel as the operator sent it.
 pub(in crate::fleet::notifications) struct EmailDraft {
     pub(in crate::fleet::notifications) host: String,
     pub(in crate::fleet::notifications) port: i32,
@@ -61,7 +56,6 @@ pub(in crate::fleet::notifications) struct EmailDraft {
     pub(in crate::fleet::notifications) to: Vec<String>,
 }
 
-/// A host name of letters, digits and hyphens, or an IP literal; never a URL.
 fn checked_host(host: &str) -> Result<(), FieldError> {
     let label = |label: &str| {
         (1..=63).contains(&label.len())
@@ -91,7 +85,6 @@ fn checked_port(port: i32) -> Result<u16, FieldError> {
         .ok_or_else(|| FieldError::new(PORT, "Use a port from 1 to 65535."))
 }
 
-/// An empty user name means none.
 fn checked_username(username: Option<String>) -> Result<Option<String>, FieldError> {
     let username = username.filter(|name| !name.is_empty());
     match &username {
@@ -114,8 +107,7 @@ fn checked_password(password: &Secret) -> Result<(), FieldError> {
     }
 }
 
-/// One mailbox, `name <user@host>` or `user@host`, with no line break: a line break in an
-/// address would be a header injection.
+/// A line break in an address would be a header injection.
 fn is_mailbox(text: &str) -> bool {
     text.len() <= ADDRESS_MAX
         && !text.chars().any(char::is_control)
@@ -138,7 +130,6 @@ fn checked_addresses(from: &str, to: &[String]) -> Vec<FieldError> {
     errors
 }
 
-/// Everything but the password, checked.
 fn checked_settings(
     draft: &mut EmailDraft,
     problems: &mut Problems,
@@ -152,7 +143,6 @@ fn checked_settings(
     port.zip(username)
 }
 
-/// The settings and secrets of a checked draft with `password`.
 fn outcome(
     draft: EmailDraft,
     (port, username): (u16, Option<String>),
@@ -181,7 +171,6 @@ fn outcome(
     })
 }
 
-/// The rules for a new e-mail channel: the password is optional.
 pub(super) fn new(mut draft: EmailDraft) -> Result<Outcome, Vec<FieldError>> {
     let mut problems = Problems::default();
     let checked = checked_settings(&mut draft, &mut problems);
@@ -200,8 +189,7 @@ pub(super) fn new(mut draft: EmailDraft) -> Result<Outcome, Vec<FieldError>> {
     outcome(draft, checked, password, touched)
 }
 
-/// The rules for a changed e-mail channel (CR-14): a new host or port needs the password
-/// again, or an empty one to remove it; otherwise a null password keeps the stored one.
+/// A new host or port needs the password again, or an empty one to remove it (CR-14).
 pub(super) fn change(
     before: &EmailSettings,
     stored: Kept<EmailSecrets>,

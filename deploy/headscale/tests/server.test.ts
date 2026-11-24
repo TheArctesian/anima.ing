@@ -1,5 +1,4 @@
-// Headscale config template and Compose file (WP-03 T2; VPN-003, VPS-002, VPS-003,
-// DNS-006, NET-005; decisions D-5 to D-9).
+// WP-03 T2; VPN-003, VPS-002, VPS-003, DNS-006, NET-005; D-5 to D-9.
 import { describe, expect, test } from 'bun:test';
 import { parseGoDuration, seconds } from '../src/go-duration.ts';
 import { days, parsePrometheusDuration } from '../src/prometheus-duration.ts';
@@ -16,7 +15,6 @@ const sample: Record<string, string> = {
 
 type Tree = Record<string, unknown>;
 
-/** Renders like `envsubst` limited to the given variables: other text is untouched. */
 function render(text: string, values: Record<string, string>): string {
   return text.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (whole, name: string) => values[name] ?? whole);
 }
@@ -59,8 +57,7 @@ const config: unknown = Bun.YAML.parse(render(template, sample));
 const compose: unknown = Bun.YAML.parse(composeText);
 const service = at(compose, 'services.headscale');
 
-// Every listener key of Headscale v0.29.7 and its protocol. A key containing "listen"
-// that is not here fails the inventory test, so a new listener cannot slip past.
+// Every listener key of Headscale v0.29.7; an unlisted key containing "listen" fails the inventory test.
 const listenerProtocols: Record<string, 'tcp' | 'udp'> = {
   listen_addr: 'tcp',
   metrics_listen_addr: 'tcp',
@@ -235,8 +232,7 @@ describe('config: TLS, DERP and storage (D-6, D-7, VPS-006)', () => {
   });
 });
 
-// Leaf keys of the v0.29.7 config-example.yaml. A misspelt key is ignored by Headscale
-// and its default applies (node.expiry would default to "never"), so unknown keys fail.
+// Headscale ignores a misspelt key and applies its default (node.expiry: never), so unknown keys fail.
 const knownKeys = new Set([
   'server_url', 'listen_addr', 'metrics_listen_addr', 'grpc_listen_addr', 'grpc_allow_insecure',
   'trusted_proxies', 'noise.private_key_path', 'prefixes.v4', 'prefixes.v6', 'prefixes.allocation',
@@ -262,8 +258,7 @@ test('every config key exists in Headscale v0.29.7', () => {
 
 describe('compose (VPS-002, VPS-003, D-9)', () => {
   test('Headscale is the only service, with exactly the reviewed keys (no environment, user, pid, entrypoint)', () => {
-    // Guards against HEADSCALE_* environment overrides (viper AutomaticEnv) and against
-    // user, pid or entrypoint changes that the review did not see.
+    // Guards against HEADSCALE_* overrides (viper AutomaticEnv) and unreviewed user, pid or entrypoint changes.
     expect(Object.keys(at(compose, 'services') as Tree)).toEqual(['headscale']);
     expect(Object.keys(service as Tree).sort()).toEqual([
       'cap_add', 'cap_drop', 'command', 'healthcheck', 'image', 'logging', 'network_mode',

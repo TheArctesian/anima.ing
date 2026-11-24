@@ -23,13 +23,11 @@ export function profileAdvice(status: CommandLineStatus | null): { readonly fold
   return { folder: status.folder, line: status.profileLine };
 }
 
-/** Where Install writes and asks the operator to confirm, or `null` when Install has nothing to do. */
 export function installTarget(status: CommandLineStatus | null): { readonly folder: string; readonly path: string } | null {
   if (status?.state === 'not-installed' || status?.state === 'elsewhere') return { folder: status.folder, path: status.path };
   return null;
 }
 
-/** Whether there is a link or launcher an Anima.ing app made for Remove to delete. */
 export function canRemove(status: CommandLineStatus | null): boolean {
   return status?.state === 'installed' || status?.state === 'elsewhere';
 }
@@ -41,7 +39,6 @@ const OCCUPANTS: Readonly<Record<Occupant['kind'], string>> = {
   other: 'a special file',
 };
 
-/** The refusal in words, with what is in the way at `path` when the shell said. */
 export function refusalText(problem: CommandLineProblem, occupant: Occupant | null, path: string | null): string {
   if (problem !== 'occupied' || occupant === null || path === null) return problemText(problem);
   const to = occupant.linkTarget === null ? '' : ` to ${occupant.linkTarget}`;

@@ -1,7 +1,4 @@
-//! The six Rust programs a release carries (INS-002, INS-003, OD-17, S12 2.2 step 2; `anima-daemon`
-//! since HMD-052, R-206): one
-//! `cargo build` from the clone with the release version in `ANIMA_VERSION`, for the targets the
-//! app is built for. Pure.
+//! INS-002, INS-003, OD-17, S12 2.2 step 2, HMD-052, R-206.
 
 use std::path::{Path, PathBuf};
 
@@ -12,7 +9,6 @@ use crate::builder::{
     plan::{Command, Program, command},
 };
 
-/// Each program's cargo package and binary, in the order of [`super::programs`].
 pub const PROGRAMS: [(&str, &str); 6] = [
     ("anima-cli", "anima"),
     ("anima-local-hub", "anima-local-hub"),
@@ -24,8 +20,7 @@ pub const PROGRAMS: [(&str, &str); 6] = [
 /// The variable `crates/anima-cli/build.rs` reads the release version from.
 const VERSION_VARIABLE: &str = "ANIMA_VERSION";
 
-/// Where cargo leaves `binary` for `triple`. Linux builds for the host, as `tauri build` does
-/// there, so its output has no target folder.
+/// Linux builds for the host, as `tauri build` does there, so its output has no target folder.
 fn built(clone: &Path, target: Target, triple: &str, binary: &str) -> PathBuf {
     match target {
         Target::LinuxX86_64 => artifact::target_folder(clone).join(format!("release/{binary}")),
@@ -38,8 +33,7 @@ fn built(clone: &Path, target: Target, triple: &str, binary: &str) -> PathBuf {
     }
 }
 
-/// One `cargo build` of the six programs for every triple of `target`, with the release version
-/// (OD-17).
+/// One `cargo build` for every triple of `target` (OD-17).
 pub fn build(clone: &Path, target: Target, version: &Version) -> Command {
     let mut args = vec!["build", "--release", "--locked"];
     for (package, binary) in PROGRAMS {
@@ -62,7 +56,6 @@ pub fn build(clone: &Path, target: Target, version: &Version) -> Command {
     cargo
 }
 
-/// Each built program for each triple, and the name Tauri reads it under.
 pub fn copies(clone: &Path, target: Target) -> Vec<(PathBuf, PathBuf)> {
     PROGRAMS
         .iter()

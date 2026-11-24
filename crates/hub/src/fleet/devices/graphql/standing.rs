@@ -1,7 +1,5 @@
-//! What the checks domain adds to `Device` and `Query.devices`: the loaders behind
-//! `status`, `uptime`, `checks` and `ip`, and the status filter and orders (API-005); and the
-//! loaders the web interfaces domain adds (WEB-001, WEB-002) and the metrics domain adds
-//! (MET-004, MET-006, MET-018, MET-032, R-122).
+//! What other domains add to `Device` and `Query.devices` (API-005, WEB-001, WEB-002, MET-004,
+//! MET-006, MET-018, MET-032, R-122).
 
 mod interfaces;
 mod listing;

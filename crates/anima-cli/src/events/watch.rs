@@ -1,7 +1,3 @@
-//! `anima event watch`: one line for each event the hub adds, until interrupted (K1
-//! `eventAdded`). The worked example of a `watch` command: open a [`Subscription`], print each
-//! answer with [`stream::line`].
-
 use super::documents::{EventAdded, event_added};
 use super::list::SeverityArg;
 use crate::failure::Failure;

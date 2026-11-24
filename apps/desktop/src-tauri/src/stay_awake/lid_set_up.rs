@@ -1,10 +1,5 @@
-//! The one set-up step of "Keep awake with the lid closed" on macOS (AWK-003). It writes one
-//! rule file that lets this user run exactly two commands as root with no password:
-//! `pmset -a disablesleep 0` and `pmset -a disablesleep 1`. macOS asks for the administrator;
-//! the shell never sees a password (INS-009). "Remove" deletes the file the same way.
-//!
-//! The operator starts each step. The script is fixed text: its only variable part is this
-//! user's numeric ID.
+//! AWK-003: the rule lets this user run only `pmset -a disablesleep 0|1` as root; the shell never sees a password (INS-009).
+//! The operator starts each step; the script is fixed text whose only variable part is this user's numeric ID.
 
 use std::{ffi::OsStr, time::Duration};
 
@@ -14,7 +9,6 @@ use crate::os_program::{self, AfterLimit, Limit, Stdout};
 /// The `pmset` the rule names. Fixed: the rule must not follow a test's stand-in program.
 const RULE_PMSET: &str = "/usr/bin/pmset";
 
-/// What macOS shows in its password dialog.
 const PROMPT: &str = "Anima needs an administrator to allow \"Keep awake with the lid closed\".";
 
 /// The operator types a password in a system dialog.
@@ -33,7 +27,6 @@ const ASK: [&str; 3] = [
 mod model;
 pub use model::{Lid, SetUpError};
 
-/// The lid state of `platform`, from its OS, its desktop name and whether the rule exists.
 #[must_use]
 pub fn lid(platform: &Platform) -> Lid {
     match platform.os {
@@ -51,7 +44,6 @@ fn decides_lid_itself(desktop: &str) -> bool {
         .any(|name| name.eq_ignore_ascii_case("KDE"))
 }
 
-/// The rule: user `#<id>` may run the two commands as root with no password.
 #[must_use]
 pub fn rule(user: u32) -> String {
     format!(
@@ -59,8 +51,7 @@ pub fn rule(user: u32) -> String {
     )
 }
 
-/// The script root runs to write the rule: `visudo` checks the text before it is installed,
-/// so a bad rule can never break `sudo`.
+/// `visudo` checks the text before it is installed, so a bad rule cannot break `sudo`.
 fn install_script(platform: &Platform) -> String {
     format!(
         "t=$(/usr/bin/mktemp /private/tmp/anima-stay-awake.XXXXXX) || exit 1; \
@@ -72,8 +63,7 @@ fn install_script(platform: &Platform) -> String {
     )
 }
 
-/// The script root runs to delete the rule. `set_sleep_back`: Anima changed the sleep setting
-/// and could not set it back; root does it here, because nothing can after the rule is gone.
+/// `set_sleep_back`: root restores the sleep setting here, as nothing can after the rule is gone.
 fn remove_script(platform: &Platform, set_sleep_back: bool) -> String {
     let restore = if set_sleep_back {
         format!("{RULE_PMSET} -a disablesleep 0; ")
@@ -99,16 +89,12 @@ fn as_administrator(platform: &Platform, script: &str) -> Result<(), SetUpError>
         .map_err(|_| SetUpError::Refused)
 }
 
-/// Writes the rule file; macOS asks for an administrator.
-///
 /// # Errors
 /// `Unsupported` off macOS; `Refused` when the dialog was cancelled or the script failed.
 pub fn set_up(platform: &Platform) -> Result<(), SetUpError> {
     as_administrator(platform, &install_script(platform))
 }
 
-/// Deletes the rule file; macOS asks for an administrator.
-///
 /// # Errors
 /// As `set_up`.
 pub fn remove(platform: &Platform, set_sleep_back: bool) -> Result<(), SetUpError> {

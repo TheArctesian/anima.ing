@@ -1,0 +1,103 @@
+/*
+ * The sizes of the details card of a thread: T3 Code's layout (t3-ui-copy-2026-11-21/07-details-card.md and
+ * 02 section 7) in Anima's skin. Colours, type, corners and focus are the semantic tokens; no glass; no text below
+ * 12 px, so T3's 10 and 11 px are our 12 px.
+ */
+:root {
+  /* The card: 280 px wide, 12 px from the edges of the chat canvas. */
+  --details-card: 17.5rem;
+  --details-gap: var(--space-3);
+
+  /* A section: 8 px of padding, 10 px below. A heading is 32 px high. */
+  --details-section-pad: var(--space-2);
+  --details-section-end: 0.625rem;
+
+  /* A row: 32 px high, 10 px of padding, a 10 px gap, 13 px text. A small control is 24 px, a line of detail 20 px. */
+  --details-row: var(--code-control);
+  --details-row-pad: 0.625rem;
+  --details-row-gap: 0.625rem;
+  --details-small: var(--space-6);
+  --details-line: var(--space-5);
+  --details-indent: calc(var(--details-row-pad) + var(--icon-sm) + var(--details-row-gap));
+
+  /* A list that scrolls inside the card: 216 px. The list of refs: 224 px; its row 28 px; the popup 23rem. */
+  --details-list: 13.5rem;
+  --details-refs: 14rem;
+  --details-popup: 23rem;
+
+  /* A meter: a 3 px bar that is at least 48 px wide, a 9 px mark, a label of at most 112 px. */
+  --details-bar: 3px;
+  --details-bar-min: var(--space-12);
+  --details-mark: 9px;
+  --details-label-max: 7rem;
+
+  /* The find bar: 36 px high in a slot of 48 px. */
+  --details-find: 2.25rem;
+}
+
+:root {
+  /* Small steps that the scale of the app does not have: 6 px and 2 px. */
+  --details-step: 0.375rem;
+  --details-hair: 2px;
+}
+
+/* The words of a row: one line, cut with an ellipsis. */
+.details-label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Quiet words at the end of a row: a state, a time, a count. */
+.details-trail {
+  flex: none;
+  margin-inline-start: auto;
+  color: var(--code-quiet-text);
+  font-size: var(--code-text-meta);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-regular);
+}
+
+/* A line of quiet text in a section: an empty state, an error. */
+.details-note {
+  margin: 0;
+  padding: var(--details-step) var(--details-row-pad);
+  color: var(--code-quiet-text);
+  font-size: var(--code-text-meta);
+}
+
+.details-note.error {
+  color: var(--danger);
+}
+
+/* A list inside a section: no marks, and it scrolls past 216 px. */
+.details-list {
+  display: flex;
+  flex-direction: column;
+  max-block-size: var(--details-list);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/*
+ * A tip wraps its control in an inline box of the kit. In the card a row fills the width, so the box of a row does
+ * too, and the box of a meter keeps the columns of the grid of the meters.
+ */
+.details-card [role='presentation']:has(> .control) {
+  display: flex;
+  min-inline-size: 0;
+}
+
+.details-card [role='presentation']:has(> .control:is(.row, .title, .primary)) {
+  flex: 1;
+  inline-size: 100%;
+}
+
+.details-card [role='presentation']:has(> .meter) {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+}

@@ -11,15 +11,9 @@ function refuse(event: Event): void {
 }
 
 /**
- * Take the clipboard's ways into and out of the terminal in `host` before xterm.js sees them (RA-003, RA-033).
- * `allows` is asked at each event, so the session's policy holds from the moment it changes.
- * - In: a paste event or dropped text is pasted cleaned, and only while paste is on; any other edit that inserts
- *   outside text into the text field is cancelled, so nothing reaches the shell around the cleaning.
- * - Out: while copy is off, a `copy` or `cut` event (from an Edit or context menu) is cancelled before xterm.js
- *   writes the selection, and so is the context menu, for which xterm.js puts the selection in the text field.
- *   xterm.js also puts a mouse selection (on Linux) or a right-clicked one (in Firefox) in that field and selects
- *   it, which hands it to the system's primary selection; with copy off, the field is emptied and nothing selected.
- *   Called after `terminal.open`, which makes the field.
+ * Takes the clipboard's ways in and out before xterm.js sees them (RA-003, RA-033); `allows` is asked at each event.
+ * xterm.js selects a mouse or right-clicked selection in its text field, which reaches the primary selection.
+ * Call after `terminal.open`, which makes the field.
  */
 export function guardClipboard(host: HTMLElement, terminal: Terminal, allows: () => SessionTransfer): void {
   const field = terminal.textarea;

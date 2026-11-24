@@ -1,8 +1,6 @@
 import type { HubError, HubResult } from '$lib/hub/hub';
 import type { ApplicationRoute, RouteCalls, RouteList } from '../api';
 
-// Test support: routes in the hub's shape, and calls that answer with them and record what the section asked.
-
 /** The time of each test: the certificates below end 9 and 89 days after it. */
 export const NOW = new Date('2026-11-21T12:00:00Z');
 
@@ -38,7 +36,6 @@ export function route(change: Partial<ApplicationRoute>): ApplicationRoute {
   };
 }
 
-/** The routes of a hosted hub, as in Frame 1: one proven, one with a certificate that ends soon, one waiting, one lost, one redirect. */
 export const ROUTES: readonly ApplicationRoute[] = [
   route({}),
   route({ id: 'route-tracks', name: 'tracks.example.com', deviceId: NAS, port: 3000, certificateNotAfter: '2026-11-30T13:00:00Z', requests: 1900, bytesOut: 84_000_000 }),
@@ -55,12 +52,11 @@ export const DEVICE_NAMES: ReadonlyMap<string, string> = new Map([
 export interface FakeCalls extends RouteCalls {
   listAsked: number;
   checked: string[];
+  removed: string[];
   routes: readonly ApplicationRoute[];
-  /** When set, the next list fails with it. */
   listFails?: HubError;
-  /** When set, each check fails with it. */
   checkFails?: HubError;
-  /** What a check answers, by the ID of the route; the route as it was by default. */
+  removeFails?: HubError;
   checkAnswers: Map<string, ApplicationRoute>;
 }
 
@@ -68,6 +64,7 @@ export function fakeCalls(routes: readonly ApplicationRoute[] = ROUTES): FakeCal
   const calls: FakeCalls = {
     listAsked: 0,
     checked: [],
+    removed: [],
     routes,
     checkAnswers: new Map(),
     list(): Promise<HubResult<RouteList>> {
@@ -81,6 +78,11 @@ export function fakeCalls(routes: readonly ApplicationRoute[] = ROUTES): FakeCal
       const answer = calls.checkAnswers.get(id) ?? calls.routes.find((each) => each.id === id);
       return Promise.resolve(answer === undefined ? { ok: false, error: { code: 'NOT_FOUND', message: 'No such route.' } } : { ok: true, value: answer });
     },
+    remove(id: string): Promise<HubResult<string>> {
+      calls.removed.push(id);
+      if (calls.removeFails !== undefined) return Promise.resolve({ ok: false, error: calls.removeFails });
+      return Promise.resolve({ ok: true, value: id });
+    },
   };
   return calls;
 }
@@ -89,4 +91,9 @@ export function fakeCalls(routes: readonly ApplicationRoute[] = ROUTES): FakeCal
 export const NOT_LINUX_ERROR: HubError = { code: 'UNAVAILABLE', message: 'Routing needs a hub on Linux.' };
 
 /** The hub's refusal for an account with no second factor (SF-232). */
-export const NO_SECOND_FACTOR: HubError = { code: 'FORBIDDEN', message: 'Turn on the second factor of the account before an application is made public.' };
+export const NO_SECOND_FACTOR: HubError = { code: 'FORBIDDEN', message: 'Turn on the second factor of the account before a route is added or checked.' };
+
+export const NO_SUCH_ROUTE: HubError = { code: 'NOT_FOUND', message: 'No such route.' };
+
+/** The hub's refusal of a removal by a token that may not change a route, such as an API key. */
+export const KEY_REFUSED: HubError = { code: 'FORBIDDEN', message: 'This token cannot do that. Sign in to the hub to do it.' };

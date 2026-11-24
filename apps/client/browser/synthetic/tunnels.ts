@@ -4,7 +4,6 @@ import { HUB_ORIGIN } from './access';
 import type { HubState } from './model';
 import type { Recording } from './recorder';
 
-// `/terminal` (K4 section 8) and `/tunnel` (K4 sections 2 to 4): the smallest answer that shows a session opened.
 // The hub refuses a bad ticket with HTTP 403 before the upgrade; a mocked socket cannot, so it closes at once.
 
 export const TICKET_REFUSED_CLOSE = 1008;

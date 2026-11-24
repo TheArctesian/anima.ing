@@ -7,7 +7,6 @@
   import TextField from './TextField.svelte';
 
   interface Props {
-    /** ICMP, TCP, TLS, DNS or PUSH; HTTP and GROUP have their own components. */
     values: CheckFormValues;
     errors: readonly FieldError[];
   }

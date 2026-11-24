@@ -1,5 +1,4 @@
-//! The samples of each known GPU from one collection's answers (MET-006, MET-007, MET-009).
-//! Pure.
+//! The samples of each known GPU from one collection's answers (MET-006, MET-007, MET-009); pure.
 
 use daemon_core::{points::Kind, readings::GpuReading};
 
@@ -9,11 +8,7 @@ use super::{
 };
 use crate::fleet::metrics::{GpuVendor, Sample};
 
-/// Busy share, VRAM share and bytes, temperature and power of each GPU in `known` whose
-/// vendor answered with its number, labelled with the GPU's device number. A GPU with no
-/// answer this time, or a value its reading lacks, gives no sample, never zero; VRAM only for
-/// a GPU found with VRAM (MET-007). A GPU the device reports that is not in `known` waits for
-/// the next discovery.
+/// A missing answer or value gives no sample, never zero; a GPU not in `known` waits for the next discovery (MET-007).
 pub(in crate::fleet::metrics::collector) fn samples(
     known: &Discovered,
     answers: &[(GpuVendor, Answer)],
@@ -27,7 +22,6 @@ pub(in crate::fleet::metrics::collector) fn samples(
     out
 }
 
-/// The reading of `found` among the answers of its vendor.
 fn reading_of<'a>(found: &Found, answers: &'a [(GpuVendor, Answer)]) -> Option<&'a GpuReading> {
     answers
         .iter()
@@ -40,8 +34,7 @@ fn reading_of<'a>(found: &Found, answers: &'a [(GpuVendor, Answer)]) -> Option<&
         })
 }
 
-/// Adds the samples of `reading` for `found`; none for a device number outside the K8 range,
-/// which discovery never gives.
+/// A device number outside the K8 range gives none; discovery never gives one.
 fn add(out: &mut Vec<Sample>, found: &Found, reading: &GpuReading) {
     let Ok(index) = u8::try_from(found.gpu.index) else {
         return;
@@ -70,7 +63,6 @@ fn add(out: &mut Vec<Sample>, found: &Found, reading: &GpuReading) {
     );
 }
 
-/// `count` as a sample value.
 #[expect(
     clippy::cast_precision_loss,
     reason = "byte counts above 2^53 lose their last digits, which a chart cannot show"

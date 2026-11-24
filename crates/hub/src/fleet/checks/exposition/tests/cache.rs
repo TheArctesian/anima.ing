@@ -1,5 +1,4 @@
-//! The ten-second cache: one build per round, shared by every scrape, abandoned or not, and a
-//! failed build kept two seconds (D-24). Builds run on paused tokio time where they wait.
+//! The ten-second exposition cache (D-24).
 
 use std::{
     future::Future,
@@ -19,10 +18,8 @@ fn at(seconds: i64) -> DateTime<Utc> {
     DateTime::from_timestamp(1_800_000_000 + seconds, 0).unwrap()
 }
 
-/// The future of a build in these tests.
 type Build = Pin<Box<dyn Future<Output = Option<String>> + Send>>;
 
-/// A build that counts its start and names the run in its text, after `takes` of tokio time.
 fn counted(builds: &Arc<AtomicUsize>, takes: Duration) -> impl FnOnce() -> Build + use<> {
     let builds = Arc::clone(builds);
     move || {
@@ -34,7 +31,6 @@ fn counted(builds: &Arc<AtomicUsize>, takes: Duration) -> impl FnOnce() -> Build
     }
 }
 
-/// A build that starts at once and finishes without delay.
 fn quick(builds: &Arc<AtomicUsize>) -> impl FnOnce() -> Build + use<> {
     counted(builds, Duration::ZERO)
 }

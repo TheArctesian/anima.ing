@@ -5,9 +5,7 @@ import { HUB_ORIGIN } from '../../synthetic/access';
 import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 import { openSettings, section } from '../steps';
 
-// The pictures in the tiles of the Extensions page (OD-EXT-NEW-pictures, choice A): the page of each built extension, from
-// the sample data of the synthetic hub, in each appearance. They run only when asked, `GALLERY_PICTURES=1`; ../README.md says
-// how they become the files `static/extensions/<key>-<appearance>.webp`.
+// Tile pictures of the Extensions page (OD-EXT-NEW-pictures); ../README.md says how they become `static/extensions/`.
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/pictures/', import.meta.url));
 const WINDOW = { width: 1280, height: 800 };
@@ -26,7 +24,6 @@ const PICTURES = [
     key: 'integrations',
     shoot: async (page: import('@playwright/test').Page, path: string) => {
       await openSettings(page);
-      // The section with a margin of the page around it, so no line of words touches the edge of the picture.
       await section(page, 'Integrations').scrollIntoViewIfNeeded();
       const box = await section(page, 'Integrations').boundingBox();
       if (box === null) throw new Error('The section Integrations is not on the page.');

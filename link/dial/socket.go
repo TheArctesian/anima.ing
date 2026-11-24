@@ -10,12 +10,10 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// Opener gives the connection to a local port of a device, as Desk.Open
-// does.
+// Opener gives the connection to a device's local port, as Desk.Open does.
 type Opener func(ctx context.Context, device netip.Addr, port uint16) (stream net.Conn, release func(), err error)
 
-// Serve answers the dial socket of the hub link until the listener ends.
-// Each connection is one request: see the package comment.
+// Serve answers the hub link's dial socket, one request per connection, until the listener ends.
 func Serve(listener net.Listener, open Opener) {
 	for {
 		local, err := listener.Accept()
@@ -53,7 +51,6 @@ func serve(local net.Conn, open Opener) {
 	tunnel.Join(local, stream)
 }
 
-// say writes the answer line of the dial socket.
 func say(local net.Conn, word string) bool {
 	_ = local.SetWriteDeadline(time.Now().Add(lineLimit))
 	_, err := io.WriteString(local, word+"\n")

@@ -1,5 +1,4 @@
-//! The update on the wire: the `update` member of a batch, the instruction of `Accepted`, the
-//! bodies of the two update routes and `NO_RELEASE` (K8 Section 8, R-139).
+//! K8 Section 8, R-139.
 
 use super::{assert_accepted, assert_malformed, checked};
 use crate::wire::{
@@ -16,7 +15,6 @@ const EXAMPLE: &str = r#"{
   "last": { "version": "0.3.0", "result": "rolled_back", "cause": "no_check", "tries": 1 }
 }"#;
 
-/// A change of the example member.
 type Change = fn(&mut BatchUpdate);
 
 fn example() -> BatchUpdate {

@@ -12,12 +12,7 @@ const lazyUpdater: UpdaterPort = {
   currentVersion: async () => (await load()).desktopUpdater.currentVersion(),
 };
 
-/**
- * Builds the app's `Updates` over the desktop shell and provides it to the components below. Checking starts only where
- * the platform updates itself, in a production build that a release made: dev shells and trial bundles have no updater
- * plugin, and the web and iOS clients never check, so they never load the updater (UPD-001, DEF-001). Call once in the
- * root layout, during component setup.
- */
+/** Only a release build checks: dev shells and trial bundles have no updater plugin (UPD-001, DEF-001). */
 export function provideDesktopUpdates(): void {
   const updates = new Updates(lazyUpdater, { warn: warnToProcessLog });
   provideUpdates(updates);

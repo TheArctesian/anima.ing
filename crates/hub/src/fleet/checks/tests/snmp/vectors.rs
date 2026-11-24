@@ -1,14 +1,8 @@
 //! Known-answer vectors for the v3 cryptography (RFC 3414 A.3, RFC 7860, RFC 3826, RFC 4231,
-//! NIST SP 800-38A).
-//!
-//! Sources of the expected values:
-//! - SHA-256 password to key and localisation: no RFC lists them, so they were computed with
-//!   Python 3 `hashlib` (`sha256` over "maplesyrup" repeated to 1 MiB, then
-//!   `sha256(Ku + engineID + Ku)`), the method of RFC 3414 A.2.2 with the hash of RFC 7860.
-//!   The same script gives the SHA-1 values printed in RFC 3414 A.3.2, which checks it.
-//! - HMAC: RFC 4231 test case 2, truncated to its first 24 bytes (RFC 7860 Section 4.2.4).
-//! - AES-128-CFB: NIST SP 800-38A F.3.13 (CFB128-AES128.Encrypt), also reproduced with
-//!   `openssl enc -aes-128-cfb`.
+//! NIST SP 800-38A). No RFC lists the SHA-256 key values: they come from Python `hashlib` by
+//! the method of RFC 3414 A.2.2 with the hash of RFC 7860, which gives RFC 3414 A.3.2's SHA-1
+//! values too. HMAC is RFC 4231 case 2 cut to 24 bytes (RFC 7860 Section 4.2.4); AES-128-CFB
+//! is NIST SP 800-38A F.3.13.
 
 use sha2::Digest as _;
 

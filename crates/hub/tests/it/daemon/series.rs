@@ -1,7 +1,4 @@
-//! R-098 e, CR-20: a device creates at most 1024 series in any hour, a batch's new ones
-//! included, counted by when the hub created them. Every series one daemon can send at once
-//! fits; a batch that would pass the cap is refused `MALFORMED` with an event and stores
-//! nothing; back-dated points do not reset the count, and an hour later there is room again.
+//! R-098 e, CR-20: a device creates at most 1024 series in any hour, counted by when the hub created them.
 
 use axum::http::StatusCode;
 use chrono::{DateTime, TimeDelta, Utc};
@@ -13,8 +10,6 @@ use super::{
     harness::{Daemons, PERMITTED, PVE_01, pushing_now},
 };
 
-/// Every series one daemon can send at once: each plain kind, 32 labels of each disk and
-/// network kind, and each GPU kind of the 64 GPU indexes (519).
 fn every_series() -> Vec<Value> {
     let plain = [
         "cpu_percent",
@@ -49,14 +44,12 @@ fn every_series() -> Vec<Value> {
     series
 }
 
-/// `count` disk series named from `first` on.
 fn disks(first: usize, count: usize) -> Vec<Value> {
     (first..first + count)
         .map(|label| json!({ "kind": "disk_bytes", "label": format!("/extra{label}") }))
         .collect()
 }
 
-/// Pushes one point at `at` for each of `series`, 256 series a batch; the status of each.
 async fn push_all(
     daemons: &Daemons,
     token: &str,
@@ -99,7 +92,6 @@ async fn r_098_e_a_device_creates_at_most_1024_series_in_an_hour(pool: PgPool) {
         "{filled:?}"
     );
     assert_eq!(samples_of(&pool, PVE_01).await, 1024);
-    // A known series still takes points; one more is refused, and nothing of its batch stays.
     let known = &every[..1];
     let later = now - TimeDelta::seconds(10);
     assert_eq!(
@@ -119,7 +111,6 @@ async fn r_098_e_a_device_creates_at_most_1024_series_in_an_hour(pool: PgPool) {
         )]
     );
 
-    // An hour on, the series made then were not created in the last hour: there is room again.
     daemons
         .clock
         .advance(TimeDelta::hours(1) + TimeDelta::seconds(10));

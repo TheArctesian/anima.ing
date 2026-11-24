@@ -1,8 +1,4 @@
-//! What the desktop app can learn about the computer it runs on, so the Add device form can be
-//! filled in for it (R-058, R-060): its name, the OS user, the OS, its address on the Anima VPN
-//! (NET-001, R-052) as the Anima VPN client reports it (ADR-005) and whether SSH answers there.
-//! The web view passes in only the hub's VPN login server (`vpnLoginServer`).
-//!
+//! This computer for the Add device form (R-058, R-060). The web view passes in only `vpnLoginServer`.
 //! None of it is secret, but the user name and the address are not logged (LOG-007).
 
 mod address;
@@ -17,7 +13,6 @@ use std::{net::Ipv4Addr, time::Duration};
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use tauri_plugin_log::log;
 
-/// How long SSH on the VPN address may take to accept a connection.
 const SSH_PATIENCE: Duration = Duration::from_millis(300);
 const SSH_PORT: u16 = 22;
 
@@ -31,7 +26,6 @@ pub enum OperatingSystem {
 }
 
 impl OperatingSystem {
-    /// The system this build runs on; `None` off macOS and Linux.
     pub(crate) fn current() -> Option<Self> {
         if cfg!(target_os = "macos") {
             Some(Self::Macos)
@@ -45,32 +39,22 @@ impl OperatingSystem {
     }
 }
 
-/// The name of this computer, as `this_machine_read` gives it; empty when the OS gives none.
 pub(crate) fn computer_name() -> String {
     OperatingSystem::current().map_or_default(name::computer_name)
 }
 
-/// This computer, as the Add device form needs it. Crosses to the client in camelCase.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThisMachine {
-    /// The computer name; empty when the OS gives none.
     pub name: String,
-    /// The OS user name of this process; empty when the OS gives none.
     pub user: String,
     pub os: OperatingSystem,
-    /// This computer's own IPv4 address on the Anima VPN, as its Tailscale client logged in to
-    /// the hub's login server reports it (ADR-005). `None` when that client is missing, slow,
-    /// stopped, logged out or signed in to another tailnet.
+    /// As the Tailscale client logged in to the hub's login server reports it (ADR-005); else `None`.
     pub vpn_address: Option<Ipv4Addr>,
-    /// Whether TCP port 22 accepted a connection on `vpn_address`; false without one.
     pub ssh_listening: bool,
 }
 
-/// Why this computer could not be read. Carries no OS error text.
-///
-/// - `unavailable`: the app runs on a system other than macOS or Linux.
-/// - `failed`: the read did not finish.
+/// Carries no OS error text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum ThisMachineError {
     #[error("this computer cannot be read on this system")]
@@ -99,8 +83,7 @@ impl Serialize for ThisMachineError {
     }
 }
 
-/// Reads this computer from the OS, with its VPN address on `login_server`. Blocks for up to
-/// the name, VPN client and SSH patience.
+/// Blocks for up to the name, VPN client and SSH patience.
 fn read(os: OperatingSystem, login_server: &str) -> ThisMachine {
     let vpn_address = vpn_client::client_program(os).and_then(|program| {
         vpn_client::own_address(program, login_server, vpn_client::CLIENT_PATIENCE)
@@ -115,9 +98,7 @@ fn read(os: OperatingSystem, login_server: &str) -> ThisMachine {
     }
 }
 
-/// Reads this computer's name, user, OS, VPN address and whether SSH answers on it.
-/// `login_server` is the hub's `vpnLoginServer`: only a client logged in to it gives the VPN
-/// address.
+/// `login_server` is the hub's `vpnLoginServer`: only a client logged in to it gives the VPN address.
 #[tauri::command]
 pub async fn this_machine_read(login_server: String) -> Result<ThisMachine, ThisMachineError> {
     let Some(os) = OperatingSystem::current() else {

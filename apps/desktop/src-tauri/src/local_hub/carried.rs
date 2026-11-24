@@ -1,5 +1,3 @@
-//! Where the application carries the hub's programs. Pure but for two looks at the disk.
-
 use std::path::{Path, PathBuf};
 
 use super::LocalHubError;
@@ -9,19 +7,13 @@ const PROGRAM: &str = "anima-local-hub";
 /// The tree below `usr/` of the Linux bundle: Tauri puts resources in `lib/<productName>/`.
 pub(super) const LINUX_TREE: &str = "lib/Anima.ing/database";
 
-/// The program that does the work, and the PostgreSQL tree it copies at `install`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Carried {
     pub program: PathBuf,
     pub tree: PathBuf,
 }
 
-/// The programs beside `executable`, in a release build: a debug build's target folder may
-/// hold programs built from another commit, which are never offered. A debug build uses the
-/// folders of `dev`, when it has both.
-///
-/// macOS: `Anima.ing.app/Contents/MacOS/anima-local-hub` and `Contents/Resources/database/`.
-/// Linux: `usr/bin/anima-local-hub` and `usr/lib/Anima.ing/database/`.
+/// Only a release build uses the programs beside `executable`: a debug target folder may hold programs of another commit.
 pub fn beside(
     executable: &Path,
     macos: bool,

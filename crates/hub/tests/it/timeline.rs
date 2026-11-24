@@ -1,5 +1,4 @@
-//! `Query.timeline`: the event log as Evidence, read through the hub API (K-E3; TML-001,
-//! TML-002, TML-004, TML-006, TML-007, API-006).
+//! `Query.timeline` (K-E3; TML-001, TML-002, TML-004, TML-006, TML-007, API-006).
 
 mod event_log;
 mod refusals;
@@ -17,7 +16,6 @@ const TIMELINE: &str = "query($from: DateTime!, $to: DateTime!, $categories: [Ev
     first: $first, after: $after) { edges { cursor node { reference source category title start \
     end receivedAt basis uncertainty supersededBy } } pageInfo { hasNextPage endCursor } } }";
 
-/// A hub at `start()` with the fixture operator and a login token.
 async fn signed_in(pool: &PgPool) -> (Hub, String) {
     set_operator(pool).await;
     let hub = Hub::new(pool, start());
@@ -25,7 +23,6 @@ async fn signed_in(pool: &PgPool) -> (Hub, String) {
     (hub, token)
 }
 
-/// Records one event `minutes` before `start()` and returns its ID as text.
 async fn seed(pool: &PgPool, hub: &Hub, (source, message): (Source, &str), minutes: i64) -> String {
     let event = NewEvent {
         severity: Severity::Info,
@@ -42,8 +39,7 @@ async fn seed(pool: &PgPool, hub: &Hub, (source, message): (Source, &str), minut
         .to_string()
 }
 
-/// The hour that ends one minute before `start()`: it holds seeded events and not the event
-/// of the login.
+/// Ends one minute before `start()`, so it holds the seeded events but not the login's event.
 fn hour_before() -> (DateTime<Utc>, DateTime<Utc>) {
     (
         start() - TimeDelta::minutes(61),

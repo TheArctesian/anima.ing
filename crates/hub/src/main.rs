@@ -1,10 +1,4 @@
-//! Hub binary: reads the environment, builds the dependencies and serves the router, or runs
-//! `anima-hub migrate` (R-016), `anima-hub operator set <username>`,
-//! `anima-hub operator create <username>`, `anima-hub operator show`,
-//! `anima-hub operator totp <username> [--disable | --new]` (D-9, FRN-003, FRN-004) or
-//! `anima-hub health` (the compose healthcheck), or
-//! `anima-hub release <sign | check | publish> <target> <version> <folder>`, the commands of
-//! the release workflow, which need no hub (R-179).
+//! Hub binary: serves the router or runs one of its commands (R-016, D-9, FRN-003, FRN-004, R-179).
 
 mod core_dumps;
 mod shutdown;
@@ -155,7 +149,6 @@ async fn run() -> Result<(), StartError> {
     }
 }
 
-/// Runs a command of the release workflow and prints its result (R-179).
 async fn release(env: &BTreeMap<String, String>, args: &[&str]) -> Result<(), StartError> {
     let http = upkeep::publishing_client().map_err(|_| StartError::Http)?;
     println!("{}", builds::release_command(env, args, &http).await?);
@@ -171,15 +164,14 @@ fn tls_files(config: &Config) -> Option<listen::TlsFiles> {
     files.map(|(cert, key)| listen::TlsFiles { cert, key })
 }
 
-/// An empty `ANIMA_PROBE_DENY` is allowed but logged at start (R-030, K7).
+/// An empty `ANIMA_PROBE_DENY` is allowed but logged at start (R-030, K7); a hosted hub never
+/// gets here with one, because its configuration refuses it.
 fn warn_without_probe_deny(config: &Config) {
     if config.probe_deny.is_empty() {
         tracing::warn!("ANIMA_PROBE_DENY is empty: checks may probe the hub's own networks");
     }
 }
 
-/// The database of the hub, connected and ready for its use: the role is the runtime role,
-/// the audit entries are linked and the permitted networks are stored.
 async fn database(config: &Config) -> Result<PgPool, StartError> {
     let pool = connect(config).await?;
     events::check_runtime_role(&pool).await?;
@@ -188,9 +180,7 @@ async fn database(config: &Config) -> Result<PgPool, StartError> {
     Ok(pool)
 }
 
-/// The hub's private sockets: in the link mode the one through which `anima-link` reaches the
-/// hub (one-click plan S5), and in the hosted mode the one through which the hub's own daemon
-/// reaches only the routes of K8 (HMD-071).
+/// In the link mode `anima-link` reaches the hub here (one-click plan S5); in the hosted mode the hub's own daemon reaches only the routes of K8 (HMD-071).
 fn private_sockets(
     config: &Config,
 ) -> Result<(Option<listen::LinkSocket>, Option<listen::LinkSocket>), StartError> {
@@ -223,8 +213,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         .denying(policy.clone());
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
-    // A hosted hub is a device of its own list, and it watches the computers of its link;
-    // its own checks are ready before the scheduler runs.
+    // A hosted hub's own checks are ready before the scheduler runs.
     let hosted = upkeep::hosted(&config, &pool, &bus, &clock).await;
     let feed = metrics::Feed::new();
     // The sources reach only their declared API bases, through the same deny list (K-E1).
@@ -268,9 +257,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     Ok(())
 }
 
-/// Stores `ANIMA_PERMITTED_NETWORKS` (D-10). A hub fault is logged by its fault word and
-/// SQLSTATE, as the API boundary logs it, never with content (LOG-007); a refused network
-/// keeps its plain message.
+/// A hub fault is logged by its fault word and SQLSTATE, never with content (LOG-007); a refused network keeps its plain message.
 async fn permit_networks(pool: &PgPool, config: &Config) -> Result<(), StartError> {
     let stored = access::permit_networks(pool, &config.permitted_networks).await;
     stored.map_err(|error| {
@@ -282,7 +269,7 @@ async fn permit_networks(pool: &PgPool, config: &Config) -> Result<(), StartErro
     })
 }
 
-/// Opens the sessions before the hub serves, and logs how many stale rows ended (a number only).
+/// Logs only the number of stale rows that ended.
 async fn open_sessions(
     pool: &PgPool,
     now: chrono::DateTime<chrono::Utc>,
@@ -292,7 +279,7 @@ async fn open_sessions(
     Ok(live)
 }
 
-/// Applies the migrations as the owner role and exits; serving never migrates (R-016).
+/// Migrates as the owner role; serving never migrates (R-016).
 async fn migrate(config: &Config) -> Result<(), StartError> {
     let pool = connect(config).await?;
     sqlx::migrate!("./migrations").run(&pool).await?;
@@ -306,9 +293,7 @@ fn vault(config: &Config) -> Result<Vault, StartError> {
     })
 }
 
-/// The file store of `ANIMA_FILES_DIR`, sealed with the data keys of `ANIMA_DATA_KEY_DIR`. A
-/// data key that is the credential key or another data key stops the start (VLT-003); without
-/// either folder the hub starts and an upload answers UNAVAILABLE.
+/// A data key that is the credential key or another data key stops the start (VLT-003); without either folder an upload answers UNAVAILABLE.
 fn file_store(config: &Config, vault: &Vault) -> Result<files::Store, StartError> {
     let keys = SealingKeys::open(config.data_key_dir.as_deref(), vault.key_id().as_bytes())?;
     let store = files::Store::in_folder(config.files_dir.as_deref(), keys);
@@ -316,10 +301,8 @@ fn file_store(config: &Config, vault: &Vault) -> Result<files::Store, StartError
     Ok(store)
 }
 
-/// The release bucket when `ANIMA_RELEASES_ENDPOINT` is set, its token and the updater key read
-/// from their files now (BLD-060, R-108, R-117). An updater key that cannot be used turns
-/// publishing off and the hub still starts; the log names the check that failed, never a value
-/// (LOG-007).
+/// An unusable updater key turns publishing off and the hub still starts (BLD-060, R-108, R-117).
+/// The log names the check that failed, never a value (LOG-007).
 fn release_bucket(config: &Config) -> Result<Option<Arc<builds::Bucket>>, StartError> {
     let opened = config.releases.as_ref().map(builds::open_bucket);
     let bucket = opened.transpose()?.flatten();
@@ -327,8 +310,7 @@ fn release_bucket(config: &Config) -> Result<Option<Arc<builds::Bucket>>, StartE
     Ok(bucket.map(Arc::new))
 }
 
-/// Links the audit entries that exist when the hash chain is empty, before anything writes an
-/// audit entry (LOG-026). Each command that writes to the audit log calls it first.
+/// Each command that writes to the audit log calls this before anything writes an audit entry (LOG-026).
 async fn link_audit_entries(pool: &PgPool) -> Result<(), StartError> {
     let linked = events::link_existing(pool).await?;
     if linked > 0 {

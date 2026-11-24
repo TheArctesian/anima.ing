@@ -1,6 +1,5 @@
 //! The points the daemon has not yet seen accepted (MET-014, K8 Section 7).
-//!
-//! Pure: the time is a parameter, and the retry pace belongs to the caller (CQ-021).
+//! The retry pace belongs to the caller (CQ-021).
 
 use std::collections::BTreeSet;
 
@@ -18,30 +17,25 @@ pub const BATCH_POINTS: usize = 60;
 /// 1-hour bound (K8 Sections 6, 7).
 pub const MAX_AGE: TimeDelta = TimeDelta::minutes(59);
 
-/// The points waiting to be sent, oldest first, with `at` strictly increasing. Each has a
-/// sequence number given when it was kept, which only grows, so a [`Receipt`] removes exactly
-/// the points that were sent, even when the clock went back during the send.
+/// Oldest first, with `at` strictly increasing. A sequence number that only grows lets a
+/// [`Receipt`] remove exactly the points that were sent, even when the clock went back.
 #[derive(Debug, Default)]
 pub struct Backlog {
     kept: Vec<Kept>,
     next: u64,
 }
 
-/// A point and its sequence number.
 #[derive(Debug)]
 struct Kept {
     sequence: u64,
     point: Point,
 }
 
-/// The oldest points to send next, from [`Backlog::batch`].
 #[derive(Clone, Copy, Debug)]
 pub struct Outgoing<'a> {
     kept: &'a [Kept],
 }
 
-/// What removes the points of one batch once the hub accepted it or refused it for good: the
-/// sequence number of its newest point.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Receipt(u64);
 
@@ -51,9 +45,8 @@ impl Backlog {
         Self::default()
     }
 
-    /// Keeps `point` as the newest. A kept point at or after its `at` is dropped first (the
-    /// clock went back), so a batch's times stay strictly increasing; past [`MAX_POINTS`] the
-    /// oldest are dropped.
+    /// A kept point at or after its `at` is dropped first, so a batch's times stay strictly
+    /// increasing; past [`MAX_POINTS`] the oldest are dropped.
     pub fn push(&mut self, point: Point) {
         while self
             .kept
@@ -71,8 +64,7 @@ impl Backlog {
         self.kept.drain(..over);
     }
 
-    /// Drops the points older than [`MAX_AGE`] before `now`. Call it before each
-    /// [`Backlog::batch`] (K8 Section 7).
+    /// Call it before each [`Backlog::batch`] (K8 Section 7).
     pub fn drop_stale(&mut self, now: DateTime<Utc>) {
         let stale = self
             .kept
@@ -82,8 +74,7 @@ impl Backlog {
         self.kept.drain(..stale);
     }
 
-    /// The oldest points to send next: at most [`BATCH_POINTS`], with at most [`MAX_SERIES`]
-    /// series between them. Empty when none wait. They stay until [`Backlog::remove_through`].
+    /// The oldest points to send next; they stay until [`Backlog::remove_through`].
     #[must_use]
     pub fn batch(&self) -> Outgoing<'_> {
         let mut series = BTreeSet::new();
@@ -100,9 +91,8 @@ impl Backlog {
         }
     }
 
-    /// Removes the points of the batch `receipt` came from, and any kept before them: the hub
-    /// accepted that batch, or refused it for good (K8 Section 6). Points kept after the batch
-    /// was made stay, whatever their time.
+    /// Removes the points of the batch `receipt` came from, and any kept before them (K8 Section
+    /// 6); points kept after the batch was made stay, whatever their time.
     pub fn remove_through(&mut self, receipt: Receipt) {
         let sent = self
             .kept
@@ -114,19 +104,15 @@ impl Backlog {
 }
 
 impl<'a> Outgoing<'a> {
-    /// The points, oldest first.
     pub fn points(self) -> impl ExactSizeIterator<Item = &'a Point> {
         self.kept.iter().map(|kept| &kept.point)
     }
 
-    /// The receipt of these points; `None` when there are none.
     #[must_use]
     pub fn receipt(self) -> Option<Receipt> {
         self.kept.last().map(|kept| Receipt(kept.sequence))
     }
 
-    /// The first `count` points only, for a smaller batch after the hub said the body was too
-    /// large (K8 Section 6).
     #[must_use]
     pub fn first(self, count: usize) -> Self {
         Self {

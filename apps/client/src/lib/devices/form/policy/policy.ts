@@ -1,25 +1,22 @@
-/** What the form edits of a device's session policy: the limit stays text so that "2.5" is reportable. */
+/** The limit stays text so that "2.5" is reportable. */
 export interface PolicyValues {
   /** Empty means no limit. */
   readonly sessionLimit: string;
 }
 
-/** The policy as the hub stores it (K1 `Device.sessionLimit`). */
 export interface StoredPolicy {
   readonly sessionLimit: number | null;
 }
 
-/** The part of `CreateDeviceInput` and `UpdateDeviceInput` that carries the policy. */
 export interface PolicyInput {
   sessionLimit?: number;
 }
 
 const MAX_SESSION_LIMIT = 100;
 
-/** RA-036: the one sentence for a limit that is not a whole number from 1 to 100. */
+/** The one sentence for an invalid limit (RA-036). */
 export const LIMIT_SENTENCE = 'Use a whole number from 1 to 100.';
 
-/** RA-036: a new device has no limit. */
 export const DEFAULT_POLICY: PolicyValues = { sessionLimit: '' };
 
 export function policyValues(stored: StoredPolicy): PolicyValues {
@@ -33,10 +30,7 @@ function typedLimit(text: string): number | null | undefined {
   return /^\d{1,4}$/.test(typed) ? Number(typed) : undefined;
 }
 
-/**
- * RA-036: the sentence for a limit the hub would refuse, or null. A new device takes 1..100; an edit also takes 0,
- * which clears the limit.
- */
+/** RA-036: a new device takes 1..100; an edit also takes 0, which clears the limit. */
 export function limitProblem(values: PolicyValues, creating: boolean): string | null {
   const limit = typedLimit(values.sessionLimit);
   if (limit === null) return null;
@@ -50,10 +44,7 @@ export function createPolicyInput(values: PolicyValues): PolicyInput {
   return limit === null || limit === undefined ? {} : { sessionLimit: limit };
 }
 
-/**
- * RA-036: only what differs from `stored`. A limit emptied or set to 0 is sent as 0, which clears a stored limit;
- * one that was already none sends nothing.
- */
+/** RA-036: a limit emptied or set to 0 is sent as 0, which clears a stored limit. */
 export function updatePolicyInput(stored: PolicyValues, values: PolicyValues): PolicyInput {
   const before = typedLimit(stored.sessionLimit) ?? 0;
   const now = typedLimit(values.sessionLimit) ?? 0;

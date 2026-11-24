@@ -1,5 +1,4 @@
-//! `agentUsage` answers a signed-in caller only, even without the hub-wide sign-in check
-//! (API-003, AIS-020): the schema here holds the agent usage query alone.
+//! `agentUsage` answers a signed-in caller only, even without the hub-wide sign-in check (API-003, AIS-020).
 
 use std::sync::Arc;
 

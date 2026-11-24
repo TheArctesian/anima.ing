@@ -1,6 +1,4 @@
-//! The lease of work that a machine holds: how long a claim or a report holds it, and what a
-//! lease that ended with no report costs. One rule for the build queue and for the jobs of the
-//! work route (BLD-005, BLD-006, PRO-050). Pure: the time is a parameter (CQ-021).
+//! The lease of held work: one rule for the build queue and the jobs of the work route (PRO-050).
 
 use chrono::{DateTime, TimeDelta, Utc};
 
@@ -10,29 +8,23 @@ pub const LEASE: TimeDelta = TimeDelta::seconds(90);
 /// Leases that may end without a report before the work fails (BLD-006).
 pub const MAX_LOST: u8 = 3;
 
-/// The lease end of a claim or a report at `now` (BLD-005).
 #[must_use]
 pub fn end(now: DateTime<Utc>) -> DateTime<Utc> {
     now + LEASE
 }
 
-/// Whether a lease that ends at `ends_at` has ended at `now`. Work that is held with no lease
-/// end has no lease to hold it.
+/// Work that is held with no lease end has no lease to hold it.
 #[must_use]
 pub fn ended(ends_at: Option<DateTime<Utc>>, now: DateTime<Utc>) -> bool {
     ends_at.is_none_or(|end| now >= end)
 }
 
-/// What comes after a lease ended with no report.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Lost {
-    /// Back in the queue, with this count of lost leases.
     Again(u8),
-    /// The work fails: this was lease [`MAX_LOST`].
     Failed(u8),
 }
 
-/// The work after one more lease ended, when `lost` leases ended before it (BLD-006).
 #[must_use]
 pub fn lost(lost: u8) -> Lost {
     let count = lost.saturating_add(1).min(MAX_LOST);

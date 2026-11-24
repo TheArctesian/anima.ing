@@ -29,7 +29,6 @@ const OFF: SessionTransfer = { copy: false, paste: false };
 const UNREAD_NOTICE = 'Copy and paste are off: the hub did not answer.';
 const C = { key: 'c', code: 'KeyC', keyCode: 67 };
 
-/** An SSH view whose device answers `transfer` at the start, connected, with its screen. */
 async function connected(transfer: SessionTransfer | 'unanswered') {
   let screen: TerminalScreen | undefined;
   const view = showView((open) => async (host, hooks) => (screen = await open(host, hooks)));
@@ -40,14 +39,12 @@ async function connected(transfer: SessionTransfer | 'unanswered') {
   return { ...view, socket, screen, field: textareaOf(view.target) };
 }
 
-/** Draw `text` and select it, as the operator would with the mouse. */
 function selected(socket: FakeTerminalSocket, screen: TerminalScreen, text: string) {
   socket.output(text);
   vi.advanceTimersByTime(100);
   expect(screen.find(text, false, false)).toBe(true);
 }
 
-/** A clipboard event carrying `text`, and the spy that hears what a listener writes into it. */
 function clipboardEvent(type: string, text = '') {
   const event = new Event(type, { bubbles: true, cancelable: true });
   const setData = vi.fn();
@@ -125,7 +122,6 @@ describe('copy with no open session (RA-033)', () => {
     expect(ended.event.defaultPrevented).toBe(true);
     expect(ended.setData).not.toHaveBeenCalled();
     expect(systemClipboard.written).toEqual([]);
-    // Reconnect has asked for a new ticket and the hub has not answered yet.
     target.querySelector<HTMLButtonElement>('.panel button')?.click();
     const starting = clipboardEvent('copy');
     field.dispatchEvent(starting.event);

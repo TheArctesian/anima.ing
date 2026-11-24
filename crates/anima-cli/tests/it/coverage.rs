@@ -1,6 +1,4 @@
-//! CMD-031: every K1 root field is used by a document of the command line, or is in
-//! `k1_exceptions.rs` with a reason. An exception for a field that is used fails too, so the
-//! list only shrinks. CMD-004: every document is typed by a `query_path` in the crate.
+//! CMD-031, CMD-004.
 
 mod k1_exceptions;
 
@@ -15,8 +13,8 @@ use k1_exceptions::EXCEPTIONS;
 const SCHEMA: &str = include_str!("../../../../contracts/schema.graphql");
 const ROOTS: [&str; 3] = ["Query", "Mutation", "Subscription"];
 
-/// The copy of K1 that the package holds, so that `cargo install anima-cli` builds from the
-/// files of the package (INS-011). `schema-copy.sh` makes it.
+/// The package holds a copy of K1 so that `cargo install anima-cli` builds from its own files
+/// (INS-011).
 const PACKAGED_SCHEMA: &str = include_str!("../../schema.graphql");
 
 #[test]
@@ -27,7 +25,6 @@ fn the_packaged_schema_is_k1() {
     );
 }
 
-/// `Type.field` for every root field of K1.
 fn root_fields() -> BTreeSet<String> {
     let document = schema::parse_schema::<String>(SCHEMA).expect("K1 parses");
     let mut fields = BTreeSet::new();
@@ -54,7 +51,6 @@ fn crate_source() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
 }
 
-/// Every file under `dir` with this extension.
 fn files(dir: &Path, extension: &str) -> Vec<PathBuf> {
     let mut found = Vec::new();
     for entry in std::fs::read_dir(dir).expect("a source folder") {
@@ -69,7 +65,6 @@ fn files(dir: &Path, extension: &str) -> Vec<PathBuf> {
     found
 }
 
-/// `Type.field` for every root field the crate's documents select, with the files using each.
 fn used_fields() -> BTreeMap<String, Vec<String>> {
     let mut used: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for path in files(&crate_source(), "graphql") {
@@ -103,7 +98,6 @@ fn used_fields() -> BTreeMap<String, Vec<String>> {
     used
 }
 
-/// The field names directly in `set`, through inline fragments and fragment spreads.
 fn field_names(
     set: &SelectionSet<'_, String>,
     definitions: &[Definition<'_, String>],
@@ -235,7 +229,6 @@ fn sources_outside_mcp() -> Vec<Source> {
         .collect()
 }
 
-/// Whether `word` is in `code` as a whole identifier.
 fn has_word(code: &str, word: &str) -> bool {
     code.match_indices(word).any(|(start, _)| {
         let before = code[..start].chars().next_back();
@@ -245,7 +238,6 @@ fn has_word(code: &str, word: &str) -> bool {
     })
 }
 
-/// The `pub struct XArgs` and `pub enum XCommand` a file declares: the commands it holds.
 fn command_types(code: &str) -> Vec<&str> {
     code.lines()
         .filter_map(|line| {
@@ -258,9 +250,6 @@ fn command_types(code: &str) -> Vec<&str> {
         .collect()
 }
 
-/// Whether `other` can hold the enum that wires `child` in: a file of the same folder, a
-/// module file above it (`devices.rs` for `devices/wake.rs`), or, for a file at the crate
-/// root, any other file.
 fn can_wire(other: &Path, child: &Path) -> bool {
     if other == child {
         return false;
@@ -279,7 +268,6 @@ fn can_wire(other: &Path, child: &Path) -> bool {
     false
 }
 
-/// The document types a `documents.rs` declares: `pub struct Name;`.
 fn declared_documents() -> Vec<(String, PathBuf)> {
     files(&crate_source(), "rs")
         .into_iter()
@@ -295,10 +283,6 @@ fn declared_documents() -> Vec<(String, PathBuf)> {
         .collect()
 }
 
-/// CMD-031: a document counts as used only when a call that names it (`run::<T>`,
-/// `open::<T>`, `send_wiping::<T>`, `<T as GraphQLQuery>`) outside the documents files has a
-/// command in the same file that another file names, so a command taken out of its enum
-/// leaves its document unused.
 #[test]
 fn cmd_031_every_document_is_called_by_a_command_that_is_wired_in() {
     let sources = sources_outside_mcp();

@@ -9,7 +9,6 @@
   import { checkThresholds, thresholdsText, DEFAULT_DAYS } from './days';
 
   interface Props {
-    /** `null` while the hub has not answered: the form keeps its size and its controls wait. */
     settings: NotificationSettings | null;
     loadFailed: boolean;
     onRetry: () => Promise<void>;
@@ -27,9 +26,11 @@
   let retrying = $state(false);
   let form: HTMLFormElement | undefined = $state();
   const waiting = $derived(settings === null);
+  const dirty = $derived(settings !== null && (days !== thresholdsText(settings.certificateDays)
+    || template.title !== settings.template.title || template.body !== settings.template.body));
   const placeholders = $derived(settings?.placeholders ?? D21_PLACEHOLDERS);
 
-  // The fields follow the hub's settings when they arrive or are saved; a refused save leaves what the operator typed.
+  // A refused save leaves what the operator typed.
   $effect(() => {
     if (settings === null) return;
     days = thresholdsText(settings.certificateDays);
@@ -39,7 +40,7 @@
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    if (waiting || busy) return;
+    if (waiting || busy || !dirty) return;
     const checked = checkThresholds(days);
     const found = templateProblems(template, placeholders);
     daysProblem = checked.ok ? '' : checked.message;
@@ -57,7 +58,7 @@
     outcome = result.ok ? 'Saved.' : failureText(result.error, 'settings');
   }
 
-  /** Retry: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to the first field (NAV-005). */
+  /** On success, focus goes to the first field (NAV-005). */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;
@@ -73,7 +74,7 @@
   }
 </script>
 
-<form bind:this={form} class="settings" novalidate onsubmit={submit} aria-busy={waiting}>
+<form bind:this={form} class="settings" novalidate onsubmit={submit} oninput={() => { outcome = ''; }} aria-busy={waiting}>
   <fieldset disabled={waiting || busy}>
     <SettingRow label="Certificate expiry days" for="{id}-days">
       {#snippet hint()}
@@ -96,13 +97,13 @@
       {/snippet}
     </SettingRow>
     <h4>Default template</h4>
-    <SettingRow label="Title" for="{id}-title">
+    <SettingRow label="Title" for="{id}-title" stacked>
       {#snippet hint()}
         <p class="hint" id="{id}-title-hint">Placeholders: {placeholders.join(' ')}</p>
       {/snippet}
       <input
         id="{id}-title"
-        class="wide"
+        class="wide template"
         type="text"
         bind:value={template.title}
         autocomplete="off"
@@ -113,10 +114,10 @@
         <p id="{id}-title-problem" role="alert">{problems.title}</p>
       {/snippet}
     </SettingRow>
-    <SettingRow label="Body" for="{id}-body">
+    <SettingRow label="Body" for="{id}-body" stacked>
       <textarea
         id="{id}-body"
-        class="wide"
+        class="wide template"
         bind:value={template.body}
         rows="3"
         autocomplete="off"
@@ -128,7 +129,6 @@
       {/snippet}
     </SettingRow>
   </fieldset>
-  <!-- One row holds the outcome or, when the load failed, its message and retry, so the form keeps its height (MOT-007). -->
   <SettingRow>
     {#snippet label()}
       <div class="note">
@@ -142,7 +142,7 @@
     {#if loadFailed}
       <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Retry</FormButton>
     {:else}
-      <FormButton tabindex={0} type="submit" tone="primary" aria-disabled={waiting || busy} aria-busy={busy}>Save</FormButton>
+      <FormButton tabindex={0} type="submit" tone="primary" aria-disabled={waiting || busy || !dirty} aria-busy={busy}>Save changes</FormButton>
     {/if}
   </SettingRow>
 </form>
@@ -158,7 +158,6 @@
     border: 0;
   }
 
-  /* The sub-heading is a row of its own, inset like the rows (SET-001). */
   h4 {
     margin: 0;
     padding: var(--space-3) var(--space-4);
@@ -168,12 +167,15 @@
     line-height: var(--leading-tight);
   }
 
-  /* Text controls are wider than a number's: they hold a sentence, and shrink with a narrow card. */
   .settings .wide {
     box-sizing: border-box;
     inline-size: calc(var(--space-8) * 8);
     max-inline-size: 100%;
     text-align: start;
+  }
+
+  .settings .template {
+    inline-size: 100%;
   }
 
   .settings textarea.wide {

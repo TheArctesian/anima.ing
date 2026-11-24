@@ -1,4 +1,3 @@
-// Test support: a hub that answers the two retention operations from canned results and records what it was sent.
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import { flushSync } from 'svelte';
@@ -24,7 +23,6 @@ export function failure(code: HubError['code'], message = 'hub text'): HubResult
   return { ok: false, error: { code, message, fields: [] } as HubError };
 }
 
-/** `answers` maps an operation to its result; an operation without one is `unreachable`. */
 export function fakeHub(answers: Partial<Record<Operation, HubResult<unknown> | Promise<HubResult<unknown>>>>): { hub: Hub; sent: SentRequest[] } {
   const sent: SentRequest[] = [];
   const hub = {

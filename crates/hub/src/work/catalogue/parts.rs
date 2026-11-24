@@ -1,5 +1,4 @@
-//! The K1 objects of the parts of an entry: a port on the network, a stream, an optional part
-//! and the publisher of a generated entry (task H39).
+//! The K1 objects of the parts of an entry (task H39).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

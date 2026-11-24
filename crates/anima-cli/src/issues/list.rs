@@ -1,4 +1,4 @@
-//! `anima issue list <repository>`: issues, newest updated first, with pages (CMD-026).
+//! `anima issue list` (CMD-026).
 
 use super::documents::{IssueList, issue_list};
 use super::render;

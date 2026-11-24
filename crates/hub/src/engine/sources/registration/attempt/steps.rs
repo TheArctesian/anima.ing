@@ -1,6 +1,3 @@
-//! What the steps of an attempt take and give: who started it and what they asked for, the
-//! refusals, and the hand-over to the store at the end.
-
 use zeroize::Zeroizing;
 
 use crate::{
@@ -27,15 +24,12 @@ pub enum Refusal {
     State,
 }
 
-/// Who started the attempt and from where, captured at the start for every audit entry and
-/// for the store at the end.
 #[derive(Clone)]
 pub struct Starter {
     pub operator: Operator,
     pub client: ClientAddr,
 }
 
-/// What the operator asked for at the start.
 pub struct Request {
     pub label: Option<String>,
     pub organisation: Option<String>,
@@ -57,7 +51,7 @@ pub enum Exchange {
     Waiting,
 }
 
-/// What the store at the end needs: taken under the lock with the stage `Finishing`.
+/// Taken under the lock with the stage `Finishing`.
 pub struct Finish {
     pub label: String,
     pub app_id: u64,
@@ -67,7 +61,6 @@ pub struct Finish {
     pub round: u32,
 }
 
-/// How the store at the end went.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Finished {
     Connected {

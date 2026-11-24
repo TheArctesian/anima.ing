@@ -2,12 +2,11 @@ import type {
   ClearRdpCredentialMutation,
   ClearVncCredentialMutation,
   CreateDeviceInput,
-  DeviceHostsQuery,
   DevicesQueryVariables,
   SshCredentialInput,
   UpdateDeviceInput,
 } from '$lib/hub/generated/graphql';
-import type { Hub, HubError, HubResult, Sink } from '$lib/hub/hub';
+import type { Hub, HubResult, Sink } from '$lib/hub/hub';
 import {
   ClearRdpCredential,
   ClearSshCredential,
@@ -16,7 +15,6 @@ import {
   CreateDevice,
   CreateSite,
   DeleteDevice,
-  DeviceHosts,
   Device,
   Devices,
   DeviceStatusChanged,
@@ -31,44 +29,15 @@ import {
   type StatusChange,
   type StoredCredential,
 } from './api';
+import { readHosts } from './address/api';
 
-/** At most this many pages of 200 hosts are read: the hub's page limit times a bound no home lab reaches. */
-const MAX_HOST_PAGES = 50;
-
-/** The answer when the hosts cannot all be read: a partial list could miss this computer's device (R-060). */
-const HOSTS_INCOMPLETE: HubError = {
-  code: 'malformed',
-  message: 'The hub did not list every device.',
-};
-
-/**
- * Every device's host, page by page, or an error unless the last page was reached: a page that says there is
- * more but gives no cursor, or more than `MAX_HOST_PAGES` pages, fails rather than returning part of the list.
- */
-type DeviceHost = DeviceHostsQuery['devices']['edges'][number]['node'];
-
-async function readHosts(hub: Hub): Promise<HubResult<readonly DeviceHost[]>> {
-  const hosts: DeviceHost[] = [];
-  let after: string | null = null;
-  for (let page = 0; page < MAX_HOST_PAGES; page += 1) {
-    const result: HubResult<DeviceHostsQuery> = await hub.request(DeviceHosts, { after });
-    if (!result.ok) return result;
-    const { edges, pageInfo }: DeviceHostsQuery['devices'] = result.value.devices;
-    hosts.push(...edges.map((edge) => edge.node));
-    if (!pageInfo.hasNextPage) return { ok: true, value: hosts };
-    after = pageInfo.endCursor ?? null;
-    if (after === null) return { ok: false, error: HOSTS_INCOMPLETE };
-  }
-  return { ok: false, error: HOSTS_INCOMPLETE };
-}
-
-/** A new site (VPN-001); the hub refuses a subnet that overlaps another site's. */
+/** The hub refuses a subnet that overlaps another site's (VPN-001). */
 async function createSite(hub: Hub, name: string, subnet: string): Promise<HubResult<Site>> {
   const result = await hub.request(CreateSite, { name, subnet });
   return result.ok ? { ok: true, value: result.value.createSite } : result;
 }
 
-/** The stored SSH, RDP and VNC secrets: set (SSH only here; RDP and VNC are set through the sessions client) and clear. */
+/** RDP and VNC secrets are set through the sessions client. */
 function credentialCalls(hub: Hub) {
   return {
     setSshCredential: async (deviceId: string, credential: SshCredentialInput): Promise<HubResult<StoredCredential>> => {
@@ -79,12 +48,10 @@ function credentialCalls(hub: Hub) {
       const result = await hub.request(ClearSshCredential, { deviceId });
       return result.ok ? { ok: true, value: result.value.clearSshCredential } : result;
     },
-    /** Removes the stored RDP password; resolves to the RDP settings' new `credentialStored`. */
     clearRdpCredential: async (deviceId: string): Promise<HubResult<ClearRdpCredentialMutation['clearRdpCredential']>> => {
       const result = await hub.request(ClearRdpCredential, { deviceId });
       return result.ok ? { ok: true, value: result.value.clearRdpCredential } : result;
     },
-    /** Removes the stored VNC password; resolves to the VNC settings' new `credentialStored`. */
     clearVncCredential: async (deviceId: string): Promise<HubResult<ClearVncCredentialMutation['clearVncCredential']>> => {
       const result = await hub.request(ClearVncCredential, { deviceId });
       return result.ok ? { ok: true, value: result.value.clearVncCredential } : result;
@@ -92,7 +59,6 @@ function credentialCalls(hub: Hub) {
   };
 }
 
-/** The live updates of every device: status changes and the latest readings. Each returns the function that stops listening. */
 function liveCalls(hub: Hub) {
   return {
     watchStatus: (sink: Sink<StatusChange>): (() => void) =>
@@ -113,7 +79,7 @@ function liveCalls(hub: Hub) {
   };
 }
 
-/** The device list, tags and live status changes through a `Hub` (CQ-045). */
+/** CQ-045. */
 export function devicesApi(hub: Hub) {
   return {
     list: async (variables: DevicesQueryVariables): Promise<HubResult<DevicePage>> => {
@@ -148,7 +114,7 @@ export function devicesApi(hub: Hub) {
       const result = await hub.request(UpdateDevice, { id, input });
       return result.ok ? { ok: true, value: result.value.updateDevice } : result;
     },
-    /** Deletes the device with its credentials, checks and history (DEV-015); resolves to the deleted ID. */
+    /** Deletes the device with its credentials, checks and history (DEV-015). */
     delete: async (id: string): Promise<HubResult<string>> => {
       const result = await hub.request(DeleteDevice, { id });
       return result.ok ? { ok: true, value: result.value.deleteDevice } : result;

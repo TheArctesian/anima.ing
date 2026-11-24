@@ -1,6 +1,5 @@
 import { graphql } from '$lib/hub/generated';
 import type { ContainerDetailQuery, ContainerImageUpdatesQuery, ContainerLogQuery, ContainerNetworksQuery, ContainerStorageQuery, ContainersQuery } from '$lib/hub/generated/graphql';
-import { catalogueApi, type CatalogueCalls } from '$lib/catalogue/api';
 import type { Hub, HubResult } from '$lib/hub/hub';
 
 const CONTAINERS = graphql(`
@@ -16,6 +15,8 @@ const CONTAINERS = graphql(`
       createdAt
       composeProject
       composeService
+      composeWorkingDir
+      composeFiles
       composeProjectState
     }
   }
@@ -156,8 +157,7 @@ export type ContainerVolume = ContainerStorage['volumes'][number];
 export type ContainerNetwork = ContainerNetworksQuery['containerNetworks'][number];
 export type ImageUpdate = ContainerImageUpdatesQuery['containerImageUpdates'][number];
 
-/** What the container screen asks of the hub, with the catalogue that an install would take from (task H38). */
-export interface ContainerCalls extends CatalogueCalls {
+export interface ContainerCalls {
   list(): Promise<HubResult<readonly Container[]>>;
   log(containerId: string, lines: number): Promise<HubResult<ContainerLog>>;
   /** HOST-017: the details of one container, with the names of its environment variables and no value. */
@@ -169,10 +169,9 @@ export interface ContainerCalls extends CatalogueCalls {
   updates(): Promise<HubResult<readonly ImageUpdate[]>>;
 }
 
-/** The container calls of the hub for one device (HOST-001, HOST-017 to HOST-021). The hub reads the device at each call and keeps nothing. */
+/** HOST-001, HOST-017 to HOST-021: the hub reads the device at each call and keeps nothing. */
 export function containersApi(hub: Pick<Hub, 'request'>, deviceId: string): ContainerCalls {
   return {
-    ...catalogueApi(hub),
     list: async () => {
       const result = await hub.request(CONTAINERS, { deviceId });
       return result.ok ? { ok: true, value: result.value.containers } : result;

@@ -201,7 +201,7 @@ it('03 A.3.4, A.4.2: the foot opens the Permissions section on the mode in use; 
   key(modes[0] as HTMLElement, 'ArrowRight');
   flushSync();
   expect(document.activeElement).toBe(modes[1]);
-  expect(texts('.shown span')).toEqual(['Auto-accept edits', 'Auto-approve edits, ask before other actions.']);
+  expect(texts('.shown .name, .shown .description:not(.hidden)')).toEqual(['Auto-accept edits', 'Auto-approve edits, ask before other actions.']);
   modes[3]?.click();
   await settle();
   expect(picks.map((pick) => pick.mode)).toEqual(['full-access']);
@@ -214,4 +214,17 @@ it('a picker that cannot be used keeps focus, says so, and does not open', async
   trigger.click();
   await settle();
   expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
+
+it('says why the list is short on a line of its own under the list, with the whole reason and a Retry when it failed', () => {
+  let retried = 0;
+  const words = 'Models could not load: the runner answered "spawn claude ENOENT" for the program at /usr/local/bin/claude.';
+  const props = { catalogue: { ...pickerCatalogue, notice: { words, failed: true } }, value: pickerChoice, can: CAN, open: true, onChange: () => undefined, onAsk: () => (retried += 1) };
+  app = mount(ModelPicker, { target: document.body, props });
+  flushSync();
+  const notice = one('.popup .notice');
+  expect(notice.querySelector('.words')?.textContent).toBe(words);
+  expect(notice.closest('[role="option"]')).toBeNull();
+  notice.querySelector<HTMLButtonElement>('button')?.click();
+  expect(retried).toBe(1);
 });

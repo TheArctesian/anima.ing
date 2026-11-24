@@ -1,14 +1,12 @@
-//! What an audit entry is about: one variant for each sort of record that a change names
-//! (LOG-005). Its text form is stored in `audit_log.target_type`.
+//! What an audit entry is about (LOG-005).
 
 use crate::ids::{
     ApiKeyId, ArchiveId, AttachmentId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId,
-    IngestTokenId, JobId, KeyOfferId, OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId,
-    RecordLinkId, ReleaseId, ReminderRuleId, RepositoryId, SealedRecordId, SessionId, SiteId,
-    SourceAccountId, WindowId,
+    IngestTokenId, JobId, KeyOfferId, OperationalKeyId, OperatorId, PlaceId, ProjectGroupId,
+    ProjectId, ProposalId, RecordLinkId, ReleaseId, ReminderRuleId, RepositoryId, SealedRecordId,
+    SessionId, SiteId, SourceAccountId, WindowId,
 };
 
-/// The thing an audited action changed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AuditTarget {
     Operator(OperatorId),
@@ -17,15 +15,11 @@ pub enum AuditTarget {
     Check(CheckId),
     Window(WindowId),
     Session(SessionId),
-    /// The SSH credential of a device.
     Credential(DeviceId),
-    /// The accepted SSH host key of a device.
     HostKey(DeviceId),
-    /// A file on a device, moved over the files tunnel; the change holds its path.
     File(DeviceId),
-    /// A hub setting, by its dotted name (for example `retention.events`).
+    /// A hub setting, by its dotted name, such as `retention.events`.
     Setting(&'static str),
-    /// A notification channel.
     Channel(ChannelId),
     /// A release and its build jobs (BLD-082).
     Release(ReleaseId),
@@ -35,18 +29,17 @@ pub enum AuditTarget {
     Builder(BuilderId),
     /// An API key for scripts (D-23).
     ApiKey(ApiKeyId),
-    /// The VPN: a key, a registration or a route made through the broker (VP-7). It has no
-    /// id of its own; the change names the site or node.
+    /// The VPN (VP-7): no id of its own; the change names the site or node.
     Vpn,
-    /// The device link: an invite or a revoked device (FRN-009). It has no id of its own; the
-    /// change names the device, never an invite (LOG-007).
+    /// The device link (FRN-009): the change names the device, never an invite (LOG-007).
     Link,
     /// A connection to an outside source (SRC-003).
     SourceAccount(SourceAccountId),
     /// A project, its repositories or its resources (PRO-001).
     Project(ProjectId),
-    /// A project repository on GitHub, for a change the hub sent there; the change names the
-    /// issue, pull request, run or commit (PRJ-028, OD-E14).
+    /// A group of projects (PRO-059).
+    ProjectGroup(ProjectGroupId),
+    /// A GitHub repository the hub changed; the change names the issue, pull request, run or commit (PRJ-028, OD-E14).
     Repository(RepositoryId),
     /// A link between two records (RLK-001).
     RecordLink(RecordLinkId),
@@ -60,8 +53,7 @@ pub enum AuditTarget {
     Place(PlaceId),
     /// An operational key, its versions and its consumers (R-147); never its value.
     OperationalKey(OperationalKeyId),
-    /// The location samples: a batch that was stored or a span that was read. It has no id
-    /// of its own; the change holds counts and times, never a position (K-E4 Section 13).
+    /// The change holds counts and times, never a position (K-E4 Section 13).
     LocationSamples,
     /// An ingest token of the OwnTracks path; never its value (K-E4 Section 11).
     IngestToken(IngestTokenId),
@@ -99,6 +91,7 @@ impl AuditTarget {
             Self::Link => "link",
             Self::SourceAccount(_) => "source_account",
             Self::Project(_) => "project",
+            Self::ProjectGroup(_) => "project_group",
             Self::Repository(_) => "repository",
             Self::RecordLink(_) => "record_link",
             Self::Attachment(_) => "attachment",
@@ -137,6 +130,7 @@ impl AuditTarget {
             Self::Link => "link".to_owned(),
             Self::SourceAccount(id) => id.to_string(),
             Self::Project(id) => id.to_string(),
+            Self::ProjectGroup(id) => id.to_string(),
             Self::Repository(id) => id.to_string(),
             Self::RecordLink(id) => id.to_string(),
             Self::Attachment(id) => id.to_string(),

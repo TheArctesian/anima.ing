@@ -1,8 +1,5 @@
-//! What a check mutation leaves behind: one audit entry and one event, written in the
-//! mutation's own transaction (LOG-004, LOG-005, LOG-007).
-//!
-//! The `change` objects are built by pure functions from the stored checks. A secret appears
-//! only as `"[set]"` under the key `sealed`; no URL, body or header value is recorded.
+//! One audit entry and one event per check mutation, in its own transaction (LOG-004, LOG-005).
+//! A secret appears only as `"[set]"` under `sealed`; no URL, body or header value is recorded (LOG-007).
 
 use serde_json::{Map, Value, json};
 
@@ -17,8 +14,7 @@ use crate::{
     ids::CheckId,
 };
 
-/// What the configuration says without its secrets: the type, and for HTTP only the method,
-/// the sign-in kind and the header names.
+/// The configuration without its secrets (LOG-007).
 fn config_json(config: &CheckConfig) -> Value {
     match config {
         CheckConfig::Http(http) => {
@@ -87,11 +83,8 @@ fn child_ids(children: &[CheckId]) -> Value {
     json!(children.iter().map(ToString::to_string).collect::<Vec<_>>())
 }
 
-/// What a mutation did besides the plain fields.
 pub(super) struct Extras<'a> {
-    /// The operator sent a non-empty secret.
     pub(super) sealed: bool,
-    /// A group's new set of children.
     pub(super) children: Option<&'a [CheckId]>,
     /// The push check got a new token (never recorded).
     pub(super) rotated: bool,
@@ -121,7 +114,6 @@ pub(super) fn created(check: &Check, device: &str, extras: &Extras<'_>) -> Trail
     )
 }
 
-/// Only the fields that differ appear in `change`.
 pub(super) fn updated(
     before: &Check,
     after: &Check,
@@ -144,8 +136,7 @@ pub(super) fn updated(
     )
 }
 
-/// The deleted check's name and type, so the entry outlives the check. A deleted group also
-/// lists the children it let go of.
+/// The name and type, so the entry outlives the check.
 pub(super) fn deleted(check: &Check, device: &str, freed: &[CheckId]) -> TrailEntry {
     let mut change = json!({ "name": check.name, "type": check.kind().as_sql() });
     if !freed.is_empty() {

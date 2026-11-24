@@ -1,6 +1,4 @@
-//! `anima notify channel topic`: a random topic for an ntfy channel (REM-008). A person who
-//! knows the topic of a channel on a public ntfy server reads its notifications, and the hub
-//! sends no reminder to an ntfy channel whose topic is shorter than 16 characters.
+//! `anima notify channel topic` (REM-008): whoever knows a topic reads its notifications.
 
 use serde::Serialize;
 
@@ -8,9 +6,8 @@ use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
 
-/// The characters of a topic: each is permitted in the topic of ntfy.
 const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-/// The length of the topic: 22 characters of 6 bits each are 132 random bits.
+/// 22 characters of 6 bits each are 132 random bits.
 pub const LENGTH: usize = 22;
 
 #[derive(Debug, Serialize)]
@@ -18,7 +15,6 @@ struct Offered {
     topic: String,
 }
 
-/// The topic that `random` gives: one character for each byte, from its low 6 bits.
 fn topic(random: [u8; LENGTH]) -> String {
     random
         .iter()
@@ -26,9 +22,6 @@ fn topic(random: [u8; LENGTH]) -> String {
         .collect()
 }
 
-/// Prints a new random topic of 22 characters. The hub is not asked and nothing is stored: put
-/// the topic in the document of `anima notify channel create`.
-///
 /// # Errors
 /// [`Failure::Input`] when the operating system gives no random bytes.
 pub fn run(invocation: &Invocation) -> Result<(), Failure> {

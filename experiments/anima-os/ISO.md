@@ -145,3 +145,51 @@ Use a fresh disk-backed output directory with at least 32 GiB free. The boot run
 The staging VM verifies signature/hash/downgrade refusal, locking, progress interruption and import/staging; its candidate is deliberately not bootable. The separate EFI fixture boots real A/B kernels on a persistent 1 GiB ESP, checks activation and health blessing, explicitly rolls back, then masks a candidate health dependency to prove two failed boots recover the previous system. Identity/work sentinels and an unselected disk must remain unchanged. Its headless services stand in for graphical health dependencies; it does not qualify the full graphical appliance, physical hardware or real enrollment.
 
 `updates/package.py`, `publish.py`, `feed.py` and their Python tests remain publishing/test tools. The native updater package and its installed shell wrapper contain no Python runtime dependency; retained `updates/update.py` and `boot.py` are reference implementations, not installed control paths.
+
+## Private remote access
+
+Installed Anima OS provides SSH and RDP through the authenticated Anima link. SSH listens on loopback port 22 and RDP on loopback port 3389; neither opens a LAN or public firewall port. The live installer has no remote service. VNC is not enabled.
+
+After connecting the OS to your private hub, use `anima ssh <device>` for a CLI terminal, or choose SSH or RDP on the device in the Anima GUI. Use the installation's `admin` account and password, and verify the SSH host key or RDP certificate through the existing trust flow. Root and blank-password remote login are disabled. RDP starts a separate graphical Anima console; it does not mirror the physical display. Unlock that console with the same admin password.
+
+New hosted enrollments enable the device's SSH and RDP settings. An existing device, including one referenced by an enrollment code from your own hub, retains its settings: enable SSH on port 22 and RDP on port 3389 in that device's settings if they are off. Existing credentials and certificate trust are never replaced automatically.
+
+The OS initializes its local private-link port list only if absent. A local admin can disable access with `sudo -u anima-daemon anima-link ports -state /var/lib/anima-link off 3389` (or `22`), and restore it with `on`. These local choices and the SSH host identity and RDP certificate persist across restart and system updates. Disabling a port rejects new link connections; close existing sessions separately.
+
+## Publishing an OS release
+
+Publish only after the tested ISO and signed update target the same installed-system closure. Upload the immutable ISO under `os/preview/x86_64-linux/<version>/anima-os-x86_64.iso`, verify its complete public bytes, then publish the signed installed-OS package with `updates/publish.py`. Keep the local artifact and public verification receipts.
+
+Finish every ISO publication with the site repository's `scripts/publish-os.py <version> /path/to/anima-os-x86_64.iso --credentials /path/to/r2.env`. It verifies the complete public ISO and atomically advances `latest-iso.json`, preserving the previous pointer if verification fails. The permanent website address `https://anima.ing/download/os` and its version/size/checksum display read this manifest at runtime. No website rebuild is needed. Confirm both the signed update feed and `/download/os?format=json` name the intended version before reporting publication complete.
+
+## Automatic preview releases
+
+OS3-R10 uses `.github/workflows/os-release.yml` on GitHub-hosted Ubuntu runners.
+Changes to the OS, Rust workspace, link or toolchain on `dev` enqueue a release.
+The merge conductor also dispatches this workflow: pushes made with its GitHub token
+cannot trigger another push workflow. A source fingerprint skips already-published
+inputs; failed runs remain visible and require a deliberate rerun rather than an
+endless build loop. `main` and desktop/mobile feeds are not changed.
+
+The `os-preview` environment supplies `OS_PREVIEW_SIGNING_KEY` (the existing key,
+not a new identity) and `OS_RELEASE_CREDENTIALS` (the existing publisher env-file
+format). Its deployment branch policy admits only the authorized release branch.
+`ANIMA_OS_RELEASES=on` enables dispatch; changing it to `off` stops new releases.
+`ANIMA_OS_RUNNER` optionally selects a larger **GitHub-hosted** Ubuntu runner.
+The runner checks KVM and requires 64 GiB free after removing unused hosted SDKs.
+Insufficient disk fails before the expensive build; it must not bypass VM checks.
+
+One serialized workflow builds the matching ISO and signed closure, then fresh
+runners test graphical installation and an upgrade from the public ISO. The
+upgrade includes private SSH, RDP TLS and desktop login, reboot, owner port choices,
+and rollback with identity and work preserved. Candidate artifacts last three days;
+result JSON and screenshots last fourteen days. VM disks, passwords, private
+fixture keys and raw serial transcripts are not uploaded as Actions artifacts.
+
+Publication verifies all public artifact bytes before advancing either pointer.
+Conditional writes reject a concurrent publisher and older release versions. The
+two object pointers cannot be changed as one transaction: a failure between writes
+is visible as a failed release, and a rerun of the same qualified publication job
+can complete the second pointer. Do not rebuild/re-sign a version to repair it.
+The pipeline fails closed if the baseline ISO and update feed disagree.
+Installed machines still require the owner's explicit activation/restart.

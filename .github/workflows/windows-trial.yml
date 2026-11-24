@@ -104,7 +104,15 @@ jobs:
           $cli = "target/x86_64-pc-windows-msvc/release/anima.exe"
           if ((& $cli --version) -ne "anima $env:VERSION" -or $LASTEXITCODE -ne 0) { throw 'The standalone CLI did not start at the release version' }
           New-Item -ItemType Directory out-cli | Out-Null
-          Compress-Archive -Path $cli -DestinationPath out-cli/anima-windows-x86_64.zip
+          # The zip carries the licence files of deploy/release/licences.txt beside anima.exe, as in release.yml.
+          New-Item -ItemType Directory cli-stage | Out-Null
+          Copy-Item $cli cli-stage/anima.exe
+          foreach ($line in Get-Content deploy/release/licences.txt) {
+            if ($line -match '^\s*(#|$)') { continue }
+            $source, $name = -split $line
+            Copy-Item $source "cli-stage/$name"
+          }
+          Compress-Archive -Path cli-stage/* -DestinationPath out-cli/anima-windows-x86_64.zip
           $cliDigest = (Get-FileHash out-cli/anima-windows-x86_64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "cli_sha256=$cliDigest" >> $env:GITHUB_OUTPUT
           "$cliDigest  anima-windows-x86_64.zip" | Set-Content out-cli/SHA256SUMS
@@ -129,6 +137,17 @@ jobs:
     env: *windows-env
     steps:
       - *autocrlf
+      # Only this job, which builds nothing that a person downloads: the job `windows` builds the
+      # installer and the trial with the scanning of the runner as it is. On a proof run (44890968739)
+      # the tests ran 39 minutes against 8 on Linux, most of it in the hub's tests, each of which
+      # copies a PostgreSQL database of small files; Defender scans each file that the runner writes.
+      - name: Leave the work folders of this throwaway runner out of Defender's scanning
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $folders = @($env:GITHUB_WORKSPACE, $env:RUNNER_TEMP, $env:TEMP, "$env:USERPROFILE/.cargo", "$env:USERPROFILE/.rustup", "$env:LOCALAPPDATA/go-build", "$env:USERPROFILE/.bun")
+          Add-MpPreference -ExclusionPath $folders
+          (Get-MpPreference).ExclusionPath
       - *checkout
       - *bun
       - *merge
@@ -143,6 +162,11 @@ jobs:
           if ($digest -ne 'ba35ee0ce14ace65cd8c7aaa9613adb7d2644b0fe3866e85131eb4c269786efb') { throw "cargo-nextest has the digest $digest" }
           Expand-Archive $zip -DestinationPath "$env:RUNNER_TEMP/nextest"
           "$env:RUNNER_TEMP/nextest" >> $env:GITHUB_PATH
+      # Read only: the workflow rust-cache writes this cache under main, with the same environment.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: windows-gates
+          save-if: false
       # Its own step with its own limit: this build hung once for hours, before the gates began.
       - name: Build the PostgreSQL tree of the installer
         shell: pwsh

@@ -156,7 +156,6 @@ fixture_test! {
             let error = only_error(&schema, query).await;
             assert_eq!(validation_fields(&error), [field], "{query}");
         }
-        // One error per site, each naming the same field.
         let nested = schema.execute(signed_in("{ sites { devices(first: 0) { totalCount } } }")).await;
         assert_eq!(nested.errors.len(), 3);
         for error in &nested.errors {

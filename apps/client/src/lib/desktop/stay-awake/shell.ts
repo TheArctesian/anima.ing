@@ -10,7 +10,6 @@ export type Pause = 'low-battery' | 'lid-not-ready' | 'unavailable';
 /** Whether this computer can keep awake with the lid closed (AWK-003). */
 export type Lid = 'ready' | 'needs-set-up' | 'unsupported';
 
-/** The stay-awake control of this computer, as the desktop shell reports it. */
 export interface StayAwakeStatus {
   /** The operator's choice. */
   readonly level: Level;
@@ -41,7 +40,6 @@ const isLid = (value: unknown): value is Lid => LIDS.includes(value);
 const isProblem = (value: unknown): value is StayAwakeProblem => PROBLEMS.includes(value);
 const isFloor = (value: unknown): value is number | null => value === null || (typeof value === 'number' && Number.isInteger(value));
 
-/** The status the shell answered, or `null` for anything that is not one. */
 export function statusOf(value: unknown): StayAwakeStatus | null {
   if (!isRecord(value)) return null;
   const { level, batteryFloor, held, pause, lid } = value;
@@ -61,7 +59,6 @@ async function call(command: string, args?: Record<string, unknown>): Promise<St
   }
 }
 
-/** The state of the control now. */
 export function readStayAwake(): Promise<StayAwakeResult> {
   return call('stay_awake_read');
 }
@@ -86,10 +83,7 @@ export function removeLidSetUp(): Promise<StayAwakeResult> {
   return call('stay_awake_lid_remove');
 }
 
-/**
- * Hears each new state: a change from the tray item, or the battery (AWK-004, AWK-006). Resolves with the function
- * that stops listening. A payload that is not a status is dropped.
- */
+/** Hears each new state from the tray item or the battery (AWK-004, AWK-006); drops a payload that is not a status. */
 export async function onStayAwake(listener: (status: StayAwakeStatus) => void): Promise<() => void> {
   if (!isTauri()) return () => undefined;
   return listen('stay-awake', (event) => {

@@ -1,18 +1,5 @@
-//! The flows of one UDP stream (task H41, SF-327). A source address of UDP can be false, and
-//! nothing in its first datagram tells a false source from a real one. So a flow starts as
-//! waiting, and becomes set up when its source sends again after the application answered it: a
-//! real client does that within one round trip. A set-up flow keeps its place until it ends. A
-//! new source that finds the waiting flows at their cap, or the table full, takes the place of
-//! the oldest waiting flow, never of a set-up one. False sources of many networks then replace
-//! only each other, and a real client that answers keeps its flow. Set-up flows take at most the
-//! places that the waiting flows leave, so a new source always finds a waiting place.
-//!
-//! What stays (SF-327): a sender of false sources that sends again to each of them can set up
-//! flows without seeing an answer, and then holds the set-up places until they are idle. The
-//! caller limits new flows each second with a bucket whose burst is at least the cap of waiting
-//! flows: once that bucket is empty, a waiting flow lives for at least the cap divided by the
-//! rate, but a burst of false sources can replace each waiting flow at once. No I/O and no clock:
-//! the order of the flows is a counter.
+//! The flows of one UDP stream (SF-327): a flow waits until its source sends again after an answer,
+//! and a new source replaces only the oldest waiting flow, never a set-up one.
 
 use std::{
     collections::HashMap,
@@ -21,21 +8,17 @@ use std::{
 
 use crate::limits::source_network;
 
-/// The caps of the flows of one stream.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FlowCaps {
-    /// Flows in all, waiting and set up.
     pub total: usize,
     /// Flows of one source network ([`source_network`]), waiting and set up.
     pub per_network: usize,
-    /// Waiting flows.
     pub waiting: usize,
     /// Set-up flows: at most `total` less `waiting`, so a new source always finds a waiting place.
     pub set_up: usize,
 }
 
-/// A flow that [`FlowTable::open`] made: its number, and the handle of a waiting flow that it
-/// took the place of, which the caller drops to end that flow.
+/// A flow that [`FlowTable::open`] made, and the waiting flow it replaced, which the caller drops.
 #[derive(Debug)]
 pub struct Opened<T> {
     pub id: u64,
@@ -49,8 +32,7 @@ struct Flow<T> {
     set_up: bool,
 }
 
-/// The flows of one stream, by source address, each with a handle `T` (in the proxy, the sender
-/// of its datagrams; when the table drops it, the flow ends).
+/// The flows of one stream by source address; dropping a flow's handle `T` ends the flow.
 #[derive(Debug)]
 pub struct FlowTable<T> {
     caps: FlowCaps,
@@ -68,7 +50,6 @@ impl<T> FlowTable<T> {
         }
     }
 
-    /// The handle of the flow of `source`, if it has one.
     #[must_use]
     pub fn get(&self, source: SocketAddr) -> Option<&T> {
         self.flows.get(&source).map(|flow| &flow.handle)
@@ -126,6 +107,10 @@ impl<T> FlowTable<T> {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.flows.clear();
+    }
+
     /// The flows in the table, and how many of them are set up.
     #[must_use]
     pub fn counts(&self) -> (usize, usize) {
@@ -141,7 +126,6 @@ impl<T> FlowTable<T> {
             .count()
     }
 
-    /// Removes the waiting flow opened first and gives its handle; `None` when no flow waits.
     fn take_oldest_waiting(&mut self) -> Option<T> {
         let oldest = self
             .flows

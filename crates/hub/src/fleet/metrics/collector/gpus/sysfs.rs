@@ -19,6 +19,7 @@ enum File {
     Busy,
     VramUsed,
     VramTotal,
+    UmaCarveout,
 }
 
 /// The lines each file of one card printed, newline included, empty when it printed none.
@@ -26,11 +27,12 @@ enum File {
 struct Card<'a> {
     busy: &'a [u8],
     vram_used: &'a [u8],
+    uma_carveout: &'a [u8],
     vram_total: &'a [u8],
 }
 
 /// One reading per card number found, in card order, at most [`MAX_LABELS`] cards. A line
-/// that is not `/sys/class/drm/card<number>/device/<file>:<value>` for one of the three files
+/// that is not `/sys/class/drm/card<number>/device/<file>:<value>` for one of the GPU files
 /// is skipped, and so is a repeat of a file already read. Sysfs gives no name, so the reader
 /// names each card.
 pub(in crate::fleet::metrics::collector) fn cards(output: &[u8]) -> Vec<GpuReading> {
@@ -45,6 +47,7 @@ pub(in crate::fleet::metrics::collector) fn cards(output: &[u8]) -> Vec<GpuReadi
             File::Busy => &mut card.busy,
             File::VramUsed => &mut card.vram_used,
             File::VramTotal => &mut card.vram_total,
+            File::UmaCarveout => &mut card.uma_carveout,
         };
         if slot.is_empty() {
             *slot = value;
@@ -57,6 +60,7 @@ pub(in crate::fleet::metrics::collector) fn cards(output: &[u8]) -> Vec<GpuReadi
                 busy_percent: card.busy,
                 vram_used: card.vram_used,
                 vram_total: card.vram_total,
+                unified_memory: !card.uma_carveout.is_empty(),
             };
             amd::card(number, "", files)
         })
@@ -81,6 +85,7 @@ fn line(line: &[u8]) -> Option<(u32, File, &[u8])> {
         "gpu_busy_percent" => File::Busy,
         "mem_info_vram_used" => File::VramUsed,
         "mem_info_vram_total" => File::VramTotal,
+        "uma/carveout" => File::UmaCarveout,
         _ => return None,
     };
     Some((number.parse().ok()?, file, value))

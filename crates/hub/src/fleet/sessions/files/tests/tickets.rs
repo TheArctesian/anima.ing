@@ -1,5 +1,4 @@
-//! The files tickets (K4 Section 1): single use, bound to the client address, 30 s, bounded,
-//! and kept apart from session tickets. Pure: the time is a parameter.
+//! Files tickets: single use, bound to the client address, apart from session tickets (K4 Section 1).
 
 use chrono::TimeDelta;
 

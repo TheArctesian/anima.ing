@@ -57,7 +57,6 @@ function expectSilentConsole(): void {
   expect(consoleSpies.flatMap((spy) => spy.mock.calls)).toEqual([]);
 }
 
-/** Opens Add channel and types a webhook whose URL and header value are secrets. */
 async function typeNewWebhook(answers: Parameters<typeof fakeHub>[0]): Promise<void> {
   await open(loaded(answers));
   button('Add channel').click();
@@ -74,6 +73,23 @@ function sentInput(): unknown {
   const last = hub.sent.at(-1);
   return (last?.variables as { input?: unknown } | undefined)?.input;
 }
+
+it('adds the Mobile channel with relay credentials and clears them after saving', async () => {
+  const saved = { ...MADE, name: 'My phone', kind: 'MOBILE' } as const;
+  await open(loaded({ CreateNotificationChannel: ok({ createNotificationChannel: saved }) }));
+  button('Add channel').click();
+  flushSync();
+  pick(choice('Mobile'));
+  typeInto(field('Name') as HTMLInputElement, saved.name);
+  typeInto(field('Push relay URL') as HTMLInputElement, FAKE_WEBHOOK_URL);
+  typeInto(field('Relay token') as HTMLInputElement, FAKE_SECRET);
+  inDialog('Save').click();
+  await settled();
+
+  expect(sentInput()).toMatchObject({ settings: { mobile: { url: FAKE_WEBHOOK_URL, token: FAKE_SECRET } } });
+  expect(places(FAKE_SECRET)).toEqual(NOWHERE);
+  expect(button('Edit My phone')).toBeDefined();
+});
 
 it('F-8: an edited channel shows no stored secret: each secret field is empty and says what is stored', async () => {
   await open(loaded());
@@ -129,7 +145,6 @@ it('F-8, LOG-007: after a save no secret is in the DOM, a field, storage, the UR
   inDialog('Save').click();
   await settled();
   expect(sentInput()).toMatchObject({ settings: { webhook: { url: FAKE_WEBHOOK_URL, headers: [{ name: 'Authorization', value: FAKE_SECRET }] } } });
-  // The dialog is still fading out, and holds nothing.
   expect(document.querySelector('.portal')).not.toBeNull();
   expect(places(FAKE_SECRET)).toEqual(NOWHERE);
   expect(document.querySelector('.list > li[aria-label="new-hook"] dd.mono')?.textContent).toBe('https://hooks.example.net');

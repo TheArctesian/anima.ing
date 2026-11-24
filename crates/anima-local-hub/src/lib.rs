@@ -1,9 +1,5 @@
-//! The hub on this computer (one-click plan S4, S6).
-//!
-//! The operating system keeps one program up, `anima-local-hub run`; that program keeps the
-//! hub's group up in order: the database (S3), the gateway (S2), the hub, and the link (S6),
-//! which alone is started again when it ends. Nothing here knows what the hub does, and the
-//! hub does not know that this program started it.
+//! The hub on this computer (one-click plan S4, S6): `anima-local-hub run` keeps the hub's group up.
+//! Nothing here knows what the hub does, and the hub does not know that this program started it.
 
 pub mod account;
 mod child;

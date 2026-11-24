@@ -1,6 +1,3 @@
-//! The pull request roots (K1): a page of a repository's pull requests and one pull request,
-//! with the fields that cost a GitHub request each only when they are selected.
-
 use async_graphql::{ComplexObject, Context, ID, Object, Result};
 use provider_github::live::pulls::{self as github, PullDetail};
 

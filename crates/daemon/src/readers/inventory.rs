@@ -1,15 +1,7 @@
-//! Runs the probes of the tool inventory (CAP-020 to CAP-028): finds each program in the fixed
-//! tool folders and `PATH`, runs it with its fixed arguments, and hands what it printed to
-//! `daemon_core::inventory`, which reads it. This is the I/O edge.
-//!
-//! A probe gets no input, 5 seconds, 64 KiB of output, the working folder `/` and an
-//! environment of only `PATH` (the folders searched), `LC_ALL=C` and `RUSTUP_AUTO_INSTALL=0`
-//! (a rustup proxy must not download a toolchain). It has no home folder, except `claude` and
-//! `codex`, which write into theirs even to print a version: each gets an empty temporary
-//! folder as `HOME`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR`, removed when it ends, so the
-//! operator's `~/.claude` and `~/.codex` are never read or changed (CAP-025). On macOS without
-//! the developer tools, Apple's placeholder `git` and `xcodebuild` are not run, since each
-//! would offer to install the tools. Nothing a probe prints is logged.
+//! Runs the probes of the tool inventory (CAP-020 to CAP-028); nothing a probe prints is logged.
+//! A probe gets no input and an environment of only `PATH`, `LC_ALL=C` and `RUSTUP_AUTO_INSTALL=0`,
+//! which keeps a rustup proxy from downloading a toolchain; the operator's `~/.claude` and
+//! `~/.codex` are never read or changed (CAP-025).
 
 use std::env;
 #[cfg(unix)]
@@ -42,7 +34,6 @@ const PROBE_BOUNDS: Bounds = Bounds {
     output_limit: 64 * 1024,
 };
 
-/// The most of `/etc/os-release` or the kernel release read.
 const FILE_LIMIT: usize = 64 * 1024;
 
 const SW_VERS: FixedCommand = FixedCommand {
@@ -52,8 +43,7 @@ const SW_VERS: FixedCommand = FixedCommand {
     keep_cut_output: false,
 };
 
-/// Prints the folder of the macOS developer tools, or fails without them; it never offers to
-/// install them.
+/// Fails without the developer tools, and does not offer to install them.
 const XCODE_SELECT: FixedCommand = FixedCommand {
     program: "/usr/bin/xcode-select",
     args: &["-p"],
@@ -61,19 +51,15 @@ const XCODE_SELECT: FixedCommand = FixedCommand {
     keep_cut_output: false,
 };
 
-/// Where probes look and what they may run.
 struct Search {
-    /// The folders searched, in order.
     folders: Vec<PathBuf>,
-    /// The `PATH` a probe gets.
     path: OsString,
     os: Os,
     /// Whether the macOS developer tools are present, so Apple's placeholders may run.
     developer_tools: bool,
 }
 
-/// The tool inventory of this computer; `None` when its architecture or operating system
-/// version cannot be read, so nothing is sent (the hub keeps what it has).
+/// `None` sends nothing, so the hub keeps the inventory it has.
 pub async fn inventory(platform: Platform) -> Option<Inventory> {
     let architecture = Architecture::parse(env::consts::ARCH)?;
     let os = match platform {
@@ -84,12 +70,12 @@ pub async fn inventory(platform: Platform) -> Option<Inventory> {
     };
     let os_version = os_version(os).await?;
     let search = Search::here(os).await;
-    Some(probe_all((architecture, os, os_version), &search).await)
+    let mut found = probe_all((architecture, os, os_version), &search).await;
+    found.remote_access = remote_access().await;
+    Some(found)
 }
 
 impl Search {
-    /// The search of this daemon: its `HOME` and `PATH`, and whether the developer tools are
-    /// present.
     async fn here(os: Os) -> Self {
         let home =
             env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from);
@@ -118,8 +104,6 @@ impl Search {
     }
 }
 
-/// Whether the macOS developer tools are present: `xcode-select -p` prints a folder that is
-/// there.
 async fn developer_tools() -> bool {
     let Ok(printed) = XCODE_SELECT.run().await else {
         return false;
@@ -133,7 +117,6 @@ async fn developer_tools() -> bool {
         .is_ok_and(|found| found.is_dir())
 }
 
-/// Runs every probe of `system`'s operating system and reads the inventory they give.
 async fn probe_all(system: (Architecture, Os, String), search: &Search) -> Inventory {
     let mut outcomes = Vec::new();
     for probe in PROBES.iter().filter(|probe| probe.runs_on(system.1)) {
@@ -146,8 +129,6 @@ async fn probe_all(system: (Architecture, Os, String), search: &Search) -> Inven
     Inventory::new(system, &outcomes, targets.as_deref())
 }
 
-/// The operating system version: `sw_vers` on macOS; on Linux the distribution's version, or
-/// the kernel release for a distribution that has none.
 async fn os_version(os: Os) -> Option<String> {
     match os {
         Os::Windows => windows_version(),
@@ -168,9 +149,6 @@ async fn read_capped(path: &Path) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-/// Finds `program` and runs it, with an empty home folder of its own when `own_home`:
-/// `Missing` when no folder has it, `TimedOut` when it ran past 5 seconds, `Exited` when it
-/// could not start or exited with a failure.
 async fn run(program: Program, own_home: bool, search: &Search) -> Outcome {
     let Some(path) = find(program.name, search).await else {
         return Outcome::Missing;
@@ -194,7 +172,7 @@ async fn run(program: Program, own_home: bool, search: &Search) -> Outcome {
         }
     }
     let home = match own_home.then(|| give_home(&mut command)) {
-        // Without a folder of its own the probe does not run: never with the operator's home.
+        // A probe with no folder of its own does not run, rather than get the operator's home.
         Some(None) => return Outcome::Exited,
         Some(home) => home,
         None => None,
@@ -206,8 +184,7 @@ async fn run(program: Program, own_home: bool, search: &Search) -> Outcome {
     outcome
 }
 
-/// Gives `command` a new empty folder as its home and the config folders of `claude` and
-/// `codex` (CAP-025); `None` when no folder could be made.
+/// The operator's `~/.claude` and `~/.codex` are not read or changed by a probe (CAP-025).
 fn give_home(command: &mut Command) -> Option<TempDir> {
     let home = tempfile::tempdir()
         .inspect_err(|error| tracing::debug!(%error, "no home folder for a tool probe"))
@@ -244,8 +221,6 @@ fn outcome(captured: Result<Vec<u8>, CommandError>) -> Outcome {
     }
 }
 
-/// The first folder of `search` that holds an executable file `name`, links followed, that
-/// may run (see [`may_run`]).
 async fn find(name: &str, search: &Search) -> Option<PathBuf> {
     for path in probe_paths(&search.folders, name) {
         if let Ok(found) = tokio::fs::metadata(&path).await
@@ -297,4 +272,27 @@ fn windows_version() -> Option<String> {
     {
         None
     }
+}
+
+async fn remote_access() -> Option<daemon_core::inventory::RemoteAccess> {
+    let bytes = read_capped(Path::new("/etc/anima/remote-access.json")).await?;
+    let mut found: daemon_core::inventory::RemoteAccess = serde_json::from_slice(&bytes).ok()?;
+    if !found.accepted() {
+        return None;
+    }
+    for (port, user) in [(22, &mut found.ssh_user), (3389, &mut found.rdp_user)] {
+        if user.is_some()
+            && !matches!(
+                tokio::time::timeout(
+                    Duration::from_secs(1),
+                    tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
+                )
+                .await,
+                Ok(Ok(_))
+            )
+        {
+            *user = None;
+        }
+    }
+    Some(found)
 }

@@ -1,5 +1,4 @@
-//! `anima maintenance update <id-or-name>`: changes the fields you name and keeps the rest.
-//! The hub replaces a window as a whole, so this reads it, lays the flags over it and sends it.
+//! `anima maintenance update`: the hub replaces a window as a whole, so this reads it first.
 
 use super::documents::{MaintenanceUpdate, maintenance_update};
 use super::fields::{INPUT, WindowFields, into_input};

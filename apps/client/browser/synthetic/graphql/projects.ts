@@ -1,6 +1,3 @@
-// The projects of the synthetic hub: a few made-up repositories with what the hub found in them (PRO-002, PRO-004). The
-// gallery shoots the Projects page from them, and the picture of the Projects tile of the Extensions page.
-
 const FOUND_AT = '2026-11-01T09:00:00Z';
 const SYNCED_AT = '2026-11-06T00:55:00Z';
 
@@ -47,7 +44,6 @@ function project(sample: Sample, index: number): Record<string, unknown> {
   return { id, slug, name: slug, subjectKey: sample.name, repositories: [repository], resources, syncedAt: SYNCED_AT };
 }
 
-/** The `projects` field: the sample projects, none left out. */
 export function projectConnection({ leftOut }: { leftOut?: boolean | null }): Record<string, unknown> {
   const nodes = leftOut === true ? [] : SAMPLES.map(project);
   return {

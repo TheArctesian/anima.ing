@@ -1,22 +1,15 @@
-//! Two sources, one event: both entries stay and the lower-ranked one points to the
-//! higher-ranked one (TML-005). Pure.
+//! Two sources, one event: both entries stay; the lower-ranked points to the higher (TML-005).
 
 use std::collections::HashMap;
 
 use super::model::{Category, Evidence};
 use crate::engine::records::Reference;
 
-/// The order that decides which entry of one event the others point to: the higher rank,
-/// then the source name and the reference that sort first, so the answer never depends on
-/// the order of `entries`.
+/// Ties break on source, then reference, so the order of `entries` never changes the answer.
 fn outranks(a: &Evidence, b: &Evidence) -> bool {
     (b.rank, &a.source, a.reference.as_str()) < (a.rank, &b.source, b.reference.as_str())
 }
 
-/// Sets `superseded_by` on each entry that a different source outranks for the same event.
-/// Two entries record the same event when they have the same category and the same
-/// `occurrence`. Entries of the leading entry's own source and entries an adapter already
-/// pointed elsewhere are left as they are. No entry is removed.
 pub(super) fn supersede(entries: &mut [Evidence]) {
     let mut leaders: HashMap<(Category, &str), &Evidence> = HashMap::new();
     for entry in entries.iter() {

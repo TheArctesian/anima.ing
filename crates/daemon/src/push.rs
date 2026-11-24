@@ -9,6 +9,8 @@ pub mod renewal;
 mod renewing;
 #[cfg(all(test, target_os = "linux"))]
 mod tests;
+#[cfg(unix)]
+mod thread_summaries;
 pub mod unstored;
 pub mod usage;
 
@@ -54,11 +56,18 @@ pub enum Event {
     Hardware(Hardware),
     /// The daemon's agent usage state and the session days that changed (AIS-019).
     AgentUsage(UsageReport),
+    #[cfg(unix)]
+    ThreadSummaries(
+        Option<(
+            daemon_core::wire::ThreadSummaries,
+            crate::config::agent_usage::UsageSettings,
+        )>,
+    ),
 }
 
 /// Everything the pusher keeps between pushes.
 pub struct Pusher {
-    hub: HubClient,
+    hub: std::sync::Arc<HubClient>,
     device: Uuid,
     credential: Credential,
     store: TokenStore,
@@ -67,6 +76,8 @@ pub struct Pusher {
     announced: Announcements,
     /// The agent usage waiting for the hub, a part of it in each batch.
     usage: UsageBacklog,
+    #[cfg(unix)]
+    thread_summaries: thread_summaries::Pending,
     backoff: Backoff,
     /// The largest batch to try; smaller after `TOO_LARGE`.
     limit: usize,
@@ -90,13 +101,15 @@ impl Pusher {
     #[must_use]
     pub fn new(hub: HubClient, device: Uuid, credential: Credential, store: TokenStore) -> Self {
         Self {
-            hub,
+            hub: std::sync::Arc::new(hub),
             device,
             credential,
             store,
             backlog: Backlog::new(),
             announced: Announcements::default(),
             usage: UsageBacklog::default(),
+            #[cfg(unix)]
+            thread_summaries: thread_summaries::Pending::default(),
             backoff: Backoff::default(),
             limit: BATCH_POINTS,
             stopped_until: None,
@@ -106,6 +119,16 @@ impl Pusher {
             unstored: None,
             marks: None,
             marked: false,
+        }
+    }
+
+    #[cfg(unix)]
+    pub(crate) fn thread_sync_target(&self) -> crate::runtime::thread_sync::Target {
+        crate::runtime::thread_sync::Target {
+            hub: self.hub.clone(),
+            device: self.device,
+            origin: self.credential.hub.clone(),
+            tokens: self.store.clone(),
         }
     }
 
@@ -146,6 +169,8 @@ impl Pusher {
             Event::Inventory(inventory) => self.announced.inventory = Some(inventory),
             Event::Hardware(hardware) => self.announced.hardware = Some(hardware),
             Event::AgentUsage(report) => self.usage.take(report),
+            #[cfg(unix)]
+            Event::ThreadSummaries(batch) => self.thread_summaries.replace(batch),
         }
     }
 
@@ -195,6 +220,8 @@ impl Pusher {
             };
             let announced = Announcements {
                 agent_usage: self.usage.outgoing(),
+                #[cfg(unix)]
+                agent_threads: self.thread_summaries.outgoing(self.marks.as_ref()),
                 ..self.announced.clone()
             };
             let mut batch =
@@ -212,6 +239,9 @@ impl Pusher {
                     self.recovered();
                     if let Answer::Accepted(Some(accepted)) = answer {
                         self.usage.take_salt(accepted.account_salt.as_deref());
+                        #[cfg(unix)]
+                        self.thread_summaries
+                            .acknowledge(accepted.agent_threads.as_ref());
                         self.follow_keys(accepted, now).await;
                     }
                     return Round::Sent;

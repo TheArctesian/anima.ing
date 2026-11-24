@@ -1,13 +1,10 @@
-//! A check's parent is a group check of the same device, and groups have no parent, so
-//! parents never form a cycle (CHK-004: a group counts as the worst of its children, inside
-//! its device's status).
+//! A check's parent is a group check of the same device and groups have no parent (CHK-004).
 
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::{DOCKER_HOST, PVE_01, constraint_of, id, insert_check};
 
-/// Sets `child`'s parent, with `parent_type` as given.
 async fn set_parent(
     pool: &PgPool,
     child: Uuid,
@@ -30,7 +27,6 @@ async fn group_of(pool: &PgPool, child: Uuid) -> Option<Uuid> {
         .unwrap()
 }
 
-/// Inserts checks of the given types and names on `device` and returns their ids.
 async fn checks_on<const N: usize>(pool: &PgPool, device: &str, kinds: [&str; N]) -> [Uuid; N] {
     let ids = [(); N].map(|()| Uuid::now_v7());
     for (check, kind) in ids.iter().zip(kinds) {
@@ -98,7 +94,6 @@ async fn chk_004_groups_have_no_parent_so_parents_cannot_form_a_cycle(pool: PgPo
     let [outer, inner, child] = checks_on(&pool, PVE_01, ["group", "group", "tcp"]).await;
     let nested = set_parent(&pool, inner, (outer, Some("group"))).await;
     let itself = set_parent(&pool, outer, (outer, Some("group"))).await;
-    // Two checks that name each other in one statement.
     let mutual = |a: Uuid, b: Uuid| {
         sqlx::query(
             "update checks.checks set parent_type = 'group', \

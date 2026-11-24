@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ProblemLine from './ProblemLine.svelte';
   import { onDestroy, tick, untrack } from 'svelte';
   import { isMac } from '$lib/platform/mac';
   import AttachButton from './attachments/AttachButton.svelte';
@@ -7,6 +8,7 @@
   import { LIMITS, pasteDecision } from './attachments/attach';
   import { dropZone } from './attachments/drop';
   import { CardState } from './card-state.svelte';
+  import { Favourites } from './favourites/favourites.svelte';
   import type { CaretAt } from './draft';
   import Editor from './editor/Editor.svelte';
   import type { ComposerEngine } from './engine';
@@ -16,6 +18,7 @@
   import type { MentionEntry } from './mentions/sources';
   import { afterCaretMove, afterEdit, afterEscape, NO_TRIGGER, triggerAt } from './mentions/trigger';
   import ModelPicker from './picker/ModelPicker.svelte';
+  import PermissionsChip from './picker/popup/PermissionsChip.svelte';
   import SendButton from './primary/SendButton.svelte';
   import StopButton from './primary/StopButton.svelte';
   import { enterSends, showsSend, showsStop } from './primary/send';
@@ -33,6 +36,8 @@
     title?: string | undefined;
     /** The text to start from, for the specimen and the gallery. */
     start?: string;
+    /** The strip under the card of a chat that is not started, with the permissions at its end (03 B.6.5; T3 shows them there only on a new thread). */
+    contextStrip?: boolean;
   }
 
   /*
@@ -40,11 +45,12 @@
    * footer with the paperclip, the model, the microphone and the round send. The card is opaque and shows a focus
    * ring while the editor has focus: T3's is glass with no ring (R-354, D7 and D9).
    */
-  const { engine, draft, title, start }: Props = $props();
+  const { engine, draft, title, start, contextStrip = false }: Props = $props();
   const menuId = $props.id();
   // The chat column mounts one composer for each chat (`{#key}` in Composer.svelte), so the key is read once.
   // svelte-ignore state_referenced_locally
   const card = new CardState(() => engine, draft, isMac(navigator.userAgent) ? '⌘' : 'Ctrl');
+  const favourites = new Favourites(localStorage);
   // svelte-ignore state_referenced_locally
   if (start !== undefined) card.prompt = start;
   // One reader while the skills are the same list: a new one makes the editor draw the whole prompt again.
@@ -76,6 +82,10 @@
   $effect(() => {
     const open = card.editing;
     if (open !== null && !engine.queued.some((queued) => queued.id === open)) untrack(() => card.orphaned());
+  });
+  $effect(() => {
+    const now = engine.choice;
+    untrack(() => card.settled(now));
   });
   onDestroy(() => card.dispose());
 
@@ -192,8 +202,8 @@
     bind:this={surface}
     {@attach dropZone({
       onOver: (now) => (over = now && engine.attach.can),
-      onFiles: (files) => {
-        if (engine.attach.can) card.add(files);
+      onFiles: (files, folders) => {
+        if (engine.attach.can) card.add(files, folders.length);
         else card.problem = engine.attach.reason;
       },
     })}
@@ -216,27 +226,34 @@
         {onKey}
         controls={trigger === null ? undefined : menuId}
         activeDescendant={trigger === null ? undefined : activeOption}
-        onFiles={(files, how) => {
+        onFiles={(files, how, folders) => {
           // A drop goes on to the card's own drop zone, which takes it one time.
           if (how === 'drop') return true;
-          if (engine.attach.can) card.add(files);
+          if (engine.attach.can) card.add(files, folders);
           else card.problem = engine.attach.reason;
           return engine.attach.can;
         }}
         onLongPaste={longPaste}
       />
     </div>
-    {#if card.problem !== null}<p class="problem" role="alert">{card.problem}</p>{/if}
+    {#if card.problem !== null}<ProblemLine words={card.problem} onRetry={card.unsent ? () => void card.submit(false) : undefined} busy={card.busy} />{/if}
     <div class="footer">
       <AttachButton can={engine.attach} onFiles={(files) => card.add(files)} />
       <div class="actions">
-        <ModelPicker catalogue={engine.catalogue} value={engine.choice} onChange={engine.choose} can={engine.pick} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
-        <MicButton can={engine.dictate} onStart={() => undefined} />
+        <ModelPicker catalogue={favourites.apply(engine.catalogue)} onFavourite={favourites.set} value={card.shownChoice(engine.choice)} onChange={(next) => void card.choose(next)} can={engine.pick} onAsk={engine.askModels} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
+        <!-- T3 mounts the microphone only where dictation works (`ChatComposer.tsx:3897`); ours has none yet. -->
+        {#if engine.dictate.can}<MicButton can={engine.dictate} onStart={() => undefined} />{/if}
         {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => pressed(() => card.submit(alternate))} />{/if}
         {#if showsStop(card.turn, card.stop)}<StopButton pending={card.stop === 'pending'} onStop={() => pressed(() => card.interrupt())} />{/if}
       </div>
     </div>
   </form>
+  {#if contextStrip && engine.pick.can}
+    {@const shown = card.shownChoice(engine.choice)}
+    <div class="context-strip" data-slot="composer-context-strip">
+      <PermissionsChip modes={engine.catalogue.modes} value={shown.mode} onChange={(mode) => void card.choose({ ...shown, mode })} />
+    </div>
+  {/if}
 </div>
 <Preview {images} openId={previewed} onOpen={(id) => (previewed = id)} onClose={() => (previewed = null)} />
 
@@ -263,6 +280,16 @@
     outline-offset: calc(var(--border-thin) * -1);
   }
 
+  /* T3's context strip (03 A.8): 8 px over it and at its sides, 4 px between its parts, 12 px text; bare, under the card. */
+  .context-strip {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    inline-size: 100%;
+    padding: var(--space-2) var(--space-2) 0;
+    font-size: var(--code-text-meta);
+  }
+
   /* Files are dragged over it (03 B.2.6): a fill and a line in the accent. */
   .card.over {
     border-color: var(--accent);
@@ -273,13 +300,6 @@
     position: relative;
     padding: var(--code-composer-pad-start) var(--code-composer-pad-inline) var(--code-composer-pad-end);
     font-size: var(--code-text-body);
-  }
-
-  .problem {
-    margin: 0;
-    padding: 0 var(--code-composer-pad-inline) var(--space-2);
-    color: var(--status-down-text);
-    font-size: var(--code-text-meta);
   }
 
   .footer {

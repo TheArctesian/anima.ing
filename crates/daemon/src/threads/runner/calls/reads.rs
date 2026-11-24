@@ -1,5 +1,7 @@
 //! The calls that only read what the runner holds: the threads, the listings, the projects, the
-//! accounts, the models and the earlier updates of a thread (TH106).
+//! accounts and the earlier updates of a thread (TH106).
+
+use std::path::Path;
 
 use agent_threads::control::{Action, Outcome, Refusal};
 
@@ -20,11 +22,11 @@ impl Runner {
             },
             Action::Listings => self.listings(),
             Action::Projects => self.projects(),
+            Action::Version => Outcome::Version {
+                version: env!("CARGO_PKG_VERSION").to_owned(),
+            },
             Action::Accounts => Outcome::Accounts {
                 accounts: self.said.accounts.rows(),
-            },
-            Action::Models => Outcome::Models {
-                models: self.said.models.rows(),
             },
             Action::Earlier {
                 thread,
@@ -43,5 +45,16 @@ impl Runner {
             ),
             _ => return None,
         })
+    }
+
+    /// What the composer says of a folder that the person chose for a new thread, or the refusal of it.
+    pub(super) fn folder_notice(&self, folder: &Path) -> Outcome {
+        let daemon = self.dir.parent().unwrap_or(&self.dir);
+        match super::super::start::chosen_folder(folder, daemon) {
+            Ok(real) => Outcome::Folder {
+                notice: crate::threads::notice::before_start(&real, daemon),
+            },
+            Err(why) => Outcome::Refused { why },
+        }
     }
 }

@@ -1,5 +1,3 @@
-//! `anima release next-version`: the version the release form proposes.
-
 use super::documents::{ReleaseNextVersion, release_next_version};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

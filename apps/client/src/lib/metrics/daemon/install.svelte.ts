@@ -2,53 +2,41 @@ import type { HubError, HubResult } from '$lib/hub/hub';
 import type { DaemonEnrolment, DaemonStatusView, metricsApi } from '$lib/metrics/api';
 import { clearTime, secondsLeft } from './countdown';
 
-/** The hub calls of the Install daemon panel; the route passes `metricsApi` of its hub. */
 export type DaemonCalls = Pick<ReturnType<typeof metricsApi>, 'daemonStatus' | 'enrolDaemon' | 'revokeDaemonToken'>;
 
-/** Where the command is copied to; the browser's clipboard in the app. */
 export interface ClipboardSink {
   writeText: (text: string) => Promise<void>;
 }
 
-/** What the panel reads from outside: the clock, the clipboard and a timer that returns the function that cancels it. */
 export interface PanelEnv {
   readonly now: () => Date;
   readonly clipboard: ClipboardSink;
   readonly later: (run: () => void, milliseconds: number) => () => void;
 }
 
-/** How long "Copied." stays. */
 const COPIED_MS = 4000;
 
-/** The text last copied and whether the clipboard took it; `count` makes each copy a new announcement. */
+/** `count` makes each copy a new announcement. */
 export interface CopyOutcome {
   readonly text: string;
   readonly ok: boolean;
   readonly count: number;
 }
 
-/**
- * The Install daemon panel's state for one device (MET-019, MET-018): the code's life (make, count down, clear) and the daemon's
- * status (read, revoke). The enrolment code lives only in this object, which dies with the panel; it is cleared when it expires or
- * the operator closes it, and never reaches storage, the URL or a log (LOG-007). Time and timers come from `env`.
- */
+/** MET-018, MET-019: the enrolment code lives only in this object and never reaches storage, the URL or a log (LOG-007). */
 export class DaemonInstall {
-  /** The code to show; `null` before one was made, after it expired and after `clear`. */
   code = $state<string | null>(null);
-  /** Whole seconds until the code expires. */
   left = $state(0);
   expired = $state(false);
   busy = $state(false);
   error = $state<HubError | null>(null);
   copied = $state<CopyOutcome | null>(null);
-  /** The device's daemon state; `null` until read, or when it could not be. */
   status = $state<DaemonStatusView | null>(null);
   statusError = $state<HubError | null>(null);
-  /** True once the operator revoked the token in this panel: the source stays DAEMON, stale, until it enrols again (R-092 D-7). */
+  /** The source stays DAEMON, stale, until it enrols again (R-092 D-7). */
   revoked = $state(false);
 
   private expiresAt: string | null = null;
-  /** Counts the times the code was cleared or remade, so an answer for an earlier code is dropped. */
   private epoch = 0;
   private statusEpoch = 0;
   private copies = 0;
@@ -84,7 +72,6 @@ export class DaemonInstall {
     this.tick();
   }
 
-  /** Recounts the time left; at zero the code is gone from the page (MET-012: 15 minutes). */
   tick(): void {
     if (this.expiresAt === null) return;
     this.left = secondsLeft(this.expiresAt, this.env.now());
@@ -94,13 +81,12 @@ export class DaemonInstall {
     void this.loadStatus();
   }
 
-  /** The operator closes the code. The code may have been used, so the daemon state is read again. */
+  /** The code may have been used, so the daemon state is read again. */
   close(): void {
     this.clear();
     void this.loadStatus();
   }
 
-  /** Forgets the code and anything about it; the panel calls it when it closes. */
   clear(): void {
     this.epoch += 1;
     this.code = null;
@@ -112,7 +98,6 @@ export class DaemonInstall {
     this.forgetCopy();
   }
 
-  /** Copies `text`; the outcome shows for a few seconds and, as an announcement, again for each copy. */
   async copy(text: string): Promise<void> {
     let ok = true;
     try {
@@ -133,7 +118,6 @@ export class DaemonInstall {
     this.copied = null;
   }
 
-  /** Reads the daemon state; a failed read leaves no earlier state standing behind the error. */
   async loadStatus(): Promise<void> {
     this.statusEpoch += 1;
     const epoch = this.statusEpoch;
@@ -144,7 +128,7 @@ export class DaemonInstall {
     if (result.ok && result.value?.metricsStale === false) this.revoked = false;
   }
 
-  /** Revokes the token after the operator confirmed; the hub keeps the source DAEMON, shown stale (R-092 D-7). */
+  /** Revokes the token once the operator confirmed. */
   async revoke(): Promise<HubResult<DaemonStatusView>> {
     const result = await this.calls.revokeDaemonToken(this.deviceId);
     if (result.ok) {

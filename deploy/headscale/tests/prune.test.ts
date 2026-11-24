@@ -1,18 +1,14 @@
-// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { fixture, PASSWORD, removeFixtures, resticCommands, run, snapshotList, type Run } from "./backup-fixture.ts";
 
-// VPS-006 / D-12: a compromised VPS may append junk snapshots (future-dated, or many per day)
-// to push real snapshots out of the retention policy. Retention is `--keep-within 1y` only, and
-// prune.sh refuses future-dated or flooded lists.
+// VPS-006 / D-12: a compromised VPS may append junk snapshots to push real ones out of the retention policy.
 
 const NOW = "2026-11-04T12:00:00Z";
 const NOW_SECONDS = String(Date.parse(NOW) / 1000);
 
 afterEach(removeFixtures);
 
-/** Daily snapshots at 03:15 UTC for the `days` days before NOW. */
 function dailyTimes(days: number): string[] {
   return Array.from({ length: days }, (_, index) =>
     new Date(Date.parse("2026-11-04T03:15:12Z") - index * 86_400_000).toISOString());
@@ -23,7 +19,6 @@ function prune(times: string[], env: Record<string, string> = {}): Run {
   return run("prune.sh", { FAKE_SNAPSHOTS: snapshotList(root, times), PRUNE_NOW: NOW_SECONDS, ...env }, root);
 }
 
-/** The retention flags of a forget call and their values. */
 function keepFlags(argv: string[] | undefined): string[] {
   return (argv ?? []).flatMap((arg, index) => (arg.startsWith("--keep-") ? [arg, argv?.[index + 1] ?? ""] : []));
 }
@@ -52,9 +47,6 @@ describe.skipIf(process.platform === "win32")("prune.sh", () => {
 
   test("VPS-006 past-dated junk snapshots cannot evict a real snapshot from the last year", () => {
     const real = dailyTimes(360);
-    // One junk snapshot beside each real one (two per day, under the flood guard), dated
-    // later that day so a per-week or per-month rule would keep the junk, plus two per day
-    // before the history began.
     const junk = [
       ...real.map((time) => time.replace("T03:15:12", "T23:59:00")),
       ...dailyTimes(400).slice(360).flatMap((time) => [time.replace("T03:15:12", "T22:00:00"), time]),
@@ -62,8 +54,7 @@ describe.skipIf(process.platform === "win32")("prune.sh", () => {
     const result = prune([...real, ...junk]);
     expect(result.code).toBe(0);
     const forget = resticCommands(result.calls)[1];
-    // keep-within keeps every snapshot within the window, counted from the newest one; with no
-    // other keep rule, junk cannot take a real snapshot's place.
+    // With no keep rule but keep-within, junk cannot take a real snapshot's place.
     expect(keepFlags(forget)).toEqual(["--keep-within", "1y"]);
     const newest = Math.max(...[...real, ...junk].map((time) => Date.parse(time)));
     const yearBefore = new Date(newest);

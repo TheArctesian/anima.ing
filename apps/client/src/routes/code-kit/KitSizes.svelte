@@ -1,5 +1,4 @@
 <script lang="ts">
-  /** Each size token of the Code section, drawn at its size, with T3 Code's value beside it. */
   const SIZES: readonly { readonly token: string; readonly t3: string; readonly axis: 'block' | 'inline' }[] = [
     { token: '--code-band', t3: 'Top band, 52 px', axis: 'block' },
     { token: '--code-card', t3: 'Card row, 78 px', axis: 'block' },

@@ -1,5 +1,4 @@
-//! What a rollout does next (ROL-026, ROL-027, ROL-039): one pure function of the rollout, of
-//! its machines and of the time.
+//! What a rollout does next (ROL-026, ROL-027, ROL-039).
 
 use chrono::{DateTime, TimeDelta, Utc};
 
@@ -28,7 +27,6 @@ impl Pace {
     };
 }
 
-/// The machines that update at the same time, with the times that the hub recorded.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Step {
     pub machines: Vec<DeviceId>,
@@ -37,7 +35,6 @@ pub struct Step {
     pub good_at: Option<DateTime<Utc>>,
 }
 
-/// One rollout as the hub keeps it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rollout {
     pub version: Version,
@@ -47,13 +44,12 @@ pub struct Rollout {
     pub continued_after: Vec<DeviceId>,
 }
 
-/// Where one machine of a started step is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Standing {
     /// It passed its check (ROL-029), or it has a higher version.
     Passed,
-    /// The step does not wait for it: it is not connected (ROL-039), or the hub tells it
-    /// nothing (held, set off at the machine, no update function, token ended).
+    /// Not connected (ROL-039), or the hub tells it nothing (held, switch off, no update
+    /// function, token ended).
     Left,
     /// It updates, it checks, or it is busy and did not start (ROL-028).
     Pending,
@@ -61,8 +57,7 @@ pub enum Standing {
     Failed,
 }
 
-/// The standing of `machine` in a started step of a rollout to `version`. The outcome of a
-/// try comes before the connection, as in the states of K8 Section 8.4.
+/// The outcome of a try comes before the connection, as in the states of K8 Section 8.4.
 #[must_use]
 pub fn standing(machine: &Machine, version: Version) -> Standing {
     let Some(said) = machine.said.filter(|said| said.switch_on) else {
@@ -89,25 +84,19 @@ pub fn standing(machine: &Machine, version: Version) -> Standing {
     }
 }
 
-/// What the hub does next for a rollout.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Next {
-    /// Start the step with this index now.
     Start(usize),
-    /// Record that the step with this index is good now; its wait starts.
+    /// The step is good now; its wait starts.
     Good(usize),
-    /// Stop: this machine rolled back or refused (ROL-027). No new step starts until the
-    /// operator continues.
+    /// No new step starts until the operator continues (ROL-027).
     Stop(DeviceId),
-    /// Each step is good: the rollout is complete. A machine that left its step updates alone
-    /// when it connects (ROL-040).
+    /// A machine that left its step updates alone when it connects (ROL-040).
     Finish,
-    /// Nothing now.
     Wait,
 }
 
-/// The next act for `rollout` at `now`. `machines` holds each machine of the rollout that the
-/// hub still knows; a machine that is not in it left its step.
+/// A machine that is not in `machines` left its step.
 #[must_use]
 pub fn next(rollout: &Rollout, machines: &[Machine], now: DateTime<Utc>) -> Next {
     let standing_of = |device: &DeviceId| {

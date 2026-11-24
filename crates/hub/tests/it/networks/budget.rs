@@ -1,5 +1,4 @@
-//! D-11: once the 30-a-minute budget of refusal events is spent, one event a minute counts the
-//! refusals left out.
+//! The budget of refusal events (D-11).
 
 use chrono::TimeDelta;
 use sqlx::PgPool;

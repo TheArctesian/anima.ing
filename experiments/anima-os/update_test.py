@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 import secrets
+import shlex
+from updates.feed import verify
 from gui_test import prepare, graphical_install, installed_checks, screenshot, eject_install_media
 from gui_actions import tap
 from vm import Machine, digest
@@ -22,7 +24,7 @@ def login(machine,password):
     root(machine,password)
 
 
-def run(iso,package,output,resume=False):
+def run(iso,package,output,resume=False,remote=False):
     if resume:
         disk=output/'installed.qcow2';fixture=output/'update-origin.raw'
         password=(output/'fixture-password').read_text()
@@ -31,6 +33,7 @@ def run(iso,package,output,resume=False):
         password=secrets.token_hex(12)
         with open(os.open(output/'fixture-password',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as secret:
             secret.write(password)
+    expected=verify((package/'latest.json').read_bytes())['system']
     before=digest(output/'sentinel.raw')
     results=[];machine=Machine(output,disk,boot_iso=None if resume else iso)
     try:
@@ -54,7 +57,16 @@ def run(iso,package,output,resume=False):
         login(machine,password)
         machine.command("timeout 90 sh -c 'until anima-os-update status | jq -e \".value.phase == \\\"current\\\"\"; do sleep 2; done'",timeout=95)
         machine.command('! cmp -s /persist/update-before <(readlink -f /run/current-system); cmp /persist/update-identity /etc/machine-id; cmp /persist/update-hostname /proc/sys/kernel/hostname; grep -qx keep-work /persist/update-work; findmnt -n -o OPTIONS / | tr , "\\n" | grep -qx ro')
+        machine.command('test "$(readlink -f /run/current-system)" = '+shlex.quote(expected))
         results.append({'case':'updated-system-health-and-persistence','result':'Passed'})
+        from console_checks import wait_label
+        wait_label(output, 'Local session locked')
+        screenshot(output, 'updated-console-locked')
+        results.append({'case':'updated-graphical-console','result':'Passed'})
+        if remote:
+            from release.remote_checks import check
+            check(machine,password,package)
+            results.append({'case':'private-ssh-rdp-desktop-reboot-owner-choice','result':'Passed'})
         machine.send('anima-os-update rollback')
         login(machine,password)
         machine.command('cmp /persist/update-before <(readlink -f /run/current-system); cmp /persist/update-identity /etc/machine-id; cmp /persist/update-hostname /proc/sys/kernel/hostname; grep -qx keep-work /persist/update-work')
@@ -78,4 +90,5 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('iso',type=Path);parser.add_argument('package',type=Path);parser.add_argument('output',type=Path)
     parser.add_argument('--resume',action='store_true')
-    args=parser.parse_args();run(args.iso.resolve(),args.package.resolve(),args.output.resolve(),args.resume)
+    parser.add_argument('--remote',action='store_true')
+    args=parser.parse_args();run(args.iso.resolve(),args.package.resolve(),args.output.resolve(),args.resume,args.remote)

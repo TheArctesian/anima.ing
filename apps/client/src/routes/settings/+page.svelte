@@ -1,18 +1,16 @@
 <script lang="ts">
   import { MediaQuery } from 'svelte/reactivity';
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
-  import { routesApi } from '$lib/application-routes/api';
-  import RoutesSection from '$lib/application-routes/RoutesSection.svelte';
-  import { RoutesStore } from '$lib/application-routes/store.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { hubIsHosted } from '$lib/hosted/mark';
+  import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { useHub } from '$lib/hub/context';
   import HubRows from '$lib/hub-address/HubRows.svelte';
   import HubLinkRow from '$lib/link/HubLinkRow.svelte';
   import LinkDevicesSection from '$lib/link/LinkDevicesSection.svelte';
-  import OpenPortRows from '$lib/link/ports/OpenPortRows.svelte';
+  import AccessSetup from '$lib/link/ports/AccessSetup.svelte';
   import { desktopLocalHubShell, LocalHubWatch } from '$lib/local-hub/local-hub.svelte';
   import LocalHubSection from '$lib/local-hub/LocalHubSection.svelte';
   import ReaderRows from '$lib/code/settings/ReaderRows.svelte';
@@ -47,16 +45,19 @@
   const { updates, commandLine, processLog, builds, keyStore, mcpPermissions, stayAwake, localHub, runnerReport } = capabilities();
   // The hub on this computer: its section, and its origin for the Stay awake notice (FRN-006, AWK-005, FRN-008).
   // A hub that Anima.ing hosts has no VPN, so the page has no VPN section for it (R-222).
+  let linkDevicesShown = $state(false);
   const hub = useHub();
   const vpnShown = !hubIsHosted(hub.address.origin);
-  // The routes of the hub (task H21); a hosted hub has no streams (OD-HOST-47).
-  const routes = new RoutesStore(routesApi(hub), !vpnShown);
   const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
   $effect(() => hubState?.watch());
   const desktopRows = updates || commandLine || processLog || builds;
-  const index = indexOf({ keyStore, stayAwake, desktopRows, mcpPermissions, runnerReport, vpn: vpnShown });
   // The phone layout has the rows of mockup 7 for Account and Hub, and Leave hub at the end.
   const phone = $derived(phoneLayout());
+  const index = $derived(indexOf({ keyStore: phone || keyStore, extensions: phone, leave: phone && keyStore, stayAwake, desktopRows, mcpPermissions, runnerReport, vpn: vpnShown, remoteAccess: localHub && keyStore, localHub: hubState?.status?.installed === true, linkDevices: linkDevicesShown }));
+  // Routes moved to Hosting (HSE-010): an old link to its place in Settings opens it there.
+  $effect(() => {
+    if (['#routes', '#settings-routes'].includes(location.hash)) void goto(resolve('/hosting/routes'), { replaceState: true });
+  });
   const compactIndex = typeof window.matchMedia === 'function' ? new MediaQuery('(max-width: 1100.98px)') : undefined;
 </script>
 
@@ -88,15 +89,11 @@
   {:else if keyStore}
     <SettingsSection {...SECTIONS.hub}>
       <HubRows />
-      {#if localHub}<HubLinkRow /><OpenPortRows />{/if}
+      {#if localHub}<HubLinkRow />{/if}
     </SettingsSection>
   {/if}
 
-  <LinkDevicesSection section={SECTIONS.linkDevices} />
-
-  <SettingsSection {...SECTIONS.routes}>
-    <RoutesSection store={routes} />
-  </SettingsSection>
+  <LinkDevicesSection section={SECTIONS.linkDevices} onVisibility={(shown) => { linkDevicesShown = shown; }} />
 
   <SettingsSection {...SECTIONS.notifications}>
     <NotificationsSection />
@@ -111,6 +108,11 @@
   </SettingsSection>
 
   <!-- This computer (R-224). -->
+  {#if localHub && keyStore}
+    <SettingsSection {...SECTIONS.remoteAccess}>
+      <AccessSetup inline />
+    </SettingsSection>
+  {/if}
   {#if hubState !== null}
     <LocalHubSection section={SECTIONS.localHub} {hubState} />
   {/if}

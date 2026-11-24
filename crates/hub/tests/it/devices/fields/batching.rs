@@ -1,6 +1,3 @@
-//! API-005: `status`, `uptime`, `checks` and `ip` cost a constant number of statements however
-//! many devices a list returns.
-
 use std::sync::{Arc, atomic::Ordering};
 
 use anima_hub::{
@@ -88,7 +85,6 @@ async fn api_005_status_uptime_checks_and_ip_cost_a_constant_few_statements_for_
 ) {
     let query = format!("{{ devices(first: 200) {{ {PER_CHECK_FIELDS} }} }}");
     let (few, many, shown) = cost_for_13_then_163(pool, &query).await;
-    // The loaders ran on real rows: the page shows the seeded values.
     let ollama = shown["devices"]["edges"]
         .as_array()
         .unwrap()

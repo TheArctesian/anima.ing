@@ -1,6 +1,4 @@
-//! The operator's client as the app opens it: a WebSocket to `/terminal?token=…` with the
-//! subprotocol `anima-terminal`, binary frames for bytes and JSON text for control (K4
-//! Section 8).
+//! The operator's client as the app opens it (K4 Section 8).
 
 use futures_util::{SinkExt as _, StreamExt as _};
 use tokio::{
@@ -26,7 +24,6 @@ use tokio_tungstenite::{
 
 use super::WAIT;
 
-/// What the client got next.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Received {
     Text(String),
@@ -34,15 +31,12 @@ pub(super) enum Received {
     Closed(Option<u16>),
 }
 
-/// An open terminal from the client's side, and every payload byte it has received so
-/// far, pings and close reasons included.
+/// `received` holds every payload byte so far, pings and close reasons included.
 pub(super) struct Socket {
     stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
     pub(super) received: Vec<u8>,
 }
 
-/// Opens the terminal at `url`, offering `anima-terminal` when `subprotocol` is set. A
-/// refusal before the upgrade gives its HTTP status.
 pub(super) async fn open_with(url: &str, subprotocol: bool) -> Result<Socket, StatusCode> {
     let mut request = url.into_client_request().unwrap();
     if subprotocol {
@@ -73,13 +67,11 @@ pub(super) async fn open_with(url: &str, subprotocol: bool) -> Result<Socket, St
     }
 }
 
-/// Opens the terminal as the app does.
 pub(super) async fn open(url: &str) -> Socket {
     open_with(url, true).await.expect("the terminal opens")
 }
 
 impl Socket {
-    /// The next message or the close, skipping WebSocket pings and pongs.
     pub(super) async fn next(&mut self) -> Received {
         loop {
             let message = timeout(WAIT, self.stream.next()).await.expect("a message");
@@ -104,7 +96,6 @@ impl Socket {
         }
     }
 
-    /// The terminal bytes the hub sends until they hold `expected`, skipping the hub's pings.
     pub(super) async fn bytes_until(&mut self, expected: &[u8]) -> Vec<u8> {
         let mut bytes = Vec::new();
         while !bytes
@@ -120,8 +111,6 @@ impl Socket {
         bytes
     }
 
-    /// The `end` message's reason and the close code that follows it, skipping pings and
-    /// any terminal bytes still on the way.
     pub(super) async fn ended(&mut self) -> (String, Option<u16>) {
         loop {
             match self.next().await {
@@ -139,7 +128,6 @@ impl Socket {
         }
     }
 
-    /// The close code, after any messages still on the way.
     pub(super) async fn close_code(&mut self) -> Option<u16> {
         loop {
             if let Received::Closed(code) = self.next().await {
@@ -148,8 +136,7 @@ impl Socket {
         }
     }
 
-    /// Returns once the hub has read everything the client sent so far: sends a WebSocket
-    /// ping, which the hub reads after them, and waits for its pong, skipping the hub's pings.
+    /// The hub reads a WebSocket ping after everything sent before it, so its pong marks catch-up.
     pub(super) async fn caught_up(&mut self) {
         let ping = Message::Ping(b"caught up".to_vec().into());
         self.stream.send(ping).await.unwrap();
@@ -171,7 +158,6 @@ impl Socket {
         self.stream.send(Message::text(text)).await.unwrap();
     }
 
-    /// Sends the terminal size, as the app does first and on every resize.
     pub(super) async fn resize(&mut self, cols: u16, rows: u16) {
         let message = format!(r#"{{"type":"resize","cols":{cols},"rows":{rows}}}"#);
         self.send(&message).await;
@@ -184,13 +170,11 @@ impl Socket {
             .unwrap();
     }
 
-    /// Sends `bytes` as one text frame without checking that they are UTF-8.
     pub(super) async fn send_unchecked_text(&mut self, bytes: &[u8]) {
         let frame = Frame::message(bytes.to_vec(), OpCode::Data(Data::Text), true);
         self.stream.send(Message::Frame(frame)).await.unwrap();
     }
 
-    /// Sends `bytes` as one binary message in `parts` frames of equal size.
     pub(super) async fn send_fragmented(&mut self, bytes: &[u8], parts: usize) {
         let size = bytes.len().div_ceil(parts);
         let chunks: Vec<&[u8]> = bytes.chunks(size).collect();
@@ -205,8 +189,7 @@ impl Socket {
         }
     }
 
-    /// Closes the WebSocket with 1000, as a closing tab does, and waits for the hub's close,
-    /// which echoes the code (RFC 6455 Section 5.5.1).
+    /// The hub's close echoes the code (RFC 6455 Section 5.5.1).
     pub(super) async fn close(&mut self) -> Option<u16> {
         let normal = CloseFrame {
             code: CloseCode::Normal,
@@ -217,8 +200,7 @@ impl Socket {
     }
 }
 
-/// Sends the terminal request as the app would on a raw connection and keeps it open, so
-/// the test can leave while the hub is still opening.
+/// A raw connection kept open, so the test can leave while the hub is still opening.
 pub(super) async fn request(served: std::net::SocketAddr, token: &str) -> TcpStream {
     let mut raw = TcpStream::connect(served).await.unwrap();
     let request = format!(
@@ -230,7 +212,6 @@ pub(super) async fn request(served: std::net::SocketAddr, token: &str) -> TcpStr
     raw
 }
 
-/// The status line of the response on `raw`.
 pub(super) async fn status_line(raw: &mut TcpStream) -> String {
     let mut response = [0; 64];
     let read = timeout(WAIT, raw.read(&mut response))

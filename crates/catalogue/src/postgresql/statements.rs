@@ -1,27 +1,22 @@
-//! The fixed statements that make and delete the database and the user of an application,
-//! and a database for the way back. The program on the machine runs them as the superuser of
-//! the server, through the standard input of `psql`, so that the password is in no argument.
+//! The fixed statements for an application's database and user, given to `psql` on standard input
+//! so that no argument holds a password.
 
 use std::fmt;
 
 use super::names::{DatabaseName, Names};
 
-/// The shortest and the longest password, in characters. 22 letters and digits hold at least
-/// 128 bits (62 symbols give 5.95 bits each).
+/// 22 letters and digits hold at least 128 bits.
 const PASSWORD_LENGTHS: std::ops::RangeInclusive<usize> = 22..=128;
 
-/// Why a password was refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum PasswordError {
     #[error("a password is 22 to 128 letters and digits of ASCII")]
     NotPermitted,
 }
 
-/// The password of the user of an application. The program on the machine makes it
-/// (OD-HOST-42 A); this crate never makes one. It is only letters and digits of ASCII, so that
-/// it is the same text in a quoted literal of SQL with each setting of the server, in an
-/// environment file that Compose fills (`$`), in a connection address (`#`, `=`) and in a shell
-/// (a backtick) (SF-223). No `Debug` or `Display` shows it.
+/// The password of an application's user, made on the machine (OD-HOST-42 A); only ASCII
+/// letters and digits, so SQL, Compose, a connection address and a shell need no quoting (SF-223).
+/// This crate never makes one, and no `Debug` or `Display` shows it.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Password(String);
 
@@ -47,7 +42,6 @@ impl fmt::Debug for Password {
     }
 }
 
-/// One statement of SQL. A statement that holds a password does not show it in `Debug`.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Statement {
     text: String,
@@ -62,7 +56,6 @@ impl Statement {
         }
     }
 
-    /// The text to give to the server.
     #[must_use]
     pub fn text(&self) -> &str {
         &self.text
@@ -79,7 +72,6 @@ impl fmt::Debug for Statement {
     }
 }
 
-/// The statements that make the user and the database of one application.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Setup {
     /// Run in the database `postgres`, in this order.
@@ -88,10 +80,8 @@ pub struct Setup {
     pub database: Vec<Statement>,
 }
 
-/// The user `names.user` with `password` and no other right, the database `names.database`
-/// that it owns and that no other user may reach, and each extension of `extensions` in it.
-/// Each extension must be a name of [`super::is_extension`]; the caller checked it with the
-/// recipe (`database_not_described`).
+/// A user with no other right, the database that only it reaches, and each extension in it.
+/// The caller checks each extension with the recipe (`database_not_described`).
 #[must_use]
 pub fn setup(names: &Names, password: &Password, extensions: &[String]) -> Setup {
     let user = names.user.quoted();
@@ -121,7 +111,6 @@ pub fn setup(names: &Names, password: &Password, extensions: &[String]) -> Setup
     }
 }
 
-/// A new, empty database `target` owned by `owner`, from the clean template.
 #[must_use]
 pub fn new_database(target: &DatabaseName, owner: &DatabaseName) -> Statement {
     Statement::plain(format!(
@@ -131,7 +120,6 @@ pub fn new_database(target: &DatabaseName, owner: &DatabaseName) -> Statement {
     ))
 }
 
-/// The deletion of the database `target`, also when a session is open on it.
 #[must_use]
 pub fn drop_database(target: &DatabaseName) -> Statement {
     Statement::plain(format!(
@@ -140,8 +128,7 @@ pub fn drop_database(target: &DatabaseName) -> Statement {
     ))
 }
 
-/// The deletion of the database and of the user of an application. The program runs it only
-/// with the setting "The hub may delete volumes" at the machine (R-230).
+/// The program runs this only with "The hub may delete volumes" set at the machine (R-230).
 #[must_use]
 pub fn removal(names: &Names) -> Vec<Statement> {
     vec![
@@ -150,9 +137,7 @@ pub fn removal(names: &Names) -> Vec<Statement> {
     ]
 }
 
-/// The name of the database of the way back number `number`: `<database>__back_<number>`. No
-/// name of an application has `__` ([`Names::for_application`]), so it is never the name of a
-/// different application.
+/// `<database>__back_<number>`; no application name has `__`, so it names no other application.
 ///
 /// # Errors
 /// [`super::NameError::NotPermitted`] when the name is longer than 63 bytes.

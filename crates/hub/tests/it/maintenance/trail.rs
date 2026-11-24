@@ -215,7 +215,6 @@ fixture_test! {
         .unwrap();
         assert_eq!(stored, (3, 3, 1, false, "Sunday updates".to_owned()));
         // The audit entry is written first, so no subscriber saw an event that was rolled back.
-        // (The one stored event is the earlier create of "Freeze".)
         assert!(receiver.try_recv().is_err());
     }
 }

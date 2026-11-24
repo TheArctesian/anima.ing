@@ -1,5 +1,4 @@
-//! The run-control rule over every status, conclusion, fork and age (PRJ-034, PRO-013;
-//! decisions item 10), and the workflow a start names (PRJ-035).
+//! The run-control rule (PRJ-034, PRO-013) and the workflow a start names (PRJ-035).
 
 use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use provider_github::live::workflows::{Workflow, WorkflowState};
@@ -45,9 +44,6 @@ const ALL_CONCLUSIONS: [Option<C>; 10] = [
     Some(C::Other),
 ];
 
-/// What the rule must answer for one cell of the table, by the words of PRJ-034 and the
-/// rulings: run again needs a completed run that is not a fork's and not older than 30 days;
-/// the failed jobs need that and a failing conclusion; cancel needs a run that has not ended.
 fn expected(control: Control, run: &RunState) -> Result<(), Barred> {
     let completed = run.status == S::Completed;
     let too_old = now() - run.created_at > TimeDelta::days(30);

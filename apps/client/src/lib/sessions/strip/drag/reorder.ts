@@ -1,12 +1,10 @@
 import { nearestSnap } from '$lib/motion/gesture';
 
-/** A tab's place in the strip when the drag began, in viewport pixels. */
 export interface Slot {
   readonly left: number;
   readonly width: number;
 }
 
-/** A pointer position at a time in milliseconds. */
 export interface Sample {
   readonly x: number;
   readonly y: number;
@@ -32,10 +30,7 @@ const msPerSecond = 1000;
 
 const centreOf = (slot: Slot) => slot.left + slot.width / 2;
 
-/**
- * The place a tab whose centre is at `centre` goes to: the slot whose centre is nearest the
- * projected position (MOT-032). With `velocity` 0 that is the place it is over now.
- */
+/** The slot nearest the projected centre (MOT-032). */
 export function slotIndex(slots: readonly Slot[], centre: number, velocity: number): number {
   const [first, ...rest] = slots.map(centreOf);
   if (first === undefined) return 0;
@@ -43,16 +38,12 @@ export function slotIndex(slots: readonly Slot[], centre: number, velocity: numb
   return [first, ...rest].indexOf(snap);
 }
 
-/** The space between two neighbouring tabs. */
 function gapOf(slots: readonly Slot[]): number {
   const [first, second] = slots;
   return first === undefined || second === undefined ? 0 : second.left - (first.left + first.width);
 }
 
-/**
- * How far each tab moves aside while the tab from `from` is over `over`: the tabs it has
- * passed move by its width and one gap toward the place it left (Section 5.7.4).
- */
+/** Passed tabs move by the dragged width and one gap toward its old place (Section 5.7.4). */
 export function shifts(slots: readonly Slot[], from: number, over: number): number[] {
   const dragged = slots[from];
   if (dragged === undefined) return slots.map(() => 0);
@@ -64,7 +55,7 @@ export function shifts(slots: readonly Slot[], from: number, over: number): numb
   });
 }
 
-/** The pointer's velocity in px/s over the samples in the last `VELOCITY_WINDOW_MS` (MOT-031). */
+/** Px/s over the last `VELOCITY_WINDOW_MS` (MOT-031). */
 export function velocityOf(samples: readonly Sample[]): Velocity {
   const last = samples.at(-1);
   if (last === undefined) return { x: 0, y: 0 };
@@ -75,7 +66,7 @@ export function velocityOf(samples: readonly Sample[]): Velocity {
   return { x: ((last.x - first.x) / elapsed) * msPerSecond, y: ((last.y - first.y) / elapsed) * msPerSecond };
 }
 
-/** Whether the pointer is more than `margin` outside `bounds`, so the tab has left the strip (RA-002). */
+/** A pointer past `margin` means the tab has left the strip (RA-002). */
 export function isOutside(x: number, y: number, bounds: Bounds, margin: number): boolean {
   return (
     x < bounds.left - margin || x > bounds.right + margin || y < bounds.top - margin || y > bounds.bottom + margin

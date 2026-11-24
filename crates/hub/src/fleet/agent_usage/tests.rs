@@ -1,5 +1,4 @@
-//! The pure part of the agent usage: the estimate of the cost from the price table (AIS-021),
-//! and the fold of the sums by model into the groups asked for (AIS-020).
+//! The cost estimate (AIS-021) and the fold of sums by model into groups (AIS-020).
 
 use chrono::NaiveDate;
 use daemon_core::agent_usage::Source;

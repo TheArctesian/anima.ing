@@ -1,5 +1,4 @@
-//! Why the shell could not do what was asked of this device's link, as the client sees it: a
-//! stable code and fixed text, never an invite, a path or an OS error.
+//! A link failure carries a stable code and fixed text, never an invite, a path or an OS error.
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
@@ -7,6 +6,14 @@ use serde::{Serialize, Serializer, ser::SerializeStruct};
 pub enum LinkError {
     #[error("only the main window may change this device's link")]
     Caller,
+    #[error(
+        "SSH setup failed or administrator authorization was cancelled; the private port was not opened"
+    )]
+    SshSetup,
+    #[error(
+        "Desktop sharing is not ready. Use Set up remote access for installation or system settings."
+    )]
+    DesktopSetup,
     #[error("this build of the app does not carry the device link")]
     NotCarried,
     #[error("a join or a leave is already running")]
@@ -26,10 +33,11 @@ pub enum LinkError {
 }
 
 impl LinkError {
-    /// Every error, for the tests that check each one.
     #[cfg(all(test, unix))]
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 11] = [
         Self::Caller,
+        Self::SshSetup,
+        Self::DesktopSetup,
         Self::NotCarried,
         Self::Busy,
         Self::NoHome,
@@ -44,6 +52,8 @@ impl LinkError {
     pub fn code(self) -> &'static str {
         match self {
             Self::Caller => "caller",
+            Self::SshSetup => "ssh-setup",
+            Self::DesktopSetup => "desktop-setup",
             Self::NotCarried => "not-carried",
             Self::Busy => "busy",
             Self::NoHome => "no-home",

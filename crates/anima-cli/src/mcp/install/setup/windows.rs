@@ -1,4 +1,3 @@
-//! Native roaming settings: the documented Windows locations for Claude Desktop and Zed.
 use std::path::{Path, PathBuf};
 
 pub(super) fn file(agent: &str, roaming: Option<&Path>) -> Option<PathBuf> {

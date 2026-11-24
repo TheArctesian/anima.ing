@@ -1,4 +1,4 @@
-//! `anima check heartbeats <id-or-name>`: a page of heartbeats, newest first (CMD-026).
+//! `anima check heartbeats`: newest first (CMD-026).
 
 use super::documents::{CheckHeartbeats, check_heartbeats};
 use crate::checks::resolve::CheckRef;

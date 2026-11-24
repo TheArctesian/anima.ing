@@ -1,5 +1,4 @@
-//! The feed check and the signed feed the hub writes (BLD-065, BLD-067 to BLD-069, UPD-009,
-//! R-117).
+//! The feed check and the signed feed (BLD-065, BLD-067 to BLD-069, UPD-009, R-117).
 
 use serde_json::{Value, json};
 

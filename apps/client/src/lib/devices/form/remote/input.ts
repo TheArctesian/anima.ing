@@ -15,20 +15,19 @@ import {
   type RemoteValues,
 } from './values';
 
-/** The K1 fields of `CreateDeviceInput` and `UpdateDeviceInput`. On update an empty `macAddress` clears it. */
+/** On update an empty `macAddress` clears it. */
 type DeviceAdditions = Pick<UpdateDeviceInput, 'rdp' | 'vnc' | 'macAddress' | 'metricsSource' | 'transfer'>;
 
 type Rdp = RemoteValues['rdp'];
 type Vnc = RemoteValues['vnc'];
 type Transfer = RemoteValues['transfer'];
 
-/** The port to send. With the protocol off, an unusable box falls back to the last valid port of `initial`, else the default. */
+/** With the protocol off, an unusable port falls back to the last valid port of `initial`, else the default. */
 function portToSend(enabled: boolean, typed: string, initial: string | undefined, fallback: string): number {
   if (enabled || isValidPort(typed)) return Number(typed);
   return Number(initial !== undefined && isValidPort(initial) ? initial : fallback);
 }
 
-/** The RDP settings as the hub input (normalized values); shared with the connection test. */
 export function rdpInput(rdp: Rdp, initialPort?: string): RdpSettingsInput {
   return {
     enabled: rdp.enabled,
@@ -44,7 +43,6 @@ export function rdpInput(rdp: Rdp, initialPort?: string): RdpSettingsInput {
   };
 }
 
-/** The VNC settings as the hub input (normalized values); shared with the connection test. */
 export function vncInput(vnc: Vnc, initialPort?: string): VncSettingsInput {
   return {
     enabled: vnc.enabled,
@@ -99,13 +97,13 @@ interface WithVnc {
   readonly remoteSecrets: RemoteSecrets;
 }
 
-/** The RDP password to store, or null when none was typed or RDP is off, so the stored one is kept (DEV-011). */
+/** `null` keeps the stored password (DEV-011). */
 export function rdpCredentialInput(values: WithRdp): PasswordCredentialInput | null {
   const { rdpPassword } = values.remoteSecrets;
   return values.rdp.enabled && rdpPassword !== '' ? { password: rdpPassword } : null;
 }
 
-/** The VNC password to store, or null when none was typed or VNC is off, so the stored one is kept (DEV-011). */
+/** `null` keeps the stored password (DEV-011). */
 export function vncCredentialInput(values: WithVnc): PasswordCredentialInput | null {
   const { vncPassword } = values.remoteSecrets;
   return values.vnc.enabled && vncPassword !== '' ? { password: vncPassword } : null;

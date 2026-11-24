@@ -44,7 +44,6 @@ describe('RA-032: the Files toggle', () => {
 });
 
 
-/** A hub that answers every `openFiles` and keeps the session ids it was asked for. */
 function filesHub() {
   const asked: unknown[] = [];
   const hub = {

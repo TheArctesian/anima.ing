@@ -18,7 +18,6 @@ mod tests;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RunError {
-    /// Another `run` holds this root.
     #[error("another copy runs the hub of this folder")]
     AnotherCopy,
     #[error("cannot {step} ({kind})")]
@@ -35,7 +34,6 @@ fn io_error(step: &'static str) -> impl FnOnce(io::Error) -> RunError {
     }
 }
 
-/// How a run ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ended {
     /// Stopped on request. The unit does not start it again.
@@ -48,8 +46,7 @@ pub enum Ended {
 #[derive(Debug)]
 pub struct Lock(#[expect(dead_code, reason = "the open file is the lock")] File);
 
-/// How long `lock` tries: `status` and `install` hold the lock for an instant to see if a
-/// run has it, and a run that starts in that instant must not give up.
+/// `status` and `install` hold the lock for an instant, so a run that starts then tries again.
 const LOCK_TRIES: u32 = 20;
 const LOCK_PAUSE: Duration = Duration::from_millis(50);
 
@@ -74,15 +71,12 @@ pub fn lock(folders: &Folders) -> Result<Lock, RunError> {
     Err(RunError::AnotherCopy)
 }
 
-/// What the group came to, before it is stopped.
 enum Kept {
     Asked,
     Failed(String),
 }
 
-/// Runs the group of `plan` until `stop` is asked for or the group fails. `ready` is called
-/// once, when every member is up. The group is stopped in order in every case, also when the
-/// state cannot be written.
+/// `ready` is called once, when every member is up. The group is stopped in every case.
 ///
 /// # Errors
 /// [`RunError::AnotherCopy`], or when the hub's folders or the state cannot be written.
@@ -145,8 +139,7 @@ pub async fn run(plan: &Plan, stop: Stop, ready: impl FnOnce()) -> Result<Ended,
     })
 }
 
-/// Starts the group and keeps it. The members it started are left in `group` for the caller
-/// to stop.
+/// The members it started stay in `group` for the caller to stop.
 async fn keep(
     plan: &Plan,
     stop: &mut Stop,
@@ -166,8 +159,7 @@ async fn keep(
                 match group.until_ended(stop).await {
                     Ending::Asked => return Ok(Kept::Asked),
                     Ending::MemberEnded(name) => return Ok(Kept::Failed(format!("{name} ended"))),
-                    // The group stays ready whatever the link does (F-6), also when its new
-                    // state cannot be written: `report` put the fault in the log.
+                    // The group stays ready whatever the link does (F-6); `report` logs a fault.
                     Ending::LinkChanged(link) => {
                         let _ = report(ready(link));
                     }

@@ -1,12 +1,11 @@
-//! Device web views: a child of the hidden window with its own store and the http(s)-only
-//! navigation filter (D-2, D-3).
+//! Device web views with their own store and the http(s)-only navigation filter (D-2, D-3).
 
 use tauri::{AppHandle, LogicalPosition, LogicalSize, Url, Webview, WebviewBuilder, WebviewUrl};
 
 use super::Harness;
 use crate::event::Event;
 
-/// The store identifiers the harness uses (16 bytes, as a `DeviceId` UUID would be).
+/// 16 bytes, as a `DeviceId` UUID would be.
 pub const STORES: &[[u8; 16]] = &[STORE_A, STORE_B, STORE_IPC, STORE_TLS, STORE_NAV];
 pub const STORE_A: [u8; 16] = *b"anima-od7-dev-a\0";
 pub const STORE_B: [u8; 16] = *b"anima-od7-dev-b\0";
@@ -18,7 +17,7 @@ pub fn is_web_scheme(url: &Url) -> bool {
     matches!(url.scheme(), "http" | "https")
 }
 
-/// Opens a device web view. `store: None` means the default store (the main view's).
+/// `store: None` means the main view's default store.
 pub fn open(
     harness: &Harness,
     label: &str,
@@ -69,7 +68,6 @@ fn store_directory(store: [u8; 16]) -> std::path::PathBuf {
     std::env::temp_dir().join("anima-od7-spike").join(name)
 }
 
-/// Removes the stores of earlier runs so every check starts empty.
 #[cfg(target_os = "macos")]
 pub async fn clear_stores(app: &AppHandle) {
     for store in STORES {

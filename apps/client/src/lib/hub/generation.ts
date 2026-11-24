@@ -5,17 +5,15 @@ import { generate } from '@graphql-codegen/cli';
 import type { CodegenConfig } from '@graphql-codegen/cli';
 import { preset } from '@graphql-codegen/client-preset';
 
-/** Output folder, relative to the client root. */
 const GENERATED_FOLDER = 'src/lib/hub/generated/';
 
-/** Where generation reads and writes: the client root, the schema file and the document globs. */
 interface TypesLayout {
   readonly clientRoot: string;
   readonly schema: string;
   readonly documents: readonly string[];
 }
 
-/** The client's own layout: the K1 schema and documents only from the domain clients, `$lib/<domain>/api.ts` or `$lib/<domain>/<part>/api.ts` (CQ-045). */
+/** Documents come only from the domain clients' `api.ts` files (CQ-045). */
 export function clientLayout(clientRoot: string): TypesLayout {
   return {
     clientRoot,
@@ -48,7 +46,6 @@ function codegenConfig(layout: TypesLayout): CodegenConfig {
   };
 }
 
-/** The generated files, keyed by path relative to the client root; rejects when a document does not match the schema. */
 async function generateTypes(layout: TypesLayout): Promise<Map<string, string>> {
   // `generate` is typed `any` because of its watch mode; without watch it resolves with the file list.
   const outputs: readonly { filename: string; content: string }[] = await generate(codegenConfig(layout), false);
@@ -72,12 +69,11 @@ function staleTypes(built: ReadonlyMap<string, string>, clientRoot: string): Sta
   return [...changed, ...extra];
 }
 
-/** Generated files on disk that are missing, differ from a fresh build, or are no longer built (API-008). */
 export async function checkTypes(layout: TypesLayout): Promise<StaleType[]> {
   return staleTypes(await generateTypes(layout), layout.clientRoot);
 }
 
-/** Replace the generated folder with a fresh build; returns the written paths. Nothing is removed when generation fails. */
+/** Nothing is removed when generation fails. */
 export async function writeTypes(layout: TypesLayout): Promise<string[]> {
   const built = await generateTypes(layout);
   rmSync(join(layout.clientRoot, GENERATED_FOLDER), { recursive: true, force: true });

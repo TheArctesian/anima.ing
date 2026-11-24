@@ -1,12 +1,16 @@
-// See https://svelte.dev/docs/kit/types#app.d.ts
 declare global {
   namespace App {
-    /** State a page passes to the next one with `goto(url, { state })`; it is not in the URL, so a reload does not replay it. */
+    /** Not in the URL, so a reload does not replay it. */
     interface PageState {
-      /** The hub's message when a new device was created but its credential was not stored (WP-13 H-1). Never the credential. */
+      /** The hub's message when a new device's credential was not stored; never the credential (WP-13 H-1). */
       credentialError?: string;
     }
   }
+}
+
+declare module '$app/paths' {
+  /** SvelteKit's signature checks a union of paths only up to 25 members, and the app has more. */
+  export function resolve(path: import('$app/types').Pathname): string;
 }
 
 export {};

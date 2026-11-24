@@ -5,7 +5,6 @@ import { checkValues, type CheckFormValues } from './model/values';
 
 const REUSE = 'will not reuse the stored secrets';
 
-/** HTTP_SAVED holds basic auth and a stored Authorization header; the user name is typed again. */
 function edit(change: (values: CheckFormValues) => void): string[] {
   const initial = checkValues(HTTP_SAVED, 'ICMP');
   const values = checkValues(HTTP_SAVED, 'ICMP');

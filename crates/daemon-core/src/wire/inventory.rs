@@ -10,10 +10,12 @@ use crate::inventory::{
     is_build_target, is_tool_name, is_version,
 };
 
-/// The device's tool inventory as a batch spells it. It replaces the stored one whole.
+/// It replaces the stored inventory whole.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchInventory {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_access: Option<crate::inventory::RemoteAccess>,
     pub architecture: Architecture,
     pub os: Os,
     pub os_version: String,
@@ -21,8 +23,7 @@ pub struct BatchInventory {
     pub build_targets: Vec<String>,
 }
 
-/// One tool found: a version, or a [`Reason`] as its `state` and no version. A state a newer
-/// daemon knows and this side does not reads as `failed`.
+/// A version, or a [`Reason`] as its `state` and no version.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BatchTool {
     pub name: String,
@@ -35,6 +36,7 @@ pub struct BatchTool {
 impl From<&Inventory> for BatchInventory {
     fn from(inventory: &Inventory) -> Self {
         Self {
+            remote_access: inventory.remote_access.clone(),
             architecture: inventory.architecture,
             os: inventory.os,
             os_version: inventory.os_version.clone(),
@@ -56,15 +58,16 @@ impl From<&Tool> for BatchTool {
 
 impl BatchInventory {
     /// The inventory the hub stores, without the tools whose name it does not know; `None` when
-    /// the member breaks K8 Section 4: an `osVersion` or a version that is not 1 to 64 bytes of
-    /// `[0-9A-Za-z.+_-]`; more than 64 tools or two with one name; a name that is not 1 to 64
-    /// bytes of `[0-9a-z_.-]`; a tool with both a version and a state, or neither; more than 128
-    /// build targets, two equal, or one that is not 1 to 64 bytes of `[0-9a-z_.-]`.
+    /// the member breaks K8 Section 4.
     #[must_use]
     pub fn accepted(self) -> Option<Inventory> {
         let names: BTreeSet<&str> = self.tools.iter().map(|tool| tool.name.as_str()).collect();
         let targets: BTreeSet<&str> = self.build_targets.iter().map(String::as_str).collect();
-        let fits = is_version(&self.os_version)
+        let fits = self
+            .remote_access
+            .as_ref()
+            .is_none_or(crate::inventory::RemoteAccess::accepted)
+            && is_version(&self.os_version)
             && self.tools.len() <= MAX_TOOLS
             && names.len() == self.tools.len()
             && self.tools.iter().all(BatchTool::fits)
@@ -92,6 +95,7 @@ impl BatchInventory {
         let mut build_targets = self.build_targets;
         build_targets.sort_unstable();
         Some(Inventory {
+            remote_access: self.remote_access,
             architecture: self.architecture,
             os: self.os,
             os_version: self.os_version,

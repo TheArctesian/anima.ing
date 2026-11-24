@@ -23,7 +23,6 @@ export interface StatusCount {
 /** Worst first, the order of the device list's status sort (R-044). */
 const ORDER: readonly DeviceStatus[] = ['DOWN', 'DEGRADED', 'UNKNOWN', 'MAINTENANCE', 'UP'];
 
-/** D-10: uptime over 24 hours, 7 days and 30 days; no value is "—". */
 export function uptimeReadings(device: OverviewDevice): readonly Reading[] {
   return [
     { label: '24 hours', text: uptimeText(device.day ?? null) },
@@ -32,41 +31,29 @@ export function uptimeReadings(device: OverviewDevice): readonly Reading[] {
   ];
 }
 
-/** D-10: how many checks have each status, worst first; statuses no check has are left out. */
 export function checkCounts(checks: readonly { readonly status: DeviceStatus }[]): readonly StatusCount[] {
   return ORDER.map((status) => ({ status, label: statusLabel(status), count: checks.filter((check) => check.status === status).length })).filter(
     (entry) => entry.count > 0,
   );
 }
 
-/** D-10: the accepted SSH host key, or why there is none. */
 export function hostKeyText(ssh: OverviewDevice['ssh']): string {
   if (ssh.hostKey != null) return `${ssh.hostKey.algorithm} ${ssh.hostKey.fingerprintSha256}`;
   return ssh.enabled ? 'No host key accepted yet' : 'SSH is off';
 }
 
-/**
- * What the Metrics card says of a device with no metrics. A hub that Anima.ing hosts reads none over SSH (HMD-049 is
- * not built), so its sentence names the daemon only (R-222).
- */
+/** A hosted hub reads no metrics over SSH, so its sentence names the daemon only (R-222). */
 export function metricsOffText(hosted: boolean): string {
   return hosted ? 'Metrics are off. They appear when the daemon is installed on this device.' : 'Metrics are off. Install the daemon or turn on SSH metrics in Settings.';
 }
 
-/**
- * What the chart area says when the range has no samples (MET-007). With readings known the bars show values, so the
- * range is empty and nothing is on its way; only a device with no readings yet is waiting, and a daemon that waits for
- * the person in the macOS Keychain gives its reason line in place of the wait (R-322).
- */
+/** With readings known nothing is on its way; a Keychain reason line replaces the wait (MET-007, R-322). */
 export function noChartsText(readingsKnown: boolean, phrase: string, needLine: string | null = null): string {
   if (readingsKnown) return `No samples in the ${phrase}`;
   return needLine ?? 'Waiting for metrics';
 }
 
-/**
- * The reason line of the device's daemon when it waits for the person in the macOS Keychain (R-322); `null` when it
- * waits for nothing. `here` is the device of the computer that shows the page, when the app knows it.
- */
+/** `here` is the device of the computer that shows the page, when the app knows it (R-322). */
 export function daemonNeedLine(
   device: { readonly id: string; readonly name: string; readonly daemonNeed?: DaemonNeed | null },
   here: string | null,

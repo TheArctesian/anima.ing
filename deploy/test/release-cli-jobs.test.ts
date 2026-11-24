@@ -1,6 +1,4 @@
-// Rules for the jobs of `anima` alone in .github/workflows/release.yml (INS-010 to INS-012;
-// R-217 to R-219; task B8h): what each may hold, and that nothing of them is public while a
-// switch of the operator is off. Nothing here runs the workflow or reads a secret.
+// INS-010 to INS-012; R-217 to R-219; task B8h.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -47,7 +45,7 @@ describe("the switches of `anima` alone", () => {
     expect(decide).toMatch(/release_cli=false\n\s+if \[ "\$release" = true \]; then/);
     expect(decide).toContain('if [ "$decided_cli" = "release $version" ] && [ "$CLI_SWITCH" = on ]; then');
     expect(job("commit").steps.find((step) => step.id === "read")?.env?.["CLI_SWITCH"]).toBe("${{ vars.ANIMA_PUBLIC_CLI }}");
-    expect(job("cli").if).toBe("needs.commit.outputs.release_cli == 'true'");
+    expect(ownCondition(job("cli").if, needs("cli"))).toBe("needs.commit.outputs.release_cli == 'true'");
   });
 
   test("the desktop application does not wait for it: a fault of these jobs cannot stop a release", () => {

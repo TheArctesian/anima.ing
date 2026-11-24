@@ -1,5 +1,4 @@
-//! A change that lands between the decision and the write wins: the locked re-check refuses
-//! both writes and nothing is written (CHK-013, D-8). Each test changes one stored condition.
+//! A change between the decision and the write wins: the locked re-check refuses (CHK-013, D-8).
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -24,7 +23,6 @@ use crate::{
     status::Status,
 };
 
-/// A Down ICMP check on docker-host that the rule chose, as it was read then.
 struct Decided {
     id: CheckId,
     device: DeviceId,
@@ -59,7 +57,6 @@ async fn decide(pool: &PgPool) -> Decided {
     }
 }
 
-/// Both writes refuse the decision, and neither left anything behind.
 async fn assert_refused(pool: &PgPool, decided: &Decided) {
     let candidate = Candidate {
         due: &decided.due,
@@ -79,7 +76,6 @@ async fn assert_refused(pool: &PgPool, decided: &Decided) {
     assert!(audited.iter().all(|entry| entry.operator_name != "Anima"));
 }
 
-/// Runs `sql` on the decided check, as a writer other than the operator would.
 async fn change(pool: &PgPool, decided: &Decided, sql: &str) {
     sqlx::query(sql)
         .bind(decided.id)

@@ -1,5 +1,4 @@
-//! `anima containers networks <device>`: the networks of Docker on a device, each with the
-//! containers on it (HOST-020).
+//! HOST-020.
 
 use super::documents::{ContainerNetworkList, container_network_list};
 use crate::devices::get::resolve;

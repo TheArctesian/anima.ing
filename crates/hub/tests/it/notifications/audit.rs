@@ -1,6 +1,5 @@
-//! Each channel mutation leaves one audit entry and one event in its transaction, naming the
-//! secret fields it set or cleared and never a secret or a whole URL (LOG-004, LOG-005,
-//! LOG-007).
+//! A channel mutation's audit entry names the secret fields it set or cleared, never a secret or
+//! a whole URL (LOG-004, LOG-005, LOG-007).
 
 use anima_hub::fleet::events::Source;
 use serde_json::{Value, json};

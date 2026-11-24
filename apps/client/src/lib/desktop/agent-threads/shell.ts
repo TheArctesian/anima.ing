@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { rowsFrom, threadFrom, type ThreadsShell } from '$lib/agent-threads/thread';
 
-/** Why the shell did not read the threads. The codes are the shell's (THR-011). */
+/** The shell's error codes (THR-011). */
 export type ThreadsShellProblem = 'caller' | 'home' | 'not_found' | 'failed';
 
 const MESSAGES: Record<ThreadsShellProblem, string> = {
@@ -13,7 +13,7 @@ const MESSAGES: Record<ThreadsShellProblem, string> = {
 
 const PROBLEMS = Object.keys(MESSAGES);
 
-/** A failure of the shell. The message is fixed text: nothing of the shell's error reaches the screen (LOG-007). */
+/** The message is fixed text: nothing of the shell's error reaches the screen (LOG-007). */
 export class ThreadsShellError extends Error {
   constructor(readonly problem: ThreadsShellProblem) {
     super(MESSAGES[problem]);

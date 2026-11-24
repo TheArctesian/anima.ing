@@ -6,7 +6,6 @@ export interface Joined {
   readonly port: number;
 }
 
-/** Why the device link is not up. */
 export type LinkDownReason = 'port-taken' | 'ended' | 'repeated-failure' | 'not-carried' | 'no-port';
 
 /** The device link of this computer, as `link_status` reports it. */
@@ -23,9 +22,11 @@ export interface DeviceLinkStatus {
 }
 
 /** The shell's error codes; any other answer is `failed`. */
-export type LinkProblem = 'caller' | 'not-carried' | 'busy' | 'no-home' | 'bad-invite' | 'no-answer' | 'refused' | 'folder' | 'failed' | 'unavailable';
+export type LinkProblem = 'desktop-setup' | 'ssh-setup' | 'caller' | 'not-carried' | 'busy' | 'no-home' | 'bad-invite' | 'no-answer' | 'refused' | 'folder' | 'failed' | 'unavailable';
 
 const MESSAGES: Readonly<Record<LinkProblem, string>> = {
+  'desktop-setup': 'Desktop sharing is not ready. Use Set up remote access for installation or system settings.',
+  'ssh-setup': 'SSH setup failed or administrator authorization was cancelled. The private port was not opened. Try again after checking the system prompt.',
   caller: 'Only the main window can do this.',
   'not-carried': 'This build does not carry the link program.',
   busy: 'Another link change is running. Wait for it.',
@@ -53,13 +54,11 @@ function refused(problem: LinkProblem): LinkResult<never> {
   return { ok: false, problem, message: MESSAGES[problem] };
 }
 
-/** The join answer, or `undefined` for anything that is not one. */
 export function joinedOf(value: unknown): Joined | undefined {
   if (!isRecord(value) || typeof value.fingerprint !== 'string' || value.fingerprint === '' || !isPort(value.port)) return undefined;
   return { fingerprint: value.fingerprint, port: value.port };
 }
 
-/** The status the shell answered, or `undefined` for anything that is not one. Absent fields stay absent. */
 export function linkStatusOf(value: unknown): DeviceLinkStatus | undefined {
   if (!isRecord(value) || typeof value.joined !== 'boolean' || !STATES.includes(value.state)) return undefined;
   const { port, reason, path, latencyMs, publicKey } = value;
@@ -69,7 +68,7 @@ export function linkStatusOf(value: unknown): DeviceLinkStatus | undefined {
   return { joined: value.joined, state: value.state, ...Object.fromEntries(present) } as DeviceLinkStatus;
 }
 
-/** Runs `command`; `shape` reads the answer. The invite is never logged or kept in an error (LOG-007). */
+/** The invite is never logged or kept in an error (LOG-007). */
 async function call<T>(command: string, shape: (value: unknown) => T | undefined, args?: Record<string, unknown>): Promise<LinkResult<T>> {
   if (!isTauri()) return refused('unavailable');
   try {
@@ -100,13 +99,12 @@ export interface OpenPorts {
   readonly open: readonly number[];
 }
 
-/** The answer of `link_ports`, or `undefined` for anything that is not one. */
 export function openPortsOf(value: unknown): OpenPorts | undefined {
   if (!isRecord(value) || !Array.isArray(value.open) || !value.open.every(isPort)) return undefined;
   return { open: [...(value.open as number[])] };
 }
 
-/** The open ports of this computer; with `change`, after that port is turned on or off. Only the person changes them. */
+/** With `change`, after that port is turned on or off; only the person changes them. */
 export function linkPorts(change?: { readonly port: number; readonly on: boolean }): Promise<LinkResult<OpenPorts>> {
   return call('link_ports', openPortsOf, change === undefined ? {} : { port: change.port, on: change.on });
 }

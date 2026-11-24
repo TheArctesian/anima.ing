@@ -1,6 +1,5 @@
-//! MET-012, MET-013, LOG-007: the hub keeps only the SHA-256 of a code's or a token's random
-//! bytes, and no code or token reaches the process log, an event or an audit entry. The whole
-//! flow, a push included, runs as the runtime role (K2 "Roles").
+//! The hub stores only hashes of codes and tokens, and no code or token reaches a log, an event
+//! or an audit entry (MET-012, MET-013, LOG-007); the flow runs as the runtime role (K2 "Roles").
 
 use std::{
     io,
@@ -19,7 +18,6 @@ use super::{
     harness::{Daemons, PVE_01, pushing_now},
 };
 
-/// The SHA-256 of the random bytes behind `secret` (its text after the prefix).
 fn hash_of(secret: &str, prefix: &str) -> Vec<u8> {
     let bytes = URL_SAFE_NO_PAD
         .decode(secret.strip_prefix(prefix).unwrap())
@@ -27,7 +25,6 @@ fn hash_of(secret: &str, prefix: &str) -> Vec<u8> {
     Sha256::digest(bytes).to_vec()
 }
 
-/// Every stored value of the two daemon tables and the logs, as text.
 async fn stored_text(pool: &PgPool) -> String {
     let sql = "SELECT concat_ws(' ', \
          (SELECT string_agg(a::text, ' ') FROM metrics.daemons a), \
@@ -77,7 +74,6 @@ async fn met_012_met_013_only_the_hashes_of_codes_and_tokens_are_stored(pool: Pg
     assert!(!everything.contains("anima_"), "{everything}");
 }
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 struct Capture(Arc<Mutex<Vec<u8>>>);
 
@@ -100,8 +96,7 @@ async fn log_007_the_process_log_of_the_whole_flow_holds_no_code_or_token(pool: 
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in wiring::uri_log: a second dispatcher keeps another test thread from caching this
-    // test's callsites as disabled.
+    // A second dispatcher keeps another test thread from caching these callsites as disabled.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();
@@ -168,7 +163,6 @@ async fn log_007_the_process_log_of_the_whole_flow_holds_no_code_or_token(pool: 
     }
 }
 
-/// A pool whose every connection runs as `anima_runtime`.
 async fn runtime_pool(pool: &PgPool) -> PgPool {
     PgPoolOptions::new()
         .max_connections(4)

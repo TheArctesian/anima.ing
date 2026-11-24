@@ -8,24 +8,14 @@
   import { pageTitle } from './title';
 
   interface Props {
-    /** The list this page belongs to: "Devices" at "/devices". */
     back: { readonly to: Pathname; readonly label: string };
-    /** The thing's kind or system, in the accent colour: a device type, a session's protocol. */
     icon: IconName;
-    /**
-     * The thing's name: the visible `h1`, and the window title "<title> – Anima.ing" (NAV-010). `null` while it loads, or
-     * when there is no such thing: only the back link shows, and a placeholder keeps the row's height (D-13, MOT-007).
-     */
+    /** `null` while it loads or when there is no such thing: only the back link shows. */
     title: string | null;
-    /** The key of the shared-element morph the name flies from, such as the list row's name (MOT-005). */
     shared?: string | undefined;
-    /** Status and identity beside the name: a status mark, a host in mono. Stays while the bar is pinned. */
     meta?: Snippet;
-    /** The page's actions at the end of the row: Connect, a split button, an overflow menu. */
     actions?: Snippet;
-    /** Why the status is what it is, and the fix. Folds away while the bar is pinned. */
     reason?: Snippet;
-    /** The page's tabs, the bar's last row. */
     tabs?: Snippet;
   }
 
@@ -49,8 +39,6 @@
 <svelte:head><title>{title === null ? 'Anima.ing' : pageTitle(title)}</title></svelte:head>
 
 <div class="sentinel" aria-hidden="true" bind:this={sentinel}></div>
-<!-- The detail bar (UR-7, D16): every detail page's header. The list it came from, the thing's icon and name, its
-     status, its actions and its tabs, pinned to the top of the window as the page scrolls. -->
 <header class:stuck>
   <div class="top">
     <nav class="crumb" aria-label="Breadcrumb">
@@ -80,7 +68,6 @@
   /* The bar runs to the page's edges, over the main column's padding, so the page scrolls cleanly under it. */
   header {
     position: sticky;
-    /* Below the strip that takes the place of the frame of the window, where there is one. */
     inset-block-start: var(--titlebar-block-size);
     z-index: var(--layer-sticky);
     display: flex;
@@ -175,7 +162,6 @@
     margin-inline-start: auto;
   }
 
-  /* The reason folds from its height to none as the bar pins (UR-7, D16), so the pinned bar is one row and the tabs. */
   .fold {
     display: grid;
     grid-template-rows: 1fr;
@@ -208,8 +194,7 @@
     margin-block-start: var(--space-3);
   }
 
-  /* The strip sits on the bar's own rule: its underline and gap give way, and the selected tab's line overlaps the rule. */
-  /* `header` outweighs the strip's own margin, whichever stylesheet loads last. */
+  /* The strip sits on the bar's own rule; `header` outweighs the strip's own margin, whichever stylesheet loads last. */
   header .tabs > :global(*) {
     margin-block-end: calc(var(--border-thin) * -1);
   }
@@ -218,13 +203,17 @@
     box-shadow: none;
   }
 
+  /* Reduced motion follows the Settings choice (MOT-043): On reduces whatever the OS says, Off keeps full motion. */
   @media (prefers-reduced-motion: reduce) {
-    .fold {
+    :global(:root:not([data-motion='full'])) .fold {
       transition: none;
     }
   }
 
-  /* On a phone the actions take their own row under the name, and leave while the bar is pinned. */
+  :global(:root[data-motion='reduce']) .fold {
+    transition: none;
+  }
+
   @media (max-width: 767.98px) {
     h1 {
       font-size: var(--text-lg);

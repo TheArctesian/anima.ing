@@ -1,8 +1,5 @@
-//! One cgroup v2 for each server (Linux; R-331). The cgroup is below the cgroup of
-//! the daemon, which its unit must delegate. The server joins it through the launcher: the
-//! daemon program in the fixed mode `__model-launch`, which writes its own id to
-//! `cgroup.procs`, sets the parent-death signal as a backstop, and then becomes the runtime
-//! with `exec`. No shell runs.
+//! One cgroup v2 for each server (Linux, R-331), below the cgroup of the daemon, which its unit
+//! must delegate. The server joins it through the launcher; no shell runs.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -11,16 +8,13 @@ use daemon_core::model_work::cause::Containment;
 
 use super::Identity;
 
-/// The first word of the arguments of the launcher.
 pub const LAUNCH_MODE: &str = "__model-launch";
-/// The prefix of the name of the cgroup of a server.
 pub const PREFIX: &str = "anima-model-";
-/// The most processes in the cgroup of one server, when the `pids` controller is delegated. A
-/// placeholder value of the contract (Section 9), so a fork bomb stops before a stop loses to
+/// A placeholder value of the contract (Section 9), so a fork bomb stops before a stop loses to
 /// it on a kernel with no `cgroup.kill`.
 pub const PIDS_MAX: u32 = 512;
 
-/// The start time of process `pid` in clock ticks (field 22 of `/proc/<pid>/stat`).
+/// Field 22 of `/proc/<pid>/stat`, in clock ticks.
 #[must_use]
 pub fn start_of(pid: i32) -> Option<String> {
     let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
@@ -28,7 +22,6 @@ pub fn start_of(pid: i32) -> Option<String> {
     after.split_whitespace().nth(19).map(str::to_owned)
 }
 
-/// The cgroup v2 folder of the daemon.
 #[must_use]
 pub fn own_cgroup() -> Option<PathBuf> {
     let text = std::fs::read_to_string("/proc/self/cgroup").ok()?;
@@ -39,20 +32,22 @@ pub fn own_cgroup() -> Option<PathBuf> {
         .then(|| base.join(relative.trim_start_matches('/')))
 }
 
-/// Makes a new cgroup for one start of server `name` (a UUID). Each start has its own name
-/// (the server and the time of the start), so a cgroup of an earlier start that could not be
-/// removed never blocks a new start. Sets `cgroup.max.descendants` to 0, so the runtime can
-/// make no cgroup below it, and `pids.max` when the controller is delegated. With `nsdelegate`
-/// these files of the root of the namespace of the runtime are not writable from inside it.
+/// Each start has its own name, so a cgroup of an earlier start that could not be removed never
+/// blocks a new start. With `nsdelegate` the limits are not writable from inside the runtime.
+///
+/// The unit of the daemon must have `Delegate=yes` (DEF-013): under the systemd user
+/// manager each unit cgroup belongs to the user, so a cgroup that can be made proves nothing.
 ///
 /// # Errors
-/// `no_nsdelegate` when the cgroup v2 mount lacks `nsdelegate`; `no_delegation` when the
-/// system has no cgroup v2 or does not delegate it to this user.
+/// `no_nsdelegate` when the cgroup v2 mount lacks `nsdelegate`; `no_delegation` otherwise.
 pub fn make(name: &str) -> Result<PathBuf, Containment> {
     let mountinfo =
         std::fs::read_to_string("/proc/self/mountinfo").map_err(|_| Containment::NoDelegation)?;
     if !super::mounts::cgroup_has_nsdelegate(&mountinfo) {
         return Err(Containment::NoNsdelegate);
+    }
+    if !super::delegation::own_cgroup_delegated() {
+        return Err(Containment::NoDelegation);
     }
     let parent = own_cgroup().ok_or(Containment::NoDelegation)?;
     let start = std::time::SystemTime::now()
@@ -76,8 +71,6 @@ pub fn make(name: &str) -> Result<PathBuf, Containment> {
     Ok(path)
 }
 
-/// Whether `cgroup` is a cgroup of a server of this daemon: a folder named with [`PREFIX`]
-/// directly below the cgroup of the daemon. The sweep checks each path that a record names.
 #[must_use]
 pub fn is_server_cgroup(cgroup: &Path) -> bool {
     let named = cgroup
@@ -87,11 +80,8 @@ pub fn is_server_cgroup(cgroup: &Path) -> bool {
     named && own_cgroup().is_some_and(|own| cgroup.parent() == Some(own.as_path()))
 }
 
-/// The processes of the cgroup and of each cgroup below it now, by their identities.
-///
 /// # Errors
-/// An I/O error when a `cgroup.procs` or a folder does not read; the caller then treats the
-/// server as exposed (fails closed).
+/// An I/O error when a `cgroup.procs` or a folder does not read; the caller then fails closed.
 pub fn members(cgroup: &Path) -> io::Result<Vec<Identity>> {
     let mut found = Vec::new();
     for folder in subtree(cgroup)? {
@@ -105,7 +95,7 @@ pub fn members(cgroup: &Path) -> io::Result<Vec<Identity>> {
     Ok(found)
 }
 
-/// `cgroup` and each cgroup below it, parents before children; no link is followed.
+/// Parents before children; no link is followed.
 fn subtree(cgroup: &Path) -> io::Result<Vec<PathBuf>> {
     let mut folders = vec![cgroup.to_path_buf()];
     let mut next = 0;
@@ -121,9 +111,8 @@ fn subtree(cgroup: &Path) -> io::Result<Vec<PathBuf>> {
     Ok(folders)
 }
 
-/// Ends each process of the cgroup (with `cgroup.kill`, and one signal to each member whose
-/// identity holds), then removes the cgroup. Waits up to 1 second, so it runs on a blocking
-/// thread. A cgroup that does not empty is logged and left; the next start uses a new name.
+/// Waits up to 1 second, so it runs on a blocking thread. A cgroup that does not empty is left;
+/// the next start uses a new name.
 pub fn end_cgroup(cgroup: &Path) {
     let _ = std::fs::write(cgroup.join("cgroup.kill"), "1");
     for member in members(cgroup).unwrap_or_default() {
@@ -142,7 +131,6 @@ pub fn end_cgroup(cgroup: &Path) {
     tracing::warn!(cgroup = %cgroup.display(), "a cgroup of a model server did not empty; left");
 }
 
-/// Ends and removes each cgroup of a server below the cgroup of the daemon.
 pub fn sweep_cgroups() {
     let Some(parent) = own_cgroup() else { return };
     let Ok(entries) = std::fs::read_dir(parent) else {
@@ -155,16 +143,13 @@ pub fn sweep_cgroups() {
     }
 }
 
-/// Moves the launcher into a new cgroup namespace whose root is the cgroup of its server
-/// (R-330): the runtime then sees `/` as its cgroup, and the kernel refuses a move of
-/// a process to a cgroup outside that root, such as the cgroup of the daemon. A user of the
-/// system may make a cgroup namespace only inside a user namespace of its own, so both are made
-/// in one call; the user namespace maps the user and the group of the daemon to themselves.
-/// Called with one thread only (a new user namespace needs it).
+/// The kernel then refuses a move of a runtime process to a cgroup outside its server's (R-330).
+/// A user may make a cgroup namespace only inside a user namespace of its own, so both are made
+/// in one call, which needs one thread.
 ///
 /// # Errors
-/// An I/O error when the system does not permit the namespaces; the launcher then refuses the
-/// start (`containment_failed`), with no fallback.
+/// An I/O error when the system does not permit the namespaces; the start is then refused, with
+/// no fallback.
 fn hide_cgroups() -> io::Result<()> {
     use rustix::thread::UnshareFlags;
     let uid = rustix::process::getuid().as_raw();
@@ -180,13 +165,11 @@ fn hide_cgroups() -> io::Result<()> {
     Ok(())
 }
 
-/// Writes the exit code of the failed launcher step `step` to the file `failure`, then exits
-/// with it.
 fn fail(failure: &str, step: Containment) -> ! {
     use std::io::Write as _;
     use std::os::unix::fs::OpenOptionsExt as _;
     let code = step.exit_code().unwrap_or(1);
-    // A new file only (the daemon removes it before each start), no link, no wait on a FIFO.
+    // The daemon removes the file before each start, so only a new file is made.
     let file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -203,10 +186,7 @@ fn fail(failure: &str, step: Containment) -> ! {
     std::process::exit(code);
 }
 
-/// Becomes the launcher when the first argument is [`LAUNCH_MODE`]; otherwise returns. The
-/// launcher (R-331, R-330) joins the cgroup of the server, hides the cgroups
-/// above it and becomes the runtime; it never returns. `main` calls this first, before the async
-/// runtime or any thread starts, because a new namespace needs one thread.
+/// Called before any thread starts, because a new namespace needs one thread.
 pub fn dispatch_if_launch() {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     if arguments.first().map(String::as_str) == Some(LAUNCH_MODE) {
@@ -214,14 +194,10 @@ pub fn dispatch_if_launch() {
     }
 }
 
-/// The launcher: `__model-launch <cgroup.procs> <daemon pid> <failure file> <program>
-/// <arguments…>`. It never returns. At a failed step it writes the exit code of that step
-/// ([`Containment::exit_code`]) to the failure file, then exits with it. The environment is the one that the daemon gave it, already the fixed list.
+/// `__model-launch <cgroup.procs> <daemon pid> <failure file> <program> <arguments…>`.
 ///
-/// The parent-death signal fires when the *thread* that started the launcher ends, not the
-/// daemon process. So the daemon must start servers from a thread that lives as long as the
-/// daemon (a worker of the async runtime), never from `spawn_blocking`, whose threads end
-/// after a time with no work and would kill each server with them.
+/// The parent-death signal fires when the thread that started the launcher ends, not the daemon
+/// process, so the daemon starts servers from a worker of the async runtime, not `spawn_blocking`.
 pub fn launch(arguments: &[String]) -> ! {
     use std::os::unix::process::CommandExt as _;
     let (Some(procs), Some(daemon), Some(failure), Some(program)) = (

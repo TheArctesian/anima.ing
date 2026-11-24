@@ -1,6 +1,3 @@
-//! All SQL on schema `notifications`: I/O only; rows are mapped in `rows`. Ids and time come
-//! in as parameters.
-
 mod channels;
 mod check_choices;
 mod deliveries;

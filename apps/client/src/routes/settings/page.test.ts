@@ -20,33 +20,21 @@ vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
 vi.mock('$lib/desktop/token', () => ({ clearAccessToken: mocks.clearAccessToken }));
 vi.mock('$lib/platform/platform', () => ({ capabilities: () => mocks.platform }));
 vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn, loadClientAt: mocks.loadClientAt }));
-// The desktop rows need the shell's update store; stand-ins let the page's sections be counted (UPD-006).
+// Stand-ins for rows that need the shell's update store (UPD-006).
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/LogRowStub.svelte')).default }));
 vi.mock('$lib/builds/BuildsRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/RowStub.svelte')).default }));
-// The API keys section loads its own data and has its own tests in `$lib/api-keys/` (WP-50 F-3, F-10).
 vi.mock('$lib/api-keys/ApiKeysSection.svelte', () => ({ default: () => undefined }));
-// The Notifications section loads its own data and has its own tests in `$lib/notifications/` (WP-50 F-3, F-10).
 vi.mock('$lib/notifications/NotificationsSection.svelte', () => ({ default: () => undefined }));
-// The default check settings section loads its own data and has its own tests in `$lib/checks/defaults/` (WP-50 F-3, F-10).
 vi.mock('$lib/checks/defaults/DefaultsSection.svelte', () => ({ default: () => undefined }));
-// The Data retention section loads its own data and has its own tests in `$lib/retention/` (WP-50 F-3, F-10).
 vi.mock('$lib/retention/RetentionSection.svelte', () => ({ default: () => undefined }));
-// The Extensions section loads its own data and has its own tests in `$lib/extensions/` (EXT-001).
 vi.mock('$lib/extensions/ExtensionsSection.svelte', () => ({ default: () => undefined }));
-// The Integrations section loads its own data and has its own tests in `$lib/sources/` (SRC-009, PRJ-018).
 vi.mock('$lib/sources/SourcesSection.svelte', () => ({ default: () => undefined }));
-// The MCP section reads the shell and has its own tests in `$lib/mcp/` (MCP-018, MCP-023).
 vi.mock('$lib/mcp/McpSection.svelte', () => ({ default: () => undefined }));
-// The Stay awake rows read the shell and have their own tests in `$lib/stay-awake/` (AWK-004).
 vi.mock('$lib/stay-awake/StayAwakeRows.svelte', () => ({ default: () => undefined }));
-// The link and local hub parts read the shell and the hub and have their own tests in `$lib/link/` and `$lib/local-hub/` (FRN-006, FRN-009).
 vi.mock('$lib/link/LinkDevicesSection.svelte', () => ({ default: () => undefined }));
 vi.mock('$lib/link/HubLinkRow.svelte', () => ({ default: () => undefined }));
 vi.mock('$lib/local-hub/LocalHubSection.svelte', () => ({ default: () => undefined }));
-// The Routes section loads its own data and has its own tests in `$lib/application-routes/` (task H21).
-vi.mock('$lib/application-routes/RoutesSection.svelte', () => ({ default: () => undefined }));
-// The VPN section loads its own data and has its own tests in `$lib/vpn/` (SET-003).
 vi.mock('$lib/vpn/VpnSection.svelte', () => ({ default: () => undefined }));
 
 let app: ReturnType<typeof mount> | undefined;
@@ -96,17 +84,14 @@ it('SET-001: the nav link to Settings is /settings and the page renders the h1 "
   expect(target.querySelector('h1')?.textContent).toBe(SETTINGS.label);
 });
 
-/** The page's sections, each named by its heading through `aria-labelledby`. */
 function sections(target: HTMLElement): HTMLElement[] {
   return [...target.querySelectorAll<HTMLElement>('section[aria-labelledby]')];
 }
 
-/** Each section's name, from the heading its `aria-labelledby` points at, so a section without its heading fails. */
 function sectionHeadings(target: HTMLElement): string[] {
   return sections(target).map((section) => section.querySelector(`h2[id="${section.getAttribute('aria-labelledby') ?? ''}"]`)?.textContent ?? '');
 }
 
-/** The text a person reads in an element: decorative icons (aria-hidden) are left out. */
 function readable(element: Element): string {
   const copy = element.cloneNode(true) as Element;
   for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
@@ -119,10 +104,10 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
   return [...section.querySelectorAll('h2, p, label, span.name, button, option')].map(readable);
 }
 
-it('SET-001, UI-005, MOT-043, R-224: the page is the title, then Account, Routes, Notifications, Default check settings and Data retention, then Appearance with Theme, Colours, Reduce motion and the two fonts, then Code appearance, then Integrations and API keys, then VPN', async () => {
+it('SET-001, UI-005, MOT-043, R-224: the page is the title, then Account, Notifications, Default check settings and Data retention, then Appearance with Theme, Colours, Reduce motion and the two fonts, then Code appearance, then Integrations and API keys, then VPN', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.querySelector('h1')?.compareDocumentPosition(sections(target)[0] as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  expect(sectionHeadings(target)).toEqual(['Account', 'Routes', 'Notifications', 'Default check settings', 'Data retention', 'Appearance', 'Code appearance', 'Integrations', 'API keys', 'VPN']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Notifications', 'Default check settings', 'Data retention', 'Appearance', 'Code appearance', 'Integrations', 'API keys', 'VPN']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Who is signed in to this hub.', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
@@ -130,14 +115,13 @@ it('SET-001, UI-005, MOT-043, R-224: the page is the title, then Account, Routes
     'Interface font', 'IBM Plex Sans', ...fonts, 'Monospace font', 'IBM Plex Mono', ...fonts,
   ]);
   const controls = '[role="switch"], img, input, textarea, a, [tabindex]:not(button)';
-  // The one input is the contrast slider of Code appearance (TC6).
   expect(sections(target).flatMap((section) => [...section.querySelectorAll(controls)]).map((control) => control.id)).toEqual(['code-contrast']);
 });
 
 it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section after Appearance, holding the update, log folder and Builds rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Routes', 'Notifications', 'Default check settings', 'Data retention', 'Stay awake', 'Appearance', 'Updates', 'MCP', 'Code appearance', 'Integrations', 'API keys', 'VPN']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Notifications', 'Default check settings', 'Data retention', 'Remote access', 'Stay awake', 'Appearance', 'App and tools', 'MCP', 'Code appearance', 'Integrations', 'API keys', 'VPN']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(3);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(3);
@@ -162,7 +146,7 @@ it('MCP-018: the desktop app shows the MCP section after Updates, with the secti
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
-  expect(headings.indexOf('MCP')).toBe(headings.indexOf('Updates') + 1);
+  expect(headings.indexOf('MCP')).toBe(headings.indexOf('App and tools') + 1);
 });
 
 it('CLI-003: Sign out calls logout, clears the token with hub.address, then goes to sign-in', async () => {
@@ -232,7 +216,6 @@ it('MOT-007: the name, the Sign out button and the alert line are laid out befor
   const who = () => account()?.querySelector('p.who');
   const before = [who(), signOutButton(target), account()?.querySelector('[role="alert"]')];
   expect(before.every((element) => element !== null && element !== undefined)).toBe(true);
-  // The line is there before the name is: laid out but hidden, with an empty name.
   expect(who()?.classList.contains('pending')).toBe(true);
   expect(who()?.querySelector('strong')?.textContent).toBe('');
   release(ok({ me: { username: 'ann' } }));
@@ -264,8 +247,8 @@ it('CLI-002, F-10: desktop shows Hub after Account and before Notifications, wit
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
-  expect(headings.slice(0, 4)).toEqual(['Account', 'Hub', 'Routes', 'Notifications']);
-  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '']);
+  expect(headings.slice(0, 3)).toEqual(['Account', 'Hub', 'Notifications']);
+  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Sign out and change hub', '']);
   expect(hubStatus(target)?.textContent).toBe('');
 });
 
@@ -312,7 +295,7 @@ it('MOT-007: a busy Hub button is aria-disabled, keeps focus and sends no second
   expect(document.activeElement).toBe(button);
   expect(hubStatus(target)?.textContent).toBe('Testing the hub…');
   button.click();
-  hubButton(target, 'Change hub').click();
+  hubButton(target, 'Sign out and change hub').click();
   await settled();
   expect(hub.sent.filter((request) => request.operation === 'Me')).toHaveLength(2);
   expect(hub.sent.some((request) => request.operation === 'Logout')).toBe(false);
@@ -324,12 +307,11 @@ it('MOT-007: a busy Hub button is aria-disabled, keeps focus and sends no second
 it('CLI-002, D-5, R-225: Change hub signs out, clears the token, forgets the address and starts again at the first-run choices', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
-  hubButton(target, 'Change hub').click();
+  hubButton(target, 'Sign out and change hub').click();
   await settled();
   expect(hub.sent.map((request) => request.operation)).toEqual(['Me', 'Logout']);
   expect(mocks.clearAccessToken).toHaveBeenCalledWith(hub.hub.address);
   expect(mocks.loadClientAt).toHaveBeenCalledExactlyOnceWith('/welcome');
-  // Never the password page of the hub that was left.
   expect(mocks.goToSignIn).not.toHaveBeenCalled();
 });
 
@@ -337,7 +319,7 @@ it('CLI-002: Change hub stays put and shows the sign-out sentence when the token
   mocks.platform = DESKTOP_MAC;
   mocks.clearAccessToken.mockRejectedValue(new Error('keychain secret'));
   const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
-  hubButton(target, 'Change hub').click();
+  hubButton(target, 'Sign out and change hub').click();
   await settled();
   expect(mocks.goToSignIn).not.toHaveBeenCalled();
   expect(hubStatus(target)?.textContent).toBe(TOKEN_KEPT_AFTER_LOGOUT);

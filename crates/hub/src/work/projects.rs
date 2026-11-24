@@ -1,15 +1,13 @@
-//! The operator's projects (XP-02 first slice; PRO-001 to PRO-004, PRO-006, PRJ-001, PRJ-016).
+//! The operator's projects (XP-02; PRO-001 to PRO-004, PRO-006, PRJ-001, PRJ-016).
 //!
-//! Each repository the GitHub connection can read becomes a project (PRO-001). The engine
-//! feeds this domain's [`intake`] while Projects is on; the intake imports repositories, keeps
-//! the leave-out list (PRO-002) and turns the signs of a repository into proposed resources
-//! (PRO-003, PRO-004). Text from GitHub is stored as given and never interpreted or logged.
-//! No domain imports this one; wiring registers the intake and merges [`graphql`].
+//! Text from GitHub is stored as given and never interpreted or logged. No domain imports this
+//! one; wiring registers the intake and merges [`graphql`].
 
 mod browse;
 mod code;
 mod forge;
 pub mod graphql;
+mod groups;
 mod history;
 mod import;
 mod intake;
@@ -56,6 +54,12 @@ enum Error {
     NoRepository,
     #[error("no resource has this ID")]
     NoResource,
+    #[error("no project has this ID")]
+    NoProject,
+    #[error("no project group has this ID")]
+    NoGroup,
+    #[error("a project group has this name")]
+    GroupNameTaken,
     #[error("the resource is already confirmed")]
     AlreadyConfirmed,
     #[error("the next sync could not be requested")]
@@ -70,6 +74,12 @@ impl Error {
         match self {
             Self::NoRepository => coded("No repository has this ID.", ErrorCode::NotFound),
             Self::NoResource => coded("No resource has this ID.", ErrorCode::NotFound),
+            Self::NoProject => coded("No project has this ID.", ErrorCode::NotFound),
+            Self::NoGroup => coded("No project group has this ID.", ErrorCode::NotFound),
+            Self::GroupNameTaken => coded(
+                "A project group already has this name.",
+                ErrorCode::Conflict,
+            ),
             Self::AlreadyConfirmed => {
                 coded("This resource is already confirmed.", ErrorCode::Conflict)
             }

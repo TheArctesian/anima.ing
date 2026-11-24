@@ -1,6 +1,3 @@
-//! Tests of the rates, the label rules, the window and the backlog on captured and hostile
-//! input.
-
 use chrono::{DateTime, Utc};
 
 use super::{Kind, Sample};
@@ -14,7 +11,6 @@ mod rates;
 mod sample;
 mod window;
 
-/// Asserts two floats are the same number, apart from rounding of the last digits.
 fn assert_close(actual: f64, expected: f64) {
     assert!(
         (actual - expected).abs() < 1e-9,
@@ -22,7 +18,6 @@ fn assert_close(actual: f64, expected: f64) {
     );
 }
 
-/// The value of the sample of `kind` and `label`, if there is one.
 fn value(samples: &[Sample], kind: Kind, label: &str) -> Option<f64> {
     samples
         .iter()
@@ -30,7 +25,6 @@ fn value(samples: &[Sample], kind: Kind, label: &str) -> Option<f64> {
         .map(|sample| sample.value)
 }
 
-/// How many samples there are of `kind`.
 fn count(samples: &[Sample], kind: Kind) -> usize {
     samples.iter().filter(|sample| sample.kind == kind).count()
 }
@@ -53,7 +47,6 @@ fn disk(filesystem: &str, mount: &str, total_bytes: u64, used_bytes: u64) -> Dis
     }
 }
 
-/// The UTC time written as RFC 3339 `text`.
 fn at(text: &str) -> DateTime<Utc> {
     text.parse().unwrap()
 }

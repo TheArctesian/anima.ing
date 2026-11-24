@@ -1,5 +1,4 @@
-//! The pure parts of Connect GitHub: the attempt machine with the time as a parameter, the one
-//! slot that holds it, the three values and the words (K-E1 Section 7a, PRJ-039, PRJ-041).
+//! The pure parts of Connect GitHub (K-E1 Section 7a, PRJ-039, PRJ-041).
 
 mod ending;
 mod machine;
@@ -74,7 +73,6 @@ fn key() -> Zeroizing<String> {
     Zeroizing::new("KEY-MARKER".to_owned())
 }
 
-/// An attempt walked to one phase, with the browser's cookie and the last state it was given.
 struct Walked {
     attempt: Attempt,
     cookie: Minted,
@@ -85,7 +83,6 @@ fn waiting() -> Attempt {
     Attempt::start(Uuid::now_v7(), request(None), t0())
 }
 
-/// Bound to a browser by a ticket, the form to GitHub served with a state.
 fn at_github() -> Walked {
     let mut attempt = waiting();
     let (ticket, cookie, state) = (value(), value(), value());
@@ -103,7 +100,6 @@ fn at_github() -> Walked {
     }
 }
 
-/// Back from GitHub, the code being converted.
 fn exchanging() -> Walked {
     let mut walked = at_github();
     let (cookie, state) = (walked.cookie.text(), walked.state.text());
@@ -114,7 +110,6 @@ fn exchanging() -> Walked {
     walked
 }
 
-/// The App made, waiting for Install.
 fn app_created() -> Walked {
     let mut walked = exchanging();
     let s2 = value();

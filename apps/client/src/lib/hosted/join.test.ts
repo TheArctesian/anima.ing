@@ -23,7 +23,6 @@ interface Answers {
   readonly write?: () => Promise<void>;
 }
 
-/** Parts that record each step in order; nothing reaches a shell, a key store or a hub. */
 function parts(answers: Answers = {}) {
   const order: string[] = [];
   return {

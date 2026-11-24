@@ -10,13 +10,9 @@
     /** The text of a value label; without it the labels keep their place but show nothing (a skeleton's open axis). */
     format?: (value: number) => string;
     threshold?: number;
-    /** Whether `span` is in milliseconds and gets time labels. */
     timeAxis: boolean;
-    /** Shown when there is more than one series, so colour is never the only cue. */
     legend: readonly { readonly label: string; readonly colour: SeriesColour }[];
-    /** The text alternative; the plot is then an image with this label. Without it the whole frame is hidden (a skeleton). */
     label?: string;
-    /** Drawn over the grid, in a box of the plot's size. */
     children?: Snippet;
   }
 
@@ -29,7 +25,7 @@
   const percentOf = (part: number, whole: number) => `${String((part / whole) * 100)}%`;
 </script>
 
-<!-- The box, grid, axes and legend; only `children` differs between a chart and its skeleton (MOT-007). -->
+<!-- Only `children` differs between a chart and its skeleton (MOT-007). -->
 <div class="frame" aria-hidden={label === undefined ? 'true' : undefined}>
   <div class="values" aria-hidden="true">
     {#each values as tick (tick.value)}
@@ -71,7 +67,6 @@
 </div>
 
 <style>
-  /* Every size comes from tokens and none from the data: the chart and its skeleton are one box (MOT-007). */
   .frame {
     display: grid;
     /* The value column fits the longest axis label, "1023.9 KiB/s", in the axis font. */

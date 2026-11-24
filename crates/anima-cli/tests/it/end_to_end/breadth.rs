@@ -1,5 +1,4 @@
-//! The rest of the command line against the real hub, one run each: every read command answers
-//! with JSON, and the changes not covered elsewhere land on the hub (CMD-020, CMD-021).
+//! The rest of the command line against the real hub (CMD-020, CMD-021).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -8,7 +7,6 @@ use super::words;
 use crate::kit::Anima;
 use crate::kit::real_hub::RealHub;
 
-/// A site `home`, a device `nas` with its default check, and the check's ID.
 async fn fleet(hub: &RealHub, anima: &Anima, reader: &str) -> String {
     let site = anima
         .run(&words("site create home --subnet 10.10.0.0/24"))
@@ -24,7 +22,6 @@ async fn fleet(hub: &RealHub, anima: &Anima, reader: &str) -> String {
     check.as_str().expect("the default check").to_owned()
 }
 
-/// Runs `line` with `--json`; its JSON output.
 async fn json_of(anima: &Anima, line: &str) -> Value {
     let outcome = anima.run(&words(&format!("{line} --json"))).await;
     assert_eq!(outcome.code, 0, "{line}: {outcome:?}");

@@ -2,11 +2,9 @@
   import FormButton from '../FormButton.svelte';
 
   interface Props {
-    /** What the text is, above it. */
     label: string;
-    /** What Copy puts on the clipboard. It may be a secret: it is never logged, put in an attribute or announced (LOG-007). */
+    /** May be a secret: never logged, put in an attribute or announced (LOG-007). */
     text: string;
-    /** What the eye reads, when it differs from `text` (a grouped secret); `text` by default. */
     shown?: string;
   }
 

@@ -8,9 +8,7 @@
 
   interface Props {
     label: string;
-    /** `null` while the hub has not answered: the row keeps its size and its controls wait. */
     period: RetentionPeriod | null;
-    /** Absent while there is no period to save. */
     save?: (days: number) => Promise<HubResult<RetentionPeriod>>;
   }
 
@@ -20,15 +18,16 @@
   let problem = $state('');
   let busy = $state(false);
   const saved = useActionFeedback();
+  const dirty = $derived(period !== null && draft !== String(period.days));
 
-  // The field follows the hub's days when they arrive or change; a refused save leaves what the operator typed.
+  // A refused save leaves what the operator typed.
   $effect(() => {
     if (period !== null) draft = String(period.days);
   });
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    if (period === null || save === undefined || busy) return;
+    if (period === null || save === undefined || busy || !dirty) return;
     const checked = checkDays(draft, period);
     if (!checked.ok) {
       problem = checked.message;
@@ -73,7 +72,7 @@
       }}
     />
     <span class="unit">days</span>
-    <FormButton tabindex={0} type="submit" aria-label="Save {label}" aria-disabled={period === null || busy} feedback={saved.state}>Save</FormButton>
+    <FormButton tabindex={0} type="submit" aria-label="Save {label}" aria-disabled={period === null || busy || !dirty} feedback={saved.state}>Save changes</FormButton>
     {#snippet message()}
       <!-- One line is kept whether or not it has text, so no row below moves (MOT-007, MV-005). -->
       <div class="problem" id="{id}-problem" role="alert">{problem}</div>

@@ -1,5 +1,4 @@
-//! The tree of a server (R-331): the identity check before a signal, the walk of
-//! the descendants on macOS, and the sweep of the records at the start of the daemon.
+//! R-331.
 
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
@@ -185,6 +184,7 @@ async fn an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_th
     let root = tempfile::tempdir().expect("a folder");
     let mut runtime =
         anima_daemon::model::server::spawn(&exiting(root.path(), "sleep 0.5; exit 123"))
+            .await
             .expect("started");
     let status = runtime.child.wait().await.expect("ended");
     assert_eq!(
@@ -193,8 +193,9 @@ async fn an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_th
         "the runtime's own 123"
     );
     let written = "sleep 0.5; printf 123 > ../launch-failure; exit 123";
-    let mut launcher =
-        anima_daemon::model::server::spawn(&exiting(root.path(), written)).expect("started");
+    let mut launcher = anima_daemon::model::server::spawn(&exiting(root.path(), written))
+        .await
+        .expect("started");
     let status = launcher.child.wait().await.expect("ended");
     assert_eq!(
         launcher.launch_failure(status),
@@ -203,8 +204,9 @@ async fn an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_th
     let cap = anima_daemon::model::tree::LAUNCH_FAILURE_BYTES;
     for (width, found) in [(cap, Some(Containment::UsernsDenied)), (cap + 1, None)] {
         let script = format!("sleep 0.5; printf '%-{width}s' 123 > ../launch-failure; exit 123");
-        let mut padded =
-            anima_daemon::model::server::spawn(&exiting(root.path(), &script)).expect("started");
+        let mut padded = anima_daemon::model::server::spawn(&exiting(root.path(), &script))
+            .await
+            .expect("started");
         let status = padded.child.wait().await.expect("ended");
         assert_eq!(padded.launch_failure(status), found, "{width} bytes");
     }

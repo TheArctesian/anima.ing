@@ -1,20 +1,16 @@
-//! The order of a rollout (ROL-023, ROL-025): one machine first, then the other machines in
-//! steps. The hub itself is not part of a rollout (stage C is deferred, R-139).
+//! The order of a rollout (ROL-023, ROL-025). The hub itself is not part of a rollout (R-139).
 
 use super::model::{Machine, Reach};
 use crate::ids::DeviceId;
 
-/// The most machines of one step for a rollout of `machines` machines: a quarter, and at least
-/// one (ROL-023).
+/// A quarter of the machines, and at least one (ROL-023).
 #[must_use]
 pub const fn step_size(machines: usize) -> usize {
     let quarter = machines / 4;
     if quarter == 0 { 1 } else { quarter }
 }
 
-/// The machine that the policy selects as the first of a rollout (ROL-025): the first of
-/// `included`, in the order given, that is connected, that is not the machine of the hub and
-/// that runs no job. `None` when no machine is such: the operator then selects one.
+/// `None` when no included machine qualifies; the operator then selects one (ROL-025).
 #[must_use]
 pub fn first_machine(included: &[Machine]) -> Option<DeviceId> {
     included
@@ -27,9 +23,7 @@ pub fn first_machine(included: &[Machine]) -> Option<DeviceId> {
         .map(|machine| machine.device)
 }
 
-/// The steps of a rollout: `first` alone, then `others` in their order, in steps of at most a
-/// quarter of all the machines (ROL-023). `first` is the choice of the policy or of the
-/// operator; a second mention of it in `others` is left out.
+/// `first` alone, then `others` in steps (ROL-023); a repeat of `first` in `others` is left out.
 #[must_use]
 pub fn steps(first: DeviceId, others: &[DeviceId]) -> Vec<Vec<DeviceId>> {
     let rest: Vec<DeviceId> = others

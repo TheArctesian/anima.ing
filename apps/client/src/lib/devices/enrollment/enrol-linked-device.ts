@@ -18,7 +18,7 @@ interface DeviceIdentity {
   readonly invitedKey?: string;
 }
 
-function activeLinkKey(origin: string, { joined, state, port, publicKey }: DeviceLinkStatus): string | undefined {
+export function activeLinkKey(origin: string, { joined, state, port, publicKey }: DeviceLinkStatus): string | undefined {
   if (!joined || state !== 'up' || port === undefined || deviceLinkAddress(port)?.origin !== origin) return undefined;
   return publicKey;
 }
@@ -45,7 +45,6 @@ async function addAtLinkAddress(parts: LinkedDeviceParts, device: DeviceIdentity
 
 const adding = new Map<string, Promise<DeviceEnrolment>>();
 
-/** One explicit inventory enrollment per app and hub at a time, using the current link's public identity. */
 export function enrolLinkedDevice(origin: string, parts: LinkedDeviceParts, device: DeviceIdentity): Promise<DeviceEnrolment> {
   const pending = adding.get(origin);
   if (pending !== undefined) return pending;

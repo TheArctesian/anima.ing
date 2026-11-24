@@ -3,17 +3,13 @@ import type { SessionTunnel } from './tunnel';
 
 type Client = SessionTunnel['client'];
 
-/** Where key events go while the keyboard is bound; `down` returns true to let the browser handle the key. */
+/** `down` returns true to let the browser handle the key. */
 export interface KeyRoute {
   down(keysym: number): boolean;
   up(keysym: number): void;
 }
 
-/**
- * The keyboard of one session pane (D-8): a `Guacamole.Keyboard` that listens to `pane` only, never the document.
- * 1.5.5 cannot remove its listeners, so one keyboard serves the pane for its whole life and is switched by its
- * handlers: with none set, every listener ignores its event.
- */
+/** Guacamole 1.5.5 cannot remove its listeners, so one keyboard on `pane`, never the document, serves its whole life (D-8). */
 export interface PaneKeyboard {
   bind(route: KeyRoute): void;
   /** Release every key still held (through the bound route, so the remote has no stuck key), then stop listening. */
@@ -40,13 +36,11 @@ export function paneKeyboard(pane: HTMLElement): PaneKeyboard {
 
 const MOUSE_EVENTS: readonly Guacamole.Mouse.EventType[] = ['mousedown', 'mouseup', 'mousemove'];
 
-/**
- * Send mouse and touch input on the client's display element to the gateway (D-8). The wheel arrives as presses
- * of the `up` and `down` buttons, which scroll guacd's scroll-back (RA-003). Returns the function that stops it.
- */
-export function forwardPointer(client: Client): () => void {
+/** The wheel arrives as presses of the `up` and `down` buttons, which scroll guacd's scroll-back (RA-003). */
+export function forwardPointer(client: Client, directTouch = true): () => void {
   const element = client.getDisplay().getElement();
-  const pointers = [new Guacamole.Mouse(element), new Guacamole.Mouse.Touchscreen(element)];
+  const pointers: (Guacamole.Mouse | Guacamole.Mouse.Touchscreen)[] = [new Guacamole.Mouse(element)];
+  if (directTouch) pointers.push(new Guacamole.Mouse.Touchscreen(element));
   const send = (event: Guacamole.Mouse.Event) => {
     client.sendMouseState(event.state, true);
   };
@@ -61,14 +55,8 @@ export const CLIPBOARD_LIMIT = 1_048_576;
 
 const PLAIN_TEXT = 'text/plain';
 
-/**
- * Hear the gateway's clipboard (D-9): each `text/plain` stream, read with a `StringReader`, is given to `deliver`
- * once it ends. Other types and text over `CLIPBOARD_LIMIT` are ignored. One stream is read at a time: a newer
- * one replaces an older one still open, whose text is dropped, so a gateway cannot make the client hold many
- * buffers at once. The text is held only while its stream is open; nothing here logs or keeps it.
- */
+/** One stream is read at a time, so a gateway cannot make the client hold many buffers; nothing here logs or keeps the text (D-9). */
 export function receiveClipboard(client: Client, deliver: (text: string) => void): void {
-  // Drops the text of the stream being read, if any.
   let dropOpen: (() => void) | undefined;
   client.onclipboard = (stream, mimetype) => {
     if (mimetype.split(';')[0]?.trim().toLowerCase() !== PLAIN_TEXT) return;
@@ -89,7 +77,6 @@ export function receiveClipboard(client: Client, deliver: (text: string) => void
   };
 }
 
-/** Send `text` to the gateway as one `text/plain` clipboard stream (D-9). */
 export function sendClipboard(client: Client, text: string): void {
   const writer = new Guacamole.StringWriter(client.createClipboardStream(PLAIN_TEXT));
   writer.sendText(text);

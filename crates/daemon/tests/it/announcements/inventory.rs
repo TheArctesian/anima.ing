@@ -1,5 +1,4 @@
-//! The tool inventory in a batch: sent once after it changed, kept until a 204, dropped after a
-//! `MALFORMED` (CAP-027, CAP-029, K8 Section 4).
+//! CAP-027, CAP-029, K8 Section 4.
 
 use anima_daemon::push::Event;
 use daemon_core::inventory::{Architecture, Os};
@@ -16,6 +15,7 @@ fn feed(rig: &mut Rig, first: i64, count: i64) {
 
 fn mac() -> BatchInventory {
     BatchInventory {
+        remote_access: None,
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),

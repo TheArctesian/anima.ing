@@ -1,6 +1,4 @@
-//! The deny list on the SSH terminal (R-030, R-032, security): a device whose host is, or resolves
-//! into, an `ANIMA_PROBE_DENY` network is 503 `GATEWAY_ERROR` before any connection to it,
-//! whatever form the address takes; a host outside the list still opens.
+//! R-030, R-032: a terminal to a host in an `ANIMA_PROBE_DENY` network is refused before any connection.
 
 use std::time::Duration;
 
@@ -21,7 +19,6 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// The tests' loopback rule, with `cidr` denied.
 fn denying(cidr: &str) -> Setup {
     let policy = AddressPolicy::new(vec![cidr.parse().unwrap()]);
     Setup {
@@ -32,8 +29,6 @@ fn denying(cidr: &str) -> Setup {
     }
 }
 
-/// The device moved to `host` on a listener of its own while loopback is denied: opening
-/// is 503 `GATEWAY_ERROR` and the listener never sees a connection.
 async fn refused_at(pool: &PgPool, host: &str) {
     let mut bench = bench(pool, denying("127.0.0.0/8")).await;
     let device = TcpListener::bind((LOOPBACK, 0)).await.unwrap();

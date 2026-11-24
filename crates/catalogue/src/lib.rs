@@ -1,11 +1,5 @@
-//! The recipes of the catalogue that ships with Anima, and the static test of each recipe
-//! (HOST-047, R-300, task H36).
-//!
-//! A recipe is one folder: the entry file (`entry.json`), the Compose file (`compose.yaml`) and
-//! an example environment file with no secret value (`environment.example`). The static test
-//! reads only these three texts. It installs nothing, starts no container and reaches no
-//! machine: the test on a machine is task H37. Each failure is a fixed code with the
-//! identifier of the recipe, never text of a file.
+//! The shipped recipes and the static test of each recipe (HOST-047, R-300).
+//! The test reaches no machine, and each failure is a fixed code with the recipe's identifier, never text of a file.
 
 mod database;
 pub mod entry;
@@ -27,9 +21,7 @@ pub use shipped::shipped;
 
 use entry::{Entry, MachineTest};
 
-/// The ports of Anima on a machine (SF-252): `guacd` (4822), the local hub (8443) and
-/// the link (the tunnel on 41641, STUN on 3478). No recipe publishes one of them on the machine.
-/// The routes of the hub (tasks H21 and H40) refuse these ports as a target and as a port of a stream.
+/// The ports of Anima on a machine, which no recipe publishes (SF-252).
 pub const ANIMA_PORTS: [u16; 4] = [4822, 8443, 41641, 3478];
 
 /// The three texts of one recipe folder. A file that is not in the folder is `None`.
@@ -163,7 +155,6 @@ impl Code {
     }
 }
 
-/// One failure of one recipe.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finding {
     /// The name of the recipe folder.

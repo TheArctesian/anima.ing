@@ -1,7 +1,7 @@
 //! SSH public key blobs and their OpenSSH SHA-256 fingerprints (SEC-006, SEC-007).
 //!
-//! Pure. A key blob comes from a remote host or from the database, so it is parsed with every
-//! length checked; nothing here panics on any input.
+//! A key blob comes from a remote host or the database, so every length is checked and nothing
+//! here panics on any input.
 
 use std::{fmt, str::FromStr};
 
@@ -11,18 +11,14 @@ use base64::{
 };
 use sha2::{Digest as _, Sha256};
 
-/// Largest key blob accepted: 8190 bytes, exactly 2730 base64 quanta, so its text is at most
-/// [`MAX_BASE64`] characters with no padding. Migration 0600's `host_keys_public_key_check`
-/// caps `public_key` at the same 10920 characters, so the table and this parser accept the
-/// same keys. A 16384-bit RSA key is about 2 KiB.
+/// Migration 0600's `host_keys_public_key_check` caps the base64 text at the same 10920
+/// characters, so the table and this parser accept the same keys.
 pub(super) const MAX_BLOB: usize = 8190;
-/// Longest base64 text of a key blob accepted (`MAX_BLOB / 3 * 4`).
 pub(super) const MAX_BASE64: usize = MAX_BLOB / 3 * 4;
-/// Longest algorithm name accepted (OpenSSH names are well under this).
 const MAX_ALGORITHM: usize = 64;
 const FINGERPRINT_PREFIX: &str = "SHA256:";
 
-/// Why bytes or text are not an SSH public key. Never holds the input.
+/// Never holds the input.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum BadKey {
     #[error("the key is longer than the hub accepts")]
@@ -37,19 +33,16 @@ pub enum BadKey {
     NoKeyData,
 }
 
-/// An SSH public key blob (RFC 4253 section 6.6): a length-prefixed algorithm name, then the
-/// key data. The algorithm name is checked to hold only `[A-Za-z0-9@._+-]`, so it can go into
-/// a `known_hosts` line as it is.
+/// An SSH public key blob (RFC 4253 section 6.6); the algorithm name is checked, so it can go
+/// into a `known_hosts` line as it is.
 #[derive(Clone, PartialEq, Eq)]
 pub struct PublicKey {
     blob: Vec<u8>,
-    /// Length of the algorithm name, which starts at byte 4.
+    /// The algorithm name starts at byte 4.
     algorithm_len: usize,
 }
 
 impl PublicKey {
-    /// Parses a key blob.
-    ///
     /// # Errors
     /// [`BadKey`] when the blob is too long, ends early, or has a bad algorithm name.
     pub fn from_blob(blob: Vec<u8>) -> Result<Self, BadKey> {
@@ -72,8 +65,6 @@ impl PublicKey {
         })
     }
 
-    /// Parses the standard base64 text of a key blob, as in a `known_hosts` line.
-    ///
     /// # Errors
     /// [`BadKey`] when the text is not canonical base64 or not a key blob.
     pub fn from_base64(text: &str) -> Result<Self, BadKey> {
@@ -84,7 +75,6 @@ impl PublicKey {
         Self::from_blob(blob)
     }
 
-    /// The algorithm name inside the blob, for example `ssh-ed25519`.
     #[must_use]
     pub fn algorithm(&self) -> &str {
         // from_blob checked these bytes are ASCII.
@@ -96,7 +86,7 @@ impl PublicKey {
         &self.blob
     }
 
-    /// The blob in standard base64 with padding, as OpenSSH writes it.
+    /// Standard base64 with padding, as OpenSSH writes it.
     #[must_use]
     pub fn to_base64(&self) -> String {
         STANDARD.encode(&self.blob)
@@ -124,18 +114,15 @@ fn is_algorithm_name(name: &[u8]) -> bool {
             .all(|&b| b.is_ascii_alphanumeric() || b"@._+-".contains(&b))
 }
 
-/// OpenSSH's SHA-256 fingerprint text of a key blob: `SHA256:` and the digest in base64
-/// without padding (what `ssh-keygen -l` prints).
+/// OpenSSH's SHA-256 fingerprint text, as `ssh-keygen -l` prints it.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Fingerprint(String);
 
-/// The text is not an OpenSSH SHA-256 fingerprint.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("not an OpenSSH SHA256 fingerprint")]
 pub struct BadFingerprint;
 
 impl Fingerprint {
-    /// The fingerprint of a key blob.
     #[must_use]
     pub fn of_key(blob: &[u8]) -> Self {
         Self(format!(
@@ -153,8 +140,7 @@ impl Fingerprint {
 impl FromStr for Fingerprint {
     type Err = BadFingerprint;
 
-    /// Accepts exactly the text [`Fingerprint::of_key`] makes: the prefix and 43 characters of
-    /// canonical base64 that decode to 32 bytes.
+    /// Accepts exactly the text [`Fingerprint::of_key`] makes.
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         let digest = text
             .strip_prefix(FINGERPRINT_PREFIX)

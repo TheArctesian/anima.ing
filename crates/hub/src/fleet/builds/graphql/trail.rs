@@ -1,5 +1,4 @@
-//! The audit entry of each operator change to builds, written in the mutation's own
-//! transaction (BLD-082, LOG-005). A `change` never holds a token (LOG-007).
+//! Builds audit entries share the mutation's transaction (BLD-082, LOG-005); a `change` never holds a token (LOG-007).
 
 use std::sync::Arc;
 

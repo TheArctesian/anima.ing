@@ -1,7 +1,5 @@
 //! The `extensions`, `sources` and `projects` tool sets against the scripted hub (MCP-002,
-//! MCP-004, MCP-007, MCP-008, MCP-017): the extension tools and the rules that hold for all
-//! three sets. The tools of sources and projects are in `engine_sources` and
-//! `engine_projects`.
+//! MCP-004, MCP-007, MCP-008, MCP-017).
 
 mod connect;
 
@@ -10,7 +8,7 @@ use serde_json::{Value, json};
 use super::session::{Desk, LOGIN_TOKEN, Session, hub};
 use crate::kit::fake_hub::{FakeHub, data};
 
-pub const TOOLS: [&str; 10] = [
+pub const TOOLS: [&str; 16] = [
     "anima_extensions_list",
     "anima_extension_set",
     "anima_sources_overview",
@@ -21,6 +19,12 @@ pub const TOOLS: [&str; 10] = [
     "anima_project_get",
     "anima_repository_set_left_out",
     "anima_project_resource_confirm",
+    "anima_project_groups_list",
+    "anima_project_group_create",
+    "anima_project_group_import",
+    "anima_project_group_rename",
+    "anima_project_group_delete",
+    "anima_projects_set_group",
 ];
 
 pub async fn writing(hub: &FakeHub, desk: &Desk) -> Session {
@@ -109,8 +113,7 @@ async fn mcp_004_no_tool_of_the_three_sets_takes_a_key_and_the_github_app_has_no
     }
     for tool in tools {
         let name = tool["name"].as_str().unwrap_or_default();
-        // The App-key route has no tool; the three-press flow has exactly the tools of
-        // PRJ-041, none for the one-time link (`open`) or a subscription (`watch`).
+        // The App-key route has no tool; the connect flow has exactly the tools of PRJ-041.
         let connect_flow = [
             "anima_github_connect_start",
             "anima_github_connect_state",
@@ -159,6 +162,12 @@ async fn mcp_002_the_change_tools_of_the_three_sets_are_off_until_allowed() {
         ("anima_project_get", false),
         ("anima_repository_set_left_out", true),
         ("anima_project_resource_confirm", true),
+        ("anima_project_groups_list", false),
+        ("anima_project_group_create", true),
+        ("anima_project_group_import", true),
+        ("anima_project_group_rename", true),
+        ("anima_project_group_delete", true),
+        ("anima_projects_set_group", true),
     ] {
         assert_eq!(names.contains(&tool.to_owned()), !change, "{tool}");
     }

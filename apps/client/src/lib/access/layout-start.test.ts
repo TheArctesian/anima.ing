@@ -6,10 +6,7 @@ import { route as current } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../routes/+layout.svelte';
 import { ORIGIN_REFUSED } from './start';
 
-// The root layout's start (E-2, E-3): every route starts the operator shell and its start guard, and a page no hub
-// served is refused with nothing sent (R-111, SEC-001). The browser's transports are spies, so any attempt shows. The
-// router is a reactive stand-in that moves without any `beforeNavigate`, as SvelteKit does for a navigation started
-// while another is in flight or for a `load` redirect.
+// The router stand-in moves without `beforeNavigate`, as SvelteKit does for an overlapping navigation or a `load` redirect.
 
 const mocks = vi.hoisted(() => ({
   goto: vi.fn(() => Promise.resolve()),
@@ -48,12 +45,10 @@ function open(href: string): HTMLElement {
   return target;
 }
 
-/** The paths the rendered pages were rendered for. */
 function pagesShown(target: HTMLElement): (string | null)[] {
   return [...target.querySelectorAll('[data-page]')].map((page) => page.getAttribute('data-page'));
 }
 
-/** The router shows `href` without asking first. */
 function routerShows(href: string): void {
   current.pathname = href;
   flushSync();

@@ -1,5 +1,4 @@
-//! MET-026 to MET-031: the Storage rows from the drives and the latest samples, the card's
-//! mount and drive count, and the drives store replaced per device.
+//! MET-026 to MET-031: the Storage rows, the card and the drives store.
 
 use std::collections::HashMap;
 

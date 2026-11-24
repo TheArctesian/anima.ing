@@ -7,10 +7,7 @@ function isMissingContext(error: unknown): boolean {
   return error instanceof Error && error.message.includes('missing_context');
 }
 
-/**
- * Whether the hub above the component is hosted by Anima.ing; `false` when no hub is above it or it has no address.
- * Call it while the component is created (R-222).
- */
+/** Whether the hub above the component is hosted; call it while the component is created (R-222). */
 export function contextHubIsHosted(): boolean {
   try {
     const hub: { readonly address?: Pick<HubAddress, 'origin'> } = useHub();

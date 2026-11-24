@@ -19,7 +19,6 @@ fn device(text: &str) -> DeviceId {
     text.parse().unwrap()
 }
 
-/// The claim of a machine that says that it has `gb` GB of free memory.
 fn claim_with(device: &str, gb: u64) -> Value {
     let mut claim = claim_of(device, &json!([]));
     claim["free"]["memoryBytes"] = json!(gb << 30);
@@ -34,7 +33,6 @@ async fn name_of(pool: &PgPool, device: &str) -> String {
         .unwrap()
 }
 
-/// The change of the audit entry of the start of the job.
 async fn start_entry(pool: &PgPool, job: JobId) -> Value {
     sqlx::query_scalar(
         "select change from events.audit_log where target_id = $1 and action = 'start'",
@@ -55,7 +53,6 @@ async fn r_259_the_machine_with_more_free_memory_gets_a_new_job_and_the_entry_gi
     let work = Work::new(&pool).await;
     let small = work.daemons.token_for(PVE_01).await;
     let large = work.daemons.token_for(DOCKER_HOST).await;
-    // The large machine asks while the queue is empty: the hub knows what it said.
     let (status, _) = work.claim(&large, &claim_with(DOCKER_HOST, 32)).await;
     assert_eq!(status, StatusCode::NO_CONTENT);
 
@@ -126,7 +123,6 @@ async fn rou_006_a_named_machine_is_never_replaced_and_one_that_cannot_run_the_j
         ..build()
     };
 
-    // A machine that never asked this hub for work cannot be named.
     let refused = jobs::enqueue(work.queue(), names(DOCKER_HOST), asker(), work.now()).await;
     let Err(Error::NoFit(reason)) = refused else {
         panic!("{refused:?}");
@@ -144,7 +140,6 @@ async fn rou_006_a_named_machine_is_never_replaced_and_one_that_cannot_run_the_j
     let entry = start_entry(&pool, queued.id).await;
     assert_eq!(entry["refused"][0]["why"], json!("names_other"));
 
-    // The named machine is a Linux machine: a job for a Mac is refused at once.
     let mut mac = names(DOCKER_HOST);
     mac.os = Some(daemon_core::wire::WorkOs::Macos);
     let refused = jobs::enqueue(work.queue(), mac, asker(), work.now()).await;
@@ -227,7 +222,6 @@ async fn rou_006_each_job_of_a_project_goes_only_to_the_machine_that_is_pinned_f
         (StatusCode::OK, &json!(of_project.id))
     );
 
-    // With no pin, the next job of the project goes to the first machine that asks.
     assert!(
         jobs::unpin_project(queue, project, asker(), work.now())
             .await

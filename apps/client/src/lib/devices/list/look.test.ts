@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Beat } from '$lib/checks/heartbeats';
 import type { Status } from '$lib/hub/generated/graphql';
 import { DEFAULT_QUERY } from '../query';
-import { durationText, hasLiveUsage, listItems, reasonOf, tallyOf, tallyQuery, type LookDevice } from './look';
+import { durationText, hasLiveUsage, listItems, reasonOf, tallyOf, tallyQuery, usageSlots, type LookDevice } from './look';
 
 const NOW = Date.parse('2026-11-13T12:00:00Z');
 const ago = (minutes: number): string => new Date(NOW - minutes * 60_000).toISOString();
@@ -65,7 +65,6 @@ describe('D18: why a device needs a look', () => {
   it("UR-7: the worst check's last message, and how long it has not been up", () => {
     const device = look('a', 'DOWN', [check('UP'), { ...check('DOWN', 'Connection refused'), id: 'c1' }]);
     expect(reasonOf(device, beats(['UP', 'UP', 'DOWN', 'DOWN', 'DOWN']), NOW)).toEqual({ text: 'Connection refused', since: '2 min' });
-    // No kept beat is up: the run began before the oldest, so the time is the least it can be.
     expect(reasonOf(device, beats(['DOWN', 'DOWN', 'DOWN']), NOW)?.since).toBe('over 2 min');
   });
 
@@ -97,4 +96,27 @@ describe('D18: why a device needs a look', () => {
 
 it('a device that no check reaches shows no usage; a degraded device and one in maintenance do', () => {
   expect((['UP', 'DEGRADED', 'MAINTENANCE', 'DOWN', 'UNKNOWN'] as const).map(hasLiveUsage)).toEqual([true, true, true, false, false]);
+});
+
+describe('the usage column of the list has a slot for each metric that a device of the list shows', () => {
+  const readings = (vram: number | null) => ({
+    cpuPercent: 1, memoryPercent: 1, diskPercent: 1, diskMount: '/', otherDrives: 0,
+    vramPercent: vram, vramGpu: { index: 0, name: 'RTX 4090', hasVram: true },
+  });
+  type Slotted = Parameters<typeof usageSlots>[0][number];
+  const server = { status: 'UP', readings: readings(null), batteries: [] } as unknown as Slotted;
+
+  it('a list of servers has CPU, memory and disk', () => {
+    expect(usageSlots([server])).toEqual(['cpu', 'memory', 'disk']);
+  });
+
+  it('MET-008, MET-032: a GPU with its own memory and a battery each add a slot, the battery last', () => {
+    const gpu = { ...server, readings: readings(40) } as Slotted;
+    const laptop = { ...server, batteries: [{}] } as unknown as Slotted;
+    expect(usageSlots([laptop, gpu, server])).toEqual(['cpu', 'memory', 'disk', 'vram', 'battery']);
+  });
+
+  it('a GPU of a device that is down adds no slot: the row shows no usage', () => {
+    expect(usageSlots([{ ...server, status: 'DOWN', readings: readings(40) } as Slotted])).toEqual(['cpu', 'memory', 'disk']);
+  });
 });
