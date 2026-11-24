@@ -1,5 +1,7 @@
 //! The `parameters` object of each model work type (Section 2): exactly the members of its row.
 
+mod keep;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
@@ -7,6 +9,7 @@ use uuid::Uuid;
 use super::ModelMachine;
 use crate::model_work::cause::Cause;
 use crate::model_work::files::{self, MAX_FILES};
+use crate::model_work::memory::keep::Keep;
 use crate::model_work::names::{
     Backend, Format, Probe, Runtime, Word, is_lower_hex, is_source_name,
 };
@@ -64,6 +67,10 @@ pub enum Parameters {
         server: Uuid,
         copy: Uuid,
         settings: ServerSettings,
+        /// The hub's estimate of the memory of the load (Section 11.1).
+        reserve_bytes: Option<u64>,
+        /// With none, the node keeps what it holds for the copy.
+        keep: Option<Keep>,
     },
     Unload {
         server: Uuid,
@@ -73,6 +80,11 @@ pub enum Parameters {
         server: Uuid,
         copy: Uuid,
         probe: Probe,
+    },
+    /// The idle time and the pin of a copy (Section 11.1).
+    Keep {
+        copy: Uuid,
+        keep: Keep,
     },
     Drain {
         seconds: u32,
@@ -277,15 +289,8 @@ pub fn read(
                 server: uuid(object, "server")?,
             })
         }
-        WorkType::ModelLoad => {
-            exactly(object, &["server", "copy", "settings"])?;
-            let settings = settings_of(object, None, machine)?;
-            Ok(Parameters::Load {
-                server: uuid(object, "server")?,
-                copy: uuid(object, "copy")?,
-                settings,
-            })
-        }
+        WorkType::ModelLoad => keep::load(object, machine),
+        WorkType::ModelKeep => keep::model_keep(object),
         WorkType::ModelUnload => {
             pair("server", "copy").map(|(server, copy)| Parameters::Unload { server, copy })
         }

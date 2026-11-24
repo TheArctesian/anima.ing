@@ -21,6 +21,8 @@ pub enum Cause {
     FileRejected,
     DiskShare,
     MemoryShare,
+    /// The load fits the share, but copies that cannot unload now fill it (Section 11.1); retryable.
+    MemoryBusy,
     FileType,
     GpuUnknown,
     RuntimeTooOld,
@@ -150,6 +152,7 @@ impl Cause {
             Self::FileRejected => "file_rejected",
             Self::DiskShare => "disk_share",
             Self::MemoryShare => "memory_share",
+            Self::MemoryBusy => "memory_busy",
             Self::FileType => "file_type",
             Self::GpuUnknown => "gpu_unknown",
             Self::RuntimeTooOld => "runtime_too_old",
@@ -212,7 +215,7 @@ impl Cause {
     }
 
     /// Each cause once, for the reader of a code; `containment_failed` with any one step.
-    const ALL: [Self; 41] = [
+    const ALL: [Self; 42] = [
         Self::TypeUnknown,
         Self::KindNotPermitted,
         Self::MemberUnknown,
@@ -230,6 +233,7 @@ impl Cause {
         Self::FileRejected,
         Self::DiskShare,
         Self::MemoryShare,
+        Self::MemoryBusy,
         Self::FileType,
         Self::GpuUnknown,
         Self::RuntimeTooOld,

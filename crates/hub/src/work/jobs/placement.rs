@@ -69,7 +69,14 @@ fn takes_room(job: &Job) -> bool {
 }
 
 fn policy_applies(job: &Job) -> bool {
-    job.asked.kind == WorkKind::Model && !REDUCING.contains(&job.asked.work_type)
+    job.asked.kind == WorkKind::Model && !REDUCING.contains(&job.asked.work_type) && !unpins(job)
+}
+
+/// A `model_keep` that sets no pin: only a pin can load a copy later, so the policy never stops it
+/// (K11 Section 3).
+fn unpins(job: &Job) -> bool {
+    job.asked.work_type == WorkType::ModelKeep
+        && job.asked.parameters.pointer("/keep/pinned") == Some(&serde_json::Value::Bool(false))
 }
 
 /// The rank of `job` in the order of a claim (K11 Section 3): `model_drain`, `server_stop`,
@@ -164,7 +171,7 @@ pub(super) fn can_take(claim: &Claim) -> bool {
 }
 
 /// The model types that change the machine: it holds at most one at a time (K11 Section 3).
-const CHANGING: [WorkType; 8] = [
+const CHANGING: [WorkType; 9] = [
     WorkType::RuntimeInstall,
     WorkType::ModelPull,
     WorkType::CopyDelete,
@@ -173,6 +180,7 @@ const CHANGING: [WorkType; 8] = [
     WorkType::ServerStop,
     WorkType::ModelLoad,
     WorkType::ModelUnload,
+    WorkType::ModelKeep,
 ];
 
 /// What a claim can still get, from the claim and the items that the machine holds. A job

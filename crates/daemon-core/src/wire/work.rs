@@ -32,13 +32,15 @@ pub enum WorkType {
     ModelLoad,
     ModelUnload,
     ModelMeasure,
+    /// The idle time and the pin of a copy (Section 11.1).
+    ModelKeep,
     ModelDrain,
     #[serde(other)]
     Unknown,
 }
 
-/// The eleven model work types, in the order of the table of the model work contract.
-pub const MODEL_TYPES: [WorkType; 11] = [
+/// The twelve model work types, in the order of the table of the model work contract.
+pub const MODEL_TYPES: [WorkType; 12] = [
     WorkType::ModelReport,
     WorkType::RuntimeInstall,
     WorkType::ModelPull,
@@ -49,6 +51,7 @@ pub const MODEL_TYPES: [WorkType; 11] = [
     WorkType::ModelLoad,
     WorkType::ModelUnload,
     WorkType::ModelMeasure,
+    WorkType::ModelKeep,
     WorkType::ModelDrain,
 ];
 
@@ -68,6 +71,7 @@ impl WorkType {
             Self::ModelLoad => "model_load",
             Self::ModelUnload => "model_unload",
             Self::ModelMeasure => "model_measure",
+            Self::ModelKeep => "model_keep",
             Self::ModelDrain => "model_drain",
             Self::Unknown => "unknown",
         }

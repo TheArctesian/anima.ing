@@ -75,7 +75,7 @@ fn secrets_hold(item: &Object, work_type: WorkType, parameters: &Parameters) -> 
 }
 
 /// Work that only reduces the machine's load is not refused for the switch or the policy
-/// (Section 3).
+/// (Section 3); nor is a `model_keep` that sets no pin, since only a pin can load a copy later.
 const REDUCING: [WorkType; 5] = [
     WorkType::ServerStop,
     WorkType::ModelUnload,
@@ -109,7 +109,9 @@ fn cause(item: &Object, machine: &ModelMachine<'_>) -> Result<Order, Cause> {
         .ok_or(Cause::MemberUnknown)?;
     let parameters = parameters::read(work_type, object, machine)?;
     secrets_hold(item, work_type, &parameters)?;
-    if !REDUCING.contains(&work_type) {
+    let reduces = REDUCING.contains(&work_type)
+        || matches!(parameters, Parameters::Keep { keep, .. } if !keep.pinned);
+    if !reduces {
         if !machine.switch_on {
             return Err(Cause::SwitchOff);
         }

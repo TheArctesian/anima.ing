@@ -54,7 +54,7 @@ fn a_type_outside_the_list_is_refused() {
             "{name}"
         );
     }
-    assert_eq!(MODEL_TYPES.len(), 11);
+    assert_eq!(MODEL_TYPES.len(), 12);
 }
 
 #[test]
@@ -207,4 +207,73 @@ fn r_408_two_files_that_flatten_to_one_name_are_refused() {
     assert_eq!(cause_of(&both), Some(Cause::MemberUnknown));
     both["parameters"]["files"] = json!([file("a/Q4.gguf"), file("b/Q5.gguf")]);
     assert_eq!(cause_of(&both), None);
+}
+
+fn load(extra: &Value) -> Value {
+    let mut parameters = json!({ "server": SERVER, "copy": ID, "settings": {} });
+    if let (Some(object), Some(more)) = (parameters.as_object_mut(), extra.as_object()) {
+        object.extend(more.clone());
+    }
+    item("model_load", &parameters)
+}
+
+#[test]
+fn a_load_takes_an_optional_reservation_and_keep_and_nothing_else() {
+    let whole = load(
+        &json!({ "reserveBytes": 7_516_192_768_u64, "keep": { "idleSeconds": 900, "pinned": true } }),
+    );
+    let Checked::Start(order) = checked_with(&whole, &MachineSettings::default(), true) else {
+        panic!("refused");
+    };
+    let Parameters::Load {
+        reserve_bytes,
+        keep,
+        ..
+    } = order.parameters
+    else {
+        panic!("not a load");
+    };
+    assert_eq!(reserve_bytes, Some(7_516_192_768));
+    assert!(keep.is_some_and(|keep| keep.pinned && keep.idle_seconds == 900));
+    assert_eq!(cause_of(&load(&json!({}))), None);
+    for wrong in [
+        json!({ "reserveBytes": 0 }),
+        json!({ "reserveBytes": 9_007_199_254_740_992_u64 }),
+        json!({ "keep": { "idleSeconds": 59, "pinned": false } }),
+        json!({ "keep": { "idleSeconds": 86_401, "pinned": false } }),
+        json!({ "keep": { "idleSeconds": 900 } }),
+        json!({ "keep": { "idleSeconds": 900, "pinned": "yes" } }),
+        json!({ "keep": { "idleSeconds": 900, "pinned": false, "priority": 1 } }),
+        json!({ "evict": true }),
+    ] {
+        assert_eq!(
+            cause_of(&load(&wrong)),
+            Some(Cause::MemberUnknown),
+            "{wrong}"
+        );
+    }
+}
+
+#[test]
+fn a_keep_that_ends_a_pin_passes_with_the_switch_off_and_one_that_sets_a_pin_does_not() {
+    let keep = |pinned: bool| {
+        item(
+            "model_keep",
+            &json!({ "copy": ID, "keep": { "idleSeconds": 600, "pinned": pinned } }),
+        )
+    };
+    let off = |answer: &Value| checked_with(answer, &MachineSettings::default(), false);
+    assert!(matches!(off(&keep(false)), Checked::Start(_)));
+    assert!(matches!(
+        off(&keep(true)),
+        Checked::Refuse {
+            cause: Cause::SwitchOff,
+            ..
+        }
+    ));
+    let extra = item(
+        "model_keep",
+        &json!({ "copy": ID, "keep": { "idleSeconds": 600, "pinned": true }, "server": SERVER }),
+    );
+    assert_eq!(cause_of(&extra), Some(Cause::MemberUnknown));
 }

@@ -107,6 +107,19 @@ fn cap_010_a_policy_that_stops_the_node_stops_each_model_item_but_the_reducing_o
 }
 
 #[test]
+fn a_keep_that_ends_a_pin_passes_a_stopping_policy_and_a_keep_that_sets_one_does_not() {
+    for (pinned, verdict) in [(false, Verdict::Fits), (true, Verdict::Policy)] {
+        let mut job = model(WorkType::ModelKeep);
+        job.asked.parameters =
+            serde_json::json!({ "keep": { "idleSeconds": 900, "pinned": pinned } });
+        assert_eq!(
+            verdicts(&[job], &model_offer(false), &[], at(3600)),
+            [verdict]
+        );
+    }
+}
+
+#[test]
 fn a_model_item_takes_no_job_slot_and_one_change_runs_at_a_time() {
     let mut full = claim_of(PVE);
     full.free.slots = 0;
