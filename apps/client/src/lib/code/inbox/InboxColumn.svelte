@@ -171,7 +171,7 @@
     projects={view.allProjects}
     chosen={view.projects}
     onProjects={(next) => (view.projects = next)}
-    outside={view.outsideExist ? { shown: view.outsideShown, onShow: (shown) => { view.showOutside(shown); } } : undefined}
+    outside={view.outsideExist || view.outsideShown ? { shown: view.outsideShown, onShow: (shown) => { view.showOutside(shown); } } : undefined}
     {newOff}
     {onNew}
     {onFieldKey}

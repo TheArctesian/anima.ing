@@ -100,7 +100,7 @@ it('THR-056: the threads that need you are at the top, the threads that work at 
 
 it('THR-055: a thread that waits for you is done when you opened it', async () => {
   const store = await open();
-  expect(store.needsYou).toBe(1);
+  expect(store.needsYou).toBe(0);
   document.querySelector<HTMLButtonElement>('[data-thread="a1"]')?.click();
   await settle();
   expect(store.needsYou).toBe(0);

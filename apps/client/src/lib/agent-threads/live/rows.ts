@@ -1,5 +1,6 @@
 /** The threads that the runner drives beside the threads read from session files: one list, one row each (THR-056). Pure. */
 
+import type { Listing } from '../listing/listing';
 import type { Tail, ThreadRow } from '../thread';
 import type { RunState } from './run';
 import type { LiveThread } from './timeline';
@@ -33,4 +34,14 @@ export function liveRow(thread: LiveThread): ThreadRow {
 export function mergedRows(files: readonly ThreadRow[], live: readonly LiveThread[]): readonly ThreadRow[] {
   const driven = new Set(live.flatMap((thread) => [thread.row.id, ...(thread.row.session === null ? [] : [thread.row.session])]));
   return [...live.map(liveRow), ...files.filter((row) => !driven.has(row.id))];
+}
+
+/** The runner's threads and the session IDs it recorded when it started them. */
+export function startedThreadIds(listings: Iterable<Listing>, threads: Iterable<LiveThread>): ReadonlySet<string> {
+  const ids = new Set([...listings].filter((listing) => listing.startedByAnima).map((listing) => listing.thread));
+  for (const { row } of threads) {
+    ids.add(row.id);
+    if (row.session !== null) ids.add(row.session);
+  }
+  return ids;
 }
