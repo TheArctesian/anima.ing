@@ -88,6 +88,7 @@ fn summary(row: &ThreadRow, user: &Path, settings: &UsageSettings) -> Option<Thr
     let program = match row.program {
         Program::ClaudeCode => "claude_code",
         Program::Codex => "codex",
+        Program::Grok => return None,
     };
     let state = match row.state {
         RunState::Starting => "starting",

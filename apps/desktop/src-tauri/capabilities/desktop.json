@@ -10,6 +10,7 @@
     "process:allow-restart",
     "log:allow-log",
     "allow-agent-threads-list",
+    "allow-agent-threads-watch",
     "allow-agent-thread-read",
     "allow-agent-runner-call",
     "allow-agent-runner-watch",

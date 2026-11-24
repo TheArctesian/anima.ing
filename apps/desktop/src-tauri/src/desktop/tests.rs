@@ -2,7 +2,11 @@
 
 use std::collections::BTreeSet;
 
-const NOT_ON_WINDOWS: [(&str, &str); 6] = [
+const NOT_ON_WINDOWS: [(&str, &str); 7] = [
+    (
+        "agent_threads::watch::agent_threads_watch",
+        "native session watching uses Unix file identity; Windows retains interval refresh (THR-058)",
+    ),
     (
         "daemon::at_start::daemon_update_notice",
         "tells the page what the update of the daemon at the start did; module daemon::at_start is Unix only (HMD-055)",

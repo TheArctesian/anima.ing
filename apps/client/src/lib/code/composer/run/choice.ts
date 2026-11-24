@@ -58,6 +58,7 @@ export const EFFORT_HEAD = 'Reasoning';
 function modesOf(row: Row, changes: boolean): readonly PermissionMode[] {
   if (!changes) return [...PERMISSION_MODES, PLAN_MODE];
   const known = new Set(Object.values(MODE_IDS));
+  if (row.program === 'grok') return PERMISSION_MODES.map((mode) => ({ ...mode, can: cannot('Start a new Grok thread to change permissions.') }));
   const offered = PERMISSION_MODES.map((mode) => (known.has(mode.id) ? mode : { ...mode, can: cannot(NO_AUTO) }));
   return [...offered, row.program === 'codex' ? { ...PLAN_MODE, can: cannot(NO_PLAN) } : PLAN_MODE];
 }
@@ -68,7 +69,8 @@ function modesOf(row: Row, changes: boolean): readonly PermissionMode[] {
  * takes it only for a model that lists it.
  */
 function effortsOf(row: Row, changes: boolean, named?: ProgramModel): readonly EffortLevel[] {
-  if (!changes || row.program !== 'codex') return row.effort === undefined || row.effort === null ? [] : [level(row.effort)];
+  if (!changes || row.program === 'claude_code') return row.effort === undefined || row.effort === null ? [] : [level(row.effort)];
+  if (row.program === 'grok' && named === undefined) return [];
   return named === undefined ? EFFORTS.filter((effort) => effort !== 'ultra').map((effort) => level(effort)) : EFFORTS.filter((effort) => named.efforts.includes(effort)).map((effort) => level(effort, named.defaultEffort));
 }
 
