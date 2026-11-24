@@ -124,6 +124,36 @@ fn set(
     Ok(())
 }
 
+/// The members of `settings` as the hub sends them; [`read`] reads them back to the same settings.
+#[must_use]
+pub fn to_json(settings: &ServerSettings) -> Map<String, Value> {
+    let mut object = Map::new();
+    let mut put = |name: &str, value: Value| {
+        object.insert(name.to_owned(), value);
+    };
+    if let Some(tokens) = settings.context_tokens {
+        put("contextTokens", tokens.into());
+    }
+    if let Some(tokens) = settings.batch_tokens {
+        put("batchTokens", tokens.into());
+    }
+    match settings.gpu_layers {
+        Some(GpuLayers::Count(layers)) => put("gpuLayers", layers.into()),
+        Some(GpuLayers::All) => put("gpuLayers", "all".into()),
+        None => {}
+    }
+    if let Some(kind) = settings.kv_cache {
+        put("kvCacheType", kind.as_str().into());
+    }
+    if let Some(share) = settings.memory_share {
+        put("memoryShare", share.into());
+    }
+    if let Some(gpu) = settings.gpu {
+        put("gpu", gpu.into());
+    }
+    object
+}
+
 /// With no runtime (a `model_load`), a member is permitted when one runtime permits it.
 ///
 /// # Errors

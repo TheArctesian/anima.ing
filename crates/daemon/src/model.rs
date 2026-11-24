@@ -7,6 +7,7 @@ pub mod fetch;
 pub mod folders;
 pub mod found;
 pub mod install;
+pub mod load;
 pub mod machine_files;
 pub mod modes;
 pub mod pull;

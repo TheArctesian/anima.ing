@@ -214,6 +214,7 @@ pub fn node_on(root: &Path, ports: std::ops::RangeInclusive<u16>) -> Node {
         },
         settings: MachineSettings::default(),
         servers: Shared::default(),
+        loads: std::sync::Arc::new(anima_daemon::model::load::Shared::open(folders(root))),
         switch_on: true,
         started: Instant::now(),
         reserve: 0,

@@ -919,6 +919,21 @@ member `memory`:
   for their return and count against that memory, at most 16.
 - A hub that does not know `models` or `memory` ignores them (K8 Section 1).
 
+**How the daemon loads a copy on `llama_server` (RTC-005).** This part tells how this version does the steps above;
+it adds no rule. The daemon starts `llama-server` in router mode with `--models-preset <server folder>/preset.ini`,
+`--no-models-autoload`, `--models-max 0` and `--metrics`, so the router loads a copy only when the daemon asks, and the
+daemon is the only judge of the memory. The preset has one section for each copy that the server holds, named by the
+copy id, with its model file, its projector and its settings; the daemon writes it as a private file (Section 10) before
+each load and after each unload, and the router reads it again at `GET /models?reload=1`. A load is
+`POST /models/load`; an unload is `POST /models/unload`. The router answers both at once and then works, so the daemon
+reads `GET /models` each half second until the copy is loaded or unloaded, for at most 120 seconds (`start_failed`;
+a copy that the router marks failed is `load_crash`). Each 15 seconds the daemon reads `GET /metrics?model=<copy>`: a
+request in progress makes a copy `active`, and a change of its count of decoded tokens is a use. A copy that the router
+no longer has loaded frees its reservation, and a pinned one is marked `displaced`. One lock holds the loads of the whole
+node, so the node does one load at a time on all its memories, which is stricter than step 4. A found copy (Section 2.3)
+is not loaded in this version (`copy_not_ready`): its file reaches the router only by its path, which Section 2.3 does not
+permit in a preset (MW-P15). Until the inventory of L1-5, each load counts on main memory with a share of 1.0.
+
 ## 12. Open points of this text
 
 | Point | Question | Proposal |
@@ -936,6 +951,7 @@ member `memory`:
 | MW-P12 | Is a pin for one model on all nodes, or for one copy on one node? (L1-15) | For one copy on one node: the node is the place of the memory. The hub can give the operator one control that sends `model_keep` to each node that has a copy |
 | MW-P13 | Who gives the reservation of a load? (L1-15) | The hub, from its fit estimate (L1-2), as `reserveBytes`; the daemon never takes less than the files (Section 11.1). When the daemon later measures the memory of a loaded copy, task L1-8 can correct the estimate |
 | MW-P14 | May a return unload a copy that is not pinned, so that a pin comes back before the copy that displaced it reaches its idle time? (L1-15, FIT-023) | Not in this version: a return never unloads (Section 11.1). FIT-023 says "after the other work is done"; the idle time of the other copy is the end of that work |
+| MW-P15 | How does a router of `llama_server` load a found copy (Section 2.3)? (L1-16) | Not in this version: a `model_load` of a found copy is refused with `copy_not_ready`. The preset of the router names a file by its path, and the check at each load of Section 2.3 binds an open descriptor, not a path. A later version can pass the checked descriptor as a `/proc/self/fd` path to a child that the daemon starts, or make a link in the model cache that the daemon checks at each load |
 
 ## 13. What a person who controls the hub can do with this contract
 

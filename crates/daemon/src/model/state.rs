@@ -7,6 +7,10 @@ use daemon_core::model_work::names::{Backend, Runtime, Word as _};
 use daemon_core::model_work::releases::Release;
 use serde_json::{Value, json};
 
+use std::collections::BTreeMap;
+
+use uuid::Uuid;
+
 use super::supervise::Servers;
 
 const MAX_LISTED: usize = 16;
@@ -39,8 +43,17 @@ pub fn installed(folders: &Folders) -> Vec<Release> {
     found
 }
 
+/// The members `models` of each server and `memory` of the loads (Section 11.1), when they read.
+pub type Loads = Option<(BTreeMap<Uuid, Vec<Value>>, Vec<Value>)>;
+
 #[must_use]
-pub fn model_state(folders: &Folders, servers: &Servers, settings: &MachineSettings) -> Value {
+pub fn model_state(
+    folders: &Folders,
+    servers: &Servers,
+    settings: &MachineSettings,
+    loads: Loads,
+) -> Value {
+    let (models, memory) = loads.unwrap_or_default();
     let installed: Vec<Value> = installed(folders)
         .iter()
         .map(|release| json!({ "runtime": release.runtime.as_str(), "version": release.version, "backend": release.backend.as_str() }))
@@ -50,9 +63,17 @@ pub fn model_state(folders: &Folders, servers: &Servers, settings: &MachineSetti
         .iter()
         .take(MAX_LISTED)
         .map(|(id, server)| {
+            let listed = models.get(id).cloned().unwrap_or_default();
+            // `loaded` stays for a hub that does not know `models`: the copies that are `ready` or `active`.
+            let loaded: Vec<&Value> = listed
+                .iter()
+                .filter(|model| matches!(model["state"].as_str(), Some("ready" | "active")))
+                .map(|model| &model["copy"])
+                .collect();
             json!({
                 "server": id, "runtime": server.runtime, "state": server.state.as_str(),
-                "restarts": server.record.restarts(), "loaded": [], "inProgress": 0, "queued": 0,
+                "restarts": server.record.restarts(), "loaded": loaded, "models": listed,
+                "inProgress": 0, "queued": 0,
                 "tokensPerSecond": null, "memoryBytes": 0,
                 "tempBytes": super::folders::bytes_below(&folders.server(*id).join("tmp")),
             })
@@ -65,5 +86,6 @@ pub fn model_state(folders: &Folders, servers: &Servers, settings: &MachineSetti
         "copies": [],
         "cacheBytes": 0,
         "settings": settings.to_json(),
+        "memory": memory,
     })
 }

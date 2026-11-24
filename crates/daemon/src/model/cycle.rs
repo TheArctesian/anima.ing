@@ -1,17 +1,15 @@
 //! One cycle of model work (Section 3, CAG-002, CAG-003); the caller runs it only while the switch at the machine is on.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 use daemon_core::model_work::cause::Cause;
-use daemon_core::model_work::command;
 use daemon_core::model_work::folders::Folders;
 use daemon_core::model_work::found::{self, Root};
 use daemon_core::model_work::machine::MachineSettings;
-use daemon_core::model_work::names::{Runtime, Word as _};
 use daemon_core::model_work::order::{self, Checked, ModelMachine, Order, Parameters};
-use daemon_core::model_work::releases::{self, Release, Sources};
-use daemon_core::model_work::settings::{ServerSettings, SettingLimits};
+use daemon_core::model_work::releases::Sources;
+use daemon_core::model_work::settings::SettingLimits;
 use daemon_core::wire::{
     Claim, DaemonToken, Free, Switch, WorkArchitecture, WorkKind, WorkOs, WorkState, WorkType,
 };
@@ -21,16 +19,20 @@ use uuid::Uuid;
 use super::install::{self, Place};
 use super::pull::watch::Watched;
 use super::reports::{self, ended, refused};
-use super::server::{self, Launch};
 use super::state;
-use super::supervise::{Server, ServerState, Servers, Shared};
+use super::supervise::Shared;
 use crate::hub::HubClient;
 use crate::hub::answer::{Answer, Cause as HubCause};
 
 /// The folder of a server's temporary files, below its folder in the state folder.
 pub const TEMPORARY: &str = "tmp";
 
-pub const BUILT: [WorkType; 8] = [
+/// The preset of a server in router mode, in its folder (K11 Section 11.1).
+pub const PRESET: &str = "preset.ini";
+
+mod start;
+
+pub const BUILT: [WorkType; 11] = [
     WorkType::ModelReport,
     WorkType::ModelDrain,
     WorkType::RuntimeInstall,
@@ -39,6 +41,9 @@ pub const BUILT: [WorkType; 8] = [
     WorkType::CopyAdopt,
     WorkType::ServerStart,
     WorkType::ServerStop,
+    WorkType::ModelLoad,
+    WorkType::ModelUnload,
+    WorkType::ModelKeep,
 ];
 
 pub struct Node {
@@ -49,6 +54,8 @@ pub struct Node {
     pub sources: Sources,
     pub settings: MachineSettings,
     pub servers: Shared,
+    /// The loads of the copies (Section 11.1).
+    pub loads: std::sync::Arc<super::load::Shared>,
     pub switch_on: bool,
     pub started: Instant,
     pub reserve: u64,
@@ -73,12 +80,6 @@ async fn moved(
         Answer::Failed(cause) => Err(cause),
         Answer::Accepted(_) | Answer::Refused(_) => Ok(()),
     }
-}
-
-fn api_key() -> Option<zeroize::Zeroizing<String>> {
-    let mut bytes = zeroize::Zeroizing::new([0u8; 32]);
-    getrandom::fill(bytes.as_mut()).ok()?;
-    Some(zeroize::Zeroizing::new(super::fetch::hex(bytes.as_ref())))
 }
 
 impl Node {
@@ -125,63 +126,6 @@ impl Node {
         }
     }
 
-    fn server_for(
-        &self,
-        id: Uuid,
-        release: &Release,
-        settings: &ServerSettings,
-    ) -> Result<Server, Cause> {
-        if self.settings.sandbox {
-            // TODO(L1-6 follow-up): the sandbox profiles are not built, so with the setting on no server starts (Section 9).
-            return Err(Cause::IsolationFailed);
-        }
-        releases::accepted(release)?;
-        let entry = self
-            .sources
-            .find(release, self.os.as_str(), self.architecture.as_str())?;
-        if !install::installed(&self.folders, release, entry)
-            || release.runtime != Runtime::LlamaServer
-        {
-            return Err(Cause::RuntimeNotInstalled);
-        }
-        let program = self.folders.release(release).join(&entry.program);
-        let bin = program.parent().unwrap_or(Path::new("/")).to_path_buf();
-        let place = self.folders.server(id);
-        let state = self.folders.state.clone();
-        let launcher = self.launcher.clone();
-        let settings = settings.clone();
-        let ports = self.ports.clone();
-        let launch = move || {
-            let port = server::free_port(ports.clone())?;
-            let key = api_key()?;
-            let temporary = place.join(TEMPORARY);
-            Some((
-                Launch {
-                    program: program.clone(),
-                    arguments: command::llama_arguments(&settings, port),
-                    environment: command::environment(&temporary, &bin, &key),
-                    state: state.clone(),
-                    temporary,
-                    ring: place.join("output.log"),
-                    key,
-                    place: place.clone(),
-                    server: id,
-                    launcher: launcher.clone(),
-                },
-                port,
-            ))
-        };
-        Ok(Server {
-            runtime: release.runtime.as_str(),
-            launch: Box::new(launch),
-            running: None,
-            record: daemon_core::model_work::supervision::Supervision::default(),
-            state: ServerState::Starting,
-            since: 0,
-            restart_at: None,
-        })
-    }
-
     fn place(&self) -> Place<'_> {
         Place {
             folders: &self.folders,
@@ -204,10 +148,25 @@ impl Node {
 
     /// The result of `model_report` with the list `found` of a walk.
     async fn model_state(&self, found: Vec<Value>) -> Value {
+        let loads = self.loads.report(&super::load::usable(1.0)).await;
         let servers = self.servers.lock().await;
-        let mut model = state::model_state(&self.folders, &servers, &self.settings);
+        let mut model = state::model_state(&self.folders, &servers, &self.settings, loads);
         model["found"] = Value::Array(found);
         model
+    }
+
+    /// `copy_delete`: the copy is unloaded and its keep file, found record and files are deleted.
+    async fn delete_copy(&self, copy: Uuid) -> Result<Option<Value>, Cause> {
+        let routers = super::load::routers(&self.servers).await;
+        let memory = super::load::usable(1.0);
+        let at = super::load::At {
+            routers: &routers,
+            usable: &memory,
+            now: super::load::now(),
+        };
+        self.loads.loads.lock().await.forget(&at, copy).await?;
+        super::found::record::forget(&self.folders.state, copy)?;
+        super::pull::delete(&self.folders.models, copy)
     }
 
     /// # Errors
@@ -215,6 +174,9 @@ impl Node {
     pub async fn run(&mut self, order: &Order) -> Result<Option<Value>, Cause> {
         if !BUILT.contains(&order.work_type) {
             return Err(Cause::TypeUnknown);
+        }
+        if let Some(done) = self.loads.run(&order.parameters, &self.servers).await {
+            return done.map(|()| None);
         }
         match &order.parameters {
             Parameters::Report => {
@@ -234,26 +196,16 @@ impl Node {
                 server,
                 release,
                 settings,
-            } => {
-                super::folders::make_all(&self.folders).map_err(|_| Cause::LimitDisk)?;
-                let started = self.server_for(*server, release, settings)?;
-                let clock = self.started;
-                self.servers.lock().await.stop(*server).await;
-                let ready = Servers::ready(started, move || clock.elapsed().as_secs()).await?;
-                self.servers.lock().await.map.insert(*server, ready);
-                Ok(None)
-            }
+            } => self.start(*server, release, settings).await.map(|()| None),
             // TODO(L1-10): count the requests in progress once the daemon sends any.
             Parameters::Drain { seconds } => {
                 super::drain::drain(*seconds, || 0).await;
                 Ok(None)
             }
             Parameters::Pull { .. } => super::pull::pull(&order.parameters, &self.cache()).await,
-            Parameters::CopyDelete { copy } => {
-                super::found::record::forget(&self.folders.state, *copy)?;
-                super::pull::delete(&self.folders.models, *copy)
-            }
+            Parameters::CopyDelete { copy } => self.delete_copy(*copy).await,
             Parameters::Stop { server } => {
+                self.loads.loads.lock().await.server_stopped(*server);
                 if self.servers.lock().await.stop(*server).await {
                     Ok(None)
                 } else {
@@ -293,7 +245,7 @@ impl Node {
         let body = match order::check(&item, &machine) {
             Checked::Drop => return Ok(None),
             Checked::Refuse { id, attempt, cause } => refused(id, attempt, cause),
-            // TODO(L1-8, L1-16): the types that this build does not do yet.
+            // TODO(L1-8): `model_measure`, which this build does not do yet.
             Checked::Start(order) if !BUILT.contains(&order.work_type) => {
                 refused(order.id, order.attempt, Cause::TypeUnknown)
             }

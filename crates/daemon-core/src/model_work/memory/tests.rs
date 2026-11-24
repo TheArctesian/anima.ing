@@ -252,3 +252,40 @@ fn a_pin_that_is_displaced_again_soon_waits_longer_each_time_and_never_loops() {
         Some(copy(9))
     );
 }
+
+#[test]
+fn a_keep_file_reads_back_and_a_file_with_a_value_out_of_range_does_not() {
+    use super::keep::Kept;
+    use crate::model_work::settings::{ServerSettings, to_json};
+
+    let mut kept = Kept::new(Keep {
+        idle_seconds: 3_600,
+        pinned: true,
+    });
+    kept.displaced = true;
+    kept.server = Some(copy(9));
+    kept.settings = to_json(&ServerSettings::default());
+    kept.reserve_bytes = Some(8 * GIB);
+    let bytes = serde_json::to_vec(&kept).unwrap_or_default();
+    assert_eq!(Kept::read(&bytes), Some(kept.clone()));
+    assert_eq!(
+        kept.load_settings(),
+        Some(ServerSettings::default()),
+        "a return loads with the settings of the last load"
+    );
+
+    let wrong = |change: fn(&mut serde_json::Value)| {
+        let mut file = serde_json::to_value(&kept).unwrap_or_default();
+        change(&mut file);
+        Kept::read(&serde_json::to_vec(&file).unwrap_or_default())
+    };
+    assert_eq!(wrong(|file| file["keep"]["idleSeconds"] = 59.into()), None);
+    assert_eq!(wrong(|file| file["reserveBytes"] = 0.into()), None);
+    assert_eq!(wrong(|file| file["interval"] = 1.into()), None);
+    assert_eq!(
+        wrong(|file| file["settings"]["gpuLayers"] = "most".into()),
+        None
+    );
+    assert_eq!(wrong(|file| file["owner"] = "x".into()), None);
+    assert!(wrong(|_| {}).is_some());
+}

@@ -9,9 +9,34 @@ pub const LLAMA_KEY_VARIABLE: &str = "LLAMA_API_KEY";
 
 pub const PARALLEL_SLOTS: u32 = 1;
 
-/// A `llama_server` in router mode (RTC-005) on `127.0.0.1:<port>`.
+/// The numbers of [`ServerSettings`] as `llama_server` names them, with no dashes: the keys of a preset
+/// (K11 Section 11.1) and, with `--`, the flags of a command line.
 #[must_use]
-pub fn llama_arguments(settings: &ServerSettings, port: u16) -> Vec<String> {
+pub fn llama_settings(settings: &ServerSettings) -> Vec<(&'static str, String)> {
+    let mut pairs = Vec::new();
+    if let Some(tokens) = settings.context_tokens {
+        pairs.push(("ctx-size", tokens.to_string()));
+    }
+    if let Some(tokens) = settings.batch_tokens {
+        pairs.push(("batch-size", tokens.to_string()));
+    }
+    match settings.gpu_layers {
+        Some(GpuLayers::Count(layers)) => pairs.push(("n-gpu-layers", layers.to_string())),
+        Some(GpuLayers::All) => pairs.push(("n-gpu-layers", "999".to_owned())),
+        None => {}
+    }
+    if let Some(kind) = settings.kv_cache {
+        pairs.push(("cache-type-k", kind.as_str().to_owned()));
+        pairs.push(("cache-type-v", kind.as_str().to_owned()));
+    }
+    pairs
+}
+
+/// A `llama_server` in router mode (RTC-005) on `127.0.0.1:<port>`, with the copies of `preset` and no load of
+/// its own: the daemon loads and unloads (K11 Section 11.1). `--metrics` gives the daemon the use of each copy
+/// (counts only, no prompt).
+#[must_use]
+pub fn llama_arguments(settings: &ServerSettings, port: u16, preset: &Path) -> Vec<String> {
     let mut words: Vec<String> = [
         "--host",
         "127.0.0.1",
@@ -23,24 +48,17 @@ pub fn llama_arguments(settings: &ServerSettings, port: u16) -> Vec<String> {
         "--no-slots",
         "--parallel",
         &PARALLEL_SLOTS.to_string(),
+        "--models-preset",
+        &preset.display().to_string(),
+        "--no-models-autoload",
+        "--models-max",
+        "0",
+        "--metrics",
     ]
     .map(str::to_owned)
     .to_vec();
-    let mut add = |flag: &str, value: String| words.extend([flag.to_owned(), value]);
-    if let Some(tokens) = settings.context_tokens {
-        add("--ctx-size", tokens.to_string());
-    }
-    if let Some(tokens) = settings.batch_tokens {
-        add("--batch-size", tokens.to_string());
-    }
-    match settings.gpu_layers {
-        Some(GpuLayers::Count(layers)) => add("--n-gpu-layers", layers.to_string()),
-        Some(GpuLayers::All) => add("--n-gpu-layers", "999".to_owned()),
-        None => {}
-    }
-    if let Some(kind) = settings.kv_cache {
-        add("--cache-type-k", kind.as_str().to_owned());
-        add("--cache-type-v", kind.as_str().to_owned());
+    for (name, value) in llama_settings(settings) {
+        words.extend([format!("--{name}"), value]);
     }
     words
 }

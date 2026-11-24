@@ -21,6 +21,7 @@ use crate::config::origin::Origin;
 use crate::hub::HubClient;
 use crate::model::cycle::{self, Node};
 use crate::model::install::{self, DEFAULT_RESERVE};
+use crate::model::load;
 use crate::model::machine_files::{self, MachineFileError};
 use crate::model::server::PORTS;
 use crate::model::supervise::{Servers, Shared};
@@ -94,11 +95,13 @@ pub fn node(
         WorkOs::Linux => Installation::LinuxUser,
     };
     let user_home = env("HOME").map(PathBuf::from);
+    let folders = folders::layout(installation, &env).ok_or(NodeError::NoFolders)?;
     Ok(Node {
         device,
         os,
         architecture,
-        folders: folders::layout(installation, &env).ok_or(NodeError::NoFolders)?,
+        loads: Arc::new(load::Shared::open(folders.clone())),
+        folders,
         sources: machine_files::sources(home.dir())?,
         settings: machine_files::settings(home.dir())?,
         servers: Shared::default(),
@@ -200,12 +203,13 @@ impl ModelWork {
 }
 
 async fn claims(mut node: Node, hub: Hub, home: Home, mut halted: watch::Receiver<bool>) {
-    let check = tokio::spawn(check(
-        Arc::clone(&node.servers),
-        node.folders.clone(),
-        node.started,
-        halted.clone(),
-    ));
+    let watched = Watched {
+        servers: Arc::clone(&node.servers),
+        loads: Arc::clone(&node.loads),
+        folders: node.folders.clone(),
+        started: node.started,
+    };
+    let check = tokio::spawn(check(watched, halted.clone()));
     let mut ticks = interval(CLAIM_ON);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     let mut rhythm = Rhythm::default();
@@ -221,6 +225,10 @@ async fn claims(mut node: Node, hub: Hub, home: Home, mut halted: watch::Receive
         }
         rhythm.claimed(on, now);
         node.switch_on = on;
+        // TODO(L1-5): and the device policy permits model work now.
+        node.loads
+            .permitted
+            .store(on, std::sync::atomic::Ordering::SeqCst);
         // A halt drops an item that runs: the end of a pull or a start ends its process.
         tokio::select! {
             _ = halted.changed() => break,
@@ -251,12 +259,21 @@ async fn claim(node: &mut Node, hub: &Hub) {
     }
 }
 
-async fn check(
+/// What the check of the servers and the loads reads, every 15 seconds.
+struct Watched {
     servers: Shared,
+    loads: Arc<load::Shared>,
     folders: Folders,
     started: std::time::Instant,
-    mut halted: watch::Receiver<bool>,
-) {
+}
+
+async fn check(watched: Watched, mut halted: watch::Receiver<bool>) {
+    let Watched {
+        servers,
+        loads,
+        folders,
+        started,
+    } = watched;
     let mut ticks = interval(SERVERS_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
@@ -265,10 +282,14 @@ async fn check(
             _ = ticks.tick() => {}
         }
         let now = started.elapsed().as_secs();
-        let mut servers: tokio::sync::MutexGuard<'_, Servers> = servers.lock().await;
-        servers
-            .cycle(now, |id| folders.server(id).join(cycle::TEMPORARY))
-            .await;
+        {
+            let mut servers: tokio::sync::MutexGuard<'_, Servers> = servers.lock().await;
+            servers
+                .cycle(now, |id| folders.server(id).join(cycle::TEMPORARY))
+                .await;
+        }
+        // The lock of the servers is free here: the loads read it only for a snapshot.
+        loads.tick(&servers).await;
     }
 }
 

@@ -40,7 +40,10 @@ async fn the_claim_names_only_the_built_model_types() {
             "copy_delete",
             "copy_adopt",
             "server_start",
-            "server_stop"
+            "server_stop",
+            "model_load",
+            "model_unload",
+            "model_keep"
         ])
     );
     assert!(hub.seen("report").is_empty());
@@ -193,4 +196,50 @@ async fn a_long_adopt_keeps_its_lease_with_a_report_at_each_interval() {
     assert!(running >= 2, "no report while the hash ran: {reports:?}");
     assert!(reports.iter().all(|body| body.get("progress").is_none()));
     assert_eq!(reports.last().expect("a report")["state"], "done");
+}
+
+/// K11 Section 11.1: a keep is for a copy on the node, the node writes it to a private file, and a load needs a
+/// server of the node that is ready. A load on a real router is HT-NEW-modelloading.
+#[tokio::test]
+async fn a_keep_is_written_for_a_copy_of_the_node_and_a_load_needs_a_ready_server() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let hub = FakeHub::start().await;
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
+    let root = tempfile::tempdir().expect("a folder");
+    let mut node = node(root.path());
+    let copy = "0192f6aa-0000-7000-8000-000000000002";
+    let keep = json!({ "copy": copy, "keep": { "idleSeconds": 120, "pinned": true } });
+    let load = json!({
+        "server": "0192f6aa-0000-7000-8000-000000000001", "copy": copy, "settings": {},
+        "keep": { "idleSeconds": 120, "pinned": false },
+    });
+    let mut run = async |work_type: &str, parameters: &Value| {
+        hub.queue_claim(Reply::json(200, &item(work_type, parameters)));
+        node.cycle(&client, &token()).await.expect("a cycle");
+        let last = hub.seen("report").last().expect("a report").body.clone();
+        (last["state"].clone(), last["result"]["cause"].clone())
+    };
+    assert_eq!(run("model_keep", &keep).await.1, json!("copy_unknown"));
+    assert_eq!(run("model_load", &load).await.1, json!("copy_unknown"));
+
+    std::fs::create_dir_all(root.path().join("models/copies").join(copy)).expect("a copy");
+    assert_eq!(run("model_keep", &keep).await.0, json!("done"));
+    let file = root
+        .path()
+        .join("model-state/keep")
+        .join(format!("{copy}.json"));
+    let written: Value =
+        serde_json::from_slice(&std::fs::read(&file).expect("the keep file")).expect("json");
+    assert_eq!(written["keep"], keep["keep"]);
+    let mode = std::fs::metadata(&file)
+        .expect("the file")
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o600);
+    assert_eq!(
+        run("model_load", &load).await.1,
+        json!("copy_unknown"),
+        "no server is ready"
+    );
 }
