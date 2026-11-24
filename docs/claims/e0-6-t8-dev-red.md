@@ -1,9 +1,9 @@
 ---
-task: CMD-010
+task: E0-6 T8
 plan: docs/plans/extensions-plan.md
 machine: pop-os
 agent: Claude Code
-branch: fix/cmd-010-dev-red
+branch: fix/e0-6-t8-dev-red
 started: 2026-11-24
 ---
 
