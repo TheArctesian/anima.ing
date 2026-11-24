@@ -2,9 +2,11 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use daemon_core::inventory::mobile::{Probe, State, Version};
-use rustix::process::{Pid, Signal, kill_process};
+use rustix::process::Pid;
 use tokio::process::Command;
 
+// Fixtures self-terminate after 30 seconds even if an assertion fails. Never
+// signal a PID read from a file: it may have exited and been reused.
 struct Worker {
     root: tempfile::TempDir,
 }
@@ -58,17 +60,6 @@ fn pid(root: &Path, name: &str) -> Pid {
     Pid::from_raw(text.trim().parse().unwrap()).unwrap()
 }
 
-impl Drop for Worker {
-    fn drop(&mut self) {
-        // Clean up the synthetic processes even when a deadline/cleanup assertion fails.
-        for name in ["worker", "descendant"] {
-            if self.root.path().join(name).exists() {
-                kill_process(pid(self.root.path(), name), Signal::KILL).ok();
-            }
-        }
-    }
-}
-
 #[tokio::test]
 async fn blocked_worker_times_out_at_five_seconds_and_ends_its_descendants() {
     let worker = Worker::new();
@@ -101,4 +92,26 @@ async fn exited_worker_with_descendant_holding_stdout_returns_and_cleans_up() {
         })
     );
     worker.assert_stopped().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn parent_deadline_returns_at_five_seconds_without_waiting_for_reaping() {
+    use std::future::Future as _;
+    use std::task::{Context, Poll, Waker};
+
+    let worker = Worker::new();
+    let mut command = worker.command("wait");
+    let mut collection = std::pin::pin!(super::collect_probe::<Version>(&mut command));
+    let mut context = Context::from_waker(Waker::noop());
+    assert!(collection.as_mut().poll(&mut context).is_pending());
+    tokio::time::advance(Duration::from_millis(4999)).await;
+    assert!(collection.as_mut().poll(&mut context).is_pending());
+    tokio::time::advance(Duration::from_millis(1)).await;
+    assert_eq!(
+        collection.as_mut().poll(&mut context),
+        Poll::Ready(Probe::Unavailable(State::TimedOut))
+    );
+    // Resume real time for the OS cleanup observation; the deadline assertion
+    // above does not yield to wait for the asynchronous child reaper.
+    tokio::time::resume();
 }
