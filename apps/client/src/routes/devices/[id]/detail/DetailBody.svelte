@@ -43,6 +43,7 @@
   import HeartbeatBar from '$lib/checks/HeartbeatBar.svelte';
   import PhoneConnect from '../phone/PhoneConnect.svelte';
   import PhoneHead from '../phone/PhoneHead.svelte';
+  import PhoneHeadWaiting from '../phone/PhoneHeadWaiting.svelte';
   import '../phone/device.css';
   import { detailCalls } from './calls';
   import ErrorState from '$lib/states/ErrorState.svelte';
@@ -187,6 +188,9 @@
     <PhoneHead {device} checks={detail.checks} overview={place.tab === 'overview'} onSettings={() => { settings(null); }}>
       {#snippet actions()}<PhoneConnect {device} onConnect={connect} onSettings={settings} />{/snippet}
     </PhoneHead>
+    <div class="phone-device-tabs"><PhoneDeviceTabs selected={place.tab} onSelect={selectDeviceTab} /></div>
+  {:else if phone && loading}
+    <PhoneHeadWaiting />
     <div class="phone-device-tabs"><PhoneDeviceTabs selected={place.tab} onSelect={selectDeviceTab} /></div>
   {:else}
     <DeviceBar {device} checks={detail.checks} onConnect={connect} onOpenWeb={openWeb} {screenSharing} onSettings={settings} tabs={device !== null || loading ? deviceTabs : undefined} />
