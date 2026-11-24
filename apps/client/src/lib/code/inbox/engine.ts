@@ -4,6 +4,7 @@
  * computer is not there, the actions show disabled with `why`.
  */
 import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
+import { startedThreadIds } from '$lib/agent-threads/live/rows';
 import type { Marks } from '$lib/agent-threads/listing/shelf';
 
 /** A change of the marks of one thread. */
@@ -19,12 +20,8 @@ export interface InboxEngine {
   readonly why: string;
   /** The marks of each thread, by its id. */
   readonly marks: ReadonlyMap<string, Marks>;
-  /**
-   * The threads the runner started or drives, by id (the runner's and the program's); `null` while it is not known: no
-   * runner, or a runner older than the mark (no listing says it started a thread), so no session is taken for one Anima
-   * did not start.
-   */
-  readonly started: ReadonlySet<string> | null;
+  /** The IDs the runner can identify as Anima threads. */
+  readonly started: ReadonlySet<string>;
   change(thread: string, change: InboxChange): Promise<CallResult>;
 }
 
@@ -36,7 +33,7 @@ export const WAITING: InboxEngine = {
   ready: false,
   why: WAITING_WHY,
   marks: new Map(),
-  started: null,
+  started: new Set(),
   change: () => Promise.resolve({ ok: false, words: WAITING_WHY }),
 };
 
@@ -56,11 +53,7 @@ export function inboxEngine(live: () => LiveThreads | null): InboxEngine {
     },
     get started() {
       const runner = live();
-      const ids = [...(runner?.listings.values() ?? [])].filter((listing) => listing.startedByAnima).map((listing) => listing.thread);
-      if (runner === null || ids.length === 0) return WAITING.started;
-      // A thread the runner drives is Anima's: the mark of a Codex thread is on the session of Codex, not on its row.
-      const driven = [...runner.threads.values()].flatMap((thread) => [thread.row.id, ...(thread.row.session === null ? [] : [thread.row.session])]);
-      return new Set([...ids, ...driven]);
+      return runner === null ? WAITING.started : startedThreadIds(runner.listings.values(), runner.threads.values());
     },
     change(thread, change) {
       const runner = live();

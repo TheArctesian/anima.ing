@@ -12,9 +12,10 @@
   interface Props {
     store: ThreadsStore;
     now: Date;
+    imported?: boolean;
   }
 
-  const { store, now }: Props = $props();
+  const { store, now, imported = false }: Props = $props();
   const live = $derived(store.live);
   /** The first prompt of a thread this page just started, until the runner shows it. */
   const sent = $derived(store.sent !== null && store.sent.thread === store.chosen ? store.sent : null);
@@ -49,7 +50,7 @@
   {:else if store.thread !== null && store.thread.id === store.chosen}
     {@const thread = store.thread}
     {#key thread.id}
-      <Timeline entries={storedTimeline(thread)} dropped={thread.dropped} working={threadState(thread, now, store.seen) === 'working'} onDecide={() => undefined} />
+      <Timeline entries={storedTimeline(thread)} dropped={thread.dropped} working={!imported && threadState(thread, now, store.seen) === 'working'} onDecide={() => undefined} />
     {/key}
   {:else if sent !== null}
     <!-- Started here, and the runner has not listed it yet: the prompt shows at once, with the program at work. -->

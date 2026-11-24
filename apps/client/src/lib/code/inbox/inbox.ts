@@ -102,13 +102,9 @@ function startedOutside(row: ListedRow, started: ReadonlySet<string> | null | un
   return started != null && !started.has(row.id);
 }
 
-/**
- * The rows of the list: a session that Anima did not start shows only when the person asks for such sessions in the
- * filter (operator, 2026-11-23: "hide, with filter"), in any state, pinned, working or asking too. Only the display
- * changes: nothing is settled, archived or deleted.
- */
-export function shownRows(rows: readonly ListedRow[], started: ReadonlySet<string> | null | undefined, outsideShown: boolean): readonly ListedRow[] {
-  return outsideShown ? rows : rows.filter((row) => !startedOutside(row, started));
+/** Code and imported history each show their own rows. */
+export function shownRows(rows: readonly ListedRow[], started: ReadonlySet<string>, outsideShown: boolean): readonly ListedRow[] {
+  return rows.filter((row) => started.has(row.id) !== outsideShown);
 }
 
 /**
