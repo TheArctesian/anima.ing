@@ -16,8 +16,11 @@ use crate::mcp::outcome::ToolError;
 use crate::model_copies::copies::fetch;
 use crate::model_copies::documents::{ModelCopyRemove, ModelPull, model_copy_remove, model_pull};
 use crate::model_copies::found;
-use crate::model_fits;
 use crate::model_library::documents::{ModelList, ModelShow, model_list, model_show};
+
+mod memory;
+
+use memory::{fit, fit_definition, keep, keep_definition};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ModelTool {
@@ -58,19 +61,6 @@ pub struct CopyInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct KeepInput {
-    /// The device's ID or its exact name.
-    device: String,
-    /// The variant, name:tag, such as qwen3:8b-q4_k_m.
-    model: String,
-    /// A pinned copy stays loaded, and comes back when other work took its memory.
-    pinned: bool,
-    /// Seconds with no use before the machine unloads the copy, 60 to 86400; 900 when not given.
-    idle_seconds: Option<u32>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct DeviceInput {
     /// The device's ID or its exact name.
     device: String,
@@ -83,17 +73,6 @@ pub struct UseInput {
     device: String,
     /// The found model: its key, or the name that its tool shows.
     model: String,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct FitInput {
-    /// The model's name, an alias, or name:tag for one variant.
-    model: String,
-    /// Only this device: its ID or its exact name.
-    device: Option<String>,
-    /// The context in tokens; the default is 8192, or the context of the model when smaller.
-    context: Option<u32>,
 }
 
 const VARIANT_KEYS: [&str; 6] = [
@@ -238,36 +217,6 @@ impl ModelTool {
     }
 }
 
-/// The tool of the fit of the variants on the machines (FIT-005, task L1-20).
-fn fit_definition() -> Definition {
-    Definition::new::<FitInput>(
-        "anima_model_fit",
-        Access::Read,
-        Effect::Reads,
-        "Whether each variant of a model (name:tag for one) fits each machine that sent \
-         its hardware values, with the memory share of its device policy: state FITS, \
-         REDUCED_CONTEXT (largestContext fits), TOO_LARGE or UNKNOWN (no layer shape); \
-         placement GPU, PARTIAL (part in the system memory, slower) or CPU; the backend, \
-         the context, the sizes in bytes and one sentence. An estimate, not a load. \
-         Next: anima_model_pull.",
-    )
-    .returns(&[("fits", "array", "One fit for each variant on each machine.")])
-}
-
-/// The tool of the keep of a copy (L1-16, FIT-022, FIT-023).
-fn keep_definition() -> Definition {
-    Definition::new::<KeepInput>(
-        "anima_model_keep",
-        Access::Write,
-        Effect::Sets,
-        "Sets whether one machine keeps its copy of a variant name:tag loaded: pinned, it \
-         stays loaded and comes back when other work took its memory; else the machine \
-         unloads it after idleSeconds with no use. Only a copy on its machine \
-         (DOWNLOADED or VALIDATED). Returns the job; anima_model_copies shows the load.",
-    )
-    .returns(&[("job", "string", "The ID of the job.")])
-}
-
 async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let _: ListInput = parse(arguments)?;
     let models = hub
@@ -340,25 +289,4 @@ async fn use_found(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, To
     let input: UseInput = parse(arguments)?;
     let copy = found::use_found(hub, &input.device, &input.model).await?;
     Ok(json!({ "copy": json(&copy) }))
-}
-
-async fn fit(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
-    let input: FitInput = parse(arguments)?;
-    let asked = model_fits::Asked {
-        model: input.model,
-        device: input.device,
-        context: input.context,
-    };
-    Ok(json!({ "fits": json(&model_fits::fetch(hub, asked).await?) }))
-}
-
-async fn keep(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
-    let input: KeepInput = parse(arguments)?;
-    let asked = crate::model_copies::keep::Keep {
-        device: &input.device,
-        model: &input.model,
-        pinned: input.pinned,
-        idle_seconds: input.idle_seconds,
-    };
-    Ok(json!({ "job": crate::model_copies::keep::keep(hub, &asked).await? }))
 }

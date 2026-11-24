@@ -8,7 +8,7 @@ mod compute_policy;
 mod containers;
 mod daemon_need;
 mod metrics;
-pub mod models;
+pub mod model;
 mod os_update;
 mod read;
 /// Its own tool set, kept with the other application tools of a device (H21).

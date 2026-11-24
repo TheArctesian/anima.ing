@@ -8,7 +8,7 @@ pub mod events;
 pub mod extensions;
 pub mod link;
 pub mod maintenance;
-pub use devices::models;
+pub use devices::model;
 pub mod notifications;
 pub mod projects;
 pub mod releases;
@@ -38,7 +38,7 @@ pub enum Tool {
     Notifications(notifications::NotificationTool),
     Web(web::WebTool),
     Routes(devices::routes::RouteTool),
-    Models(models::ModelTool),
+    Models(model::ModelTool),
     Releases(releases::ReleaseTool),
     Vpn(vpn::VpnTool),
     Retention(retention::RetentionTool),
@@ -69,7 +69,7 @@ impl Tool {
         tools.extend(notifications::NotificationTool::ALL.map(Self::Notifications));
         tools.extend(web::WebTool::ALL.map(Self::Web));
         tools.extend(devices::routes::RouteTool::ALL.map(Self::Routes));
-        tools.extend(models::ModelTool::ALL.map(Self::Models));
+        tools.extend(model::ModelTool::ALL.map(Self::Models));
         tools.extend(releases::ReleaseTool::ALL.map(Self::Releases));
         tools.extend(vpn::VpnTool::ALL.map(Self::Vpn));
         tools.extend(retention::RetentionTool::ALL.map(Self::Retention));
