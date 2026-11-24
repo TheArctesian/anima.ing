@@ -95,7 +95,7 @@ async fn exited_worker_with_descendant_holding_stdout_returns_and_cleans_up() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn parent_deadline_returns_at_five_seconds_without_waiting_for_reaping() {
+async fn parent_collection_times_out_at_exactly_five_seconds() {
     use std::future::Future as _;
     use std::task::{Context, Poll, Waker};
 
@@ -111,7 +111,7 @@ async fn parent_deadline_returns_at_five_seconds_without_waiting_for_reaping() {
         collection.as_mut().poll(&mut context),
         Poll::Ready(Probe::Unavailable(State::TimedOut))
     );
-    // Resume real time for the OS cleanup observation; the deadline assertion
-    // above does not yield to wait for the asynchronous child reaper.
+    // This checks the collection deadline, not deterministic isolation of the
+    // outer guard from the inner timeout and OS reaper scheduling.
     tokio::time::resume();
 }
