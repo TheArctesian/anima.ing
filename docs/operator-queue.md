@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (235)
+## 2. Open decisions (234)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -176,7 +176,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-THR85 | Does a lease have a longest age, even while it is renewed? | Open. Recommendation: A, 4 hours, changeable. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-THR86 | Later, should an AXT-096 grant that names one agent narrow the holder below the hub token? | Open, not needed for the first version. Recommendation: A, later and optional. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-THR87 | Do you approve the TH30 contract, Section 6.4.2 version 2 (the work type `agent_thread`, the launch request, the command poll), as a change of K10, K1 and K8 un… | Open (TH30, 2026-11-23). Recommendation: B, then A. | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR88 | May the hub send prompts, answers and stops to a thread that the person started at the machine, or only to threads that the hub started? | Open (TH30 review). Recommendation: A for stage 3; B later with its own switch. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-THR89 | When the person set no access ceiling at the machine, what is the highest access of a thread that the hub starts? | Open (TH30 review). Recommendation: A. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-THR90 | With the switch "Threads may start here" off, which commands does the daemon still take for an open thread? | Open (TH30 review). Recommendation: A. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow`… | Open. Recommendation: yes, an exception for the folder only. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
