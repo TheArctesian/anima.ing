@@ -25,7 +25,7 @@ async fn mobile_capabilities_negotiate_only_the_exact_unknown_field_and_keep_fil
     for row in legacy["capabilities"].as_array_mut().unwrap() {
         row.as_object_mut().unwrap().remove("mobileTools");
     }
-    hub.answer("CapabilityList", data(legacy));
+    hub.answer("LegacyCapabilityList", data(legacy));
     let run = Anima::new()
         .with("ANIMA_TOKEN", TOKEN)
         .run(&[
@@ -93,7 +93,7 @@ async fn mobile_capabilities_mcp_keeps_typed_fields_and_legacy_null() {
     populated["capabilities"][0]["mobileTools"] = snapshot();
     hub.answer("CapabilityList", data(populated));
     hub.answer("CapabilityList", json!({"errors":[unknown()]}));
-    hub.answer("CapabilityList", data(capabilities()));
+    hub.answer("LegacyCapabilityList", data(capabilities()));
     let desk = Desk::new();
     let (mut session, _) = desk.start(&hub, API_KEY, &[]).await;
     let called = session.call("anima_capability_list", json!({})).await;

@@ -1,27 +1,27 @@
 //! THR-172: negotiate only the one additive mobile capability field, before reducing errors.
 
-use graphql_client::QueryBody;
-use serde::{Serialize, de::DeserializeOwned};
+use crate::capabilities::documents::{
+    LegacyCapabilityList, capability_list, legacy_capability_list,
+};
+use graphql_client::{GraphQLQuery, QueryBody};
 use serde_json::Value;
 
 use super::{Hub, HubError, answer, encode};
 
-const LEGACY: &str = include_str!("../capabilities/legacy.graphql");
-
 impl Hub {
-    pub(crate) async fn send_capabilities<V: Serialize, R: DeserializeOwned>(
+    pub(crate) async fn send_capabilities(
         &self,
-        body: &QueryBody<V>,
-    ) -> Result<R, HubError> {
+        body: &QueryBody<capability_list::Variables>,
+    ) -> Result<capability_list::ResponseData, HubError> {
         let (status, bytes) = self.post(encode(body)).await?;
         if legacy_required(status, &bytes) {
-            return self
-                .send(&QueryBody {
-                    variables: &body.variables,
-                    query: LEGACY,
-                    operation_name: body.operation_name,
-                })
-                .await;
+            let legacy = <LegacyCapabilityList as GraphQLQuery>::build_query(
+                legacy_capability_list::Variables {
+                    tool: body.variables.tool.clone(),
+                    build_target: body.variables.build_target.clone(),
+                },
+            );
+            return self.send(&legacy).await;
         }
         answer::read(status, &bytes)
     }

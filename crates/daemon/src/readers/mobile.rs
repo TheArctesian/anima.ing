@@ -20,6 +20,13 @@ pub fn dispatch() {
     }
 }
 
+#[cfg_attr(
+    not(all(unix, feature = "mobile-inventory")),
+    expect(
+        clippy::unused_async,
+        reason = "The feature-enabled Unix collector awaits its worker; all builds share this async interface"
+    )
+)]
 pub(super) async fn collect() -> Option<MobileTools> {
     #[cfg(all(unix, feature = "mobile-inventory"))]
     {

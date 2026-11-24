@@ -6,7 +6,7 @@ use crate::failure::Failure;
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::{Cell, Table};
-use graphql_client::GraphQLQuery as _;
+use graphql_client::GraphQLQuery;
 
 #[derive(Debug, clap::Args)]
 pub struct ListArgs {
@@ -45,7 +45,7 @@ pub async fn fetch(
 ) -> Result<Vec<capability_list::CapabilityListCapabilities>, Failure> {
     let variables = capability_list::Variables { tool, build_target };
     let found: capability_list::ResponseData = hub
-        .send_capabilities(&CapabilityList::build_query(variables))
+        .send_capabilities(&<CapabilityList as GraphQLQuery>::build_query(variables))
         .await?;
     Ok(found.capabilities)
 }
