@@ -13,7 +13,7 @@ use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
 use crate::mcp::untrusted::cleaned;
-use crate::secrets::documents::{SecretList, SecretShow, secret_list, secret_show};
+use crate::operational_keys::documents::{SecretList, SecretShow, secret_list, secret_show};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SecretTool {

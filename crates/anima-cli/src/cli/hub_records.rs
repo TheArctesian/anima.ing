@@ -1,8 +1,8 @@
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{
-    builders, events, extensions, forge, keys, notifications, projects, releases, retention,
-    secrets, sources, vpn,
+    builders, events, extensions, forge, keys, notifications, operational_keys, projects, releases,
+    retention, sources, vpn,
 };
 
 #[derive(Debug, clap::Subcommand)]
@@ -36,7 +36,7 @@ pub enum HubRecordCommand {
     /// ungrant). A value goes in and never comes out.
     Secret {
         #[command(subcommand)]
-        command: secrets::SecretCommand,
+        command: operational_keys::SecretCommand,
     },
     /// Releases of the desktop application (list, next-version, publishing, create, cancel, log).
     Release {
