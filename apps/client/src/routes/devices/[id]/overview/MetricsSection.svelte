@@ -1,19 +1,19 @@
 <script lang="ts">
-  import LineChart from '$lib/charts/LineChart.svelte';
   import { contextHubIsHosted } from '$lib/hosted/context';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import Icon from '$lib/icons/Icon.svelte';
   import { hasMetrics } from '$lib/metrics/source/has-metrics';
-  import { chartsOf, tileFigures } from '$lib/metrics/overview-charts';
+  import { chartsOf } from '$lib/metrics/overview-charts';
   import type { MetricRange } from '$lib/metrics/api';
-  import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
-  import { RANGES, rangeGap } from '$lib/metrics/ranges';
+  import { RANGES } from '$lib/metrics/ranges';
   import './geometry.css';
   import type { DeviceMetrics } from './metrics.svelte';
+  import ResourceReadings from './trends/ResourceReadings.svelte';
+  import TrendChart from './trends/TrendChart.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
   import { metricsOffText, noChartsText } from './overview';
 
@@ -31,12 +31,19 @@
     container?: boolean;
     /** The reason line of a daemon that waits for the person, in place of the wait; `null` for none (R-322). */
     needLine?: string | null;
+    storageReading?: { path: string; percent: number } | null;
   }
 
-  const { source, metrics, range, now, clock, onRange, onRetry, onSettings, container = false, needLine = null }: Props = $props();
+  const { source, metrics, range, now, clock, onRange, onRetry, onSettings, container = false, needLine = null, storageReading = null }: Props = $props();
   // A hosted hub reads no metrics over SSH (HMD-049 is not built), so its sentence names the daemon only (R-222).
   const hosted = contextHubIsHosted();
+  let selected = $state<string>();
+  let expanded = $state(false);
   const charts = $derived(metrics.view === null ? [] : chartsOf(metrics.view.series, metrics.view.gpus));
+  const readings = $derived(metrics.readings !== null && storageReading !== null
+    ? { ...metrics.readings, diskPercent: storageReading.percent, diskMount: storageReading.path }
+    : metrics.readings);
+  const primary = $derived(charts.find((chart) => chart.key === selected) ?? charts[0]);
   // The old chart stays while a switch is on its way, so its label and gap follow the data on screen, not the button.
   const drawn = $derived(metrics.shownRange ?? range);
   const phrase = $derived(RANGES.find((each) => each.range === drawn)?.phrase ?? '');
@@ -67,7 +74,7 @@
       <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="carbon:settings-adjust" size="sm" />Open Settings</button>
     </div>
   {:else}
-    <MetricBars readings={metrics.readings} {source} battery={metrics.battery} {container} memoryBytes={metrics.memoryBytes ?? null} />
+    <ResourceReadings {readings} {source} battery={metrics.battery} {container} memoryBytes={metrics.memoryBytes ?? null} {charts} active={primary?.key} onSelect={(key) => { selected = key; }} />
     {#if metrics.liveError !== null}
       <p class="live" role="status">{metrics.liveError.message}</p>
     {/if}
@@ -82,30 +89,25 @@
         <div class="layer" transition:crossFade><MetricsSkeleton {range} {now} cells={metrics.chartShape} /></div>
       {:else if !waiting}
         <div class="layer" transition:crossFade>
-          {#if charts.length === 0 || metrics.span === null}
+          {#if primary === undefined || metrics.span === null}
             <p class="waiting">{noChartsText(metrics.readings !== null, phrase, needLine)}</p>
           {:else}
-            <div class="chart-grid">
-              {#each charts as chart (chart.key)}
-                {@const figures = tileFigures(chart)}
-                <div class="cell">
-                  <!-- A tile: the name, the highest value of the range and the newest value on the title line (R-224). -->
-                  <div class="tile-title">
-                    <h3 class="chart-title tile-name">{chart.title}</h3>
-                    {#if figures !== null}<span class="tile-peak">peak {figures.peak}</span><span class="tile-now">{figures.now}</span>{/if}
-                  </div>
-                  <LineChart
-                    title={`${chart.title}, ${phrase}`}
-                    gap={rangeGap(drawn)}
-                    series={chart.series}
-                    span={metrics.span}
-                    axis={chart.axis}
-                    format={chart.format}
-                    threshold={chart.threshold}
-                  />
-                </div>
-              {/each}
+            {@const span = metrics.span}
+            <div class="trend" role="group" aria-label="Selected resource trend">
+              <TrendChart chart={primary} {span} range={drawn} {phrase} />
             </div>
+            {#if charts.length > 1}
+              <details bind:open={expanded}>
+                <summary>All resource charts</summary>
+                {#if expanded}
+                  <div class="chart-grid">
+                    {#each charts as chart (chart.key)}
+                      <TrendChart {chart} {span} range={drawn} {phrase} />
+                    {/each}
+                  </div>
+                {/if}
+              </details>
+            {/if}
           {/if}
         </div>
       {/if}
@@ -115,7 +117,16 @@
 
 <style>
   .metrics {
-    gap: var(--space-4);
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: var(--border-thin) solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--surface-base);
+  }
+
+  @media (max-width: 600px) {
+    .metrics { gap: var(--space-1); padding: var(--space-2); }
+    .trend { padding-block-start: var(--space-1); }
   }
 
   .head {
@@ -128,7 +139,22 @@
 
   .range {
     display: flex;
-    gap: var(--space-1);
+    gap: 0;
+  }
+
+  .range button {
+    min-block-size: var(--target-min-touch);
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-secondary);
+  }
+
+  .range button[aria-pressed='true'] {
+    border-color: transparent;
+    background: var(--surface-selected);
+    color: var(--text);
+    text-decoration: none;
+    font-weight: var(--weight-medium);
   }
 
   .area {
@@ -143,42 +169,21 @@
     min-inline-size: 0;
   }
 
-  .cell {
-    min-inline-size: 0;
+  details > .chart-grid { margin-block-end: var(--space-3); }
+
+  .trend {
+    border-block-start: var(--border-thin) solid var(--border-subtle);
+    padding-block-start: var(--space-3);
   }
 
-  p {
-    margin: 0;
-    color: var(--text);
-  }
-
-  /* One line of fixed height, as the title alone has: the figures move nothing (MOT-007). */
-  .tile-title {
-    display: flex;
-    font-size: var(--text-sm);
-    line-height: var(--leading-normal);
-    align-items: baseline;
-    gap: var(--space-3);
-    white-space: nowrap;
-  }
-
-  .tile-name {
-    flex: 1;
-    min-inline-size: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .tile-peak {
+  summary {
+    align-content: center;
+    min-block-size: var(--target-min-touch);
     color: var(--text-secondary);
-    font-variant-numeric: tabular-nums;
+    cursor: pointer;
   }
 
-  .tile-now {
-    color: var(--text);
-    font-weight: var(--weight-medium);
-    font-variant-numeric: tabular-nums;
-  }
+  p { margin: 0; }
 
   .waiting,
   .live {

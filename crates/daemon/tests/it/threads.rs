@@ -12,6 +12,7 @@ use tempfile::TempDir;
 
 mod attach;
 mod connection;
+mod create_project;
 mod drafts;
 mod files;
 mod git;

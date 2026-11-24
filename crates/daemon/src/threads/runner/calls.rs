@@ -19,7 +19,9 @@ mod attach;
 mod commands;
 mod files;
 mod folders;
+mod permissions;
 mod queue;
+use permissions::for_the_person;
 mod reads;
 mod refusal_lines;
 mod send;
@@ -91,6 +93,10 @@ impl Runner {
                 | Action::AttachMore { .. }
                 | Action::Unattach { .. }) => self.attach_call(attach),
                 Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
+                Action::CreateProject { folder, name } => {
+                    self.create_project(folder, name, back);
+                    return;
+                }
                 Action::ChangeProject { change } => self.change_project(&change),
                 Action::Files {
                     thread,
@@ -109,6 +115,10 @@ impl Runner {
                 },
             },
         };
+        self.answer_call(&back, named, answer);
+    }
+
+    pub(super) fn answer_call(&mut self, back: &Caller, named: Option<Uuid>, answer: Outcome) {
         if let Outcome::Refused { why } = &answer {
             self.note(Kind::Refusal, named, refusal_word(why));
         }
@@ -269,36 +279,6 @@ impl Runner {
         self.waits.insert(command, Waits::Stop { back });
         Ok(())
     }
-}
-
-/// Whether only the person may make this call: an answer to a request, a raise of the limit,
-/// a start, a change of how a thread is listed (TH46), the queue of a thread (TH109) and a change
-/// of its model, effort or mode (TH110), and the files of a prompt (TH111). A process of an agent may not, so that an agent never
-/// approves itself, gives itself more rights or hides a thread from the person.
-const fn for_the_person(action: &Action) -> bool {
-    if let Action::Git { action, .. } = action {
-        return action.for_the_person();
-    }
-    matches!(
-        action,
-        Action::Answer { .. }
-            | Action::RaiseLimit
-            | Action::Start { .. }
-            | Action::ChangeListing { .. }
-            | Action::ChangeProject { .. }
-            | Action::Files { .. }
-            | Action::Folders { .. }
-            | Action::Queue { .. }
-            | Action::Requeue { .. }
-            | Action::Unqueue { .. }
-            | Action::SendQueued { .. }
-            | Action::Set { .. }
-            | Action::Commands { .. }
-            | Action::Compact { .. }
-            | Action::Attach { .. }
-            | Action::AttachMore { .. }
-            | Action::Unattach { .. }
-    )
 }
 
 /// The thread a call names, for the line of the log of a refusal (THR-044).

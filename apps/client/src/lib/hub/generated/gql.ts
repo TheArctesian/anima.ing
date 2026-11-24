@@ -124,6 +124,8 @@ type Documents = {
     "\n  mutation DeleteNotificationChannel($id: ID!) {\n    deleteNotificationChannel(id: $id)\n  }\n": typeof types.DeleteNotificationChannelDocument,
     "\n  mutation SendTestNotification($id: ID!) {\n    sendTestNotification(id: $id) {\n      ...DeliveryFields\n    }\n  }\n": typeof types.SendTestNotificationDocument,
     "\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n": typeof types.SetNotificationSettingsDocument,
+    "\n  query DeviceOsUpdateStatus($deviceId: ID!) {\n    deviceOsUpdate(deviceId: $deviceId)\n  }\n": typeof types.DeviceOsUpdateStatusDocument,
+    "\n  mutation DeviceOsUpdateRequest($deviceId: ID!, $action: OsUpdateAction!, $confirmed: Boolean!) {\n    requestDeviceOsUpdate(deviceId: $deviceId, input: { action: $action, confirmed: $confirmed })\n  }\n": typeof types.DeviceOsUpdateRequestDocument,
     "\n  fragment ResourceFields on ProjectResource {\n    id\n    kind\n    state\n    foundAt\n    confirmedAt\n    evidence {\n      sign\n      path\n    }\n  }\n": typeof types.ResourceFieldsFragmentDoc,
     "\n  fragment ProjectFields on Project {\n    id\n    slug\n    name\n    subjectKey\n    syncedAt\n    repositories {\n      id\n      fullName\n      url\n      defaultBranch\n      private\n      archived\n      fork\n      description\n      leftOut\n      gone\n    }\n    resources {\n      ...ResourceFields\n    }\n  }\n": typeof types.ProjectFieldsFragmentDoc,
     "\n  query Projects($leftOut: Boolean!, $first: Int!, $after: String, $browse: ProjectBrowse) {\n    projects(leftOut: $leftOut, first: $first, after: $after, browse: $browse) {\n      languages\n      edges {\n        node {\n          ...ProjectFields\n        }\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n": typeof types.ProjectsDocument,
@@ -323,6 +325,8 @@ const documents: Documents = {
     "\n  mutation DeleteNotificationChannel($id: ID!) {\n    deleteNotificationChannel(id: $id)\n  }\n": types.DeleteNotificationChannelDocument,
     "\n  mutation SendTestNotification($id: ID!) {\n    sendTestNotification(id: $id) {\n      ...DeliveryFields\n    }\n  }\n": types.SendTestNotificationDocument,
     "\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n": types.SetNotificationSettingsDocument,
+    "\n  query DeviceOsUpdateStatus($deviceId: ID!) {\n    deviceOsUpdate(deviceId: $deviceId)\n  }\n": types.DeviceOsUpdateStatusDocument,
+    "\n  mutation DeviceOsUpdateRequest($deviceId: ID!, $action: OsUpdateAction!, $confirmed: Boolean!) {\n    requestDeviceOsUpdate(deviceId: $deviceId, input: { action: $action, confirmed: $confirmed })\n  }\n": types.DeviceOsUpdateRequestDocument,
     "\n  fragment ResourceFields on ProjectResource {\n    id\n    kind\n    state\n    foundAt\n    confirmedAt\n    evidence {\n      sign\n      path\n    }\n  }\n": types.ResourceFieldsFragmentDoc,
     "\n  fragment ProjectFields on Project {\n    id\n    slug\n    name\n    subjectKey\n    syncedAt\n    repositories {\n      id\n      fullName\n      url\n      defaultBranch\n      private\n      archived\n      fork\n      description\n      leftOut\n      gone\n    }\n    resources {\n      ...ResourceFields\n    }\n  }\n": types.ProjectFieldsFragmentDoc,
     "\n  query Projects($leftOut: Boolean!, $first: Int!, $after: String, $browse: ProjectBrowse) {\n    projects(leftOut: $leftOut, first: $first, after: $after, browse: $browse) {\n      languages\n      edges {\n        node {\n          ...ProjectFields\n        }\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n": types.ProjectsDocument,
@@ -866,6 +870,14 @@ export function graphql(source: "\n  mutation SendTestNotification($id: ID!) {\n
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n"): (typeof documents)["\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query DeviceOsUpdateStatus($deviceId: ID!) {\n    deviceOsUpdate(deviceId: $deviceId)\n  }\n"): (typeof documents)["\n  query DeviceOsUpdateStatus($deviceId: ID!) {\n    deviceOsUpdate(deviceId: $deviceId)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeviceOsUpdateRequest($deviceId: ID!, $action: OsUpdateAction!, $confirmed: Boolean!) {\n    requestDeviceOsUpdate(deviceId: $deviceId, input: { action: $action, confirmed: $confirmed })\n  }\n"): (typeof documents)["\n  mutation DeviceOsUpdateRequest($deviceId: ID!, $action: OsUpdateAction!, $confirmed: Boolean!) {\n    requestDeviceOsUpdate(deviceId: $deviceId, input: { action: $action, confirmed: $confirmed })\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

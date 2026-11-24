@@ -33,11 +33,49 @@ Show me the diff. Once I say yes, I apply it on the VPS the same way as the WP-2
 ## 3. Turn on SSH and screen sharing
 
 - SSH: `sudo apt install openssh-server`, then `sudo systemctl enable --now ssh`.
-- Screen sharing:
-  - Prefer GNOME Remote Desktop with VNC (Settings → Sharing), if this Pop!_OS version offers VNC.
-  - Otherwise install `wayvnc`, or `x11vnc` on an X11 session.
+- Screen sharing. It must take keyboard and mouse input, not only show the screen. Check the desktop first: `echo $XDG_CURRENT_DESKTOP $XDG_SESSION_TYPE`.
+  - GNOME: use GNOME Remote Desktop with VNC (Settings → Sharing), if this version offers VNC.
+  - COSMIC on Wayland (the Pop!_OS 24.04 default): use krfb through the COSMIC RemoteDesktop portal, as in "Screen sharing on COSMIC" below. Do not use wayvnc there: the COSMIC compositor has no virtual pointer, so wayvnc is view only. GNOME Remote Desktop needs mutter and does not run on COSMIC.
+  - An X11 session: `x11vnc`.
   - Set a password, and confirm it listens on port 5900: `ss -ltnp | grep 5900`.
+  - Allow port 5900 only on the VPN: `sudo ufw allow in on tailscale0 to any port 5900 proto tcp`, then `sudo ufw deny 5900/tcp`, then `sudo ufw enable`. If `ufw enable` says "Could not load logging rules", run `sudo ufw logging off` and enable again. From a different device on the home network, `nc -zv 192.168.x.x 5900` must time out.
   - Tell me which server and display system (Wayland or X11) you used.
+
+### Screen sharing on COSMIC (krfb)
+
+Checked on `pop-os` on 2026-11-23: VNC with keyboard and mouse, and krfb starting at login with no dialog.
+
+1. Update the system first (`sudo apt full-upgrade`), then log out and in. The COSMIC portal must be a build that offers "Always allow" for remote control. An older running portal asked again on each start, even with a stored grant. Check there is room on the disk before the upgrade: an upgrade that fills the disk stops halfway (`sudo dpkg --configure -a` finishes it).
+2. `sudo apt install krfb`. In `~/.config/krfbrc`, set `preferredFrameBufferPlugin=pw` under `[FrameBuffer]` and `[Framebuffer]`, and under `[Security]` set `allowDesktopControl=true`, `allowUnattendedAccess=true` and `noWallet=true`. Set the unattended password in krfb itself, and keep a copy only in a file readable by this user (`chmod 600`).
+3. Patch krfb so the portal remembers the approval. Ubuntu's krfb 23.08 does not ask the portal to keep the permission, so COSMIC shows a dialog each time krfb starts. Newer krfb does; back-port that change to the 23.08 source:
+   1. `sudo apt build-dep -y krfb`, then `apt-get source krfb` in `~/.local/src/krfb-restore`.
+   2. In `framebuffers/pipewire/pw_framebuffer.cpp`, in `handleSessionCreated`: add `persist_mode` = 2 (a `uint`) to the `SelectDevices` options, and if the state config group `XdgPortal` has a `RestoreToken`, pass it as `restore_token`. In `handleRemoteDesktopStarted`, after the PipeWire stream is created, write `results["restore_token"]` to that group and call `sync()` (systemd stops krfb with a signal, so a write at exit is lost). Include `KConfigGroup` and `KSharedConfig`.
+   3. In `framebuffers/pipewire/CMakeLists.txt`, link `KF5::ConfigCore` to `krfb_framebuffer_pw`.
+   4. Build only the plugin: `cmake .. -DBUILD_TESTING=OFF` in a `build` folder, then `make krfb_framebuffer_pw`. Install `build/bin/pw.so` as `~/.local/lib/krfb-qtplugins/krfb/framebuffer/pw.so`. The system package is not changed, and an apt update does not overwrite the plugin.
+4. Run krfb as a user unit, `~/.config/systemd/user/krfb.service`:
+
+   ```ini
+   [Unit]
+   Description=krfb VNC through the COSMIC RemoteDesktop portal
+   PartOf=graphical-session.target
+   After=graphical-session.target
+
+   [Service]
+   Environment=QT_QPA_PLATFORM=wayland
+   Environment=QT_PLUGIN_PATH=%h/.local/lib/krfb-qtplugins
+   ExecStart=/usr/bin/krfb --nodialog
+   Restart=on-failure
+   RestartSec=5
+
+   [Install]
+   WantedBy=graphical-session.target
+   ```
+
+   Then `systemctl --user daemon-reload` and `systemctl --user enable --now krfb`. Check that the patched plugin is loaded: `grep pw.so /proc/$(systemctl --user show krfb -p MainPID --value)/maps` must show the path under `~/.local`.
+5. Approve the dialog once with "Always allow", with all input types and the monitor. krfb saves the token in `~/.local/share/krfb/krfbstaterc`.
+6. Check: `systemctl --user restart krfb`. The screen must come back within a few seconds with no dialog.
+
+Limits: krfb shares one monitor. If the monitor layout changes, COSMIC may ask once more; choose "Always allow" again. To make it ask again, delete `krfbstaterc`. To undo the patch, remove the `QT_PLUGIN_PATH` line from the unit.
 
 ## 4. Build the desktop app
 

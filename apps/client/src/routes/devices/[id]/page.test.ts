@@ -279,10 +279,10 @@ describe('live updates (D-11)', () => {
 
 describe('checks tab (CHK-005, Section 6.4)', () => {
   it.each(['', '?tab=checks'])('K7: with %j a failed checks load shows the message, and Retry loads again', async (search) => {
-    const fake = await show(answers({ DeviceChecks: { code: 'UNAVAILABLE', message: 'The database is unreachable.' } }), search);
-    expect(panel()?.textContent).toContain('The database is unreachable.');
-    expect(panel()?.textContent).not.toContain('No checks');
-    button('Retry').click();
+    const fake = await show(answers({ Device: { device: device({ metricsSource: 'SSH' }) }, DeviceChecks: { code: 'UNAVAILABLE', message: 'The database is unreachable.' } }), search);
+    expect(panel()?.querySelector('.notice')?.textContent).toContain('The database is unreachable.');
+    expect(panel()?.querySelectorAll('#overview-metrics, #overview-storage')).toHaveLength(search === '' ? 2 : 0);
+    panel()?.querySelector<HTMLButtonElement>('.notice button')?.click();
     await settle();
     expect(fake.requests.filter((request) => request.operation === 'DeviceChecks')).toHaveLength(2);
   });
