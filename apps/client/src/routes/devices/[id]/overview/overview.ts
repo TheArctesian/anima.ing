@@ -25,9 +25,9 @@ const ORDER: readonly DeviceStatus[] = ['DOWN', 'DEGRADED', 'UNKNOWN', 'MAINTENA
 
 export function uptimeReadings(device: OverviewDevice): readonly Reading[] {
   return [
-    { label: '24 hours', text: uptimeText(device.day ?? null) },
-    { label: '7 days', text: uptimeText(device.week ?? null) },
-    { label: '30 days', text: uptimeText(device.month ?? null) },
+    { label: '24 hours', text: uptimeText(device.day ?? null, true) },
+    { label: '7 days', text: uptimeText(device.week ?? null, true) },
+    { label: '30 days', text: uptimeText(device.month ?? null, true) },
   ];
 }
 

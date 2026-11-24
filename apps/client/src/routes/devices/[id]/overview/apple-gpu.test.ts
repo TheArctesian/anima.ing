@@ -64,8 +64,10 @@ function showApple(): void {
 
 const labels = () => [...document.querySelectorAll('svg[role="img"]')].map((chart) => chart.getAttribute('aria-label') ?? '');
 
-it('MET-009, D-30: the detail view of an Apple silicon Mac shows GPU usage and the shared memory in use, in bytes', () => {
+it('MET-009, D-30: the detail view of an Apple silicon Mac shows GPU usage and the shared memory in use, in bytes', async () => {
   showApple();
+  [...document.querySelectorAll('summary')].find((one) => one.textContent === 'All resource charts')?.click();
+  await vi.waitFor(() => expect(labels().some((label) => label.startsWith('GPU'))).toBe(true));
   const titles = [...document.querySelectorAll('h3')].map((one) => one.textContent);
   expect(titles).toContain(`GPU 0 ${APPLE.name} usage`);
   expect(titles).toContain(`GPU 0 ${APPLE.name} memory in use (shared)`);
@@ -76,6 +78,9 @@ it('MET-009, D-30: the detail view of an Apple silicon Mac shows GPU usage and t
 it('MET-007, D-30: an Apple silicon Mac shows no VRAM chart and the card draws no VRAM bar', () => {
   showApple();
   expect([...document.querySelectorAll('h3')].map((one) => one.textContent).filter((title) => /VRAM/.test(title))).toEqual([]);
-  const meters = [...document.querySelectorAll('[role="meter"]')].map((meter) => meter.getAttribute('aria-label'));
-  expect(meters).toEqual(['CPU', 'Memory', 'Disk']);
+  const readings = document.querySelector('[aria-label="Latest resource readings"]')?.textContent;
+  expect(readings).toContain('CPU');
+  expect(readings).toContain('Memory');
+  expect(readings).toContain('Disk');
+  expect(readings).not.toContain('VRAM');
 });

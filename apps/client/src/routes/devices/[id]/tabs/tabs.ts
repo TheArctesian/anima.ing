@@ -1,17 +1,16 @@
-import type { IconName } from '$lib/icons/icons';
 import type { MetricRange } from '$lib/metrics/api';
 import { RANGES } from '$lib/metrics/ranges';
 import { tabIds as sharedIds, type TabSpec } from '$lib/tabs/tabs';
 
 /** In order (Section 6.7). */
 export const TABS = [
-  { name: 'overview', label: 'Overview', icon: 'carbon:dashboard' },
-  { name: 'checks', label: 'Checks', icon: 'carbon:task-complete' },
-  { name: 'containers', label: 'Containers', icon: 'carbon:grid' },
-  { name: 'sessions', label: 'Sessions', icon: 'carbon:recently-viewed' },
-  { name: 'logs', label: 'Logs', icon: 'carbon:catalog' },
-  { name: 'settings', label: 'Settings', icon: 'carbon:settings-adjust' },
-] as const satisfies readonly { readonly name: string; readonly label: string; readonly icon: IconName }[];
+  { name: 'overview', label: 'Overview' },
+  { name: 'checks', label: 'Checks' },
+  { name: 'containers', label: 'Containers' },
+  { name: 'sessions', label: 'Sessions' },
+  { name: 'logs', label: 'Logs' },
+  { name: 'settings', label: 'Settings' },
+] as const satisfies readonly { readonly name: string; readonly label: string }[];
 
 export type TabName = (typeof TABS)[number]['name'];
 
@@ -65,4 +64,4 @@ export function tabIds(name: TabName): { tab: string; panel: string } {
   return sharedIds('device', name);
 }
 
-export const TAB_ITEMS: readonly TabSpec[] = TABS.map(({ name, label, icon }) => ({ id: name, label, icon }));
+export const TAB_ITEMS: readonly TabSpec[] = TABS.map(({ name, label }) => ({ id: name, label }));
