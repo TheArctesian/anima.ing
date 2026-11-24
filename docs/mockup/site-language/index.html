@@ -439,12 +439,15 @@ a.row:hover .go, .row.link:hover .go { color:var(--accent); transform:translateX
 /* ---------- Detail bar (every detail page: devices, sessions, projects, runs) ---------- */
 .detail-bar { position:sticky; top:0; z-index:6; margin:-12px -48px 0; padding:12px 48px 0; background:var(--surface-sunken); border-bottom:1px solid var(--border-subtle); }
 .detail-bar .tabs { margin-top:12px; border-bottom:0; }
-.tb { display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap; min-height:var(--control-md); }
+.tb { display:flex; align-items:end; gap:10px 16px; flex-wrap:wrap; min-height:var(--control-md); }
 .crumb { display:flex; align-items:center; gap:10px; min-width:0; }
 .crumb a { color:var(--text-tertiary); }
 .crumb a:hover { color:var(--text); }
 .crumb .slash { color:var(--text-quiet); }
 .crumb > iconify-icon { color:var(--accent); font-size:18px; }
+.tb .identity { display:grid; flex:1 1 14rem; gap:var(--space-1); }
+.tb .device-name, .tb .device-meta { display:flex; align-items:center; gap:var(--space-2); }
+.tb .device-name h1 { margin:0; font-size:1.5rem; font-weight:var(--weight-medium); }
 .crumb h1 { font-size:var(--text-xl); font-weight:var(--weight-medium); letter-spacing:-.01em; }
 .quiet-mono { color:var(--text-tertiary); }
 .tb-actions { margin-left:auto; display:flex; align-items:center; gap:6px; }
@@ -1005,14 +1008,17 @@ p.dl-group { margin-top:18px; }
     </section>
 
     <!-- ======================= Device ======================= -->
+    <!-- Current Overview layout: ../device-overview-v2/overview-redesign.html. -->
     <!-- Content follows the current device page (pop-os, 2026-11-13); only the drawing is new. -->
     <section class="screen frame" id="screen-device" hidden>
-      <!-- The detail bar: who it is, its state and the ways in on one line; it stays pinned with the tabs, and the reason folds away once the page scrolls. -->
+      <!-- The detail bar: a back link above the name and status, with the ways in grouped beside it; it stays pinned with the tabs, and the reason folds away once the page scrolls. -->
       <header class="detail-bar resolve" id="detail-bar">
         <div class="tb">
-          <nav class="crumb" aria-label="Breadcrumb"><a href="#devices">Devices</a><span class="slash">/</span><iconify-icon icon="simple-icons:popos" title="Pop!_OS"></iconify-icon><h1>pop-os</h1></nav>
-          <span class="status s-warning" title="The TLS certificate of the Grafana web interface expires in 9 days."><span class="dot"></span>Warning</span>
-          <span class="mono quiet-mono">100.64.0.3</span>
+          <div class="identity">
+            <nav class="crumb" aria-label="Breadcrumb"><a href="#devices"><iconify-icon icon="carbon:chevron-left"></iconify-icon>Devices</a></nav>
+            <div class="device-name"><iconify-icon icon="simple-icons:popos" title="Pop!_OS"></iconify-icon><h1>pop-os</h1></div>
+            <div class="device-meta"><span class="status s-warning" title="The TLS certificate of the Grafana web interface expires in 9 days."><span class="dot"></span>Warning</span><span class="mono quiet-mono">100.64.0.3</span></div>
+          </div>
           <div class="tb-actions">
             <span class="split-btn" style="position:relative"><button class="btn primary"><iconify-icon icon="carbon:terminal"></iconify-icon>SSH</button><button class="btn primary chev" aria-label="Other ways to connect" data-menu aria-haspopup="menu" aria-expanded="false"><iconify-icon icon="carbon:chevron-down"></iconify-icon></button>
               <div class="menu material-overlay" role="menu"><button role="menuitem"><iconify-icon icon="carbon:terminal"></iconify-icon>SSH<span class="kbd">22</span></button><button role="menuitem"><iconify-icon icon="carbon:screen"></iconify-icon>VNC<span class="kbd">5900</span></button><hr><button role="menuitem"><iconify-icon icon="carbon:add"></iconify-icon>Set up RDP</button></div></span>
@@ -1024,11 +1030,11 @@ p.dl-group { margin-top:18px; }
           <p class="tb-reason"><span class="s-warning"><iconify-icon icon="carbon:warning-alt"></iconify-icon></span><span><span class="t">The TLS certificate of the Grafana web interface expires in 9 days.</span> Every check passes.</span><a href="#device" class="inline-link">Review<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></p>
         </div></div>
         <nav class="tabs" role="tablist">
-        <a role="tab" data-pane="overview" href="#device"><iconify-icon icon="carbon:dashboard"></iconify-icon>Overview</a>
-        <a role="tab" href="#device"><iconify-icon icon="carbon:activity"></iconify-icon>Checks</a>
-        <a role="tab" href="#device"><iconify-icon icon="carbon:recently-viewed"></iconify-icon>Sessions</a>
-        <a role="tab" href="#device"><iconify-icon icon="carbon:catalog"></iconify-icon>Logs</a>
-        <a role="tab" data-pane="settings" href="#device/settings"><iconify-icon icon="carbon:settings-adjust"></iconify-icon>Settings</a>
+        <a role="tab" data-pane="overview" href="#device">Overview</a>
+        <a role="tab" href="#device">Checks</a>
+        <a role="tab" href="#device">Sessions</a>
+        <a role="tab" href="#device">Logs</a>
+        <a role="tab" data-pane="settings" href="#device/settings">Settings</a>
       </nav>
       </header>
 

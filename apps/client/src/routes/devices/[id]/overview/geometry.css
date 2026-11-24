@@ -11,13 +11,13 @@
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 5)), 1fr));
-  gap: var(--space-4);
+  gap: var(--space-8) var(--space-5);
 }
 
-/*
- * The Overview in two columns from a panel of 56rem: the main column, and a column of fixed width for the cards
- * "Connect" and "About". The widths are fixed, so a card that arrives moves nothing (R-224, MOT-007).
- */
+.chart-grid > :only-child {
+  grid-column: 1 / -1;
+}
+
 .overview-fit {
   container-type: inline-size;
   min-inline-size: 0;
@@ -28,18 +28,14 @@
 .overview-side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
   min-inline-size: 0;
 }
 
-.overview-columns {
-  flex-direction: column-reverse;
-}
-
-@container (min-inline-size: 56rem) {
-  .overview-columns {
+@container (min-inline-size: 42rem) {
+  .overview-side {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) calc(var(--space-16) * 4.5);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
     align-items: start;
   }
 }
@@ -52,10 +48,9 @@
   gap: var(--space-3);
   min-inline-size: 0;
   margin: 0;
-  padding: var(--space-4);
-  /* A card steps from the page by its surface, with no border: the strong border is for inputs (R-221, R-224). */
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
+  padding-block: var(--space-4) var(--space-5);
+  border-block-start: var(--border-thin) solid var(--border-subtle);
+  background: transparent;
 }
 
 /* A card's heading: an icon and the words, on one line of fixed block size, so a font swap moves nothing (MOT-007). */
@@ -66,12 +61,14 @@
   min-block-size: calc(var(--text-lg) * var(--leading-normal));
   margin: 0;
   color: var(--text);
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
   font-weight: var(--weight-medium);
   line-height: var(--leading-normal);
 }
 
 .overview-card-title > .icon {
+  inline-size: 1em;
+  block-size: 1em;
   color: var(--text-secondary);
 }
 
@@ -88,7 +85,7 @@
 .overview-facts {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
+  column-gap: var(--space-5);
 }
 
 @container (min-inline-size: 34rem) {
@@ -100,72 +97,14 @@
 /* All four in one row from 56rem, so the facts are one strip at a 1280 px window and the metrics start higher (R-224). */
 @container (min-inline-size: 56rem) {
   .overview-facts {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.9fr) minmax(0, 0.8fr) minmax(0, 1.8fr);
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1.8fr);
   }
 }
 
-/* Without the host key card, which then stands beside the Overview: three facts in one row from 36rem (R-224). */
-@container (min-inline-size: 36rem) {
+/* The three health sections fit side by side on tablets when the host key sits with Connect (R-224). */
+@container (min-inline-size: 32rem) {
   .overview-facts.three {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr) minmax(0, 0.8fr);
-  }
-
-  .overview-facts.three .overview-figures {
-    flex-wrap: nowrap;
-    gap: var(--space-4);
-  }
-
-  .overview-facts.three .overview-figure dd {
-    font-size: var(--text-lg);
-    white-space: nowrap;
-  }
-}
-
-/* A stat figure: the big number over its small label; a row of them reserves its height when it holds only a sentence (MOT-007). */
-.overview-figures {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4) var(--space-6);
-  min-block-size: calc(var(--text-2xl) * var(--leading-tight) + var(--space-1) + var(--text-sm) * var(--leading-normal));
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.overview-figure {
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: start;
-  gap: var(--space-1);
-  margin: 0;
-}
-
-.overview-figure dt {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: var(--leading-normal);
-}
-
-.overview-figure dd {
-  margin: 0;
-  color: var(--text);
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--tracking-display);
-  line-height: var(--leading-tight);
-}
-
-/* In the one-row strip the figures are one size down and closer, so the three uptimes stay on one line (R-224). */
-@container (min-inline-size: 56rem) {
-  .overview-facts .overview-figures {
-    flex-wrap: nowrap;
-    gap: var(--space-4);
-  }
-
-  .overview-facts .overview-figure dd {
-    font-size: var(--text-lg);
-    white-space: nowrap;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
