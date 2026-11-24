@@ -77,6 +77,11 @@ export interface PlaceGroup {
 /** The colour of the status of a machine, beside its word (MAT-005). */
 export const MACHINE_TONES: Readonly<Record<Machine['state'], Tone>> = { UP: 'up', DOWN: 'down', DEGRADED: 'warning', MAINTENANCE: 'warning', UNKNOWN: 'unknown' };
 
+/** HSE-022: each machine with the images that it runs, for the Catalogue to say where a program runs. */
+export function machineImages(places: readonly Place[]): readonly { readonly id: string; readonly name: string; readonly images: readonly string[] }[] {
+  return places.map((place) => ({ id: place.id, name: place.name, images: place.containers.map((container) => container.image) }));
+}
+
 /** HSE-002: the rows of each machine, the machines by name, narrowed by the field, the machine and the choice. */
 export function placeGroups(places: readonly Place[], narrowing: Narrowing): readonly PlaceGroup[] {
   const words = narrowing.search.trim().toLowerCase();

@@ -5732,3 +5732,25 @@ of its name. The tests check which mark each name and image gets; nobody has see
    shield of Vaultwarden), or its first letter.
 
 Result: Open.
+
+## HT-NEW-cataloguepicker: The Catalogue as rows and its picker (task H55; HSE-022)
+
+Built on the branch `hosted/h55-catalogue-list`: the entries of Hosting > Catalogue are rows as the models of the
+Library, and Install from the catalogue on an empty machine opens the same list in a dialog with that machine chosen.
+The tests use a fake hub in a test page; nobody has seen the rows or the dialog in the application, or used them with
+the keyboard.
+
+1. In the desktop application of this build, signed in to a hub with a machine that runs a program of the catalogue
+   (for example Vaultwarden or Immich), open Hosting > Catalogue.
+   Expected: the entries are rows in groups by category, each with the mark of the program, its name, its tier, its
+   description, and its version and parts; the row of the program that runs ends with "Runs on" and the machine.
+2. Press in the search field, type a part of a name, and press the down arrow, then the down arrow again.
+   Expected: the first matching row is selected, then the next one; its description opens on the right.
+3. Open Hosting > Applications, find a machine with no application, and press Install from the catalogue.
+   Expected: a dialog "Install on" the name of that machine opens, with Machine set to it and the same rows.
+   The button of a selected entry says "Install on" and the machine, and is off with its reason.
+4. Choose a different machine in Machine, then close the dialog with Escape.
+   Expected: the title and the button name the new machine; Escape closes the dialog and the focus goes back to the
+   button that opened it.
+
+Result: Open.

@@ -16,7 +16,8 @@
    * for each machine, read only. Until the hub keeps the record of the installs (task H6), an application is a Compose
    * project that the hub reads on the machine, and each row is Not managed.
    */
-  const { store }: { store: HostingStore } = $props();
+  /** `oninstall` opens the picker of the Catalogue with a machine chosen (HSE-022); without it, the link opens the Catalogue. */
+  const { store, oninstall }: { store: HostingStore; oninstall?: (machineId: string) => void } = $props();
 
   const groups = $derived(placeGroups(store.places, { search: store.search, machine: store.machine, show: store.show, view: store.view }));
   const all = $derived(placeGroups(store.places, { search: '', machine: '', show: 'all', view: store.view }).flatMap((group) => group.rows));
@@ -77,7 +78,8 @@
             {#if group.empty}· Nothing installed{:else if group.status === 'ready'}· {count(group.rows.length, 'item')}{/if}
             <span class="summary state {group.tone}"><span class="dot" aria-hidden="true"></span>{group.state}</span>
             {#if group.status === 'ready' && !group.empty}<span class="summary">{group.summary}</span>{/if}
-            {#if group.empty}<a class="summary to" href={resolve('/hosting/catalogue')}>Install from the catalogue</a>{/if}
+            {#if group.empty && oninstall !== undefined}<button type="button" class="summary to" onclick={() => { oninstall(group.id); }}>Install from the catalogue</button>
+            {:else if group.empty}<a class="summary to" href={resolve('/hosting/catalogue')}>Install from the catalogue</a>{/if}
             {#if group.status === 'loading'}<span class="summary">Reading…</span>{/if}
             {#if group.status === 'failed'}<span class="summary problem">{group.problem}</span>{/if}
           </th>
@@ -213,7 +215,12 @@
   }
 
   .to {
+    padding: 0;
+    border: 0;
+    background: none;
     color: var(--accent);
+    font: inherit;
+    cursor: pointer;
   }
 
   /* A row that needs the operator has the wash of its status, as in Routes (HSE-002). */
