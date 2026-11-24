@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Approved
-evidence: Approved: R-163 (operator, 2026-11-18) approves HMD-001 to HMD-036, and each of HMD-037 to HMD-041 and HMD-043 to HMD-050 has its ruling; approved does not mean built. The move of this document to `docs/plans/` (PLN-018, stage 3) is not done yet: it changes the links in 15 code files and in `contracts/schema.graphql`, so it needs the full gates and a commit of its own. Direction decided before (HM-R1 to HM-R9, operator, 2026-11-16). R-127 names task HM-T1 (the first-run screens of Sign in, with a stand-in cloud). R-128 approves HMD-037 (the first run is only the sign-in). R-129 makes the account the only way into a hosted hub and approves HMD-038 to HMD-041; HM-T2 to HM-T4 build the hub and client side. R-130 approves HMD-043 (the real cloud client in the shell, HM-T6) and HM-T7 (the hosted mode on a pool hub). HM-T1 to HM-T3, HM-T6 and HM-T7 are built and merged to main (operator, 2026-11-17: "Yes, merge it"); HM-T4 is built in the private repositories. HT-022, the first real sign-in, is Passed (operator, 2026-11-17), so HM-T1 to HM-T7 are Done. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). R-159 decides HM-D4 (a second factor is required before the first device with remote access) and HM-D7 (no review by a person from outside); R-163 approves HMD-001 to HMD-036 with the text of the revision (Section 6.7 gives what is built: 15 Built, 5 Changed, 16 Not built) and decides HM-D14. HMD-051 is proposed. R-164 decides HM-D15 (a free hub sleeps after 15 minutes with no connected device and is deleted after 60 days with no sign-in). Open: HM-D2, HM-D8, HM-D11 and HM-D13.
+evidence: Approved: R-163 (operator, 2026-11-18) approves HMD-001 to HMD-036, and each of HMD-037 to HMD-041 and HMD-043 to HMD-050 has its ruling; approved does not mean built. The move of this document to `docs/plans/` (PLN-018, stage 3) is not done yet: it changes the links in 15 code files and in `contracts/schema.graphql`, so it needs the full gates and a commit of its own. Direction decided before (HM-R1 to HM-R9, operator, 2026-11-16). R-127 names task HM-T1 (the first-run screens of Sign in, with a stand-in cloud). R-128 approves HMD-037 (the first run is only the sign-in). R-129 makes the account the only way into a hosted hub and approves HMD-038 to HMD-041; HM-T2 to HM-T4 build the hub and client side. R-130 approves HMD-043 (the real cloud client in the shell, HM-T6) and HM-T7 (the hosted mode on a pool hub). HM-T1 to HM-T3, HM-T6 and HM-T7 are built and merged to main (operator, 2026-11-17: "Yes, merge it"); HM-T4 is built in the private repositories. HT-022, the first real sign-in, is Passed (operator, 2026-11-17), so HM-T1 to HM-T7 are Done. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). R-159 decides HM-D4 (a second factor is required before the first device with remote access) and HM-D7 (no review by a person from outside); R-163 approves HMD-001 to HMD-036 with the text of the revision (Section 6.7 gives what is built: 15 Built, 5 Changed, 16 Not built) and decides HM-D14. HMD-051 is proposed. R-164 decides HM-D15 (a free hub sleeps after 15 minutes with no connected device and is deleted after 60 days with no sign-in). Open: HM-D2, HM-D8, HM-D11 and HM-D13. HMD-075 to HMD-087 (Section 6.13, the relay of a hosted hub, 2026-11-24) are proposed and not approved; HM-D21 to HM-D28 are open; tasks HM-T43 to HM-T54 are not started.
 ---
 
 # Proposal: the hosted mode as the default first run
@@ -14,6 +14,7 @@ Version: 8. Date: 2026-11-19. Version 2 added HM-R6 (a free hub sleeps) and the 
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
+Version 16 (2026-11-24) adds Section 6.13 (the relay of a hosted hub: HMD-075 to HMD-087, proposed), the open decisions HM-D21 to HM-D28 and tasks HM-T43 to HM-T54 (Section 8.3). The request was relayed by another agent; no ruling is recorded.
 Version 15 (2026-11-23) amends HM-T33 for an explicit Linux lingering offer (R-447). The earlier installer is merged; real logout and reboot checks remain open.
 Version 14 (2026-11-21) adds Section 8.1, the design of task HM-T33 (the one-line installation of a computer with no application), with four choices made overnight.
 Version 13 (2026-11-20) records R-304: HMD-073 is approved in form B (the page asks the account, the hub is told nothing), and task HM-T39 builds the half of the client.
@@ -27,7 +28,7 @@ Version 8 clarifies HMD-022: with no chosen hub, the desktop app opens the accou
 Version 6 adds Section 6.7 (the revision of HMD-001 to HMD-036 for approval), R-159 and the open decisions HM-D14 and HM-D15.
 Version 5 adds the task table of Section 8, task HM-T1 (R-127), HMD-037 (R-128), HMD-038 to HMD-041 with tasks HM-T2 to HM-T4 (R-129), and HMD-043 with tasks HM-T6 and HM-T7 (R-130).
 Status: the header of this document holds the state (PLN-020). History: Draft. The direction is decided by the operator (Section 2). The requirements
-HMD-001 to HMD-041 and HMD-043 to HMD-050 are approved (Section 6; R-163 for HMD-001 to HMD-036; no requirement has the number HMD-042); HMD-052 to HMD-072 and HMD-074 are approved (R-266); HMD-073 is approved in form B (R-304); HMD-051 is proposed.
+HMD-001 to HMD-041 and HMD-043 to HMD-050 are approved (Section 6; R-163 for HMD-001 to HMD-036; no requirement has the number HMD-042); HMD-052 to HMD-072 and HMD-074 are approved (R-266); HMD-073 is approved in form B (R-304); HMD-051 is proposed; HMD-075 to HMD-087 (Section 6.13) are proposed.
 Map: [work-plan.md](../work-plan.md). Parent plans: [one-click-plan.md](../plans/one-click/one-click-plan.md)
 Section 1.3 (the hosted mode) and item S6 (first run), and [other-operators.md](other-operators.md)
 (OD-W2). This proposal serves row 4.17 of [priorities.md](../plan/priorities.md): tier 1
@@ -423,6 +424,171 @@ The one question for him: "HMD-073 in form A, as you selected (the hub is told),
 
 Answered on 2026-11-20 (R-304): "The page asks the account (Recommended)", form B. HMD-073 in Section 6.11 has the approved text.
 
+### 6.13 The relay of a hosted hub (proposed, not approved; 2026-11-24)
+
+State: proposed. No requirement of this section is approved, and nothing of it is built. The
+request came to the planner through another agent on 2026-11-24 (relayed, not first-hand), so
+no ruling is recorded (PLN-021). The open decisions are HM-D21 to HM-D28 (Section 7). The
+tasks are HM-T43 to HM-T54 (Section 8, Section 8.3). The mockup is
+[hosted-relay/index.html](../mockup/hosted-relay/index.html).
+
+**Purpose.** A hosted hub must reach its devices through a relay that Anima.ing runs, not
+through the shared public relays of the default relay map. The link already lets an operator
+set a relay of their own (LNK-007). This section applies that capability to each hosted hub:
+the pool service gives the relay, the hub moves to it with no device that drops off, and the
+person can see which relay their hub uses.
+
+#### 6.13.1 What the code does today (read on 2026-11-24)
+
+Read at `dev` `20db884f7` of this repository, and at the `main` of the private pool service on
+the same day. Each line names its file.
+
+| Fact | Evidence |
+| --- | --- |
+| `anima-link hub -relay HOST[:PORT]` saves an operator-run relay before the first start. The port is 443 when it is not given. The relay is one host name in region 900. | `link/cmd/anima-link/hub.go` (`chooseRelay`), `link/tunnel/relay.go` (`OwnRelay`) |
+| `-relay` is for the first start only. When the hub has a saved relay and `-relay` names another one, the link does not start (`errRelayIsSet`). `-replace-relay` takes the new relay by force, and the devices cannot follow. | `link/cmd/anima-link/hub.go` |
+| With no `-relay`, the first start takes the nearest region of the default relay map and saves it, so the address stays the same (LNK-001). The default map is Tailcat's `DefaultDERPMapURL`, `https://tailcat.dev/derpmap.json`, which names shared public relays. | `link/cmd/anima-link/hub.go` (`startHubLink`), `link/hublink/hublink.go` (`RelayMapURL`), `link/tunnel/hub.go`; Tailcat `tailcat.go` at the pinned commit `e00cdde6` |
+| `relay.announce` saves the next relay and offers the next address on the notice port. `relay.switch` makes it the relay and stops the link. A device reads the notice each 5 minutes. After 3 failed pings it tries the announced address, and it moves only when the hub answers there. | `link/cmd/anima-link/relayverbs.go`, `link/hublink/notice.go`, `link/devicelink/relaychange.go`, `docs/procedures/setup/link.md` Section 6 |
+| A device that was not connected while the hub announced does not know the new address. It needs a new invite or a DNS name (`-hub-name`). A DNS name shows the address, which holds the pre-shared key. | `link/devicelink/relaychange.go`, `docs/procedures/setup/link.md` Section 6 |
+| At each start the hub sends a message to itself through its relay. A relay that refuses the hub is an error at start (`ErrRelay`). | `link/tunnel/hub.go` (`checkRelay`) |
+| `anima-local-hub` starts `anima-link hub -state DIR -target SOCKET` with no `-relay`, and has no option for a relay. | `crates/anima-local-hub/src/members.rs` (`link`, `Pool`) |
+| The relay verbs are only on the control socket of the link. The hub API, the command line, the MCP server and the client do not show the hub's own relay. They show only the relay of each relayed device (`LinkDevice.relay`). | `crates/hub/src/fleet/link/graphql.rs`, `contracts/schema.graphql` |
+| The private pool service passes no relay to a hub: neither its unit of the hub image nor its launch of a hub names one, and it holds no configuration of a relay server. Its image build script only builds the programs; a relay option belongs in the unit and the launch, not in the build. | Read on 2026-11-24 in the private repository |
+| Which relay each hub on the first pool host uses now. | **Not verified.** No session read the state of a live hub. Task T40 of the pool service checks it. |
+
+#### 6.13.2 Reviews
+
+**Scope.** In: hosted hubs only; the relay option of `anima-local-hub`; a relay of two or more
+nodes; the move of a hub that exists; the relay row in the client; the read of the relay in
+the hub API, the command line and MCP (CMD-030); the log of the relay as a product
+requirement; the steps for a self-hosted operator. Out: the free hub in the application, which
+keeps the shared relays (HM-D21 decides the free hosted hub); Headscale and the VPN (VPN-*);
+a relay map of our own (Section 6.13.4 explains why a list of nodes is enough); the deployment
+of the relay servers, which the private pool service plans.
+
+**Trust boundary.** Tailcat carries WireGuard tunnels. The traffic between a device and its
+hub is encrypted end to end, with a pre-shared key added (Tailcat `README.md`; LNK-001). A
+relay forwards packets by the public key of their destination and cannot read them. A relay
+sees metadata: the node public key of the hub and of each device, the IP address and port of
+each, the time of each connection, and the number and size of packets. An Anima.ing relay
+thus moves this metadata from a third party to Anima.ing. The relay never gets the hub address
+text, the pre-shared key or an invite. A relay that is broken into can drop or delay traffic,
+and can log metadata; it cannot open a session (LNK-002 still applies on the hub). A relay
+admits each client that connects unless it checks keys. [NEEDS CLARIFICATION: does the relay
+admit only keys that the pool knows, through `derper -verify-client-url`? The spike showed
+that a relay that refuses gives the hub no error (spike-link.md Section 5), and the device keys
+are on the hubs, not in the pool service. The review of HM-T44 decides it.]
+
+**Failure modes.**
+
+| Case | What occurs | Answer in this plan |
+| --- | --- | --- |
+| A relay node is down | Relayed devices lose the hub. A device on a direct path keeps its tunnel. A new connection needs the relay for its first packets. | Two nodes in one relay (HMD-077, HM-D22). A node has a DNS name, so a new server takes its place with no address change (HMD-078). Monitoring (HMD-085). |
+| The relay is down when a hub starts | The start check fails (`ErrRelay`) and the link does not start. `anima-local-hub` starts the link again. | No change. The hub row shows the link as down. |
+| The move stops between announce and switch | The next relay is saved (`NextRelay`) and is announced again at the next start. | The hub ends the move by itself (HMD-079, HMD-080). |
+| The new relay does not work after the switch | The link cannot start, and no verb can run. No device moved, because a device moves only when the hub answers at the new address. | The hub goes back to its previous relay by itself (HMD-081). |
+| A device was off during the whole move | It knows only the old address. A new invite through the account gives nothing when the device is on the link already. | The account gives a signed-in device the current address (HMD-082). |
+| The region of the relay is out | All relayed devices of the hubs in that region lose the hub. The hubs in that region are probably out too. | HM-D23: a second node in another location of the same provider. |
+| A hub sends a flood | The relay is shared by the hubs of one pool host. One hub can slow the others. | A limit for each client on the relay (HMD-085). [NEEDS CLARIFICATION: the flags of `derper` for a limit for each client are not verified at the pinned version; HM-T44 reads them.] |
+
+**Capacity.** Only relayed traffic goes through the relay; a direct path does not. The spike
+measured about 4 to 9 Mbit/s at 40 ms and under 1 Mbit/s at 160 ms on a relayed path
+(spike-link.md Section 8, item 9). The capacity of a
+node is not measured. [NEEDS CLARIFICATION: the load test of the pool (shared-pool-hosting.md)
+must add relayed traffic for each hub; task T41 of the pool service sets the size of a node.]
+
+**Monitoring.** An HTTPS check of each node from outside the pool, the expiry of its
+certificate, and the number of connections and bytes for each second of each node (HMD-085).
+The hub reports its own relay and an event at each relay change (HMD-079, HMD-083).
+
+**Blast radius on shared contracts.** The link contract (LNK-007) changes in two places: a
+relay can have more than one node, and a start with a different relay moves the hub in place of
+an error. The application and a self-hosted hub keep today's behaviour when they give no
+relay. The hub API gets one new read (`linkRelay`), and no write: a person cannot change the
+relay of a hosted hub. The access answer of the account gets one new field for the address
+(HMD-082). Each change of a contract needs a ruling (CON-001); task HM-T43 writes the texts.
+
+#### 6.13.3 Proposed requirements
+
+- **HMD-075.** A hosted hub must use a relay that Anima.ing runs. After the pool service gives
+  a hosted hub its relay, the hub must not use a relay of the default relay map and must not
+  fetch that map. The free hub in the application keeps the shared relays. [NEEDS
+  CLARIFICATION: HM-D21, the free hosted hub.] Proposed.
+- **HMD-076.** `anima-local-hub run` must take the option `--link-relay RELAY` and pass it to
+  `anima-link hub` as `-relay`. RELAY is one or more `HOST[:PORT]`, with a comma between them.
+  The pool service gives the option at the launch of each hosted hub, as it gives the origin
+  (HMD-069). With no option, the hub and the link do as they do today. Proposed.
+- **HMD-077.** A relay must be able to have two or more nodes in one region (Tailcat accepts a
+  list of host names). `-relay` and `relay.announce` must take the list. Two relays are the same
+  relay only when their lists of nodes are the same. A device must try the next node when one
+  node does not answer, with no change of the hub address. [NEEDS CLARIFICATION: HM-D22, one
+  node or two.] Proposed.
+- **HMD-078.** Each node of the relay of a hosted hub must have a DNS name and a TLS certificate
+  for that name. The address of a hub must hold the name, not an IP address, so that a node can
+  move to a new server with no change of the hub address. Proposed.
+- **HMD-079.** When the relay that the link is given is not the relay that it saved, the link
+  must not stop with an error. It must start on its saved relay, announce the given relay
+  (`relay.announce`), and switch at the end of the move (HMD-080). The hub must write one event
+  when a move starts, one when it ends and one when it goes back (HMD-081). `-replace-relay`
+  stays the way to take a relay by force. Proposed.
+- **HMD-080.** The hub must record which permitted devices read the notice of the next address.
+  It must switch when each device that connected in the last 30 days has read it, or at the end
+  of the announce period, whichever comes first. The announce period is 7 days. [NEEDS
+  CLARIFICATION: HM-D25 sets the period and who starts a move.] Proposed.
+- **HMD-081.** After a switch, if the link cannot start on the new relay three times in 10
+  minutes, the hub must go back to the relay of before and write an event. The link must keep
+  the relay of before until a device answers on the new relay. Proposed.
+- **HMD-082.** The account must be able to give a signed-in device of a hosted hub the current
+  address of its hub, also when the device is on the link already. The device link must take
+  that address only when it is the same hub (the same key, `SameHub`), as it takes an announced
+  address. A device that missed a move then needs no new invite. The address must not be in a
+  log (LNK-008). Proposed.
+- **HMD-083.** The hub must report its own relay: its name, the names of its nodes, whether it
+  is the operator's relay or a shared relay, the next relay during a move and when the move
+  started. The order is CMD-030: the GraphQL read `linkRelay` in the hub API, then the command
+  `anima link relay`, then the MCP read `link_relay`, then a row in the client. On a hosted hub
+  the row is read-only. Proposed.
+- **HMD-084.** The relay of a hosted hub must keep a log of connection events only: the time,
+  the node public key, the client IP address and port, the bytes and the reason of the end. It
+  must keep the log for 30 days and then delete it. It must not log a packet. The log is on the
+  retention list of the pool service. [NEEDS CLARIFICATION: HM-D24, the period and the
+  fields.] Proposed.
+- **HMD-085.** Each node of the relay must have a limit of connections and of bytes for each
+  client, set by the operator of the relay, and must be monitored from outside the pool: an
+  HTTPS check, the expiry of the certificate, and the connections and bytes of each node. A node
+  that is down must send a notification to the operator. Proposed.
+- **HMD-086.** The operator of a self-hosted hub must be able to run their own relay. The setup
+  procedure of the link (`docs/procedures/setup/link.md`) must give the steps: `derper` with a
+  DNS name and a certificate, its STUN port, `-relay` of the link and `--link-relay` of
+  `anima-local-hub`. [NEEDS CLARIFICATION: HM-D26.] Proposed.
+- **HMD-087.** The client must show on the relay row which kind of relay the hub uses: the
+  Anima.ing relay, the operator's own relay, or a shared public relay. For a shared public
+  relay it must say in one sentence that a public relay that Anima.ing does not run carries the
+  relayed traffic, encrypted. Proposed.
+
+#### 6.13.4 Why a list of nodes and not a relay map of our own
+
+The hub address holds its relay region (LNK-001). Tailcat can also take a map from a URL of our
+own (`DERPMapURL`). A map gives a choice of regions at the first start only; after that the
+address names one region. A map also adds one more server that each hub and device must reach.
+A list of nodes in the one region of the address gives the same redundancy with no new
+server. Thus HMD-077 uses a list, and the default map stays only for the free hub.
+
+#### 6.13.5 The relay row (HMD-083, HMD-087)
+
+The mockup is [hosted-relay/index.html](../mockup/hosted-relay/index.html). In short:
+
+```text
+Hub . Link
++----------------+-----------------------------------------------+-----------+
+| Relay          | Anima.ing relay                               | (*) Up    |
+|                | Set by Anima.ing for this hosted hub.         |           |
+| Nodes          | relay-a.example.net:443, relay-b.example.net  | 2 of 2    |
+| Devices        | 3 direct, 1 relayed                           |           |
++----------------+-----------------------------------------------+-----------+
+During a move:  Relay  "Moving to the Anima.ing relay"  3 of 4 devices told
+```
+
 ## 7. Open decisions
 
 | ID | Decision | Facts | Proposal |
@@ -447,6 +613,14 @@ Answered on 2026-11-20 (R-304): "The page asks the account (Recommended)", form 
 | HM-D18 | What R-206 left open for the daemon of a computer: (a) while the application is closed; (b) a question before the installation; (c) a computer with no application; (d) the SSH pull. | R-206 decides that the application includes the daemon. The link of the application stopped with the application. | Decided (R-240, operator, 2026-11-19; relayed): (a) the link runs as a background unit of the user too, so the daemon reports while the person is logged in and the application is closed (HMD-058, task HM-T24), and this comes before the daemon ships; (b) no question: the installation at the sign-in, one sentence at the first run, a switch in Settings; (c) a one-line installation for a server, later (task HM-T33); (d) the SSH pull stays as a fallback, with no change. |
 | HM-D19 | What does "usage" of the hub mean on the row `Hub`? | His words: "and the hub that should have metrics (and usage maybe more importantly as well)". Section 6.11 lists four meanings and where each figure is. No meaning of an amount to pay is assumed here. | Decided (R-267, operator, 2026-11-20; relayed). He selected three of the four meanings: "Use against plan limits", "What the hub keeps", and "Hours and amount on the hub's page". Not selected: a copy of the use of the AI agent programs on the page of the hub; the page links to Agent usage. The third is against the recommendation of this row: the card said "The hub must be told billing figures". Thus HMD-073 is written again: the row and the page show memory and processor against the limits of the hub and the size of the data against the limit of the plan; the page also shows what the hub keeps (devices, checks, days of history) and the hours awake and asleep with the amount of the month. How those figures reach the page with the least exposure, and whether the page can take them from the account with no figure in the hub, is asked of the sessions of the pool and of the site; the new text comes back to him. HMD-072 ("no total and no percentage" for the disk) changes with it if the limit of the plan is shown. |
 | HM-D20 | Which address does the web client of a hosted hub give for the download of the application, and are the words of its two new texts right? | HMD-066: the first page of a hub with no computer must offer the application. The web client has no address of a download page today. Built with no link (task HM-T27): the empty list says "Install the Anima.ing application on a computer and sign in there. The computer then shows here." The sign-in page of a hosted hub in a browser says "Signed out", "Signing in" or "Sign in again", with one button. | A link to the download page of the account site, when the operator names its address; the words as built until he changes them. |
+| HM-D21 | Does the free hosted hub also use the Anima.ing relay (HMD-075)? | The free hub in the application stays on the shared relays (Section 6.13.2). A free hosted hub runs the same image as a paid one. Two kinds of hosted hub need two launch paths and two texts on the relay row. A free hub sleeps, so its relayed traffic is small. [NEEDS CLARIFICATION] | Yes: each hosted hub uses the Anima.ing relay; only the free hub in the application keeps the shared relays. Open. |
+| HM-D22 | Does the relay of a hosted hub have one node or two (HMD-077)? | The address holds the list of nodes. A node added later changes the address of each hub and needs a second move. Two nodes need the link change of HM-T45 before the first move. [NEEDS CLARIFICATION] | Two nodes from the start, so a hub moves only once. Open. |
+| HM-D23 | Where are the nodes of the relay? | A relayed path goes device, relay, hub. A relay beside the hubs adds the least delay. A node on the pool host itself goes down with the hubs, and its load takes resources from them. The region of the pool for customers is open (HM-D5). [NEEDS CLARIFICATION] | Each node on a small server of its own: the first at the same provider and location as the pool host, the second at the same provider in another location. Open. |
+| HM-D24 | How long does the relay keep its log, and what is in it (HMD-084)? | The relay can log only metadata. A short period limits what a log can show; a log that is too short cannot answer an abuse report. [NEEDS CLARIFICATION] | 30 days, connection events only: time, node key, client address, bytes, end reason. Open. |
+| HM-D25 | Does each hub move by itself, or does an operator move each hub (HMD-079, HMD-080)? | A move by an operator needs a command in each hub, which the pool service runs today only for fixed steps. A move by the hub needs only the launch option. The pool service can still give the option to one hub at a time. [NEEDS CLARIFICATION] | The hub moves by itself when the pool service gives it the relay; the service gives it first to a test hub, then to the operator's hub, then to the rest; 7 days of announce. Open. |
+| HM-D26 | Must a self-hosted operator be able to run their own relay, with written steps (HMD-086)? | The link already permits it (LNK-007); `docs/procedures/setup/link.md` gives the relay change, not the setup of a relay. [NEEDS CLARIFICATION] | Yes, and the setup procedure gives the steps. Open. |
+| HM-D27 | Does a device that missed a move get the current address from the account (HMD-082)? | With no answer, such a device needs a new invite, and the account gives none to a device that is on the link already. The answer adds one field to the access contract. [NEEDS CLARIFICATION] | Yes: the account gives a signed-in device the current address of its hub. Open. |
+| HM-D28 | Which ruling lets this work start? | Section 6.13 is proposed. The request came through another agent (relayed). A ruling must come from the operator first-hand (PLN-021). [NEEDS CLARIFICATION] | One ruling that approves HMD-075 to HMD-087 with the answers to HM-D21 to HM-D27, and tasks HM-T43 to HM-T54. Open. |
 
 ### 7.1 HM-D16: the daemon of a computer at a hosted hub (decided, R-206)
 
@@ -595,6 +769,18 @@ Tasks that a ruling names:
 | HM-T40 | The sign-in of the command line alone to a hosted hub (R-381, OD-25; K-E5 Section 3b SGN-NEW-hosted): the flow of a one-time code at the Anima.ing cloud behind the account sign-in (HMD-032), the page `anima.ing/device`, and, after the approval, a one-time claim from the hub of the account with the cloud key (`hostedCommandLineClaim`, as `hostedDeviceInvite`), given to the waiting command with the address of the hub. The token never passes through the cloud. The security review is E0-6 T9 of [extensions-plan.md](../plans/extensions-plan.md). | R-381 | In progress: browser approval, cloud claim route and private-link CLI redemption implemented in isolated worktrees; local tests pass, coordinated release and live WorkOS check pending. |
 | HM-T41 | Default-on remote access at machine setup (R-449, HMD-049): desktop detection, setup choices, persistent off controls, and regression checks. | R-449 | Access refinement merged into `dev` at `4beb1ca9c`; publication status correction merged at `9254a7020`. Settings cleanup is built on `settings/grouped-controls`, pending merge. R-448 adds compact capability rows and immediate per-protocol setup. Setup offers supported protocols on by default, skips desktop defaults without a desktop, keeps saved opt-outs, prepares SSH and supported sharing servers, verifies protocol replies and updates this computer on its hub. macOS Screen Sharing uses the required system setting; automatic Linux display installation supports Debian/Ubuntu with xrdp; automatic x11vnc installation is suspended because its application-level unixpw authentication cannot be established by the listener probe; Windows uses built-in RDP and an existing VNC server. The real-machine check is HT-182. The operator approved a Settings cleanup on 2026-11-23: remote access has its own persistent section under This computer, with a single prepare/verify/publish control path, preserved first-run choices, and accurate grouped navigation. The same review improves form save states, field-error association, responsive controls and plain-language status without changing access policy. |
 | HM-T42 | First installation on a VPS: install the CLI, browser account sign-in, and enrollment through the existing device-bound enrollment claims (Section 8.2). | Operator request, 2026-11-23 | In progress: verified bundle bootstrap, CLI-only mode and daemon enrollment implemented locally. Release artifacts and site endpoint are not published. Existing HM-T33 installer remains separate. |
+| HM-T43 | The texts of the contracts for the relay of a hosted hub (Section 6.13; CON-001): LNK-007 with a list of nodes and a move in place of an error, the read `linkRelay` in `contracts/schema.graphql`, and the address field of the access answer. Documents only. | Not named by a ruling (HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T44 | The review of the relay path (Section 6.13.2): what a relay sees, whether the relay admits only known keys, the limits for each client of `derper` at the pinned version, and a hub that floods. Findings go to [security-findings.md](../security-findings.md). | Not named by a ruling (HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T45 | The link: a relay of two or more nodes (HMD-077, HMD-078) in `-relay` and `relay.announce`, with the comparison of whole lists. | Not named by a ruling (HM-D22, HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T46 | The link: a start with a different relay moves the hub (HMD-079), the record of who read the notice and the end of the move (HMD-080), the way back (HMD-081), and the three events. | Not named by a ruling (HM-D25, HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T47 | `anima-local-hub run --link-relay` (HMD-076) and, on a hosted hub with a relay, no use of the default map (HMD-075). | Not named by a ruling (HM-D21, HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T48 | The hub API: the read `linkRelay` (HMD-083), from `relay.show` of the link with the nodes, the kind, the next relay and the start of a move. | Not named by a ruling (HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T49 | The command `anima link relay` (HMD-083, CMD-030). | Not named by a ruling (HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T50 | The MCP read `link_relay` (HMD-083, CMD-030). | Not named by a ruling (HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T51 | The relay row in the client (HMD-083, HMD-087) and the compare of the mockup [hosted-relay/index.html](../mockup/hosted-relay/index.html) (PLN-019). | Not named by a ruling (HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T52 | A device that missed a move (HMD-082): the hub gives its current address to the pool service, and the device link takes the address from the account answer. The half of the account site and of the pool service is in the private repositories. | Not named by a ruling (HM-D27, HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T53 | The steps for a self-hosted relay in `docs/procedures/setup/link.md` (HMD-086). | Not named by a ruling (HM-D26, HM-D28) | Not started. Proposed (Section 8.3). |
+| HM-T54 | The live check of a move on a hub of the pool with two real devices, one of them off during the move. It adds an entry `HT-nnn` to need-human-testing.md when HM-T46 and HM-T47 are built (PLN-014). | Not named by a ruling (HM-D28) | Not started. Proposed (Section 8.3). |
 | HM-T36 | The row `Hub` and its page show the three figures as HMD-073 says, and offer no protocol (HMD-046). The interface session owns the page Overview; the mockup of the row changes in the same commit (PLN-019). | Not named by a ruling | Built on the branch `hosted/hm-t36-hub-row`, not merged yet; check HT-091. The row `Hub` and its tile show the CPU as a share of the processors that the hub may use and the memory as used of the limit of its container ("0.8 of 2.0 GiB") in the places of the memory and the disk, and no disk (HMD-072); they offer no protocol and no set-up of screen sharing (HMD-046). The Overview of the hub shows the same two bars, no card Storage, and the card "What the hub keeps": the count of the devices, the count of the checks, and the days of history of the metrics and of the check results (the retention periods of HUB-005). K1 has no figure for three of them, so the client uses what exists: the limit of the memory is the bytes in use (the series `MEMORY_BYTES`, from the batches of the hub's own device on the list) over `memoryPercent`; the count of the processors that the hub may use is in no figure of K1, so the tooltip names the share only; the count of the checks is the sum of the checks of each device, read in pages of 200. Choices made overnight, not yet confirmed by the operator: the memory shows its percent until the first batch gives the bytes in use (at most 10 seconds); the days of history name the metrics and the check results only; the cards Storage and SSH host key are not drawn for the hub; the limit of the memory is rounded to the whole MiB; the CPU bar of the Overview has the note "of its processors". The mockups devices-v2 and device-overview-v2 (Frame 3) were changed and approved overnight by the orchestrator, human check pending. |
 | HM-T37 | The repair of the unit of the link while the application runs (HMD-058): something outside the application can remove the unit or end its link (a cleaning tool). The loss that was seen on 2026-11-20 had a cause in the repository: the test `a_failed_swap_runs_the_link_before_again_on_its_own_port` of the shell called the join of the shell with a folder of the test, the shell took each installed unit for the unit of its folder, and ran the real `anima-link unit remove` of the computer. Corrected in the same branch: a unit is the unit of the application only when its file names the folder of the link of this application, so a test, or a second copy of the application with a different folder, removes no unit of a different folder; each removal by the application writes a line with its reason to the log. When the link that the application watches does not answer for about 30 seconds and its folder is marked for a unit, the shell installs and starts the unit again, makes the copy of the link program again when it is gone, and writes one line to the log. At most three times for each run of the application. | Not named by a ruling: a correction of HM-T24 part b, asked by the orchestrating session on 2026-11-20 after the observation | Built on the branch `hosted/hm-t24e-link-repair` (tests with a stand-in link program: the count of the looks, the unit that is installed again, a folder with no mark, a program that refuses, a unit of a different folder). Not checked on a real computer: the check is a part of HT-059. Not built: the same for the unit of the daemon, and a word on the device page while the link is down for this reason. |
 | HM-T38 | Who is signed in on a hosted hub (HMD-061), after the operator's check of the hosted hub on 2026-11-20: on a hosted hub, Settings says "Signed in as owner with your Anima.ing account" and links to `https://cloud.anima.ing/account` ("Manage account and sign-in methods"); the hub shows no email, because the ticket of the gateway names no person (HMD-061) and the hub needs none. The Sign out of the phone layout ends the session of the gateway too, as the row of a wide window does. It needs HM-T27. | Not named by a ruling | Built on the branch `hosted/account-row`, which holds HM-T27; tested with a stand-in for the gateway, not checked with the gateway of the pool: the check is steps 8 and 9 of the check of HM-T27. |
@@ -677,13 +863,53 @@ have no fixed or inactivity expiry, remain independent of the approving browser,
 and can be explicitly revoked. One-time approval codes and enrollment claims
 still expire; device enrollment remains independent of the CLI session.
 
+### 8.3 The relay of a hosted hub: the tasks (proposed, not approved; 2026-11-24)
+
+Each task is one pull request. No task starts before a ruling names it (HM-D28, PLN-007).
+The deployment of the relay servers, the launch option of each hub, the run list of the move
+and the check of the relay that the hubs on the first pool host use now are tasks T40 to T44
+of the private pool service. They are not in this repository.
+
+| Task | Wave | Requirements | Pass when | Check commands |
+| --- | --- | --- | --- | --- |
+| HM-T43 | 0 | HMD-075 to HMD-087 (texts) | LNK-007 in one-click-plan.md, `contracts/schema.graphql` and the hosted access contract hold the new texts, and a ruling names them (CON-001). Fail: a contract changes with no ruling. | `bun run quality:register`, `bun run quality:documents` |
+| HM-T44 | 0 | Section 6.13.2 | security-findings.md has one finding or one "no finding" line for each of the four questions, each with its evidence. Fail: a question with no answer. | `bun run quality:documents` |
+| HM-T45 | 1 | HMD-077, HMD-078 | A test hub with a relay of two nodes in the test bed keeps its address after a restart; with the first node stopped, a device reaches the hub through the second; `relay.announce` takes a list; two lists with the same first node and a different second node are not the same relay. Fail: any of these. | `cd link && go test ./...`, `bun run gates` |
+| HM-T46 | 1 | HMD-079 to HMD-081 | In the test bed: a start with a different relay starts on the saved relay and announces; the switch comes when each device read the notice, or at the end of the period (the clock is a parameter); a new relay that refuses the hub three times takes the hub back; each step writes its event; a device that read the notice reaches the hub after the switch. Fail: the link stops with `errRelayIsSet` when it is given a different relay. | `cd link && go test ./...`, `bun run gates` |
+| HM-T47 | 2 | HMD-075, HMD-076 | `anima-local-hub run --link-relay a.example:443,b.example:443` starts `anima-link hub ... -relay a.example:443,b.example:443`; with no option the arguments do not change (the test of today passes); a hosted hub with the option fetches no relay map. Fail: a run with no option changes. | `cargo test -p anima-local-hub`, `bun run gates` |
+| HM-T48 | 2 | HMD-083 | The read `linkRelay` gives the name, the nodes, the kind (`OWN` or `SHARED`), the next relay and the start of a move, for an operator token and for a read API key; no write exists. Fail: a field that the link does not give is guessed. | `cargo test -p anima-hub`, `bun run gates` |
+| HM-T49 | 3 | HMD-083 | `anima link relay` prints the same fields, and `--json` gives them as JSON. | `cargo test -p anima-cli`, `bun run gates` |
+| HM-T50 | 3 | HMD-083 | The MCP read `link_relay` gives the same fields; the tool list marks it read-only. | `cargo test -p anima-cli`, `bun run gates` |
+| HM-T51 | 4 | HMD-083, HMD-087 | The relay row shows the three kinds with their words, a move in progress and its start; on a hosted hub it has no control; the mockup row in mockup/README.md is compared at 1040 px in the light and dark appearance. Fail: a control that changes the relay of a hosted hub. | `bun run --cwd apps/client test`, `bun run gates` |
+| HM-T52 | 4 | HMD-082 | A test device with an old address takes the address of the account answer when it is the same hub, and refuses an address of another hub; no log line holds the address. | `cd link && go test ./...`, `cargo test -p anima-hub`, `bun run gates` |
+| HM-T53 | 4 | HMD-086 | The procedure gives each step with a command and its expected output, and its links resolve. | `bun run quality:documents` |
+| HM-T54 | 5 | HMD-079 to HMD-082 | An entry `HT-nnn` exists with its steps. Only the operator sets it to Passed or Failed. | `bun run quality:documents` |
+
+Waves: wave 0 needs only the ruling. Wave 1 needs HM-T43. Wave 2 needs HM-T45 (for HM-T47) and
+HM-T46 (for HM-T48). Waves 3 and 4 follow CMD-030 (hub API, then command, then MCP, then client).
+HM-T52 also needs the private half of the account. Wave 5 needs a new hub image with HM-T47.
+
+**Out of scope.** The free hub in the application; Headscale and the VPN; a relay map of our
+own; the relay servers and their deployment (private pool service); billing.
+
+**Always.** Keep LNK-008: no address, pre-shared key or invite in a log, an event or an error.
+Keep the behaviour of a hub that is given no relay. Write each event of a move. Test each
+failure case of Section 6.13.2 that the test bed can make.
+
+**Ask first.** A change to the address format; any write to the relay through the hub API; a
+change to the notice port or to the 5-minute read of the notice; a new dependency.
+
+**Never.** Use `-replace-relay` in an automatic path; put a hub address in DNS for a hosted hub;
+give a person or an agent a way to change the relay of a hosted hub; push to `main`.
+
 ## 9. Changes that this proposal needs in other documents
 
 | Document | Change |
 | --- | --- |
 | [one-click-plan.md](../plans/one-click/one-click-plan.md) Section 1.3 | Hosted row: the shared pool, not one VPS for each customer (HM-R4). Done in the commit of this proposal, with a pointer to this file. |
 | [one-click-plan.md](../plans/one-click/one-click-plan.md) OR-5 | The directory gives access to a hosted hub (HM-R2). Done in the same commit. |
-| [shared-pool-hosting.md](shared-pool-hosting.md) | Remove Headscale from the instance stack; one relay for each pool host (Section 3, fact 4). Not done. |
+| [shared-pool-hosting.md](shared-pool-hosting.md) | Remove Headscale from the instance stack; one relay for each pool host (Section 3, fact 4). Not done. Section 6.13 (proposed, 2026-11-24) gives the relay of a hosted hub: an Anima.ing relay of two nodes beside the pool, not one relay inside each pool host (HM-D22, HM-D23). |
+| [one-click-plan.md](../plans/one-click/one-click-plan.md) LNK-007 | A pointer to Section 6.13 for the relay of a hosted hub; the new LNK texts are task HM-T43. Pointer done in the commit of Section 6.13 (2026-11-24). |
 | Design specification | A delta for the account login of a hosted hub, NET-001 and the first run. Not written. |
 | S6 task breakdown | "Sign in" as the primary choice. The client does it (HM-T1); the S6 task breakdown does not yet name it. |
 

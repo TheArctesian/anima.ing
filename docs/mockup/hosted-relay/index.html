@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hosted hub relay mockups</title>
+<style>
+/* Layout: a review board for the relay of a hosted hub (hosted-mode.md Section 6.13,
+   HMD-083 and HMD-087, task HM-T51). Frame 1 is the relay row on the page of a hosted hub (dark).
+   Frame 2 is the same row during a move (light). Frame 3 is the relay row of a self-hosted hub on
+   a shared public relay (dark). Frame 4 is the command line (dark).
+   Proposed, not approved (HM-D21 to HM-D28 open). No font, script or image comes from a third party. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, status roles, sizes, type), as in the other mockups.
+   A frame is dark (.gd) or light (.gl). */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-sunken: #141618; --surface-hover: #2A2D33;
+  --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0; --on-accent: #1B1D21;
+  --status-up: #A3BE8C; --status-down: #BF616A; --status-degraded: #EBCB8B; --status-unknown: #7B8089;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-sunken: #ECEEF0; --surface-hover: #ECEEF0;
+  --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80; --on-accent: #FFFFFF;
+  --status-up: #4F7A3A; --status-down: #A8424C; --status-degraded: #9A7215; --status-unknown: #7B8089;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 32px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+.frame { max-inline-size: 1040px; border: var(--border-thin) solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); }
+.card { padding: var(--space-6); display: grid; gap: var(--space-4); }
+.title { font-size: var(--text-lg); font-weight: var(--weight-medium); margin: 0; }
+.rows { display: grid; border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-raised); }
+.row { display: grid; grid-template-columns: 11rem 1fr auto; gap: var(--space-4); align-items: start; padding: var(--space-3) var(--space-4); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.row:last-child { border-block-end: 0; }
+.label { color: var(--text-secondary); font-size: var(--text-sm); }
+.value { display: grid; gap: var(--space-1); }
+.note { color: var(--text-secondary); font-size: var(--text-sm); }
+.mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+.pill { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-subtle); font-size: var(--text-sm); white-space: nowrap; }
+.dot { inline-size: 0.5rem; block-size: 0.5rem; border-radius: 50%; display: inline-block; }
+.up { background: var(--status-up); } .deg { background: var(--status-degraded); } .unk { background: var(--status-unknown); }
+.bar { block-size: 0.375rem; background: var(--surface-sunken); border-radius: var(--radius-pill); overflow: hidden; }
+.bar > span { display: block; block-size: 100%; background: var(--accent); }
+.btn { font: inherit; font-size: var(--text-sm); block-size: var(--control-sm); padding: 0 var(--space-3); border-radius: var(--radius-md); border: var(--border-thin) solid var(--border-strong); background: transparent; color: var(--text); }
+pre { margin: 0; padding: var(--space-4); background: var(--surface-sunken); font-family: var(--font-mono); font-size: var(--text-sm); line-height: var(--leading-normal); overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1 class="board">The relay of a hosted hub</h1>
+<p class="about">Mockups for hosted-mode.md Section 6.13 (HMD-083, HMD-087; task HM-T51). Proposed, not approved. The names of the relay nodes are examples. A hosted hub shows its relay and offers no control to change it.</p>
+<div class="frames">
+
+<figure>
+<div class="frame gd"><div class="card">
+<p class="title">Hub &middot; Link</p>
+<div class="rows">
+  <div class="row"><span class="label">Relay</span>
+    <span class="value"><span>Anima.ing relay</span><span class="note">Set by Anima.ing for this hosted hub. Relayed traffic is encrypted from end to end; the relay cannot read it.</span></span>
+    <span class="pill"><span class="dot up"></span>Up</span></div>
+  <div class="row"><span class="label">Nodes</span>
+    <span class="value"><span class="mono">relay-a.example.net:443</span><span class="mono">relay-b.example.net:443</span></span>
+    <span class="pill"><span class="dot up"></span>2 of 2</span></div>
+  <div class="row"><span class="label">Devices</span>
+    <span class="value"><span>3 direct, 1 relayed</span><span class="note">A device on a direct path does not use the relay.</span></span>
+    <span></span></div>
+</div>
+</div></div>
+<figcaption>Frame 1 (dark). The relay row of a hosted hub on the Anima.ing relay. Read only (HMD-083). Two nodes assume HM-D22 is "two".</figcaption>
+</figure>
+
+<figure>
+<div class="frame gl"><div class="card">
+<p class="title">Hub &middot; Link</p>
+<div class="rows">
+  <div class="row"><span class="label">Relay</span>
+    <span class="value"><span>Moving to the Anima.ing relay</span><span class="note">Started 24 Nov, 14:02. Your devices learn the new address by themselves. No step is needed.</span></span>
+    <span class="pill"><span class="dot deg"></span>Moving</span></div>
+  <div class="row"><span class="label">Devices told</span>
+    <span class="value"><span>3 of 4 devices know the new address</span><span class="bar"><span style="inline-size:75%"></span></span><span class="note">The hub changes when each device knows it, or on 1 Dec at the latest. A device that is off then gets the address when you sign in on it.</span></span>
+    <span></span></div>
+  <div class="row"><span class="label">Now</span>
+    <span class="value"><span>Shared public relay</span></span>
+    <span></span></div>
+</div>
+</div></div>
+<figcaption>Frame 2 (light). A move in progress (HMD-079, HMD-080, HMD-082). The 7 days assume HM-D25; the last sentence assumes HM-D27 is "yes".</figcaption>
+</figure>
+
+<figure>
+<div class="frame gd"><div class="card">
+<p class="title">Settings &middot; Link</p>
+<div class="rows">
+  <div class="row"><span class="label">Relay</span>
+    <span class="value"><span>Shared public relay</span><span class="note">A public relay that Anima.ing does not run carries the relayed traffic, encrypted. You can run your own relay.</span></span>
+    <span class="pill"><span class="dot unk"></span>Shared</span></div>
+  <div class="row"><span class="label">Your own relay</span>
+    <span class="value"><span class="note">See "Run your own relay" in the setup guide of the link.</span></span>
+    <button class="btn" type="button">Open the guide</button></div>
+</div>
+</div></div>
+<figcaption>Frame 3 (dark). A self-hosted hub or the hub in the application on a shared public relay (HMD-086, HMD-087). The change itself stays a step of the link (relay.announce, relay.switch).</figcaption>
+</figure>
+
+<figure>
+<div class="frame gd">
+<pre>$ anima link relay
+Relay     Anima.ing relay (own)
+Nodes     relay-a.example.net:443, relay-b.example.net:443
+Next      none
+Devices   3 direct, 1 relayed
+
+$ anima link relay --json
+{"name":"relay-a.example.net","kind":"OWN","nodes":["relay-a.example.net:443","relay-b.example.net:443"],"next":null,"moveStartedAt":null}</pre>
+</div>
+<figcaption>Frame 4 (dark). The command of HM-T49. The MCP read link_relay (HM-T50) gives the same fields.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>
