@@ -5,6 +5,21 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use super::*;
 use axum::{Router, extract::Request, http::StatusCode};
 
+fn git(folder: &Path, args: &[&str]) -> String {
+    let result = Command::new("git")
+        .env_clear()
+        .env("PATH", GIT_PATH)
+        .env("HOME", folder)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .current_dir(folder)
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{result:?}");
+    String::from_utf8(result.stdout).unwrap()
+}
+
 #[tokio::test]
 async fn clone_checks_out_tracked_files_without_installing_hooks_or_submodules() {
     let temp = tempfile::tempdir().unwrap();
@@ -12,20 +27,6 @@ async fn clone_checks_out_tracked_files_without_installing_hooks_or_submodules()
     let staging = temp.path().join("stage");
     std::fs::create_dir(&source).unwrap();
     std::fs::create_dir(&staging).unwrap();
-    let git = |folder: &Path, args: &[&str]| {
-        let result = Command::new("git")
-            .env_clear()
-            .env("PATH", GIT_PATH)
-            .env("HOME", temp.path())
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_NOSYSTEM", "1")
-            .current_dir(folder)
-            .args(args)
-            .output()
-            .unwrap();
-        assert!(result.status.success(), "{result:?}");
-        String::from_utf8(result.stdout).unwrap()
-    };
     git(&source, &["init", "--quiet", "--template="]);
     std::fs::create_dir(source.join(".git/hooks")).unwrap();
     std::fs::write(
