@@ -7,6 +7,7 @@
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
   import { shownTitle, UNTITLED } from '$lib/agent-threads/thread';
+  import EmptyState from '$lib/states/EmptyState.svelte';
   import LimitDialog from '$lib/agent-threads/view/LimitDialog.svelte';
   import { isMac } from '$lib/platform/mac';
   import { fillRoom } from '$lib/scroll/room';
@@ -55,6 +56,8 @@
   const held = $derived(sizes.held);
   let renaming = $state(false);
   const visits = new Visits();
+  let startedHere = $state<string | null>(null);
+  const selected = $derived(store.chosen !== null && (view.engine.started.has(store.chosen) || store.chosen === startedHere));
   /** The new thread that is not started yet (T3's draft): the chat column shows it in place of a thread. */
   let draft = $state<ThreadDraft | null>(null);
   let field = $state<HTMLInputElement>();
@@ -67,19 +70,19 @@
   /** The row of the open thread, for the band. */
   const palette = $derived(
     paletteHost({
-      rows: store.listedRows,
+      rows: store.listedRows === null ? null : view.shown,
       failed: store.listProblem !== null || live?.linked === false,
-      chosen: store.chosen,
+      chosen: selected ? store.chosen : null,
       newThread: newOff === null ? newThread : undefined,
       addProject: newOff === null ? () => (draft = (draft ?? new ThreadDraft(open?.folder ?? null)).addProject()) : undefined,
       open: (id) => void choose(id),
       settings: () => void goto(resolve('/settings')),
     }),
   );
-  const open = $derived(store.chosen === null ? undefined : ((store.listedRows ?? []).find((row) => row.id === store.chosen) ?? (store.thread?.id === store.chosen ? store.thread : undefined)));
+  const open = $derived(!selected || store.chosen === null ? undefined : ((store.listedRows ?? []).find((row) => row.id === store.chosen) ?? (store.thread?.id === store.chosen ? store.thread : undefined)));
   /** The run of the open thread, when the card has something real of it to show: only then is there a details toggle. */
   const details = new DetailsShown();
-  const detailed = $derived(detailedRun(draft === null ? store.liveThread?.row : undefined, store.chosen, details.choices));
+  const detailed = $derived(detailedRun(draft === null && selected ? store.liveThread?.row : undefined, store.chosen, details.choices));
 
   /** Opens a new thread in the project of the open one, as T3's New thread does. */
   function newThread(): void {
@@ -90,6 +93,8 @@
 
   /** Opens `id`; `started`: the draft's send started it, from the runner's `Started` answer alone. */
   async function choose(id: string, started = false, sent: { text: string; at: Date } | null = null): Promise<void> {
+    if (!started && !view.engine.started.has(id)) return;
+    if (started) startedHere = id;
     if (narrow) sheetOpen = false;
     draft = null;
     visits.opened(id);
@@ -104,17 +109,12 @@
     await Promise.all(running.map((row) => live?.call({ call: 'stop', thread: row.id })));
   }
 
-  function openedTitle(id: string): string {
-    const row = (store.listedRows ?? []).find((each) => each.id === id);
-    return row === undefined ? UNTITLED : shownTitle(row);
-  }
-
   /** After a key opened `id`: focus follows in the list; elsewhere the title is said (09 finding 13). */
   async function follow(id: string, from: EventTarget | null): Promise<void> {
     await choose(id);
     const row = page?.querySelector<HTMLElement>(`.inbox [data-thread="${CSS.escape(id)}"] > .main`);
     if (row !== null && row !== undefined && from instanceof Element && from.closest('.inbox [data-thread]') !== null) row.focus();
-    else said = `Opened ${openedTitle(id)}`;
+    else said = `Opened ${open === undefined ? UNTITLED : shownTitle(open)}`;
   }
 
   /** Shows or hides the list; focus moves to the toggle in its new place (09 finding 14). */
@@ -128,7 +128,7 @@
   async function raise(threads: LiveThreads): Promise<CallResult> {
     const result = await threads.raiseLimit();
     if (result.ok && result.outcome.outcome === 'started') {
-      void choose(result.outcome.thread);
+      void choose(result.outcome.thread, true);
     }
     return result;
   }
@@ -175,7 +175,7 @@
   function own(kind: string): boolean {
     if (kind === 'inbox') void toggleInbox();
     else if (kind === 'back' || kind === 'forward') step(kind === 'back' ? -1 : 1);
-    else if ((kind === 'settle' || kind === 'pin') && store.chosen !== null) inbox?.toggleMark(store.chosen, kind);
+    else if ((kind === 'settle' || kind === 'pin') && selected && store.chosen !== null) inbox?.toggleMark(store.chosen, kind);
     else if (kind === 'details' && detailed !== undefined) details.toggle(detailed.id);
     else return kind === 'settle' || kind === 'pin' || kind === 'details';
     return true;
@@ -183,7 +183,7 @@
 
   function step(by: -1 | 1): void {
     const id = visits.step(by);
-    if (id !== undefined) void store.open(id);
+    if (id !== undefined && view.engine.started.has(id)) void store.open(id);
   }
 </script>
 
@@ -235,8 +235,8 @@
     {/snippet}
     {#snippet aside()}{#if detailed !== undefined}<ThreadAside row={detailed} shown={details} />{/if}{/snippet}
     {#snippet notice()}{#if linkWords !== null}<RunnerNotice words={linkWords} onStop={live?.linked === true ? stopRunning : undefined} />{/if}{/snippet}
-    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id, true, draft?.sent ?? null)} />{:else}<ThreadBody {store} now={view.moment} />{/if}
-    {#snippet composer()}{#if draft === null && store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
+    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(view.codeRows)} onStarted={(id) => void choose(id, true, draft?.sent ?? null)} />{:else if selected}<ThreadBody {store} now={view.moment} />{:else}<EmptyState title="No thread is open" line="Select a thread started by Anima on this computer, or start a new thread." />{/if}
+    {#snippet composer()}{#if draft === null && selected && store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>
 <p class="said" role="status">{said}</p>

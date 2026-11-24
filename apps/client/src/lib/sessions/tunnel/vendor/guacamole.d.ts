@@ -29,6 +29,8 @@ declare namespace Guacamole {
     /** Sets `state` and calls `onstatechange` when it changed. */
     setState(state: number): void;
     onstatechange: ((state: number) => void) | null;
+    oninstruction: ((opcode: string, args: string[]) => void) | null;
+    sendMessage(...elements: string[]): void;
   }
 
   namespace Tunnel {
@@ -86,6 +88,7 @@ declare namespace Guacamole {
     getHeight(): number;
     scale(scale: number): void;
     getScale(): number;
+    flush(callback: () => void): void;
     showCursor?(shown: boolean): void;
     onresize: ((width: number, height: number) => void) | null;
   }

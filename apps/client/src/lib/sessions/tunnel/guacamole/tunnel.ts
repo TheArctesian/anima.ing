@@ -9,6 +9,11 @@ export type { SocketConstructor, TunnelRefusal, TunnelTicket } from '../state';
 /** The 1.5.5 client states as phases: `waiting` lasts until the gateway's first frame (`sync`). */
 export type GuacamolePhase = TunnelPhase | 'waiting';
 
+export interface DisplayChoices {
+  readonly active: string;
+  readonly monitors: readonly string[];
+}
+
 /** What the Guacamole tunnel knows; it holds no token, no URL and no gateway text (SEC-002, LOG-007). */
 export interface GuacamoleState extends Omit<TunnelState, 'phase'> {
   readonly phase: GuacamolePhase;
@@ -16,6 +21,8 @@ export interface GuacamoleState extends Omit<TunnelState, 'phase'> {
   readonly gatewayError: number | undefined;
   /** The last gateway `required` names (GW-015), kept so that one that arrives before the start answered is not lost. */
   readonly required?: readonly string[] | undefined;
+  readonly displays?: DisplayChoices;
+  readonly displayPending?: boolean;
 }
 
 export interface TunnelOptions {
@@ -32,6 +39,7 @@ export interface TunnelOptions {
 export interface SessionTunnel {
   readonly client: Guacamole.Client;
   state(): GuacamoleState;
+  selectDisplay?(id: string): void;
   /** Safe to call more than once. */
   close(): void;
 }
@@ -50,6 +58,35 @@ const PHASES: readonly GuacamolePhase[] = ['disconnected', 'connecting', 'waitin
 interface Events {
   readonly onchange?: (state: GuacamoleState) => void;
   readonly onend?: (state: GuacamoleState) => void;
+}
+
+function watchDisplays(
+  tunnel: Guacamole.Tunnel,
+  display: Guacamole.Display,
+  read: () => GuacamoleState,
+  update: (change: Partial<GuacamoleState>) => void,
+) {
+  const instruction = tunnel.oninstruction;
+  tunnel.oninstruction = (opcode, args) => {
+    if (opcode === 'displays') {
+      const [active, ...monitors] = args;
+      if (active === undefined || monitors.length > 64 || monitors.some((id) => !/^\d{1,10}$/.test(id))) return;
+      if (active !== 'all' && !monitors.includes(active)) return;
+      display.flush(() => {
+        update({ displays: { active, monitors }, displayPending: false });
+      });
+    } else {
+      instruction?.(opcode, args);
+    }
+  };
+  return (id: string) => {
+    const state = read();
+    const displays = state.displays;
+    if (displays === undefined || id === displays.active || state.displayPending === true) return;
+    if (id !== 'all' && !displays.monitors.includes(id)) return;
+    update({ displayPending: true });
+    tunnel.sendMessage('display', id);
+  };
 }
 
 /** Nothing in this scope sees the token. */
@@ -71,6 +108,7 @@ function trackedTunnel(url: string, events: Events, waking: boolean) {
     connected = true;
     if (state !== initial) events.onchange?.(state);
   };
+  const selectDisplay = watchDisplays(tunnel, client.getDisplay(), () => state, update);
   client.onstatechange = (clientState) => {
     update({ phase: PHASES[clientState] ?? 'disconnected' });
   };
@@ -100,6 +138,7 @@ function trackedTunnel(url: string, events: Events, waking: boolean) {
   const handle: SessionTunnel = {
     client,
     state: () => state,
+    selectDisplay,
     close: () => {
       client.disconnect();
     },

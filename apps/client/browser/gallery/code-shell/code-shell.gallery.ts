@@ -20,7 +20,7 @@ const MARKS: Readonly<Record<string, Record<string, string>>> = {
   [IDS.pinnedFile]: { snoozed_at: '@-30', snoozed_until: '@120' },
   [IDS.yourTurn]: { woke_at: '@-2' },
 };
-const EVERY_STATE: Scenario = {
+const MIXED: Scenario = {
   ...UNMARKED,
   listings: [
     ...UNMARKED.listings.map((listing) => ({ ...listing, ...MARKS[String(listing['thread'])] })),
@@ -29,7 +29,8 @@ const EVERY_STATE: Scenario = {
       .map(([thread, marks]) => ({ thread, pinned: false, archived: false, title: null, removed: false, ...marks })),
   ],
 };
-const OUTSIDE = outsideMarked(EVERY_STATE);
+const OUTSIDE = outsideMarked(MIXED);
+const EVERY_STATE = outsideMarked(MIXED, MIXED.rows.map((row) => String(row['id'])));
 /** The models of the two programs, as a runner that asked them before any thread answers `models` (TH104). */
 const MODELS: Scenario = {
   ...EVERY_STATE,
