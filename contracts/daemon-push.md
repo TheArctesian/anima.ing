@@ -948,3 +948,89 @@ fields are discarded. Tests use synthetic or sanitised recorded outputs and prov
 missing tools, empty success, unavailable runtime, failure replacement, bounds and
 old/new peer compatibility. Real-platform checks remain human checks; fixtures do
 not prove a local SDK installation, offline tool behaviour or device readiness.
+
+### 10.4 Exact K1 read-surface proposal (not accepted)
+
+The following is the proposed additive SDL for `contracts/schema.graphql`, for
+separate CON-001 review under TH133. It does not change that schema yet.
+
+```graphql
+extend type DeviceCapabilities {
+  mobileTools: MobileTools
+}
+type MobileTools {
+  receivedAt: DateTime!
+  apple: AppleMobileTools!
+  android: AndroidMobileTools!
+}
+type AppleMobileTools {
+  simulatorRuntimes: SimulatorRuntimeInventory!
+  deviceTypes: SimulatorDeviceTypeInventory!
+}
+type AndroidMobileTools {
+  sdkPackages: AndroidSdkInventory!
+  emulator: AndroidEmulatorInventory!
+}
+enum MobileInventoryState {
+  READ
+  MISSING
+  UNSUPPORTED
+  TIMED_OUT
+  EXITED
+  INVALID_OUTPUT
+  TOO_LARGE
+  UNKNOWN
+}
+type SimulatorRuntimeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorRuntime!]
+}
+type SimulatorRuntime {
+  identifier: String!
+  version: String!
+  available: Boolean!
+}
+type SimulatorDeviceTypeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorDeviceType!]
+}
+type SimulatorDeviceType {
+  identifier: String!
+}
+type AndroidSdkInventory {
+  state: MobileInventoryState!
+  entries: [AndroidSdkPackage!]
+}
+type AndroidSdkPackage {
+  path: String!
+  revision: String!
+}
+type AndroidEmulatorInventory {
+  state: MobileInventoryState!
+  version: String
+}
+```
+
+`mobileTools` is null when no mobile snapshot is stored. `receivedAt` is the hub's
+receipt time of that snapshot, not a device observation time. It must not use the
+batch's metric time. A `READ` list has non-null `entries`, including `[]` for an empty
+success; every other state has null `entries`. The same rule applies to the emulator's
+`version`. Unknown wire states become `UNKNOWN`. Bounds, order and meaning are exactly
+Section 10.1; this proposal adds no model names, identifiers of instances or raw text.
+
+The existing `capabilities(tool: String, buildTarget: String)` query selects the new
+field and every nested field above. Its arguments, authorization and filters do not
+change. `anima capability list --json` includes `mobileTools` as returned by that query.
+The table adds a `MOBILE TOOLS` column: the four named states, successful list counts
+and the emulator version, followed by the receipt time. It says "last reported";
+it never says "ready" or equates `READ` with permission to run device work.
+`anima_capability_list` keeps its existing inputs and `{ devices, count }` response;
+each device includes the same typed `mobileTools` value, without stringifying it or
+adding a new operation. Failure states are fixed codes, with no speculative install
+or repair command. The existing Xcode tool entry is unchanged.
+
+Old queries keep their current result. A new query against an older schema can fail
+GraphQL validation; optional field semantics alone do not make that query compatible.
+Consumer implementation must either require the hub version that includes this field,
+or negotiate schema support and omit the selection for older hubs. No broad retry of
+failed queries is approved here. The choice must be explicit in implementation review.
