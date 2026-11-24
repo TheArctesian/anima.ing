@@ -914,9 +914,9 @@ collection. No local probe was run to prepare this proposal.
 The implementation path is the daemon-core typed parser and wire, the bounded daemon
 reader, then the hub inventory validation and store. CAP-030 owns the read surface:
 any schema addition needs its own CON-001 approval, followed by `anima capability list`
-and `anima_capability_list` before a client surface (CMD-030). This amendment does not
-approve a K1 change. TH133 must account for that read-surface gap alongside its lease
-contracts. Its explicit proposed read deliverable is an optional typed mobile snapshot
+and `anima_capability_list` before a client surface (CMD-030). The K8 ruling alone does not
+approve a K1 change; Section 10.4 records its separate acceptance. TH133 owns that read surface alongside its lease
+contracts. Its explicit read deliverable is an optional typed mobile snapshot
 on existing `DeviceCapabilities`: the four probe states and bounded result fields above,
 plus hub receipt time. Extend the existing capability query, `anima capability list`
 and `anima_capability_list`; no new root operation or selector is required. TH135 cannot
@@ -949,10 +949,21 @@ missing tools, empty success, unavailable runtime, failure replacement, bounds a
 old/new peer compatibility. Real-platform checks remain human checks; fixtures do
 not prove a local SDK installation, offline tool behaviour or device readiness.
 
-### 10.4 Exact K1 read-surface proposal (not accepted)
+### 10.4 Accepted K1 read surface (not implemented)
 
-The following is the proposed additive SDL for `contracts/schema.graphql`, for
-separate CON-001 review under TH133. It does not change that schema yet.
+**R-NEW-mobileinventoryread (programme orchestrator, 2026-11-24; CON-001).**
+Accept the additive K1 read contract reviewed at
+`2e49e0a8d0568a2a5b0b01ed3d2dc3bd59b448a7`, after independent re-review closed the
+older-hub compatibility finding with no remaining actionable contract findings.
+This ruling implements the existing TH135/THR-172 inventory scope through TH133's
+read-surface ownership. It adds no lease, provisioning, download, wipe, authority or
+freshness policy. The shared baseline changes when this branch lands in `dev`.
+Implementation may proceed in hub API, CLI and MCP order; the schema and callers
+are not implemented by this documentation ruling. Implementation review must verify
+all GraphQL errors before the existing error reader selects its first error, so mixed
+failures cannot trigger the compatibility retry.
+
+The following additive SDL belongs in `contracts/schema.graphql` under TH133.
 
 ```graphql
 extend type DeviceCapabilities {
