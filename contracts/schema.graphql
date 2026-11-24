@@ -893,6 +893,8 @@ type Storage {
 # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned).
 "A device's capabilities: today the tool inventory its daemon last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
 type DeviceCapabilities {
+  "Last reported mobile tooling; null when not reported. R-NEW-mobileinventoryread."
+  mobileTools: MobileTools
   device: Device!
   "aarch64 or x86_64."
   architecture: String!
@@ -908,6 +910,58 @@ type DeviceCapabilities {
   foundAt: DateTime!
   "The hardware values its daemon last sent; null until it sends them (CAP-001 to CAP-005, CAP-032). R-165 permits this field of the optional K8 member `hardware`."
   hardware: Hardware
+}
+
+type MobileTools {
+  receivedAt: DateTime!
+  apple: AppleMobileTools!
+  android: AndroidMobileTools!
+}
+type AppleMobileTools {
+  simulatorRuntimes: SimulatorRuntimeInventory!
+  deviceTypes: SimulatorDeviceTypeInventory!
+}
+type AndroidMobileTools {
+  sdkPackages: AndroidSdkInventory!
+  emulator: AndroidEmulatorInventory!
+}
+enum MobileInventoryState {
+  READ
+  MISSING
+  UNSUPPORTED
+  TIMED_OUT
+  EXITED
+  INVALID_OUTPUT
+  TOO_LARGE
+  UNKNOWN
+}
+type SimulatorRuntimeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorRuntime!]
+}
+type SimulatorRuntime {
+  identifier: String!
+  version: String!
+  available: Boolean!
+}
+type SimulatorDeviceTypeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorDeviceType!]
+}
+type SimulatorDeviceType {
+  identifier: String!
+}
+type AndroidSdkInventory {
+  state: MobileInventoryState!
+  entries: [AndroidSdkPackage!]
+}
+type AndroidSdkPackage {
+  path: String!
+  revision: String!
+}
+type AndroidEmulatorInventory {
+  state: MobileInventoryState!
+  version: String
 }
 
 # The device policy of a compute node (CMP-002, CAP-010 to CAP-012). Waits for a ruling: R-335.

@@ -6,6 +6,7 @@ use crate::failure::Failure;
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::{Cell, Table};
+use graphql_client::GraphQLQuery;
 
 #[derive(Debug, clap::Args)]
 pub struct ListArgs {
@@ -43,7 +44,10 @@ pub async fn fetch(
     build_target: Option<String>,
 ) -> Result<Vec<capability_list::CapabilityListCapabilities>, Failure> {
     let variables = capability_list::Variables { tool, build_target };
-    Ok(hub.run::<CapabilityList>(variables).await?.capabilities)
+    let found: capability_list::ResponseData = hub
+        .send_capabilities(&<CapabilityList as GraphQLQuery>::build_query(variables))
+        .await?;
+    Ok(found.capabilities)
 }
 
 fn table(found: &Vec<capability_list::CapabilityListCapabilities>) -> Table {
@@ -53,6 +57,7 @@ fn table(found: &Vec<capability_list::CapabilityListCapabilities>) -> Table {
         "HARDWARE",
         "TOOLS",
         "BUILD TARGETS",
+        "MOBILE TOOLS",
     ]);
     for row in found {
         let system = format!("{} {} {}", row.os, row.os_version, row.architecture);
@@ -66,6 +71,7 @@ fn table(found: &Vec<capability_list::CapabilityListCapabilities>) -> Table {
             ),
             Cell::new(&tools(&row.tools)),
             Cell::new(&targets(&row.build_targets)),
+            Cell::new(&super::mobile::summary(row.mobile_tools.as_ref())),
         ]);
     }
     table

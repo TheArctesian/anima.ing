@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-mobileinventory | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
 | HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
@@ -5677,6 +5678,50 @@ On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing
 
 On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
 
+
+## HT-NEW-mobileinventory — Installed mobile tool reporting (TH135)
+
+State: Open. Built locally: the typed K8 snapshot, bounded collector, hub storage and
+K1/CLI/MCP read path. New collection is off in normal builds. `mobile-inventory` is an
+explicit build feature pending implementation review, not a default-on probe.
+Synthetic output and filesystem tests do not prove real Xcode behaviour, SDK layout,
+absence of tool-side cache writes, or a blocked filesystem on each host platform.
+Windows collection is not implemented; no positive Windows inventory is claimed.
+
+Independent review of `00e1cc235` found no blocking code findings for default-off CI.
+Before real-probe enablement, TH135 must add synthetic tests through the parent
+collection boundary for a blocked worker and a descendant retaining stdout. The tests
+must prove the five-second deadline, bounded return and descendant cleanup, and run
+with `mobile-inventory` enabled. Direct worker-dispatch tests do not establish these
+properties. This validation follow-up remains open; review did not authorize probes.
+
+After that validation, implementation review and operator authorization for real
+probes, use a disposable enrolled Mac with an existing Xcode and Android SDK installation:
+
+1. Build the daemon with `cargo build -p anima-daemon --features mobile-inventory`.
+   Use a test hub with the mobile-inventory migration and this branch's CLI. Do not
+   replace a production service for this check. Start the test daemon as prescribed
+   by the existing enrolment procedure, with its own test state and token.
+2. Set `ANDROID_SDK_ROOT` to the existing SDK root and put its emulator directory on
+   the test daemon's `PATH`. Do not install a tool or accept a licence for this check.
+   Read `anima capability list --json` after the next inventory report. The Xcode
+   version stays in `tools`; mobile runtime identifiers, device-type identifiers,
+   package identifiers/revisions and emulator version match the installed tools.
+   No UDID, device instance, filesystem path, session, account or raw error appears.
+3. Read `anima_capability_list` from a test MCP client. It gives the same typed snapshot
+   and receipt time. The CLI table says "last reported", not ready. An unavailable
+   runtime has `available: false`; neither client promises that a device can boot.
+4. Repeat with the tools absent from the test daemon's search path and without its SDK
+   root setting. The affected result says `missing`, not successful empty inventory;
+   unrelated results remain independent. On Linux, Apple results say `unsupported`.
+5. Point the CLI at an older test hub. Capability listing still succeeds through its
+   legacy query; mobile tools are null in JSON/MCP and "Not reported" in the table.
+6. Confirm no simulator or emulator was created, booted or removed, no SDK downloaded,
+   and no phone or personal simulator was listed. Record any unexpected service/cache
+   activity for implementation review before enabling collection on a real account.
+
+Database migration/replacement tests are reserved for CI in this session: no local
+PostgreSQL was started. Passing fixture tests is not a Passed result for this entry.
 ## HT-190 — Native session list refresh
 
 State: Open. Built on `t3/session-folder-watcher` (TH7, THR-058).

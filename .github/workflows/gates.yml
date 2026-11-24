@@ -194,6 +194,11 @@ jobs:
         env:
           CARGO_INCREMENTAL: "0"
         run: sh deploy/bin/macos-tests
+      - name: Test mobile inventory with synthetic tools only
+        run: |
+          set -eu
+          cargo test --locked -p anima-daemon --features mobile-inventory --lib readers::mobile::tests
+          cargo test --locked -p anima-daemon --features mobile-inventory --test it mobile_inventory::
 
   rust-lint:
     needs: base
@@ -309,6 +314,11 @@ jobs:
           set -eu
           unset DATABASE_URL
           xvfb-run --auto-servernum bun quality/bin/gates.ts --group rust --gate rust-test,doctest,pinning
+      - name: Test mobile inventory with synthetic tools only
+        run: |
+          set -eu
+          cargo test --locked -p anima-daemon --features mobile-inventory --lib readers::mobile::tests
+          cargo test --locked -p anima-daemon --features mobile-inventory --test it mobile_inventory::
 
   go:
     needs: base
