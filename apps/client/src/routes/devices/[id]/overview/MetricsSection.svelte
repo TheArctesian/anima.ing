@@ -31,14 +31,18 @@
     container?: boolean;
     /** The reason line of a daemon that waits for the person, in place of the wait; `null` for none (R-322). */
     needLine?: string | null;
+    storageReading?: { path: string; percent: number } | null;
   }
 
-  const { source, metrics, range, now, clock, onRange, onRetry, onSettings, container = false, needLine = null }: Props = $props();
+  const { source, metrics, range, now, clock, onRange, onRetry, onSettings, container = false, needLine = null, storageReading = null }: Props = $props();
   // A hosted hub reads no metrics over SSH (HMD-049 is not built), so its sentence names the daemon only (R-222).
   const hosted = contextHubIsHosted();
   let selected = $state<string>();
   let expanded = $state(false);
   const charts = $derived(metrics.view === null ? [] : chartsOf(metrics.view.series, metrics.view.gpus));
+  const readings = $derived(metrics.readings !== null && storageReading !== null
+    ? { ...metrics.readings, diskPercent: storageReading.percent, diskMount: storageReading.path }
+    : metrics.readings);
   const primary = $derived(charts.find((chart) => chart.key === selected) ?? charts[0]);
   // The old chart stays while a switch is on its way, so its label and gap follow the data on screen, not the button.
   const drawn = $derived(metrics.shownRange ?? range);
@@ -70,7 +74,7 @@
       <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="carbon:settings-adjust" size="sm" />Open Settings</button>
     </div>
   {:else}
-    <ResourceReadings readings={metrics.readings} {source} battery={metrics.battery} {container} memoryBytes={metrics.memoryBytes ?? null} {charts} active={primary?.key} onSelect={(key) => { selected = key; }} />
+    <ResourceReadings {readings} {source} battery={metrics.battery} {container} memoryBytes={metrics.memoryBytes ?? null} {charts} active={primary?.key} onSelect={(key) => { selected = key; }} />
     {#if metrics.liveError !== null}
       <p class="live" role="status">{metrics.liveError.message}</p>
     {/if}
@@ -121,8 +125,8 @@
   }
 
   @media (max-width: 600px) {
-    .metrics { gap: var(--space-2); }
-    .trend { padding-block-start: var(--space-2); }
+    .metrics { gap: var(--space-1); padding: var(--space-2); }
+    .trend { padding-block-start: var(--space-1); }
   }
 
   .head {

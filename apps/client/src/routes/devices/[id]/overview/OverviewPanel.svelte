@@ -85,7 +85,7 @@
         </div>
       {/if}
 
-      <MetricsSection source={device.metricsSource} {metrics} {range} {now} {clock} {onRange} {onRetry} {onSettings} container={hub} needLine={daemonNeedLine(device, thisComputerDevice.id)} />
+      <MetricsSection source={device.metricsSource} {metrics} {range} {now} {clock} {onRange} {onRetry} {onSettings} container={hub} storageReading={storage ? fullest : null} needLine={daemonNeedLine(device, thisComputerDevice.id)} />
 
       <!-- The hub's own device lists no drives: its disk is the bytes of its data, in "Plan and usage" (HMD-072). -->
       {#if !hub}

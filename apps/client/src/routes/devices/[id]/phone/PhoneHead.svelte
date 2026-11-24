@@ -34,7 +34,13 @@
     <button type="button" class="iconbtn" aria-label="Settings of {device.name}" onclick={onSettings} {@attach press()}><Icon name="carbon:settings-adjust" /></button>
   </div>
   <div class="title-row">
-    <h1 class="name">{device.name}</h1>
+    <div class="identity">
+      <h1 class="name">{device.name}</h1>
+      <p class="host">
+        <span class="mono">{device.host}</span>
+        <button type="button" class="iconbtn" aria-label={copied ? 'Address copied' : 'Copy address'} onclick={() => void copyHost()} {@attach press()}><Icon name="carbon:copy" size="sm" /></button>
+      </p>
+    </div>
     {@render actions()}
   </div>
   <div class="device-meta">
@@ -48,10 +54,6 @@
         {#if reason !== null}<span class="why">{reason}</span>{/if}
       </p>
     {/if}
-    <p class="host">
-      <span class="mono">{device.host}</span>
-      <button type="button" class="iconbtn" aria-label={copied ? 'Address copied' : 'Copy address'} onclick={() => void copyHost()} {@attach press()}><Icon name="carbon:copy" size="sm" /></button>
-    </p>
     <WarningBadge warnings={device.accessWarnings} />
   </div>
 </header>

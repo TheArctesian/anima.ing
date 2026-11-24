@@ -24,7 +24,7 @@
   .percent { --chart-value-gutter: var(--space-12); }
 
   @media (max-width: 600px) {
-    .cell { --chart-plot-height: calc(var(--space-16) + var(--space-6)); }
+    .cell { --chart-plot-height: calc(var(--space-16) + var(--space-4)); }
   }
 
   h3 {
