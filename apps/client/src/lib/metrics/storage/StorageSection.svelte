@@ -211,8 +211,7 @@
 
   .mount {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: var(--space-2);
+    grid-template-columns: minmax(0, 1fr);
     row-gap: var(--space-1);
     min-inline-size: 0;
     font-size: var(--text-xs);
@@ -223,10 +222,12 @@
     color: var(--text-secondary);
   }
 
+  .path:empty { display: none; }
+
   .value {
     color: var(--text);
     font-family: var(--font-mono);
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   .track {
