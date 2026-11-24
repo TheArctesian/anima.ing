@@ -11,12 +11,15 @@ import (
 )
 
 const localLimit = 5 * time.Second
+const revokePoll = 250 * time.Millisecond
 
 // Local is the device side: what a device needs to answer a request.
 type Local struct {
 	// IsOpen reports whether a port is open on this computer (HMD-049); nil means none is.
 	IsOpen func(port uint16) bool
 	Hub    func(ctx context.Context) (net.Conn, error)
+	// RDP dials the bundled host on systems where port 3389 has a dedicated socket.
+	RDP func(time.Duration) (net.Conn, error)
 }
 
 // Give answers one hub request, dialling the loopback port only when it is open.
@@ -35,7 +38,31 @@ func (l Local) Give(ctx context.Context, request Request) {
 		closeIfOpen(local)
 		return
 	}
+	if request.Port == 3389 && l.RDP != nil {
+		quit := make(chan struct{})
+		defer close(quit)
+		go l.watchRDP(ctx, quit, local)
+	}
 	tunnel.Join(local, hub)
+}
+
+func (l Local) watchRDP(ctx context.Context, quit <-chan struct{}, local net.Conn) {
+	ticker := time.NewTicker(revokePoll)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-quit:
+			return
+		case <-ctx.Done():
+			local.Close()
+			return
+		case <-ticker.C:
+			if !l.IsOpen(3389) {
+				local.Close()
+				return
+			}
+		}
+	}
 }
 
 func (l Local) connect(ctx context.Context, port uint16) (string, net.Conn) {
@@ -44,12 +71,19 @@ func (l Local) connect(ctx context.Context, port uint16) (string, net.Conn) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, localLimit)
 	defer cancel()
-	var dialer net.Dialer
-	local, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(int(port))))
+	local, err := l.dial(ctx, port)
 	if err != nil {
 		return WordClosed, nil
 	}
 	return WordOK, local
+}
+
+func (l Local) dial(ctx context.Context, port uint16) (net.Conn, error) {
+	if port == 3389 && l.RDP != nil {
+		return l.RDP(localLimit)
+	}
+	var dialer net.Dialer
+	return dialer.DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(int(port))))
 }
 
 func closeIfOpen(local net.Conn) {

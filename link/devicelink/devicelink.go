@@ -50,6 +50,8 @@ type Config struct {
 	LookupTXT func(ctx context.Context, name string) ([]string, error)
 	// OpenPort reports, for each request, whether the hub may reach a local port (HMD-048, HMD-049). Nil opens none.
 	OpenPort func(port uint16) bool
+	// RDP dials the dedicated host when direct TCP to port 3389 is unsuitable.
+	RDP func(time.Duration) (net.Conn, error)
 	// Now is the clock. Nil means the system clock.
 	Now       func() time.Time
 	DebugLogf tunnel.Logf
@@ -77,6 +79,7 @@ type Link struct {
 	reverse    net.Conn
 	presentNow chan struct{}
 	openPort   func(port uint16) bool
+	rdp        func(time.Duration) (net.Conn, error)
 	giving     chan struct{}
 }
 
@@ -136,7 +139,7 @@ func start(cfg Config) (*Link, error) {
 	link := &Link{
 		device: device, saved: cfg.Identity, listener: listener, daemon: cfg.DaemonSocket, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone},
 		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf, presentNow: make(chan struct{}, 1),
-		openPort: cfg.OpenPort, giving: make(chan struct{}, maxLocalConnections),
+		openPort: cfg.OpenPort, rdp: cfg.RDP, giving: make(chan struct{}, maxLocalConnections),
 	}
 	if link.now == nil {
 		link.now = time.Now

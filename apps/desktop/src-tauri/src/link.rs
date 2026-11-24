@@ -14,6 +14,9 @@ mod joining;
 mod kept;
 pub mod open_ports;
 mod printed;
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+#[path = "link/rdp/host.rs"]
+pub mod rdp;
 mod repair;
 mod restarts;
 mod state;
@@ -175,6 +178,8 @@ fn replace(
     folders: &LinkFolders,
     port: u16,
 ) -> Result<(), LinkError> {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    rdp::close();
     device.stop();
     // A unit of the join before must not run while its folder is swapped.
     if let Some(before) = kept::now(&folders.device, port) {
@@ -296,6 +301,8 @@ pub async fn link_leave<R: Runtime>(
     let result = blocking(move || {
         let _claim = claim;
         let folders = folders()?;
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        rdp::close();
         device.stop();
         if let Some(link) = kept::now(&folders.device, 0) {
             link.remove_because("this device leaves its hub")?;

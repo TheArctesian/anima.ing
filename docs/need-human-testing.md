@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-bundledmacosrdp | RDP and VNC from one installation on Apple Silicon (MRDP-T2) | A signed desktop build, the linked Mac and a second Anima client | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
@@ -3297,6 +3298,18 @@ One visit to a machine can close many rows.
 | Check | What it proves | Steps | Result |
 | --- | --- | --- | --- |
 | REL-1 | A real release confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) | [design-spec.md](spec/design-spec.md), Section 11 | Open. For macOS 0.2.0 and 0.2.1, the signature and the notarization are checked ([releases.md](procedures/releases.md), "Release record"). Not recorded here: the update of an installed application, and the AppImage launcher on Linux |
+
+### HT-NEW-bundledmacosrdp — RDP and VNC on the same Mac
+
+State: Open. Requirements MRDP-001 to MRDP-005, R-451.
+
+1. Install the signed desktop build on an Apple Silicon Mac enrolled with Anima Link. Keep VNC enabled. Before enabling RDP, the hub cannot reach port 3389 on this device.
+2. Enable Remote Desktop in Anima on the Mac. Deny one macOS permission on the first attempt. Anima names the missing permission and keeps the Link route closed.
+3. Grant Screen Recording and Accessibility, reopen Anima if macOS asks, and enable RDP again. Copy the dedicated RDP password. Test the RDP connection and compare the shown SHA-256 fingerprint before accepting the certificate.
+4. From another client, connect to the device using RDP with the dedicated password. The active desktop is visible, keyboard and pointer input work and macOS shows that the display is captured.
+5. Close the Anima window on the Mac. The RDP session continues. Disconnect and open a VNC session to the same device entry. The Mac's VNC settings still work.
+6. Start an RDP session again. Choose Stop Remote Desktop in the Anima menu bar. The RDP session ends, the hub cannot reach the RDP port and VNC still works.
+7. Retry with another application listening on port 3389. Anima reports that its host cannot start and Link never routes RDP to the other application.
 
 ## Deferred
 

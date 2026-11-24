@@ -100,7 +100,7 @@ func (l *Link) readRequests(ctx context.Context, stream net.Conn) {
 }
 
 func (l *Link) local() dial.Local {
-	return dial.Local{IsOpen: l.openPort, Hub: func(ctx context.Context) (net.Conn, error) {
+	return dial.Local{IsOpen: l.openPort, RDP: l.rdp, Hub: func(ctx context.Context) (net.Conn, error) {
 		ctx, cancel := context.WithTimeout(ctx, dialLimit)
 		defer cancel()
 		return l.tunnel().Dial(ctx, tunnel.OpenPort)

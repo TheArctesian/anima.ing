@@ -183,6 +183,11 @@ func Dial(ctx context.Context, path, name string) (net.Conn, error) {
 	return dialer.DialContext(ctx, "unix", filepath.Join(path, name))
 }
 
+// DialOwned joins the owner-only socket named inside the directory.
+func (d *Dir) DialOwned(name string, limit time.Duration) (net.Conn, error) {
+	return DialOwned(filepath.Join(d.path, name), limit)
+}
+
 // DialOwned connects to a Unix socket of this user's other program in a private folder.
 // It refuses a socket that another user owns or can replace; in a private folder only this user or root can swap it after the check.
 func DialOwned(path string, limit time.Duration) (net.Conn, error) {

@@ -44,12 +44,13 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-it('offers defaults before making changes and submits a setup opt-out', async () => {
+it('offers macOS RDP unselected by default and submits the selected connections', async () => {
+  calls.localAccess.mockResolvedValue({ ...fresh, macRdp: true });
   await show();
   const switches = [...document.querySelectorAll<HTMLButtonElement>('[role="switch"]')];
-  expect(switches.map((button) => button.getAttribute('aria-checked'))).toEqual(['true', 'true']);
+  expect(switches.map((button) => button.getAttribute('aria-checked'))).toEqual(['true', 'false', 'true']);
   expect(calls.localAccess).toHaveBeenCalledExactlyOnceWith();
-  switches[1]?.click();
+  switches[2]?.click();
   await settle();
   calls.localAccess.mockResolvedValueOnce({ ...fresh, configured: true, selected: [22], open: [22], ready: [22] });
   [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Continue')?.click();

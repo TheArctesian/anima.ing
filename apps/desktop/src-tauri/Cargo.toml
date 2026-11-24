@@ -126,6 +126,11 @@ block2 = "0.6"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSObject", "NSString", "NSURLAuthenticationChallenge", "NSURLProtectionSpace", "NSURLCredential", "NSURLSession"] }
 objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "objc2-app-kit", "block2", "WKWebView", "WKNavigationDelegate"] }
 
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+anima-rdp-host = { path = "../../../crates/anima-rdp-host" }
+rcgen.workspace = true
+rand.workspace = true
+
 [dev-dependencies]
 # The mock runtime the updater proof runs the real updater plugin in (tests/updater).
 tauri = { workspace = true, features = ["unstable", "tray-icon", "test"] }

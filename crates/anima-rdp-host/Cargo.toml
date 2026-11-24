@@ -1,0 +1,31 @@
+[package]
+name = "anima-rdp-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints.rust]
+warnings = "deny"
+unsafe_code = "deny"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+mod_module_files = "deny"
+too_many_lines = "deny"
+too_many_arguments = "deny"
+cognitive_complexity = "deny"
+excessive_nesting = "deny"
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+ironrdp-server = { git = "https://github.com/Devolutions/IronRDP.git", rev = "b13befa0db86f48f523a0b2b007e399f9811e0ec", default-features = false }
+tokio.workspace = true
+tokio-rustls.workspace = true
+zeroize.workspace = true
+
+[build-dependencies]
+cc = "1"

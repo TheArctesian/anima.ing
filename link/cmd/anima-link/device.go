@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/TheArctesian/anima/link/control"
 	"github.com/TheArctesian/anima/link/devicelink"
@@ -93,8 +95,14 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	if err != nil {
 		return err
 	}
+	var rdp func(time.Duration) (net.Conn, error)
+	if runtime.GOOS == "darwin" {
+		rdp = func(limit time.Duration) (net.Conn, error) {
+			return dir.DialOwned(ports.RDPSocket, limit)
+		}
+	}
 	link, err := devicelink.Start(devicelink.Config{
-		Identity: device, Listen: *listen, DaemonSocket: forDaemon,
+		Identity: device, Listen: *listen, DaemonSocket: forDaemon, RDP: rdp,
 		Save:     func(renewed identity.Device) error { return renewed.Save(dir) },
 		OpenPort: func(port uint16) bool { return ports.IsOpen(dir, port) },
 	})
