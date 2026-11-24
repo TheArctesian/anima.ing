@@ -69,7 +69,9 @@ impl Models {
     /// TH117).
     #[must_use]
     pub fn offers(&self, program: Program, asked: &Asked<'_>) -> bool {
-        let effort = asked.effort.filter(|effort| !effort.common());
+        let effort = asked
+            .effort
+            .filter(|effort| program == Program::Grok || !effort.common());
         let speed = asked.speed.filter(|speed| *speed != STANDARD);
         if effort.is_none() && speed.is_none() {
             return true;

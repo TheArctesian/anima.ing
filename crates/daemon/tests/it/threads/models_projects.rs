@@ -82,7 +82,11 @@ async fn th104_the_models_of_each_program_are_there_before_any_thread() {
         panic!("models");
     };
     assert!(
-        programs.iter().all(|row| row.state == ListState::Listed),
+        programs.iter().all(|row| row.state
+            == match row.program {
+                Program::Grok => ListState::Missing,
+                Program::ClaudeCode | Program::Codex => ListState::Listed,
+            }),
         "each program says where its list stands (TH117): {programs:?}"
     );
 }

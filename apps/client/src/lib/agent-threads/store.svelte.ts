@@ -1,5 +1,6 @@
 import type { LiveThreads } from './live/live.svelte';
-import { listed, type Listing } from './listing/listing';
+import { listed, type ListedRow, type Listing } from './listing/listing';
+import type { LiveThread } from './live/timeline';
 import { mergedRows, startedThreadIds } from './live/rows';
 import type { SentPrompt } from './live/timeline';
 import { markSeen, needsYouCount, storedSeen, type Seen } from './state';
@@ -34,24 +35,34 @@ export class ThreadsStore {
   }
 
   /** The driven threads, then the session files that are not one of them (THR-056). */
-  readonly allRows = $derived.by(() => (this.rows === null ? null : mergedRows(this.rows, [...(this.live?.threads.values() ?? [])])));
+  get allRows(): readonly ThreadRow[] | null {
+    const live = [...(this.live?.threads.values() ?? [])];
+    return this.rows === null && live.length === 0 ? null : mergedRows(this.rows ?? [], live);
+  }
 
   archived = $state(false);
 
   /** No removed thread, and only the archived ones when asked (TH46). */
-  readonly listedRows = $derived.by(() => (this.allRows === null ? null : listed(this.allRows, this.live?.listings ?? NO_LISTINGS, this.archived)));
+  get listedRows(): readonly ListedRow[] | null {
+    const rows = this.allRows;
+    return rows === null ? null : listed(rows, this.live?.listings ?? NO_LISTINGS, this.archived);
+  }
 
-  readonly archivedCount = $derived.by(() => [...(this.live?.listings.values() ?? [])].filter((listing) => listing.archived && !listing.removed).length);
+  get archivedCount(): number {
+    return [...(this.live?.listings.values() ?? [])].filter((listing) => listing.archived && !listing.removed).length;
+  }
 
-  readonly liveThread = $derived.by(() => (this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null)));
+  get liveThread(): LiveThread | null {
+    return this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null);
+  }
 
   /** The Code badge counts Anima threads in the inbox (THR-057, TH46). */
-  readonly needsYou = $derived.by(() => {
+  get needsYou(): number {
     const listings = this.live?.listings ?? NO_LISTINGS;
     const started = startedThreadIds(listings.values(), this.live?.threads.values() ?? []);
     const rows = listed(this.allRows ?? [], listings, false).filter((row) => started.has(row.id));
     return needsYouCount(rows, this.readAt, this.seen);
-  });
+  }
 
   async loadList(): Promise<void> {
     try {

@@ -43,7 +43,7 @@ impl Changes {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Asked {
     /// Claude Code: each control request by its ID, until Claude Code answers it.
-    claude: BTreeMap<String, Changes>,
+    pub(super) claude: BTreeMap<String, Changes>,
     /// Codex: the changes for the turns after the running one.
     codex: Option<Changes>,
     /// The number of the last control request of a change, kept in the record so that an ID is
@@ -65,6 +65,7 @@ impl Thread {
             return Err(Refusal::NotRunning);
         }
         match &self.driver {
+            Driver::Grok(_) => self.grok_changes(&changes),
             Driver::Codex(_) if changes.mode == Some(Mode::Plan) => Err(cannot(
                 "Codex has no plan mode that the runner can set: choose a different mode.",
             )),
@@ -81,6 +82,58 @@ impl Thread {
             }
             Driver::Claude(_) => Ok(self.claude_lines(changes)),
         }
+    }
+
+    fn grok_changes(&mut self, changes: &Changes) -> Result<Vec<Step>, Refusal> {
+        let Driver::Grok(grok) = &self.driver else {
+            unreachable!()
+        };
+        if changes.mode.is_some() || changes.speed.is_some() {
+            return Err(cannot(
+                "Start a new Grok thread to change permissions; choose Grok Fast as a model.",
+            ));
+        }
+        if !grok.saved.ready || grok.saved.turn.is_some() || !self.asked.claude.is_empty() {
+            return Err(cannot(
+                "Wait for Grok to finish before changing its model or effort.",
+            ));
+        }
+        let Some(session) = grok.saved.session.clone() else {
+            return Err(Refusal::NotRunning);
+        };
+        let mut steps = Vec::new();
+        let parts = [
+            (
+                "model",
+                changes
+                    .model
+                    .as_ref()
+                    .map(|model| model.as_str().to_owned()),
+                Changes {
+                    model: changes.model.clone(),
+                    ..Changes::default()
+                },
+            ),
+            (
+                "reasoning_effort",
+                changes.effort.map(|effort| effort.as_str().to_owned()),
+                Changes {
+                    effort: changes.effort,
+                    ..Changes::default()
+                },
+            ),
+        ];
+        for (key, value, part) in parts {
+            if let Some(value) = value {
+                self.asked.last += 1;
+                let id = format!("grok-change-{}", self.asked.last);
+                steps.push(Step::Write(agent_threads::drive::grok::configure(
+                    &id, &session, key, &value,
+                )));
+                self.asked.claude.insert(id, part);
+            }
+        }
+        Ok(steps)
     }
 
     /// One control request for each part; Claude Code was measured to take them between two
@@ -142,12 +195,14 @@ impl Thread {
         }
         let what = if changes.model.is_some() {
             "model"
+        } else if changes.effort.is_some() {
+            "effort"
         } else {
             "mode"
         };
         vec![said(DriveEvent::Notice {
             text: format!(
-                "Claude Code did not change the {what} of the thread; it keeps the one it had."
+                "The program did not change the {what} of the thread; it keeps the one it had."
             ),
         })]
     }

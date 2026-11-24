@@ -28,6 +28,7 @@ const APP_COMMANDS: &[&str] = &[
     "builder_release_files",
     "builder_upload",
     "agent_threads_list",
+    "agent_threads_watch",
     "agent_thread_read",
     "agent_runner_call",
     "agent_runner_watch",

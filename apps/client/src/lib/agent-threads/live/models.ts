@@ -10,7 +10,7 @@ export interface ProgramModel {
 
 export type ModelLists = Partial<Readonly<Record<Program, readonly ProgramModel[]>>>;
 
-const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
+const PROGRAMS: readonly string[] = ['claude_code', 'codex', 'grok'];
 
 function modelFrom(value: unknown): ProgramModel | null {
   if (typeof value !== 'object' || value === null) return null;

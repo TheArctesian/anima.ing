@@ -31,6 +31,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-NEW-mobileinventory | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
+| HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
 | HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
@@ -5177,9 +5178,17 @@ page over a made-up runner in the real order of its answers; nobody has tried it
 4. Stop the Anima daemon, press New thread, type a prompt and send it.
    Expected: a line under the composer says why the thread did not start, with Retry; the text stays in the editor. Start the daemon and press Retry: the thread starts.
 5. Press New thread, click the project name, and choose "Add project".
-   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. Three of them are grey and say which call of the runner they need; nothing happens when you press them.
+   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. New project and Local folder are enabled. Git URL and GitHub repository remain disabled.
 6. Choose Local folder, go into a folder with Enter, go back with Backspace, then choose "Add this folder".
    Expected: the folders of your home folder, then of the chosen folder; Backspace goes up one folder; the draft now names the added folder.
+7. Choose Add project, then New project. Enter a name and the absolute path of an existing parent folder. Check the destination, then press Create project.
+   Expected: progress while the runner creates the folder and Git repository; repeated presses cannot submit twice. The confirmed project is selected without starting an agent. Reopen Code: the empty project remains in the picker.
+8. Try a name with a slash and a relative location, then an existing destination or a parent without write permission.
+   Expected: invalid fields are identified before submission. Runner refusals retain the fields and explain the failure; correct them and retry. An uncertain result never selects an unconfirmed project and advises checking the folder before retrying.
+9. Use the New project dialog by keyboard, in light and dark themes, a narrow window and enlarged text.
+   Expected: focus stays in the dialog, labels identify both fields, the destination wraps, and errors and buttons remain readable. Cancel closes an idle dialog; an in-flight request cannot be dismissed or duplicated.
+
+The New project slice is built on `code/new-project-ui` over TH60A. Synthetic tests exercise the real client response parser and draft UI; real filesystem creation and rendered desktop checks remain open.
 
 Result: Open.
 
@@ -5580,6 +5589,46 @@ on the device; they are not imported into another hub or deleted. The operator c
 Result: Open.
 
 
+## HT-188-code — Grok in Code (TH119)
+
+State: Open. Operator check required.
+
+Built: the local Grok ACP adapter, its model picker, Ask and Full access, streamed tool and reply
+entries, interruption, queued turns and changes of model or effort while idle. Protocol tests
+use synthetic frames. Local checks on Linux (2026-11-23, agent, c07e8fe11): the installed
+app lists Grok models, a prompt and follow-up show replies, and navigation away from Code
+and back keeps the thread current. An isolated runner continued after a daemon restart.
+These checks do not close the operator check or prove macOS behavior.
+
+1. Open Code on a machine signed in with `grok`. Select Grok: its installed model list and
+   reasoning levels appear, without Max or Ultra unless Grok reports them.
+2. Start a harmless prompt in a disposable folder in Ask. The reply streams and remains after
+   the turn ends. Request a file change: any approval Grok asks for is shown with its input;
+   Deny does not run it, and Allow grants only that request.
+3. Queue a second prompt during a turn: it goes only after the first turn succeeds. Stop a
+   running turn: no queued prompt goes automatically after the interruption.
+4. Between turns, change the model or effort: the row changes only after Grok accepts it.
+5. Restart the daemon while the Grok thread is idle: the thread remains usable.
+6. Navigate from Code to Devices and back. Open the thread and send another prompt: its title,
+   reply and completed state update; the page does not stay at “Working” after the reply.
+7. Repeat on macOS and Linux. Sessions started outside Anima and hub synchronization of Grok
+   threads are not included in this local slice.
+
+## HT-189-pointer — Linux tiled-window pointer alignment
+
+State: Open. The operator reported wrong hover and click targets on 2026-11-23.
+
+Built: the Linux main window no longer imposes a 960 by 600 minimum on a tiling
+compositor. In the reported arrangement the compositor allocated 863 pixels across,
+but WebKit rendered 960; the displayed buttons were compressed while input used
+the larger layout. Other platforms keep their existing minimum window sizes.
+
+1. Tile Anima beside another window on a fractionally scaled Linux display, narrower
+   than 960 logical pixels. Hover New thread and the adjacent project filter. Each
+   button highlights only when the pointer is over that button.
+2. Click each button. New thread opens a draft; the folder button opens the project
+   filter. Resize the tiled window and repeat, including a short window.
+3. Maximize and restore the window. Hover and clicks still match the drawn controls.
 ## HT-185-create — Create a local Code project (TH60A)
 
 State: Open. Built on `code/project-create`; the TC9 New project UI is owned separately.
@@ -5662,6 +5711,26 @@ probes, use a disposable enrolled Mac with an existing Xcode and Android SDK ins
 
 Database migration/replacement tests are reserved for CI in this session: no local
 PostgreSQL was started. Passing fixture tests is not a Passed result for this entry.
+## HT-190 — Native session list refresh
+
+State: Open. Built on `t3/session-folder-watcher` (TH7, THR-058).
+
+The shell watches session paths with bounded native registrations. Synthetic tests cover folder creation,
+file changes, replacement, safe path opening and client subscription lifetime. Discovery enumerates pinned
+directory descriptors and reads entry metadata without following links. A synthetic replacement between
+validation and enumeration is refused; removing the pinned-open guard makes that regression fail. Tests do not prove the
+installed application window lifecycle or OS permissions on a person's Mac and Linux desktop.
+
+1. In a test OS account on each platform, open Code with one made Claude Code or Codex session. Change
+   its session file. Expect the visible list and count to update promptly, without changing the held order.
+2. Hide the window, change the made session, then show the window. Expect no hidden list reads and one
+   refresh when shown. Navigate away from and back to Code several times. Expect no duplicate updates.
+3. Remove and recreate the made session directories, then change a file there. Expect the list to recover.
+4. Close and reopen the application. Expect file changes to update the list again.
+5. Use a test home with more than 1,024 session paths, or a filesystem without native notifications.
+   Expect the visible list to refresh within 30 seconds of silence. Expect no error containing session paths.
+
+No result is recorded yet. Only the operator sets this check to Passed or Failed.
 ## HT-184-remote-update — Hosted desktop OS updates
 
 Status: Open. Owner: OS5-R1 in [spare-computer-os.md](proposals/spare-computer-os.md).
