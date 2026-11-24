@@ -1,27 +1,17 @@
 <script lang="ts">
-  import Icon from '$lib/icons/Icon.svelte';
-  import type { IconName } from '$lib/icons/icons';
-  import { press } from '$lib/motion/roles/press';
+  import SplitButton from '$lib/forms/split/SplitButton.svelte';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import { actionWords, connectActions, headerLine, type HeaderDevice, type ProtocolAction } from '../header/header';
   import type { SettingsSection } from '../tabs/tabs';
 
   interface Props {
     device: HeaderDevice;
-    showSetup: boolean;
-    /** The button is passed so the session tab grows from it (MOT-005). */
     onConnect: (protocol: SessionProtocol, button: HTMLElement) => void;
     onSettings: (section: SettingsSection | null) => void;
   }
 
-  const { device, showSetup, onConnect, onSettings }: Props = $props();
-  const actions = $derived.by(() => {
-    const actions = connectActions(headerLine(device), device.name);
-    return actions === null ? [] : [actions.main, ...actions.others];
-  });
-  const ready = $derived(actions.filter(({ mode }) => mode === 'connect'));
-  const setup = $derived(actions.filter(({ mode }) => mode !== 'connect'));
-  const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:remote-connection', VNC: 'carbon:screen' };
+  const { device, onConnect, onSettings }: Props = $props();
+  const actions = $derived(connectActions(headerLine(device), device.name));
 
   function run(action: ProtocolAction, button: HTMLElement): void {
     if (action.section === null) onConnect(action.protocol, button);
@@ -29,23 +19,25 @@
   }
 </script>
 
-{#snippet button(action: ProtocolAction, primary = false)}
-  <button
-    type="button"
-    class:primary
-    aria-label={action.label}
-    onclick={(event) => run(action, event.currentTarget)}
-    {@attach press()}
-  ><Icon name={action.mode === 'set-up' ? 'carbon:add' : ICONS[action.protocol]} />{actionWords(action)}</button>
-{/snippet}
+{#if actions !== null}
+  <div class="connect">
+    <SplitButton
+      tone="primary"
+      label={actions.main.mode === 'connect' ? `Connect ${actions.main.protocol}` : actionWords(actions.main)}
+      mainLabel={actions.main.label}
+      menuLabel="More ways to connect to {device.name}"
+      menuText="Ways in"
+      choices={actions.others.map((action) => ({ id: action.protocol, label: actionWords(action), spoken: action.label }))}
+      onMain={(button) => run(actions.main, button)}
+      onChoose={(choice, button) => {
+        const action = actions.others.find((option) => option.protocol === choice.id);
+        if (action) run(action, button);
+      }}
+    />
+  </div>
+{/if}
 
-{#if showSetup && setup.length > 0}
-  <div class="phone-device-setup">
-    {#each setup as action (action.protocol)}{@render button(action)}{/each}
-  </div>
-{/if}
-{#if ready.length > 0}
-  <div class="phone-device-connect">
-    {#each ready as action, index (action.protocol)}{@render button(action, index === 0)}{/each}
-  </div>
-{/if}
+<style>
+  .connect { font-size: var(--text-sm); }
+  .connect :global(button) { min-block-size: var(--target-min-touch); }
+</style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/icons/Icon.svelte';
   import '../geometry.css';
   import { aboutFacts, type SideDevice } from './side';
 
@@ -8,7 +9,7 @@
 
 <!-- What the device is: its system, its kind, its tags, its daemon and its session limit (R-224). -->
 <section class="overview-card about" aria-labelledby="overview-about">
-  <h2 id="overview-about" class="overview-card-title">About</h2>
+  <h2 id="overview-about" class="overview-card-title"><Icon name="carbon:information" />About</h2>
   <dl>
     {#each facts as fact (fact.label)}
       <div><dt>{fact.label}</dt><dd>{fact.text}</dd></div>
@@ -33,7 +34,7 @@
 
   dl > div {
     display: grid;
-    grid-template-columns: calc(var(--space-16) + var(--space-4)) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
     gap: var(--space-3);
   }
 
