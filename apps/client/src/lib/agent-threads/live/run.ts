@@ -1,6 +1,7 @@
 /** Frames of the thread runner's local socket (TH14, THR-128); each crosses a process boundary, so each field is checked. */
 
 import { attachedFrom, promptFilesFrom, type AttachAction, type Attached, type PromptFiles } from './attachments';
+import { projectsFrom, type ProjectsOutcome } from '../projects/projects';
 import { usageFrom, workspaceFrom, type RunUsage, type RunWorkspace } from './details';
 import { folderOutcomeFrom, type FolderOutcome } from './files';
 import { modelListsFrom, type ModelLists } from './models';
@@ -88,6 +89,7 @@ export interface Limits {
 }
 
 export type Outcome =
+  | ProjectsOutcome
   | { readonly outcome: 'ok' }
   | { readonly outcome: 'started'; readonly thread: string }
   /** `holder`: words while the holder of the programs is older than the daemon (TH98). */
@@ -113,6 +115,8 @@ export type Answer =
   | { readonly answer: 'choose'; readonly answers: readonly (readonly [string, string])[] };
 
 export type Action =
+  | { readonly call: 'projects' }
+  | { readonly call: 'create_project'; readonly folder: string; readonly name: string }
   | { readonly call: 'list' }
   | {
       readonly call: 'start';
@@ -152,7 +156,7 @@ const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask', 'plan'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
-const REFUSALS = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full', 'cannot_change', 'too_large', 'cannot_attach'] as const;
+const REFUSALS = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full', 'cannot_change', 'too_large', 'cannot_attach', 'cannot_create_project'] as const;
 const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'];
 
 type Fields = Record<string, unknown>;
@@ -317,6 +321,8 @@ function listsFrom(value: Fields): Outcome | null {
 export function outcomeFrom(value: unknown): Outcome | null {
   if (!isRecord(value)) return null;
   switch (value.outcome) {
+    case 'projects':
+      return projectsFrom(value.projects);
     case 'ok':
       return { outcome: 'ok' };
     case 'started':

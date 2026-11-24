@@ -17,9 +17,10 @@
     start: string;
     /** Takes the chosen folder; the palette closes. */
     onAdd: (folder: string) => void;
+    onNew: () => void;
   }
 
-  let { open = $bindable(false), list, start, onAdd }: Props = $props();
+  let { open = $bindable(false), list, start, onAdd, onNew }: Props = $props();
   const id = $props.id();
 
   const walk = new AddProjectWalk(
@@ -29,6 +30,7 @@
       open = false;
       onAdd(folder);
     },
+    () => { open = false; onNew(); },
   );
   let input: HTMLInputElement | undefined = $state();
   let shadedId = $state<string | undefined>(undefined);
