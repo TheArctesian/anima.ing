@@ -34,8 +34,9 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-it('shows the sessions Anima did not start only after the switch, and keeps the choice after a reload', () => {
+it('shows the sessions Anima did not start in their own view and opens Code by default', () => {
   const storage = memory();
+  storage.setItem('anima.code.filter.outside', 'true');
   const before = viewOf(storage);
   let listed: (string | undefined)[] = [];
   const cleanup = $effect.root(() => {
@@ -48,14 +49,14 @@ it('shows the sessions Anima did not start only after the switch, and keeps the 
   expect(before.outsideExist).toBe(true);
   before.showOutside(true);
   flushSync();
-  // Shown as before the filter existed: on the Settled shelf, as T3 Code settles what it imports.
-  expect(listed).toEqual(['ours', 'theirs']);
+  expect(listed).toEqual([undefined, 'theirs']);
   expect(before.shelfOf('theirs')).toBe('settled');
   cleanup();
 
   const reloaded = viewOf(storage);
-  expect(reloaded.outsideShown).toBe(true);
-  expect(viewOf(memory()).outsideShown).toBe(false);
+  expect(reloaded.outsideShown).toBe(false);
+  before.showOutside(false);
+  expect(before.shown.map((each) => each.id)).toEqual(['ours']);
 });
 
 it('offers the switch in the project filter, and Tab from the search reaches it', () => {
@@ -66,7 +67,7 @@ it('offers the switch in the project filter, and Tab from the search reaches it'
   flushSync();
   const toggle = document.querySelector<HTMLButtonElement>('[role="switch"]') ?? expect.fail('no switch');
   const name = document.getElementById(toggle.getAttribute('aria-labelledby') ?? '')?.textContent;
-  expect([name, toggle.getAttribute('aria-checked')]).toEqual(['Show sessions started outside Anima', 'false']);
+  expect([name, toggle.getAttribute('aria-checked')]).toEqual(['Browse imported history', 'false']);
   const search = document.querySelector<HTMLInputElement>('input') ?? expect.fail('no search');
   const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
   search.dispatchEvent(tab);

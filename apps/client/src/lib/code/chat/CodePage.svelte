@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import '../kit/code.css';
   import { moved, type KeyAction } from '$lib/agent-threads/keys';
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
@@ -54,7 +54,9 @@
   const shown = $derived(narrow ? sheetOpen : inboxOpen);
   const held = $derived(sizes.held);
   let renaming = $state(false);
-  const visits = new Visits();
+  const visitsByView = { code: new Visits(), history: new Visits() };
+  const visits = $derived(view.outsideShown ? visitsByView.history : visitsByView.code);
+  onDestroy(() => view.showOutside(false));
   /** The new thread that is not started yet (T3's draft): the chat column shows it in place of a thread. */
   let draft = $state<ThreadDraft | null>(null);
   let field = $state<HTMLInputElement>();
@@ -67,7 +69,7 @@
   /** The row of the open thread, for the band. */
   const palette = $derived(
     paletteHost({
-      rows: store.listedRows,
+      rows: store.listedRows === null ? null : view.shown,
       failed: store.listProblem !== null || live?.linked === false,
       chosen: store.chosen,
       newThread: newOff === null ? newThread : undefined,
@@ -86,6 +88,7 @@
     if (newOff !== null) return;
     if (narrow) sheetOpen = false;
     draft = new ThreadDraft(open?.folder ?? null);
+    view.showOutside(false);
   }
 
   /** Opens `id`; `started`: the draft's send started it, from the runner's `Started` answer alone. */
@@ -201,7 +204,7 @@
   <!-- Hidden, not unmounted: the band's title opens a thread's menu through it, and the list keeps its place. -->
   <aside class="inbox" inert={!shown} aria-label="Threads of this computer">
     <TopBand>
-      <span class="name">Code</span>
+      <span class="name">{view.outsideShown ? 'Imported history' : 'Code'}</span>
       {#if !narrow}<HistoryButtons canGoBack={visits.canGoBack} canGoForward={visits.canGoForward} onback={() => step(-1)} onforward={() => step(1)} keys={mac ? { back: '⌘[', forward: '⌘]' } : { back: 'Ctrl+[', forward: 'Ctrl+]' }} />{/if}
     </TopBand>
     <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={newThread} onShow={() => (narrow ? (sheetOpen = true) : (inboxOpen = true))} bind:field />
@@ -235,7 +238,7 @@
     {/snippet}
     {#snippet aside()}{#if detailed !== undefined}<ThreadAside row={detailed} shown={details} />{/if}{/snippet}
     {#snippet notice()}{#if linkWords !== null}<RunnerNotice words={linkWords} onStop={live?.linked === true ? stopRunning : undefined} />{/if}{/snippet}
-    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id, true, draft?.sent ?? null)} />{:else}<ThreadBody {store} now={view.moment} />{/if}
+    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(view.codeRows)} onStarted={(id) => void choose(id, true, draft?.sent ?? null)} />{:else}<ThreadBody {store} now={view.moment} imported={view.outsideShown} />{/if}
     {#snippet composer()}{#if draft === null && store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>
