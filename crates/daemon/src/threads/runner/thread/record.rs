@@ -59,6 +59,14 @@ impl Thread {
         matches!(&self.driver, Driver::Codex(codex) if codex.leaving_line(line).is_some())
     }
 
+    /// A Grok prompt must have its reply ID on disk before the holder receives it.
+    #[must_use]
+    pub fn grok_prompt(&self, line: &str) -> bool {
+        matches!(self.driver, Driver::Grok(_))
+            && serde_json::from_str::<serde_json::Value>(line)
+                .is_ok_and(|call| call["method"] == "session/prompt")
+    }
+
     /// What the record holds of this thread but the lines of its requests: when it does not
     /// change, the record need not be written again.
     #[must_use]

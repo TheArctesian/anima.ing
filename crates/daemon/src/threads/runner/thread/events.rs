@@ -122,6 +122,15 @@ impl Thread {
     /// record could not say so first (THR-041): the turn ends as one that Codex refused, so
     /// nothing waits for it and the profile stays.
     pub fn held_back(&mut self, line: &str) -> Vec<Step> {
+        if self.grok_prompt(line) {
+            self.not_sent(true);
+            self.stall();
+            let mut steps = vec![said(DriveEvent::Notice {
+                text: "Anima could not write its record, so the Grok prompt did not go. Make room on the disk, then send again.".into(),
+            })];
+            steps.extend(self.state_change());
+            return steps;
+        }
         let Driver::Codex(codex) = &mut self.driver else {
             return Vec::new();
         };

@@ -19,6 +19,7 @@ use uuid::Uuid;
 use super::gone;
 
 mod commands;
+mod grok;
 mod made;
 mod relay;
 

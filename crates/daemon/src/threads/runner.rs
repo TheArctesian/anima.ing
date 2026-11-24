@@ -317,9 +317,14 @@ impl Runner {
                 put_back |= self.waits_first(id, queued);
                 continue;
             }
-            // The row of the queue after the prompt left it is not true now: the row of the
-            // put back is.
-            if put_back && matches!(step, Step::Change(Change::State { .. })) {
+            // A refused dispatch has already published the corrected state.
+            if (put_back
+                || (held
+                    && self.threads.get(&id).is_some_and(|thread| {
+                        thread.program() == agent_threads::drive::Program::Grok
+                    })))
+                && matches!(step, Step::Change(Change::State { .. }))
+            {
                 continue;
             }
             let Some(action) = step.command(&key) else {
