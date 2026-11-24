@@ -793,13 +793,19 @@ their grants; this section is the wire.
 
 ## 10. Proposed amendment: installed mobile tools (TH135)
 
-Status: **Proposed, not accepted or implemented**, version 1, 2026-11-23. This section is
-for CON-001 review. Sections 1 to 9 remain the accepted contract. Owner: TH135 and
+Status: **Accepted for implementation by the programme orchestrator, not implemented**,
+version 2, 2026-11-24 (R-NEW-mobileinventorycontract, CON-001). Sections 1 to 9 remain
+unchanged. Acceptance becomes part of the shared baseline when this branch lands in `dev`. Owner: TH135 and
 THR-172 in [agent-threads.md](../docs/proposals/agent-threads.md), Section 6.11;
 CAP-020 to CAP-031 in [compute-plan.md](../docs/plans/compute-plan.md).
-No new probe runs until this amendment is accepted and its implementation is reviewed.
+**R-NEW-mobileinventorycontract (programme orchestrator, 2026-11-24; CON-001).**
+Accept the K8 reporting amendment reviewed at `e2e07dce2`, after independent re-review
+found no remaining blocking findings. This implements the already approved TH135/THR-172
+inventory scope; it adds no lease authority, provisioning, download, wipe or freshness policy.
+The separate K1 proposal in Section 10.3 is not accepted by this ruling. Real probe enablement
+still requires implementation review; synthetic implementation and tests may proceed.
 
-### 10.1 Proposed wire addition
+### 10.1 Wire addition
 
 Add one optional member, `inventory.mobileTools`, to Section 4. No endpoint, token,
 work type or protocol version changes. Its members are `apple` and `android`, both
@@ -897,7 +903,7 @@ to `timed_out`; enumeration, open or read failures map to `exited`. A failure an
 in a probe invalidates that entire result, never a successful partial list; sibling
 probe results remain independent. A deadline, oversized input or malformed output yields its fixed failure
 state. A process environment must not allow installation, licence acceptance or
-credential access. These bounds are proposed for review, not a change to existing probes.
+credential access. These bounds apply only to the added probes, not to existing probes.
 
 No downloads, SDK installation, network catalogue query, simulator creation or boot,
 AVD listing, phone discovery, enrolment, lease action or service change is part of
