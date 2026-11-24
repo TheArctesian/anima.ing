@@ -13,6 +13,7 @@ function surface() {
     getElement: () => document.createElement('div'),
     scale: vi.fn(),
     onresize: null,
+    flush: (done: () => void) => done(),
   });
   const show = vi.fn();
   const stop = touchRemote(element, { sendMouseState, getDisplay }, { read: () => FIT_VIEWPORT, show });

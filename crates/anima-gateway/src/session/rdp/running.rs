@@ -211,7 +211,7 @@ where
                 Ok(())
             }
             Input::Disconnect => Err(Ended::ByHub),
-            Input::Nothing => Ok(()),
+            Input::Display(_) | Input::Nothing => Ok(()),
         }
     }
 
