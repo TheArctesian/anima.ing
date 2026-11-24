@@ -4,8 +4,9 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import AccessSetup from './AccessSetup.svelte';
 
-const calls = vi.hoisted(() => ({ localAccess: vi.fn(), publishAccess: vi.fn(), publishedAccess: vi.fn(), checkAccessHub: vi.fn(), settings: vi.fn() }));
+const calls = vi.hoisted(() => ({ localAccess: vi.fn(), linkPorts: vi.fn(), publishAccess: vi.fn(), publishedAccess: vi.fn(), checkAccessHub: vi.fn(), settings: vi.fn() }));
 vi.mock('$lib/desktop/link/access', () => ({ localAccess: calls.localAccess }));
+vi.mock('$lib/desktop/link/shell', () => ({ linkPorts: calls.linkPorts }));
 vi.mock('./access', () => ({ publishAccess: calls.publishAccess, publishedAccess: calls.publishedAccess, checkAccessHub: calls.checkAccessHub }));
 vi.mock('$lib/desktop/system-settings', () => ({ openSharingSettings: calls.settings }));
 vi.mock('$lib/hub/context', () => ({ useHub: () => ({}) }));
@@ -28,6 +29,7 @@ async function show(): Promise<void> {
 beforeEach(() => {
   installAnimations();
   calls.publishedAccess.mockReset().mockResolvedValue([]);
+  calls.linkPorts.mockReset().mockResolvedValue({ ok: true, value: { open: [] } });
   calls.settings.mockReset().mockResolvedValue(undefined);
   calls.checkAccessHub.mockReset().mockResolvedValue('local-key');
   vi.stubGlobal('navigator', { userAgent: 'Macintosh' });
@@ -151,6 +153,8 @@ it('retries failed publication without preparing protocols and never calls unpub
   await settle();
   expect(document.body.textContent).toContain('Hub update failed. Retry.');
   expect(document.body.textContent).not.toContain('Ready in Anima');
+  document.querySelector<HTMLButtonElement>('#setup-port-5900')?.click();
+  await settle();
   const sync = document.querySelector<HTMLButtonElement>('[aria-label="Enable in Anima: SSH"]');
   expect(sync?.getAttribute('aria-disabled')).toBe('false');
   sync?.click();
@@ -159,6 +163,7 @@ it('retries failed publication without preparing protocols and never calls unpub
   expect(calls.localAccess.mock.calls.filter((args) => args.length > 0)).toHaveLength(1);
   expect(calls.publishAccess).toHaveBeenCalledTimes(2);
   expect(document.body.textContent).toContain('Ready in Anima');
+  expect(document.querySelector('#setup-port-5900')?.getAttribute('aria-checked')).toBe('false');
 });
 
 it('distinguishes a listening server from verified authentication and retries without a settings detour', async () => {
@@ -210,4 +215,56 @@ it('invalidates saved publication when a later opening cannot read the hub', asy
   expect(document.querySelector('[aria-label="Enable in Anima: SSH"]')?.getAttribute('aria-disabled')).toBe('false');
   expect(calls.publishAccess).not.toHaveBeenCalled();
   expect(calls.localAccess.mock.calls).toEqual([[], []]);
+});
+
+
+it('shows one persistent control per enabled protocol without applying setup defaults', async () => {
+  calls.localAccess.mockResolvedValue({ ...fresh, configured: true, open: [22, 5900], ready: [22, 5900] });
+  calls.publishedAccess.mockResolvedValue([22, 5900]);
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(AccessSetup, { target, props: { inline: true } });
+  await settle();
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(document.querySelector('[role="switch"]')).toBeNull();
+  expect(document.body.textContent).toContain('Turn off SSH');
+  expect(document.body.textContent).toContain('Turn off screen sharing');
+  expect(calls.localAccess).toHaveBeenCalledExactlyOnceWith();
+  expect(calls.publishAccess).not.toHaveBeenCalled();
+  calls.localAccess.mockResolvedValue({ ...fresh, configured: true, selected: [5900], open: [5900], ready: [22, 5900] });
+  calls.publishAccess.mockRejectedValueOnce(new Error('Hub update failed. Retry.'));
+  [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Turn off SSH')?.click();
+  await settle();
+  expect(calls.linkPorts).toHaveBeenLastCalledWith({ port: 22, on: false });
+  expect(calls.localAccess).toHaveBeenLastCalledWith();
+  expect(calls.publishAccess.mock.calls[0]?.[2]).toBe(22);
+  expect(document.body.textContent).toContain('Turn off screen sharing');
+  const retry = [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Retry turning off');
+  expect(retry).toBeDefined();
+  retry?.click();
+  await settle();
+  expect(calls.linkPorts).toHaveBeenLastCalledWith({ port: 22, on: false });
+  expect(calls.localAccess).toHaveBeenLastCalledWith();
+  expect(calls.publishAccess).toHaveBeenCalledTimes(2);
+  expect(document.body.textContent).not.toContain('Retry turning off');
+});
+
+it('keeps local off available on a headless machine when the selected hub differs', async () => {
+  vi.stubGlobal('navigator', { userAgent: 'Linux' });
+  calls.publishAccess.mockRejectedValue(new Error('Connect this computer to this hub.'));
+  calls.localAccess.mockResolvedValue({ ...fresh, configured: true, desktop: false, selected: [3389, 5900], open: [3389, 5900], listening: [5900] });
+  calls.publishedAccess.mockResolvedValue([5900]);
+  calls.checkAccessHub.mockRejectedValue(new Error('Connect this computer to this hub.'));
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(AccessSetup, { target, props: { inline: true } });
+  await settle();
+  const off = [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Turn off screen sharing');
+  expect(off).toBeDefined();
+  calls.localAccess.mockResolvedValue({ ...fresh, configured: true, desktop: false, selected: [3389], open: [3389], listening: [5900] });
+  off?.click();
+  await settle();
+  expect(calls.linkPorts).toHaveBeenCalledExactlyOnceWith({ port: 5900, on: false });
+  expect(calls.localAccess).toHaveBeenLastCalledWith();
+  expect(calls.publishAccess.mock.calls[0]?.[2]).toBe(5900);
 });

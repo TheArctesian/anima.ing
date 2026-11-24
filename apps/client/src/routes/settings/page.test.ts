@@ -121,7 +121,7 @@ it('SET-001, UI-005, MOT-043, R-224: the page is the title, then Account, Notifi
 it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section after Appearance, holding the update, log folder and Builds rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Notifications', 'Default check settings', 'Data retention', 'Stay awake', 'Appearance', 'Updates', 'MCP', 'Code appearance', 'Integrations', 'API keys', 'VPN']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Notifications', 'Default check settings', 'Data retention', 'Remote access', 'Stay awake', 'Appearance', 'App and tools', 'MCP', 'Code appearance', 'Integrations', 'API keys', 'VPN']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(3);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(3);
@@ -146,7 +146,7 @@ it('MCP-018: the desktop app shows the MCP section after Updates, with the secti
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
-  expect(headings.indexOf('MCP')).toBe(headings.indexOf('Updates') + 1);
+  expect(headings.indexOf('MCP')).toBe(headings.indexOf('App and tools') + 1);
 });
 
 it('CLI-003: Sign out calls logout, clears the token with hub.address, then goes to sign-in', async () => {
@@ -248,7 +248,7 @@ it('CLI-002, F-10: desktop shows Hub after Account and before Notifications, wit
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
   expect(headings.slice(0, 3)).toEqual(['Account', 'Hub', 'Notifications']);
-  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '', 'Set up remote access']);
+  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Sign out and change hub', '']);
   expect(hubStatus(target)?.textContent).toBe('');
 });
 
@@ -295,7 +295,7 @@ it('MOT-007: a busy Hub button is aria-disabled, keeps focus and sends no second
   expect(document.activeElement).toBe(button);
   expect(hubStatus(target)?.textContent).toBe('Testing the hub…');
   button.click();
-  hubButton(target, 'Change hub').click();
+  hubButton(target, 'Sign out and change hub').click();
   await settled();
   expect(hub.sent.filter((request) => request.operation === 'Me')).toHaveLength(2);
   expect(hub.sent.some((request) => request.operation === 'Logout')).toBe(false);
@@ -307,7 +307,7 @@ it('MOT-007: a busy Hub button is aria-disabled, keeps focus and sends no second
 it('CLI-002, D-5, R-225: Change hub signs out, clears the token, forgets the address and starts again at the first-run choices', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
-  hubButton(target, 'Change hub').click();
+  hubButton(target, 'Sign out and change hub').click();
   await settled();
   expect(hub.sent.map((request) => request.operation)).toEqual(['Me', 'Logout']);
   expect(mocks.clearAccessToken).toHaveBeenCalledWith(hub.hub.address);
@@ -319,7 +319,7 @@ it('CLI-002: Change hub stays put and shows the sign-out sentence when the token
   mocks.platform = DESKTOP_MAC;
   mocks.clearAccessToken.mockRejectedValue(new Error('keychain secret'));
   const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
-  hubButton(target, 'Change hub').click();
+  hubButton(target, 'Sign out and change hub').click();
   await settled();
   expect(mocks.goToSignIn).not.toHaveBeenCalled();
   expect(hubStatus(target)?.textContent).toBe(TOKEN_KEPT_AFTER_LOGOUT);

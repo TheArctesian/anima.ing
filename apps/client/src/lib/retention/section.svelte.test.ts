@@ -104,6 +104,7 @@ it('HUB-005, D-25: Save sends setRetention with the subject and days and the row
   expect(input(target, 'Events').value).toBe('120');
   expect(row(target, 'Events').querySelector('.hint')?.textContent).toContain('Keeps 120 days.');
   expect(problemOf(target, 'Events')).toBe('');
+  expect(row(target, 'Events').querySelector('button')?.getAttribute('aria-disabled')).toBe('true');
 });
 
 it('HUB-005: a failed save shows a fixed message, not the hub text, and keeps what the operator typed', async () => {
@@ -161,7 +162,7 @@ it('MOT-007: Save keeps its label and place while the hub answers, and keeps foc
   type(input(target, 'Events'), '120');
   button?.click();
   flushSync();
-  expect(button?.querySelector('[aria-hidden="false"]')?.textContent).toBe('Save');
+  expect(button?.querySelector('[aria-hidden="false"]')?.textContent).toBe('Save changes');
   expect(button?.getAttribute('aria-disabled')).toBe('true');
   button?.click();
   expect(sentSets()).toHaveLength(1);
@@ -271,4 +272,19 @@ it('MOT-007, NAV-005: Retry stays mounted and keeps focus while it retries and w
   await settled();
   await settled();
   expect(document.activeElement).toBe(target.querySelector('input'));
+});
+
+
+it('SET-005: unchanged retention periods cannot be saved, including after reverting an edit', async () => {
+  const target = await open(LIST);
+  const form = row(target, 'Events');
+  const button = form.querySelector('button');
+  expect(button?.getAttribute('aria-disabled')).toBe('true');
+  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await settled();
+  expect(sentSets()).toHaveLength(0);
+  type(input(target, 'Events'), '120');
+  expect(button?.getAttribute('aria-disabled')).toBe('false');
+  type(input(target, 'Events'), '90');
+  expect(button?.getAttribute('aria-disabled')).toBe('true');
 });
