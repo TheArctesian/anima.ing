@@ -5176,9 +5176,17 @@ page over a made-up runner in the real order of its answers; nobody has tried it
 4. Stop the Anima daemon, press New thread, type a prompt and send it.
    Expected: a line under the composer says why the thread did not start, with Retry; the text stays in the editor. Start the daemon and press Retry: the thread starts.
 5. Press New thread, click the project name, and choose "Add project".
-   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. Three of them are grey and say which call of the runner they need; nothing happens when you press them.
+   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. New project and Local folder are enabled. Git URL and GitHub repository remain disabled.
 6. Choose Local folder, go into a folder with Enter, go back with Backspace, then choose "Add this folder".
    Expected: the folders of your home folder, then of the chosen folder; Backspace goes up one folder; the draft now names the added folder.
+7. Choose Add project, then New project. Enter a name and the absolute path of an existing parent folder. Check the destination, then press Create project.
+   Expected: progress while the runner creates the folder and Git repository; repeated presses cannot submit twice. The confirmed project is selected without starting an agent. Reopen Code: the empty project remains in the picker.
+8. Try a name with a slash and a relative location, then an existing destination or a parent without write permission.
+   Expected: invalid fields are identified before submission. Runner refusals retain the fields and explain the failure; correct them and retry. An uncertain result never selects an unconfirmed project and advises checking the folder before retrying.
+9. Use the New project dialog by keyboard, in light and dark themes, a narrow window and enlarged text.
+   Expected: focus stays in the dialog, labels identify both fields, the destination wraps, and errors and buttons remain readable. Cancel closes an idle dialog; an in-flight request cannot be dismissed or duplicated.
+
+The New project slice is built on `code/new-project-ui` over TH60A. Synthetic tests exercise the real client response parser and draft UI; real filesystem creation and rendered desktop checks remain open.
 
 Result: Open.
 
