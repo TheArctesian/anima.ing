@@ -13,6 +13,7 @@ pub mod link;
 pub mod maintenance;
 pub mod metrics;
 pub mod notifications;
+pub mod os_updates;
 pub mod retention;
 pub mod rollout;
 pub mod sessions;

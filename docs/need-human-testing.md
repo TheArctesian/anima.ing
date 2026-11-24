@@ -31,6 +31,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-NEW-sessionwatch | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
+| HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
@@ -5568,6 +5569,25 @@ on the device; they are not imported into another hub or deleted. The operator c
 
 Result: Open.
 
+
+## HT-185-create — Create a local Code project (TH60A)
+
+State: Open. Built on `code/project-create`; the TC9 New project UI is owned separately.
+
+Security correction: Git initializes only in Anima’s private staging folder. An exclusive, handle-relative rename publishes the completed repository, and registration checks its identity. A destination on another filesystem is refused without changing it; initialize that folder with Git and add it as an existing local project. Human checks do not claim this fallback was exercised on a second volume.
+Automated checks exercise repository creation, preservation of existing files, rejected paths,
+and registration across a runner restart. This check covers the installed CLI and system Git.
+
+1. Choose an existing writable parent and an unused child path. Run `anima agents projects create /absolute/parent/new-project --name "New project"`.
+   Expected: the command lists the new project; `git -C /absolute/parent/new-project status` shows an empty repository on `main`.
+2. Run the same create command again.
+   Expected: a refusal, with the original repository unchanged.
+3. Restart the daemon, then run `anima agents projects`.
+   Expected: New project remains listed once.
+4. Open Code and choose that local project for a new thread.
+   Expected: the thread uses the new folder. This task does not enable the New project palette action.
+
+Result: Open.
 ## HT-182: Default-on remote setup (HM-T41, R-449)
 
 State: Open.
@@ -5608,3 +5628,14 @@ installed application window lifecycle or OS permissions on a person's Mac and L
    Expect the visible list to refresh within 30 seconds of silence. Expect no error containing session paths.
 
 No result is recorded yet. Only the operator sets this check to Passed or Failed.
+## HT-184-remote-update — Hosted desktop OS updates
+
+Status: Open. Owner: OS5-R1 in [spare-computer-os.md](proposals/spare-computer-os.md).
+
+The hub, CLI and desktop invoke the signed OS updater over pinned private SSH. Automated checks cover restart confirmation and the OS service boundary; they do not prove a deployed hosted account, physical reboot or the installed desktop bundle.
+
+1. Install the matching hub, desktop and OS versions. Open the enrolled OS device's Overview and choose View OS update status. Expect its retained update state, or a specific SSH/trust/version error.
+2. Check and download a signed newer release. Close the desktop during download, then reopen the device page. Expect progress or the verified staged release, without starting another download.
+3. Choose Restart to update, then Cancel. Expect no restart. Repeat and confirm. Expect the connection to drop and the applied version to appear only after reconnection and startup checks.
+4. Request Restore previous OS and confirm. Expect the prior OS and retained owner data after reconnecting.
+5. Verify SSH and RDP on the same physical device, including a locked local screen. The earlier reported automatic setup and RDP reachability failures remain unverified.

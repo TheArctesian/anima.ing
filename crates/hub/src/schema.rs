@@ -20,7 +20,7 @@ use crate::{
             self, Bus,
             process_log::{InternalErrors, RequestSpan},
         },
-        link, maintenance, metrics, notifications, retention,
+        link, maintenance, metrics, notifications, os_updates, retention,
         sessions::{self, Live},
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
@@ -30,6 +30,7 @@ use crate::{
 
 #[derive(MergedObject, Default)]
 pub struct Query(
+    os_updates::graphql::Query,
     access::graphql::Query,
     agent_threads::graphql::Query,
     agent_usage::graphql::Query,
@@ -67,6 +68,7 @@ pub struct Query(
 
 #[derive(MergedObject, Default)]
 pub struct Mutation(
+    os_updates::graphql::Mutation,
     access::graphql::Mutation,
     builds::graphql::Mutation,
     builds::graphql::BuilderMutation,
