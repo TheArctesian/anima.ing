@@ -32,6 +32,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | --- | --- | --- | --- |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-NEW-vncdisplays | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
+| HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
@@ -1471,6 +1472,23 @@ user must be able to run `docker ps`.
     steps.
 
 Result: Open.
+
+Mac diagnostic check (2026-11-23, branch `t3/macos-docker-discovery`): the automated fixtures
+use fake executables and synthetic failures only. No real Docker Desktop or Colima engine,
+SSH login environment or socket was tested. This entry remains Open.
+
+14. Use a test Mac with Docker Desktop or Colima already set up, with the SSH user and engine
+    that the operator intends Anima to read. Through a non-interactive SSH command as that user,
+    run `command -v docker`, `docker context show` and `docker ps -a`. Compare the list with
+    `anima containers list <device>` and Hosting > Applications. Expected: the same containers.
+    Do not switch contexts or change socket permissions for this check.
+15. On a test account where Docker is installed but absent from the non-interactive SSH PATH,
+    request the list. Expected: CONFLICT with guidance to check installation and that PATH,
+    not a claim that Docker is absent. The CLI, MCP list and client show the hub's guidance.
+16. On a test account that already has an unavailable engine, denied socket or invalid context,
+    request the list. Expected: UNAVAILABLE with checks for engine, SSH-user access and context;
+    no assertion of the exact cause and no raw Docker diagnostic. If no such account is
+    available, record that case as not tested. Do not change the personal engine or its access.
 
 ### HT-026: the use of AI agent programs from real session files
 
@@ -5533,9 +5551,37 @@ existing assignments and client retries. They do not cover two real devices or a
 5. Open Projects on a device that holds an empty earlier group. Expected: the group appears on
    this hub and on the second device, even though it has no projects. If the hub is too old to
    import empty groups, the name stays stored locally until the hub is updated.
+6. Open Projects with earlier device groups against a hub that supports shared groups but not
+   their import. Expected: a quiet note says that earlier groups need a newer hub. Shared groups
+   and project cards still work. Keep Projects visible through two refreshes. Expected: the client
+   does not repeat the unsupported import. After the hub is updated, leave Projects and open it
+   again. Expected: the earlier groups import; only acknowledged memberships leave device storage.
+   This compatibility repair is built on `t3/fix-project-group-sync-compatibility`. Synthetic
+   client tests cover the old schema responses, errors and retries; the installed app and the
+   hub update still need this check.
 
 The old device storage has no hub address. Unknown or foreign-hub memberships remain stored
 on the device; they are not imported into another hub or deleted. The operator chose B on
 2026-11-23: empty earlier groups move to the next hub opened.
 
 Result: Open.
+
+## HT-182: Default-on remote setup (HM-T41, R-449)
+
+State: Open.
+
+Reported failure (2026-11-23): the operator showed Screen Sharing on, but installed commit `0a806e307` rejected authentication and still directed them to turn it on. The build owner supplied an Apple 3.889 banner with methods 30, 33, 36, 35. The compatibility correction was built and verified with synthetic fixtures, then delivered for the Mac retest below. The overall check remains Open.
+
+Operator retest (2026-11-23): after installing 0.12.47 (`aa3237c76`), the operator said "okay that works now" about the corrected setup. They separately reported an existing working VNC connection from their iPad; that does not establish a new authenticated session through Anima. After installing 0.12.49 (`3cd1955a`), which corrected the Enable in Anima label and saved registration status, the operator said "thats good" and moved on to Settings layout feedback. This confirms the reported Mac setup issue is resolved for the operator, but does not individually verify keyboard/accessibility, opt-outs across restart, error paths, an authenticated Anima session, or any Windows/Linux case.
+
+Settings layout follow-up (2026-11-23): verify Remote access appears separately from Hub; its enable/off actions update only the selected protocol and persist on reopening. Check a failed hub update can be retried without re-enabling a closed protocol. Verify category names in the narrow Jump to section menu, conditional section links, keyboard reach to the bottom of the desktop index, light/dark themes and enlarged text. Local synthetic rendering does not substitute for real OS permission prompts or authenticated sessions.
+
+Retest with Screen Sharing already on: the recognized Apple offer must permit setup without changing system permissions. Complete a real authenticated screen session from another enrolled computer. If Anima cannot verify the listening server's authentication, it must say Server detected · authentication not verified, retain blocked access, and offer Check again without claiming the service is off.
+
+On a newly joined desktop, open Devices. SSH and the desktop protocols supported by that platform must be selected. Turn one off before Continue. It must remain closed. Cancel an administrator prompt; that protocol must remain closed and show a retry path.
+
+For the HM-T41 refinement, use the keyboard to reach each row action. Click Enable on SSH: only SSH starts preparation, the row reports progress, and a cancelled authorization stays actionable without a Ready result. Enable requires the native administrator prompt when a server must be installed. Verify that focus remains usable and the status is announced.
+
+On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing, then return to Anima: only Screen Sharing is checked and opened through Anima after its server replies. Return without enabling it: the row must stay not ready, with the settings action available. If no focus event arrives, use Check again. Resize the dialog and check light and dark appearance and enlarged text. Verify an authenticated SSH and VNC session from another enrolled computer. macOS has no bundled RDP server. On Windows Pro, verify RDP with NLA and existing firewall policy; Windows Home must not be presented as a working RDP host. Windows VNC needs an existing authenticated server. On Debian/Ubuntu, verify xrdp installation and authenticated sessions; confirm newly installed servers bind only loopback. Automatic x11vnc installation is suspended: a unixpw screen login cannot be established by the RFB security-type check. A preexisting VNC listener with None, unknown or mixed unauthenticated methods must remain closed through Anima, with an authentication-verification explanation. A server that requires VNC password or Apple account authentication must still complete a real authenticated session; the probe alone does not prove this. On Wayland, verify the manual sharing path. Linux package installation and Windows UAC have not been exercised on this Mac.
+
+On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.

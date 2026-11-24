@@ -106,6 +106,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         link::link_status,
         link::link_leave,
         link::open_ports::link_ports,
+        link::access::link_access,
         hub_listener::hub_listener_check,
         web_view::commands::web_view_pinning,
         web_view::commands::web_view_open,

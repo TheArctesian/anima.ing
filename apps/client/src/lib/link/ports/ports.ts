@@ -17,12 +17,12 @@ const NEEDS: Readonly<Record<System, Readonly<Record<number, string>>>> = {
   },
   linux: {
     22: 'Sets up SSH automatically. Your system may ask for administrator approval.',
-    3389: 'Needs an RDP server on this computer, such as xrdp. Included in Anima OS.',
-    5900: 'Needs a VNC server on this computer, such as the screen sharing of your desktop.',
+    3389: 'Sets up a private RDP server automatically on supported Linux desktops. Your system may ask for administrator approval.',
+    5900: 'Needs an existing VNC server that requires authentication before screen access. Anima cannot verify a login screen inside a VNC session.',
   },
   windows: {
     22: 'Sets up SSH automatically. Your system may ask for administrator approval.',
-    5900: 'Needs a VNC server on this computer.',
+    5900: 'Needs an existing VNC server that requires authentication before screen access.',
     3389: 'Needs Remote Desktop: Settings, System, Remote Desktop.',
   },
 };

@@ -39,8 +39,7 @@
   const offersSetup = $derived(waysIn && screenSharing !== undefined && offersScreenSharing(device) && !(row && device.status === 'DOWN'));
   const offersWeb = $derived(onOpenWeb !== undefined && web.length > 0);
   /**
-   * A row of the list has one line: with more than two buttons, each way in shows its icon alone and its name in its
-   * tooltip, so a device that goes down and gains "Wake" does not make its row taller (MOT-007).
+   * A crowded row also compacts the Web menu, so gaining Wake does not make the row taller (MOT-007).
    */
   const offersWake = $derived(waysIn && wake !== undefined && canWake(device) && !(row && device.status === 'UP'));
   const tight = $derived(row && protocols.length + (offersSetup ? 1 : 0) + (offersWeb ? 1 : 0) + (offersWake ? 1 : 0) > 2);
@@ -52,15 +51,15 @@
     <button
       type="button"
       class="device-action"
-      class:quiet={compact && !tight}
-      class:icon-only={tight}
-      title={tight ? protocol : undefined}
+      class:quiet={compact && !row}
+      class:icon-only={row}
+      title={row ? protocol : undefined}
       tabindex="0"
       aria-label={connectLabel(protocol, device.name)}
       onclick={(event) => {
         onConnect(device, protocol, event.currentTarget);
       }}
-      {@attach press()}>{#if compact}<Icon name={ICONS[protocol]} size="sm" />{/if}{#if !tight}{protocol}{/if}</button
+      {@attach press()}>{#if compact || row}<Icon name={ICONS[protocol]} size="sm" />{/if}{#if !row}{protocol}{/if}</button
     >
   {/each}
   {#if screenSharing !== undefined && offersSetup}

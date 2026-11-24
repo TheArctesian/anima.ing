@@ -75,14 +75,18 @@
     display: flex;
     flex-direction: column;
     gap: var(--border-focus);
+    max-block-size: calc(100dvh - var(--space-6) * 2);
+    overflow-y: auto;
   }
 
   .heading {
+    flex: none;
     padding: 0 var(--space-3) var(--space-2);
   }
 
   /* The name of a group of links; each group after the first has space above it (R-224). */
   .group {
+    flex: none;
     padding: var(--space-2) var(--space-3) var(--space-1);
   }
 
@@ -91,6 +95,8 @@
   }
 
   a {
+    box-sizing: border-box;
+    flex: none;
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -121,6 +127,7 @@
   @media (max-width: 1100.98px) {
     nav {
       position: static;
+      max-block-size: none;
       flex-direction: row;
       gap: var(--space-1);
       overflow-x: auto;
@@ -129,7 +136,9 @@
 
     nav.stacked {
       flex-direction: column;
-      overflow: visible;
+      max-block-size: 60dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
 
     .stacked a {
@@ -140,7 +149,7 @@
     }
 
     .heading,
-    .group {
+    nav:not(.stacked) .group {
       display: none;
     }
 

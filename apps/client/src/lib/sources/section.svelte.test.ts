@@ -221,4 +221,12 @@ it('PRJ-018: the key field hides what is typed, is not named for the browser, an
   await click('Connect');
   expect(hub.sent).toEqual([]);
   expect(text()).toContain('Paste the private key or choose its .pem file.');
+  const invalid = [...document.querySelectorAll<HTMLInputElement>('input[aria-invalid="true"]')];
+  expect(invalid).toHaveLength(4);
+  for (const input of invalid) {
+    const descriptions = (input.getAttribute('aria-describedby') ?? '').split(' ').map((id) => document.getElementById(id)?.textContent ?? '');
+    const error = input.parentElement?.querySelector('.problem')?.textContent;
+    expect(error).toBeTruthy();
+    expect(descriptions).toContain(error);
+  }
 });

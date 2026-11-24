@@ -21,6 +21,7 @@
   let saveFailed = $state(false);
   let busy = $state(false);
   const saved = useActionFeedback();
+  const dirty = $derived(loaded !== null && SETTING_FIELDS.some(({ key }) => draft[key] !== String(loaded?.[key])));
   let retrying = $state(false);
   let form: HTMLFormElement | undefined = $state();
   const notice = $derived(loadFailed ? 'Could not load the defaults.' : saveFailed ? 'Could not save the defaults.' : '');
@@ -58,7 +59,7 @@
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    if (loaded === null || busy) return;
+    if (loaded === null || busy || !dirty) return;
     saveFailed = false;
     errors = settingsErrors(draft);
     if (errors.length > 0) return;
@@ -115,7 +116,7 @@
         <FormButton tabindex={0} data-retry aria-disabled={retrying} onclick={retry}>Retry</FormButton>
       </div>
     </div>
-    <FormButton tabindex={0} type="submit" tone="primary" aria-label="Save default check settings" aria-disabled={loaded === null || busy} feedback={saved.state}>Save</FormButton>
+    <FormButton tabindex={0} type="submit" tone="primary" aria-label="Save default check settings" aria-disabled={loaded === null || busy || !dirty} feedback={saved.state}>Save changes</FormButton>
   </div>
 </form>
 

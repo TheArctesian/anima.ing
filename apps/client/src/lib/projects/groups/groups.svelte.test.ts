@@ -176,3 +176,28 @@ it('PRO-059: a hub older than project groups hides them with a quiet note, not a
   expect([...document.querySelectorAll('button')].map((each) => each.textContent.trim())).not.toContain('Retry');
   expect(document.querySelector('[aria-label="Show by"]')).toBeNull();
 });
+
+it('G3: an unavailable import shows update advice while shared group controls remain usable', async () => {
+  const earlier = groups();
+  earlier.create('Earlier', ['p1']);
+  let calls = 0;
+  const older = { request: () => {
+    calls += 1;
+    return Promise.resolve(calls === 1
+      ? { ok: true, value: { projectGroups: [] } }
+      : { ok: false, error: { code: 'unserved', message: 'This hub is older than this application.' } });
+  } };
+  const shared = new SharedProjectGroups(older as unknown as ConstructorParameters<typeof SharedProjectGroups>[0], localStorage);
+  await shared.refresh();
+  await store.load();
+  app = mount(ProjectsScreen, { target: document.body, props: { store, projectGroups: shared } });
+  flushSync();
+  expect(text()).toContain('Earlier groups need a newer hub');
+  expect(text()).toContain('reopen Projects');
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  expect(document.querySelector('[aria-label="Show by"]')).not.toBeNull();
+  click('Select');
+  check('notes');
+  expect(text()).toContain('1 selected');
+  expect(storedClusters(localStorage).groups.map((group) => group.name)).toEqual(['Earlier']);
+});

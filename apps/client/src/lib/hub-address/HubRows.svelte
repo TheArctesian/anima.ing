@@ -53,7 +53,7 @@
   {/snippet}
   <!-- aria-disabled, not disabled: a busy button keeps focus and its width (MOT-007). -->
   <button type="button" tabindex="0" aria-disabled={busy} aria-busy={busy} onclick={test} {@attach press()}>Test connection</button>
-  <button type="button" tabindex="0" aria-disabled={busy} aria-busy={busy} onclick={change} {@attach press()}>Change hub</button>
+  <button type="button" tabindex="0" aria-disabled={busy} aria-busy={busy} onclick={change} {@attach press()}>Sign out and change hub</button>
   {#snippet message()}
     <!-- Always mounted with one line reserved, as in SignOutRow, so a result moves nothing (MOT-007). -->
     <p role="status" class="status">{status}</p>
