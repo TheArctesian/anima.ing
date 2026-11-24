@@ -90,6 +90,11 @@ impl Invocation {
         Ok(Config::load(self.config_dir()?)?)
     }
 
+    #[must_use]
+    pub fn explicit_hub(&self) -> bool {
+        self.globals.hub.is_some()
+    }
+
     /// The hub this run talks to (CMD-013).
     ///
     /// # Errors

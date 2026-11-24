@@ -1,17 +1,6 @@
-//! The sign-in documents. `Login` derives neither `Debug` nor `Serialize`: its variables hold
-//! the password and its answer the token (CMD-014).
+//! Identity and revocation documents; browser approval is in `device`.
 
 use graphql_client::GraphQLQuery;
-
-use crate::hub::scalars::DateTime;
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "schema.graphql",
-    query_path = "src/auth/login.graphql",
-    skip_serializing_none
-)]
-pub struct Login;
 
 #[derive(GraphQLQuery)]
 #[graphql(

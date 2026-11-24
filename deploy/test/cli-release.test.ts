@@ -33,7 +33,7 @@ describe.skipIf(process.platform === "win32")("the Homebrew formula of a release
   });
 
   test("it installs `anima` and its licence files, builds nothing, and its test asks the program for its version", () => {
-    expect(text).toContain('  def install\n    bin.install "anima"\n    prefix.install "LICENSE", "NOTICE", "LICENSE-APACHE"\n  end\n');
+    expect(text).toContain('  def install\n    bin.install "anima", "anima-link", "anima-daemon"\n    prefix.install "LICENSE", "NOTICE", "LICENSE-APACHE"\n  end\n');
     expect(text).not.toMatch(/depends_on|system |cargo|rust/);
     expect(text).toContain('assert_match version.to_s, shell_output("#{bin}/anima --version")');
   });

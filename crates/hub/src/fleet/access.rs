@@ -52,6 +52,7 @@ pub use identity::{Identity, client_addr, identify, identify_connection, operato
 pub use layer::{Edge, permitted_networks_layer};
 pub use login::browser_ticket::{BrowserTickets, TICKET_BYTES};
 pub use login::hosted::{BrowserSession, HostedDevice, sign_in_hosted, sign_in_hosted_browser};
+pub use login::remote_sessions::{RemoteAuthPayload, sign_in_remote};
 pub use origin::PublicOrigin;
 pub use password::Password;
 pub use rebinding::loopback_names_layer;
@@ -433,6 +434,7 @@ pub async fn prune(db: &PgPool, now: DateTime<Utc>) -> Result<Pruned, Error> {
         keys: now - EXPIRED_KEYS_KEPT,
     };
     let (attempts, tokens) = store::prune(&mut conn, &cutoffs).await?;
+    store::sign_in::prune(&mut conn, now).await?;
     Ok(Pruned { attempts, tokens })
 }
 

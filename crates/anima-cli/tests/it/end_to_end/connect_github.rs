@@ -22,7 +22,6 @@ const INSTALLATIONS: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../providers/github/tests/fixtures/installations.json"
 ));
-const LINK_START: &str = "https://hub.anima.ing/connect/github?ticket=";
 
 fn conversion(stub: &Stub) {
     let key = RsaPrivateKey::new(&mut OsRng, 2048).expect("a key");
@@ -52,8 +51,8 @@ fn conversion(stub: &Stub) {
     );
 }
 
-fn link_on(screen: &str) -> String {
-    let at = screen.find(LINK_START).expect("the link on the screen");
+fn link_on(screen: &str, prefix: &str) -> String {
+    let at = screen.find(prefix).expect("the link on the screen");
     screen[at..]
         .split(|c: char| c.is_whitespace())
         .next()
@@ -86,9 +85,10 @@ async fn prj_039_the_command_connects_github_in_three_presses_and_the_projects_a
     terminal
         .expect("Open this link in your browser. It works once, for 5 minutes:")
         .await;
-    terminal.expect(LINK_START).await;
+    let link_start = format!("{}/connect/github?ticket=", hub.origin);
+    terminal.expect(&link_start).await;
     terminal.expect("\n").await;
-    let link = link_on(&terminal.screen());
+    let link = link_on(&terminal.screen(), &link_start);
     let mut browser = Browser::at(&hub.origin);
     let state = browser.open(&link).await;
     terminal
@@ -172,7 +172,7 @@ async fn prj_041_an_mcp_session_starts_an_attempt_as_an_agent_and_the_hub_refuse
     let started = session.call("anima_github_connect_start", json!({})).await;
     assert_eq!(started["isError"], false, "{started}");
     let result = &started["structuredContent"];
-    assert_eq!(result["link"], "https://hub.anima.ing/connect/github");
+    assert_eq!(result["link"], format!("{}/connect/github", hub.origin));
     let id = result["attempt"]["id"].as_str().expect("an id");
     assert!(!started.to_string().contains("ticket"), "{started}");
 

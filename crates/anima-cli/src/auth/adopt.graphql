@@ -1,0 +1,3 @@
+mutation AdoptAppSession($computer: String!) {
+  issueCommandLineToken(computer: $computer) { token }
+}

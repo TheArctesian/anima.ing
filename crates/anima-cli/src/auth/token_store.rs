@@ -46,10 +46,19 @@ impl TokenStore {
     pub fn for_system(file: Option<TokenFile>, file_only: bool) -> Self {
         match file {
             Some(file) if file_only => Self::File(file),
-            file => Self::KeyStore {
-                fallback: file.filter(|_| cfg!(target_os = "linux")),
-            },
+            file => Self::KeyStore { fallback: file },
         }
+    }
+
+    fn authoritative_file(&self, origin: &Origin) -> Result<Option<&TokenFile>, StoreError> {
+        if let Self::KeyStore {
+            fallback: Some(file),
+        } = self
+            && file.authoritative(origin)?
+        {
+            return Ok(Some(file));
+        }
+        Ok(None)
     }
 
     /// The token stored for `origin`.
@@ -57,6 +66,9 @@ impl TokenStore {
     /// # Errors
     /// [`StoreError`] when the store cannot be read.
     pub fn read(&self, origin: &Origin) -> Result<Option<Token>, StoreError> {
+        if let Some(file) = self.authoritative_file(origin)? {
+            return file.read(origin);
+        }
         match self {
             Self::File(file) => file.read(origin),
             Self::KeyStore { fallback } => match entry(origin)?.get_password() {
@@ -77,6 +89,9 @@ impl TokenStore {
     /// # Errors
     /// [`StoreError`] when the store cannot be written.
     pub fn write(&self, origin: &Origin, token: &Token) -> Result<(), StoreError> {
+        if let Some(file) = self.authoritative_file(origin)? {
+            return file.write(origin, token);
+        }
         match self {
             Self::File(file) => file.write(origin, token),
             Self::KeyStore { fallback } => match entry(origin)?.set_password(token.expose()) {
@@ -91,13 +106,14 @@ impl TokenStore {
     /// # Errors
     /// [`StoreError`] when the store cannot be changed.
     pub fn delete(&self, origin: &Origin) -> Result<bool, StoreError> {
+        if let Some(file) = self.authoritative_file(origin)? {
+            return file.delete(origin);
+        }
         match self {
             Self::File(file) => file.delete(origin),
             Self::KeyStore { fallback } => match entry(origin)?.delete_credential() {
                 Ok(()) => Ok(true),
-                Err(keyring::Error::NoEntry) => fallback
-                    .as_ref()
-                    .map_or(Ok(false), |file| file.delete(origin)),
+                Err(keyring::Error::NoEntry) => Ok(false),
                 Err(error) => fall_back(&error, fallback.as_ref())?.delete(origin),
             },
         }
@@ -113,10 +129,11 @@ fn fall_back<'file>(
     error: &keyring::Error,
     fallback: Option<&'file TokenFile>,
 ) -> Result<&'file TokenFile, StoreError> {
-    let missing = matches!(
-        *error,
-        keyring::Error::NoStorageAccess(_) | keyring::Error::PlatformFailure(_)
-    );
+    let missing = cfg!(target_os = "linux")
+        && matches!(
+            *error,
+            keyring::Error::NoStorageAccess(_) | keyring::Error::PlatformFailure(_)
+        );
     match fallback {
         Some(file) if missing => Ok(file),
         _ => Err(StoreError::KeyStore(words(error))),

@@ -1,0 +1,8 @@
+mutation StartCommandLineSignIn($computer: String!) {
+  startCommandLineSignIn(computer: $computer) {
+    deviceCode userCode verificationUri expiresAt interval
+  }
+}
+mutation PollCommandLineSignIn($deviceCode: String!) {
+  pollCommandLineSignIn(deviceCode: $deviceCode) { status token interval }
+}

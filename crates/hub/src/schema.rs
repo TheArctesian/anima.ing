@@ -206,6 +206,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(vault)
     .data(link::Claims::default())
     .data(link::ComputerClaims::default())
+    .data(link::CommandLineClaims::default())
     .data(access::BrowserTickets::default());
     let builder = with_devices_loaders(builder, &pool, &clock)
         .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))

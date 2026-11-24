@@ -58,7 +58,7 @@ fn r_020_a_lease_ends_at_its_expiry() {
 fn r_020_only_a_granted_lease_opens_the_connection() {
     let lease = Lease {
         token: Uuid::now_v7(),
-        expires_at: now(),
+        expires_at: Some(now()),
     };
     assert_eq!(lease_of(Some(Verdict::Leased(lease))), Ok(lease));
     assert_eq!(lease_of(Some(Verdict::Refused)), Err(Closing::Forbidden));
@@ -179,7 +179,7 @@ async fn lease_ends(client: impl Sink<Message> + Unpin, left: TimeDelta) -> (Clo
     let (verdict, decided) = oneshot::channel();
     let lease = Lease {
         token: Uuid::now_v7(),
-        expires_at: now() + left,
+        expires_at: Some(now() + left),
     };
     verdict.send(Verdict::Leased(lease)).unwrap();
     let access = unreachable_access();

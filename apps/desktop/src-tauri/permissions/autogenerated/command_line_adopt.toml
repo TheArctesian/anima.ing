@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-command-line-adopt"
+description = "Enables the command_line_adopt command without any pre-configured scope."
+commands.allow = ["command_line_adopt"]
+
+[[permission]]
+identifier = "deny-command-line-adopt"
+description = "Denies the command_line_adopt command without any pre-configured scope."
+commands.deny = ["command_line_adopt"]

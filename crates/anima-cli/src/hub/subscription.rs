@@ -132,7 +132,7 @@ async fn connect(origin: &Origin, text: &str) -> Result<Socket, HubError> {
     request
         .headers_mut()
         .insert("Sec-WebSocket-Protocol", HeaderValue::from_static(PROTOCOL));
-    let wire = wire::connect(&origin.graphql())
+    let wire = wire::connect(origin)
         .await
         .map_err(|reason| unreachable(text, &reason))?;
     match client_async(request, wire).await {
