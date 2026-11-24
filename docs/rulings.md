@@ -667,3 +667,5 @@ to R-400 and the operator's explicit word.
 ## R-450-icons — Icon-only device row connections
 
 Operator, 2026-11-23: the SSH, RDP and VNC controls in the Devices list show only their icons, without visible protocol text or a resting button background, for every connection count. Keep tooltips, accessible names, keyboard focus and hover feedback (UI-026). This updates the protocol-label choice of R-224 for dense device rows.
+
+- **R-NEW-macosrdphost (operator, 2026-11-23, firsthand in the desktop setup chat).** The operator approved the [bundled macOS RDP host plan](plans/bundled-macos-rdp-plan.md) and its decisions in response to “Apple Silicon first” and “RDP staying available after the app window closes, until you stop it or log out”: “Yes I approve it do it”. Start MRDP-T1 with both VNC and RDP available from one Anima installation.
