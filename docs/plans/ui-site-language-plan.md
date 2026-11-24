@@ -143,7 +143,7 @@ The record is `docs/research/motion/client-2026-11-23.md`. Each task obeys reduc
 
 | Task | Content | Needs | State |
 | --- | --- | --- | --- |
-| MA-1 | The name of a device in a List row (`DeviceTable`) and in a phone row (`PhoneRows`) travels to the title of its page, as a Grid card does (`sharedItem`, `device-name:<id>`). Back travels it home. Under reduced motion: no travel | Nothing | Not started |
+| MA-1 | The name of a device in a List row (`DeviceTable`) and in a phone row (`PhoneRows`) travels to the title of its page, as a Grid card does (`sharedItem`, `device-name:<id>`). Back travels it home. Under reduced motion: no travel | Nothing | Built (2026-11-23, branch `ui/ma-1-shared-row-name`): the List row, the phone row and the phone page title carry the key. Measured in Chromium: the name flies from the row to the title in about 600 ms (`spring-move`) at 1280 and 390 px; no copy under reduced motion |
 | MA-2 | Settings holds its place while it loads: a late section ("Devices on the link") does not push the sections under it, and the skeleton of Notifications takes the geometry of its rows (MOT-007). Acceptance: CLS under 0.01 at 390 and 1280 px with a 400 ms API delay, in both motion modes | Nothing | Not started |
 | MA-3 | On a phone the status tally of Devices keeps its line from the first frame, so search and the list do not move 44 px when the devices come; the counts fade in place | Nothing | Not started |
 | MA-4 | On a phone the skeleton of the device page's detail block takes the height of the loaded block (310 to 511 px today) | Nothing | Not started |
