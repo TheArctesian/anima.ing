@@ -4,9 +4,11 @@
 //! `store/attempts.rs`) and `access.permitted_networks` (in `store/permitted.rs`).
 
 mod attempts;
-mod command_line;
+pub(super) mod command_line;
 mod keys;
 mod permitted;
+pub(super) mod remote_sessions;
+pub(super) mod sign_in;
 mod tokens;
 
 use chrono::{DateTime, Utc};

@@ -51,7 +51,7 @@ impl Change<'_> {
 }
 
 /// The name of the computer, trimmed, or a refusal.
-fn computer_name(name: &str) -> Result<&str, Error> {
+pub(super) fn computer_name(name: &str) -> Result<&str, Error> {
     let name = name.trim();
     let length = name.chars().count();
     if length == 0 || length > COMPUTER_CHARS || name.chars().any(char::is_control) {
@@ -84,13 +84,16 @@ pub(in crate::fleet::access) async fn issue(
     }
     let computer = computer_name(computer)?;
     let token = Token::from_random(random::<TOKEN_BYTES>()?);
-    let expires_at = identity.expires_at();
+    let expires_at = identity.expires_at().ok_or(Error::KindRefused)?;
     let change = Change {
         operator,
         client,
         at,
     };
     let mut tx = db.begin().await?;
+    if !store::command_line::lock_sign_in(&mut tx, identity.token(), at).await? {
+        return Err(Error::Unauthenticated);
+    }
     let account = store::account_by_id(&mut *tx, operator.id)
         .await?
         .ok_or(Error::Unauthenticated)?;

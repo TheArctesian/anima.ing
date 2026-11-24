@@ -5249,7 +5249,7 @@ Result: Open.
 
 ### HT-151: `anima auth login` by a one-time code (cli-mcp T16 and T17, HM-T40; R-381)
 
-Not built. The gates cannot prove a browser on a second device, the hosted cloud or a real server. Do these steps when the tasks are built.
+Built locally on `cli/account-signin`, with site commit `e20c129` and cloud commit `de308a5` on their isolated `cli/browser-signin` branches. Not deployed. The gates cannot prove a browser on a second device, live WorkOS approval, or a real VPS. Run after a coordinated test release. Rich status provenance remains planned; `auth sessions` supplies approval/last-use/expiry metadata.
 
 1. On a computer with only `anima`, run `anima auth login`, choose "Self-hosted" and give the address of your hub.
    Expected: the command shows a code `XXXX-XXXX`, the address of the page `/device`, and "It ends in 10 minutes"; no password is asked.
@@ -5264,11 +5264,18 @@ Not built. The gates cannot prove a browser on a second device, the hosted cloud
 6. Run `anima auth logout`, then `anima auth status`.
    Expected: signed out, exit code 4; the list of sign-ins in the app no longer shows that computer.
 
+7. On a disposable VPS with a dedicated non-root user, run the published `/install` bootstrap after verifying the coordinated release is available. Complete browser approval on another device.
+   Expected: the programs install first, the private link connects, and the daemon enrolls. No password or token is pasted into a command line. `--cli-only` installs without signing in; `--enable-linger` explicitly enables operation after logout and reboot.
+8. Close and sign out of the approving browser, then run CLI commands on the VPS, restart its user services, and run again.
+   Expected: the remote session remains valid with no fixed or idle expiry. Explicit revocation from Settings → Command-line approval and sessions ends it. An app-adopted local credential still ends with its app session.
+9. Repeat installation and sign-in; briefly interrupt the network during link readiness.
+   Expected: an existing app-owned unit is refused, an owned running unit is reused, and loss of network readiness never restarts the unit. No existing hosted workload is interrupted.
+
 Result: Open.
 
 ### HT-153: one sign-in for the app, `anima`, the daemon and the threads (E0-6 T8, cli-mcp T14 and T15, U14, TH114; R-383, R-382)
 
-Partly built on the branch `engine/e0-6-t8-hub-tokens` (E0-6 T8 and T14): the command-line token of the hub, `anima auth adopt`, and the app's calls that sign `anima` in at each sign-in and out at the sign-out. Steps 2 (with the token kind shown as "a login token" until SGN-NEW-status is built), 2a and 7 can be done with that branch and the app built from it, on a computer where `anima` is on `PATH` already. The silent install and the line of `PATH` (T15), the daemon (U14) and the threads (TH114) are not built: steps 1 and 3 to 6 wait. The gates cannot prove a fresh computer, the profile of a login shell, the Keychain or a running thread.
+The app-to-CLI handoff is implemented on `cli/account-signin`, including startup adoption, serialized issuance and logout, and reuse of the exact linked child across reloads. It needs a rebuilt app and CLI. The silent PATH setup (T15), runner session (U14) and thread-scoped tokens/modes (TH114) are still separate unfinished work; this repair does not claim those checks passed. Source security review accepted the authentication and standalone installer scope on 2026-11-24. Live checks below remain open.
 
 1. On a fresh Mac (or a new user account), install the app and sign in, on a self-hosted hub and then on a hosted hub.
    Expected: with no click, the daemon is installed and enrolled, `anima` is in `~/.local/bin`, and one line names the shell profile that got the line of `PATH`.

@@ -32,6 +32,8 @@ pub enum SignInError {
     Refused,
     #[error("the command line program did not run")]
     Failed,
+    #[error("a newer app sign-in replaced this request")]
+    Superseded,
 }
 
 impl SignInError {
@@ -42,6 +44,7 @@ impl SignInError {
             Self::NotCarried => "not-carried",
             Self::Refused => "refused",
             Self::Failed => "failed",
+            Self::Superseded => "superseded",
         }
     }
 }
@@ -57,13 +60,28 @@ impl Serialize for SignInError {
 }
 
 /// The arguments of `anima` for the adoption of a token for `hub`, which comes on standard input.
-fn adopt_args(hub: &str) -> [&str; 6] {
-    ["--no-input", "auth", "adopt", "--hub", hub, "-"]
+fn adopt_args(hub: &str) -> [&str; 7] {
+    [
+        "--no-input",
+        "auth",
+        "adopt",
+        "--hub",
+        hub,
+        "--app-session",
+        "-",
+    ]
 }
 
 /// The arguments of `anima` for the sign-out of `hub`.
-fn logout_args(hub: &str) -> [&str; 5] {
-    ["--no-input", "auth", "logout", "--hub", hub]
+fn logout_args(hub: &str) -> [&str; 6] {
+    [
+        "--no-input",
+        "auth",
+        "logout",
+        "--forget-on-error",
+        "--hub",
+        hub,
+    ]
 }
 
 /// Runs the carried `anima` with `args`, `input` on standard input and no output read.
@@ -83,10 +101,27 @@ fn run(args: &[&str], input: Option<&[u8]>) -> Result<(), SignInError> {
         command.env_remove(name);
     }
     let mut child = command.spawn().map_err(|_| SignInError::Failed)?;
-    if let (Some(input), Some(mut stdin)) = (input, child.stdin.take()) {
-        stdin.write_all(input).map_err(|_| SignInError::Failed)?;
+    if let (Some(input), Some(mut stdin)) = (input, child.stdin.take())
+        && stdin.write_all(input).is_err()
+    {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(SignInError::Failed);
     }
-    let status = child.wait().map_err(|_| SignInError::Failed)?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(45);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(SignInError::Failed);
+            }
+        }
+    };
     if status.success() {
         Ok(())
     } else {
@@ -94,12 +129,37 @@ fn run(args: &[&str], input: Option<&[u8]>) -> Result<(), SignInError> {
     }
 }
 
+// Queue order survives web-view reloads. Logout is mandatory; only obsolete adoption is skipped.
+static LIFECYCLE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+static GENERATIONS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, u64>>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
 async fn blocking(
+    hub: String,
+    adoption: bool,
     work: impl FnOnce() -> Result<(), SignInError> + Send + 'static,
 ) -> Result<(), SignInError> {
-    tauri::async_runtime::spawn_blocking(work)
-        .await
-        .unwrap_or(Err(SignInError::Failed))
+    let generation = {
+        let mut generations = GENERATIONS.lock().map_err(|_| SignInError::Failed)?;
+        let current = generations.entry(hub.clone()).or_default();
+        *current += 1;
+        *current
+    };
+    let guard = LIFECYCLE.lock().await;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        let latest = GENERATIONS
+            .lock()
+            .map_err(|_| SignInError::Failed)?
+            .get(&hub)
+            .copied();
+        if adoption && latest != Some(generation) {
+            return Err(SignInError::Superseded);
+        }
+        work()
+    })
+    .await
+    .unwrap_or(Err(SignInError::Failed))
 }
 
 fn from_main(label: &str) -> Result<(), SignInError> {
@@ -127,7 +187,10 @@ pub async fn command_line_adopt<R: Runtime>(
     from_main(webview.label())?;
     let mut line = Zeroizing::new(token);
     line.push('\n');
-    let result = blocking(move || run(&adopt_args(&hub), Some(line.as_bytes()))).await;
+    let result = blocking(hub.clone(), true, move || {
+        run(&adopt_args(&hub), Some(line.as_bytes()))
+    })
+    .await;
     match result {
         Ok(()) => log::info!("the command line was signed in"),
         Err(error) => log::warn!("the command line was not signed in: {}", error.code()),
@@ -142,7 +205,7 @@ pub async fn command_line_sign_out<R: Runtime>(
     hub: String,
 ) -> Result<(), SignInError> {
     from_main(webview.label())?;
-    let result = blocking(move || run(&logout_args(&hub), None)).await;
+    let result = blocking(hub.clone(), false, move || run(&logout_args(&hub), None)).await;
     match result {
         Ok(()) => log::info!("the command line was signed out"),
         Err(error) => log::warn!("the command line was not signed out: {}", error.code()),
@@ -165,6 +228,7 @@ mod tests {
                 "--no-input",
                 "auth",
                 "logout",
+                "--forget-on-error",
                 "--hub",
                 "https://hub.example"
             ]

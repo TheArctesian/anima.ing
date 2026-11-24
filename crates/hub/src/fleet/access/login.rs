@@ -3,7 +3,9 @@
 
 pub(super) mod browser_ticket;
 pub(super) mod command_line;
+pub(super) mod device_code;
 pub(super) mod hosted;
+pub(super) mod remote_sessions;
 mod sign_out;
 
 use chrono::{DateTime, TimeDelta, Utc};

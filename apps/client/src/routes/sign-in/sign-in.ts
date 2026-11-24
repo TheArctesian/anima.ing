@@ -59,7 +59,7 @@ export async function signIn({ api, address, desktop, writeToken }: SignIn, form
     // The key store's error is fixed text chosen by the client; anything else gets the generic sentence.
     return refused(reason instanceof AccessTokenError ? reason.message : NOT_KEPT_MESSAGE);
   }
-  startCommandLineSignIn(address, result.value);
+  await startCommandLineSignIn(address, result.value);
   return { signedIn: true };
 }
 

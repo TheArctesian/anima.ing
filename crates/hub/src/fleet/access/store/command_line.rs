@@ -125,3 +125,15 @@ pub(in crate::fleet::access) async fn move_linked(
     .fetch_optional(conn)
     .await
 }
+
+/// Serializes token issuance with revocation of its approving app or browser.
+pub(in crate::fleet::access) async fn lock_sign_in(
+    conn: &mut PgConnection,
+    parent: Uuid,
+    now: DateTime<Utc>,
+) -> Result<bool, sqlx::Error> {
+    let found: Option<Uuid> = sqlx::query_scalar(
+        "select id from access.api_tokens where id = $1 and kind in ('login', 'browser') and expires_at > $2 and (idle_seconds is null or last_used_at + idle_seconds * interval '1 second' > $2) for update",
+    ).bind(parent).bind(now).fetch_optional(conn).await?;
+    Ok(found.is_some())
+}

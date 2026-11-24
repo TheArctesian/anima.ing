@@ -270,7 +270,7 @@ pub fn person_only<'a>(ctx: &Context<'a>) -> async_graphql::Result<&'a Identity>
 }
 
 /// The mutations a signed-out client may run, one per operation (API-003, D-4, A-7, R-111).
-const SIGNED_OUT_MUTATIONS: [&str; 7] = [
+const SIGNED_OUT_MUTATIONS: [&str; 11] = [
     "login",
     "signInBrowser",
     "hostedDeviceInvite",
@@ -278,6 +278,10 @@ const SIGNED_OUT_MUTATIONS: [&str; 7] = [
     "hostedBrowserTicket",
     "hostedBrowserSignIn",
     "claimComputerEnrolment",
+    "startCommandLineSignIn",
+    "pollCommandLineSignIn",
+    "hostedCommandLineClaim",
+    "claimCommandLineToken",
 ];
 
 /// Whether a document may run without an identity: each operation selects only

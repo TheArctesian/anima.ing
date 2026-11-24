@@ -279,3 +279,55 @@ async fn sgn_linked_a_new_sign_in_of_the_device_moves_its_command_line_token(poo
     let ended = device.post(Some(&command_line), me, json!({})).await;
     assert_eq!(code(&ended), "UNAUTHENTICATED", "{ended}");
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn remote_claims_are_peer_bound_separate_from_app_claims_and_issue_revocable_sessions(
+    pool: PgPool,
+) {
+    let (link, folder) = (hosted_link(), tempfile::tempdir().unwrap());
+    let (cloud, device) = hubs(&pool, &link, &folder);
+    let query = "mutation($k: String!) { hostedCommandLineClaim(cloudKey: $k, computer: \"Studio\") { claim } }";
+    let made = cloud.post(None, query, json!({"k": CLOUD_KEY})).await;
+    assert!(made["errors"].is_null(), "{made}");
+    let claim = made["data"]["hostedCommandLineClaim"]["claim"]
+        .as_str()
+        .unwrap();
+    let redeem = "mutation($c: String!) { claimCommandLineToken(claim: $c) { token expiresAt } }";
+    assert!(!cloud.post(None, redeem, json!({"c": claim})).await["errors"].is_null());
+    assert!(!device.post(None, CLAIM_CALL, json!({"c": claim})).await["errors"].is_null());
+    let approved = device.post(None, redeem, json!({"c": claim})).await;
+    assert!(approved["errors"].is_null(), "{approved}");
+    assert!(approved["data"]["claimCommandLineToken"]["expiresAt"].is_null());
+    let token = approved["data"]["claimCommandLineToken"]["token"]
+        .as_str()
+        .unwrap();
+    assert!(!device.post(None, redeem, json!({"c": claim})).await["errors"].is_null());
+    let listed = device
+        .post(
+            Some(token),
+            "{ commandLineSessions { id linked expiresAt } }",
+            json!({}),
+        )
+        .await;
+    assert!(listed["errors"].is_null(), "{listed}");
+    let session = &listed["data"]["commandLineSessions"][0];
+    assert_eq!(session["linked"], false);
+    assert!(session["expiresAt"].is_null());
+    let revoked = device
+        .post(
+            Some(token),
+            "mutation($id: ID!) { revokeCommandLineSession(id: $id) }",
+            json!({"id": session["id"]}),
+        )
+        .await;
+    assert_eq!(
+        revoked["data"]["revokeCommandLineSession"], true,
+        "{revoked}"
+    );
+    assert!(
+        !device
+            .post(Some(token), "{ me { username } }", json!({}))
+            .await["errors"]
+            .is_null()
+    );
+}

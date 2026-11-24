@@ -12,7 +12,7 @@ use sqlx::PgPool;
 use super::{
     Authenticated, ClientAddr, Declaration, Error, Identity, SameOrigin, TokenKind, browser,
     keys::{self, ApiKey, ApiKeyCreated, ApiKeyInput},
-    login::{self, Attempt, Issue, SignedIn},
+    login::{self, Attempt, Issue, SignedIn, device_code},
     password::Password,
     store::{self, Account},
 };
@@ -87,6 +87,15 @@ pub struct LoginInput {
 #[Object(name = "AccessQuery")]
 impl Query {
     #[graphql(guard = "Authenticated")]
+    async fn command_line_sessions(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(default = 0)] offset: i32,
+    ) -> async_graphql::Result<Vec<login::remote_sessions::CommandLineSession>> {
+        login::remote_sessions::list(ctx, offset).await
+    }
+
+    #[graphql(guard = "Authenticated")]
     async fn me(&self, ctx: &Context<'_>) -> async_graphql::Result<OperatorProfile> {
         let identity = need::<Identity>(ctx)?;
         let operator = identity
@@ -109,6 +118,50 @@ impl Query {
 /// Merged into the root `Mutation`.
 #[Object(name = "AccessMutation")]
 impl Mutation {
+    #[graphql(guard = "Authenticated")]
+    async fn revoke_command_line_session(
+        &self,
+        ctx: &Context<'_>,
+        id: ID,
+    ) -> async_graphql::Result<bool> {
+        login::remote_sessions::revoke(ctx, id).await
+    }
+
+    async fn start_command_line_sign_in(
+        &self,
+        ctx: &Context<'_>,
+        computer: String,
+    ) -> async_graphql::Result<device_code::CommandLineSignIn> {
+        device_code::start(ctx, computer).await
+    }
+
+    async fn poll_command_line_sign_in(
+        &self,
+        ctx: &Context<'_>,
+        device_code: String,
+    ) -> async_graphql::Result<device_code::CommandLineSignInState> {
+        device_code::poll(ctx, device_code).await
+    }
+
+    #[graphql(guard = "Authenticated")]
+    async fn command_line_sign_in(
+        &self,
+        ctx: &Context<'_>,
+        user_code: String,
+    ) -> async_graphql::Result<Option<device_code::CommandLineSignInDetails>> {
+        device_code::describe(ctx, user_code).await
+    }
+
+    #[graphql(guard = "Authenticated")]
+    async fn approve_command_line_sign_in(
+        &self,
+        ctx: &Context<'_>,
+        user_code: String,
+        approve: bool,
+    ) -> async_graphql::Result<bool> {
+        device_code::approve(ctx, user_code, approve).await
+    }
+
     /// Signs the desktop app in; needs no token (API-003).
     async fn login(
         &self,

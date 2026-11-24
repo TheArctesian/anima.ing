@@ -4128,6 +4128,8 @@ type AgentThreadSnapshot {
 }
 
 type Query {
+  commandLineSessions(offset: Int! = 0): [CommandLineSession!]!
+
   deviceOsUpdate(deviceId: ID!): JSON!
   agentThreads(device: ID, program: String, project: String, state: String, first: Int! = 50, after: String): AgentThreadPage!
   agentThread(id: ID!): AgentThreadSnapshot
@@ -4326,6 +4328,16 @@ type Query {
 }
 
 type Mutation {
+  hostedCommandLineClaim(cloudKey: String!, computer: String!): HostedDeviceInvite!
+  claimCommandLineToken(claim: String!): RemoteAuthPayload!
+
+  revokeCommandLineSession(id: ID!): Boolean!
+
+  startCommandLineSignIn(computer: String!): CommandLineSignIn!
+  pollCommandLineSignIn(deviceCode: String!): CommandLineSignInState!
+  commandLineSignIn(userCode: String!): CommandLineSignInDetails
+  approveCommandLineSignIn(userCode: String!, approve: Boolean!): Boolean!
+
   requestDeviceOsUpdate(deviceId: ID!, input: OsUpdateRequest!): Boolean!
   login(input: LoginInput!): AuthPayload!
   "Login or browser token only (D-23, R-100), and a command-line token (R-383). The sign-out of the desktop app's login token also ends its command-line token, with an audit entry for each (R-383, SGN-NEW-linked)."
@@ -4771,4 +4783,41 @@ enum OsUpdateAction {
 input OsUpdateRequest {
   action: OsUpdateAction!
   confirmed: Boolean! = false
+}
+
+# SGN-NEW-selfhosted: short-lived approval; the resulting remote session has no expiry (OD-E32).
+type CommandLineSignIn {
+  deviceCode: String!
+  userCode: String!
+  verificationUri: String!
+  expiresAt: DateTime!
+  interval: Int!
+}
+enum CommandLineSignInStatus { WAITING SLOW_DOWN DENIED EXPIRED APPROVED }
+type CommandLineSignInState {
+  status: CommandLineSignInStatus!
+  token: String
+  interval: Int!
+}
+type CommandLineSignInDetails {
+  computer: String!
+  address: String!
+  createdAt: DateTime!
+  expiresAt: DateTime!
+}
+
+type CommandLineSession {
+  id: ID!
+  computer: String!
+  createdAt: DateTime!
+  lastUsedAt: DateTime
+  expiresAt: DateTime
+  linked: Boolean!
+  current: Boolean!
+}
+
+type RemoteAuthPayload {
+  token: String!
+  expiresAt: DateTime
+  operator: Operator!
 }

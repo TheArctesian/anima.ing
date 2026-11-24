@@ -18,6 +18,7 @@ function failed(): void {
 }
 
 export function goToSignIn(): void {
+  if (location.pathname === resolve("/device")) sessionStorage.setItem("anima.return-device", "1");
   // The desktop app with no saved address has no hub to sign in to: it shows the first-run choices (R-225).
   if (capabilities().keyStore && !hasStoredHubAddress(localStorage)) return goToWelcome();
   // The address of before is the hosted service now: the first-run choices lead to the account or to a hub address (HM-T31).
@@ -37,8 +38,14 @@ export function goToWelcome(): void {
   goto(resolve(WELCOME_PATH)).catch(failed);
 }
 
+function afterSignIn(): '/device' | '/devices' {
+  if (sessionStorage.getItem('anima.return-device') !== '1') return '/devices';
+  sessionStorage.removeItem('anima.return-device');
+  return '/device';
+}
+
 export function goToDevices(): void {
-  goto(resolve('/devices')).catch(failed);
+  goto(resolve(afterSignIn())).catch(failed);
 }
 
 /** `location.replace` would not reload an address that differs only by its fragment (WP-16 H-1). */
@@ -48,7 +55,7 @@ export function reloadClient(): void {
 
 /** A new page, not a router move: only a new page opens its socket with the cookie as it is now (E-4). */
 export function loadClientAt(path: '/devices' | typeof SIGN_IN_PATH | typeof WELCOME_PATH): void {
-  location.replace(resolve(path));
+  location.replace(resolve(path === '/devices' ? afterSignIn() : path));
 }
 
 /** `resolve('/')` is the base path and a slash; SvelteKit's `base` is deprecated. */

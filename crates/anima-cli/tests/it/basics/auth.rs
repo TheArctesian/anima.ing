@@ -244,3 +244,36 @@ async fn sgn_adopt_refuses_an_api_key_and_a_refused_token_and_keeps_nothing() {
     let listed = anima.run(&["context", "list", "--json"]).await.json();
     assert_eq!(listed, json!([]));
 }
+
+#[tokio::test]
+async fn app_adoption_issues_under_the_lock_and_reuses_its_child_across_reload() {
+    let hub = FakeHub::start().await;
+    hub.answer("Me", me());
+    hub.answer(
+        "AdoptAppSession",
+        data(json!({"issueCommandLineToken": {"token": "linked-child-for-test"}})),
+    );
+    let anima = Anima::new();
+    let args = ["auth", "adopt", "--app-session", "--hub", &hub.origin, "-"];
+    let (first, second) = tokio::join!(
+        anima.run_with_input(&args, "parent-session-for-test\n"),
+        anima.run_with_input(&args, "parent-session-for-test\n")
+    );
+    assert_eq!(first.code, 0, "{first:?}");
+    assert_eq!(second.code, 0, "{second:?}");
+    let seen = hub.seen();
+    assert_eq!(
+        seen.iter()
+            .filter(|request| request.authorization.as_deref()
+                == Some("Bearer parent-session-for-test"))
+            .count(),
+        1
+    );
+    assert!(seen.iter().any(|request| request.authorization.as_deref() == Some("Bearer linked-child-for-test")));
+    for run in [first, second] {
+        assert!(
+            !run.stdout.contains("session-for-test") && !run.stderr.contains("session-for-test")
+        );
+        assert!(!run.stdout.contains("child-for-test") && !run.stderr.contains("child-for-test"));
+    }
+}

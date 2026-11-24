@@ -2,12 +2,14 @@
   import { page } from '$app/state';
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
-  import { forgetListener, tokenFor } from '$lib/access/listener/check';
+  import { tokenFor } from '$lib/access/listener/check';
+  import { watchAccessConnection } from '$lib/access/listener/lifecycle.svelte';
   import { guardStart, showsSignedOutPage, startAt } from '$lib/access/navigation';
   import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
   import { providePublishing, ReleasePublishing } from '$lib/builds/publishing.svelte';
   import { extensionsApi } from '$lib/extensions/api';
   import { ExtensionsStore, provideExtensions } from '$lib/extensions/store.svelte';
+  import CommandLineSync from '$lib/desktop/command-line/Sync.svelte';
   import { installDaemonOnThisComputer } from '$lib/desktop/daemon/here';
   import { watchDaemonNeedHere } from '$lib/desktop/daemon/need';
   import { daemonHere, stateAfter } from '$lib/desktop/daemon/state.svelte';
@@ -116,10 +118,7 @@
     }
     // The daemon has no token while it waits in the Keychain, so the app tells each hub (R-322).
     if (capabilities().thisMachine) $effect(() => watchDaemonNeedHere(hub, () => !showsSignedOutPage(page.url)));
-    // A hub that stops answering may come back as another program on the same port (M-C, MF-1).
-    $effect(() => {
-      if (hub.status.current.connection !== 'connected') untrack(() => forgetListener(address.origin));
-    });
+    watchAccessConnection(hub);
     return hub;
   }
 
@@ -182,13 +181,7 @@
       sessions.deselect();
     }
 
-    $effect(() => () => {
-      // close() rejects only when a pending connect failed; the status already shows that.
-      hub.close().catch((reason: unknown) => {
-        // Fixed text and the error name only: the message is decided by the transport (LOG-007).
-        console.warn('Hub connection attempt failed while closing:', reason instanceof Error ? reason.name : 'unknown');
-      });
-    });
+
 
     return { hub, api, clock, sessions, navigate, extensions, publishing };
   }
@@ -203,6 +196,7 @@
   </div>
 {:else if shell !== null}
   {@const { hub, api, clock, sessions, navigate, extensions, publishing } = shell}
+  <CommandLineSync />
   <div class="shell">
     <Nav
       pathname={page.url.pathname}

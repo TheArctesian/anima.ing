@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HubAddress } from '$lib/hub/hub';
-import { signInCommandLine, signOutCommandLine, UNNAMED_COMPUTER, writeTokenAndCommandLine, type CommandLineSignIn } from './sign-in';
+import { signOutCommandLine, writeTokenAndCommandLine } from './sign-in';
 
 const tauri = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true) }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: tauri.invoke, isTauri: tauri.isTauri }));
@@ -11,44 +11,9 @@ const ADDRESS: HubAddress = {
   socket: 'ws://127.0.0.1:41641/graphql',
 };
 
-function parts(overrides: Partial<CommandLineSignIn> = {}): CommandLineSignIn & { adopted: [string, string][] } {
-  const adopted: [string, string][] = [];
-  return {
-    adopted,
-    computer: () => Promise.resolve('studio'),
-    issue: () => Promise.resolve({ ok: true, value: 'command-line-token' }),
-    adopt: (origin, token) => {
-      adopted.push([origin, token]);
-      return Promise.resolve();
-    },
-    ...overrides,
-  };
-}
-
 beforeEach(() => {
   tauri.invoke.mockReset();
   tauri.isTauri.mockReturnValue(true);
-});
-
-describe('signInCommandLine (R-383, SGN-NEW-adopt)', () => {
-  it('SGN-NEW-adopt: the token that the hub links to the app token goes to anima for the same hub', async () => {
-    const issue = vi.fn<CommandLineSignIn['issue']>(() => Promise.resolve({ ok: true, value: 'command-line-token' }));
-    const signIn = parts({ issue });
-    expect(await signInCommandLine(signIn, ADDRESS, 'app-token')).toBeNull();
-    expect(issue).toHaveBeenCalledWith(ADDRESS, 'app-token', 'studio');
-    expect(signIn.adopted).toEqual([[ADDRESS.origin, 'command-line-token']]);
-  });
-
-  it('SGN-NEW-adopt: a computer with no name is named, and a refusal or a failure adopts nothing', async () => {
-    const issue = vi.fn<CommandLineSignIn['issue']>(() => Promise.resolve({ ok: false, error: { code: 'FORBIDDEN', message: 'x' } }));
-    const refused = parts({ computer: () => Promise.resolve('  '), issue });
-    expect(await signInCommandLine(refused, ADDRESS, 'app-token')).toBe('refused');
-    expect(issue).toHaveBeenCalledWith(ADDRESS, 'app-token', UNNAMED_COMPUTER);
-    expect(refused.adopted).toEqual([]);
-
-    const broken = parts({ adopt: () => Promise.reject(new Error('the shell did not answer')) });
-    expect(await signInCommandLine(broken, ADDRESS, 'app-token')).toBe('failed');
-  });
 });
 
 describe('writeTokenAndCommandLine (R-383)', () => {
@@ -63,7 +28,8 @@ describe('writeTokenAndCommandLine (R-383)', () => {
       return Promise.resolve();
     });
     await writeTokenAndCommandLine(write)(ADDRESS, 'app-token');
-    expect(order[0]).toBe('write');
+    expect(order).toEqual(['write', 'command_line_adopt']);
+    expect(tauri.invoke).toHaveBeenCalledWith('command_line_adopt', { hub: ADDRESS.origin, token: 'app-token' });
 
     order.length = 0;
     const refused = writeTokenAndCommandLine(() => Promise.reject(new Error('key store')));

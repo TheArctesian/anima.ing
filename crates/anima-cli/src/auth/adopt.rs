@@ -26,6 +26,14 @@ pub struct Adopted {
 /// [`Failure::Usage`] when standard input is a terminal or holds an API key;
 /// [`Failure::Input`] for no token; the hub's refusal of the token; a store failure.
 pub async fn adopt(invocation: &Invocation) -> Result<Adopted, Failure> {
+    adopt_session(invocation, false).await
+}
+
+pub(super) async fn adopt_session(
+    invocation: &Invocation,
+    app_session: bool,
+) -> Result<Adopted, Failure> {
+    let _lock = super::lock::acquire(invocation.config_dir()?).await?;
     if invocation.stdin_terminal() {
         return Err(not_from_a_person());
     }
@@ -39,9 +47,18 @@ pub async fn adopt(invocation: &Invocation) -> Result<Adopted, Failure> {
         return Err(not_from_a_person());
     }
     let hub = Hub::new(origin.clone(), Some(token))?;
+    let (hub, receipt) = if app_session {
+        let (hub, receipt) = super::adoption::linked(invocation, hub).await?;
+        (hub, Some(receipt))
+    } else {
+        (hub, None)
+    };
     let answer = hub.run::<Me>(me::Variables).await?;
     let token = hub.into_token().ok_or(HubError::Setup)?;
     invocation.token_store().write(&origin, &token)?;
+    if let Some(receipt) = receipt {
+        super::adoption::save(invocation, &origin, &receipt)?;
+    }
     let dir = invocation.config_dir()?;
     let mut config = Config::load(dir)?;
     make_current(&mut config, &origin.as_text());

@@ -53,7 +53,7 @@ export async function signOut({ api, address, desktop, clearToken, forgetCopy, s
   if (!desktop) return cookieGone(answer) ? null : COOKIE_KEPT;
   // The hub ended the token of `anima` with the app's token (R-383); this only removes its copy, so the sign-out does
   // not wait for it (an unreachable hub would make `anima` wait), and its answer changes nothing that is told.
-  void signOutCommandLine?.(address);
+  await signOutCommandLine?.(address);
   // The copy goes also when the token stays, so both are tried; a token that stayed is the first thing to tell.
   const copyGone = await (forgetCopy?.() ?? Promise.resolve()).then(
     () => true,

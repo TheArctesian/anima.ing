@@ -2,6 +2,7 @@
 //! D-8). The command-line token of one sign-in is in `command_line` (R-383).
 
 mod command_line;
+mod device_code;
 
 use anima_hub::fleet::events::{Severity, Signal, Source};
 use chrono::TimeDelta;
