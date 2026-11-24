@@ -1248,7 +1248,7 @@ verification remain in TH50 and TH51.
 
 | Task | Work | Needs | Check | State |
 | --- | --- | --- | --- | --- |
-| TH30 | Contract: the work type `agent_thread` of K10 and the long poll of THR-026. Specify one launch result per request, the hub thread ID after launch, and the result of answering an open approval. | OD-THR12, OD-THR20, R-353 | Contract review and ruling (CON-001) | In progress. Version 2 written and read by two separate reviewers (Sections 6.4.2, 6.4.3). Waits for the ruling OD-THR87 and the answers of OD-THR88 to OD-THR90. |
+| TH30 | Contract: the work type `agent_thread` of K10 and the long poll of THR-026. Specify one launch result per request, the hub thread ID after launch, and the result of answering an open approval. | OD-THR12, OD-THR20, R-353 | Contract review and ruling (CON-001) | In progress. Two reviewers read version 1. Version 2 awaits review and reconciliation (Sections 6.4.3 and 6.4.4) before OD-THR87. |
 | TH31 | The hub: the queue item, the commands of an open thread, the audit events | TH30; W3 | Hub tests and separate security review (R-353) | Not started. Waits for the ruling of TH30 (OD-THR87) and for W3 part 2 of row 4.7 on `dev`. |
 | TH32 | The daemon: claim, check, run, report (W4 for the run, without a container: an agent program needs the files of the person) | TH30; W4. R-292 (OD-THR12) removes W7 from stage 3. | Tests of Section 8 and separate security review (R-353) | Not started. Waits for the ruling of TH30 (OD-THR87) and for W4 of row 4.7 on `dev`. |
 | TH33 | The switch "Threads may start here" at the machine, off by default (USE-004 is on by default; this one is not), and the list of folders where a thread of the hub may run. They are the guards that the operator kept (OD-THR20). They are kept in the settings of the daemon of the user; a program of the same user can change them (accepted, OD-THR18) | TH32 | Tests for the switch and permitted folders | Not started. Waits for TH32. |
@@ -1318,6 +1318,25 @@ Tests that the build must have: a lost claim answer starts no second program; tw
 #### 6.4.3 TH30: reviews
 
 Two separate reviewers (subagents that had not seen the draft) read version 1 on 2026-11-23: a contract and security read (15 findings: 3 High, 8 Medium, 4 Low) and an implementer read (13 findings: 5 High, 5 Medium, 3 Low). Version 2 changes the text for each finding that is a contract edit: the first prompt names the launch; each client call has an idempotency key; the daemon keeps launches and command IDs across restarts; the exception to K10 Section 5 and the new causes; the attempt count of a lost claim answer; the state table; `result.thread` and its rules; late summaries and the AIS-008 check; delivery with no cursor and no head-of-line block; what `expired` means; the long poll and K8 Section 6; the stolen daemon token (open until W7); the switch-off sentence; prompt text in logs; the K10 route and refusal tables; limits and named tests. Three findings need the operator: OD-THR88 (local threads), OD-THR89 (the default ceiling), OD-THR90 (answers with the switch off). No reviewer read version 2.
+
+#### 6.4.4 TH30 reconciliation for independent review (2026-11-24)
+
+The published candidate is Section 6.4.2 from `threads/th30-launch-contract` (tip `2991ad308`, merged into dev). The separate local draft on `contract/th30-preparation` records two operator answers. Read them at the named commits before revising the candidate. Neither draft has CON-001 acceptance.
+
+| Point | Recorded decision | Change proposed for the next candidate |
+| --- | --- | --- |
+| Loss of hub contact or token revocation after start | A, `fbc463d9e`. The thread continues under local control. | Extend part C to cover revocation. Remote stop waits for authenticated contact. The answer sets no expiry for a queued launch. |
+| Local start switch turned off | B, `87963144f`. An answer, including a queued allow, may resolve an existing live approval. New starts and prompts are blocked. The local running-turn stop setting still applies. | Part C and OD-THR90 recommend A. Carry B into the candidate. Check the authenticated operator, device, thread, live request and first answer at consumption. An allow can start a tool after switch-off. |
+
+OD-THR88 is the next question for the operator. Recommend limiting stage 3 commands to threads with a confirmed hub launch. This determines which threads a compromised hub can drive. A start at the desk remains under local control with this choice. R-292 accepts the reach of a same-user program at the machine. A K8 summary, transcript or matching title gives no proof of a hub launch. OD-THR89 (the unset access ceiling) and OD-THR87 (acceptance of a specific reviewed revision, including the risk before W7) still need decisions. The earlier draft also leaves retry retention, stop ordering and the interaction with the work switch open. The numbers and choices in version 2 are proposals.
+
+For the next contract read, trace these cases through K10, the holder and TH21:
+
+1. Reserve one launch ID before dispatch. If the holder may already have started the program, reconcile that ID before any new dispatch. Test a lost claim response and a crash between process start and report. A timeout cannot prove that no process ran.
+2. Bind the confirmed launch to the authenticated device and runner ID from the holder result and the TH21 summary in either arrival order. Preserve one hub ID on retry. A timestamp check alone cannot establish origin. Withhold the first prompt until that binding exists.
+3. Retain a command receipt while the hub can redeliver the command. A fixed history of 1,000 results can evict a receipt while its acknowledgement is lost. Test a replay after restart and eviction pressure. Specify what a stop targets and which pending prompts survive it before choosing the delivery order.
+
+After acceptance, TH31 uses W3 part 2 for the hub queue and results, then the CLI follows CMD-030 and the MCP exclusions in part D. TH32 uses W4 for daemon dispatch. TH33 supplies the local admission checks before enabling starts. Exercise the races above and obtain the separate security reads. The Code surface stays limited to Anima-started sessions on this computer (TC2L), including search and reopen. External ingestion stays available. The private WorkOS broker owner and grant policy remain open.
 
 ### 6.5 Stage 4: each other function on this computer (built directly after stage 1b)
 
@@ -1413,6 +1432,9 @@ Each task starts or drives an agent, or starts a machine: none is built for the 
 | TH83 | The limits of a tree and the state "Needs you" at a limit (THR-071) | TH82; OD-THR25 | Not started |
 | TH84 | The report form and the messages between a parent and a child (THR-068) | TH82 | Not started |
 | TH85 | Usage by subtree (THR-073) | TH80; OD-THR9 | Not started |
+
+For TH80 review, start from TH11 and the TH46 local list. Persist an optional parent runner ID for a local Anima-started thread. Older rows without one are roots. Project the tree after the Code visibility filter. If the parent is absent, show the visible child as a root. Refuse self-links and cycles. Test a nested waiting child, its breadcrumb and root ordering, an older row, and a hidden parent whose title and counts must stay hidden. This slice needs no remote launch. TH81 owns fork and side chat. TH82 owns the separately reviewed tree-scoped tools, TH83 the limits, TH84 the reports and TH85 the usage totals. TH41 owns worktree creation, TH42 the checkpoint and TH67 the editor. Hermes hand-off belongs to the agent-tools-as-extensions proposal. None supplies a parent link or a remote grant by itself.
+
 | TH86 | The place of a thread: a device or "any machine" with the placement and its reasons; the program and the model (THR-074) | Stage 3; W3 | Not started |
 | TH87 | The folder of the project on the chosen machine (THR-075) | TH86; OD-THR29 | Not started |
 | TH90 | Contract: the request for a machine, and the allowance from the pool to the hub (THR-078; HMD-073; [cloud-machines.md](cloud-machines.md)) with a ruling | OD-THR26; the approval of cloud-machines.md | Not started |
