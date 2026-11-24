@@ -1,2 +1,2 @@
-2026-11-24T11:07:18.674Z
-a conflict in crates/anima-cli/src/hub/answer.rs, docs/claims/e0-6-t8.md, docs/plans/extensions-plan.md
+2026-11-24T13:52:09.325Z
+a conflict in apps/client/src/lib/access/sign-out.ts, apps/client/src/lib/desktop/command-line/sign-in.test.ts, apps/client/src/lib/desktop/command-line/sign-in.ts, apps/client/src/routes/sign-in/sign-in.ts, apps/desktop/src-tauri/src/command_line_sign_in.rs, crates/anima-cli/src/auth.rs, crates/anima-cli/src/auth/adopt.rs, crates/anima-cli/src/auth/login.rs, crates/anima-cli/tests/it/basics/auth.rs, crates/anima-cli/tests/it/coverage/k1_exceptions.rs, crates/hub/src/fleet/access/login.rs, crates/hub/src/fleet/access/login/command_line.rs, crates/hub/src/fleet/access/store.rs, crates/hub/src/fleet/access/store/command_line.rs, crates/hub/tests/it/link/hosted.rs, crates/hub/tests/it/login.rs, docs/plans/extensions-plan.md
