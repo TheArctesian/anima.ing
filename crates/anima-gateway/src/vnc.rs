@@ -168,7 +168,10 @@ impl Device {
             events.push(Event::Resized);
         }
         if let Some(monitors) = layout {
-            events.push(Event::Displays { monitors, resized });
+            events.push(Event::Displays {
+                monitors,
+                resized: size != (screen.width(), screen.height()),
+            });
         }
         update.rects_left -= 1;
         if update.rects_left == 0 {
