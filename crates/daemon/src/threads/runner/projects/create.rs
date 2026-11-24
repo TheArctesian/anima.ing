@@ -6,19 +6,30 @@ use agent_threads::control::Refusal;
 
 use super::refused;
 
-pub(super) async fn project(folder: PathBuf, daemon: PathBuf) -> Result<PathBuf, Refusal> {
-    let folder = tokio::task::spawn_blocking(move || destination(&folder, &daemon))
+mod place;
+pub(super) use place::Project;
+
+pub(super) async fn project(folder: PathBuf, daemon: PathBuf) -> Result<Project, Refusal> {
+    let (destination, staging) = tokio::task::spawn_blocking(move || {
+        let destination = place::Destination::open(destination(&folder, &daemon)?)?;
+        // Git only sees a private staging directory inside the daemon boundary. The requested
+        // pathname is never a subprocess cwd; publishing is an exclusive, handle-relative rename.
+        let staging = tempfile::Builder::new()
+            .prefix("project-")
+            .tempdir_in(&daemon)
+            .map_err(|_| {
+                refused("The new project could not be prepared in Anima's private folder.")
+            })?;
+        Ok::<_, Refusal>((destination, staging))
+    })
+    .await
+    .map_err(|_| refused("The project folder could not be checked."))??;
+    let staged = staging.path().join("repository");
+    tokio::fs::create_dir(&staged)
         .await
-        .map_err(|_| refused("The project folder could not be checked."))??;
-    tokio::fs::create_dir(&folder).await.map_err(|error| {
-        if error.kind() == std::io::ErrorKind::AlreadyExists {
-            refused("That path already exists. Choose a new folder, or add the existing folder as a local project.")
-        } else {
-            refused("The new folder could not be created. Check the parent folder and its permissions.")
-        }
-    })?;
-    initialize(&folder).await?;
-    Ok(folder)
+        .map_err(|_| refused("The new project could not be prepared."))?;
+    initialize(&staged).await?;
+    destination.publish(&staged)
 }
 
 fn destination(folder: &std::path::Path, daemon: &std::path::Path) -> Result<PathBuf, Refusal> {
@@ -47,13 +58,13 @@ async fn initialize(folder: &std::path::Path) -> Result<(), Refusal> {
         .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|_| refused("The folder was created, but Git could not start. Install Git, then initialize and add this folder."))?;
+        .map_err(|_| refused("Git could not start. Install Git, then create the project again. No project folder was created."))?;
     match tokio::time::timeout(Duration::from_secs(30), child.wait()).await {
         Ok(Ok(status)) if status.success() => Ok(()),
         _ => {
             let _ = child.kill().await;
             Err(refused(
-                "The folder was created, but Git initialization failed or timed out. The folder was kept; initialize and add it, or choose another new folder.",
+                "Git initialization failed or timed out. No project folder was created; try creating it again.",
             ))
         }
     }

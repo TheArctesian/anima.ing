@@ -5562,6 +5562,8 @@ Result: Open.
 ## HT-NEW-project-create — Create a local Code project (TH60A)
 
 State: Open. Built on `code/project-create`; the TC9 New project UI is owned separately.
+
+Security correction: Git initializes only in Anima’s private staging folder. An exclusive, handle-relative rename publishes the completed repository, and registration checks its identity. A destination on another filesystem is refused without changing it; initialize that folder with Git and add it as an existing local project. Human checks do not claim this fallback was exercised on a second volume.
 Automated checks exercise repository creation, preservation of existing files, rejected paths,
 and registration across a runner restart. This check covers the installed CLI and system Git.
 

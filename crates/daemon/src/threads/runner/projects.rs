@@ -12,7 +12,7 @@ mod create;
 
 pub(super) struct Created {
     back: Caller,
-    result: Result<ProjectChange, Refusal>,
+    result: Result<(create::Project, Option<String>), Refusal>,
 }
 
 pub(super) struct Creations {
@@ -56,13 +56,14 @@ impl Runner {
             let _place = place;
             let result = create::project(folder, daemon)
                 .await
-                .map(|folder| ProjectChange::Add { folder, name });
+                .map(|project| (project, name));
             let _ = sender.send(Created { back, result }).await;
         });
     }
 
     pub(super) fn project_created(&mut self, created: Created) {
-        let result = created.result.and_then(|change| {
+        let result = created.result.and_then(|(project, name)| {
+            let change = ProjectChange::Add { folder: project.folder()?, name };
             let projects = project_changed(self.projects.clone(), &change, change.folder().clone())
                 .map_err(|_| refused("The folder was created, but the project list changed. Add the folder as a local project."))?;
             let before = std::mem::replace(&mut self.projects, projects);
