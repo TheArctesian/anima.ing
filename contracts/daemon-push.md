@@ -841,7 +841,15 @@ A result over a list bound fails as `too_large`; it is not silently truncated.
 
 The complete encoded `mobileTools` member is at most 256 KiB. The existing batch
 body limit still applies. A sender checks both before enqueueing a batch; it must
-not drop existing metrics to fit this member. If this member exceeds its own bound,
+not drop existing metrics to fit this member. If the combined batch exceeds 512 KiB,
+send the metrics without the whole inventory, retain the complete pending inventory,
+and send it in the next fitting batch with fewer or no metric entries. Do not mark
+inventory announced until its delivery succeeds; retries retain the complete snapshot.
+Never omit only `mobileTools` from a present inventory to make space, since that clears
+stored mobile state. Keep at most one pending complete inventory snapshot, replacing it
+only with a newer complete snapshot under the announcement rules. If the complete
+inventory cannot fit even alone, report a bounded local delivery failure, keep metrics
+flowing and do not announce it; do not truncate fields or send an invalid oversized body. If this member exceeds its own bound,
 it sends all four results as `too_large`. A receiver rejects a malformed known
 member with `MALFORMED`, using Section 4's existing retry behaviour.
 
@@ -875,9 +883,19 @@ the network or change the SDK. It does not read personal SDK preferences or acco
 SDK root discovery and the exact offline adapter must be reviewed with implementation;
 no arbitrary path, command or probe is supplied by the hub. An unimplemented platform
 reports `unsupported`, not an empty inventory. The emulator version uses fixed version
-arguments. Each process has the existing 5-second deadline and process-group cleanup;
-collection input is capped at 1 MiB per result, including all package manifests for
-that result. A deadline, oversized input or malformed output yields its fixed failure
+arguments. Each complete probe result has a 5-second wall-clock deadline covering
+root discovery, traversal, file opens, reads, parsing and child processes; each child
+also retains the existing process-group cleanup. Bound discovery to 4,096 directory
+entries and 512 regular manifest files, with a maximum depth of 8 below the reviewed
+SDK root. Do not follow symlinks or accept nonregular files; open/read operations must
+remain confined to that root despite concurrent path replacement. The implementation
+review must prove cancellation or bounded isolation of blocked filesystem operations,
+not only a timer around a still-running worker. Collection input is capped at 1 MiB
+per result, including all package manifests for that result. Exhausting discovery,
+file-count, depth or byte bounds maps to `too_large`; the whole-result deadline maps
+to `timed_out`; enumeration, open or read failures map to `exited`. A failure anywhere
+in a probe invalidates that entire result, never a successful partial list; sibling
+probe results remain independent. A deadline, oversized input or malformed output yields its fixed failure
 state. A process environment must not allow installation, licence acceptance or
 credential access. These bounds are proposed for review, not a change to existing probes.
 
@@ -892,7 +910,11 @@ reader, then the hub inventory validation and store. CAP-030 owns the read surfa
 any schema addition needs its own CON-001 approval, followed by `anima capability list`
 and `anima_capability_list` before a client surface (CMD-030). This amendment does not
 approve a K1 change. TH133 must account for that read-surface gap alongside its lease
-contracts; its present task text names K1, K4 and K10, but not this K8 addition.
+contracts. Its explicit proposed read deliverable is an optional typed mobile snapshot
+on existing `DeviceCapabilities`: the four probe states and bounded result fields above,
+plus hub receipt time. Extend the existing capability query, `anima capability list`
+and `anima_capability_list`; no new root operation or selector is required. TH135 cannot
+claim a complete production consumer until this K1 amendment and those callers exist.
 
 Placement can use an available installed Apple runtime identifier/version and an
 installed device-type identifier as candidate facts. It cannot infer that every
@@ -906,8 +928,9 @@ or failed probes supply no positive eligibility evidence. Existing online, capac
 permission and K10 capability checks remain necessary; this proposal adds no lease,
 queue, freshness threshold or download policy.
 
-This is current installed inventory, not a catalogue of models or images that could
-be downloaded. An unavailable installed Apple runtime remains visible with
+This is last reported installed inventory, not verified-current readiness or a catalogue of models or images that could
+be downloaded. Receipt time is not observation time: buffering and retries may delay
+a snapshot. No numerical freshness policy is added here. An unavailable installed Apple runtime remains visible with
 `available: false` and is not positive placement evidence. The device-type list is
 a vendor type catalogue shipped with the installed tools, not proof that a compatible
 runtime is installed. No consumer may label either list as devices ready to lease.
