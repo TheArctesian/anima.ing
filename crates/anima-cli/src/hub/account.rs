@@ -88,6 +88,13 @@ async fn post<T: DeserializeOwned>(path: &str, body: &impl Serialize) -> Result<
     serde_json::from_slice(&bytes).map_err(|_| HubError::Malformed { status })
 }
 
+#[cfg_attr(
+    not(unix),
+    expect(
+        clippy::unused_async,
+        reason = "shared async interface; socket polling awaits only on Unix"
+    )
+)]
 pub(crate) async fn wait_for_link(origin: &super::Origin) -> Result<(), HubError> {
     #[cfg(unix)]
     if let Some(path) = origin.socket_path() {
