@@ -12,8 +12,6 @@
     projects: readonly Project[];
     chosen: ReadonlySet<string | null>;
     onProjects: (next: ReadonlySet<string | null>) => void;
-    /** The filter's switch for the sessions that Anima did not start; none when no such session is listed. */
-    outside?: { readonly shown: boolean; readonly onShow: (shown: boolean) => void } | undefined;
     /** Why no thread can start here; `null` when one can. */
     newOff: string | null;
     onNew: () => void;
@@ -23,7 +21,7 @@
     activeId?: string | undefined;
   }
 
-  let { search = $bindable(''), field = $bindable(), projects, chosen, onProjects, outside, newOff, onNew, onFieldKey, activeId }: Props = $props();
+  let { search = $bindable(''), field = $bindable(), projects, chosen, onProjects, newOff, onNew, onFieldKey, activeId }: Props = $props();
 </script>
 
 <!-- The toolbar of the inbox (02 section 5.3): the search, then the project filter and New thread. It does not scroll. -->
@@ -60,7 +58,7 @@
   </label>
   <!-- T3: 4 px after the search field, no gap between the buttons (08 inbox 25). -->
   <span class="group">
-  {#if projects.length > 0 || outside !== undefined}<ProjectFilter {projects} {chosen} onChoose={onProjects} {outside} />{/if}
+  {#if projects.length > 0}<ProjectFilter {projects} {chosen} onChoose={onProjects} />{/if}
   <Tooltip text={newOff === null ? 'New thread (⌘N)' : `New thread: ${newOff}`}>
     <button
       type="button"
