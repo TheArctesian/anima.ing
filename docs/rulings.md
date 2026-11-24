@@ -672,3 +672,11 @@ Operator, 2026-11-23: “I also would like remote update to work”, followed by
 Operator, 2026-11-23: the SSH, RDP and VNC controls in the Devices list show only their icons, without visible protocol text or a resting button background, for every connection count. Keep tooltips, accessible names, keyboard focus and hover feedback (UI-026). This updates the protocol-label choice of R-224 for dense device rows.
 
 - **R-451 (operator, 2026-11-23, firsthand in the desktop setup chat).** The operator approved the [bundled macOS RDP host plan](plans/bundled-macos-rdp-plan.md) and its decisions in response to “Apple Silicon first” and “RDP staying available after the app window closes, until you stop it or log out”: “Yes I approve it do it”. Start MRDP-T1 with both VNC and RDP available from one Anima installation.
+
+## R-NEW-aiowner — One owner for the model address, the list of models and the record of use
+
+Operator, 2026-11-23, firsthand in the session "Level 1 model service" (fork, on pop-os): asked "OD-AI1: does one document own the model address, the list of models and the record of use?" with the proposed answer, the operator answered "yes". This decides OD-AI1 of [ai-direction.md](proposals/ai-direction.md) as proposed: the model gateway owns the model address on each computer, the list of models and the record of use; the compute plan owns the machines (runtimes, pulls, placement); the router of the compute plan and the hub routes of the model gateway are removed.
+
+## R-NEW-modelrequest — The contract of the model address may be written (L1-10)
+
+Operator, 2026-11-23, firsthand in the same exchange: asked whether L1-10 may write the new contract `contracts/compute/model-request.md` (the listener and its port, the Anima fields of `/v1/models`, the header `Anima-Node`, the reasons of a refusal, the report of use, the rule for the choice of a node), the operator answered "yes". This is the ruling that CON-001 needs for task L1-10 of [compute-plan.md](plans/compute-plan.md). OD-C7 and OD-C10 were already decided (R-165).

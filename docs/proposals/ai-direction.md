@@ -99,7 +99,7 @@ Each step gives a function that the operator can use. No step is approved.
 
 | Number | Question | Recommendation |
 | --- | --- | --- |
-| OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of the compute plan and the hub routes of the model gateway are removed. |
+| OD-AI1 | Does one document own the model address, the list of models and the record of use? | Decided (R-NEW-aiowner, operator, 2026-11-23): yes, as proposed. |
 | OD-AI2 | Does the first usage function send counts only, read by `anima-daemon`, before the vault exists? | Decided (R-133, operator, 2026-11-17: "Yes, counts only"). The requirements are AIS-018 to AIS-024 in Section 4.12.0 of the extensions plan. The text of sessions (AIS-004, AIS-005) waits for the vault and the collector. |
 | OD-AI3 | Does the usage page show the quota that is left on an account? | Decided: no (R-135 approves AIS-022). It shows tokens and an estimate of the cost at the public price of the model. |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in [agent-runs.md](agent-runs.md) and comes later. The daemon gets one new function, the session server, with its own ruling. |
