@@ -197,7 +197,7 @@ jobs:
       - name: Test mobile inventory with synthetic tools only
         run: |
           set -eu
-          cargo test --locked -p anima-daemon --features mobile-inventory --lib readers::mobile::tests
+          cargo test --locked -p anima-daemon --features mobile-inventory --lib readers::mobile::
           cargo test --locked -p anima-daemon --features mobile-inventory --test it mobile_inventory::
 
   rust-lint:
@@ -317,7 +317,7 @@ jobs:
       - name: Test mobile inventory with synthetic tools only
         run: |
           set -eu
-          cargo test --locked -p anima-daemon --features mobile-inventory --lib readers::mobile::tests
+          cargo test --locked -p anima-daemon --features mobile-inventory --lib readers::mobile::
           cargo test --locked -p anima-daemon --features mobile-inventory --test it mobile_inventory::
 
   go:
