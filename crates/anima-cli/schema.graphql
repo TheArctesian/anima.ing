@@ -4262,6 +4262,7 @@ type AgentThreadSnapshot {
 }
 
 type Query {
+  deviceOsUpdate(deviceId: ID!): JSON!
   agentThreads(device: ID, program: String, project: String, state: String, first: Int! = 50, after: String): AgentThreadPage!
   agentThread(id: ID!): AgentThreadSnapshot
 
@@ -4469,6 +4470,7 @@ type Query {
 }
 
 type Mutation {
+  requestDeviceOsUpdate(deviceId: ID!, input: OsUpdateRequest!): Boolean!
   login(input: LoginInput!): AuthPayload!
   "Login or browser token only (D-23, R-100)."
   logout: Boolean!
@@ -4910,4 +4912,16 @@ input UpdateOperationalKeyInput {
   providerLink: String
   rotationDays: Int
   expiresAt: DateTime
+}
+
+enum OsUpdateAction {
+  CHECK
+  DOWNLOAD
+  ACTIVATE
+  ROLLBACK
+}
+
+input OsUpdateRequest {
+  action: OsUpdateAction!
+  confirmed: Boolean! = false
 }

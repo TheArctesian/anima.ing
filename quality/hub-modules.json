@@ -177,6 +177,13 @@
       "devices",
       "events",
       "credentials"
+    ],
+    "os_updates": [
+      "access",
+      "credentials",
+      "devices",
+      "events",
+      "ssh"
     ]
   },
   "graphql": {

@@ -795,6 +795,10 @@ Added 2026-11-12.
 - T7c coulds (see `WP-53.md`).
 - Spec gap: the chart's visible number waits for a chart header change (G-11).
 
+### OS update status (OS5-R1), 2026-11-23
+
+- [ ] **Low: an old failed job can hide a later successful update.** Owner: OS5-R1 of [spare-computer-os.md](proposals/spare-computer-os.md). In `apps/client/src/lib/os-updates/status.ts`, `updateStatus` treats any failed systemd job as the current failure. A failed check followed by a successful download can therefore show a failure message even when the update is staged. Associate failure reporting with the current operation, while retaining real current failures. Add a synthetic failed-check then successful-stage regression at the status/UI boundary. Independent final-head delta review of `e5ec2eb0d..f58115638` on 2026-11-23 confirmed this Low persists and found no new High or Medium findings. This record does not change the updater, authorize an OS action, or claim status reporting is fully correct.
+
 ## 9. Desktop shell
 
 Revisit: With the packaging of the one-click work.

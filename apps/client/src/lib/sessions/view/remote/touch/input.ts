@@ -17,11 +17,15 @@ function limit(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function boundAxis(position: number, leftover: number): number {
+  return leftover > 0 ? leftover / 2 : limit(position, leftover, 0);
+}
+
 export function boundViewport(view: TouchViewport, pane: Size, remote: Size, scale: number): TouchViewport {
   return {
     zoom: view.zoom,
-    x: limit(view.x, Math.min(0, pane.width - remote.width * scale * view.zoom), 0),
-    y: limit(view.y, Math.min(0, pane.height - remote.height * scale * view.zoom), 0),
+    x: boundAxis(view.x, pane.width - remote.width * scale * view.zoom),
+    y: boundAxis(view.y, pane.height - remote.height * scale * view.zoom),
   };
 }
 

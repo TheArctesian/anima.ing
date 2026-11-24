@@ -243,19 +243,16 @@ describe('the sessions Anima did not start (T3 Code\'s import)', () => {
     expect(arranged(rows, { ...at, started: null }).settled).toEqual([]);
   });
 
-  it('hides each session Anima did not start until the filter shows them, pinned, working, asking, waiting or snoozed too (operator, 2026-11-23)', () => {
+  it('keeps imported sessions out of Code even when pinned, working, asking, waiting or snoozed (TC2L)', () => {
     const snoozed = { ...NO_MARKS, snoozedUntil: new Date(NOW.getTime() + DAY * MINUTE) };
     const rows = [row('ours', 'turn_ended', 5), row('ended', 'turn_ended', 5), row('runs', 'running', 0), row('asks', 'asks', 5), row('waits', 'open_tool', 5), row('pin', 'turn_ended', 5, { pinned: true }), row('later', 'turn_ended', 5)];
     const at: Arranging = { ...AT, marks: new Map([['later', snoozed]]), started: new Set(['ours']) };
     const every = (parts: ReturnType<typeof arranged>) => [...parts.pinned, ...parts.active, ...parts.working, ...parts.snoozed, ...parts.settled].map((item) => item.row.id).sort();
-    expect(every(arranged(shownRows(rows, at.started, false), at))).toEqual(['ours']);
-    expect(every(arranged(shownRows(rows, at.started, true), at))).toEqual(rows.map((each) => each.id).sort());
-    expect(arranged(shownRows(rows, at.started, true), at)).toEqual(arranged(rows, at));
-    // While the runner does not say which threads it started, no session is taken for one from outside.
-    expect(shownRows(rows, null, false)).toEqual(rows);
+    expect(every(arranged(shownRows(rows, new Set(['ours'])), at))).toEqual(['ours']);
+    expect(shownRows(rows, new Set())).toEqual([]);
   });
 
-  it('counts the threads the runner drives as Anima\'s, by its ID and the program\'s, once a listing carries the mark', () => {
+  it('counts the threads the runner drives as Anima\'s, by its ID and the program\'s, even before a listing is marked', () => {
     const listing = (thread: string, startedByAnima: boolean) => ({ thread, pinned: false, archived: false, title: null, removed: false, marks: NO_MARKS, startedByAnima });
     const runner = (marked: boolean) =>
       ({
@@ -263,7 +260,7 @@ describe('the sessions Anima did not start (T3 Code\'s import)', () => {
         threads: new Map([['run-2', { row: { id: 'run-2', session: 'codex-2' } }]]),
       }) as unknown as LiveThreads;
     expect(inboxEngine(() => runner(true)).started).toEqual(new Set(['claude-1', 'run-2', 'codex-2']));
-    expect(inboxEngine(() => runner(false)).started).toBeNull();
-    expect(inboxEngine(() => null).started).toBeNull();
+    expect(inboxEngine(() => runner(false)).started).toEqual(new Set(['run-2', 'codex-2']));
+    expect(inboxEngine(() => null).started).toEqual(new Set());
   });
 });

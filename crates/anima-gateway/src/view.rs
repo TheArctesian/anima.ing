@@ -5,6 +5,8 @@ use crate::screen::{Area, BYTES_PER_PIXEL, Changes, MAX_SIDE, Screen};
 
 pub struct View {
     client: (usize, usize),
+    region: Option<Area>,
+    source: Area,
     /// The smaller picture; `None` while the device's screen fits the client's view.
     shown: Option<Screen>,
 }
@@ -32,6 +34,8 @@ impl View {
     pub fn new(device: &Screen, client: (usize, usize)) -> Self {
         let mut view = Self {
             client: (client.0.clamp(1, MAX_SIDE), client.1.clamp(1, MAX_SIDE)),
+            region: None,
+            source: whole(device),
             shown: None,
         };
         view.start_again(device);
@@ -40,10 +44,19 @@ impl View {
 
     /// When the new size changes what is shown, the picture starts again with the next [`View::take_changes`].
     pub fn set_client(&mut self, client: (usize, usize), device: &mut Screen) {
-        let real = (device.width(), device.height());
+        let area = self.region.unwrap_or_else(|| whole(device));
+        let real = (area.width, area.height);
         let before = fitted(real, self.client);
         self.client = (client.0.clamp(1, MAX_SIDE), client.1.clamp(1, MAX_SIDE));
         if fitted(real, self.client) != before {
+            device.forget_what_was_told();
+        }
+    }
+
+    /// A local viewport of one monitor in the device's framebuffer, or the whole desktop.
+    pub(crate) fn set_region(&mut self, region: Option<Area>, device: &mut Screen) {
+        if self.region != region {
+            self.region = region;
             device.forget_what_was_told();
         }
     }
@@ -64,7 +77,10 @@ impl View {
         let on = |at: usize, shown: usize, real: usize| {
             scaled(2 * at.min(shown - 1) + 1, real, 2 * shown).min(real - 1)
         };
-        (on(x, width, device.width()), on(y, height, device.height()))
+        (
+            self.source.x + on(x, width, self.source.width),
+            self.source.y + on(y, height, self.source.height),
+        )
     }
 
     #[must_use]
@@ -88,7 +104,7 @@ impl View {
                 ..moved.from
             });
             for area in changes.areas.iter().copied().chain(moved) {
-                shrink(device, area, shown);
+                shrink(device, self.source, area, shown);
             }
         }
         let changes = shown.take_changes();
@@ -96,23 +112,56 @@ impl View {
     }
 
     fn start_again(&mut self, device: &Screen) {
-        let all = Area {
-            x: 0,
-            y: 0,
-            width: device.width(),
-            height: device.height(),
-        };
-        self.shown = fitted((all.width, all.height), self.client).and_then(|(width, height)| {
-            let mut shown = Screen::new(width, height).ok()?;
-            shrink(device, all, &mut shown);
-            Some(shown)
-        });
+        let all = whole(device);
+        let source = self
+            .region
+            .and_then(|region| intersection(region, all))
+            .unwrap_or(all);
+        self.source = source;
+        let size = (source.width, source.height);
+        self.shown = fitted(size, self.client)
+            .or_else(|| (source != all).then_some(size))
+            .and_then(|(width, height)| {
+                let mut shown = Screen::new(width, height).ok()?;
+                shrink(device, source, source, &mut shown);
+                Some(shown)
+            });
     }
 }
 
+fn whole(device: &Screen) -> Area {
+    Area {
+        x: 0,
+        y: 0,
+        width: device.width(),
+        height: device.height(),
+    }
+}
+
+fn intersection(a: Area, b: Area) -> Option<Area> {
+    let x = a.x.max(b.x);
+    let y = a.y.max(b.y);
+    let width = (a.x + a.width).min(b.x + b.width).saturating_sub(x);
+    let height = (a.y + a.height).min(b.y + b.height).saturating_sub(y);
+    (width > 0 && height > 0).then_some(Area {
+        x,
+        y,
+        width,
+        height,
+    })
+}
+
 /// Each pixel of `shown` is the mean of the device pixels it covers.
-fn shrink(device: &Screen, area: Area, shown: &mut Screen) {
-    let (real_width, real_height) = (device.width(), device.height());
+fn shrink(device: &Screen, source: Area, area: Area, shown: &mut Screen) {
+    let Some(area) = intersection(source, area) else {
+        return;
+    };
+    let area = Area {
+        x: area.x - source.x,
+        y: area.y - source.y,
+        ..area
+    };
+    let (real_width, real_height) = (source.width, source.height);
     let (width, height) = (shown.width(), shown.height());
     let left = scaled(area.x, width, real_width);
     let top = scaled(area.y, height, real_height);
@@ -130,8 +179,8 @@ fn shrink(device: &Screen, area: Area, shown: &mut Screen) {
         let rows = (scaled(y + 1, real_height, height).max(first_row + 1) - first_row)
             .min(real_height - first_row);
         let covered = Area {
-            x: 0,
-            y: first_row,
+            x: source.x,
+            y: source.y + first_row,
             width: real_width,
             height: rows,
         };
