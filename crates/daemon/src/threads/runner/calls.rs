@@ -93,8 +93,8 @@ impl Runner {
                 | Action::AttachMore { .. }
                 | Action::Unattach { .. }) => self.attach_call(attach),
                 Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
-                Action::CreateProject { folder, name } => {
-                    self.create_project(folder, name, back);
+                project @ (Action::CreateProject { .. } | Action::CloneProject { .. }) => {
+                    self.prepare_project(project, back);
                     return;
                 }
                 Action::ChangeProject { change } => self.change_project(&change),

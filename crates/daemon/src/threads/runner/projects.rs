@@ -1,13 +1,12 @@
-//! Creation of local Git projects for the person (TH60A).
+//! Preparation of local Git projects for the person (TH60A, TH60B).
 
-use std::path::PathBuf;
-
-use agent_threads::control::{Outcome, ProjectChange, Refusal, project_changed};
+use agent_threads::control::{Action, Outcome, ProjectChange, Refusal, project_changed};
 use tokio::sync::mpsc;
 
 use super::Runner;
 use super::socket::Caller;
 
+mod clone;
 mod create;
 
 pub(super) struct Created {
@@ -33,7 +32,21 @@ impl Default for Creations {
 static CREATING: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(3);
 
 impl Runner {
-    pub(super) fn create_project(&self, folder: PathBuf, name: Option<String>, back: Caller) {
+    pub(super) fn prepare_project(&self, action: Action, back: Caller) {
+        let (folder, name, preparation) = match action {
+            Action::CreateProject { folder, name } => {
+                (folder, name, create::Preparation::Initialize)
+            }
+            Action::CloneProject { folder, name, url } => match clone::Source::parse(&url) {
+                Ok(source) => (folder, name, create::Preparation::Clone(source)),
+                Err(why) => return back.answer(Outcome::Refused { why }),
+            },
+            _ => {
+                return back.answer(Outcome::Refused {
+                    why: Refusal::BadValue,
+                });
+            }
+        };
         let change = ProjectChange::Add {
             folder: folder.clone(),
             name: name.clone(),
@@ -54,7 +67,7 @@ impl Runner {
         let sender = self.project_creations.sender.clone();
         tokio::spawn(async move {
             let _place = place;
-            let result = create::project(folder, daemon)
+            let result = create::project(folder, daemon, preparation)
                 .await
                 .map(|project| (project, name));
             let _ = sender.send(Created { back, result }).await;

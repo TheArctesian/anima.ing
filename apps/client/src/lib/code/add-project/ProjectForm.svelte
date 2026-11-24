@@ -6,15 +6,26 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { LocalProject } from '$lib/agent-threads/projects/projects';
   import { createProject, projectFields, type ProjectCall } from './create';
-  import { inside } from './sources';
+  import { inside, type ProjectFormSource } from './sources';
 
-  const { start, call, onClose, onCreated }: { start: string; call: ProjectCall; onClose: () => void; onCreated: (folder: string, projects: readonly LocalProject[]) => void } = $props();
+  interface Props {
+    source: ProjectFormSource;
+    start: string;
+    call: ProjectCall;
+    onClose: () => void;
+    onCreated: (folder: string, projects: readonly LocalProject[]) => void;
+  }
+
+  const { source, start, call, onClose, onCreated }: Props = $props();
+  let url = $state('');
   let name = $state('');
   let location = $state(untrack(() => start));
   let busy = $state(false);
   let submitted = $state(false);
   let problem = $state<string | null>(null);
   let active = true;
+  const cloning = $derived(source === 'url');
+  const urlError = $derived(cloning && url.trim() === '' ? 'Enter the repository URL.' : undefined);
   const errors = $derived(projectFields(name, location));
   const destination = $derived(name.trim() === '' ? null : inside(location.trim(), name.trim()));
   const id = $props.id();
@@ -25,10 +36,10 @@
     if (busy) return;
     submitted = true;
     problem = null;
-    if (errors.name !== undefined || errors.location !== undefined) return;
+    if (urlError !== undefined || errors.name !== undefined || errors.location !== undefined) return;
     busy = true;
     try {
-      const result = await createProject(call, name, location);
+      const result = await createProject(call, name, location, cloning ? url.trim() : undefined);
       if (!active) return;
       if (result.ok) onCreated(result.folder, result.projects);
       else problem = result.words;
@@ -38,9 +49,15 @@
   }
 </script>
 
-<Modal open title="New project" onClose={() => { if (!busy) onClose(); }}>
+<Modal open title={cloning ? 'Clone Git repository' : 'New project'} onClose={() => { if (!busy) onClose(); }}>
   <form id={id} onsubmit={submit} novalidate aria-busy={busy}>
-    <p>Create a folder with an empty Git repository on this computer.</p>
+    {#if cloning}
+      <Field label="Git URL" constraint="Use an HTTPS URL that works without signing in." error={submitted ? urlError : undefined}>
+        {#snippet children(link)}<Input {...link} type="url" bind:value={url} disabled={busy} maxlength={2048} autocomplete="off" spellcheck={false} />{/snippet}
+      </Field>
+    {:else}
+      <p>Create a folder with an empty Git repository on this computer.</p>
+    {/if}
     <Field label="Name" error={submitted ? errors.name : undefined}>
       {#snippet children(link)}<Input {...link} bind:value={name} disabled={busy} autocomplete="off" spellcheck={false} />{/snippet}
     </Field>
@@ -48,12 +65,12 @@
       {#snippet children(link)}<Input {...link} bind:value={location} disabled={busy} autocomplete="off" spellcheck={false} />{/snippet}
     </Field>
     {#if destination && errors.name === undefined && errors.location === undefined}<p class="destination">New folder: <span>{destination}</span></p>{/if}
-    <p role="status">{busy ? 'Creating project…' : ''}</p>
+    <p role="status">{busy ? (cloning ? 'Cloning project…' : 'Creating project…') : ''}</p>
     {#if problem}<p role="alert">{problem}</p>{/if}
   </form>
   {#snippet footer()}
     <FormButton busy={busy} tone="ghost" onclick={onClose}>Cancel</FormButton>
-    <FormButton type="submit" form={id} busy={busy} tone="primary">{busy ? 'Creating…' : 'Create project'}</FormButton>
+    <FormButton type="submit" form={id} busy={busy} tone="primary">{cloning ? (busy ? 'Cloning…' : 'Clone project') : (busy ? 'Creating…' : 'Create project')}</FormButton>
   {/snippet}
 </Modal>
 

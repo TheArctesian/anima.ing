@@ -9,7 +9,16 @@ use super::refused;
 mod place;
 pub(super) use place::Project;
 
-pub(super) async fn project(folder: PathBuf, daemon: PathBuf) -> Result<Project, Refusal> {
+pub(super) enum Preparation {
+    Initialize,
+    Clone(super::clone::Source),
+}
+
+pub(super) async fn project(
+    folder: PathBuf,
+    daemon: PathBuf,
+    preparation: Preparation,
+) -> Result<Project, Refusal> {
     let (destination, staging) = tokio::task::spawn_blocking(move || {
         let destination = place::Destination::open(destination(&folder, &daemon)?)?;
         // Git only sees a private staging directory inside the daemon boundary. The requested
@@ -28,7 +37,10 @@ pub(super) async fn project(folder: PathBuf, daemon: PathBuf) -> Result<Project,
     tokio::fs::create_dir(&staged)
         .await
         .map_err(|_| refused("The new project could not be prepared."))?;
-    initialize(&staged).await?;
+    match preparation {
+        Preparation::Initialize => initialize(&staged).await?,
+        Preparation::Clone(source) => source.checkout(&staged).await?,
+    }
     destination.publish(&staged)
 }
 

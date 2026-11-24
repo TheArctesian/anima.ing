@@ -1,7 +1,7 @@
 /** Frames of the thread runner's local socket (TH14, THR-128); each crosses a process boundary, so each field is checked. */
 
 import { attachedFrom, promptFilesFrom, type AttachAction, type Attached, type PromptFiles } from './attachments';
-import { projectsFrom, type ProjectsOutcome } from '../projects/projects';
+import { projectsFrom, type ProjectAction, type ProjectsOutcome } from '../projects/projects';
 import { usageFrom, workspaceFrom, type RunUsage, type RunWorkspace } from './details';
 import { folderOutcomeFrom, type FolderOutcome } from './files';
 import { modelListsFrom, type ModelLists } from './models';
@@ -115,8 +115,7 @@ export type Answer =
   | { readonly answer: 'choose'; readonly answers: readonly (readonly [string, string])[] };
 
 export type Action =
-  | { readonly call: 'projects' }
-  | { readonly call: 'create_project'; readonly folder: string; readonly name: string }
+  | ProjectAction
   | { readonly call: 'list' }
   | {
       readonly call: 'start';

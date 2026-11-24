@@ -33,6 +33,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-NEW-mobileinventory | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
 | HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
+| HT-NEW-codeclone | Clone a Code project from Git URL (TH60B, TC9) | Matching desktop, daemon and CLI on macOS or Linux, and a disposable anonymous HTTPS Git repository | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-186 | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
@@ -5769,3 +5770,22 @@ State: Open. Built on `code/local-anima-sessions-only`. Synthetic tests mount th
    Expected: records remain available for future use; this UI change deletes no sessions and does not stop the watcher.
 
 Parent-worker/device authority, TH30, remote session enablement and live SDK probes are outside this check.
+
+
+## HT-NEW-codeclone — Clone a Code project from Git URL
+
+State: Open. Built on `code/th60b-bounded-clone` (TH60B, TC9). The Git checkout
+and runner refusal tests use synthetic fixtures. The installed desktop and a
+successful HTTPS exchange with a real Git server still need a check.
+
+1. Use a test account with a matching desktop, daemon and CLI. Prepare a disposable
+   HTTPS Git repository with one known committed file, no sign-in and no redirect.
+   Open Code, start a draft and choose Add project → Git URL.
+2. Enter the test URL, a folder name and an existing parent on the daemon's
+   filesystem. Confirm the displayed destination and choose Clone project. Expect
+   a progress message, then selection of the new project in the draft. Expect
+   the known file in that folder. No thread starts when the clone completes.
+3. Repeat with a different folder through `anima agents projects clone <url> <folder>`.
+   Reopen the desktop. Expect both clones in the project picker.
+4. Repeat with an existing folder containing a file. Expect refusal and the
+   original file. In the form, expect the URL and destination fields to stay filled.

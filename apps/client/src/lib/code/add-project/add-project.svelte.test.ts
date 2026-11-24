@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 function show(onAdd: (folder: string) => void): void {
-  app = mount(AddProject, { target: document.body, props: { open: true, list, start: '/Users/ana', onAdd, onNew: vi.fn() } });
+  app = mount(AddProject, { target: document.body, props: { open: true, list, start: '/Users/ana', onAdd, onForm: vi.fn() } });
   flushSync();
 }
 
@@ -53,7 +53,7 @@ describe('the "Add project" palette', () => {
     expect(options()).toEqual([
       { words: 'New project Start a new Git repository from a name', off: false },
       { words: 'Local folder Browse a folder on disk', off: false },
-      { words: 'Git URL Clone from a remote URL. Needs a runner call that clones a URL into a folder.', off: true },
+      { words: 'Git URL Clone from an HTTPS URL', off: false },
       { words: 'GitHub repository Clone GitHub owner/repo. Needs a runner call that clones owner/repo from GitHub into a folder.', off: true },
     ]);
     expect(document.querySelector('.foot')?.textContent).not.toContain('Back');

@@ -1,4 +1,4 @@
-use agent_threads::control::{Action, Outcome};
+use agent_threads::control::{Action, Outcome, Refusal};
 
 use super::runner::Kit;
 
@@ -37,4 +37,46 @@ async fn th60a_created_project_is_registered_only_after_initialization_and_survi
     let mut client = kit.client().await;
     let list = client.call(Action::Projects).await;
     assert_eq!(client.done(list).await, Outcome::Projects { projects });
+}
+
+#[tokio::test]
+async fn th60b_unsafe_clone_sources_are_refused_without_leaving_a_folder_or_project() {
+    let kit = Kit::new();
+    let mut client = kit.client().await;
+    let folder = kit.path("clone");
+    for url in [
+        "https://user:synthetic-credential@example.test/repo",
+        "https://example.test/repo?token=synthetic-credential",
+        "https://example.test/repo#fragment",
+        "https:///example.test/repo",
+        "https://example.test/repo\\other",
+        "file:///tmp/fixture",
+        "ext::git ignored",
+        "git@example.test:fixture",
+        "http://example.test/repo",
+    ] {
+        let id = client
+            .call(Action::CloneProject {
+                folder: folder.clone(),
+                name: None,
+                url: url.to_owned(),
+            })
+            .await;
+        let Outcome::Refused {
+            why: Refusal::CannotCreateProject { said },
+        } = client.done(id).await
+        else {
+            panic!("unsafe clone source was not refused");
+        };
+        assert!(said.contains("without credentials"));
+        assert!(!said.contains(url));
+    }
+    assert!(!folder.exists());
+    let id = client.call(Action::Projects).await;
+    assert_eq!(
+        client.done(id).await,
+        Outcome::Projects {
+            projects: Vec::new()
+        }
+    );
 }

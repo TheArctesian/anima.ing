@@ -16,6 +16,7 @@ pub(super) const fn for_the_person(action: &Action) -> bool {
             | Action::ChangeListing { .. }
             | Action::ChangeProject { .. }
             | Action::CreateProject { .. }
+            | Action::CloneProject { .. }
             | Action::Files { .. }
             | Action::Folders { .. }
             | Action::Queue { .. }

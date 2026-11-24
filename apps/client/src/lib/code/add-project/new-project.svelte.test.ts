@@ -43,7 +43,7 @@ function form(): HTMLFormElement {
   if (!found) throw new Error('No form');
   return found;
 }
-async function show(create: (action: Action) => Promise<unknown>, registered: unknown[] = []) {
+async function show(create: (action: Action) => Promise<unknown>, registered: unknown[] = [], source = 'New project') {
   const calls: Action[] = [];
   const live = new LiveThreads({
     call: async (action) => {
@@ -60,8 +60,8 @@ async function show(create: (action: Action) => Promise<unknown>, registered: un
   const draft = new ThreadDraft(null).addProject();
   app = mount(DraftThread, { target: document.body, props: { draft, live, projects: [], onStarted: vi.fn() } });
   await settle();
-  const source = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((row) => row.textContent.includes('New project'));
-  source?.click();
+  const row = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((option) => option.textContent.includes(source));
+  row?.click();
   await settle();
   return { calls, draft };
 }
@@ -167,4 +167,18 @@ it('explains how to recover when the creation acknowledgement is lost', async ()
   expect(document.body.textContent).toContain('Check the location before retrying');
   expect(draft.folder).toBeNull();
   expect([...document.querySelectorAll('input')].map((input) => input.value)).toContain('Notes');
+});
+
+it('clones the Git URL into the confirmed canonical folder and selects the registered project', async () => {
+  const { calls, draft } = await show(async () => ({ outcome: 'projects', projects: [{ folder: '/real/projects/Notes', name: 'Notes' }] }), [], 'Git URL');
+  const url = 'https://git.example.test/team/notes.git';
+  enter('Git URL', url);
+  enter('Name', 'Notes');
+  enter('Location', '/alias/projects');
+  button('Clone project').click();
+  await vi.waitFor(() => expect(draft.folder).toBe('/real/projects/Notes'));
+  expect(calls.filter((action) => action.call === 'clone_project')).toEqual([
+    { call: 'clone_project', folder: '/real/projects/Notes', name: 'Notes', url },
+  ]);
+  expect(calls.some((action) => action.call === 'create_project' || action.call === 'start')).toBe(false);
 });
