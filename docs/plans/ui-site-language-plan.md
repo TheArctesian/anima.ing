@@ -139,7 +139,7 @@ Draft for review, 2026-11-15. This proposal extends the palette model in UI-005,
 
 ## 3a. Motion audit tasks (2026-11-23)
 
-The record is [client-2026-11-23.md](../research/motion/client-2026-11-23.md). Each task obeys reduced motion (MOT-040, MOT-041) and uses only `$lib/motion/` and the tokens. Hosting and Code belong to other sessions now: their rows name the owner, and this plan does not build them.
+The record is `docs/research/motion/client-2026-11-23.md`. Each task obeys reduced motion (MOT-040, MOT-041) and uses only `$lib/motion/` and the tokens. Hosting and Code belong to other sessions now: their rows name the owner, and this plan does not build them.
 
 | Task | Content | Needs | State |
 | --- | --- | --- | --- |
