@@ -9,7 +9,9 @@ no copy; the type `copy_adopt`; the check of each such file at each load; the ca
 `copy_changed` and `copy_missing`; Sections 1, 2, 2.3, 3, 5, 8, 10.1, 10.2, 11 and 13). Version 0.5,
 2026-11-23 (version 0.5 takes R-347, R-NEW-launcherkey and R-NEW-launcherlist: the root-owned model launcher of task
 L1-6c, the cause `runtime_not_signed`, the details `launcher_missing` and `launcher_outdated`, Sections 5 and 9;
-the launcher waits for its own security review before a merge). Version 0.4,
+the launcher waits for its own security review before a merge). Version 0.5, 2026-11-23 (task L1-15, R-NEW-modelloading: Section 11.1, the loading, the memory and the pin;
+the type `model_keep`; the members `reserveBytes` and `keep` of `model_load`; the cause `memory_busy`; the
+members `models` and `memory` of the runtime report). Version 0.4,
 2026-11-23 (version 0.4 takes R-387: a relative symbolic link to a regular file of the same archive
 is unpacked as a copy of that file, Section 6). Version 0.3,
 2026-11-20 (version 0.3 takes the answers of the operator to OD-C22 to OD-C25: R-346,
@@ -83,9 +85,10 @@ a command, an argument, a flag or an environment variable.
 | `copy_adopt` | `{ "copy": "<uuid>", "found": "<64 hexadecimal characters>" }` | Makes the found model with that key a found copy: reads each of its files, records the size and the SHA-256 of each, and uses the files where they are (Section 2.3; PULL-012). |
 | `server_start` | `{ "server": "<uuid>", "runtime": "llama_server", "version": "b8100", "backend": "metal", "settings": { … } }` | Starts one server of an installed runtime on loopback and checks the listener (Section 9). |
 | `server_stop` | `{ "server": "<uuid>" }` | Stops the server: it asks it to end, waits at most 10 seconds, then ends the process. |
-| `model_load` | `{ "server": "<uuid>", "copy": "<uuid>", "settings": { … } }` | Loads a copy on a server. For a runtime that cannot unload (vLLM), the daemon stops and starts the process with the new copy (RTC-004). llama-server runs in router mode and loads with no restart (RTC-005). |
+| `model_load` | `{ "server": "<uuid>", "copy": "<uuid>", "settings": { … }, "reserveBytes": 7516192768, "keep": { "idleSeconds": 900, "pinned": false } }` | Makes room by the rules of Section 11.1, then loads a copy on a server. `reserveBytes` and `keep` are optional (Section 11.1). For a runtime that cannot unload (vLLM), the daemon stops and starts the process with the new copy (RTC-004). llama-server runs in router mode and loads with no restart (RTC-005). |
 | `model_unload` | `{ "server": "<uuid>", "copy": "<uuid>" }` | Unloads the copy from the server, or stops the process when the runtime cannot unload (RTC-004). |
 | `model_measure` | `{ "server": "<uuid>", "copy": "<uuid>", "probe": "text_short" }` | Sends a fixed request of the daemon to the server and reports the result (PULL-011, CMP-006). |
+| `model_keep` | `{ "copy": "<uuid>", "keep": { "idleSeconds": 900, "pinned": true } }` | Sets the idle time and the pin of a copy on this node (Section 11.1). It loads and unloads nothing by itself; the rules of Section 11.1 then apply to the copy. |
 | `model_drain` | `{ "seconds": 60 }` | Sends no new request to each server, waits for the requests in progress for at most `seconds` (at most 60, CAP-013), then reports. It does not stop a server. |
 
 - `version` is the version of a release of the runtime, by the pattern of that runtime in the daemon (for
@@ -337,7 +340,8 @@ the causes of K10 Section 5, and these:
 | `remote_code` | The copy needs remote code to load: `auto_map`, `custom_pipelines`, or a class that is not on the list of the runtime (SEC-C-008) |
 | `file_rejected` | A file of the copy is refused for a reason that is not remote code: a chat template over 64 KiB, a JSON file that does not parse or is not an object, a file that a content check finds too large (Section 2.2; R-407; a downloaded size that differs from `sizeBytes` is `size`, SF-383). Not retryable with the same copy; the operator and the actor see it |
 | `disk_share` | The copy does not fit in the disk share of the device policy after the removal that the hub permitted (PULL-008) |
-| `memory_share` | The load does not fit in the memory share of the device policy |
+| `memory_share` | The load does not fit in the memory share of the device policy, also with no other copy loaded: the copy is too large for this runtime and this hardware (FIT-026, the second case) |
+| `memory_busy` | The load fits in the memory share, but the reservations of the copies that cannot unload now (loading, active, or the last idle copy that is not idle long enough) fill it at this time (FIT-026, the first case). The daemon unloaded nothing for this load. Retryable |
 | `file_type` | `files` names a file that the format does not permit (Section 2.2) |
 | `gpu_unknown` | `gpu` is not a GPU of the inventory of the machine |
 | `runtime_too_old` | The version is lower than the lowest version of that runtime that the daemon program holds |
@@ -773,10 +777,108 @@ The daemon keeps the state of each copy in its state folder. The hub keeps the r
   read and recorded. A found copy that is `failed` with `copy_changed` or `copy_missing` is never checked again by
   itself; a new `copy_adopt` of the same key, with a new copy, records the files as they are now. Its record in
   `<model-state>/found/` is the state that the daemon keeps.
-- **Hook for task L1-15 (not defined here).** The states `loading`, `loaded` and `active` of a copy on a server,
-  and the change between them, are for the contract of loading and readiness (task L1-15, FIT-020 to FIT-026).
-  This version reports only `loaded` (the list `servers[].loaded` of Section 8). L1-15 adds its states as members
-  of `servers[]`, not as new states of a copy in this diagram.
+- The states of a copy on a server (`loading`, `ready`, `active`) are not states of this diagram. Section 11.1
+  gives them, as members of `servers[]` (task L1-15, FIT-025).
+
+### 11.1 Loading, memory and the pin (L1-15, FIT-020 to FIT-025)
+
+This section is the part of task L1-15 in this contract. The wait policy of a request, the status of a request,
+the queue limit, the timeout and the cancellation at the model address (FIT-026, the choice of the caller;
+RTR-031, RTR-039) are the part of L1-15 in `model-request.md`, which task L1-10 makes. This section gives what the
+node does; the model address uses it.
+
+**The states of a copy on a server (FIT-025).** A copy that is `downloaded` or `validated` (Section 11) can be on
+a server. On a server it has one of these states:
+
+- `loading`: a `model_load` runs for it. It holds its reservation.
+- `ready`: it is loaded, and no request is in progress on it.
+- `active`: it is loaded, and one or more requests are in progress on it.
+
+A copy that is on no server has no state of this list. The hub shows the copy state of Section 11 and, for each
+server, this state; it never joins them into one word.
+
+**The reservation of a copy (FIT-024).** Each copy that is `loading`, `ready` or `active` holds a reservation of
+memory, in bytes:
+
+- When `model_load` has `reserveBytes`, the reservation is the larger of `reserveBytes` and the sum of the
+  `sizeBytes` of the files of the copy. The hub gives `reserveBytes` from its fit estimate (task L1-2) for the
+  settings of the load (the context, the cache type, the parallel slots). The daemon never takes a value lower
+  than the files: a wrong hub can make the daemon too careful, never too bold.
+- With no `reserveBytes` (an older hub), the reservation is the sum of the `sizeBytes` of the files and 25 % of
+  that sum, for the cache and the runtime.
+- `reserveBytes` is an integer from 1 to 2^53 − 1. The reservation of an active request is in the reservation of
+  its copy: the parallel slots of Section 2.1 are counted in the estimate, so a request adds no reservation.
+
+The usable memory of the node is the memory share of the device policy (RTC-003) of the memory that the load uses:
+the GPU memory of the GPU of the server where the GPU has its own memory, else the main memory. The node counts
+its reservations for each such memory apart.
+
+**Room for a load (FIT-020, FIT-021, FIT-024).** Before the daemon loads a copy:
+
+1. If the reservation of the copy is larger than the usable memory, it refuses with `memory_share` and changes
+   nothing. No unload can make room.
+2. If the reservations of the node with the new one are not more than the usable memory, it loads.
+3. Else it selects copies to unload: only copies that are `ready` and idle for at least 30 seconds. It never
+   selects a copy that is `loading` or `active`, and it never stops a request. It selects copies that are not
+   pinned first, then pinned copies (FIT-023: a pin is not a reservation); in each group, the copy that was used
+   longest ago first. It selects the fewest copies, in that order, that make room.
+4. If those copies cannot make room, it refuses with `memory_busy` and unloads nothing. Else it unloads them, then
+   loads. An unload frees the memory of the runtime and keeps the files of the copy (FIT-021); it is never a
+   `copy_delete`.
+
+The daemon does one load at a time on each memory, so that two loads cannot count the same free memory. A second
+`model_load` for the same memory waits for the first, at most 120 seconds (the limit of `start_failed`), then is
+refused with `memory_busy`.
+
+**The idle time (FIT-022).** `keep.idleSeconds` is an integer from 60 to 86,400. With no `keep`, the copy keeps the
+value that the node holds for it, else 900 (15 minutes). A copy that is `ready`, not pinned, and that no request
+used for `idleSeconds`, is unloaded by the daemon. "Used" is the end of the last request on the copy, or the end of
+its load. The daemon checks each 15 seconds, so an unload comes at most 15 seconds late.
+
+**The pin and its return (FIT-023).** `keep.pinned` is `true` or `false`. A pinned copy is never unloaded because
+it is idle. It can be unloaded only by step 3 above. Then the node marks it `displaced` and loads it again by
+itself when all of these are true:
+
+- the copy is still pinned, and still `downloaded` or `validated`;
+- no load runs on that memory, and no `model_load` was refused with `memory_busy` on that memory in the last 60
+  seconds (a return does not hold back a request that waits);
+- its reservation fits with no unload (a return never unloads a copy);
+- the last return of this copy was at least 10 minutes ago, doubled after each return that was displaced again in
+  less than 10 minutes, at most 4 hours (no loop of loads).
+
+A `model_unload`, a `copy_delete`, a `server_stop`, or a `model_keep` with `pinned` false ends the mark. A return
+loads the copy on the server that it was displaced from, with the settings of its last load; if that server is not
+`ready`, the mark stays.
+
+**What the node keeps.** The daemon keeps `keep` and the mark `displaced` of each copy in `<model-state>/keep/`,
+one file for each copy, written as Section 10 says. After a restart of the daemon, it loads nothing by itself: the
+hub sends `server_start` again (MW-P5), and the marks stay until a server is `ready`.
+
+**The report.** Each entry of `servers[]` of Section 8 gets the member `models`, and the `runtimes` object gets the
+member `memory`:
+
+```json
+"servers": [
+  { "server": "<uuid>", "runtime": "llama_server", "state": "ready", "restarts": 0,
+    "loaded": ["<copy uuid>"],
+    "models": [
+      { "copy": "<copy uuid>", "state": "active", "reservedBytes": 7516192768,
+        "idleSeconds": 900, "pinned": true, "usedSecondsAgo": 0 }
+    ],
+    "inProgress": 1, "queued": 0, "tokensPerSecond": 41.5, "memoryBytes": 6442450944, "tempBytes": 0 }
+],
+"memory": [
+  { "memory": "main", "usableBytes": 25769803776, "reservedBytes": 7516192768, "displaced": [] },
+  { "memory": "gpu0", "usableBytes": 12884901888, "reservedBytes": 0, "displaced": ["<copy uuid>"] }
+]
+```
+
+- `models[].state` is `loading`, `ready` or `active`. `usedSecondsAgo` is the seconds since the copy was last used,
+  or 0 while it is `active` or `loading`. At most 16 entries for each server.
+- `loaded` stays, for a hub that does not know `models`: it lists the copies that are `ready` or `active`.
+- `memory` has one entry for each memory that a server uses: `main`, or `gpu` and the index of the GPU in the
+  inventory. `displaced` lists the pinned copies that wait for their return, at most 16.
+- A hub that does not know `models` or `memory` ignores them (K8 Section 1).
 
 ## 12. Open points of this text
 
@@ -792,6 +894,8 @@ The daemon keeps the state of each copy in its state folder. The hub keeps the r
 | MW-P5 | Does the daemon start its servers again by itself after its own restart? | No: the hub sends `server_start` again, so that the machine runs nothing that the hub does not know |
 | MW-P10 | A found model of safetensors (a folder of the Hugging Face cache for vLLM or MLX) | Not in this version: it is listed with `usable` false. A runtime reads a folder, not one descriptor, so the check at each load of Section 2.3 does not bind what it reads. A later version can make a folder of links in the model cache, checked at each load |
 | MW-P6 | Can an AI agent through an API key make a model item? (F15) | Decided (R-326): each type; `agentTypes` is a setting at the machine |
+| MW-P10 | Is a pin for one model on all nodes, or for one copy on one node? (L1-15) | For one copy on one node: the node is the place of the memory. The hub can give the operator one control that sends `model_keep` to each node that has a copy |
+| MW-P11 | Who gives the reservation of a load? (L1-15) | The hub, from its fit estimate (L1-2), as `reserveBytes`; the daemon never takes less than the files (Section 11.1). When the daemon later measures the memory of a loaded copy, task L1-8 can correct the estimate |
 
 ## 13. What a person who controls the hub can do with this contract
 
