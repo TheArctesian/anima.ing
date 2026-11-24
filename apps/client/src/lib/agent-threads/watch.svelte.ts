@@ -3,9 +3,7 @@ import { desktopThreadsShell } from '$lib/desktop/agent-threads/shell';
 import { daemonUpdateWords } from '$lib/desktop/daemon/update-notice';
 import { LiveThreads } from './live/live.svelte';
 import { ThreadsStore } from './store.svelte';
-
-/** THR-058: the desktop shell has no watcher of the session files, so the list is read at an interval. */
-export const REFRESH_MS = 30_000;
+import { Freshness, type Visibility } from './freshness';
 
 let shared: ThreadsStore | undefined;
 
@@ -25,15 +23,23 @@ export function threadsStore(): ThreadsStore {
   return shared;
 }
 
-export function keepFresh(store: ThreadsStore, target: Pick<Document, 'visibilityState' | 'addEventListener' | 'removeEventListener'> = document): () => void {
-  const read = (): void => {
-    if (target.visibilityState === 'visible') void store.loadList();
-  };
-  read();
-  const timer = setInterval(read, REFRESH_MS);
-  target.addEventListener('visibilitychange', read);
+const subscriptions = new WeakMap<ThreadsStore, { users: number; stop: () => void }>();
+
+export function keepFresh(store: ThreadsStore, target: Visibility = document): () => void {
+  let subscription = subscriptions.get(store);
+  if (subscription === undefined) {
+    const freshness = new Freshness(store, target);
+    subscription = { users: 0, stop: () => freshness.stop() };
+    subscriptions.set(store, subscription);
+  }
+  subscription.users++;
+  let released = false;
   return () => {
-    clearInterval(timer);
-    target.removeEventListener('visibilitychange', read);
+    if (released) return;
+    released = true;
+    if (--subscription.users === 0) {
+      subscription.stop();
+      subscriptions.delete(store);
+    }
   };
 }

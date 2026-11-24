@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
 | HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
@@ -5665,6 +5666,26 @@ On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing
 
 On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
 
+## HT-190 — Native session list refresh
+
+State: Open. Built on `t3/session-folder-watcher` (TH7, THR-058).
+
+The shell watches session paths with bounded native registrations. Synthetic tests cover folder creation,
+file changes, replacement, safe path opening and client subscription lifetime. Discovery enumerates pinned
+directory descriptors and reads entry metadata without following links. A synthetic replacement between
+validation and enumeration is refused; removing the pinned-open guard makes that regression fail. Tests do not prove the
+installed application window lifecycle or OS permissions on a person's Mac and Linux desktop.
+
+1. In a test OS account on each platform, open Code with one made Claude Code or Codex session. Change
+   its session file. Expect the visible list and count to update promptly, without changing the held order.
+2. Hide the window, change the made session, then show the window. Expect no hidden list reads and one
+   refresh when shown. Navigate away from and back to Code several times. Expect no duplicate updates.
+3. Remove and recreate the made session directories, then change a file there. Expect the list to recover.
+4. Close and reopen the application. Expect file changes to update the list again.
+5. Use a test home with more than 1,024 session paths, or a filesystem without native notifications.
+   Expect the visible list to refresh within 30 seconds of silence. Expect no error containing session paths.
+
+No result is recorded yet. Only the operator sets this check to Passed or Failed.
 ## HT-184-remote-update — Hosted desktop OS updates
 
 Status: Open. Owner: OS5-R1 in [spare-computer-os.md](proposals/spare-computer-os.md).
