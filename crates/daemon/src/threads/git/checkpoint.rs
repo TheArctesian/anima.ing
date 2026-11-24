@@ -9,8 +9,10 @@ use uuid::Uuid;
 
 use super::place::{Worktree, own, shared};
 use super::run::{Git, GitError, Run};
+mod preserved;
 mod staged;
 
+use preserved::Preserved;
 use staged::{Lists, Staged, Staging, fitted};
 
 /// Who a checkpoint commit says it is from: never the person.
@@ -42,6 +44,10 @@ pub fn before_revert_ref(thread: Uuid) -> String {
 /// one that a commit takes, and kept from the clean-up of git.
 #[must_use]
 pub fn reviewed_ref(thread: Uuid) -> String {
+    format!("{}/reviewed-complete", refs_of(thread))
+}
+
+fn old_reviewed_ref(thread: Uuid) -> String {
     format!("{}/reviewed", refs_of(thread))
 }
 
@@ -73,6 +79,15 @@ pub async fn tree_now(
     worktree: &Worktree,
     tip: Option<&str>,
 ) -> Result<String, GitError> {
+    stage_tree(git, worktree, tip).await?;
+    git.text(Run::new(worktree.folder(), ["write-tree"])).await
+}
+
+async fn stage_tree(
+    git: &Git,
+    worktree: &Worktree,
+    tip: Option<&str>,
+) -> Result<Vec<(std::path::PathBuf, std::path::PathBuf)>, GitError> {
     let dir = worktree.folder();
     let left = own::within(git, worktree).await?;
     let start = match tip {
@@ -103,8 +118,7 @@ pub async fn tree_now(
     };
     let staged = fitted(git, worktree, (&held.0, &lists), left).await?;
     index_of(git, &held.0, staged).await?;
-    drop(held);
-    git.text(Run::new(dir, ["write-tree"])).await
+    Ok(inner)
 }
 
 /// Puts what was copied into `staging` in the index of the runner: the files that are gone
@@ -163,19 +177,35 @@ const GONE: [&str; 4] = ["update-index", "-z", "--force-remove", "--stdin"];
 /// A [`GitError`] when the branch cannot be read or a step of `git` fails.
 pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError> {
     let tip = own::tip(git, worktree).await?.commit;
-    snapshot_on(git, worktree, tip).await
+    let tree = tree_now(git, worktree, tip.as_deref()).await?;
+    commit_tree(git, worktree, tree, tip).await
 }
 
-/// As [`snapshot`], on `tip`; with no tip the commit holds each file and has no parent.
+/// Saves the tree for removal and accounts for the files it preserves in the worktree.
 ///
 /// # Errors
-/// A [`GitError`] when a step of `git` fails.
-pub async fn snapshot_on(
+/// A [`GitError`] if Git fails or a worktree file is outside the saved tree.
+pub async fn snapshot_for_removal(
     git: &Git,
     worktree: &Worktree,
     tip: Option<String>,
+) -> Result<(String, Preserved), GitError> {
+    let aliases = stage_tree(git, worktree, tip.as_deref()).await?;
+    let preserved = Preserved::from_index(git, worktree, aliases).await?;
+    preserved.check(worktree.folder())?;
+    let tree = git
+        .text(Run::new(worktree.folder(), ["write-tree"]))
+        .await?;
+    let commit = commit_tree(git, worktree, tree, tip).await?;
+    Ok((commit, preserved))
+}
+
+async fn commit_tree(
+    git: &Git,
+    worktree: &Worktree,
+    tree: String,
+    tip: Option<String>,
 ) -> Result<String, GitError> {
-    let tree = tree_now(git, worktree, tip.as_deref()).await?;
     let mut commit = vec!["commit-tree".to_owned(), tree];
     if let Some(tip) = tip {
         commit.extend(["-p".to_owned(), tip]);
@@ -238,6 +268,23 @@ pub async fn keep(
     .map(drop)
 }
 
+/// Records a complete review. The old ref could hold a snapshot from a filtered diff.
+pub(super) async fn keep_reviewed(
+    git: &Git,
+    worktree: &Worktree,
+    shown: &str,
+) -> Result<(), GitError> {
+    drop_ref(git, worktree, &old_reviewed_ref(worktree.thread())).await?;
+    keep(git, worktree, &reviewed_ref(worktree.thread()), shown).await
+}
+
+async fn drop_ref(git: &Git, worktree: &Worktree, name: &str) -> Result<(), GitError> {
+    let gone = ["update-ref", "--no-deref", "-d", name];
+    git.output(Run::new(worktree.folder(), gone))
+        .await
+        .map(drop)
+}
+
 /// Takes the checkpoint of `turn`: a snapshot under the ref of the turn.
 ///
 /// # Errors
@@ -297,13 +344,15 @@ pub async fn forget_before(
     forget(git, worktree, |turn| turn < before).await?;
     // The last reviewed snapshot goes: the next look at the changes makes a new one. The
     // undo of the last revert goes only with the last checkpoint.
-    let mut old = vec![reviewed_ref(worktree.thread())];
+    let mut old = vec![
+        reviewed_ref(worktree.thread()),
+        old_reviewed_ref(worktree.thread()),
+    ];
     if list(git, worktree).await?.is_empty() {
         old.push(before_revert_ref(worktree.thread()));
     }
     for old in old {
-        let gone = ["update-ref", "--no-deref", "-d", old.as_str()];
-        git.output(Run::new(worktree.folder(), gone)).await?;
+        drop_ref(git, worktree, &old).await?;
     }
     own::emptied(git, worktree).await?;
     list(git, worktree).await

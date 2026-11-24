@@ -5141,8 +5141,10 @@ To check W2, start a thread in a worktree as in HT-169. Use the command prefix `
    Expected: the thread's branch and the files that changed. Checkpoints show turn 0 and the completed turn. Changes show a patch and a reviewed snapshot.
 2. If status lists Git settings to accept, read them and run `trust --shown <acceptance digest>`. Run `commit -m "Check the CLI" --reviewed <reviewed snapshot>`.
    Expected: the command prints the commit. In the worktree, `git show HEAD` shows the changes from the snapshot.
-3. On a disposable worktree, run `revert 0` and confirm. Then run `remove` and confirm.
-   Expected: revert restores the files at turn 0 and shows an undo ref. Remove takes the worktree off disk and shows the ref that keeps its work.
+3. On a disposable worktree, run `revert 0` and confirm.
+   Expected: revert restores the files at turn 0 and shows an undo ref.
+4. Put a note in the worktree and add its name to `.gitignore`. Run `remove` and confirm.
+   Expected: removal reports the note and leaves the worktree intact. Move the note outside the worktree, then run `remove` again. It removes the worktree and prints the ref with its saved files.
 
 For the remaining checks, use the page when W4 is available. The remote query and the hook and LFS notices also require the separate remote step in Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md).
 

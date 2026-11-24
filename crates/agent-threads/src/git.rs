@@ -244,10 +244,10 @@ pub struct Changes {
     pub files: Vec<ChangedFile>,
     pub additions: u32,
     pub deletions: u32,
-    /// The patches were over the limit: the counts are whole, the patches are left out.
+    /// The complete patches could not be shown. The counts are still available.
     pub truncated: bool,
-    /// For [`Scope::Uncommitted`]: the snapshot of the files that these changes show, which a
-    /// [`GitAction::Commit`] names as `reviewed`.
+    /// For a person's complete, unfiltered [`Scope::Uncommitted`] view: the snapshot
+    /// that [`GitAction::Commit`] names as `reviewed`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub snapshot: Option<String>,
 }

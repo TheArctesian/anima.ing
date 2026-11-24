@@ -56,7 +56,7 @@ enum GitCommand {
     /// Print the address of the pull request page for a pushed branch.
     #[command(visible_alias = "pull-request")]
     Pr,
-    /// Remove the worktree and keep its work under a private ref.
+    /// Save the worktree under a private ref and remove it. Refuses if files would be lost.
     Remove,
     /// Discard checkpoints strictly before this turn.
     Forget { before: u32 },
@@ -86,6 +86,7 @@ impl GitArgs {
         self.command
             .confirm(invocation, &self.repository, self.thread)?;
         let mut link = RunnerLink::connect().await?;
+        let pull_request = matches!(self.command, GitCommand::Pr);
         let call = Action::Git {
             thread: self.thread,
             repository: self.repository,
@@ -97,7 +98,17 @@ impl GitArgs {
             }
             | Outcome::Refused {
                 why: Refusal::Worktree { why },
-            } => Err(refused(why)),
+            } => {
+                if pull_request && why == GitRefusal::DefaultBranch {
+                    return Err(Failure::Forbidden {
+                        message: "The current branch is the default branch.".to_owned(),
+                        hint: Some(Hint::say(
+                            "Push a feature branch before asking for its pull request page.",
+                        )),
+                    });
+                }
+                Err(refused(why))
+            }
             Outcome::Git { result } => render::show(&result, invocation.output),
             Outcome::Refused {
                 why: Refusal::FromAnAgent,
@@ -124,7 +135,7 @@ impl GitCommand {
             }
             Self::Remove => {
                 format!(
-                    "Remove the {repository} worktree of thread {thread} and keep its work in Git?"
+                    "Save the {repository} worktree of thread {thread} to Git and remove it if the files can be preserved?"
                 )
             }
             Self::Forget { before } => {
@@ -219,7 +230,9 @@ fn refused(why: GitRefusal) -> Failure {
                 ),
             };
         }
-        GitRefusal::NotReviewed => "Read the uncommitted changes again and use the new snapshot.",
+        GitRefusal::NotReviewed => {
+            "Read the complete uncommitted changes without --ignore-whitespace and use the new snapshot."
+        }
         GitRefusal::RecordsHeld => {
             "A running thread can write to Anima's Git records. Stop that thread first."
         }

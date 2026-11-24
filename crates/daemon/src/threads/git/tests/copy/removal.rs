@@ -220,7 +220,7 @@ async fn links_beside_a_named_repository_send_no_saved_file_out_of_the_runner_s_
 }
 
 #[tokio::test]
-async fn what_a_repository_inside_ignores_is_not_saved_and_large_file_contents_are() {
+async fn an_ignored_file_in_a_nested_repository_blocks_removal_until_it_is_moved() {
     let bench = Bench::new().await;
     let folder = bench.worktree().await;
     let inside = folder.join("sub");
@@ -234,6 +234,18 @@ async fn what_a_repository_inside_ignores_is_not_saved_and_large_file_contents_a
     let content = own_of(&bench).join("lfs/objects/ab/cd");
     std::fs::create_dir_all(&content).expect("a folder");
     std::fs::write(content.join("abcd1234"), "the large file\n").expect("a file");
+    let removal = bench.call(PERSON, GitAction::Remove).await;
+    assert!(
+        matches!(&removal, GitOutcome::Refused { why: agent_threads::git::GitRefusal::Failed { said } }
+        if said.contains("sub/build/out.o")),
+        "{removal:?}"
+    );
+    let moved = bench.home.join("moved-output");
+    std::fs::rename(inside.join("build/out.o"), &moved).expect("move the at-risk file");
+    assert_eq!(
+        std::fs::read_to_string(&moved).expect("file stays"),
+        "built\n"
+    );
     let GitOutcome::Removed { kept: Some(kept) } = bench.call(PERSON, GitAction::Remove).await
     else {
         panic!("not removed");
@@ -248,4 +260,56 @@ async fn what_a_repository_inside_ignores_is_not_saved_and_large_file_contents_a
     let kept_content = bench.project.join(".git/lfs/objects/ab/cd/abcd1234");
     let text = std::fs::read_to_string(kept_content).expect("the content of the large file");
     assert_eq!(text, "the large file\n");
+}
+
+#[tokio::test]
+async fn tc7_removal_leaves_an_ignored_note_in_the_worktree() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join(".gitignore"), "local-notes.txt\n").expect("ignore rules");
+    let notes = folder.join("local-notes.txt");
+    std::fs::write(&notes, "unfinished notes\n").expect("an ignored note");
+    let removed = bench.call(PERSON, GitAction::Remove).await;
+    assert!(
+        matches!(&removed, GitOutcome::Refused { why: agent_threads::git::GitRefusal::Failed { said } }
+            if said.contains("local-notes.txt")),
+        "{removed:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&notes).expect("note stays"),
+        "unfinished notes\n"
+    );
+    assert!(matches!(
+        bench.call(PERSON, GitAction::Status).await,
+        GitOutcome::Status(_)
+    ));
+}
+
+#[tokio::test]
+async fn tc7_removal_leaves_a_file_that_replaced_a_submodule() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let commit = bench.git_in(&folder, &["rev-parse", "HEAD"]).await;
+    bench
+        .git_in(
+            &folder,
+            &[
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                &format!("160000,{commit},sub"),
+            ],
+        )
+        .await;
+    bench
+        .git_in(&folder, &["commit", "-qm", "record a submodule"])
+        .await;
+    let replacement = folder.join("sub");
+    std::fs::write(&replacement, "unpreserved work\n").expect("a file in place of the submodule");
+    let result = bench.call(PERSON, GitAction::Remove).await;
+    assert!(super::super::refused(&result).is_some(), "{result:?}");
+    assert_eq!(
+        std::fs::read_to_string(replacement).expect("the work stays"),
+        "unpreserved work\n"
+    );
 }

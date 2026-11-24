@@ -57,7 +57,12 @@ const MOST_BELOW: usize = 200_000;
 const DEEPEST: usize = 64;
 
 /// Adds to `found` each file and each link of the open folder `folder`, which is at `at`.
-fn listed(folder: &Dir, at: &Path, left: usize, found: &mut Vec<PathBuf>) -> std::io::Result<()> {
+fn listed(
+    folder: &Dir,
+    at: &Path,
+    (depth, left): (usize, &mut usize),
+    found: &mut Vec<PathBuf>,
+) -> std::io::Result<()> {
     let too_many = || {
         std::io::Error::new(
             std::io::ErrorKind::InvalidData,
@@ -66,6 +71,7 @@ fn listed(folder: &Dir, at: &Path, left: usize, found: &mut Vec<PathBuf>) -> std
         )
     };
     for name in folder.names()? {
+        *left = left.checked_sub(1).ok_or_else(too_many)?;
         if name.eq_ignore_ascii_case(".git") {
             continue;
         }
@@ -76,12 +82,14 @@ fn listed(folder: &Dir, at: &Path, left: usize, found: &mut Vec<PathBuf>) -> std
             listed(
                 &inside,
                 &path,
-                left.checked_sub(1).ok_or_else(too_many)?,
+                (depth.checked_sub(1).ok_or_else(too_many)?, left),
                 found,
             )?;
-        }
-        if found.len() > MOST_BELOW {
-            return Err(too_many());
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("the entry {} could not be preserved", shown(&path)),
+            ));
         }
     }
     Ok(())
@@ -257,7 +265,8 @@ impl Root {
     pub fn files_below(&self, path: &Path) -> std::io::Result<Vec<PathBuf>> {
         let mut found = Vec::new();
         if let Some(folder) = self.0.below(path, Make::No)? {
-            listed(&folder, path, DEEPEST, &mut found)?;
+            let mut left = MOST_BELOW;
+            listed(&folder, path, (DEEPEST, &mut left), &mut found)?;
         }
         Ok(found)
     }

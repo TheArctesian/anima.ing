@@ -183,6 +183,11 @@ async fn tc7_git_push_requires_a_specific_yes_for_the_default_branch() {
     );
     assert_eq!(push.code, 5, "{push:?}");
     assert!(push.stderr.contains("--allow-default-branch"));
+    let (pr, action) = runner.exchange(&["pr"], &refused).await;
+    assert_eq!(action, json!({ "git": "pull_request" }));
+    assert_eq!(pr.code, 5, "{pr:?}");
+    assert!(pr.stderr.contains("feature branch"), "{pr:?}");
+    pr.assert_never_shows("--allow-default-branch");
 
     let pushed = json!({
         "outcome": "git", "result": "pushed", "remote": "origin",

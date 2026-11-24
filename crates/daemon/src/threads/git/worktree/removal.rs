@@ -41,8 +41,10 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<Strin
         // thread says what the last commit is, when the thread can bring it.
         Err(_) => made_branch(held, worktree).await,
     };
-    let commit = checkpoint::snapshot_on(held, worktree, tip.clone()).await?;
+    let (commit, preserved) = checkpoint::snapshot_for_removal(held, worktree, tip.clone()).await?;
     own::give(held, worktree, &commit, tip.as_deref()).await?;
+    // Packing the saved work can take time. Check for paths that appeared while it ran.
+    preserved.check(worktree.folder())?;
     if started {
         // A removal that stopped in the middle saved the whole work. What is left of the
         // files now, with what changed since, is saved beside it and never over it.
@@ -129,13 +131,14 @@ pub async fn remove_broken(
         return remove(git, home, &worktree).await.map(Some);
     }
     let saved = record.own.join(own::SAVED).exists();
-    // What is left of a folder whose work is saved goes too, when it is still the folder
-    // that the runner made at the place that the runner planned.
+    // A prior save does not account for files added after that save.
     let planned = Home::at(&record.home, home.records())?.planned(thread, repository)?;
     let ours = std::fs::canonicalize(&planned).is_ok_and(|real| real == record.folder)
         && (record.folder_id.is_none() || FolderId::of(&record.folder) == record.folder_id);
     if saved && ours {
-        std::fs::remove_dir_all(&record.folder).map_err(|failed| gone(&failed))?;
+        return Err(GitRefusal::Failed {
+            said: "The remaining worktree files could not be checked. Move the worktree to another folder before retrying removal.".to_owned(),
+        });
     }
     cleared(home, thread, &record)?;
     Ok(saved.then(|| checkpoint::kept_ref(thread)))

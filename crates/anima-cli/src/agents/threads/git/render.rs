@@ -90,7 +90,7 @@ fn show_status(status: &Status, output: Output) -> Result<(), Failure> {
 fn show_changes(changes: &Changes, output: Output) -> Result<(), Failure> {
     show_files(&changes.files, output)?;
     if changes.truncated {
-        output.line("Patches exceed the display limit.")?;
+        output.line("Patches could not be displayed in full.")?;
     }
     for patch in changes
         .files
