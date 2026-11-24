@@ -14,6 +14,7 @@ import (
 	"github.com/TheArctesian/anima/link/devicelink"
 	"github.com/TheArctesian/anima/link/identity"
 	"github.com/TheArctesian/anima/link/ports"
+	"github.com/TheArctesian/anima/link/rdppeer"
 	"github.com/TheArctesian/anima/link/statedir"
 	"github.com/TheArctesian/anima/link/tunnel"
 )
@@ -121,6 +122,15 @@ func listenForDaemon(path string) (net.Listener, error) {
 	return statedir.ListenOwned(path)
 }
 
+func bundledRDP(dir *statedir.Dir) func(context.Context) (net.Conn, error) {
+	if !rdppeer.Supported {
+		return nil
+	}
+	return func(ctx context.Context) (net.Conn, error) {
+		return rdppeer.Connect(ctx, dir)
+	}
+}
+
 func runDevice(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("device")
 	listen := flags.String("listen", "127.0.0.1:0", "the local loopback address, host:port")
@@ -149,6 +159,7 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 		Identity: device, Listen: *listen, DaemonSocket: forDaemon,
 		Save:       func(renewed identity.Device) error { return renewed.Save(dir) },
 		PermitPort: selected.Permit,
+		DialRDP:    bundledRDP(dir),
 	})
 	if err != nil {
 		return err

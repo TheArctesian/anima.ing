@@ -100,7 +100,7 @@ and its local port is not affected.
 
 A hub reaches a local TCP port of a device through the link only when the person on the device turned the
 port on (HMD-048, HMD-049). The list of open ports is empty at first. It can hold port 22 (SSH), port 5900
-(VNC) and, on Windows, port 3389 (RDP).
+(VNC) and port 3389 (RDP) on Windows and Linux. Apple Silicon macOS can also use port 3389 with Anima's bundled host (MRDP-004). Turn it on in Anima's Remote access settings on the Mac. Allow the requested macOS permissions, copy the dedicated RDP password and check the certificate in the device's RDP settings. The Anima menu bar has a Stop Remote Desktop action. VNC remains a separate connection.
 
 ```sh
 # On the device: show the list, turn a port on, turn it off. The device link needs no restart.

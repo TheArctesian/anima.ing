@@ -64,6 +64,7 @@ cli out crates/hub/
 cli out crates/model-relay/
 cli out crates/route-proxy/
 cli out crates/providers/
+cli out crates/anima-rdp-host/
 cli out crates/rdp-test-device/
 cli out crates/redaction/
 cli out crates/release-record/

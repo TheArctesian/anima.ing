@@ -2,17 +2,23 @@
 package ports
 
 import (
+	"context"
 	"errors"
 	"runtime"
 	"slices"
+	"time"
 
+	"github.com/TheArctesian/anima/link/rdppeer"
 	"github.com/TheArctesian/anima/link/statedir"
 )
 
 // ErrNotAllowed means that the port cannot be in the list on this system.
-var ErrNotAllowed = errors.New("ports: only 22 (SSH), 5900 (screen sharing) and, on Windows or Linux, 3389 (remote desktop) can be open")
+var ErrNotAllowed = errors.New("ports: only 22 (SSH), 5900 (screen sharing) and 3389 (remote desktop) on supported systems can be open")
 
 const fileName = "open-ports"
+
+// ErrHostNotReady means that the owner-only macOS RDP listener is absent.
+var ErrHostNotReady = errors.New("ports: the bundled macOS RDP host is not ready")
 
 // Allowed reports whether a port can be in the list on the system goos, a value of runtime.GOOS.
 func Allowed(port uint16, goos string) bool {
@@ -20,7 +26,7 @@ func Allowed(port uint16, goos string) bool {
 	case 22, 5900:
 		return true
 	case 3389:
-		return goos == "windows" || goos == "linux"
+		return goos == "windows" || goos == "linux" || (goos == "darwin" && rdppeer.Supported)
 	default:
 		return false
 	}
@@ -55,6 +61,15 @@ func IsOpen(dir *statedir.Dir, port uint16) bool {
 func Turn(dir *statedir.Dir, port uint16, on bool) error {
 	if !Allowed(port, runtime.GOOS) {
 		return ErrNotAllowed
+	}
+	if on && runtime.GOOS == "darwin" && port == 3389 {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		connection, err := rdppeer.Connect(ctx, dir)
+		if err != nil {
+			return ErrHostNotReady
+		}
+		_ = connection.Close()
 	}
 	open, err := List(dir)
 	if err != nil {

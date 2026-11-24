@@ -19,6 +19,7 @@ type Local struct {
 	// Permit is the current local port authorization (HMD-049). A nil result denies the port.
 	Permit func(port uint16) context.Context
 	Hub    func(ctx context.Context) (net.Conn, error)
+	RDP    func(ctx context.Context) (net.Conn, error)
 }
 
 // Give answers one hub request, dialling the loopback port only when it is open.
@@ -83,8 +84,7 @@ func (l Local) connect(ctx context.Context, port uint16) (string, net.Conn, cont
 	defer cancel()
 	stopDial := context.AfterFunc(permit, cancel)
 	defer stopDial()
-	var dialer net.Dialer
-	local, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(int(port))))
+	local, err := l.dial(ctx, port)
 	if permit.Err() != nil {
 		closeIfOpen(local)
 		return WordRefused, nil, nil
@@ -93,6 +93,14 @@ func (l Local) connect(ctx context.Context, port uint16) (string, net.Conn, cont
 		return WordClosed, nil, nil
 	}
 	return WordOK, local, permit
+}
+
+func (l Local) dial(ctx context.Context, port uint16) (net.Conn, error) {
+	if port == 3389 && l.RDP != nil {
+		return l.RDP(ctx)
+	}
+	var dialer net.Dialer
+	return dialer.DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(int(port))))
 }
 
 func closeOnRevoke(permit context.Context, stream net.Conn) func() bool {

@@ -13,6 +13,8 @@ const OFF: &str = "stay-awake-off";
 const AWAKE: &str = "stay-awake-awake";
 const LID_CLOSED: &str = "stay-awake-lid-closed";
 const OPEN: &str = "open";
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+const STOP_RDP: &str = "stop-rdp";
 
 pub struct Lines {
     off: CheckMenuItem<tauri::Wry>,
@@ -67,6 +69,14 @@ pub fn build(app: &AppHandle, status: Status) -> tauri::Result<()> {
             &open,
         ],
     )?;
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    menu.append(&MenuItem::with_id(
+        app,
+        STOP_RDP,
+        "Stop Remote Desktop",
+        true,
+        none,
+    )?)?;
     let mut tray = TrayIconBuilder::with_id("anima")
         .menu(&menu)
         .tooltip("Anima.ing")
@@ -96,6 +106,17 @@ pub fn show(app: &AppHandle, status: Status) {
 
 fn on_menu_event(app: &AppHandle, event: &MenuEvent) {
     let id = event.id().as_ref();
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    if id == STOP_RDP {
+        let app = app.clone();
+        std::mem::drop(tauri::async_runtime::spawn_blocking(move || {
+            if crate::link::rdp::stop(&app.state::<crate::link::Changing>()).is_err() {
+                use tauri_plugin_dialog::DialogExt as _;
+                app.dialog().message("Anima could not finish turning off Remote Desktop. Try again from Settings.").show(|_| {});
+            }
+        }));
+        return;
+    }
     if let Some(level) = level_of(id) {
         super::choose_from_tray(app, level);
     } else if id == OPEN

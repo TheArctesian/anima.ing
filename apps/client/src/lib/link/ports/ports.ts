@@ -39,8 +39,11 @@ export function systemOf(userAgent: string): System {
   return 'linux';
 }
 
-export function portRows(system: System, open: readonly number[]): readonly PortRow[] {
-  return Object.entries(NEEDS[system]).map(([port, needs]) => {
+export function portRows(system: System, open: readonly number[], macRdp = false): readonly PortRow[] {
+  const needs = system === 'mac' && macRdp
+    ? { ...NEEDS.mac, 3389: 'Anima asks for Screen Recording and Accessibility and gives you a dedicated RDP password.' }
+    : NEEDS[system];
+  return Object.entries(needs).map(([port, needs]) => {
     const number = Number(port);
     return { port: number, label: LABELS[number] ?? `Port ${port}`, needs, on: open.includes(number) };
   });

@@ -2,13 +2,16 @@ package ports_test
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"testing"
 
 	"github.com/TheArctesian/anima/link/ports"
+	"github.com/TheArctesian/anima/link/rdppeer"
 	"github.com/TheArctesian/anima/link/statedir"
+	"github.com/TheArctesian/anima/link/testpath"
 )
 
 func open(t *testing.T) *statedir.Dir {
@@ -58,8 +61,11 @@ func TestHMD049OnlyThePortsOfTheSessionsCanBeOpen(t *testing.T) {
 			t.Errorf("port %d: %v, want ErrNotAllowed", port, err)
 		}
 	}
-	if !ports.Allowed(3389, "windows") || ports.Allowed(3389, "darwin") || !ports.Allowed(3389, "linux") {
-		t.Fatal("port 3389 must be allowed on Windows and Linux only")
+	if !ports.Allowed(3389, "windows") || !ports.Allowed(3389, "linux") {
+		t.Fatal("port 3389 must remain available on Windows and Linux")
+	}
+	if ports.Allowed(3389, "darwin") && (runtime.GOOS != "darwin" || runtime.GOARCH != "arm64") {
+		t.Fatal("macOS RDP must be limited to Apple Silicon")
 	}
 	if err := ports.Turn(dir, 3389, true); (err == nil) != (runtime.GOOS == "windows" || runtime.GOOS == "linux") {
 		t.Fatalf("port 3389 on %s: %v", runtime.GOOS, err)
@@ -96,5 +102,36 @@ func TestHMD049AChangeBesideTheRunningLinkAppliesAtOnce(t *testing.T) {
 	}
 	if !ports.IsOpen(held, 5900) {
 		t.Fatal("the link does not see the port that the second process turned on")
+	}
+}
+
+func TestMRDP004SameUserSocketCannotEnableBundledRDP(t *testing.T) {
+	if !rdppeer.Supported {
+		t.Skip("Apple Silicon macOS only")
+	}
+	path, err := testpath.MkdirTemp("anima-rdp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(path) })
+	dir, err := statedir.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dir.Close()
+
+	if err := ports.Turn(dir, 3389, true); !errors.Is(err, ports.ErrHostNotReady) || ports.IsOpen(dir, 3389) {
+		t.Fatalf("opt-in without a bundled host must fail, got %v", err)
+	}
+	listener, err := dir.Listen("rdp.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	if ports.IsOpen(dir, 3389) {
+		t.Fatal("starting the host must not opt in to the Link route")
+	}
+	if err := ports.Turn(dir, 3389, true); !errors.Is(err, ports.ErrHostNotReady) || ports.IsOpen(dir, 3389) {
+		t.Fatalf("the replacement socket gained an RDP route: %v", err)
 	}
 }

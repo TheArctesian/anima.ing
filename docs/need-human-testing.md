@@ -44,6 +44,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-190 | Queue and observe Docker actions from AnimaOS Hosting (H5, HOST-002) | Disposable installed AnimaOS VM, an enrolled daemon and a disposable container | Open |
 | HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
+| HT-NEW-bundledmacosrdp | RDP and VNC from one installation on Apple Silicon (MRDP-T2) | A signed desktop build, the linked Mac and a second Anima client | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-186 | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
@@ -3616,6 +3617,17 @@ the rootless, Quadlet and previous-generation scenarios below.
 **Auto-remove Quadlet.** In the disposable fixture, record the staged manifest with `capture-source` before stopping a source configured to remove its container. Keep the original Quadlet and a consistent backup. Mask the launcher persistently, stop the source, and import the staged copy. Verify capture replay while still staged. Authorize while all Anima-managed entries support the captured record. Repeat with a version 1-only boot entry and verify authorization is refused. With a compatible menu restored, try a replacement with the captured name and confirm cutover holds. Remove the disposable replacement, finish the Docker write check, and verify the updater refuses a staged or rollback entry which supports only version 1 after the captured authorization is retained.
 
 **Expected.** Confirmation records Docker authority, the installed generation, bind location, verified digest and validation results. Exact replay returns the same receipt. A different hash is refused. The Docker application is healthy with its initial state and the new write. Verify that activation and rollback refuse incompatible Anima-managed boot entries without changing the boot selection. Reboot into a compatible previous OS generation and verify that Podman remains stopped. The retained Podman backup still has the pre-cutover data, and a failed apply preserves the independent backup and the pre-cutover recovery path.
+### HT-NEW-bundledmacosrdp — RDP and VNC on the same Mac
+
+State: Open. Requirements MRDP-001 to MRDP-005, R-451.
+
+1. Install the signed desktop build on an Apple Silicon Mac enrolled with Anima Link. Keep VNC enabled. Before enabling RDP, the hub cannot reach port 3389 on this device.
+2. Enable Remote Desktop in Anima on the Mac. Deny one macOS permission on the first attempt. Anima names the missing permission and keeps the Link route closed.
+3. Grant Screen Recording and Accessibility, reopen Anima if macOS asks, and enable RDP again. Copy the dedicated RDP password. Test the RDP connection and compare the shown SHA-256 fingerprint before accepting the certificate.
+4. From another client, connect to the device using RDP with the dedicated password. The active desktop is visible, keyboard and pointer input work and macOS shows that the display is captured.
+5. Close the Anima window on the Mac. The RDP session continues. Disconnect and open a VNC session to the same device entry. The Mac's VNC settings still work.
+6. Start an RDP session again. Choose Stop Remote Desktop in the Anima menu bar. The RDP session ends, the hub cannot reach the RDP port and VNC still works.
+7. Retry with another application listening on port 3389. Anima reports that its host cannot start and Link never routes RDP to the other application. Use a Developer ID-signed desktop bundle. An ad hoc build cannot open the Link route.
 
 ## Deferred
 
