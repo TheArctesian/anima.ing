@@ -9,6 +9,8 @@ mod download;
 #[cfg(target_os = "linux")]
 mod feed;
 #[cfg(target_os = "linux")]
+mod remote;
+#[cfg(target_os = "linux")]
 mod state;
 #[cfg(target_os = "linux")]
 mod update;
@@ -75,6 +77,9 @@ async fn run() -> Result<serde_json::Value> {
         return Err(Error::Refused("Local owner authentication required."));
     }
     state::prepare()?;
+    if let Some(action) = action.strip_prefix("remote-") {
+        return remote::dispatch(action).await;
+    }
     if action == "status" {
         return state::status();
     }

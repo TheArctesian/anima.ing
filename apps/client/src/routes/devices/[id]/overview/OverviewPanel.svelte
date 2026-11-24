@@ -1,4 +1,6 @@
 <script lang="ts">
+  import OsUpdatePanel from '$lib/os-updates/OsUpdatePanel.svelte';
+  import type { OsUpdateCalls } from '$lib/os-updates/api';
   import type { Snippet } from 'svelte';
   import { isHubDevice } from '$lib/devices/actions/actions';
   import type { DeviceStatus } from '$lib/devices/card/card';
@@ -53,11 +55,12 @@
     onOpenWeb?: ((webInterface: WebInterface, button: HTMLElement) => void) | undefined;
     onSection?: ((section: SettingsSection | null) => void) | undefined;
     /** Asks the hub what it keeps; the card is drawn only for the hub's own device (HMD-073). */
+    osUpdates?: OsUpdateCalls | undefined;
     readKept?: (() => Promise<HubKept>) | undefined;
     checksSummary?: Snippet | undefined;
   }
 
-  const { device, checks, metrics, range, vpn = null, now, clock, onRange, onRetry, onSettings, onConnect, onOpenWeb, onSection, readKept, checksSummary, checksPending = false, checksNotice, onReviewChecks }: Props = $props();
+  const { device, checks, metrics, range, vpn = null, now, clock, onRange, onRetry, onSettings, onConnect, onOpenWeb, onSection, readKept, osUpdates, checksSummary, checksPending = false, checksNotice, onReviewChecks }: Props = $props();
   const hub = $derived(isHubDevice(device));
   const storage = $derived(!hub && hasMetrics(device.metricsSource));
   const fullest = $derived(storageRows(metrics.view?.drives ?? []).flatMap((drive) => drive.mounts)
@@ -103,6 +106,7 @@
           <ConnectCard {device} {onConnect} {onOpenWeb} onSettings={onSection} />
         {/if}
         <AboutCard {device} />
+        {#if osUpdates}<OsUpdatePanel calls={osUpdates} deviceId={device.id} />{/if}
         {#if hub}
           <!-- HMD-073: the page of the hub asks the account for the figures of its plan; the hub holds none. -->
           <PlanUsageCard read={() => readAccountUsage()} dataBytes={hubDataBytes(metrics.view?.series ?? [])} {now} />

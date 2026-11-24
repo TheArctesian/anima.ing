@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-NEW-vncdisplays | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
@@ -5576,6 +5577,25 @@ on the device; they are not imported into another hub or deleted. The operator c
 
 Result: Open.
 
+
+## HT-185-create — Create a local Code project (TH60A)
+
+State: Open. Built on `code/project-create`; the TC9 New project UI is owned separately.
+
+Security correction: Git initializes only in Anima’s private staging folder. An exclusive, handle-relative rename publishes the completed repository, and registration checks its identity. A destination on another filesystem is refused without changing it; initialize that folder with Git and add it as an existing local project. Human checks do not claim this fallback was exercised on a second volume.
+Automated checks exercise repository creation, preservation of existing files, rejected paths,
+and registration across a runner restart. This check covers the installed CLI and system Git.
+
+1. Choose an existing writable parent and an unused child path. Run `anima agents projects create /absolute/parent/new-project --name "New project"`.
+   Expected: the command lists the new project; `git -C /absolute/parent/new-project status` shows an empty repository on `main`.
+2. Run the same create command again.
+   Expected: a refusal, with the original repository unchanged.
+3. Restart the daemon, then run `anima agents projects`.
+   Expected: New project remains listed once.
+4. Open Code and choose that local project for a new thread.
+   Expected: the thread uses the new folder. This task does not enable the New project palette action.
+
+Result: Open.
 ## HT-182: Default-on remote setup (HM-T41, R-449)
 
 State: Open.
@@ -5595,3 +5615,15 @@ For the HM-T41 refinement, use the keyboard to reach each row action. Click Enab
 On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing, then return to Anima: only Screen Sharing is checked and opened through Anima after its server replies. Return without enabling it: the row must stay not ready, with the settings action available. If no focus event arrives, use Check again. Resize the dialog and check light and dark appearance and enlarged text. Verify an authenticated SSH and VNC session from another enrolled computer. macOS has no bundled RDP server. On Windows Pro, verify RDP with NLA and existing firewall policy; Windows Home must not be presented as a working RDP host. Windows VNC needs an existing authenticated server. On Debian/Ubuntu, verify xrdp installation and authenticated sessions; confirm newly installed servers bind only loopback. Automatic x11vnc installation is suspended: a unixpw screen login cannot be established by the RFB security-type check. A preexisting VNC listener with None, unknown or mixed unauthenticated methods must remain closed through Anima, with an authentication-verification explanation. A server that requires VNC password or Apple account authentication must still complete a real authenticated session; the probe alone does not prove this. On Wayland, verify the manual sharing path. Linux package installation and Windows UAC have not been exercised on this Mac.
 
 On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
+
+## HT-184-remote-update — Hosted desktop OS updates
+
+Status: Open. Owner: OS5-R1 in [spare-computer-os.md](proposals/spare-computer-os.md).
+
+The hub, CLI and desktop invoke the signed OS updater over pinned private SSH. Automated checks cover restart confirmation and the OS service boundary; they do not prove a deployed hosted account, physical reboot or the installed desktop bundle.
+
+1. Install the matching hub, desktop and OS versions. Open the enrolled OS device's Overview and choose View OS update status. Expect its retained update state, or a specific SSH/trust/version error.
+2. Check and download a signed newer release. Close the desktop during download, then reopen the device page. Expect progress or the verified staged release, without starting another download.
+3. Choose Restart to update, then Cancel. Expect no restart. Repeat and confirm. Expect the connection to drop and the applied version to appear only after reconnection and startup checks.
+4. Request Restore previous OS and confirm. Expect the prior OS and retained owner data after reconnecting.
+5. Verify SSH and RDP on the same physical device, including a locked local screen. The earlier reported automatic setup and RDP reachability failures remain unverified.
