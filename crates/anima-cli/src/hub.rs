@@ -3,6 +3,7 @@
 
 pub mod answer;
 pub mod attachments;
+mod capabilities;
 pub mod error;
 pub mod origin;
 pub mod scalars;

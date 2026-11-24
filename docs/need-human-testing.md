@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-mobileinventory | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
@@ -5576,3 +5577,41 @@ For the HM-T41 refinement, use the keyboard to reach each row action. Click Enab
 On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing, then return to Anima: only Screen Sharing is checked and opened through Anima after its server replies. Return without enabling it: the row must stay not ready, with the settings action available. If no focus event arrives, use Check again. Resize the dialog and check light and dark appearance and enlarged text. Verify an authenticated SSH and VNC session from another enrolled computer. macOS has no bundled RDP server. On Windows Pro, verify RDP with NLA and existing firewall policy; Windows Home must not be presented as a working RDP host. Windows VNC needs an existing authenticated server. On Debian/Ubuntu, verify xrdp installation and authenticated sessions; confirm newly installed servers bind only loopback. Automatic x11vnc installation is suspended: a unixpw screen login cannot be established by the RFB security-type check. A preexisting VNC listener with None, unknown or mixed unauthenticated methods must remain closed through Anima, with an authentication-verification explanation. A server that requires VNC password or Apple account authentication must still complete a real authenticated session; the probe alone does not prove this. On Wayland, verify the manual sharing path. Linux package installation and Windows UAC have not been exercised on this Mac.
 
 On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
+
+
+## HT-NEW-mobileinventory — Installed mobile tool reporting (TH135)
+
+State: Open. Built locally: the typed K8 snapshot, bounded collector, hub storage and
+K1/CLI/MCP read path. New collection is off in normal builds. `mobile-inventory` is an
+explicit build feature pending implementation review, not a default-on probe.
+Synthetic output and filesystem tests do not prove real Xcode behaviour, SDK layout,
+absence of tool-side cache writes, or a blocked filesystem on each host platform.
+Windows collection is not implemented; no positive Windows inventory is claimed.
+
+After implementation review approves real probe enablement, on a disposable enrolled
+Mac with an existing Xcode and Android SDK installation:
+
+1. Build the daemon with `cargo build -p anima-daemon --features mobile-inventory`.
+   Use a test hub with the mobile-inventory migration and this branch's CLI. Do not
+   replace a production service for this check. Start the test daemon as prescribed
+   by the existing enrolment procedure, with its own test state and token.
+2. Set `ANDROID_SDK_ROOT` to the existing SDK root and put its emulator directory on
+   the test daemon's `PATH`. Do not install a tool or accept a licence for this check.
+   Read `anima capability list --json` after the next inventory report. The Xcode
+   version stays in `tools`; mobile runtime identifiers, device-type identifiers,
+   package identifiers/revisions and emulator version match the installed tools.
+   No UDID, device instance, filesystem path, session, account or raw error appears.
+3. Read `anima_capability_list` from a test MCP client. It gives the same typed snapshot
+   and receipt time. The CLI table says "last reported", not ready. An unavailable
+   runtime has `available: false`; neither client promises that a device can boot.
+4. Repeat with the tools absent from the test daemon's search path and without its SDK
+   root setting. The affected result says `missing`, not successful empty inventory;
+   unrelated results remain independent. On Linux, Apple results say `unsupported`.
+5. Point the CLI at an older test hub. Capability listing still succeeds through its
+   legacy query; mobile tools are null in JSON/MCP and "Not reported" in the table.
+6. Confirm no simulator or emulator was created, booted or removed, no SDK downloaded,
+   and no phone or personal simulator was listed. Record any unexpected service/cache
+   activity for implementation review before enabling collection on a real account.
+
+Database migration/replacement tests are reserved for CI in this session: no local
+PostgreSQL was started. Passing fixture tests is not a Passed result for this entry.

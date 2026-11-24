@@ -16,6 +16,7 @@ fn feed(rig: &mut Rig, first: i64, count: i64) {
 fn mac() -> BatchInventory {
     BatchInventory {
         remote_access: None,
+        mobile_tools: None,
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),
@@ -90,4 +91,36 @@ async fn cap_029_a_refused_inventory_is_not_sent_again_after_malformed() {
     feed(&mut rig, 3, 2);
     rig.pusher.push_due(at(50)).await;
     assert_eq!(inventories_of(&hub), [Some(sent()), None]);
+}
+
+#[tokio::test]
+async fn thr_172_an_inventory_too_large_alone_never_drops_metrics_or_is_announced() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, year());
+    let mut oversized = mac();
+    oversized.os_version = "1".repeat(512 * 1024);
+    rig.pusher.accept(Event::Inventory(oversized));
+    feed(&mut rig, 1, 2);
+    rig.pusher.push_due(at(30)).await;
+    assert_eq!(inventories_of(&hub), [None]);
+    assert_eq!(
+        crate::kit::pushed_times(&hub.seen("push")[0].body),
+        [10, 20]
+    );
+    rig.pusher.push_due(at(40)).await;
+    assert_eq!(
+        hub.seen("push").len(),
+        1,
+        "oversized inventory is retained locally"
+    );
+    rig.pusher.accept(Event::Inventory(mac()));
+    rig.pusher.push_due(at(50)).await;
+    assert_eq!(inventories_of(&hub), [None, Some(sent())]);
+    assert!(crate::kit::pushed_times(&hub.seen("push")[1].body).is_empty());
+    rig.pusher.push_due(at(60)).await;
+    assert_eq!(
+        hub.seen("push").len(),
+        2,
+        "successful inventory is announced once"
+    );
 }

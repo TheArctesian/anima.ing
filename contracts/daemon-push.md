@@ -793,7 +793,7 @@ their grants; this section is the wire.
 
 ## 10. Proposed amendment: installed mobile tools (TH135)
 
-Status: **Accepted for implementation by the programme orchestrator, not implemented**,
+Status: **Accepted by the programme orchestrator; implementation on this branch awaits review**,
 version 2, 2026-11-24 (R-NEW-mobileinventorycontract, CON-001). Sections 1 to 9 remain
 unchanged. Acceptance becomes part of the shared baseline when this branch lands in `dev`. Owner: TH135 and
 THR-172 in [agent-threads.md](../docs/proposals/agent-threads.md), Section 6.11;
@@ -949,7 +949,7 @@ missing tools, empty success, unavailable runtime, failure replacement, bounds a
 old/new peer compatibility. Real-platform checks remain human checks; fixtures do
 not prove a local SDK installation, offline tool behaviour or device readiness.
 
-### 10.4 Accepted K1 read surface (not implemented)
+### 10.4 Accepted K1 read surface (implementation awaits review)
 
 **R-NEW-mobileinventoryread (programme orchestrator, 2026-11-24; CON-001).**
 Accept the additive K1 read contract reviewed at
