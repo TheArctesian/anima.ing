@@ -74,8 +74,8 @@ fn descend(
         .get(path)
         .ok_or_else(|| io::Error::other("untracked watch folder"))?;
     let directory = open(&budget.home, path, identity)?;
-    let mut entries = nix::dir::Dir::from_fd(directory.try_clone()?.into())?;
-    for entry in entries.iter() {
+    let entries = rustix::fs::Dir::read_from(&directory)?;
+    for entry in entries {
         let entry = entry?;
         let name = std::ffi::OsStr::from_bytes(entry.file_name().to_bytes());
         if name == "." || name == ".." {
