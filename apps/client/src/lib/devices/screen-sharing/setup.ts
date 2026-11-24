@@ -65,7 +65,7 @@ export function liveText(state: SetupState): string {
     case 'testing':
       return 'Checking port 5900.';
     case 'waiting':
-      return `${SHARING_PROMPT} in System Settings. Checking again every few seconds.`;
+      return `${SHARING_PROMPT} in System Settings → General → Sharing. Click the ⓘ next to Screen Sharing and allow your Mac account. Anima checks again automatically.`;
     case 'starting':
       return 'Turning on screen sharing.';
     default:

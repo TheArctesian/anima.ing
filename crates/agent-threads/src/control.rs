@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::drive::{Answer, DriveEvent, Effort, Mode, Program, Request, Usage};
+use crate::drive::{Answer, DriveEvent, Effort, Mode, Program, Request};
 use crate::files::FoundPath;
 
 pub mod attach;
@@ -19,6 +19,7 @@ mod project;
 mod queue;
 mod refusal;
 mod shelf;
+mod thread;
 mod workspace;
 pub use limits::{Limits, OVER_LIMIT};
 pub use listing::{BadChange, BadTitle, Listing, ListingChange, MAX_TITLE};
@@ -27,6 +28,7 @@ pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as p
 pub use queue::{LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued};
 pub use refusal::Refusal;
 pub use shelf::{Activity, MOST_SNOOZE, Marks, SETTLE_AFTER, Shelf};
+pub use thread::{ProviderAddress, ThreadRow};
 pub use workspace::{Workspace, WorkspaceKind};
 
 /// The most bytes of one frame of a client.
@@ -72,6 +74,8 @@ pub enum Action {
     /// `folder` is "No project": the runner makes a new empty folder for the thread.
     Start {
         program: Program,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_address: Option<ProviderAddress>,
         folder: PathBuf,
         #[serde(default)]
         mode: Mode,
@@ -345,45 +349,6 @@ pub enum RunState {
     Stopped,
     /// No source can tell the state (THR-086).
     Unknown,
-}
-
-/// One thread of the runner.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ThreadRow {
-    pub id: Uuid,
-    pub program: Program,
-    pub folder: PathBuf,
-    pub mode: Mode,
-    pub model: Option<String>,
-    pub state: RunState,
-    /// The session ID of Claude Code or the thread ID of Codex, when the program named it.
-    pub session: Option<String>,
-    pub title: String,
-    pub started: chrono::DateTime<chrono::Utc>,
-    /// Why the thread stopped, in words for the person.
-    pub ended: Option<String>,
-    /// The requests that wait for the person.
-    pub open: Vec<Uuid>,
-    /// The prompts that wait for the turn to end, oldest first (TH109). In the memory of the
-    /// runner only: the record never holds them.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub queued: Vec<Queued>,
-    /// How the last turn ended, when one ended (TH109).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub last_turn: Option<LastTurn>,
-    /// The effort of the model, when the person chose one (TH110).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub effort: Option<Effort>,
-    /// The speed of the model, when the person chose one other than the standard (TH117).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub speed: Option<String>,
-    /// Where the thread works, read at its start (TH112).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workspace: Option<Workspace>,
-    /// The use of tokens that the program last said (TH112). It also comes live, as a
-    /// [`DriveEvent::Usage`]; the row keeps it for a client that comes later.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub usage: Option<Usage>,
 }
 
 /// One update of one thread, in the order the runner made them.

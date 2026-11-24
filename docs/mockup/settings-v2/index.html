@@ -346,11 +346,21 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .name b { white-space: nowrap; }
 .v2 .phone .seg button { padding: 0 var(--space-1); }
 
+
+.v2.access-board { display: block; width: min(512px, 100%); min-height: 0; height: auto; box-sizing: border-box; padding: 24px; background: var(--surface-overlay); color: var(--text); border-radius: 12px; }
+.access-board h2 { margin: 0 0 16px; font-size: 20px; font-weight: 500; }
+.access-board p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.access-board .capabilities { margin: 16px 0; background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: 8px; }
+.access-board section { padding: 16px; }
+.access-board section + section { border-top: 1px solid var(--border-subtle); }
+.access-board .heading, .access-board .detail, .access-board footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.access-board .detail { flex-wrap: wrap; margin: 8px 0; }
+.access-board footer { justify-content: flex-end; margin-top: 24px; }
 </style>
 </head>
 <body>
 <h1 class="board">Settings v2</h1>
-<p class="about">The Settings page after the interface review of 2026-11-19 (R-224). The index of the sections is in three groups: this computer, the hub, and what the hub is connected to. One group shows at a time, with each of its settings as a row of a card.</p>
+<p class="about">The Settings page after the interface review of 2026-11-19 (R-224). The index of the sections is in three groups: this computer, the hub, and what the hub is connected to. The grouped index follows one continuous settings page. Remote access belongs to this computer, with one persistent control per protocol. Narrow navigation keeps the group names.</p>
 <figure>
 <div class="v2" data-theme="dark" style="width: 1280px; height: 860px;">
 <aside class="side">
@@ -371,8 +381,8 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div class="body">
     <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
       <nav class="subnav" aria-label="Settings sections">
-        <span class="label">This computer</span>
-        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">This computer</span><a href="#">Remote access</a><a href="#">This computer’s hub</a>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">App and tools</a><a href="#">MCP</a>
         <span class="label">Hub</span>
         <a class="on" href="#" aria-current="page">Hub and account</a><a href="#">Devices on the link</a><a href="#">Default checks</a><a href="#">Data retention</a>
         <span class="label">Code</span>
@@ -386,7 +396,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <div class="setrow"><div><b style="font-weight: 500">okita's hub</b><p>Hosted by Anima.ing. This computer reaches it through the link; no VPN is needed.</p></div><span class="st up">Connected</span></div>
           <div class="setrow"><div>Version<p>The hub updates itself.</p></div><span class="mono">0.8.14</span></div>
           <div class="setrow"><div>Account<p class="mono">okita@example.com</p></div><button class="btn sm" type="button">Manage on cloud.anima.ing</button></div>
-          <div class="setrow"><div>Use a different hub<p>Sign in to a hub on a server of your own, or join one with an invite.</p></div><button class="btn sm" type="button">Change hub</button></div>
+          <div class="setrow"><div>Use a different hub<p>Sign in to a hub on a server of your own, or join one with an invite.</p></div><button class="btn sm" type="button">Sign out and change hub</button></div>
         </section>
         <div class="group-title"><span class="label">Devices on the link</span><span class="note">3 devices reach this hub over the link</span></div>
         <ul class="table">
@@ -396,11 +406,12 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <li class="tr dense" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><b style="font-weight: 500">edge-vps</b></span><span class="st unk">Not yet connected</span><span class="sec num">19 Nov 2026</span><span class="end"><button class="btn sm quiet danger" type="button">Remove</button></span></li>
         </ul>
         <div><button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Invite a device</button></div>
-        <section class="card" aria-label="Open ports">
-          <!-- HMD-049, task HM-T13: the ports of this computer that its hub may reach through the link; off until the person turns one on. -->
-          <div class="setrow"><div>SSH (port 22)<p>Sets up SSH automatically. Your system may ask for administrator approval.</p></div><span class="switch off" role="switch" aria-checked="false">Off</span></div>
-          <div class="setrow"><div>Screen sharing (port 5900)<p>Needs Screen Sharing: System Settings, General, Sharing.</p></div><span class="switch" role="switch" aria-checked="true">On</span></div>
+        <div class="group-title"><h2 class="title">Remote access</h2><span class="note">Connections to this computer</span></div>
+        <section class="card" aria-label="Remote access">
+          <div class="setrow"><div>Terminal · SSH<p>Ready in Anima</p></div><button class="btn sm" type="button">Turn off SSH</button></div>
+          <div class="setrow"><div>Screen sharing<p>Ready in Anima</p></div><button class="btn sm" type="button">Turn off screen sharing</button></div>
         </section>
+        <p class="note">Changes apply immediately. Turning one off blocks it in Anima; system sharing stays unchanged.</p>
         <section class="card" aria-label="Leave">
           <div class="setrow"><div>Leave this hub<p>Signs this computer out and forgets the hub. Your devices and records stay in the hub.</p></div><button class="btn sm danger" type="button">Leave</button></div>
         </section>
@@ -432,8 +443,8 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div class="body">
     <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
       <nav class="subnav" aria-label="Settings sections">
-        <span class="label">This computer</span>
-        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">This computer</span><a href="#">Remote access</a><a href="#">This computer’s hub</a>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">App and tools</a><a href="#">MCP</a>
         <span class="label">Hub</span>
         <a class="on" href="#" aria-current="page">Hub and account</a><a href="#">Devices on the link</a><a href="#">Default checks</a><a href="#">Data retention</a>
         <span class="label">Code</span>
@@ -447,7 +458,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <div class="setrow"><div><b style="font-weight: 500">okita's hub</b><p>Hosted by Anima.ing. This computer reaches it through the link; no VPN is needed.</p></div><span class="st up">Connected</span></div>
           <div class="setrow"><div>Version<p>The hub updates itself.</p></div><span class="mono">0.8.14</span></div>
           <div class="setrow"><div>Account<p class="mono">okita@example.com</p></div><button class="btn sm" type="button">Manage on cloud.anima.ing</button></div>
-          <div class="setrow"><div>Use a different hub<p>Sign in to a hub on a server of your own, or join one with an invite.</p></div><button class="btn sm" type="button">Change hub</button></div>
+          <div class="setrow"><div>Use a different hub<p>Sign in to a hub on a server of your own, or join one with an invite.</p></div><button class="btn sm" type="button">Sign out and change hub</button></div>
         </section>
         <div class="group-title"><span class="label">Devices on the link</span><span class="note">3 devices reach this hub over the link</span></div>
         <ul class="table">
@@ -457,11 +468,12 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <li class="tr dense" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><b style="font-weight: 500">edge-vps</b></span><span class="st unk">Not yet connected</span><span class="sec num">19 Nov 2026</span><span class="end"><button class="btn sm quiet danger" type="button">Remove</button></span></li>
         </ul>
         <div><button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Invite a device</button></div>
-        <section class="card" aria-label="Open ports">
-          <!-- HMD-049, task HM-T13: the ports of this computer that its hub may reach through the link; off until the person turns one on. -->
-          <div class="setrow"><div>SSH (port 22)<p>Sets up SSH automatically. Your system may ask for administrator approval.</p></div><span class="switch off" role="switch" aria-checked="false">Off</span></div>
-          <div class="setrow"><div>Screen sharing (port 5900)<p>Needs Screen Sharing: System Settings, General, Sharing.</p></div><span class="switch" role="switch" aria-checked="true">On</span></div>
+        <div class="group-title"><h2 class="title">Remote access</h2><span class="note">Connections to this computer</span></div>
+        <section class="card" aria-label="Remote access">
+          <div class="setrow"><div>Terminal · SSH<p>Ready in Anima</p></div><button class="btn sm" type="button">Turn off SSH</button></div>
+          <div class="setrow"><div>Screen sharing<p>Ready in Anima</p></div><button class="btn sm" type="button">Turn off screen sharing</button></div>
         </section>
+        <p class="note">Changes apply immediately. Turning one off blocks it in Anima; system sharing stays unchanged.</p>
         <section class="card" aria-label="Leave">
           <div class="setrow"><div>Leave this hub<p>Signs this computer out and forgets the hub. Your devices and records stay in the hub.</p></div><button class="btn sm danger" type="button">Leave</button></div>
         </section>
@@ -472,6 +484,30 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </div>
 
 <figcaption>Frame 2, light, 1280 px.</figcaption>
+</figure>
+<figure>
+<div class="v2 access-board" data-theme="dark">
+<h2>Remote access</h2><p>Connect to this computer from your other devices.</p>
+<div class="capabilities">
+<section><div class="heading"><b>Terminal · SSH</b><span class="switch" role="switch" aria-label="Include SSH in setup" aria-checked="true">On</span></div>
+<div class="detail"><p>Not enabled</p><button class="btn" type="button">Enable</button></div><p>Anima prepares private SSH access. Your system may ask for administrator approval.</p></section>
+<section><div class="heading"><b>Screen sharing</b><span class="switch" role="switch" aria-label="Include Screen sharing in setup" aria-checked="true">On</span></div>
+<div class="detail"><p>Not enabled</p><button class="btn" type="button">Open settings…</button></div><p>macOS requires you to turn on Screen Sharing in System Settings.</p></section>
+</div><p>Continue applies the selected connections. Turning one off blocks it in Anima; system sharing stays unchanged.</p>
+<footer><button class="btn" type="button">Close</button><button class="btn primary" type="button">Continue</button></footer>
+</div><figcaption>HM-T41 refinement, dark: macOS setup before preparation. A row reports preparation, failure, or Ready in Anima after protocol readiness and a successful hub update. A failed hub update offers Sync with Anima without repeating native setup. Screen Sharing checks again when the person returns from System Settings. A listening server with unverified authentication shows Check again and stays blocked. Native consent and authenticated sessions need the human check.</figcaption>
+</figure>
+<figure>
+<div class="v2 access-board" data-theme="light">
+<h2>Remote access</h2><p>Connect to this computer from your other devices.</p>
+<div class="capabilities">
+<section><div class="heading"><b>Terminal · SSH</b><span class="switch" role="switch" aria-label="Include SSH in setup" aria-checked="true">On</span></div>
+<div class="detail"><p>Not enabled</p><button class="btn" type="button">Enable</button></div><p>Anima prepares private SSH access. Your system may ask for administrator approval.</p></section>
+<section><div class="heading"><b>Screen sharing</b><span class="switch" role="switch" aria-label="Include Screen sharing in setup" aria-checked="true">On</span></div>
+<div class="detail"><p>Server detected · authentication not verified</p><button class="btn" type="button">Check again</button></div><p>Anima could not verify a supported sign-in method. Review the server’s sharing permissions, then check again.</p></section>
+</div><p>Continue applies the selected connections. Turning one off blocks it in Anima; system sharing stays unchanged.</p>
+<footer><button class="btn" type="button">Close</button><button class="btn primary" type="button">Continue</button></footer>
+</div><figcaption>HM-T41 refinement, light: macOS setup with a listening server whose authentication is unverified. A row reports preparation, failure, or Ready in Anima after protocol readiness and a successful hub update. A failed hub update offers Sync with Anima without repeating native setup. Screen Sharing checks again when the person returns from System Settings. A listening server with unverified authentication shows Check again and stays blocked. Native consent and authenticated sessions need the human check.</figcaption>
 </figure>
 </body>
 </html>

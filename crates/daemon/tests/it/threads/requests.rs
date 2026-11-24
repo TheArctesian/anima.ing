@@ -32,6 +32,7 @@ while (my $line = <STDIN>) {
 async fn start(client: &mut Client, kit: &Kit) -> Uuid {
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: kit.path("work"),
             mode: Mode::FullAccess,

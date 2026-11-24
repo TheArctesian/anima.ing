@@ -75,6 +75,18 @@ rules apply:
 - The log query is closed to every API key, as the file content of a repository is (D-23): a login
   or the browser session reads it. The list is open to any token.
 
+Stage 1 diagnostic correction (2026-11-23, branch `t3/macos-docker-discovery`): temporary
+fake executables in Docker Desktop and Homebrew-shaped folders returned exit 127 when their
+folder was absent from a minimal SSH-style PATH, and exit 0 when present. Thus exit 127 does
+not prove that Docker is not installed. The domain error now names the SSH user's PATH. The
+fixed API sentences give checks for that PATH, engine availability, access and the intended
+context. Fake daemon, socket and context failures all returned exit 1; the hub does not claim
+which cause occurred and returns no error text from the device. A valid context that selects
+another running engine can succeed; these diagnostics cannot detect that mismatch. No command,
+executable search, context, permission or API field changes. The CLI, MCP list and client use the hub's sentence;
+no screen layout changes. These fixtures do not prove a real Docker Desktop or Colima setup.
+The Mac check remains in HT-032, Open.
+
 ### Stage 2: control (approved, R-149; it waits for task W1)
 
 - **HOST-002.** The operator must be able to start, stop and update a container.

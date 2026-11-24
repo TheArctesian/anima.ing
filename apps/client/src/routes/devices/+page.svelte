@@ -18,6 +18,7 @@
   import { VPN_SITE } from '$lib/devices/form/site';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Modal from '$lib/forms/modal/Modal.svelte';
+  import AccessSetup from '$lib/link/ports/AccessSetup.svelte';
   import InviteMaker from '$lib/link/InviteMaker.svelte';
   import { createClock } from '$lib/nav/clock.svelte';
   import { isAndroid, isIPad, isMobile } from '$lib/platform/mobile';
@@ -144,6 +145,8 @@
     void openWebInterface(sessions, webViewShell(), { device, webInterface, origin: button.getBoundingClientRect() });
   }
 </script>
+
+{#if platform.thisMachine}<AccessSetup automatic onSaved={() => { listVersion += 1; }} />{/if}
 
 <section>
   {#key listVersion}

@@ -19,6 +19,7 @@ mod holder_update;
 mod listing;
 mod models_projects;
 mod queue_frames;
+mod relay;
 mod requests;
 mod runner;
 mod start;
@@ -116,6 +117,7 @@ fn start(thread: &str, program: &str, args: &[&str]) -> Action {
         _ => program.to_owned(),
     };
     Action::Start {
+        relay: None,
         thread: thread.to_owned(),
         program,
         args: args.iter().map(|arg| (*arg).to_owned()).collect(),

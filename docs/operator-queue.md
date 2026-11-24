@@ -312,10 +312,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (123)
+## 4. Checks that only the operator can do (124)
 
 | Check | What |
 | --- | --- |
+| HT-181 | the runner relay with real agent programs (TH118) |
 | HT-149 | reporting after an iPad update and the phone Code tab |
 | HT-148 | phone Devices, offline notice and Integrations (M2-5) |
 | HT-166 | the application updates the daemon on each build (R-437, HMD-055) |

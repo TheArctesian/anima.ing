@@ -45,10 +45,14 @@ function home() {
 }
 const FAILED: HubError = { code: 'unreachable', message: 'secret hub text' } as HubError;
 
-it('SET-003: with no proxy the section says VPN status is off', async () => {
+it('SET-003: unavailable VPN uses plain language with technical details on request', async () => {
   const target = await open({ Vpn: { vpn: null } });
-  expect(text(target)).toContain('Not available. The hub has no LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI)');
+  expect(text(target)).toContain('VPN status is not available. The hub cannot reach the VPN service.');
+  expect(text(target)).not.toContain('ANIMA_TAILSCALE_LOCALAPI');
   expect(target.querySelector('ul')).toBeNull();
+  target.querySelector<HTMLButtonElement>('[aria-label="About VPN availability"]')?.click();
+  flushSync();
+  expect(text(target.querySelector('[role="status"]'))).toContain('ANIMA_TAILSCALE_LOCALAPI');
 });
 
 it('SET-003, VPN-009: each site shows its state and path as text', async () => {

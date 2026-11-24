@@ -26,6 +26,15 @@ impl Runner {
         };
         let steps = thread.begin_with(&prompt);
         let folder = thread.row.folder.clone();
+        let relayed = thread.row.provider_address.is_some();
+        if relayed {
+            self.note(Kind::Relay, Some(id), "pass-through started");
+            self.publish(id, agent_threads::control::Change::Said {
+                event: agent_threads::drive::DriveEvent::Notice {
+                    text: "This thread uses the local model relay in pass-through. Nothing is shortened.".to_owned(),
+                },
+            });
+        }
         self.note(Kind::Start, Some(id), "started");
         let went = self.apply(id, steps).await.is_ok();
         let taken = if prompt.attachments.is_empty() {
@@ -50,7 +59,15 @@ impl Runner {
             self.attached.give_back(id);
             // The launcher lets go of the seat of the thread at once.
             self.rights_now();
-            refused(Refusal::Holder)
+            match outcome {
+                HolderOutcome::Refused { why: crate::threads::wire::Refusal::RelayFailed } => refused(Refusal::ProviderAddress {
+                    said: "The local model relay could not start. No agent was started.".to_owned(),
+                }),
+                HolderOutcome::Refused { why: crate::threads::wire::Refusal::ProviderConflict } => refused(Refusal::ProviderAddress {
+                    said: "Claude Code settings set ANTHROPIC_BASE_URL or could not be checked. Remove the conflicting setting before using the relay.".to_owned(),
+                }),
+                _ => refused(Refusal::Holder),
+            }
         } else {
             self.began(id, prompt, files).await
         }

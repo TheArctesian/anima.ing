@@ -15,6 +15,7 @@ use hyper::{Method, Request, Response, StatusCode, Uri};
 use hyper_util::rt::{TokioIo, TokioTimer};
 use tokio::net::TcpListener;
 use tokio::task::JoinSet;
+use tokio_rustls::TlsAcceptor;
 
 use crate::forward::{ForwardError, forward};
 use crate::headers::passed_on;
@@ -34,7 +35,12 @@ type Body = BoxBody<Bytes, hyper::Error>;
 
 /// Accepts connections until the task is stopped. The connections are tasks of this task:
 /// when it stops, each of them stops, also in the middle of an answer.
-pub async fn accept(listener: TcpListener, secrets: Arc<Secrets>, upstreams: Arc<Upstreams>) {
+pub async fn accept(
+    listener: TcpListener,
+    secrets: Arc<Secrets>,
+    upstreams: Arc<Upstreams>,
+    tls: Option<TlsAcceptor>,
+) {
     let mut connections = JoinSet::new();
     loop {
         let Ok((stream, peer)) = listener.accept().await else {
@@ -48,16 +54,31 @@ pub async fn accept(listener: TcpListener, secrets: Arc<Secrets>, upstreams: Arc
             continue;
         }
         let (secrets, upstreams) = (secrets.clone(), upstreams.clone());
+        let tls = tls.clone();
         connections.spawn(async move {
-            let service = service_fn(|request| answer(request, &secrets, &upstreams));
-            // A connection that ends with a fault is the business of the program that made it.
-            let _ended = hyper::server::conn::http1::Builder::new()
-                .timer(TokioTimer::new())
-                .header_read_timeout(HEAD_WAIT)
-                .serve_connection(TokioIo::new(stream), service)
-                .await;
+            if let Some(tls) = tls {
+                if let Ok(Ok(stream)) = tokio::time::timeout(HEAD_WAIT, tls.accept(stream)).await {
+                    connection(stream, secrets, upstreams).await;
+                }
+            } else {
+                connection(stream, secrets, upstreams).await;
+            }
         });
     }
+}
+
+async fn connection(
+    stream: impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+    secrets: Arc<Secrets>,
+    upstreams: Arc<Upstreams>,
+) {
+    let service = service_fn(|request| answer(request, &secrets, &upstreams));
+    // A connection that ends with a fault is the business of the program that made it.
+    let _ended = hyper::server::conn::http1::Builder::new()
+        .timer(TokioTimer::new())
+        .header_read_timeout(HEAD_WAIT)
+        .serve_connection(TokioIo::new(stream), service)
+        .await;
 }
 
 /// The answer to one request: a refusal of the relay, or the answer of the provider.
@@ -74,7 +95,22 @@ async fn answer(
         .uri()
         .path_and_query()
         .map_or("", |path| path.as_str());
-    let (given, rest) = split(path);
+    let (given, rest) = if request.headers().contains_key("x-anima-relay") {
+        let values = request.headers().get_all("x-anima-relay");
+        if values.iter().count() != 1 {
+            return Ok(refusal(StatusCode::NOT_FOUND, "not found"));
+        }
+        (
+            values
+                .iter()
+                .next()
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or(""),
+            path,
+        )
+    } else {
+        split(path)
+    };
     let Some((thread, program)) = secrets.thread_of(given) else {
         return Ok(refusal(StatusCode::NOT_FOUND, "not found"));
     };

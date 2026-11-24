@@ -1,6 +1,7 @@
 //! This device's link to a hub (one-click plan S6, 2.6, HMD-058). No rule of the link is here (REPO-003).
 //! Only the main web view may ask (WEB-007). The invite reaches `anima-link` on standard input only and is never logged (LOG-007).
 
+pub mod access;
 #[cfg(unix)]
 mod copy;
 #[cfg(windows)]
