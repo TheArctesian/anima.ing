@@ -5774,8 +5774,8 @@ Parent-worker/device authority, TH30, remote session enablement and live SDK pro
 
 ## HT-NEW-codeclone — Clone a Code project from Git URL
 
-State: Open. Built on `code/th60b-bounded-clone` (TH60B, TC9). The Git checkout
-and runner refusal tests use synthetic fixtures. The installed desktop and a
+State: Open. Built on `code/th60b-bounded-clone` (TH60B, TC9). The Git checkout, smart negotiation and runner refusal tests use
+synthetic loopback fixtures. The installed desktop and a
 successful HTTPS exchange with a real Git server still need a check.
 
 1. Use a test account with a matching desktop, daemon and CLI. Prepare a disposable

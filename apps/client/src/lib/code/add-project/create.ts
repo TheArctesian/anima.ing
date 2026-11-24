@@ -5,6 +5,8 @@ import { inside } from './sources';
 
 export type ProjectCall = (action: Action) => Promise<CallResult>;
 
+export const PROJECT_RECOVERY = 'Check the location before retrying. If the folder exists, use Local folder to select it for this draft.';
+
 export function projectFields(name: string, location: string): { name?: string; location?: string } {
   const title = name.trim();
   const folder = location.trim();
@@ -26,10 +28,10 @@ export async function createProject(call: ProjectCall, name: string, location: s
   const result = await call(url === undefined
     ? { call: 'create_project', folder, name: name.trim() }
     : { call: 'clone_project', folder, name: name.trim(), url });
-  if (!result.ok) return { ok: false, words: `${result.words} Check the location before retrying; if the folder exists, add it as a Local folder.` };
+  if (!result.ok) return { ok: false, words: `${result.words} ${PROJECT_RECOVERY}` };
   if (result.outcome.outcome !== 'projects' || !result.outcome.projects.some((project) => project.folder === folder)) {
     const operation = url === undefined ? 'Creation' : 'Clone';
-    return { ok: false, words: `${operation} was not confirmed. Check the location before retrying; if the folder exists, add it as a Local folder.` };
+    return { ok: false, words: `${operation} was not confirmed. ${PROJECT_RECOVERY}` };
   }
   return { ok: true, folder, projects: result.outcome.projects };
 }

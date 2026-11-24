@@ -164,7 +164,7 @@ it('explains how to recover when the creation acknowledgement is lost', async ()
   enter('Location', '/real/projects');
   button('Create project').click();
   await vi.waitFor(() => expect(document.body.textContent).toContain('The runner disconnected.'));
-  expect(document.body.textContent).toContain('Check the location before retrying');
+  expect(document.body.textContent).toContain('If the folder exists, use Local folder to select it for this draft.');
   expect(draft.folder).toBeNull();
   expect([...document.querySelectorAll('input')].map((input) => input.value)).toContain('Notes');
 });

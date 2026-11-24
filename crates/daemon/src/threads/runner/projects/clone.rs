@@ -6,10 +6,12 @@ use reqwest::Url;
 use super::refused;
 use crate::threads::git::run::{Git, GitError, Run};
 
+mod trace;
+
 const MAX_URL_BYTES: usize = 2048;
 const GIT_PATH: &str = "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin";
-// Git's pack protocol interprets 0x7fff_ffff as infinite depth. Requesting depth rules out
-// dumb HTTP and its HTTP alternates list while keeping the complete history on smart HTTPS.
+// Git's pack protocol interprets 0x7fff_ffff as infinite depth. A depth request refuses
+// dumb HTTP before object or alternate lookups. Empty clones also need the trace check.
 const FULL_DEPTH: &str = "--depth=2147483647";
 
 pub(super) struct Source(Url);
@@ -68,10 +70,33 @@ async fn checkout(folder: &Path, source: &str, protocol: &str) -> Result<(), Ref
     .with_env("GIT_DIR", folder.with_file_name("unused-git-directory"))
     .with_setting(protocol, "always")
     .with_setting("http.followRedirects", "false");
-    git.output(run).await.map(drop).map_err(|error| match error {
+    let (pid, received) = git.trace(run).await.map_err(|error| match error {
         GitError::TimedOut(_) => refused("The clone timed out. No project folder was created."),
         _ => refused("Git could not clone the repository. Check the URL and anonymous HTTPS access. No project folder was created."),
-    })
+    })?;
+    let transport = if source.starts_with("https://") {
+        "remote-https"
+    } else {
+        "remote-http"
+    };
+    if !trace::negotiated(&received, pid, transport) {
+        return Err(refused(
+            "Git did not confirm smart HTTP negotiation. Use a Git version and HTTPS server that support it. No project folder was created.",
+        ));
+    }
+    complete_history(folder).await
+}
+
+async fn complete_history(folder: &Path) -> Result<(), Refusal> {
+    match tokio::fs::symlink_metadata(folder.join(".git/shallow")).await {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Ok(_) => Err(refused(
+            "This repository has shallow history. Choose a source with full history. No project folder was created.",
+        )),
+        Err(_) => Err(refused(
+            "The cloned history could not be checked. No project folder was created.",
+        )),
+    }
 }
 
 #[cfg(test)]

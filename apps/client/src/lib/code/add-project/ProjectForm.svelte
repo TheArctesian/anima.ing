@@ -5,7 +5,7 @@
   import Input from '$lib/forms/input/Input.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { LocalProject } from '$lib/agent-threads/projects/projects';
-  import { createProject, projectFields, type ProjectCall } from './create';
+  import { createProject, PROJECT_RECOVERY, projectFields, type ProjectCall } from './create';
   import { inside, type ProjectFormSource } from './sources';
 
   interface Props {
@@ -44,7 +44,7 @@
       if (result.ok) onCreated(result.folder, result.projects);
       else problem = result.words;
     } catch {
-      if (active) problem = 'The connection was lost. Check the location before retrying; if the folder exists, add it as a Local folder.';
+      if (active) problem = `The connection was lost. ${PROJECT_RECOVERY}`;
     } finally { if (active) busy = false; }
   }
 </script>

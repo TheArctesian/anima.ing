@@ -62,7 +62,7 @@ impl Destination {
             self.folder.file_name().ok_or(Refusal::FolderNotPermitted)?, RenameFlags::NOREPLACE,
         ).map_err(|error| match error {
             rustix::io::Errno::EXIST => path_exists(),
-            rustix::io::Errno::XDEV => refused("The new project is on a different filesystem from Anima. Prepare it with Git, then add it as a local project."),
+            rustix::io::Errno::XDEV => refused("The new project is on a different filesystem from Anima. Choose a parent on the same filesystem."),
             _ => refused("The new project could not be placed safely. Check the parent folder and its permissions."),
         })?;
         let project = Project {
@@ -75,9 +75,7 @@ impl Destination {
 }
 
 fn path_exists() -> Refusal {
-    refused(
-        "That path already exists. Choose a new folder, or add the existing folder as a local project.",
-    )
+    refused("That path already exists. Choose a new folder.")
 }
 
 impl Project {

@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use super::*;
 use axum::{Router, extract::Request, http::StatusCode};
 
+mod smart;
+
 fn git(folder: &Path, args: &[&str]) -> String {
     let result = Command::new("git")
         .env_clear()
@@ -20,14 +22,8 @@ fn git(folder: &Path, args: &[&str]) -> String {
     String::from_utf8(result.stdout).unwrap()
 }
 
-#[tokio::test]
-async fn clone_checks_out_tracked_files_without_installing_hooks_or_submodules() {
-    let temp = tempfile::tempdir().unwrap();
-    let source = temp.path().join("source");
-    let staging = temp.path().join("stage");
-    std::fs::create_dir(&source).unwrap();
-    std::fs::create_dir(&staging).unwrap();
-    git(&source, &["init", "--quiet", "--template="]);
+fn populate(source: &Path) {
+    git(source, &["init", "--quiet", "--template="]);
     std::fs::create_dir(source.join(".git/hooks")).unwrap();
     std::fs::write(
         source.join(".git/hooks/post-checkout"),
@@ -40,9 +36,9 @@ async fn clone_checks_out_tracked_files_without_installing_hooks_or_submodules()
         "[submodule \"component\"]\npath = component\nurl = ../missing\n",
     )
     .unwrap();
-    git(&source, &["add", "readme", ".gitmodules"]);
+    git(source, &["add", "readme", ".gitmodules"]);
     git(
-        &source,
+        source,
         &[
             "update-index",
             "--add",
@@ -51,7 +47,7 @@ async fn clone_checks_out_tracked_files_without_installing_hooks_or_submodules()
         ],
     );
     git(
-        &source,
+        source,
         &[
             "-c",
             "user.email=fixture@example.test",
@@ -63,12 +59,23 @@ async fn clone_checks_out_tracked_files_without_installing_hooks_or_submodules()
             "fixture",
         ],
     );
-    git(&source, &["branch", "second"]);
+    git(source, &["branch", "second"]);
+}
 
-    // The local transport is used only by this fixture. Source::checkout allows HTTPS alone.
-    checkout(&staging, source.to_str().unwrap(), "protocol.file.allow")
+#[tokio::test]
+async fn clone_checks_out_tracked_files_without_installing_hooks_or_submodules() {
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("source");
+    let staging = temp.path().join("stage");
+    std::fs::create_dir(&source).unwrap();
+    std::fs::create_dir(&staging).unwrap();
+    populate(&source);
+
+    let (url, server) = smart::serve(temp.path(), true).await;
+    checkout(&staging, &format!("{url}/source"), "protocol.http.allow")
         .await
         .unwrap();
+    server.abort();
     assert_eq!(
         std::fs::read_to_string(staging.join("readme")).unwrap(),
         "clone fixture\n"
@@ -87,6 +94,15 @@ async fn clone_checks_out_tracked_files_without_installing_hooks_or_submodules()
 
 #[tokio::test]
 async fn dumb_http_is_refused_before_git_requests_objects_or_alternates() {
+    dumb_http_is_refused("1111111111111111111111111111111111111111\trefs/heads/main\n").await;
+}
+
+#[tokio::test]
+async fn an_empty_dumb_http_repository_is_refused() {
+    dumb_http_is_refused("").await;
+}
+
+async fn dumb_http_is_refused(refs: &'static str) {
     let discovery = Arc::new(AtomicBool::new(false));
     let objects = Arc::new(AtomicBool::new(false));
     let server = Router::new().fallback({
@@ -96,10 +112,7 @@ async fn dumb_http_is_refused_before_git_requests_objects_or_alternates() {
             match request.uri().path() {
                 "/info/refs" => {
                     discovery.store(true, Ordering::Relaxed);
-                    (
-                        StatusCode::OK,
-                        "1111111111111111111111111111111111111111\trefs/heads/main\n",
-                    )
+                    (StatusCode::OK, refs)
                 }
                 "/HEAD" => (StatusCode::OK, "ref: refs/heads/main\n"),
                 path if path.starts_with("/objects/") => {

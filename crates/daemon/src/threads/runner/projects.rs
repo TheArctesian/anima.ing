@@ -76,13 +76,22 @@ impl Runner {
 
     pub(super) fn project_created(&mut self, created: Created) {
         let result = created.result.and_then(|(project, name)| {
-            let change = ProjectChange::Add { folder: project.folder()?, name };
+            let change = ProjectChange::Add {
+                folder: project.folder()?,
+                name,
+            };
             let projects = project_changed(self.projects.clone(), &change, change.folder().clone())
-                .map_err(|_| refused("The folder was created, but the project list changed. Add the folder as a local project."))?;
+                .map_err(|_| {
+                    refused(
+                        "The folder was created, but the project list changed before registration.",
+                    )
+                })?;
             let before = std::mem::replace(&mut self.projects, projects);
             if !self.written() {
                 self.projects = before;
-                return Err(refused("The folder was created, but its registration could not be saved. Add the folder as a local project."));
+                return Err(refused(
+                    "The folder was created, but its registration could not be saved.",
+                ));
             }
             Ok(())
         });
