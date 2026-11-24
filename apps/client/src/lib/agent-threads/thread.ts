@@ -1,6 +1,6 @@
 /** The threads of this computer (THR-011 to THR-016). */
 
-export type Program = 'claude_code' | 'codex';
+export type Program = 'claude_code' | 'codex' | 'grok';
 
 export interface ThreadRow {
   readonly id: string;
@@ -48,12 +48,12 @@ export interface ThreadsShell {
   read(id: string): Promise<Thread>;
 }
 
-const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
+const PROGRAMS: readonly string[] = ['claude_code', 'codex', 'grok'];
 const TAILS: readonly string[] = ['turn_ended', 'stopped', 'open_tool', 'open', 'nothing'];
 const TOOL_KINDS: readonly string[] = ['command', 'edit', 'read', 'search', 'web', 'agent', 'plan', 'question', 'other'];
 
 export function programName(program: Program): string {
-  return program === 'claude_code' ? 'Claude Code' : 'Codex';
+  return { claude_code: 'Claude Code', codex: 'Codex', grok: 'Grok' }[program];
 }
 
 /** The folder below the home folder in which the runner makes the folder of each thread with no project (THR-041). */

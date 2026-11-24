@@ -232,15 +232,14 @@ impl Runner {
 }
 
 impl Runner {
-    /// Whether `line` of thread `id` is held back. A turn that leaves the profile may be taken
-    /// while the runner is down: the record says that the profile is gone before its line goes,
-    /// or the line does not go and the turn ends (THR-041).
+    /// Save the recovery identity of a Grok prompt and a Codex profile departure before
+    /// dispatch. If the record fails, the prompt stays here (THR-041).
     pub(super) fn held_back(&mut self, id: Uuid, line: &str) -> bool {
-        let leaves = self
+        let must_save = self
             .threads
             .get(&id)
-            .is_some_and(|thread| thread.leaves_with(line));
-        if !leaves || self.written() {
+            .is_some_and(|thread| thread.leaves_with(line) || thread.grok_prompt(line));
+        if !must_save || self.written() {
             return false;
         }
         let ended = self

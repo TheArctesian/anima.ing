@@ -67,6 +67,7 @@ pub struct Open {
 enum Driver {
     Claude(ClaudeDecoder),
     Codex(Box<Codex>),
+    Grok(Box<super::grok::Grok>),
 }
 
 /// What the runner writes to its record for a thread.
@@ -76,6 +77,8 @@ pub struct Saved {
     pub effort: Option<Effort>,
     pub codex_thread: Option<String>,
     pub codex_turn: Option<String>,
+    #[serde(default)]
+    pub grok: Option<super::grok::Saved>,
     /// What the person changed of a Codex thread after its start (TH110).
     #[serde(default)]
     pub codex_changed: Changed,
@@ -130,6 +133,9 @@ impl Thread {
         row.effort = row.effort.or(effort);
         let driver = match codex {
             Some(codex) => Driver::Codex(Box::new(codex)),
+            None if row.program == Program::Grok => {
+                Driver::Grok(Box::new(super::grok::Grok::new(&row)))
+            }
             None => Driver::Claude(ClaudeDecoder::new()),
         };
         Self {
@@ -153,6 +159,7 @@ impl Thread {
 
     fn decode(&mut self, line: &[u8]) -> Vec<DriveEvent> {
         match &mut self.driver {
+            Driver::Grok(grok) => grok.read(line),
             Driver::Claude(decoder) => decoder.read(line),
             Driver::Codex(codex) => codex.decoder.read(line),
         }
@@ -170,6 +177,7 @@ impl Thread {
         self.row.title = first_line(&prompt.text, agent_threads::TITLE_LENGTH);
         let mut steps = Self::sent(&Shown::of(prompt));
         match &mut self.driver {
+            Driver::Grok(grok) => steps.push(Step::Write(grok.begin(prompt))),
             Driver::Claude(_) => {
                 // Its answer names the models of the program (TH104).
                 steps.push(Step::Write(ClaudeInput::initialize("anima-initialize")));
@@ -193,6 +201,12 @@ impl Thread {
         if self.row.state == RunState::Stopped || !self.held {
             return Err(Refusal::NotRunning);
         }
+        if matches!(&self.driver, Driver::Grok(grok) if !grok.saved.ready || grok.saved.turn.is_some() || !self.asked.claude.is_empty())
+        {
+            return Err(Refusal::CannotChange {
+                said: "Grok is working. Queue this prompt or stop the current turn first.".into(),
+            });
+        }
         // A prompt of the person starts the queue again after the turn of it; a prompt of an
         // agent does not (TH109).
         if person {
@@ -206,6 +220,10 @@ impl Thread {
             self.pending = self.pending.saturating_add(1);
         }
         Ok(match &mut self.driver {
+            Driver::Grok(grok) => {
+                self.program = Some(ProgramState::Working);
+                grok.prompt(prompt)
+            }
             Driver::Claude(_) => vec![ClaudeInput::prompt_with(prompt)],
             Driver::Codex(codex) => codex.prompt(prompt),
         })
@@ -221,6 +239,12 @@ impl Thread {
             images: shown.images,
             files: shown.files.clone(),
         })]
+    }
+
+    pub fn sent_to(&mut self, shown: &Shown) -> Vec<Step> {
+        let mut steps = Self::sent(shown);
+        steps.extend(self.state_change());
+        steps
     }
 
     /// The person stops the running turn; the program stays. Each open request closes (THR-087:
@@ -240,6 +264,14 @@ impl Thread {
     /// Codex there is nothing to stop.
     fn turn_stop(&mut self) -> Vec<Step> {
         match &mut self.driver {
+            Driver::Grok(grok) => {
+                if !grok.saved.ready {
+                    return vec![Step::EndProgram];
+                }
+                let mut steps: Vec<Step> = grok.cancel().into_iter().map(Step::Write).collect();
+                steps.push(Step::EndChildren);
+                steps
+            }
             Driver::Claude(_) => {
                 self.controls += 1;
                 let id = format!("anima-interrupt-{}", self.controls);

@@ -5587,6 +5587,46 @@ on the device; they are not imported into another hub or deleted. The operator c
 Result: Open.
 
 
+## HT-188-code — Grok in Code (TH119)
+
+State: Open. Operator check required.
+
+Built: the local Grok ACP adapter, its model picker, Ask and Full access, streamed tool and reply
+entries, interruption, queued turns and changes of model or effort while idle. Protocol tests
+use synthetic frames. Local checks on Linux (2026-11-23, agent, c07e8fe11): the installed
+app lists Grok models, a prompt and follow-up show replies, and navigation away from Code
+and back keeps the thread current. An isolated runner continued after a daemon restart.
+These checks do not close the operator check or prove macOS behavior.
+
+1. Open Code on a machine signed in with `grok`. Select Grok: its installed model list and
+   reasoning levels appear, without Max or Ultra unless Grok reports them.
+2. Start a harmless prompt in a disposable folder in Ask. The reply streams and remains after
+   the turn ends. Request a file change: any approval Grok asks for is shown with its input;
+   Deny does not run it, and Allow grants only that request.
+3. Queue a second prompt during a turn: it goes only after the first turn succeeds. Stop a
+   running turn: no queued prompt goes automatically after the interruption.
+4. Between turns, change the model or effort: the row changes only after Grok accepts it.
+5. Restart the daemon while the Grok thread is idle: the thread remains usable.
+6. Navigate from Code to Devices and back. Open the thread and send another prompt: its title,
+   reply and completed state update; the page does not stay at “Working” after the reply.
+7. Repeat on macOS and Linux. Sessions started outside Anima and hub synchronization of Grok
+   threads are not included in this local slice.
+
+## HT-189-pointer — Linux tiled-window pointer alignment
+
+State: Open. The operator reported wrong hover and click targets on 2026-11-23.
+
+Built: the Linux main window no longer imposes a 960 by 600 minimum on a tiling
+compositor. In the reported arrangement the compositor allocated 863 pixels across,
+but WebKit rendered 960; the displayed buttons were compressed while input used
+the larger layout. Other platforms keep their existing minimum window sizes.
+
+1. Tile Anima beside another window on a fractionally scaled Linux display, narrower
+   than 960 logical pixels. Hover New thread and the adjacent project filter. Each
+   button highlights only when the pointer is over that button.
+2. Click each button. New thread opens a draft; the folder button opens the project
+   filter. Resize the tiled window and repeat, including a short window.
+3. Maximize and restore the window. Hover and clicks still match the drawn controls.
 ## HT-185-create — Create a local Code project (TH60A)
 
 State: Open. Built on `code/project-create`; the TC9 New project UI is owned separately.

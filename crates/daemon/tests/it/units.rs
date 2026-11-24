@@ -93,7 +93,7 @@ fn met_019_the_user_unit_keeps_the_basic_limits_and_the_network_families() {
     assert_eq!(value(&lines, "WantedBy"), Some("default.target"));
     assert_eq!(value(&lines, "ProtectSystem"), Some("strict"));
     assert_eq!(value(&lines, "ProtectHome"), Some("read-only"));
-    assert_eq!(value(&lines, "ReadWritePaths"), Some("%E/anima-daemon"));
+    assert_eq!(value(&lines, "ReadWritePaths"), Some("%h %E/anima-daemon"));
     assert_eq!(value(&lines, "SocketBindDeny"), Some("any"));
 }
 
