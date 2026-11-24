@@ -1,5 +1,9 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import { openSharingSettings } from '$lib/desktop/system-settings';
+  import FormButton from '$lib/forms/FormButton.svelte';
+  import Modal from '$lib/forms/modal/Modal.svelte';
+  import { capabilities } from '$lib/platform/platform';
   import type { DeviceDetail } from '$lib/devices/api';
   import RemoteTest from '$lib/devices/form/remote/test/RemoteTest.svelte';
   import type { RemoteTestInput, RemoteTestResult } from '$lib/devices/form/remote/test/remote-test';
@@ -26,6 +30,10 @@
 
   let { draft, device, saved, calls, onTest, open = $bindable() }: Props = $props();
   let settingUp = $state(false);
+  let showSharing = $state(false);
+  let sharingProblem = $state(false);
+  let openingSharing = $state(false);
+  const mac = $derived(device.os === 'MACOS');
   let root = $state<HTMLElement>();
   /** RA-020: the hub's warning on the saved VNC settings, as one sentence. */
   const warning = $derived(vncWarning(device.accessWarnings));
@@ -35,6 +43,25 @@
     open = true;
     await tick();
     root?.querySelector<HTMLElement>('#device-vnc-port')?.focus();
+    if (mac) showSetup();
+  }
+
+  function showSetup(): void {
+    sharingProblem = false;
+    showSharing = true;
+  }
+
+  async function openSettings(): Promise<void> {
+    if (openingSharing) return;
+    openingSharing = true;
+    sharingProblem = false;
+    try {
+      await openSharingSettings();
+    } catch {
+      sharingProblem = true;
+    } finally {
+      openingSharing = false;
+    }
   }
 </script>
 
@@ -77,6 +104,9 @@
     {#if warning !== null}
       <p class="warning" role="note"><Icon name="carbon:warning-alt" size="sm" />{warning}</p>
     {/if}
+    {#if mac}
+      <div class="foot"><FormButton size="sm" onclick={showSetup}>Screen Sharing setup</FormButton></div>
+    {/if}
     {#if draft.values.vnc.enabled}
       <div class="foot">
         <RemoteTest protocol="VNC" initial={saved} values={draft.values} deviceId={device.id} canTest={() => draft.checkForTest('vnc')} {onTest} />
@@ -85,7 +115,32 @@
   </ConnectionRow>
 </div>
 
+{#if mac}
+  <Modal open={showSharing} title="Set up macOS Screen Sharing" onClose={() => { showSharing = false; }} dismissible>
+    <ol class="steps">
+      <li>On the Mac you want to control, open <strong>System Settings → General → Sharing</strong>.</li>
+      <li>Click the <strong>ⓘ</strong> next to <strong>Screen Sharing</strong> and turn it on.</li>
+      <li>Under <strong>Allow access for</strong>, make sure your Mac account is allowed, then click <strong>Done</strong>.</li>
+      <li>In Anima, test <strong>VNC</strong> on port <strong>5900</strong>, then choose <strong>VNC</strong> from the connect menu. When using your Mac username, enter that account’s password. For the separate VNC password from Sharing, leave the username blank.</li>
+    </ol>
+    {#if sharingProblem}<p role="alert">System Settings did not open. Follow the steps above on the Mac.</p>{/if}
+    {#snippet footer()}
+      <FormButton onclick={() => { showSharing = false; }}>Close</FormButton>
+      {#if capabilities().systemSettings}
+        <FormButton tone="primary" busy={openingSharing} onclick={() => void openSettings()}>Open Sharing on this Mac</FormButton>
+      {/if}
+    {/snippet}
+  </Modal>
+{/if}
+
 <style>
+  .steps {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding-inline-start: var(--space-5);
+  }
+
   .fields {
     display: grid;
     grid-template-columns: calc(var(--space-16) * 1.75) minmax(0, 1fr);

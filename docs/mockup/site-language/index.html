@@ -1138,6 +1138,17 @@ p.dl-group { margin-top:18px; }
                       <div class="field wide"><span>Password</span><div class="cred"><span class="status s-up"><iconify-icon icon="carbon:locked"></iconify-icon>Stored</span><span class="quiet">in the hub, encrypted</span><span class="grow"></span><button type="button" class="btn sm">Replace</button><button type="button" class="btn sm ghost danger-text">Remove</button></div></div>
                     </div>
                     <p class="inline-note s-warning"><iconify-icon icon="carbon:warning-alt"></iconify-icon><span>VNC is not encrypted. Use it only over the VPN, and prefer SSH or RDP where the device has them.</span></p>
+                    <div class="conn-foot"><button type="button" class="btn sm" commandfor="mockup-screen-sharing" command="show-modal">Screen Sharing setup</button></div>
+                    <dialog id="mockup-screen-sharing" aria-labelledby="mockup-screen-sharing-title" style="max-width: min(32rem, 90vw); color: var(--text); background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 24px">
+                      <h3 id="mockup-screen-sharing-title">Set up macOS Screen Sharing</h3>
+                      <ol>
+                        <li>On the Mac you want to control, open <strong>System Settings → General → Sharing</strong>.</li>
+                        <li>Click the <strong>ⓘ</strong> next to <strong>Screen Sharing</strong> and turn it on.</li>
+                        <li>Under <strong>Allow access for</strong>, make sure your Mac account is allowed, then click <strong>Done</strong>.</li>
+                        <li>In Anima, test <strong>VNC</strong> on port <strong>5900</strong>, then choose <strong>VNC</strong> from the connect menu. When using your Mac username, enter that account’s password. For the separate VNC password from Sharing, leave the username blank.</li>
+                      </ol>
+                      <form method="dialog"><button class="btn sm">Close</button><button class="btn sm" type="button">Open Sharing on this Mac</button></form>
+                    </dialog>
                     <div class="conn-foot"><button type="button" class="btn sm"><iconify-icon icon="carbon:connection-signal"></iconify-icon>Test connection</button><span class="quiet">Not tested yet</span></div>
                   </div>
                 </div>
