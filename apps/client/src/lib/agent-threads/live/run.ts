@@ -318,6 +318,10 @@ function listsFrom(value: Fields): Outcome | null {
   return listings === null ? null : { outcome: 'listings', listings };
 }
 
+function startedFrom(thread: unknown): Outcome | null {
+  return typeof thread === 'string' ? { outcome: 'started', thread } : null;
+}
+
 export function outcomeFrom(value: unknown): Outcome | null {
   if (!isRecord(value)) return null;
   switch (value.outcome) {
@@ -326,7 +330,7 @@ export function outcomeFrom(value: unknown): Outcome | null {
     case 'ok':
       return { outcome: 'ok' };
     case 'started':
-      return typeof value.thread === 'string' ? { outcome: 'started', thread: value.thread } : null;
+      return startedFrom(value.thread);
     case 'threads':
       return threadsFrom(value.threads, value.holder);
     case 'limits':
