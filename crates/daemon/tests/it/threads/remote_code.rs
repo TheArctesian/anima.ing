@@ -8,7 +8,6 @@ use std::{
 
 use anima_daemon::{
     config::{Config, home::Home, origin::Origin, private_file},
-    threads::wire::{Action, Event},
     token_store::{Credential, TokenStore},
 };
 use axum::{
@@ -25,6 +24,7 @@ use uuid::Uuid;
 use super::runner::Kit;
 
 mod commands;
+mod holder;
 mod publication;
 mod races;
 
@@ -296,29 +296,4 @@ async fn evidence(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value
         json!({"launch":LAUNCH, "state":"started", "cause":null, "thread":THREAD,
         "binding":"bound", "firstCommand":Uuid::from_u128(8)}),
     )
-}
-
-#[tokio::test]
-async fn th32_same_user_client_cannot_open_the_remote_holder_exchange() {
-    let holder = super::Holder::start(0);
-    let mut talk = holder.link().await;
-    talk.link
-        .send(Action::RemoteCode {
-            frame: r#"{"op":"open"}"#.to_owned(),
-        })
-        .await
-        .unwrap();
-    let watch = async {
-        while let Some(event) = talk.link.events.recv().await {
-            assert!(
-                !matches!(event, Event::RemoteCode { .. }),
-                "same-user test process received a remote grant challenge"
-            );
-        }
-    };
-    assert!(
-        tokio::time::timeout(Duration::from_millis(350), watch)
-            .await
-            .is_err()
-    );
 }
