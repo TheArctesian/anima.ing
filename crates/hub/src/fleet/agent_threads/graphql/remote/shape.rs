@@ -1,3 +1,8 @@
+#![expect(
+    clippy::unused_async_trait_impl,
+    reason = "the GraphQL enum derive generates async trait impls"
+)]
+
 use async_graphql::{Enum, ID, InputObject, Result, SimpleObject};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
@@ -5,7 +10,6 @@ use super::refused;
 
 macro_rules! tags {
     ($name:ident: $($variant:ident),+) => {
-        #[expect(clippy::unused_async_trait_impl, reason = "the GraphQL enum derive generates async trait impls")]
         #[derive(Clone, Copy, Eq, PartialEq, Enum, Deserialize, Serialize)]
         #[graphql(rename_items = "snake_case")]
         #[serde(rename_all = "snake_case")]
@@ -13,6 +17,7 @@ macro_rules! tags {
     };
 }
 
+tags!(AgentThreadLaunchProgram: ClaudeCode, Codex);
 tags!(AgentThreadAction: Prompt, Answer, Stop);
 tags!(AgentThreadRequestKind: Approval, Question);
 tags!(AgentThreadStopKind: Interrupt, End);

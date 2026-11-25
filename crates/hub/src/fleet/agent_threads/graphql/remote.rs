@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use self::shape::{
     AgentThreadAnswerPayload, AgentThreadCommandReceipt, AgentThreadControlView,
-    AgentThreadLaunchReceipt, AgentThreadStopTargetInput,
+    AgentThreadLaunchProgram, AgentThreadLaunchReceipt, AgentThreadStopTargetInput,
 };
 use super::super::remote::{self, Error, Owner, Pair, Payload, Program, Start};
 use crate::{
@@ -33,7 +33,10 @@ impl RemoteQuery {
                 device: row.device.to_string().into(),
                 project: row.pair.project,
                 folder: row.pair.folder,
-                program: row.pair.program,
+                program: match row.pair.program {
+                    Program::ClaudeCode => AgentThreadLaunchProgram::ClaudeCode,
+                    Program::Codex => AgentThreadLaunchProgram::Codex,
+                },
                 expires_at: row.expires_at,
             })
             .collect())
@@ -102,7 +105,10 @@ impl RemoteMutation {
                 pair: Pair {
                     project: input.project,
                     folder: input.folder,
-                    program: input.program,
+                    program: match input.program {
+                        AgentThreadLaunchProgram::ClaudeCode => Program::ClaudeCode,
+                        AgentThreadLaunchProgram::Codex => Program::Codex,
+                    },
                 },
                 access: input.access,
                 prompt: input.prompt,
@@ -225,7 +231,7 @@ struct AgentThreadStartTarget {
     device: ID,
     project: String,
     folder: String,
-    program: Program,
+    program: AgentThreadLaunchProgram,
     expires_at: DateTime<Utc>,
 }
 
@@ -235,7 +241,7 @@ struct AgentThreadStartInput {
     device: ID,
     project: String,
     folder: String,
-    program: Program,
+    program: AgentThreadLaunchProgram,
     access: String,
     prompt: String,
 }

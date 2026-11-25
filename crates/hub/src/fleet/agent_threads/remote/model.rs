@@ -8,12 +8,7 @@ pub(in crate::fleet) struct Owner {
     pub device: Uuid,
 }
 
-#[expect(
-    clippy::unused_async_trait_impl,
-    reason = "the GraphQL enum derive generates async trait impls"
-)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, async_graphql::Enum)]
-#[graphql(name = "AgentThreadLaunchProgram", rename_items = "snake_case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(in crate::fleet) enum Program {
     ClaudeCode,
