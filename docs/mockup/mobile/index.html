@@ -327,6 +327,12 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .sesbar .t { flex: 1; min-inline-size: 0; line-height: 1.25; }
 .sesbar .t b { display: block; font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sesbar .t small { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 12px; }
+/* 8: one bar under the remote display; the text field is part of it. The pointer keeps its size at each zoom. */
+.remote-bar { gap: 8px; margin-bottom: var(--sab); padding: 0 8px; border-bottom: 0; border-top: 1px solid var(--border-subtle); background: var(--surface-raised); }
+.remote-bar .btn { inline-size: auto; min-block-size: 44px; padding: 0 10px; }
+.remote-bar .entry { flex: 1; min-inline-size: 0; block-size: 32px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface-base); color: var(--text); font: inherit; font-size: 16px; }
+.remote-sample { position: relative; }
+.remote-sample .pointer { position: absolute; inset-block-start: 58%; inset-inline-start: 62%; inline-size: 16px; block-size: 24px; overflow: visible; fill: #fff; stroke: #000; stroke-width: 1; stroke-linejoin: round; filter: drop-shadow(0 1px 1px var(--shadow)); }
 .term { flex: 1; min-block-size: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 12px; font: 400 13px/1.45 var(--font-mono); font-variant-ligatures: none; white-space: pre-wrap; word-break: break-all; color: var(--text); }
 .term .p { color: var(--status-up); } .term .r { color: var(--status-down-text); } .term .q { color: var(--text-tertiary); } .term .a { color: var(--accent); }
 .term .cur { display: inline-block; inline-size: 8px; block-size: 16px; background: var(--text); vertical-align: -3px; }
@@ -671,11 +677,10 @@ Failed with result 'exit-code'.
     <header><span class="n">8</span><h2>Remote desktop</h2><p>MOB-021, RA-050</p></header>
     <div class="row">
       <figure class="shot"><div class="phone gd ios"><div class="screen ssh"><div class="body">
-        <div class="sesbar"><button class="iconbtn" aria-label="Back to app"><svg class="i"><use href="#i-left"/></svg></button><button class="btn">Keys</button><button class="btn">Fit</button><select aria-label="Displays"><option>All displays</option><option>Display 1</option><option>Display 2</option><option>Display 3</option></select><div class="t"><b>Test desktop</b><small>VNC</small></div></div>
-        <input class="entry" aria-label="Type on remote computer" placeholder="Type on remote computer">
-        <div class="remote-sample"><div class="code-note"><b>Desktop files</b><p>Documents</p><p>Downloads</p></div></div>
+        <div class="remote-sample"><div class="code-note"><b>Desktop files</b><p>Documents</p><p>Downloads</p></div><svg class="pointer" viewBox="0 0 12 18" preserveAspectRatio="xMinYMin meet" aria-hidden="true"><path d="M0 0V15.5L3.9 11.8L6.6 17.9L8.9 16.9L6.3 10.9H11.6Z"/></svg></div>
+        <div class="sesbar remote-bar"><button class="iconbtn" aria-label="Back to app"><svg class="i"><use href="#i-left"/></svg></button><button class="btn">Keys</button><button class="btn">Fit</button><select aria-label="Displays"><option>All displays</option><option>Display 1</option><option>Display 2</option><option>Display 3</option></select><input class="entry" aria-label="Type on remote computer" placeholder="Type"></div>
       </div></div></div>
-      <figcaption><b>Remote desktop with touch</b><span class="tag">dark, iOS</span><p>On iPad, the session uses the screen with a small margin. Back returns to the app. Choose one VNC monitor or All displays. Move the pointer with one finger. Pinch to zoom and use Fit to reset the selected view. Tap the text field to open the keyboard.</p></figcaption></figure>
+      <figcaption><b>Remote desktop with touch</b><span class="tag">dark, iOS</span><p>On a phone, VNC and RDP use the whole screen inside the safe area, in portrait and in landscape; on iPad they keep a small margin. The app's navigation is hidden. One bar under the display holds Back, Keys, Fit, Displays and the text field, so the display keeps the height and the bar sits on the keyboard. A pointer of a fixed size shows where a tap clicks. Move it with one finger. Pinch to zoom and use Fit to reset the selected view. Tap the text field to open the keyboard.</p></figcaption></figure>
     </div>
   </section>
 
