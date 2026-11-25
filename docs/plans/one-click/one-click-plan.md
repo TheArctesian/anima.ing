@@ -147,9 +147,9 @@ Proposed requirements (prefix `LNK`, free on `main`):
 - **LNK-006.** The hub and the client must show if the link is direct or relayed (as VPN-005).
 - **LNK-007.** The operator must be able to set a relay of their own, and a domain name that holds
   the hub address. A name only finds the hub; LNK-002 still applies.
-  For a hosted hub, Section 6.13 of [hosted-mode.md](../../proposals/hosted-mode.md) proposes an
-  Anima.ing relay, a relay of two or more nodes and a move in place of an error (HMD-075 to
-  HMD-087, proposed 2026-11-24, not approved). The new texts of LNK-007 are task HM-T43.
+  For a paid hosted hub, Section 6.13 of [hosted-mode.md](../../proposals/hosted-mode.md) sets an
+  Anima.ing relay, a relay of two nodes and a move in place of an error (HMD-075 to HMD-087,
+  approved R-454). The new texts of LNK-007 are task HM-T43.
 - **LNK-008.** The invite, the keys and the pre-shared key must not be in logs or command lines (LOG-007).
 
 ### 4.2 S2. Remote display without `guacd`
