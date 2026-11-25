@@ -791,3 +791,272 @@ their grants; this section is the wire.
 - No log line, event, error text or `Debug` output of either side holds a value (LOG-007). The Rust type of a value
   is `daemon_core::wire::KeyValue`: no `Debug`, `Display` or `Clone`, wiped on drop.
 
+## 10. Proposed amendment: installed mobile tools (TH135)
+
+Status: **Accepted by the programme orchestrator; implementation on this branch awaits review**,
+version 2, 2026-11-24 (R-NEW-mobileinventorycontract, CON-001). Sections 1 to 9 remain
+unchanged. Acceptance becomes part of the shared baseline when this branch lands in `dev`. Owner: TH135 and
+THR-172 in [agent-threads.md](../docs/proposals/agent-threads.md), Section 6.11;
+CAP-020 to CAP-031 in [compute-plan.md](../docs/plans/compute-plan.md).
+**R-NEW-mobileinventorycontract (programme orchestrator, 2026-11-24; CON-001).**
+Accept the K8 reporting amendment reviewed at `e2e07dce2`, after independent re-review
+found no remaining blocking findings. This implements the already approved TH135/THR-172
+inventory scope; it adds no lease authority, provisioning, download, wipe or freshness policy.
+The separate K1 proposal in Section 10.3 is not accepted by this ruling. Real probe enablement
+still requires implementation review; synthetic implementation and tests may proceed.
+
+### 10.1 Wire addition
+
+Add one optional member, `inventory.mobileTools`, to Section 4. No endpoint, token,
+work type or protocol version changes. Its members are `apple` and `android`, both
+required. Apple contains `simulatorRuntimes` and `deviceTypes`. Android contains
+`sdkPackages` and `emulator`. Each of these four members is a probe result:
+
+- Success: `{ "state": "read", "entries": [...] }` for a list, or
+  `{ "state": "read", "version": "..." }` for the emulator.
+- Failure: `{ "state": "missing" }`, `unsupported`, `timed_out`, `exited`,
+  `invalid_output` or `too_large`, with no `entries` or `version`.
+- `missing` means the required program or SDK root was not found in the daemon's
+  permitted search scope. `unsupported` means this reader does not support the host
+  platform. Neither means that the computer has no installation outside that scope.
+- `read` with an empty list means the complete successful probe found no installed
+  entries. Failure never becomes an empty successful list. `exited` includes denied
+  access and failure to start. No error message from a program is transmitted.
+- An unknown state is retained as unavailable, with no usable entries, by a newer
+  receiver that knows this member. Null is not an omitted member or a result.
+
+Reuse `tools[name=xcodebuild]` for the Xcode version and its existing verdict. Do not
+add a second Xcode version. A missing Xcode tool has the existing omitted-tool meaning.
+No Android package is encoded as a Rust `buildTarget` or an invented tool name.
+
+| Successful result | Entry fields (all required unless marked optional) | Bound and uniqueness |
+| --- | --- | --- |
+| `apple.simulatorRuntimes.entries` | `identifier`: vendor runtime identifier; `version`: runtime version; `available`: boolean reported by the platform tool | At most 128, unique by `identifier` |
+| `apple.deviceTypes.entries` | `identifier`: vendor model-type identifier | At most 256, unique by `identifier` |
+| `android.sdkPackages.entries` | `path`: SDK package identifier, not a filesystem path; `revision`: installed revision | At most 512, unique by `path` |
+| `android.emulator` | `version`: emulator program version | One version |
+
+Identifiers are 1 to 192 ASCII bytes of `[A-Za-z0-9._-]`. Versions and revisions are
+1 to 64 ASCII bytes of `[0-9A-Za-z.+_-]`, as for existing versions. An SDK package
+identifier has 1 to 192 ASCII bytes of `[A-Za-z0-9._;-]`, with nonempty semicolon-separated
+segments. Only installed `platforms;...`, `system-images;...`, `build-tools;...`,
+`cmdline-tools;...`, `platform-tools` and `emulator` packages are included. These are
+package identifiers, not device identifiers. Lists are sorted by identifier or path
+in byte order. Duplicate keys or invalid fields fail that probe as `invalid_output`.
+A result over a list bound fails as `too_large`; it is not silently truncated.
+
+The complete encoded `mobileTools` member is at most 256 KiB. The existing batch
+body limit still applies. A sender checks both before enqueueing a batch; it must
+not drop existing metrics to fit this member. If the combined batch exceeds 512 KiB,
+send the metrics without the whole inventory, retain the complete pending inventory,
+and send it in the next fitting batch with fewer or no metric entries. Do not mark
+inventory announced until its delivery succeeds; retries retain the complete snapshot.
+Never omit only `mobileTools` from a present inventory to make space, since that clears
+stored mobile state. Keep at most one pending complete inventory snapshot, replacing it
+only with a newer complete snapshot under the announcement rules. If the complete
+inventory cannot fit even alone, report a bounded local delivery failure, keep metrics
+flowing and do not announce it; do not truncate fields or send an invalid oversized body. If this member exceeds its own bound,
+it sends all four results as `too_large`. A receiver rejects a malformed known
+member with `MALFORMED`, using Section 4's existing retry behaviour.
+
+### 10.2 Collection, absence and compatibility
+
+The proposed collector uses the existing CAP-027 schedule and inventory announcement
+rules. A present `mobileTools` replaces the complete previous mobile-tools snapshot
+in the inventory transaction, including failures. It never merges old successful
+entries into a failed result. An absent whole `inventory` still means unchanged.
+A present `inventory` without `mobileTools` clears a previously stored mobile-tools
+snapshot to unknown: an older daemon must not leave stale positive capabilities
+behind after a downgrade. The hub records receipt time with the snapshot; it does
+not trust a device-supplied observation time.
+
+An older hub ignores the optional member under Section 1. An older daemon sends none;
+a newer hub treats its mobile inventory as unknown. No acknowledgement of this member
+is needed. Its presence signals inventory-reader support only, not permission or
+ability to execute device work. TH133 still owns the K10 execution capability and
+its refusal rules; inventory must never stand in for that capability.
+
+Apple probes use fixed read-only arguments for simulator runtimes and device types,
+for example `xcrun simctl list runtimes -j` and `xcrun simctl list devicetypes -j`.
+They must not list simulator instances. They use the existing developer-tools check
+before invoking Apple's placeholder programs. A non-macOS host reports `unsupported`
+for both Apple results. Recorded aggregate `simctl list -j` fixtures may be parsed
+in tests, but their `devices` member must never enter the inventory.
+
+Android collection reads installed package metadata only, with a bounded reader of
+SDK package manifests, or a fixed installed-only tool command proven not to contact
+the network or change the SDK. It does not read personal SDK preferences or accounts.
+SDK root discovery and the exact offline adapter must be reviewed with implementation;
+no arbitrary path, command or probe is supplied by the hub. An unimplemented platform
+reports `unsupported`, not an empty inventory. The emulator version uses fixed version
+arguments. Each complete probe result has a 5-second wall-clock deadline covering
+root discovery, traversal, file opens, reads, parsing and child processes; each child
+also retains the existing process-group cleanup. Bound discovery to 4,096 directory
+entries and 512 regular manifest files, with a maximum depth of 8 below the reviewed
+SDK root. Do not follow symlinks or accept nonregular files; open/read operations must
+remain confined to that root despite concurrent path replacement. The implementation
+review must prove cancellation or bounded isolation of blocked filesystem operations,
+not only a timer around a still-running worker. Collection input is capped at 1 MiB
+per result, including all package manifests for that result. Exhausting discovery,
+file-count, depth or byte bounds maps to `too_large`; the whole-result deadline maps
+to `timed_out`; enumeration, open or read failures map to `exited`. A failure anywhere
+in a probe invalidates that entire result, never a successful partial list; sibling
+probe results remain independent. A deadline, oversized input or malformed output yields its fixed failure
+state. A process environment must not allow installation, licence acceptance or
+credential access. These bounds apply only to the added probes, not to existing probes.
+
+No downloads, SDK installation, network catalogue query, simulator creation or boot,
+AVD listing, phone discovery, enrolment, lease action or service change is part of
+collection. No local probe was run to prepare this proposal.
+
+### 10.3 Consumers and placement
+
+The implementation path is the daemon-core typed parser and wire, the bounded daemon
+reader, then the hub inventory validation and store. CAP-030 owns the read surface:
+any schema addition needs its own CON-001 approval, followed by `anima capability list`
+and `anima_capability_list` before a client surface (CMD-030). The K8 ruling alone does not
+approve a K1 change; Section 10.4 records its separate acceptance. TH133 owns that read surface alongside its lease
+contracts. Its explicit read deliverable is an optional typed mobile snapshot
+on existing `DeviceCapabilities`: the four probe states and bounded result fields above,
+plus hub receipt time. Extend the existing capability query, `anima capability list`
+and `anima_capability_list`; no new root operation or selector is required. TH135 cannot
+claim a complete production consumer until this K1 amendment and those callers exist.
+
+Placement can use an available installed Apple runtime identifier/version and an
+installed device-type identifier as candidate facts. It cannot infer that every
+runtime supports every type: compatibility and execution capability are separate
+checks owned by the device preparation work. For Android, an installed
+`system-images;<platform>;<tag>;<abi>` package identifies a candidate image; the platform,
+tag and ABI must match the request and the host's supported execution path. An
+installed SDK platform alone is not an installed emulator image. An emulator version
+alone does not prove hardware acceleration or a successful boot. Missing, unsupported
+or failed probes supply no positive eligibility evidence. Existing online, capacity,
+permission and K10 capability checks remain necessary; this proposal adds no lease,
+queue, freshness threshold or download policy.
+
+This is last reported installed inventory, not verified-current readiness or a catalogue of models or images that could
+be downloaded. Receipt time is not observation time: buffering and retries may delay
+a snapshot. No numerical freshness policy is added here. An unavailable installed Apple runtime remains visible with
+`available: false` and is not positive placement evidence. The device-type list is
+a vendor type catalogue shipped with the installed tools, not proof that a compatible
+runtime is installed. No consumer may label either list as devices ready to lease.
+
+Only the fields above leave the machine. No filesystem paths, UDIDs, serial numbers,
+AVD names, running-device state, personal simulator names, sessions, accounts, licences,
+tokens, raw stdout or stderr are retained or logged (LOG-007). Unrecognised source
+fields are discarded. Tests use synthetic or sanitised recorded outputs and prove
+missing tools, empty success, unavailable runtime, failure replacement, bounds and
+old/new peer compatibility. Real-platform checks remain human checks; fixtures do
+not prove a local SDK installation, offline tool behaviour or device readiness.
+
+### 10.4 Accepted K1 read surface (implementation awaits review)
+
+**R-NEW-mobileinventoryread (programme orchestrator, 2026-11-24; CON-001).**
+Accept the additive K1 read contract reviewed at
+`2e49e0a8d0568a2a5b0b01ed3d2dc3bd59b448a7`, after independent re-review closed the
+older-hub compatibility finding with no remaining actionable contract findings.
+This ruling implements the existing TH135/THR-172 inventory scope through TH133's
+read-surface ownership. It adds no lease, provisioning, download, wipe, authority or
+freshness policy. The shared baseline changes when this branch lands in `dev`.
+Implementation may proceed in hub API, CLI and MCP order; the schema and callers
+are not implemented by this documentation ruling. Implementation review must verify
+all GraphQL errors before the existing error reader selects its first error, so mixed
+failures cannot trigger the compatibility retry.
+
+The following additive SDL belongs in `contracts/schema.graphql` under TH133.
+
+```graphql
+extend type DeviceCapabilities {
+  mobileTools: MobileTools
+}
+type MobileTools {
+  receivedAt: DateTime!
+  apple: AppleMobileTools!
+  android: AndroidMobileTools!
+}
+type AppleMobileTools {
+  simulatorRuntimes: SimulatorRuntimeInventory!
+  deviceTypes: SimulatorDeviceTypeInventory!
+}
+type AndroidMobileTools {
+  sdkPackages: AndroidSdkInventory!
+  emulator: AndroidEmulatorInventory!
+}
+enum MobileInventoryState {
+  READ
+  MISSING
+  UNSUPPORTED
+  TIMED_OUT
+  EXITED
+  INVALID_OUTPUT
+  TOO_LARGE
+  UNKNOWN
+}
+type SimulatorRuntimeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorRuntime!]
+}
+type SimulatorRuntime {
+  identifier: String!
+  version: String!
+  available: Boolean!
+}
+type SimulatorDeviceTypeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorDeviceType!]
+}
+type SimulatorDeviceType {
+  identifier: String!
+}
+type AndroidSdkInventory {
+  state: MobileInventoryState!
+  entries: [AndroidSdkPackage!]
+}
+type AndroidSdkPackage {
+  path: String!
+  revision: String!
+}
+type AndroidEmulatorInventory {
+  state: MobileInventoryState!
+  version: String
+}
+```
+
+`mobileTools` is null when no mobile snapshot is stored. `receivedAt` is the hub's
+receipt time of that snapshot, not a device observation time. It must not use the
+batch's metric time. A `READ` list has non-null `entries`, including `[]` for an empty
+success; every other state has null `entries`. The same rule applies to the emulator's
+`version`. Unknown wire states become `UNKNOWN`. Bounds, order and meaning are exactly
+Section 10.1; this proposal adds no model names, identifiers of instances or raw text.
+
+The existing `capabilities(tool: String, buildTarget: String)` query selects the new
+field and every nested field above. Its arguments, authorization and filters do not
+change. `anima capability list --json` includes `mobileTools` as returned by that query.
+The table adds a `MOBILE TOOLS` column: the four named states, successful list counts
+and the emulator version, followed by the receipt time. It says "last reported";
+it never says "ready" or equates `READ` with permission to run device work.
+`anima_capability_list` keeps its existing inputs and `{ devices, count }` response;
+each device includes the same typed `mobileTools` value, without stringifying it or
+adding a new operation. Failure states are fixed codes, with no speculative install
+or repair command. The existing Xcode tool entry is unchanged.
+
+Old queries keep their current result. CLI and MCP must retain capability listing on
+older hubs. Their shared fetch path uses two fixed selections: the new complete selection
+and the existing legacy selection with no `mobileTools`. Negotiate support by first trying
+the new read query. Only a response consisting entirely of uncoded GraphQL validation
+errors that identify the unknown field `mobileTools` on `DeviceCapabilities`, with no
+returned data, permits one retry using the legacy selection. Match the field and type
+exactly, not a generic unknown-field error. Explicit authorization/error codes, transport
+failures, malformed responses and unrelated or mixed GraphQL errors remain failures;
+they never trigger fallback. A failed legacy read remains an error too. Do not cache this
+result across hubs, account changes or later independent calls; a later call can discover
+an upgraded hub. Neither query changes authorization, filters or paging behavior.
+
+On the legacy path, normalize each device to `mobileTools: null` in CLI JSON and MCP,
+while preserving every other existing field and the existing response envelope. The
+human table says "Not reported" for mobile tools; it must not say missing, unsupported,
+empty, or ready. This means the hub cannot report the snapshot, not that the device lacks
+SDKs. New-query null has the same output. Regression tests must cover exact unsupported
+field fallback, new-hub populated/null snapshots, unchanged filters, and no fallback for
+auth, transport, unrelated or mixed failures. No upgrade requirement or broad retry is
+introduced.

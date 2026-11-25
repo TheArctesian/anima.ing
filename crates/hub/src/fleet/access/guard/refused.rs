@@ -27,13 +27,15 @@
 /// Making an application public on the internet, checking its proof and removing it is for a
 /// person with a second factor (HOST-046, SF-232, task H21).
 /// What a daemon waits for is reported by the signed-in desktop app of its computer: login or
-/// browser token only (R-364).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 65] = [
+/// browser token only (R-364). The token of the command line comes only from the app's own
+/// login token, never from an API key (R-383).
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 66] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
     "signInBrowser",
     "logout",
+    "issueCommandLineToken",
     "startSession",
     "openFiles",
     "setSshCredential",

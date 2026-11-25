@@ -1191,11 +1191,13 @@ jobs:
             cp windows-cli/anima-windows-x86_64.zip out/
             files="$files anima-windows-x86_64.zip"
           fi
-          tar -xzf macos/Anima.app.tar.gz -C work/mac Anima.ing.app/Contents/MacOS/anima
+          tar -xzf macos/Anima.app.tar.gz -C work/mac Anima.ing.app/Contents/MacOS/anima Anima.ing.app/Contents/MacOS/anima-link Anima.ing.app/Contents/MacOS/anima-daemon
           mac=work/mac/Anima.ing.app/Contents/MacOS
           file "$mac/anima" | grep -q 'Mach-O universal binary with 2 architectures'
           chmod +x "linux/Anima_${VERSION}_amd64.AppImage"
-          (cd work/linux && "../../linux/Anima_${VERSION}_amd64.AppImage" --appimage-extract usr/bin/anima > /dev/null)
+          for program in anima anima-link anima-daemon; do
+            (cd work/linux && "../../linux/Anima_${VERSION}_amd64.AppImage" --appimage-extract "usr/bin/$program" > /dev/null)
+          done
           linux=work/linux/squashfs-root/usr/bin
           # The Linux program must start with no file of the AppImage beside it.
           ldd "$linux/anima"
@@ -1208,7 +1210,7 @@ jobs:
           # shellcheck disable=SC2086 # $files is a list of plain names.
           (cd out && sha256sum $files > SHA256SUMS)
           sh deploy/bin/cli-formula "$VERSION" "$macos_sha256" "$linux_sha256" > out/anima.rb
-          jq -n --arg version "$VERSION" '{version: $version}' > out/latest.json
+          jq -n --arg version "$VERSION" '{version: $version, bootstrap: 1}' > out/latest.json
           {
             echo "macos_sha256=$macos_sha256"
             echo "linux_sha256=$linux_sha256"

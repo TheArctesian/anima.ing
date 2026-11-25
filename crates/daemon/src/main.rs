@@ -20,6 +20,7 @@ use anima_daemon::units::{self, plan::Target};
 use zeroize::Zeroizing;
 
 fn main() -> ExitCode {
+    anima_daemon::readers::mobile::dispatch();
     // The fixed modes run before any runtime or thread; each never returns.
     #[cfg(unix)]
     anima_daemon::model::modes::dispatch();
