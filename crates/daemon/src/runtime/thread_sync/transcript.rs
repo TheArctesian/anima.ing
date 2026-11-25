@@ -1,10 +1,17 @@
+mod journal;
+mod lock;
+
+use journal::Journal;
+
+use lock::journal_lock;
+
 use agent_threads::control::{Action, Change, Outcome, Update};
 use agent_threads::drive::DriveEvent;
 use daemon_core::wire::{
     MAX_THREAD_ENTRIES, MAX_THREAD_ENTRY, ThreadEntry, ThreadSummary, ThreadUpload,
     ThreadUploadReceipt,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -24,15 +31,6 @@ const PAGE: usize = 64;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Settings {
     share_transcripts: bool,
-}
-
-#[derive(Default, Deserialize, Serialize)]
-struct Journal {
-    observed: u64,
-    accepted: i64,
-    pending: Vec<ThreadEntry>,
-    #[serde(default)]
-    confirmed: Option<ThreadUploadReceipt>,
 }
 
 pub(super) async fn publish(
@@ -106,41 +104,6 @@ pub(super) async fn send_thread(
     journal.confirmed
 }
 
-impl Journal {
-    async fn refresh(&mut self, home: &Home, runner: Uuid, policy: &UsageSettings) -> Option<()> {
-        if self.pending.len() < MAX_PENDING {
-            let updates = earlier(runner, self.observed).await;
-            authorized(home, policy).then_some(())?;
-            self.record(updates);
-        }
-        authorized(home, policy).then_some(())
-    }
-
-    fn note_receipt(&mut self, receipt: ThreadUploadReceipt, through: i64) -> Option<()> {
-        if receipt.id.is_nil() {
-            return None;
-        }
-        self.accepted = self.accepted.max(receipt.last_sequence);
-        self.pending.retain(|entry| entry.sequence > self.accepted);
-        if receipt.last_sequence >= through {
-            self.confirmed = Some(receipt);
-        }
-        Some(())
-    }
-}
-
-fn journal_lock(home: &Home) -> Option<std::fs::File> {
-    use rustix::fs::{FlockOperation, Mode, OFlags, flock, open};
-    let fd = open(
-        home.dir().join("thread-sync.lock"),
-        OFlags::CREATE | OFlags::WRONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
-        Mode::RUSR | Mode::WUSR,
-    )
-    .ok()?;
-    flock(&fd, FlockOperation::NonBlockingLockExclusive).ok()?;
-    Some(std::fs::File::from(fd))
-}
-
 async fn earlier(thread: Uuid, observed: u64) -> Vec<Update> {
     let env = |name: &str| std::env::var(name).ok();
     let mut before = u64::MAX;
@@ -171,22 +134,6 @@ async fn earlier(thread: Uuid, observed: u64) -> Vec<Update> {
         .flatten()
         .filter(|update| update.seq > observed)
         .collect()
-}
-
-impl Journal {
-    fn record(&mut self, updates: Vec<Update>) {
-        for update in updates {
-            if self.pending.len() == MAX_PENDING {
-                break;
-            }
-            self.observed = self.observed.max(update.seq);
-            let Some(content) = content(update.change) else {
-                continue;
-            };
-            let sequence = self.accepted + i64::try_from(self.pending.len()).unwrap_or(0) + 1;
-            self.pending.push(ThreadEntry { sequence, content });
-        }
-    }
 }
 
 fn content(change: Change) -> Option<Value> {

@@ -174,6 +174,11 @@ impl Runner {
                 {
                     self.remote_send(ToHolder::Recover { request }).await;
                 }
+                Progress::Reserved
+                    if self.holder.fits && !self.holder.older && !self.remote.busy() =>
+                {
+                    self.remote_reserved(request).await;
+                }
                 Progress::Closed(_) => self.remote_evidence(request),
                 _ => {}
             }

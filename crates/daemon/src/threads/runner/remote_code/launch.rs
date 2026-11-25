@@ -58,7 +58,7 @@ impl Runner {
         }
     }
 
-    async fn remote_reserved(&mut self, request: DispatchRequest) {
+    pub(super) async fn remote_reserved(&mut self, request: DispatchRequest) {
         self.remote.reserving = false;
         self.remote.active = Some(request);
         let home = self.remote_home();
@@ -108,8 +108,11 @@ impl Runner {
     ) -> Option<Start> {
         self.may_start(0).ok()?;
         let request = *saved.request();
-        if self.threads.contains_key(&request.runner) {
+        if self.remote.live.contains_key(&request.runner) {
             return None;
+        }
+        if self.threads.remove(&request.runner).is_some() {
+            self.rights_now();
         }
         let parameters = saved.parameters();
         let path = login::find(
@@ -185,7 +188,11 @@ impl Runner {
         if thread.row.state == RunState::Stopped {
             return;
         }
-        let steps = thread.begin_remote();
+        let steps = if thread.remote_ready() {
+            Vec::new()
+        } else {
+            thread.begin_remote()
+        };
         let row = thread.row.clone();
         self.publish(
             runner,

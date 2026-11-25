@@ -113,8 +113,11 @@ impl Runner {
             return store.admit(command, None);
         };
         let mut offer = thread.remote_offer(process);
+        let publishable = policy.publishable(&thread.row.folder);
         // A changed local offer gets a new revision before applying any remote action.
-        store.revise_control(request, process, &mut offer)?;
+        if publishable && store.reservation(request)?.publication_open() {
+            store.revise_control(request, process, &mut offer)?;
+        }
         let live = LiveControl {
             process,
             offer: &offer,
@@ -122,7 +125,7 @@ impl Runner {
             ceiling: policy.ceiling(),
             threads_on: policy.starts_enabled(),
             folder_permitted: policy.permitted_folder(&thread.row.folder),
-            publishable: policy.publishable(&thread.row.folder),
+            publishable,
         };
         store.admit(command, Some(&live))
     }

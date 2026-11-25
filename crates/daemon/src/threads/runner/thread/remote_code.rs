@@ -1,13 +1,27 @@
 use agent_threads::drive::{Answer as ProviderAnswer, Request as ProviderRequest, RequestKind};
 use uuid::Uuid;
 
-use super::{Driver, Thread};
+use super::{ClaudeInput, Driver, ProgramState, RunState, Step, Thread};
 use crate::remote_code::{
     command::{Action, Answer, Choice, Decision, Offer, Question, Request, Rule, Target, Value},
     launch::ProcessIdentity,
 };
 
 impl Thread {
+    /// Initialize the provider without submitting a user turn.
+    pub(in crate::threads::runner) fn begin_remote(&mut self) -> Vec<Step> {
+        self.held = true;
+        match &mut self.driver {
+            Driver::Claude(_) => {
+                self.program = Some(ProgramState::Idle);
+                self.row.state = RunState::Idle;
+                vec![Step::Write(ClaudeInput::initialize("anima-initialize"))]
+            }
+            Driver::Codex(codex) => vec![Step::Write(codex.begin())],
+            Driver::Grok(_) => Vec::new(),
+        }
+    }
+
     pub(in crate::threads::runner) fn remote_ready(&self) -> bool {
         self.can_take_a_prompt().is_ok()
             && match &self.driver {
@@ -160,10 +174,14 @@ fn request(id: Uuid, source: &ProviderRequest) -> Option<Request> {
                     }),
             );
         }
-        let details = source
-            .diff
-            .clone()
-            .unwrap_or_else(|| source.subject.clone());
+        let details = match source.kind {
+            RequestKind::Command => source.subject.clone(),
+            RequestKind::FileChange => source.diff.clone()?,
+            RequestKind::Tool if !source.input.is_null() => {
+                serde_json::to_string(&source.input).ok()?
+            }
+            RequestKind::Tool | RequestKind::Question => return None,
+        };
         Request::Approval {
             id,
             subject,

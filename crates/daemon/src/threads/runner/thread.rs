@@ -192,20 +192,6 @@ impl Thread {
         steps
     }
 
-    /// Initialize the provider without submitting a user turn.
-    pub(super) fn begin_remote(&mut self) -> Vec<Step> {
-        self.held = true;
-        match &mut self.driver {
-            Driver::Claude(_) => {
-                self.program = Some(ProgramState::Idle);
-                self.row.state = RunState::Idle;
-                vec![Step::Write(ClaudeInput::initialize("anima-initialize"))]
-            }
-            Driver::Codex(codex) => vec![Step::Write(codex.begin())],
-            Driver::Grok(_) => Vec::new(),
-        }
-    }
-
     /// The lines of a prompt of the person to a running thread. The prompt is shown as sent
     /// only when the holder took them ([`Self::sent`]); a Codex prompt before its thread has an
     /// ID waits in the thread and has no line yet.

@@ -10,6 +10,7 @@
 //! A new connection takes the place of the one before it, so that a daemon that starts again
 //! is never locked out by the one that died.
 
+mod connection;
 mod remote_code;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -17,7 +18,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader};
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 
@@ -25,7 +26,7 @@ use super::outbox::{LIMIT, Outbox};
 use super::program::Input;
 use super::record::{self, Record};
 use super::tree;
-use super::wire::{self, Action, Command, Event, Exit, Held, MAX_FRAME, Outcome, ThreadKey};
+use super::wire::{self, Event, Exit, Held, Outcome, ThreadKey};
 
 mod git_reads;
 use git_reads::GitReads;
@@ -347,7 +348,7 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
             }
         }
     });
-    let quitting = serve_commands(&shared, reading, (me, &turn)).await;
+    let quitting = connection::serve_commands(&shared, reading, (me, &turn)).await;
     if let Ok(mut state) = shared.lock()
         && state.serves(me)
     {
@@ -360,44 +361,4 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
     } else {
         writer.abort();
     }
-}
-
-async fn serve_commands(
-    shared: &Arc<Mutex<Shared>>,
-    reading: tokio::net::unix::OwnedReadHalf,
-    (me, turn): (u64, &Arc<tokio::sync::Mutex<()>>),
-) -> bool {
-    let mut reader = BufReader::new(reading).take(u64::MAX);
-    let mut line = Vec::new();
-    let mut quitting = false;
-    let mut remote = None;
-    loop {
-        line.clear();
-        reader.set_limit(u64::try_from(MAX_FRAME).unwrap_or(u64::MAX) + 1);
-        match reader.read_until(b'\n', &mut line).await {
-            Ok(0) | Err(_) => break,
-            Ok(_) => {}
-        }
-        let Some(command) = wire::parse::<Command>(line.trim_ascii_end()) else {
-            break;
-        };
-        let ends = matches!(command.action, Action::Quit);
-        let one = Arc::clone(turn).lock_owned().await;
-        if !shared.lock().is_ok_and(|state| state.serves(me)) {
-            break;
-        }
-        if let Action::RemoteCode { frame } = command.action {
-            if let Ok(frame) = serde_json::from_str(&frame) {
-                remote_code::run(shared, (&mut remote, me), frame).await;
-            }
-            continue;
-        }
-        let outcome = super::commands::run(shared, command, one).await;
-        if ends && outcome == Outcome::Ok {
-            // A command after the Quit would start a program in a holder that ends.
-            quitting = true;
-            break;
-        }
-    }
-    quitting
 }
