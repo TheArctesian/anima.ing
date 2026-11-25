@@ -1,8 +1,10 @@
 //! I/O only (CQ-032): writes take the caller's connection, so a change commits with its audit entry or event.
 
+pub(super) mod admin;
 mod logs;
 mod machines;
 mod placements;
+pub(super) mod work_switch;
 
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{
@@ -11,9 +13,7 @@ use daemon_core::wire::{
 use sqlx::PgConnection;
 
 pub(super) use logs::{append_log, log_of};
-pub(super) use machines::{
-    add_fault, machine_locked, machines, save_machine, set_device_work, set_off_until,
-};
+pub(super) use machines::{add_fault, machine_locked, machines, save_machine, set_off_until};
 pub(super) use placements::{
     decisions_of, offer_of, others_asking, pin, pins, save_decisions, save_said, set_excluded,
     unpin,
@@ -176,12 +176,17 @@ pub(super) async fn job_locked(conn: &mut PgConnection, id: JobId) -> Result<Opt
 }
 
 /// A job that a different transaction has locked is skipped, so two claims never take one job (BLD-004).
-pub(super) async fn oldest_queued(conn: &mut PgConnection) -> Result<Vec<Job>, Error> {
+pub(super) async fn oldest_queued(
+    conn: &mut PgConnection,
+    device: DeviceId,
+) -> Result<Vec<Job>, Error> {
     let condition = format!(
-        "WHERE state = 'queued' AND $1::timestamptz IS NULL AND $2::uuid IS NULL \
+        "WHERE state = 'queued' AND $1::timestamptz IS NULL \
+           AND (cardinality(secrets) = 0 OR EXISTS (SELECT FROM jobs.project_devices allowed \
+                WHERE allowed.project_id = jobs.jobs.project_id AND allowed.device_id = $2)) \
          ORDER BY created_at, id LIMIT {CLAIM_LOOKS_AT} FOR UPDATE SKIP LOCKED"
     );
-    jobs_where(conn, &condition, None, None).await
+    jobs_where(conn, &condition, None, Some(device)).await
 }
 
 pub(super) async fn held_by(conn: &mut PgConnection, device: DeviceId) -> Result<Vec<Job>, Error> {

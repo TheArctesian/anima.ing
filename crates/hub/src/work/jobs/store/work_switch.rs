@@ -3,7 +3,8 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;
 
-use super::{Error, placement, store};
+use super::super::{Error, placement};
+use super::machines;
 use crate::ids::DeviceId;
 
 /// Checks both `WORK_OFF` causes and holds the machine's work state until commit.
@@ -16,7 +17,7 @@ pub async fn blocks_dispatch(
     device: DeviceId,
     at: DateTime<Utc>,
 ) -> Result<bool, Error> {
-    Ok(store::machine_locked(conn, device)
+    Ok(machines::machine_locked(conn, device)
         .await?
         .is_some_and(|machine| placement::is_off(&machine, at)))
 }
@@ -32,5 +33,5 @@ pub async fn set_device_work(
     on: bool,
     at: DateTime<Utc>,
 ) -> Result<(), Error> {
-    store::set_device_work(conn, device, on, at).await
+    machines::set_device_work(conn, device, on, at).await
 }

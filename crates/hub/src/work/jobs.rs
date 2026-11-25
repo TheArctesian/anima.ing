@@ -2,6 +2,7 @@
 //! The hub never names a command: a job has a type of a fixed list and that type's object.
 
 mod claiming;
+pub mod graphql;
 mod lifecycle;
 mod model;
 mod pinning;
@@ -13,7 +14,6 @@ mod store;
 #[cfg(test)]
 mod tests;
 mod trail;
-mod work_switch;
 
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{Reported, StopReason, WorkJob, WorkType};
@@ -26,7 +26,7 @@ pub use pinning::{exclude, pin_project, placement_reason, unpin_project};
 pub use placement::{Unfit, Verdict};
 pub use reasons::Decision;
 pub use reporting::{end_lost, report};
-pub use work_switch::{blocks_dispatch, set_device_work};
+pub use store::work_switch::{blocks_dispatch, set_device_work};
 
 use crate::{
     fleet::events::{self, Bus, ClientAddr, Operator},

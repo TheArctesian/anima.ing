@@ -94,7 +94,7 @@ async fn place(
     (offer, name): (&Offer, &str),
     (client, now, thread_at): (ClientAddr, DateTime<Utc>, Option<DateTime<Utc>>),
 ) -> Result<Claimed, Error> {
-    let queued = store::oldest_queued(conn).await?;
+    let queued = store::oldest_queued(conn, offer.device).await?;
     let pins = store::pins(conn).await?;
     let asking = (now - placement::FRESH, now);
     let others = store::others_asking(conn, offer.device, asking).await?;

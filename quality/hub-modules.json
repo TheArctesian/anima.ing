@@ -172,7 +172,9 @@
       "events"
     ],
     "jobs": [
-      "events"
+      "devices",
+      "events",
+      "access"
     ],
     "rollout": [
       "builds"

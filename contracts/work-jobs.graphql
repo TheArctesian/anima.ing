@@ -1,5 +1,5 @@
 # W3 part 2, proposed exact K1 text for the operator's inspection under R-270.
-# This amendment is separate from the served K1 until its inspection and implementation.
+# This SDL is served on the implementation branch. Operator inspection remains open before merge.
 # OD-W53's deviceId on enqueue belongs to the B4 and A2 mutations that create work.
 
 extend type Query {
@@ -14,7 +14,7 @@ extend type Mutation {
   stopJob(id: ID!): Boolean!
   "Set the hub work switch for one device. The local switch and cooldown keep their values."
   setDeviceWork(deviceId: ID!, on: Boolean!): Boolean!
-  "Replace the project's complete list of devices that may receive work that needs its secrets."
+  "Person login only. Replace the project's complete list of at most 100 devices that may receive work that needs its secrets."
   setProjectWorkDevices(projectId: ID!, deviceIds: [ID!]!): Boolean!
   "Pin the project's unnamed work to one device. A null device ID removes the pin."
   setProjectWorkMachine(projectId: ID!, deviceId: ID): Boolean!

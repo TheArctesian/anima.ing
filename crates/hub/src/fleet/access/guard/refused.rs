@@ -29,7 +29,7 @@
 /// What a daemon waits for is reported by the signed-in desktop app of its computer: login or
 /// browser token only (R-364). The token of the command line comes only from the app's own
 /// login token, never from an API key (R-383).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 74] = [
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 79] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -107,4 +107,9 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 74] = [
     "sendAgentThreadPrompt",
     "answerAgentThreadRequest",
     "stopAgentThread",
+    "stopJob",
+    "setDeviceWork",
+    "setProjectWorkDevices",
+    "setProjectWorkMachine",
+    "setDeviceWorkExcluded",
 ];

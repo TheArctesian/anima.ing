@@ -25,6 +25,7 @@ pub mod hub;
 pub mod input;
 pub mod invocation;
 pub mod issues;
+pub mod jobs;
 pub mod keys;
 pub mod link;
 pub mod locations;

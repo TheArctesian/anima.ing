@@ -6,6 +6,7 @@ pub mod checks;
 pub mod devices;
 pub mod events;
 pub mod extensions;
+pub mod jobs;
 pub mod link;
 pub mod maintenance;
 pub use devices::models;
@@ -46,6 +47,7 @@ pub enum Tool {
     Extensions(extensions::ExtensionTool),
     Sources(sources::SourceTool),
     Projects(projects::ProjectTool),
+    Jobs(jobs::JobTool),
     Repositories(repositories::RepositoryTool),
     Timeline(shared_records::timeline::TimelineTool),
     Records(shared_records::links::RecordTool),
@@ -77,6 +79,7 @@ impl Tool {
         tools.extend(extensions::ExtensionTool::ALL.map(Self::Extensions));
         tools.extend(sources::SourceTool::ALL.map(Self::Sources));
         tools.extend(projects::ProjectTool::ALL.map(Self::Projects));
+        tools.extend(jobs::JobTool::ALL.map(Self::Jobs));
         tools.extend(repositories::RepositoryTool::ALL.map(Self::Repositories));
         tools.extend(shared_records::timeline::TimelineTool::ALL.map(Self::Timeline));
         tools.extend(shared_records::links::RecordTool::ALL.map(Self::Records));
@@ -106,7 +109,7 @@ impl Tool {
             Self::Link(_) => ToolSet::Link,
             Self::Extensions(_) => ToolSet::Extensions,
             Self::Sources(_) => ToolSet::Sources,
-            Self::Projects(_) => ToolSet::Projects,
+            Self::Projects(_) | Self::Jobs(_) => ToolSet::Projects,
             Self::Repositories(_) => ToolSet::Repositories,
             Self::Timeline(_) => ToolSet::Timeline,
             Self::Records(_)
@@ -138,6 +141,7 @@ impl Tool {
             Self::Extensions(tool) => tool.definition(),
             Self::Sources(tool) => tool.definition(),
             Self::Projects(tool) => tool.definition(),
+            Self::Jobs(tool) => tool.definition(),
             Self::Repositories(tool) => tool.definition(),
             Self::Timeline(tool) => tool.definition(),
             Self::Records(tool) => tool.definition(),
@@ -174,6 +178,7 @@ impl Tool {
             Self::Extensions(tool) => tool.call(hub, arguments).await,
             Self::Sources(tool) => tool.call(hub, arguments).await,
             Self::Projects(tool) => tool.call(hub, arguments).await,
+            Self::Jobs(tool) => tool.call(hub, arguments).await,
             Self::Repositories(tool) => tool.call(hub, arguments).await,
             Self::Timeline(tool) => tool.call(hub, arguments).await,
             Self::Records(tool) => tool.call(hub, arguments).await,

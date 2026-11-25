@@ -25,7 +25,7 @@ use crate::{
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
     },
-    work::{catalogue, containers, projects, routes},
+    work::{catalogue, containers, jobs, projects, routes},
 };
 
 #[derive(MergedObject, Default)]
@@ -53,6 +53,7 @@ pub struct Query(
     notifications::graphql::Query,
     places::graphql::Query,
     projects::graphql::Query,
+    jobs::graphql::Query,
     routes::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
@@ -90,6 +91,7 @@ pub struct Mutation(
     notifications::graphql::Mutation,
     places::graphql::Mutation,
     projects::graphql::Mutation,
+    jobs::graphql::Mutation,
     routes::graphql::Mutation,
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
