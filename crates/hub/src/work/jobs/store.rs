@@ -183,6 +183,7 @@ pub(super) async fn oldest_queued(
     let condition = format!(
         "WHERE state = 'queued' AND $1::timestamptz IS NULL \
            AND (cardinality(secrets) = 0 OR EXISTS (SELECT FROM jobs.project_devices allowed \
+                JOIN projects.projects project ON project.id = allowed.project_id \
                 WHERE allowed.project_id = jobs.jobs.project_id AND allowed.device_id = $2)) \
          ORDER BY created_at, id LIMIT {CLAIM_LOOKS_AT} FOR UPDATE SKIP LOCKED"
     );
