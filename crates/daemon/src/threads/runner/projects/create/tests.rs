@@ -6,11 +6,11 @@ async fn creates_a_repository_with_no_templates_and_refuses_to_reinitialize_it()
     let daemon = home.path().join("daemon");
     std::fs::create_dir(&daemon).unwrap();
     let requested = home.path().join("new project");
-    let real = project(requested.clone(), daemon.clone(), Preparation::Initialize)
+    let prepared = project(requested.clone(), daemon.clone(), Preparation::Initialize)
         .await
-        .unwrap()
-        .folder()
         .unwrap();
+    assert!(!requested.exists());
+    let real = prepared.publish().unwrap().folder().unwrap();
     assert_eq!(real, std::fs::canonicalize(&requested).unwrap());
     assert_eq!(
         std::fs::read_to_string(real.join(".git/HEAD")).unwrap(),
@@ -103,6 +103,8 @@ async fn a_replaced_project_is_not_registered_and_replacement_files_stay_unchang
     std::fs::create_dir(&daemon).unwrap();
     let project = project(home.path().join("new"), daemon, Preparation::Initialize)
         .await
+        .unwrap()
+        .publish()
         .unwrap();
     let path = project.folder().unwrap();
     std::fs::rename(&path, home.path().join("kept")).unwrap();

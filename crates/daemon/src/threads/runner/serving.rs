@@ -11,6 +11,7 @@ impl Runner {
     ) -> Result<(), RunnerError> {
         let listener = socket::bind(&self.dir)?;
         self.serve(listener, stop).await;
+        self.project_creations.shutdown().await;
         if let Err(error) = std::fs::remove_file(self.dir.join(agent_threads::control::SOCKET)) {
             tracing::warn!(%error, "the socket of the runner was not removed");
         }
@@ -27,17 +28,12 @@ impl Runner {
         let mut asked = self.asks.receiver.take().expect("one serve loop");
         let mut listed = self.model_asks.receiver.take().expect("one serve loop");
         let mut made = self.asks.made.take().expect("one serve loop");
-        let mut created = self
-            .project_creations
-            .receiver
-            .take()
-            .expect("one serve loop");
         loop {
             tokio::select! {
                 event = self.link.events.recv() => self.heard_holder(event).await,
                 Some(call) = incoming.recv() => self.call(call).await,
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
-                result = completed::next(&mut listed, &mut created) => self.completed(result),
+                result = completed::next(&mut listed, &mut self.project_creations) => self.completed(result),
                 Some(worktree) = made.recv() => self.worktree_made(worktree).await,
                 _ = look.tick() => self.look_around().await,
                 () = &mut stop => break,

@@ -65,10 +65,10 @@ impl Git {
         {
             return Err(GitError::Replaced);
         }
-        let mut child = self.command(&run).spawn().map_err(GitError::Start)?;
-        let group = child.id();
-        let input = child.stdin.take().zip(run.input);
-        let (stdout, diagnostic) = (child.stdout.take(), child.stderr.take());
+        let mut group = ProcessGroup(self.command(&run).spawn().map_err(GitError::Start)?);
+        let pid = group.0.id();
+        let input = group.0.stdin.take().zip(run.input);
+        let (stdout, diagnostic) = (group.0.stdout.take(), group.0.stderr.take());
         let collect = async {
             let write = async {
                 if let Some((mut pipe, bytes)) = input {
@@ -77,24 +77,22 @@ impl Git {
                 }
             };
             let ((), out) = tokio::join!(write, Capture::Diagnostic.read(stdout));
-            let status = child.wait().await.map_err(GitError::Start)?;
-            Ok((status.code(), out?))
+            out?.ok_or(GitError::TooLarge)
         };
-        let work = async { tokio::try_join!(collect, stderr.read(diagnostic)) };
-        let done = tokio::time::timeout(run.time, work).await;
-        let whole = matches!(&done, Ok(Ok(((_, Some(_)), _))));
-        if !whole {
-            // A hook or a helper that `git` started ends with it, not only `git` itself.
-            end_group(group);
-        }
-        let ((code, out), err) = done.map_err(|_| GitError::TimedOut(run.time.as_secs()))??;
-        let out = out.ok_or(GitError::TooLarge)?;
-        Ok(Finished {
-            pid: group,
-            code,
-            out,
-            err,
-        })
+        let work = async {
+            let (out, err) = tokio::try_join!(collect, stderr.read(diagnostic))?;
+            // Keep the leader unreaped while a descendant can still hold the pipes.
+            let status = group.0.wait().await.map_err(GitError::Start)?;
+            Ok(Finished {
+                pid,
+                code: status.code(),
+                out,
+                err,
+            })
+        };
+        tokio::time::timeout(run.time, work)
+            .await
+            .map_err(|_| GitError::TimedOut(run.time.as_secs()))?
     }
 }
 
@@ -115,21 +113,23 @@ impl Finished {
     }
 }
 
-/// Ends each process of the group of a run that did not end well by itself.
-#[cfg(unix)]
-fn end_group(group: Option<u32>) {
-    let pid = group
-        .and_then(|pid| i32::try_from(pid).ok())
-        .and_then(rustix::process::Pid::from_raw);
-    if let Some(pid) = pid {
-        // A group that ended already has nothing to end.
-        let _ = rustix::process::kill_process_group(pid, rustix::process::Signal::KILL);
+struct ProcessGroup(tokio::process::Child);
+
+impl Drop for ProcessGroup {
+    fn drop(&mut self) {
+        // Child::id returns None after wait reaps the leader. Otherwise the child still
+        // owns the PID. Signal the group before dropping the child and handing it to Tokio.
+        #[cfg(unix)]
+        if let Some(pid) = self
+            .0
+            .id()
+            .and_then(|pid| i32::try_from(pid).ok())
+            .and_then(rustix::process::Pid::from_raw)
+        {
+            let _ = rustix::process::kill_process_group(pid, rustix::process::Signal::KILL);
+        }
     }
 }
-
-/// On Windows `kill_on_drop` ends `git`; a process group is a thing of Unix.
-#[cfg(not(unix))]
-const fn end_group(_group: Option<u32>) {}
 
 #[derive(Clone, Copy)]
 enum Capture {

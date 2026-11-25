@@ -7,7 +7,20 @@ use agent_threads::control::Refusal;
 use super::refused;
 
 mod place;
-pub(super) use place::Project;
+
+const REPOSITORY: &str = "repository";
+
+pub(super) struct Prepared {
+    destination: place::Destination,
+    staging: tempfile::TempDir,
+}
+
+impl Prepared {
+    pub(super) fn publish(self) -> Result<place::Project, Refusal> {
+        self.destination
+            .publish(&self.staging.path().join(REPOSITORY))
+    }
+}
 
 pub(super) enum Preparation {
     Initialize,
@@ -18,7 +31,7 @@ pub(super) async fn project(
     folder: PathBuf,
     daemon: PathBuf,
     preparation: Preparation,
-) -> Result<Project, Refusal> {
+) -> Result<Prepared, Refusal> {
     let (destination, staging) = tokio::task::spawn_blocking(move || {
         let destination = place::Destination::open(destination(&folder, &daemon)?)?;
         // Git only sees a private staging directory inside the daemon boundary. The requested
@@ -33,7 +46,7 @@ pub(super) async fn project(
     })
     .await
     .map_err(|_| refused("The project folder could not be checked."))??;
-    let staged = staging.path().join("repository");
+    let staged = staging.path().join(REPOSITORY);
     tokio::fs::create_dir(&staged)
         .await
         .map_err(|_| refused("The new project could not be prepared."))?;
@@ -41,7 +54,10 @@ pub(super) async fn project(
         Preparation::Initialize => initialize(&staged).await?,
         Preparation::Clone(source) => source.checkout(&staged).await?,
     }
-    destination.publish(&staged)
+    Ok(Prepared {
+        destination,
+        staging,
+    })
 }
 
 fn destination(folder: &std::path::Path, daemon: &std::path::Path) -> Result<PathBuf, Refusal> {

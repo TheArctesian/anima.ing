@@ -1,7 +1,8 @@
 //! Preparation of local Git projects for the person (TH60A, TH60B).
 
 use agent_threads::control::{Action, Outcome, ProjectChange, Refusal, project_changed};
-use tokio::sync::mpsc;
+use tokio::sync::SemaphorePermit;
+use tokio::task::JoinSet;
 
 use super::Runner;
 use super::socket::Caller;
@@ -11,28 +12,17 @@ mod create;
 
 pub(super) struct Created {
     back: Caller,
-    result: Result<(create::Project, Option<String>), Refusal>,
+    result: Result<create::Prepared, Refusal>,
+    name: Option<String>,
+    _place: SemaphorePermit<'static>,
 }
 
-pub(super) struct Creations {
-    sender: mpsc::Sender<Created>,
-    pub receiver: Option<mpsc::Receiver<Created>>,
-}
-
-impl Default for Creations {
-    fn default() -> Self {
-        let (sender, receiver) = mpsc::channel(3);
-        Self {
-            sender,
-            receiver: Some(receiver),
-        }
-    }
-}
+pub(super) type Creations = JoinSet<Created>;
 
 static CREATING: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(3);
 
 impl Runner {
-    pub(super) fn prepare_project(&self, action: Action, back: Caller) {
+    pub(super) fn prepare_project(&mut self, action: Action, back: Caller) {
         let (folder, name, preparation) = match action {
             Action::CreateProject { folder, name } => {
                 (folder, name, create::Preparation::Initialize)
@@ -64,21 +54,25 @@ impl Runner {
             return;
         };
         let daemon = self.dir.parent().unwrap_or(&self.dir).to_owned();
-        let sender = self.project_creations.sender.clone();
-        tokio::spawn(async move {
-            let _place = place;
-            let result = create::project(folder, daemon, preparation)
-                .await
-                .map(|project| (project, name));
-            let _ = sender.send(Created { back, result }).await;
+        self.project_creations.spawn(async move {
+            let result = create::project(folder, daemon, preparation).await;
+            Created {
+                back,
+                result,
+                name,
+                _place: place,
+            }
         });
     }
 
     pub(super) fn project_created(&mut self, created: Created) {
-        let result = created.result.and_then(|(project, name)| {
+        let result = created.result.and_then(|prepared| {
+            // Only the runner commits a prepared result. A worker cancelled or discarded
+            // at shutdown owns private staging and cannot publish a project on its own.
+            let project = prepared.publish()?;
             let change = ProjectChange::Add {
                 folder: project.folder()?,
-                name,
+                name: created.name,
             };
             let projects = project_changed(self.projects.clone(), &change, change.folder().clone())
                 .map_err(|_| {
