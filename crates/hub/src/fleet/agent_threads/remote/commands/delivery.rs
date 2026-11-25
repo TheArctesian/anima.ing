@@ -264,7 +264,7 @@ pub(in crate::fleet) async fn result(
         actor,
         (
             crate::fleet::events::AuditAction::Update,
-            serde_json::json!({"launch": launch, "command": result.id, "actor": "daemon",
+            serde_json::json!({"launch": launch, "actor": "daemon",
             "action": "command_result", "outcome": result.outcome, "cause": result.cause}),
         ),
     )

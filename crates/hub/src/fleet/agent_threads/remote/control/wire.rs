@@ -240,7 +240,7 @@ impl Question {
             && unique(values)
             && values.iter().all(|value| match value {
                 AnswerValue::Choice { id } => self.choices.iter().any(|choice| &choice.id == id),
-                AnswerValue::FreeText { .. } => self.free_text,
+                AnswerValue::FreeText { text } => self.free_text && !text.contains('\0'),
             })
     }
 }

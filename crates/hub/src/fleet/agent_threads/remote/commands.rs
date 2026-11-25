@@ -100,7 +100,7 @@ pub(in crate::fleet) async fn admit(
         let owner = Owner { account, device };
         let receipt = admit_new(&mut tx, (owner, at), (command, thread), &payload).await?;
         audit::write(&mut tx, (owner, at), actor, (crate::fleet::events::AuditAction::Create,
-            serde_json::json!({"thread": thread, "command": command, "action": payload.kind(), "outcome": "waiting"}))).await?;
+            serde_json::json!({"thread": thread, "action": payload.kind(), "outcome": "waiting"}))).await?;
         receipt
     };
     tx.commit().await?;
