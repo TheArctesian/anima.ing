@@ -25,6 +25,10 @@ pub struct Query;
 #[Object(name = "JobsQuery")]
 impl Query {
     #[graphql(guard = "Authenticated")]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "K1 declares three independent paging arguments plus context"
+    )]
     async fn jobs(
         &self,
         ctx: &Context<'_>,

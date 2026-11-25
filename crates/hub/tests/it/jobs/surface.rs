@@ -42,6 +42,7 @@ async fn r_270_allowlist_replacement_changes_secret_bearing_placement(pool: PgPo
 async fn r_270_list_cursor_and_stop_preserve_job_identity(pool: PgPool) {
     let work = Work::new(&pool).await;
     let one = work.enqueue(build()).await;
+    work.daemons.clock.advance(chrono::TimeDelta::seconds(1));
     let two = work.enqueue(build()).await;
     let page = "query($after: String) {
         jobs(first: 1, after: $after) {

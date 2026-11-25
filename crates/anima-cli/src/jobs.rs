@@ -97,15 +97,15 @@ impl JobCommand {
                     .await?
                     .job,
             ),
-            Self::Stop { id } => print(
-                invocation,
-                &hub.run::<JobStop>(job_stop::Variables { id }).await?,
-            ),
-            Self::DeviceWork { device_id, on } => print(
-                invocation,
-                &hub.run::<JobDeviceWork>(job_device_work::Variables { device_id, on })
-                    .await?,
-            ),
+            Self::Stop { id } => {
+                let result = hub.run::<JobStop>(job_stop::Variables { id }).await?;
+                print(invocation, &result)
+            }
+            Self::DeviceWork { device_id, on } => {
+                let vars = job_device_work::Variables { device_id, on };
+                let result = hub.run::<JobDeviceWork>(vars).await?;
+                print(invocation, &result)
+            }
             Self::ProjectDevices {
                 project_id,
                 device_ids,
