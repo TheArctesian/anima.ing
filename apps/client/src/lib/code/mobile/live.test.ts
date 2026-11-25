@@ -162,7 +162,8 @@ test('a summary behind the stream preserves the newer state until the summary ca
   const header = document.querySelector('header');
   expect(header?.textContent).toContain('Working');
 
-  snapshots[0] = { ...initial, summary: { ...initial.summary, state: 'needs_you' } };
+  const attention = { ...initial.summary, state: 'needs_you' };
+  snapshots[0] = { ...initial, summary: attention };
   window.dispatchEvent(new Event('online'));
   await settle();
   expect(header?.textContent).toContain('Working');
@@ -171,11 +172,11 @@ test('a summary behind the stream preserves the newer state until the summary ca
     ...initial,
     entries: [...initial.entries, liveState],
     lastSequence: '65',
-    summary: { ...initial.summary, state: 'stopped' },
+    summary: attention,
   };
   window.dispatchEvent(new Event('online'));
   await settle();
-  expect(header?.textContent).toContain('Stopped');
+  expect(header?.textContent).toContain('Needs you');
   expect(messages()).toEqual(['Shared before reconnect']);
 });
 

@@ -54,9 +54,9 @@
         refreshing = false;
         if (!active || !result.ok || result.value === null) return;
         const { summary: thread, lastSequence } = result.value;
-        const changed = thread.activityAt !== summary?.activityAt || thread.state !== summary.state;
         // A refresh can have started before the socket applied a newer state.
-        if (changed && entryState !== null && Number(lastSequence) >= Number(entryState.sequence)) entryState = null;
+        if (entryState !== null && Number(lastSequence) < Number(entryState.sequence)) return;
+        if (thread.activityAt !== summary?.activityAt || thread.state !== summary.state) entryState = null;
         summary = thread;
       });
     }
