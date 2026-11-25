@@ -155,6 +155,7 @@ pub(super) struct Launch {
     pub publication: Option<String>,
     pub withdrawn: bool,
     pub control_closed: bool,
+    pub device_gone: bool,
     pub thread_id: Option<Uuid>,
     pub retired: bool,
 }
@@ -187,6 +188,8 @@ impl Launch {
         };
         let (binding, cause, thread) = if self.withdrawn {
             ("unavailable", Some("sharing_withdrawn"), None)
+        } else if self.device_gone {
+            ("unavailable", Some("device_unavailable"), None)
         } else if self.control_closed {
             ("unavailable", Some("thread_ended"), None)
         } else if self.publication.as_deref() == Some("timed_out") {

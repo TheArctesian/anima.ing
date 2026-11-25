@@ -128,7 +128,7 @@ async fn retry(
     if !bool::from(fingerprint.as_slice().ct_eq(digest.as_slice())) {
         return Err(Error::Refused("COMMAND_CONFLICT"));
     }
-    store::lock_device(conn, device).await?;
+    store::lock_receipt_device(conn, device).await?;
     let at = store::now(conn).await?;
     store::expire_waiting(conn, device, at).await?;
     receipt(conn, account, command).await.map(Some)
@@ -262,7 +262,7 @@ pub(in crate::fleet) async fn command_receipt(
     .fetch_optional(&mut *tx)
     .await?;
     let device = device.ok_or(Error::Refused("COMMAND_UNKNOWN"))?;
-    store::lock_device(&mut tx, device).await?;
+    store::lock_receipt_device(&mut tx, device).await?;
     let at = store::now(&mut tx).await?;
     store::expire_waiting(&mut tx, device, at).await?;
     let receipt = receipt(&mut tx, account, id).await?;

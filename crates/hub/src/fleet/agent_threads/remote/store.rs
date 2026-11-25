@@ -184,6 +184,20 @@ pub(super) async fn lock_id(
     Ok(())
 }
 
+/// A receipt outlives its device. Lock an extant device to serialize with delivery and
+/// publication, but continue if it is gone or has changed its source.
+pub(super) async fn lock_receipt_device(
+    conn: &mut PgConnection,
+    device: Uuid,
+) -> Result<bool, Error> {
+    match devices::lock_metrics_source(conn, DeviceId::from(device)).await {
+        Ok(source) => Ok(source == MetricsSource::Daemon),
+        Err(devices::Error::NotFound(_)) => Ok(false),
+        Err(devices::Error::Database(error)) => Err(error.into()),
+        Err(_) => Err(Error::Refused("UNAVAILABLE")),
+    }
+}
+
 pub(super) async fn lock_existing(conn: &mut PgConnection, device: Uuid) -> Result<(), Error> {
     match devices::lock(conn, DeviceId::from(device)).await {
         Ok(()) => Ok(()),
@@ -202,7 +216,7 @@ pub(in crate::fleet) async fn clear_offers(
         .execute(&mut *conn)
         .await?;
     sqlx::query(
-        "UPDATE agent_threads.control_offers SET expires_at = clock_timestamp()
+        "UPDATE agent_threads.control_offers SET offer = NULL, expires_at = clock_timestamp()
          FROM agent_threads.launches launch
          WHERE launch.account_id = control_offers.account_id
            AND launch.launch_id = control_offers.launch_id AND launch.device_id = $1",

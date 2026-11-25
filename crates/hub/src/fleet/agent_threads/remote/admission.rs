@@ -91,9 +91,7 @@ async fn retry(
     if !bool::from(prior.fingerprint.as_slice().ct_eq(digest.as_slice())) {
         return Err(Error::Refused("LAUNCH_CONFLICT"));
     }
-    store::lock_existing(conn, owner.device).await?;
-    let at = store::now(conn).await?;
-    super::attempt::reconcile(conn, owner, request.launch, at)
+    retained_receipt(conn, owner, request.launch)
         .await
         .map(Some)
 }
@@ -150,10 +148,24 @@ pub(in crate::fleet) async fn launch_receipt(
 ) -> Result<LaunchReceipt, Error> {
     let device = store::launch_device(db, account, id).await?;
     let mut tx = db.begin().await?;
-    store::lock_device(&mut tx, device).await?;
-    let at = store::now(&mut tx).await?;
-    let receipt = super::attempt::reconcile(&mut tx, Owner { account, device }, id, at).await?;
+    let receipt = retained_receipt(&mut tx, Owner { account, device }, id).await?;
     tx.commit().await?;
+    Ok(receipt)
+}
+
+async fn retained_receipt(
+    conn: &mut PgConnection,
+    owner: Owner,
+    id: Uuid,
+) -> Result<LaunchReceipt, Error> {
+    let eligible = store::lock_receipt_device(conn, owner.device).await?;
+    let at = store::now(conn).await?;
+    let mut receipt = super::attempt::reconcile(conn, owner, id, at).await?;
+    if !eligible {
+        receipt.thread = None;
+        receipt.binding = "unavailable";
+        receipt.cause.get_or_insert("device_unavailable");
+    }
     Ok(receipt)
 }
 

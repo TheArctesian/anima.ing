@@ -50,6 +50,7 @@ create table agent_threads.launches (
     publication text check (publication in ('timely', 'timed_out')),
     withdrawn boolean not null default false,
     control_closed boolean not null default false,
+    device_gone boolean not null default false,
     thread_id uuid unique,
     retired boolean not null default false,
     primary key (account_id, launch_id),
@@ -88,7 +89,8 @@ create table agent_threads.commands (
     primary key (account_id, command_id),
     foreign key (account_id, device_id, launch_id)
         references agent_threads.launches (account_id, device_id, launch_id),
-    check ((state in ('waiting','delivered')) = (payload is not null)),
+    check (state <> 'waiting' or payload is not null),
+    check (state in ('waiting','delivered') or payload is null),
     check (state <> 'delivered' or delivered_at is not null),
     check ((state in ('recorded','refused','expired','retired')) = (closed_at is not null))
 );
@@ -102,9 +104,47 @@ create index agent_thread_command_retirement on agent_threads.commands (closed_a
 create table agent_threads.control_offers (
     account_id uuid not null,
     launch_id uuid not null,
+    device_id uuid not null references devices.devices (id) on delete cascade,
     revision bigint not null check (revision between 1 and 9007199254740991),
     offer jsonb,
+    fingerprint bytea not null check (octet_length(fingerprint) = 32),
+    key_version smallint not null references agent_threads.fingerprint_keys (version),
     expires_at timestamptz not null,
     primary key (account_id, launch_id),
-    foreign key (account_id, launch_id) references agent_threads.launches (account_id, launch_id)
+    foreign key (account_id, device_id, launch_id)
+        references agent_threads.launches (account_id, device_id, launch_id)
 );
+
+-- Receipt identity and original evidence outlive the device. Private command or
+-- control content does not. The tombstone excludes any later reuse of the ID.
+create function agent_threads.scrub_device() returns trigger
+language plpgsql set search_path = pg_catalog as $$
+begin
+    if tg_op = 'UPDATE' then
+        delete from agent_threads.start_offers where device_id = old.id;
+        update agent_threads.control_offers set offer = null, expires_at = clock_timestamp()
+        where device_id = old.id;
+        return new;
+    end if;
+
+    update agent_threads.launches
+    set device_gone = true, thread_id = null, folder = '', project = ''
+    where device_id = old.id;
+
+    update agent_threads.commands
+    set payload = null,
+        state = case when state = 'waiting' then 'expired' else state end,
+        closed_at = case when state = 'waiting' then clock_timestamp() else closed_at end
+    where device_id = old.id and state in ('waiting', 'delivered') and payload is not null;
+    return old;
+end;
+$$;
+
+create trigger agent_thread_device_removed
+after delete on devices.devices
+for each row execute function agent_threads.scrub_device();
+
+create trigger agent_thread_device_source_changed
+after update of metrics_source on devices.devices
+for each row when (old.metrics_source = 'daemon' and new.metrics_source <> 'daemon')
+execute function agent_threads.scrub_device();

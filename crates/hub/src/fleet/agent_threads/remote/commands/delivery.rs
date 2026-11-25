@@ -26,7 +26,7 @@ pub(in crate::fleet) async fn poll(
     store::expire_waiting(conn, owner.device, at).await?;
     let rows: Vec<InQueue> = sqlx::query_as(
         "SELECT command_id, launch_id, payload, state FROM agent_threads.commands
-         WHERE account_id = $1 AND device_id = $2 AND state IN ('waiting','delivered')
+         WHERE account_id = $1 AND device_id = $2 AND state IN ('waiting','delivered') AND payload IS NOT NULL
          ORDER BY CASE kind WHEN 'stop' THEN 0 WHEN 'answer' THEN 1 ELSE 2 END, created_at, command_id",
     )
     .bind(owner.account)
@@ -229,8 +229,10 @@ pub(in crate::fleet) async fn result(
         return Err(Error::malformed());
     }
     let row: Option<(Uuid, String, Option<serde_json::Value>)> = sqlx::query_as(
-        "SELECT launch_id, state, payload FROM agent_threads.commands
-         WHERE account_id = $1 AND device_id = $2 AND command_id = $3 AND delivered_at IS NOT NULL",
+        "SELECT c.launch_id, c.state, c.payload FROM agent_threads.commands c
+         JOIN agent_threads.launches l ON l.account_id = c.account_id AND l.launch_id = c.launch_id
+         WHERE c.account_id = $1 AND c.device_id = $2 AND c.command_id = $3
+           AND c.delivered_at IS NOT NULL AND NOT l.device_gone",
     )
     .bind(owner.account)
     .bind(owner.device)
@@ -274,6 +276,14 @@ pub(in crate::fleet) async fn result(
 async fn close_control(conn: &mut PgConnection, owner: Owner, launch: Uuid) -> Result<(), Error> {
     sqlx::query(
         "UPDATE agent_threads.launches SET control_closed = true WHERE account_id = $1 AND launch_id = $2",
+    )
+    .bind(owner.account)
+    .bind(launch)
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query(
+        "UPDATE agent_threads.control_offers SET offer = NULL
+         WHERE account_id = $1 AND launch_id = $2",
     )
     .bind(owner.account)
     .bind(launch)

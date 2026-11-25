@@ -8,7 +8,7 @@ use uuid::Uuid;
 pub(super) use wire::Action;
 pub(in crate::fleet) use wire::{Answer, Offer, StopTarget};
 
-use super::{Error, Launch, Owner, attempt, store};
+use super::{Error, Launch, Owner, admission::KEY, attempt, store};
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -32,43 +32,79 @@ pub(in crate::fleet) async fn upload(
         return Err(Error::malformed());
     }
     let launch = store::launch(conn, owner.account, request.launch).await?;
-    if launch.device_id != owner.device || launch.runner_id != Some(request.runner) {
+    if launch.device_id != owner.device
+        || launch.device_gone
+        || launch.runner_id != Some(request.runner)
+    {
         return Err(Error::Refused("LAUNCH_CONFLICT"));
     }
     let receipt = attempt::reconcile(conn, owner, request.launch, at).await?;
     if receipt.binding != "bound" {
         return Err(Error::Refused("THREAD_NOT_FOUND"));
     }
-    let value = serde_json::to_value(&request.offer)?;
-    let previous: Option<(i64, Option<serde_json::Value>)> = sqlx::query_as(
-        "SELECT revision, offer FROM agent_threads.control_offers
+    let Some((key, fingerprint)) = revision_fingerprint(conn, owner, &request).await? else {
+        return Ok(());
+    };
+    let revision = request.offer.revision;
+    sqlx::query(
+        "INSERT INTO agent_threads.control_offers (
+             account_id, launch_id, device_id, revision, offer, expires_at, fingerprint, key_version
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         ON CONFLICT (account_id, launch_id) DO UPDATE SET
+             revision = EXCLUDED.revision, offer = EXCLUDED.offer, expires_at = EXCLUDED.expires_at,
+             fingerprint = EXCLUDED.fingerprint, key_version = EXCLUDED.key_version",
+    )
+    .bind(owner.account)
+    .bind(request.launch)
+    .bind(owner.device)
+    .bind(revision)
+    .bind(serde_json::to_value(&request.offer)?)
+    .bind(at + store::FRESH)
+    .bind(fingerprint)
+    .bind(key)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+async fn revision_fingerprint(
+    conn: &mut PgConnection,
+    owner: Owner,
+    request: &ControlUpload,
+) -> Result<Option<(i16, Vec<u8>)>, Error> {
+    let previous: Option<(i64, Vec<u8>, i16)> = sqlx::query_as(
+        "SELECT revision, fingerprint, key_version FROM agent_threads.control_offers
          WHERE account_id = $1 AND launch_id = $2",
     )
     .bind(owner.account)
     .bind(request.launch)
     .fetch_optional(&mut *conn)
     .await?;
-    if let Some((revision, prior)) = previous {
-        if revision > request.offer.revision {
-            return Ok(());
-        }
-        if revision == request.offer.revision && prior.as_ref() != Some(&value) {
-            return Err(Error::Refused("CONTROL_REVISION_CONFLICT"));
-        }
+    let revision = request.offer.revision;
+    if previous
+        .as_ref()
+        .is_some_and(|(saved, _, _)| *saved > revision)
+    {
+        return Ok(None);
     }
-    sqlx::query(
-        "INSERT INTO agent_threads.control_offers (account_id, launch_id, revision, offer, expires_at)
-         VALUES ($1,$2,$3,$4,$5) ON CONFLICT (account_id, launch_id) DO UPDATE SET
-         revision = EXCLUDED.revision, offer = EXCLUDED.offer, expires_at = EXCLUDED.expires_at",
+    let key = previous
+        .as_ref()
+        .filter(|(saved, _, _)| *saved == revision)
+        .map_or(KEY, |(_, _, key)| *key);
+    let fingerprint = store::fingerprint(
+        conn,
+        key,
+        "control-offer",
+        &(request.launch, &request.offer),
     )
-    .bind(owner.account)
-    .bind(request.launch)
-    .bind(request.offer.revision)
-    .bind(value)
-    .bind(at + store::FRESH)
-    .execute(conn)
     .await?;
-    Ok(())
+    if previous
+        .as_ref()
+        .is_some_and(|(saved, prior, _)| *saved == revision && *prior != fingerprint)
+    {
+        return Err(Error::Refused("CONTROL_REVISION_CONFLICT"));
+    }
+    Ok(Some((key, fingerprint)))
 }
 
 pub(in crate::fleet) async fn control(
@@ -110,7 +146,7 @@ pub(super) async fn bound(
         "SELECT launches.* FROM agent_threads.launches launches
          JOIN agent_threads.summaries summary ON summary.id = launches.thread_id
          WHERE launches.account_id = $1 AND launches.device_id = $2 AND thread_id = $3
-           AND NOT withdrawn AND NOT control_closed AND NOT retired AND evidence = 'created'",
+           AND NOT withdrawn AND NOT control_closed AND NOT retired AND NOT device_gone AND evidence = 'created'",
     )
     .bind(owner.account)
     .bind(owner.device)

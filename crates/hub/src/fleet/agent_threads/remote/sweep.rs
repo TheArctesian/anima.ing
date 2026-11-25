@@ -57,10 +57,11 @@ async fn sweep_device(db: &PgPool, device: Uuid) -> Result<(), Error> {
 async fn retire(db: &PgPool) -> Result<(), Error> {
     let mut tx = db.begin().await?;
     sqlx::query(
-        "UPDATE agent_threads.commands command SET state = 'expired', payload = NULL, closed_at = clock_timestamp()
-         WHERE command.state = 'waiting' AND command.deadline <= clock_timestamp()
-           AND NOT EXISTS (SELECT FROM devices.devices device WHERE device.id = command.device_id)",
-    ).execute(&mut *tx).await?;
+        "UPDATE agent_threads.control_offers SET offer = NULL
+         WHERE offer IS NOT NULL AND expires_at <= clock_timestamp()",
+    )
+    .execute(&mut *tx)
+    .await?;
     // Retain the retry identity. Only records already closed to delivery can retire.
     sqlx::query(
         "UPDATE agent_threads.commands SET state = 'retired', cause = NULL

@@ -40,7 +40,15 @@ pub(in crate::fleet) async fn report(
     .fetch_optional(&mut *conn)
     .await?;
     let Some(row) = row else { return Ok(None) };
-    if row.device_id != owner.device || request.attempt != 1 || live_lease(&row, at).is_none() {
+    if row.device_id != owner.device
+        || row.device_gone
+        || row
+            .evidence
+            .as_deref()
+            .is_some_and(|code| code != "created")
+        || request.attempt != 1
+        || live_lease(&row, at).is_none()
+    {
         return Err(Error::Refused("NOT_HOLDER"));
     }
     if !allowed(row.attempt_phase.as_deref(), request.state) {
