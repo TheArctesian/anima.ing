@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (236)
+## 2. Open decisions (235)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -179,7 +179,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-THR88 | May the hub send prompts, answers and stops to a thread that the person started at the machine, or only to threads that the hub started? | Open (TH30 review). Recommendation: A for stage 3; B later with its own switch. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-THR89 | When the person set no access ceiling at the machine, what is the highest access of a thread that the hub starts? | Open (TH30 review). Recommendation: A. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-THR90 | With the switch "Threads may start here" off, which commands does the daemon still take for an open thread? | Open (TH30 review). Recommendation: A. | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR91 | Which resource policy is approved for Git URL cloning (TH60B)? | Open. Recommendation: C until A is available or the operator explicitly accepts B. | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow`… | Open. Recommendation: yes, an exception for the folder only. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT27 | How do short-lived file links work (wave 2)? (one choice: only through the gateway or the relay, to a signed-in caller or a valid folder token; no file links; p… | Open. Recommendation: only through the gateway or the relay, to a signed-in caller or a token. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT28 | Does MCP-008 also cover the content of a file and the line of a search hit, in named fields with a limit? (yes/no) | Open. Recommendation: yes. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
