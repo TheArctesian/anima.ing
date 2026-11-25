@@ -23,14 +23,13 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<GitOu
         .and_then(std::ffi::OsStr::to_str)
         .ok_or(GitRefusal::BadPath)?;
     let target = (worktree.thread(), repository);
-    let retirement = if let Some(pending) = Retirement::existing(record)? {
+    let retirement = if let Some(pending) = Retirement::existing(home, record)? {
         pending
     } else {
         let kept = save(git, worktree).await?;
-        Retirement::prepare(record, kept)?
+        Retirement::prepare(home, record, kept)?
     };
-    let (kept, recovery) = retirement.finish(home, target, record)?;
-    Ok(removed(kept, recovery, record.folder.clone()))
+    retirement.finish(home, target, record)
 }
 
 async fn save(git: &Git, worktree: &Worktree) -> Result<String, GitRefusal> {
@@ -73,32 +72,20 @@ pub async fn remove_broken(
     target: (Uuid, &str),
 ) -> Result<GitOutcome, GitRefusal> {
     let (thread, repository) = target;
-    let record = match home.recorded(thread, repository) {
-        Ok(record) => record,
-        Err(error) => {
-            let path = home.record_file(thread, repository)?;
-            if matches!(path.symlink_metadata(), Err(error) if error.kind() == std::io::ErrorKind::NotFound)
-            {
-                return Completion::get(home, target);
-            }
-            return Err(error.into());
-        }
+    let Some(record) = home
+        .active(thread, repository)
+        .map_err(|error| GitRefusal::Failed {
+            said: format!("Could not read the active worktree record: {error}"),
+        })?
+    else {
+        return Completion::get(home, target);
     };
-    if let Some(pending) = Retirement::existing(&record)? {
-        let (kept, recovery) = pending.finish(home, target, &record)?;
-        return Ok(removed(kept, recovery, record.folder.clone()));
+    if let Some(pending) = Retirement::existing(home, &record)? {
+        return pending.finish(home, target, &record);
     }
     if let Some(worktree) = home.for_removal(thread, repository) {
         remove(git, home, &worktree).await
     } else {
         Completion::orphan(home, target, &record)
-    }
-}
-
-fn removed(kept: String, recovery: std::path::PathBuf, original: std::path::PathBuf) -> GitOutcome {
-    GitOutcome::Removed {
-        kept: Some(kept),
-        recovery: Some(recovery),
-        original: Some(original),
     }
 }

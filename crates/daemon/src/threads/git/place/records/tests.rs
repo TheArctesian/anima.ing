@@ -175,3 +175,43 @@ fn a_thread_holds_the_records_when_they_are_in_tmp() {
     let back = outside.path().join("missing/../anima-503");
     assert!(held_by_any(&back, &[project, private]));
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn records_reject_granting_acls_on_start_but_accept_system_denials() {
+    let (_keep, above) = above();
+    let place = above.join("records");
+    assert_eq!(opened(&place), Ok(place.clone()));
+    acl(&above, &["+a", "everyone deny delete"]);
+    assert_eq!(opened(&place), Ok(place.clone()));
+    let held = Directory::open(&place, &place, false).expect("checked directory");
+    let name = "worktree.json".as_ref();
+    held.write(name, b"fixture")
+        .expect("existing private record");
+    acl(&place, &["+a", "everyone allow list,search"]);
+    assert_eq!(opened(&place), Err(BadRecords::OpenToOthers));
+    assert!(held.read(name).is_err());
+    assert!(held.write(name, b"new").is_err());
+    acl(&place, &["-N"]);
+    assert_eq!(
+        held.read(name).expect("private again").as_deref(),
+        Some(b"fixture".as_slice())
+    );
+    acl(
+        &above,
+        &["+a", "everyone allow delete_child,add_subdirectory"],
+    );
+    assert_eq!(checked(&place), Err(BadRecords::OpenAbove));
+    acl(&above, &["-N"]);
+}
+
+#[cfg(target_os = "macos")]
+fn acl(path: &Path, arguments: &[&str]) {
+    let status = std::process::Command::new("/bin/chmod")
+        .env_clear()
+        .args(arguments)
+        .arg(path)
+        .status()
+        .expect("chmod");
+    assert!(status.success(), "{status}");
+}

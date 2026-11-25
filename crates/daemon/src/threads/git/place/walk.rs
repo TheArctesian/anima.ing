@@ -62,6 +62,10 @@ mod held {
     pub struct Dir(OwnedFd);
 
     impl Dir {
+        pub(in super::super) const fn from_fd(fd: OwnedFd) -> Self {
+            Self(fd)
+        }
+
         /// Opens the folder at `folder`; a link at its place is not opened.
         ///
         /// # Errors

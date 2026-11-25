@@ -253,3 +253,30 @@ async fn tc7_git_remove_reports_both_the_snapshot_and_the_recovery_directory() {
         "{removed:?}"
     );
 }
+
+#[tokio::test]
+async fn tc7_git_remove_reports_the_saved_ref_when_recovery_has_no_directory() {
+    let runner = Runner::new();
+    let original = "/fixture/worktrees/sample";
+    let kept = "refs/anima/kept/c30b92dd-5d0d-40e2-978e-3f26d0cf9af1";
+    let answer =
+        json!({ "outcome": "git", "result": "removed", "kept": kept, "original": original });
+    let (removed, _) = runner.exchange(&["remove", "--yes"], &answer).await;
+    assert_eq!(removed.code, 0, "{removed:?}");
+    assert!(
+        removed
+            .stdout
+            .contains(&format!("Former path: {original}.")),
+        "{removed:?}"
+    );
+    assert!(
+        removed
+            .stdout
+            .contains("No recovery directory was created."),
+        "{removed:?}"
+    );
+    assert!(
+        removed.stdout.contains(&format!("Git snapshot: {kept}.")),
+        "{removed:?}"
+    );
+}

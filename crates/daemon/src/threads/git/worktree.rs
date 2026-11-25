@@ -26,7 +26,7 @@ use super::place::{self, Home, Record, Worktree, own, shared};
 use super::project::refs::{self, Was};
 use super::project::{self, Layout, linked};
 use super::run::folder::FolderId;
-use super::run::{Git, Run};
+use super::run::{Git, GitError, Run};
 use super::{checkpoint, trust};
 
 /// A worktree that is ready for a thread.
@@ -125,7 +125,7 @@ pub(super) async fn undoable(
     let own = home.own(plan.thread, &repository)?;
     // A Git folder of the runner that is there with no record (a record that the system
     // removed) holds checkpoints of an earlier worktree: an undo never removes it.
-    let own_made = own.symlink_metadata().is_err();
+    let own_made = !home.private_git_exists(&own).map_err(GitError::Files)?;
     let shared = home.shared(&project);
     let new = New {
         project: &project,
@@ -146,6 +146,9 @@ pub(super) async fn undoable(
         at: at.clone(),
         kept: false,
     };
+    home.state_parent(&own, true).map_err(GitError::Files)?;
+    home.state_parent(&shared, true).map_err(GitError::Files)?;
+    home.private_git_exists(&shared).map_err(GitError::Files)?;
     shared::ensure(git, (&shared, &project), at.len() == 64).await?;
     own::make(git, &own, &shared, at.len() == 64).await?;
     if existing.is_none() {
@@ -208,6 +211,7 @@ impl super::Engine {
         // next one finds the copy.
         let project = real.as_deref().unwrap_or(plan.project).to_string_lossy();
         let _copy = self.alone(Uuid::nil(), &project).await;
+        self.closed()?;
         let (made, undo) = undoable(&self.git, &self.home, plan, shown).await?;
         Ok(Pending::new(made, undo, alone))
     }
@@ -216,7 +220,13 @@ impl super::Engine {
 /// Where the worktree of `repository` of `thread` will be, when nothing is there and the
 /// runner made none before.
 fn free_place(home: &Home, thread: Uuid, repository: &str) -> Result<PathBuf, GitRefusal> {
-    if home.recorded(thread, repository).is_ok() {
+    if home
+        .active(thread, repository)
+        .map_err(|error| GitRefusal::Failed {
+            said: format!("Could not check for an existing worktree record: {error}"),
+        })?
+        .is_some()
+    {
         // The runner made this worktree before and it is not whole now (its folder is gone or
         // was replaced). Its checkpoints are in the folder of the runner: nothing is made
         // new over them.
@@ -293,7 +303,7 @@ async fn filled(
         // Only what the person accepted for this repository before counts as accepted: an
         // earlier agent can have changed the remote of the repository, which each worktree
         // shares.
-        trusted: trust::baseline(home, new.project),
+        trusted: trust::baseline(home, new.project)?,
     };
     home.keep(thread, repository, &record)?;
     let worktree = home.worktree(thread, repository)?;

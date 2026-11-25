@@ -176,24 +176,64 @@ fn same_origin(folder: &OwnedFd, name: &str, expected: &[u8]) -> io::Result<()> 
     }
 }
 
-/// Vacates an active Git directory without replacing a recovery entry.
-pub(super) fn archive(source: &Path, saved: &OsStr) -> io::Result<()> {
-    let parent = source.parent().ok_or(io::ErrorKind::InvalidInput)?;
-    let dir = open(parent, DIRECTORY, Mode::empty())?;
-    at_path(&dir, parent)?;
-    let name = source.file_name().ok_or(io::ErrorKind::InvalidInput)?;
-    if identity(&dir, name)?.is_some() {
-        renameat_with(&dir, name, &dir, saved, RenameFlags::NOREPLACE).map_err(move_error)?;
-    }
-    Ok(())
+/// The original is still in its original place, without following any link on the way.
+pub(super) fn source(record: &Record) -> io::Result<Option<FolderId>> {
+    absolute_directory(&record.folder)?
+        .map(FolderId::from_directory)
+        .transpose()
 }
 
-fn identity(parent: &OwnedFd, name: &OsStr) -> io::Result<Option<FolderId>> {
+/// Only a missing entry reached through checked parents counts as absent.
+pub(super) fn destination(record: &Record, container: &Path) -> io::Result<Option<FolderId>> {
+    let Some(home) = absolute_directory(&record.home)? else {
+        return Ok(None);
+    };
+    private(&home, Mode::WGRP | Mode::WOTH)?;
+    let Some(retired) = optional_child(&home, RETAINED.as_ref())? else {
+        return Ok(None);
+    };
+    private(&retired, Mode::RWXG | Mode::RWXO)?;
+    let retired_path = container.parent().ok_or(io::ErrorKind::InvalidInput)?;
+    at_path(&retired, retired_path)?;
+    let name = container.file_name().ok_or(io::ErrorKind::InvalidInput)?;
+    let Some(folder) = optional_child(&retired, name)? else {
+        return Ok(None);
+    };
+    private(&folder, Mode::RWXG | Mode::RWXO)?;
+    at_path(&folder, container)?;
+    identity(&folder, "worktree".as_ref())
+}
+
+fn absolute_directory(requested: &Path) -> io::Result<Option<OwnedFd>> {
+    if !requested.is_absolute() || !super::super::super::place::plain(requested) {
+        return Err(io::ErrorKind::InvalidInput.into());
+    }
+    let mut folder = open("/", DIRECTORY, Mode::empty())?;
+    let mut path = PathBuf::from("/");
+    for part in requested.iter().skip(1) {
+        let Some(child) = optional_child(&folder, part)? else {
+            at_path(&folder, &path)?;
+            return Ok(None);
+        };
+        folder = child;
+        path.push(part);
+    }
+    at_path(&folder, &path)?;
+    Ok(Some(folder))
+}
+
+fn optional_child(parent: &OwnedFd, name: &OsStr) -> io::Result<Option<OwnedFd>> {
     match openat(parent, name, DIRECTORY, Mode::empty()) {
-        Ok(fd) => FolderId::from_directory(fd).map(Some),
+        Ok(fd) => Ok(Some(fd)),
         Err(rustix::io::Errno::NOENT) => Ok(None),
         Err(error) => Err(error.into()),
     }
+}
+
+fn identity(parent: &OwnedFd, name: &OsStr) -> io::Result<Option<FolderId>> {
+    optional_child(parent, name)?
+        .map(FolderId::from_directory)
+        .transpose()
 }
 
 fn require(found: Option<FolderId>, original: FolderId) -> io::Result<()> {

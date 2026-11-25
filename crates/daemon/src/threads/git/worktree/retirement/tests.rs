@@ -32,7 +32,7 @@ fn a_failed_active_registry_release_keeps_recovery_and_can_be_retried() {
     };
     home.keep(thread, repository, &record)
         .expect("active record");
-    let retirement = Retirement::prepare(&record, "refs/anima/kept/fixture".to_owned())
+    let retirement = Retirement::prepare(&home, &record, "refs/anima/kept/fixture".to_owned())
         .expect("durable intention");
     let active = record.own.with_extension("json");
     let original = active.with_extension("saved-record");
@@ -53,13 +53,15 @@ fn a_failed_active_registry_release_keeps_recovery_and_can_be_retried() {
 
     std::fs::remove_dir(&active).expect("clear obstruction");
     std::fs::rename(original, active).expect("restore active record for retry");
-    let pending = Retirement::existing(&record)
+    let pending = Retirement::existing(&home, &record)
         .expect("read journal")
         .expect("pending release");
-    let (_, recovered) = pending
+    let recovered = pending
         .finish(&home, (thread, repository), &record)
         .expect("finish retirement");
-    assert_eq!(recovered, expected);
+    assert!(
+        matches!(recovered, GitOutcome::Removed { recovery: Some(path), .. } if path == expected)
+    );
     assert!(home.recorded(thread, repository).is_err());
 }
 
@@ -73,7 +75,8 @@ fn tc7_archiving_git_records_keeps_an_occupied_recovery_directory() {
     std::fs::create_dir(&active).expect("active record");
     std::fs::create_dir(&retained).expect("existing empty recovery record");
     std::fs::write(active.join("HEAD"), "work").expect("one active file");
-    assert!(archive(&active, id).is_err());
+    let home = Home::at(&base.with_file_name("worktrees"), &base).expect("home");
+    assert!(archive(&home, &active, id).is_err());
     assert_eq!(
         std::fs::read_to_string(active.join("HEAD")).expect("active record untouched"),
         "work"

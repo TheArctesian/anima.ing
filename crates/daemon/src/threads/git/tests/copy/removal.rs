@@ -7,6 +7,8 @@ use super::super::{Bench, PERSON};
 use super::budget::own_of;
 
 mod nested;
+#[cfg(unix)]
+mod pending;
 
 #[cfg(unix)]
 #[tokio::test]

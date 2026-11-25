@@ -4,6 +4,8 @@
 //!
 //! Pure: text in, lists out.
 
+use super::{Asked, Git, Run};
+
 /// The arguments that list each setting with the file it is from.
 pub const LIST: [&str; 5] = ["config", "-z", "--show-scope", "--includes", "--list"];
 
@@ -186,6 +188,30 @@ pub fn push_remote(settings: &[Setting]) -> Option<(String, String)> {
             .rfind(|setting| part(setting, key).as_deref() == Some(chosen.as_str()))
     })?;
     Some((chosen, url.value.clone()))
+}
+
+impl Git {
+    /// The configuration a run gets through its environment, which wins over each file and
+    /// can name a key with any character in it: each hook of the configuration, off, for a
+    /// run of the runner itself; no push to a folder of this computer for the person.
+    pub(super) fn overrides(&self, run: &Run<'_>) -> Vec<(String, String)> {
+        let asked = run.asked;
+        let mut set = match asked {
+            Asked::Runner => self.hooks_off.clone(),
+            Asked::Person => Vec::new(),
+        };
+        if asked == Asked::Person && !self.local_remotes {
+            // A push to a folder runs the hooks of that folder, which nothing here turns off.
+            set.push(("protocol.file.allow".to_owned(), "never".to_owned()));
+        }
+        set.extend(run.settings.iter().cloned());
+        let mut env = vec![("GIT_CONFIG_COUNT".to_owned(), set.len().to_string())];
+        for (at, (name, value)) in set.iter().enumerate() {
+            env.push((format!("GIT_CONFIG_KEY_{at}"), name.clone()));
+            env.push((format!("GIT_CONFIG_VALUE_{at}"), value.clone()));
+        }
+        env
+    }
 }
 
 #[cfg(test)]

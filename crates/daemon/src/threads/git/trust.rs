@@ -171,13 +171,22 @@ fn baseline_file(home: &Home, project: &Path) -> std::path::PathBuf {
     home.records().join("projects").join(format!("{name}.json"))
 }
 
-/// What the person last accepted for the repository at `project`, in any thread. `None` when
-/// they accepted nothing yet: a new worktree then starts with nothing accepted, so that what
-/// an earlier agent left in the repository is shown before the first commit.
-#[must_use]
-pub fn baseline(home: &Home, project: &Path) -> Option<BTreeMap<String, String>> {
-    let text = std::fs::read(baseline_file(home, project)).ok()?;
-    serde_json::from_slice(&text).ok()
+/// What the person last accepted for the repository, when an acceptance exists.
+///
+/// # Errors
+/// [`GitRefusal::Failed`] when an existing record cannot be safely read or parsed.
+pub fn baseline(
+    home: &Home,
+    project: &Path,
+) -> Result<Option<BTreeMap<String, String>>, GitRefusal> {
+    let refused = |error: std::io::Error| GitRefusal::Failed {
+        said: format!("Could not read the accepted Git settings: {error}"),
+    };
+    let text = home
+        .read_state(&baseline_file(home, project))
+        .map_err(refused)?;
+    text.map(|bytes| serde_json::from_slice(&bytes).map_err(|error| refused(error.into())))
+        .transpose()
 }
 
 /// Writes what the person accepted for the repository at `project`.
@@ -193,10 +202,8 @@ pub fn keep_baseline(
         said: "what you accepted could not be written down".to_owned(),
     };
     let file = baseline_file(home, project);
-    let folder = file.parent().ok_or_else(failed)?;
-    super::place::private_folder(folder).map_err(|_| failed())?;
     let text = serde_json::to_vec_pretty(accepted).map_err(|_| failed())?;
-    std::fs::write(&file, text).map_err(|_| failed())
+    home.write_state(&file, &text).map_err(|_| failed())
 }
 
 #[cfg(test)]
