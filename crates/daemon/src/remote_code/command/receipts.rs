@@ -3,8 +3,8 @@ use sha2::Sha256;
 use zeroize::Zeroizing;
 
 use super::{
-    Action, Cause, CommandState, Consumption, Delivered, Handoff, LiveControl, Payload, Receipt,
-    ReceiptOutcome, RecordedBinding, SavedCommand, Target,
+    Action, Admission, Admitted, Cause, CommandState, Consumption, Delivered, Handoff, LiveControl,
+    Payload, Receipt, ReceiptOutcome, RecordedBinding, SavedCommand, Target,
 };
 use crate::remote_code::{Store, StoreError, journal::Journal, launch::LaunchState, policy::lower};
 
@@ -23,16 +23,40 @@ impl Store {
         live: &LiveControl<'_>,
         handoff: impl FnOnce(&Payload) -> Handoff,
     ) -> Result<Consumption, StoreError> {
+        match self.admit(delivered, Some(live))? {
+            Admission::Existing(result) => Ok(result),
+            Admission::Effect(ticket) => match handoff(&delivered.payload) {
+                Handoff::Settled(outcome) => self.finish(ticket, outcome).map(Consumption::Settled),
+                Handoff::Uncertain => Ok(Consumption::Reconciling),
+            },
+        }
+    }
+
+    /// Store the handoff before the serialized runner calls the holder.
+    ///
+    /// # Errors
+    /// Storage failed or the delivered ID conflicts.
+    pub fn admit(
+        &self,
+        delivered: &Delivered,
+        live: Option<&LiveControl<'_>>,
+    ) -> Result<Admission, StoreError> {
         let mut locked = self.lock()?;
         let fingerprint = fingerprint(delivered, &locked.journal.key)?;
         if let Some(previous) = locked.journal.commands.get(&delivered.id) {
-            return previous.replay(delivered, fingerprint);
+            return previous
+                .replay(delivered, fingerprint)
+                .map(Admission::Existing);
         }
         let mut command = SavedCommand::new(delivered, fingerprint, &locked.journal.key)?;
-        match checked(&locked.journal, delivered, live) {
+        match live.map_or(Err(Cause::ThreadUnknown), |live| {
+            checked(&locked.journal, delivered, live)
+        }) {
             Err(cause) => command.state = CommandState::Settled(ReceiptOutcome::Refused { cause }),
             Ok(()) => match prior_handoff(&locked.journal, delivered, command.request.as_ref()) {
-                Some(Consumption::Reconciling) => return Ok(Consumption::Reconciling),
+                Some(Consumption::Reconciling) => {
+                    return Ok(Admission::Existing(Consumption::Reconciling));
+                }
                 Some(Consumption::Settled(receipt)) => {
                     command.state = CommandState::Settled(receipt.outcome);
                 }
@@ -41,37 +65,58 @@ impl Store {
         }
         let outcome = command.outcome(delivered);
         locked.journal.admit()?;
-        locked.journal.commands.insert(delivered.id, command);
+        locked
+            .journal
+            .commands
+            .insert(delivered.id.clone(), command);
         locked.save_admission()?;
         if matches!(outcome, Consumption::Settled(_)) {
-            return Ok(outcome);
+            return Ok(Admission::Existing(outcome));
         }
-        let Handoff::Settled(outcome) = handoff(&delivered.payload) else {
-            return Ok(Consumption::Reconciling);
+        Ok(Admission::Effect(Admitted {
+            id: delivered.id.clone(),
+            fingerprint,
+            end: matches!(
+                delivered.payload,
+                Payload::Stop {
+                    target: Target::End { .. }
+                }
+            ),
+        }))
+    }
+
+    /// Record an observed provider acknowledgement against its reserved handoff.
+    ///
+    /// # Errors
+    /// The receipt could not be persisted.
+    pub fn finish(&self, ticket: Admitted, outcome: ReceiptOutcome) -> Result<Receipt, StoreError> {
+        let mut locked = self.lock()?;
+        let Some(saved) = locked
+            .journal
+            .commands
+            .get_mut(&ticket.id)
+            .filter(|saved| saved.fingerprint == ticket.fingerprint)
+        else {
+            return Err(StoreError::Conflict);
         };
-        let Some(saved) = locked.journal.commands.get_mut(&delivered.id) else {
-            return Err(StoreError::Invalid);
+        let outcome = match saved.state {
+            CommandState::Settled(old) => old,
+            CommandState::HandingOff { .. } => outcome,
         };
         saved.state = CommandState::Settled(outcome);
-        let receipt = saved.outcome(delivered);
-        close_after_end(&mut locked.journal, delivered, outcome);
+        let launch = saved.binding.launch;
+        if ticket.end
+            && matches!(outcome, ReceiptOutcome::Recorded { .. })
+            && let Some(launch) = locked.journal.launches.get_mut(&launch)
+            && let LaunchState::Created { ended, .. } = &mut launch.state
+        {
+            *ended = true;
+        }
         locked.save()?;
-        Ok(receipt)
-    }
-}
-
-fn close_after_end(journal: &mut Journal, delivered: &Delivered, outcome: ReceiptOutcome) {
-    if matches!(outcome, ReceiptOutcome::Recorded { .. })
-        && matches!(
-            delivered.payload,
-            Payload::Stop {
-                target: Target::End { .. }
-            }
-        )
-        && let Some(launch) = journal.launches.get_mut(&delivered.launch)
-        && let LaunchState::Created { ended, .. } = &mut launch.state
-    {
-        *ended = true;
+        Ok(Receipt {
+            id: ticket.id,
+            outcome,
+        })
     }
 }
 
@@ -81,9 +126,6 @@ impl SavedCommand {
         fingerprint: [u8; 32],
         key: &[u8; 32],
     ) -> Result<Self, StoreError> {
-        if delivered.id.is_nil() {
-            return Err(StoreError::Invalid);
-        }
         let stop = matches!(delivered.payload, Payload::Stop { .. });
         let request = match &delivered.payload {
             Payload::Answer {
@@ -116,7 +158,7 @@ impl SavedCommand {
     fn outcome(&self, delivered: &Delivered) -> Consumption {
         match self.state {
             CommandState::Settled(outcome) => Consumption::Settled(Receipt {
-                id: delivered.id,
+                id: delivered.id.clone(),
                 outcome,
             }),
             CommandState::HandingOff { .. } => Consumption::Reconciling,
@@ -256,7 +298,7 @@ fn prior_handoff(
                         CommandState::HandingOff { .. } => Some(Consumption::Reconciling),
                         CommandState::Settled(ReceiptOutcome::Recorded { .. }) => {
                             Some(Consumption::Settled(Receipt {
-                                id: delivered.id,
+                                id: delivered.id.clone(),
                                 outcome: ReceiptOutcome::Refused {
                                     cause: Cause::RequestResolved,
                                 },
@@ -312,7 +354,7 @@ impl Store {
             cause: Cause::CancelledByStop,
         });
         let outcome = command.outcome(prompt);
-        locked.journal.commands.insert(prompt.id, command);
+        locked.journal.commands.insert(prompt.id.clone(), command);
         locked.save_admission()?;
         Ok(outcome)
     }

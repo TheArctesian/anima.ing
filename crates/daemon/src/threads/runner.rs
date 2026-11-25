@@ -24,6 +24,7 @@ mod models;
 pub mod peer;
 mod projects;
 pub mod record;
+mod remote_code;
 mod serving;
 mod silence;
 pub mod socket;
@@ -148,6 +149,7 @@ pub struct Runner {
     /// The Git engine of the threads (TH116).
     git: git::Gits,
     git_reads: git_reads::Reads,
+    remote: remote_code::Remote,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -223,6 +225,7 @@ pub async fn run(
         rights,
         git: gits,
         git_reads: git_reads::Reads::default(),
+        remote: remote_code::Remote::default(),
     };
     runner.restore(saved.threads);
     runner.listen(&mut stop).await

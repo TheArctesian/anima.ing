@@ -10,6 +10,8 @@
 //! A new connection takes the place of the one before it, so that a daemon that starts again
 //! is never locked out by the one that died.
 
+mod remote_code;
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -47,6 +49,7 @@ pub enum HolderError {
 
 /// One thread in the holder.
 pub struct Slot {
+    pub(super) remote_process: Option<crate::remote_code::launch::ProcessIdentity>,
     pub(crate) relay: Option<super::program::relay::Lease>,
     pub pid: u32,
     pub started: Option<String>,
@@ -76,6 +79,7 @@ pub fn locked(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
 
 /// What the tasks of the holder share.
 pub struct Shared {
+    remote_child: Option<remote_code::PendingChild>,
     pub(crate) relays: Arc<super::program::relay::Relays>,
     pub threads: BTreeMap<ThreadKey, Slot>,
     pub dir: PathBuf,
@@ -158,6 +162,7 @@ impl Shared {
     #[must_use]
     pub fn new_slot(&self, pid: u32, started: Option<String>, input: Input) -> Slot {
         Slot {
+            remote_process: None,
             relay: None,
             pid,
             started,
@@ -189,6 +194,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
     let listener = bind(dir)?;
     let shared = Arc::new(Mutex::new(Shared {
         relays: Arc::default(),
+        remote_child: None,
         threads: BTreeMap::new(),
         dir: dir.to_owned(),
         connection: None,
@@ -211,6 +217,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         state.closing = true;
         state.connection = None;
     }
+    remote_code::end_pending(&shared).await;
     super::stop::end_all(&shared).await;
     let _ = std::fs::remove_file(dir.join(SOCKET));
     Ok(())
@@ -340,31 +347,7 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
             }
         }
     });
-    let mut reader = BufReader::new(reading).take(u64::MAX);
-    let mut line = Vec::new();
-    let mut quitting = false;
-    loop {
-        line.clear();
-        reader.set_limit(u64::try_from(MAX_FRAME).unwrap_or(u64::MAX) + 1);
-        match reader.read_until(b'\n', &mut line).await {
-            Ok(0) | Err(_) => break,
-            Ok(_) => {}
-        }
-        let Some(command) = wire::parse::<Command>(line.trim_ascii_end()) else {
-            break;
-        };
-        let ends = matches!(command.action, Action::Quit);
-        let one = Arc::clone(&turn).lock_owned().await;
-        if !shared.lock().is_ok_and(|state| state.serves(me)) {
-            break;
-        }
-        let outcome = super::commands::run(&shared, command, one).await;
-        if ends && outcome == Outcome::Ok {
-            // A command after the Quit would start a program in a holder that ends.
-            quitting = true;
-            break;
-        }
-    }
+    let quitting = serve_commands(&shared, reading, (me, &turn)).await;
     if let Ok(mut state) = shared.lock()
         && state.serves(me)
     {
@@ -377,4 +360,44 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
     } else {
         writer.abort();
     }
+}
+
+async fn serve_commands(
+    shared: &Arc<Mutex<Shared>>,
+    reading: tokio::net::unix::OwnedReadHalf,
+    (me, turn): (u64, &Arc<tokio::sync::Mutex<()>>),
+) -> bool {
+    let mut reader = BufReader::new(reading).take(u64::MAX);
+    let mut line = Vec::new();
+    let mut quitting = false;
+    let mut remote = None;
+    loop {
+        line.clear();
+        reader.set_limit(u64::try_from(MAX_FRAME).unwrap_or(u64::MAX) + 1);
+        match reader.read_until(b'\n', &mut line).await {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
+        }
+        let Some(command) = wire::parse::<Command>(line.trim_ascii_end()) else {
+            break;
+        };
+        let ends = matches!(command.action, Action::Quit);
+        let one = Arc::clone(turn).lock_owned().await;
+        if !shared.lock().is_ok_and(|state| state.serves(me)) {
+            break;
+        }
+        if let Action::RemoteCode { frame } = command.action {
+            if let Ok(frame) = serde_json::from_str(&frame) {
+                remote_code::run(shared, (&mut remote, me), frame).await;
+            }
+            continue;
+        }
+        let outcome = super::commands::run(shared, command, one).await;
+        if ends && outcome == Outcome::Ok {
+            // A command after the Quit would start a program in a holder that ends.
+            quitting = true;
+            break;
+        }
+    }
+    quitting
 }

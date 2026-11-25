@@ -1,6 +1,6 @@
 //! The authenticated daemon edge. The holder never receives the bearer.
 
-use std::time::Duration;
+use std::{collections::BTreeMap, sync::Mutex, time::Duration};
 
 use daemon_core::wire::{RefusalCode, Reported, WorkState};
 use serde_json::json;
@@ -29,6 +29,7 @@ use super::{
 
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(35);
 const ERROR_DELAY: Duration = Duration::from_secs(5);
+static REFUSED: Mutex<BTreeMap<String, [u8; 32]>> = Mutex::new(BTreeMap::new());
 
 /// The two request slots have separate HTTP deadlines. One owns ordinary calls and the other
 /// can wait for the full K10 long poll without blocking claim, evidence or result calls.
@@ -63,7 +64,7 @@ impl Delivery {
         let credential = TokenStore::open(home)
             .load()?
             .ok_or(EnrolledError::Enrollment)?;
-        if !matches_enrollment(&config, &credential) {
+        if !matches_enrollment(&config, &credential) || refused(&credential) {
             return Err(EnrolledError::Enrollment);
         }
         let own_socket = home.link_socket();
@@ -76,11 +77,30 @@ impl Delivery {
         })
     }
 
+    #[must_use]
+    pub const fn config(&self) -> &Config {
+        &self.config
+    }
+
+    fn observed<T>(&self, answer: Answer<T>) -> Answer<T> {
+        if matches!(
+            answer,
+            Answer::Refused(RefusalCode::TokenRefused | RefusalCode::WrongDevice)
+        ) && let Ok(mut refused) = REFUSED.lock()
+        {
+            refused.insert(
+                self.credential.hub.as_text(),
+                self.credential.token.hash().to_bytes(),
+            );
+        }
+        answer
+    }
+
     pub async fn claim(&self, claim: &Advertised<'_>) -> Answer<Claimed> {
         if claim.device() != self.config.device {
             return Answer::Refused(RefusalCode::WrongDevice);
         }
-        self.hub.claim_threads(&self.credential.token, claim).await
+        self.observed(self.hub.claim_threads(&self.credential.token, claim).await)
     }
 
     /// Relay only a request on the enrolled device's active original reservation.
@@ -93,7 +113,7 @@ impl Delivery {
         }
         let token = &self.credential.token;
         let original = saved.request();
-        match ask.phase() {
+        let answer = match ask.phase() {
             Phase::Prepare => response(self.hub.prepare_thread(token, original).await, |report| {
                 ask.reply(DispatchReply::Prepared {
                     stop: report.stop.map(|stop| stop.reason),
@@ -103,7 +123,8 @@ impl Delivery {
                 self.hub.authorize_thread(token, original).await,
                 |decision| ask.reply(DispatchReply::Dispatch { decision }),
             ),
-        }
+        };
+        self.observed(answer)
     }
 
     fn reservation(&self, request: &DispatchRequest) -> Option<Reservation> {
@@ -111,6 +132,27 @@ impl Delivery {
         saved
             .enrolled_at(self.config.device, &self.config.hub)
             .then_some(saved)
+    }
+
+    pub async fn publish_summary(
+        &self,
+        home: &Home,
+        row: &agent_threads::control::ThreadRow,
+        request: &DispatchRequest,
+    ) -> bool {
+        if row.id != request.runner
+            || !self
+                .reservation(request)
+                .is_some_and(|saved| saved.publication_open())
+        {
+            return false;
+        }
+        crate::runtime::thread_sync::publish_remote(
+            home,
+            (&self.hub, self.config.device, &self.credential),
+            row,
+        )
+        .await
     }
 
     /// Ordinary reports do not renew or reopen a final attempt. After `NOT_HOLDER` the caller
@@ -129,7 +171,7 @@ impl Delivery {
                 "id": started.work, "attempt": started.attempt, "state": state,
                 "log": null, "result": null
             });
-            let result = self.hub.report_work(token, &report).await;
+            let result = self.observed(self.hub.report_work(token, &report).await);
             if !matches!(result, Answer::Accepted(_)) {
                 return result;
             }
@@ -141,29 +183,35 @@ impl Delivery {
                 "cleanup": { "isolation": "none", "checkout": "none", "secrets": "none", "keychain": "none" }
             }
         });
-        self.hub.report_work(token, &report).await
+        self.observed(self.hub.report_work(token, &report).await)
     }
 
     pub async fn evidence(&self, request: &DispatchRequest) -> Answer<LaunchReceipt> {
         let Some(evidence) = self.reservation(request).and_then(|saved| saved.evidence()) else {
             return Answer::Failed(Cause::Unreadable);
         };
-        self.hub
-            .thread_launch_evidence(&self.credential.token, &evidence)
-            .await
+        self.observed(
+            self.hub
+                .thread_launch_evidence(&self.credential.token, &evidence)
+                .await,
+        )
     }
 
     /// Preserve the dedicated command slot across an empty long poll.
     pub async fn poll(&self) -> Answer<Vec<Delivered>> {
-        self.commands
-            .poll_thread_commands(&self.credential.token, self.config.device)
-            .await
+        self.observed(
+            self.commands
+                .poll_thread_commands(&self.credential.token, self.config.device)
+                .await,
+        )
     }
 
     pub async fn receipt(&self, receipt: &Receipt) -> Answer<()> {
-        self.hub
-            .report_thread_command(&self.credential.token, receipt)
-            .await
+        self.observed(
+            self.hub
+                .report_thread_command(&self.credential.token, receipt)
+                .await,
+        )
     }
 
     pub async fn control(
@@ -182,9 +230,11 @@ impl Delivery {
             runner: request.runner,
             offer,
         };
-        self.hub
-            .upload_thread_control(&self.credential.token, &upload)
-            .await
+        self.observed(
+            self.hub
+                .upload_thread_control(&self.credential.token, &upload)
+                .await,
+        )
     }
 }
 
@@ -198,6 +248,12 @@ pub fn next_poll<T>(answer: &Answer<T>, backoff: Duration) -> Option<Duration> {
         | Answer::Refused(RefusalCode::Unavailable) => Some(backoff),
         _ => Some(ERROR_DELAY),
     }
+}
+
+fn refused(credential: &Credential) -> bool {
+    REFUSED.lock().map_or(true, |rejected| {
+        rejected.get(&credential.hub.as_text()) == Some(&credential.token.hash().to_bytes())
+    })
 }
 
 fn matches_enrollment(config: &Config, credential: &Credential) -> bool {

@@ -92,6 +92,18 @@ impl Caller {
     }
 }
 
+/// A reply channel for a runner-owned operation. It is never installed on the public socket.
+pub(super) fn internal_caller() -> (Caller, mpsc::Receiver<String>) {
+    let (frames, receiver) = mpsc::channel(1);
+    let client = Client {
+        frames,
+        waiting: Arc::new(AtomicUsize::new(0)),
+        let_go: Arc::new(tokio::sync::Notify::new()),
+        closed: Arc::new(Mutex::new(false)),
+    };
+    (client.reply_to(1), receiver)
+}
+
 /// A call of a client, with the way back to that client.
 #[derive(Debug)]
 pub struct Incoming {

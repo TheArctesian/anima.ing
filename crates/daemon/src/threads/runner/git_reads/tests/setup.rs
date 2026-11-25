@@ -56,6 +56,7 @@ pub(super) async fn make_runner(home: &Path, dir: PathBuf, link: HolderLink) -> 
         rights,
         git,
         git_reads: git_reads::Reads::default(),
+        remote: crate::threads::runner::remote_code::Remote::default(),
     }
 }
 

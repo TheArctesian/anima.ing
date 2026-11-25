@@ -81,6 +81,7 @@ pub enum DispatchDecision {
     Authorized { grant: Granted },
     Final { authorization: Option<Uuid> },
     Conflict,
+    TargetUnavailable,
 }
 
 impl HubClient {
@@ -209,6 +210,9 @@ fn final_dispatch(body: &[u8]) -> Option<DispatchDecision> {
     }
     let read: Final = read_json(body)?;
     match read.error.as_str() {
+        "target_unavailable" if read.authorization.is_none() => {
+            Some(DispatchDecision::TargetUnavailable)
+        }
         "LAUNCH_CONFLICT" if read.authorization.is_none() => Some(DispatchDecision::Conflict),
         "NOT_HOLDER" if read.authorization.is_none_or(|id| !id.is_nil()) => {
             Some(DispatchDecision::Final {

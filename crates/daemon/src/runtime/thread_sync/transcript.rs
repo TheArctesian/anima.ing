@@ -2,6 +2,7 @@ use agent_threads::control::{Action, Change, Outcome, Update};
 use agent_threads::drive::DriveEvent;
 use daemon_core::wire::{
     MAX_THREAD_ENTRIES, MAX_THREAD_ENTRY, ThreadEntry, ThreadSummary, ThreadUpload,
+    ThreadUploadReceipt,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -10,7 +11,7 @@ use uuid::Uuid;
 use super::{Target, runner};
 use crate::{
     config::{agent_usage::UsageSettings, home::Home, private_file},
-    hub::answer::Answer,
+    hub::{HubClient, answer::Answer},
     token_store::Credential,
 };
 
@@ -30,6 +31,8 @@ struct Journal {
     observed: u64,
     accepted: i64,
     pending: Vec<ThreadEntry>,
+    #[serde(default)]
+    confirmed: Option<ThreadUploadReceipt>,
 }
 
 pub(super) async fn publish(
@@ -56,32 +59,34 @@ pub(super) async fn publish(
         if !authorized(home, policy) {
             return;
         }
-        send_thread(home, target, row, (&credential, policy)).await;
+        let _ = send_thread(
+            home,
+            (&target.hub, target.device),
+            row,
+            (&credential, policy),
+        )
+        .await;
     }
 }
 
-async fn send_thread(
+pub(super) async fn send_thread(
     home: &Home,
-    target: &Target,
+    (hub, device): (&HubClient, Uuid),
     row: &ThreadSummary,
     (credential, policy): (&Credential, &UsageSettings),
-) {
-    let name = journal_name(target.device, row.runner_id);
-    let Some(mut journal) = read(home, &name) else {
-        return;
-    };
-    if journal.pending.len() < MAX_PENDING {
-        let updates = earlier(row.runner_id, journal.observed).await;
-        if !authorized(home, policy) {
-            return;
-        }
-        journal.record(updates);
+) -> Option<ThreadUploadReceipt> {
+    let _serial = journal_lock(home)?;
+    let name = journal_name(device, row.runner_id);
+    let mut journal = read(home, &name)?;
+    journal.refresh(home, row.runner_id, policy).await?;
+    if journal.pending.is_empty() {
+        return journal.confirmed;
     }
-    if journal.pending.is_empty() || !save(home, &name, &journal) || !authorized(home, policy) {
-        return;
+    if !save(home, &name, &journal) {
+        return None;
     }
     let upload = ThreadUpload {
-        device: target.device,
+        device,
         summary: row.clone(),
         entries: journal
             .pending
@@ -90,17 +95,50 @@ async fn send_thread(
             .cloned()
             .collect(),
     };
-    let Answer::Accepted(receipt) = target.hub.upload_thread(&credential.token, &upload).await
-    else {
-        return;
+    let through = upload.entries.last()?.sequence;
+    let Answer::Accepted(receipt) = hub.upload_thread(&credential.token, &upload).await else {
+        return None;
     };
-    journal.accepted = journal.accepted.max(receipt.last_sequence);
-    journal
-        .pending
-        .retain(|entry| entry.sequence > receipt.last_sequence);
+    journal.note_receipt(receipt, through)?;
     if !save(home, &name, &journal) {
         tracing::warn!("the thread upload receipt could not be stored");
     }
+    journal.confirmed
+}
+
+impl Journal {
+    async fn refresh(&mut self, home: &Home, runner: Uuid, policy: &UsageSettings) -> Option<()> {
+        if self.pending.len() < MAX_PENDING {
+            let updates = earlier(runner, self.observed).await;
+            authorized(home, policy).then_some(())?;
+            self.record(updates);
+        }
+        authorized(home, policy).then_some(())
+    }
+
+    fn note_receipt(&mut self, receipt: ThreadUploadReceipt, through: i64) -> Option<()> {
+        if receipt.id.is_nil() {
+            return None;
+        }
+        self.accepted = self.accepted.max(receipt.last_sequence);
+        self.pending.retain(|entry| entry.sequence > self.accepted);
+        if receipt.last_sequence >= through {
+            self.confirmed = Some(receipt);
+        }
+        Some(())
+    }
+}
+
+fn journal_lock(home: &Home) -> Option<std::fs::File> {
+    use rustix::fs::{FlockOperation, Mode, OFlags, flock, open};
+    let fd = open(
+        home.dir().join("thread-sync.lock"),
+        OFlags::CREATE | OFlags::WRONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        Mode::RUSR | Mode::WUSR,
+    )
+    .ok()?;
+    flock(&fd, FlockOperation::NonBlockingLockExclusive).ok()?;
+    Some(std::fs::File::from(fd))
 }
 
 async fn earlier(thread: Uuid, observed: u64) -> Vec<Update> {

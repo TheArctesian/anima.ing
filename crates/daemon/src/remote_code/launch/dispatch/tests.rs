@@ -149,6 +149,12 @@ async fn original_verified_child_recovers_without_a_second_os_call() {
     };
     let reopened = Store::at(&home);
     assert_eq!(progress(&spawn()), Progress::Reconciling);
+    let unavailable = reopened.lock().unwrap();
+    assert!(matches!(child.record(&reopened), Err(StoreError::Busy)));
+    let Err(mut child) = (*child).into_child() else {
+        panic!("storage failure unsafely detached the child")
+    };
+    drop(unavailable);
     assert_eq!(child.record(&reopened).unwrap(), Progress::Created);
     assert_eq!(child.record(&reopened).unwrap(), Progress::Created);
     let Ok((mut child, _)) = child.into_child() else {

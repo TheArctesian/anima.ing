@@ -64,12 +64,18 @@ pub enum Matched {
     Authorized(DispatchGrant),
     Final { authorization: Option<Uuid> },
     Conflict,
+    TargetUnavailable,
 }
 
 impl Ask {
     #[must_use]
     pub const fn request(&self) -> &DispatchRequest {
         &self.0.request
+    }
+
+    #[must_use]
+    pub const fn generation(&self) -> u64 {
+        self.0.generation
     }
 
     #[must_use]
@@ -110,11 +116,16 @@ impl Pending {
         Some((Self { exchange, timing }, Ask(exchange)))
     }
 
+    #[must_use]
+    pub(crate) fn matches(&self, generation: u64, reply: &Reply) -> bool {
+        generation == self.exchange.generation && reply.exchange == self.exchange
+    }
+
     /// Use only for a reply read on the current trusted holder link. A replaced connection or
     /// a mismatched phase, exchange ID or tuple never authorizes a process start.
     #[must_use]
     pub fn receive(self, generation: u64, reply: Reply) -> Option<Matched> {
-        if generation != self.exchange.generation || reply.exchange != self.exchange {
+        if !self.matches(generation, &reply) {
             return None;
         }
         match (self.timing, reply.result) {
@@ -142,6 +153,12 @@ impl Pending {
                     decision: DispatchDecision::Conflict,
                 },
             ) => Some(Matched::Conflict),
+            (
+                Timing::Authorize(_),
+                DispatchReply::Dispatch {
+                    decision: DispatchDecision::TargetUnavailable,
+                },
+            ) => Some(Matched::TargetUnavailable),
             _ => None,
         }
     }

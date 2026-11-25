@@ -13,10 +13,38 @@ use uuid::Uuid;
 
 use super::{launch::ProcessIdentity, wire::Owner};
 
+/// K10 command identity is an opaque operator-supplied string, never a file name.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[serde(try_from = "String")]
+pub struct CommandId(String);
+
+impl TryFrom<String> for CommandId {
+    type Error = &'static str;
+
+    fn try_from(id: String) -> Result<Self, Self::Error> {
+        if !(1..=256).contains(&id.len()) || id.chars().any(char::is_control) {
+            return Err("invalid command ID");
+        }
+        Ok(Self(id))
+    }
+}
+
+pub enum Admission {
+    Effect(Admitted),
+    Existing(Consumption),
+}
+
+/// One persisted, unresolved provider handoff.
+pub struct Admitted {
+    id: CommandId,
+    fingerprint: [u8; 32],
+    end: bool,
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Delivered {
-    pub id: Uuid,
+    pub id: CommandId,
     #[serde(flatten)]
     pub owner: Owner,
     pub launch: Uuid,
@@ -65,9 +93,9 @@ pub enum ReceiptOutcome {
     Refused { cause: Cause },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Receipt {
-    pub id: Uuid,
+    pub id: CommandId,
     #[serde(flatten)]
     pub outcome: ReceiptOutcome,
 }
@@ -77,7 +105,7 @@ pub enum Handoff {
     Uncertain,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Consumption {
     Settled(Receipt),
     Reconciling,

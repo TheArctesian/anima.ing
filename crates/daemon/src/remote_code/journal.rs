@@ -12,7 +12,10 @@ use rustix::fs::{FlockOperation, Mode, OFlags, flock, open};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{command::SavedCommand, launch::Reservation};
+use super::{
+    command::{CommandId, SavedCommand},
+    launch::Reservation,
+};
 use crate::config::{home::Home, private_file};
 
 const JOURNAL: &str = "remote-code.json";
@@ -44,7 +47,7 @@ pub struct Store(PathBuf);
 pub(super) struct Journal {
     pub(super) key: [u8; 32],
     pub(super) launches: BTreeMap<Uuid, Reservation>,
-    pub(super) commands: BTreeMap<Uuid, SavedCommand>,
+    pub(super) commands: BTreeMap<CommandId, SavedCommand>,
 }
 
 pub(super) struct Locked<'a> {

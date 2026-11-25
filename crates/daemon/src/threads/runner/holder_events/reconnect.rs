@@ -11,6 +11,7 @@ impl Runner {
     pub(in crate::threads::runner) async fn reconnect(&mut self) {
         tracing::warn!("the link to the holder closed; connecting again");
         self.holder.fits = false;
+        self.remote.disconnect();
         self.holder.newer = false;
         // Until the next hello nothing is known of the holder: no Quit goes to a new one.
         self.holder.older = false;

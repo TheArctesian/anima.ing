@@ -140,7 +140,23 @@ impl Reservation {
         })
     }
 
-    pub(super) fn enrolled_at(&self, device: Uuid, hub: &Origin) -> bool {
+    #[must_use]
+    pub fn matches_process(&self, enrolled: &ProcessIdentity) -> bool {
+        matches!(&self.state, LaunchState::Created { process, ended: false, .. } if process == enrolled)
+    }
+
+    #[must_use]
+    pub const fn publication_open(&self) -> bool {
+        matches!(
+            self.state,
+            LaunchState::Created {
+                withdrawn: false,
+                ..
+            }
+        )
+    }
+
+    pub(crate) fn enrolled_at(&self, device: Uuid, hub: &Origin) -> bool {
         self.owner.device == device && self.origin == hub.as_text()
     }
 
@@ -276,6 +292,25 @@ impl Store {
             }
             _ => false,
         })
+    }
+
+    /// The original launch bindings for this enrollment, including pending evidence.
+    ///
+    /// # Errors
+    /// The durable journal could not be read.
+    pub fn enrolled_reservations(
+        &self,
+        device: Uuid,
+        hub: &Origin,
+    ) -> Result<Vec<Reservation>, StoreError> {
+        let locked = self.lock()?;
+        Ok(locked
+            .journal
+            .launches
+            .values()
+            .filter(|row| row.enrolled_at(device, hub))
+            .cloned()
+            .collect())
     }
 
     /// The original reservation and any evidence that survived restart.

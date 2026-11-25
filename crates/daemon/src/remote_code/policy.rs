@@ -20,6 +20,7 @@ struct Settings {
     threads: bool,
     allowed_folders: Vec<PathBuf>,
     ceiling: Mode,
+    targets: Vec<Target>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -31,7 +32,7 @@ pub enum Refusal {
     TargetUnavailable,
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize)]
+#[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Target {
     pub project: Uuid,
     pub folder: PathBuf,
@@ -86,6 +87,12 @@ impl Policy {
         self.sharing
             .as_ref()
             .is_some_and(|settings| shared_repository(&self.user, folder, settings).is_some())
+    }
+
+    /// Locally configured bindings between a hub project and its installed provider pair.
+    #[must_use]
+    pub fn configured_targets(&self) -> Vec<Target> {
+        self.targets(self.settings.targets.iter().cloned())
     }
 
     /// Return only complete pairs from the inventory passed by the local publisher.

@@ -25,6 +25,9 @@ impl Runner {
         let (sender, mut incoming) = mpsc::channel(256);
         let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
         tokio::pin!(stop);
+        let mut remote = self.remote.open();
+        let mut remote_tick = tokio::time::interval(Duration::from_secs(10));
+        remote_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         let mut look = tokio::time::interval(Duration::from_secs(10));
         let mut asked = self.asks.receiver.take().expect("one serve loop");
         let mut listed = self.model_asks.receiver.take().expect("one serve loop");
@@ -42,7 +45,7 @@ impl Runner {
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
                 result = completed::next(&mut listed, &mut created, &mut git_reads) => self.completed(result),
                 Some(worktree) = made.recv() => self.worktree_made(worktree).await,
-                _ = look.tick() => self.look_around().await,
+                Some(event) = super::remote_code::next(&mut remote, &mut look, &mut remote_tick) => self.remote_event(event).await,
                 () = &mut stop => break,
             }
         }

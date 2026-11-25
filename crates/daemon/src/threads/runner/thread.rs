@@ -20,6 +20,7 @@ mod events;
 mod kept;
 mod queue;
 mod record;
+mod remote_code;
 mod settings;
 mod step;
 
@@ -189,6 +190,20 @@ impl Thread {
             }
         }
         steps
+    }
+
+    /// Initialize the provider without submitting a user turn.
+    pub(super) fn begin_remote(&mut self) -> Vec<Step> {
+        self.held = true;
+        match &mut self.driver {
+            Driver::Claude(_) => {
+                self.program = Some(ProgramState::Idle);
+                self.row.state = RunState::Idle;
+                vec![Step::Write(ClaudeInput::initialize("anima-initialize"))]
+            }
+            Driver::Codex(codex) => vec![Step::Write(codex.begin())],
+            Driver::Grok(_) => Vec::new(),
+        }
     }
 
     /// The lines of a prompt of the person to a running thread. The prompt is shown as sent

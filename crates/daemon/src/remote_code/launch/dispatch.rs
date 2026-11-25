@@ -98,6 +98,14 @@ fn prepared_for(saved: &Reservation, command: &Command) -> bool {
 }
 
 impl Spawned {
+    pub(crate) fn exited(&mut self) -> std::io::Result<bool> {
+        self.child.try_wait().map(|exit| exit.is_some())
+    }
+
+    pub(crate) async fn end(&mut self) -> std::io::Result<()> {
+        self.child.kill().await
+    }
+
     /// Record creation using the retained live child. The holder retains this value if
     /// storage fails and can retry against the same marker.
     ///

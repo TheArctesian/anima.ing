@@ -70,14 +70,17 @@ async fn start_thread(
     let Ok(child) = spawned else {
         return refused(Refusal::StartFailed);
     };
-    attach(shared, thread, child, lease).await
+    attach(shared, thread, child, (lease, None)).await
 }
 
-async fn attach(
+pub(in crate::threads) async fn attach(
     shared: &Arc<Mutex<Shared>>,
     thread: ThreadKey,
     mut child: tokio::process::Child,
-    lease: Option<program::relay::Lease>,
+    (lease, remote_process): (
+        Option<program::relay::Lease>,
+        Option<crate::remote_code::launch::ProcessIdentity>,
+    ),
 ) -> Outcome {
     let pid = child.id().expect("a spawned child has its pid before wait");
     let started = tree::started(pid).await;
@@ -88,6 +91,7 @@ async fn attach(
     if let Ok(mut state) = shared.lock() {
         let mut slot = state.new_slot(pid, started, input);
         slot.relay = lease;
+        slot.remote_process = remote_process;
         state.threads.insert(thread.clone(), slot);
         state.enroll_git_read(&thread, pid);
         state.write_record();

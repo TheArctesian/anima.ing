@@ -167,6 +167,9 @@ fn same(row: &ThreadSummary, old: &ThreadSummary) -> bool {
 }
 
 fn revision(home: &Home) -> Option<i64> {
+    static WRITING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _writing = WRITING.lock().ok()?;
+
     let stored = private_file::read(&home.dir().join(REVISION)).ok()?;
     let previous = stored.as_ref().map_or(Some(0_i64), |bytes| {
         std::str::from_utf8(bytes).ok()?.parse().ok()
@@ -177,4 +180,41 @@ fn revision(home: &Home) -> Option<i64> {
     }
     private_file::write(home.dir(), REVISION, revision.to_string().as_bytes()).ok()?;
     Some(revision)
+}
+
+pub(crate) fn remote_publishable(home: &Home, row: &ThreadRow) -> bool {
+    let Some(user) = user_home(|name| std::env::var(name).ok()) else {
+        return false;
+    };
+    let Ok(settings) = UsageSettings::read(home) else {
+        return false;
+    };
+    transcripts_enabled(home) && summary(row, &user, &settings).is_some()
+}
+
+pub(crate) async fn publish_remote(
+    home: &Home,
+    connection: (&HubClient, Uuid, &crate::token_store::Credential),
+    row: &ThreadRow,
+) -> bool {
+    let Some(user) = user_home(|name| std::env::var(name).ok()) else {
+        return false;
+    };
+    let Ok(settings) = UsageSettings::read(home) else {
+        return false;
+    };
+    if !transcripts_enabled(home) {
+        return false;
+    }
+    let Some(mut summary) = summary(row, &user, &settings) else {
+        return false;
+    };
+    let Some(revision) = revision(home) else {
+        return false;
+    };
+    summary.revision = revision;
+    let (hub, device, credential) = connection;
+    transcript::send_thread(home, (hub, device), &summary, (credential, &settings))
+        .await
+        .is_some()
 }

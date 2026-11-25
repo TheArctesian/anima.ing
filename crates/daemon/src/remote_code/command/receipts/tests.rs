@@ -110,7 +110,10 @@ fn queued_approval_is_exact_and_survives_switch_off() {
     );
     let approved = running.command(2, &payload("rule-1"));
     let accepted = store.consume(&approved, &live, recorded).unwrap();
-    assert_eq!(outcome(accepted), ReceiptOutcome::Recorded { cause: () });
+    assert_eq!(
+        outcome(accepted.clone()),
+        ReceiptOutcome::Recorded { cause: () }
+    );
     let replay = Store::at(&running.home)
         .consume(&approved, &live, untouched)
         .unwrap();
@@ -217,11 +220,46 @@ fn a_mismatched_operator_gets_no_receipt_for_a_command_it_did_not_own() {
         store.consume(&wrong_owner, &live, untouched),
         Err(StoreError::Conflict)
     ));
-    wrong_owner.id = Uuid::from_u128(2);
+    wrong_owner.id = Uuid::from_u128(2).to_string().try_into().unwrap();
     assert_eq!(
         outcome(store.consume(&wrong_owner, &live, untouched).unwrap()),
         ReceiptOutcome::Refused {
             cause: Cause::ThreadUnknown
         }
     );
+}
+
+#[test]
+fn opaque_command_ids_replay_and_reject_substitution() {
+    let running = Running::start();
+    let store = Store::at(&running.home);
+    let live = running.live(true);
+    for id in ["../狀態/command".to_owned(), "é".repeat(128)] {
+        let mut command = running.command(1, &json!({"kind":"prompt","prompt":"fixture prompt"}));
+        command.id = id.clone().try_into().unwrap();
+        let first = store.consume(&command, &live, recorded).unwrap();
+        assert_eq!(
+            Store::at(&running.home)
+                .consume(&command, &live, untouched)
+                .unwrap(),
+            first
+        );
+        assert_eq!(serde_json::to_value(&command.id).unwrap(), id);
+        command.payload = Payload::Prompt {
+            prompt: "changed".to_owned(),
+        };
+        assert!(matches!(
+            Store::at(&running.home).consume(&command, &live, untouched),
+            Err(StoreError::Conflict)
+        ));
+    }
+    for invalid in [
+        String::new(),
+        "é".repeat(129),
+        "line
+feed"
+            .to_owned(),
+    ] {
+        assert!(super::super::CommandId::try_from(invalid).is_err());
+    }
 }

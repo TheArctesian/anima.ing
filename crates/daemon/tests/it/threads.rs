@@ -21,6 +21,8 @@ mod listing;
 mod models_projects;
 mod queue_frames;
 mod relay;
+#[cfg(target_os = "linux")]
+mod remote_code;
 mod requests;
 mod runner;
 mod start;

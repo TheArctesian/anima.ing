@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::OwnedMutexGuard;
 
 use super::holder::{Shared, locked};
-mod start;
+pub(super) mod start;
 use super::tree;
 use super::wire::{self, Action, Command, Event, Outcome, Refusal, ThreadKey};
 
@@ -56,6 +56,7 @@ async fn act(
     match action {
         Action::Hello { version, git_reads } => hello(shared, version, git_reads),
         action @ Action::Start { .. } => start::run(shared, action).await,
+        Action::RemoteCode { .. } => refused(Refusal::BadStart),
         Action::Write { thread, line } => write(shared, &thread, line),
         Action::CloseInput { thread } => {
             if close_input(shared, &thread) {
@@ -103,7 +104,7 @@ async fn act(
 
 /// The environment of a start with the mark of `thread` last, so that no value of the daemon
 /// takes its place (THR-049).
-fn marked(mut env: Vec<(String, String)>, thread: &ThreadKey) -> Vec<(String, String)> {
+pub(super) fn marked(mut env: Vec<(String, String)>, thread: &ThreadKey) -> Vec<(String, String)> {
     env.retain(|(name, _)| name != super::marker::MARK);
     env.push(super::marker::entry(thread));
     env
