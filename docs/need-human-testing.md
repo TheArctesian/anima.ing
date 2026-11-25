@@ -225,7 +225,7 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 
 - State: Open.
 - On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. Keep the app open for two samples and check that CPU also shows. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
-- On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
+- On a native phone build with the TH50 read route, tap Code in the bottom bar. It opens the shared inbox for the signed-in hub. Open a device page and check that the device's sessions are still available there.
 
 ### HT-183: Device Overview and tabs on iPad
 
@@ -5763,7 +5763,7 @@ State: Open. Built on `code/local-anima-sessions-only`. Synthetic tests mount th
    Expected: only the Anima-started session and its project appear. There is no imported-history control. Imported sessions do not contribute to the Code attention badge.
 2. Open the local Anima session, leave Code, reopen it, then restart the app and reopen the persisted session.
    Expected: the Anima session remains available. An old selected/imported session or history entry never reveals its title, messages, details or composer.
-3. On the installed TC2L build before mobile release activation, open Code on a client that cannot read this computer's local runner, including the phone client.
+3. Open Code in an ordinary browser without a local runner. For a native phone use HT-149 and HT-170-code-handoff.
    Expected: an explanation that Code currently shows Anima-started threads on this computer; no remote computer/session chooser is exposed.
 4. Confirm existing ingestion and session records are retained by the normal ingestion workflow.
    Expected: records remain available for future use; this UI change deletes no sessions and does not stop the watcher.
