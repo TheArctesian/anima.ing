@@ -113,7 +113,7 @@ impl Peer {
 // On macOS LOCAL_PEERTOKEN looks up the peer's last numeric PID at query time.
 // It cannot prove that a live code signature belongs to the original socket peer.
 #[cfg(not(all(target_os = "linux", target_pointer_width = "64")))]
-pub(in crate::threads) struct Peer;
+pub(in crate::threads) enum Peer {}
 
 #[cfg(not(all(target_os = "linux", target_pointer_width = "64")))]
 impl Peer {
@@ -121,8 +121,8 @@ impl Peer {
         None
     }
 
-    pub(in crate::threads) fn is_daemon(&self) -> std::future::Ready<bool> {
-        std::future::ready(false)
+    pub(in crate::threads) const fn is_daemon(&self) -> std::future::Ready<bool> {
+        match *self {}
     }
 }
 
