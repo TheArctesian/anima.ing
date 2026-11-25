@@ -12,7 +12,7 @@
   import CertificateModal from '../certificate/CertificateModal.svelte';
   import CredentialPrompt from '../credentials/CredentialPrompt.svelte';
   import { keyFilter, type KeyCombination, type KeyFilter } from '../guacamole/keys';
-  import { SessionConnection, progressOf, type Stage } from '../session.svelte';
+  import { REMOTE_CONFLICT, SessionConnection, progressOf, type Stage } from '../session.svelte';
   import type { RemoteStart } from '../start';
   import { clipboardRules, NO_CLIPBOARD } from '../clipboard/clipboard';
   import ConnectionSteps from '../steps/ConnectionSteps.svelte';
@@ -20,7 +20,6 @@
   import { followPixelRatio, remotePane, type RemotePane } from './pane';
   import { gatewayAsk, PROMPT_CANCELLED, PROMPT_REFUSED } from './prompt';
   import RemoteToolbar from './RemoteToolbar.svelte';
-  import TouchText from './touch/TouchText.svelte';
   import RemoteDisplay from './RemoteDisplay.svelte';
 
   type Client = SessionTunnel['client'];
@@ -47,17 +46,12 @@
   const COPY_FAILED = 'Could not copy to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow access, or use Paste in the Keys menu.';
   const PASTE_REFUSED = 'Paste to the device is off. Nothing sent.';
-  /** Fixed text for a `CONFLICT` refusal of the start (K4 §1); never the hub's own message (LOG-007). */
-  const CONFLICT_TEXT: Readonly<Record<RemoteProtocol, string | undefined>> = {
-    RDP: "Could not open the session. RDP certificate not accepted yet: run the connection test first.",
-    VNC: 'Could not open the session. The hub refused it: check the VNC settings, then run the connection test.',
-  };
 
   const connection = new SessionConnection<SessionTunnel, GuacamoleState>(
     (display, events) => start(display, events),
     { endSession: (id) => api.endSession(id) },
     (ending) => onended?.(ending),
-    untrack(() => CONFLICT_TEXT[protocol]),
+    untrack(() => REMOTE_CONFLICT[protocol]),
   );
   let pane: RemotePane | undefined;
   /** The remote size the open tunnel started with, in device pixels. */
@@ -239,10 +233,12 @@
   });
 </script>
 
-<section class="session" hidden={!visible} aria-label="{protocol} session on {device.name}">
+{#snippet toolbar()}
   <RemoteToolbar
     deviceName={device.name}
     {onback}
+    docked={onback !== undefined}
+    typing={mobile && ready && visible && ask.kind !== 'ask' ? client : undefined}
     {ready}
     policy={rules.notice}
     pasteOff={rules.pasteOff}
@@ -256,7 +252,11 @@
     onpaste={pasteFromClipboard}
     ondismiss={() => (notice = undefined)}
   />
-  {#if mobile && ready && visible && client !== undefined && ask.kind !== 'ask'}<TouchText {client} />{/if}
+{/snippet}
+
+<!-- On a touch screen (Back is given) the bar is under the display, where the thumbs and the keyboard are. -->
+<section class="session" hidden={!visible} aria-label="{protocol} session on {device.name}">
+  {#if onback === undefined}{@render toolbar()}{/if}
   <div class="stage">
     <!-- The keyboard listens here only; menus, panels and modals are outside it (D-8). -->
     <!-- Focusable because the remote desktop takes the keyboard as a text field does (D-8). -->
@@ -293,6 +293,7 @@
       </div>
     {/if}
   </div>
+  {#if onback !== undefined}{@render toolbar()}{/if}
 </section>
 
 <!-- One prompt per `required`: a newer one while a save is awaited gets its own prompt, and answers only itself. -->

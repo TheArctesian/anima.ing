@@ -30,7 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
-| HT-NEW-mobileinventory | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
+| HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
 | HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
@@ -213,6 +213,16 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Pinch to zoom and move both fingers to pan. Check that the desktop stays under the fingers, that lifting a finger does not click, and that Fit restores the original view.
 - Tap the text field. Type ordinary text, one accented character and one IME composition, then use Enter and Backspace. Confirm each appears once on the remote desktop.
 - Background the app and interrupt its network. Reopen the app, check the session reconnect behavior, and use the pointer again.
+
+### HT-192: a remote desktop on an iPhone fills the screen and shows the pointer
+
+- State: Open.
+- Built: on a phone, a VNC or RDP session uses the whole screen inside the safe area in each orientation, with the app's navigation hidden; one bar under the display holds Back, Keys, Fit, Displays and the text field; a pointer of a fixed size shows where a tap clicks (`apps/client/src/lib/sessions/strip/SessionPanes.svelte`, `apps/client/src/lib/sessions/view/remote/`). The client tests cover the pointer position, and a browser test covers the layout at iPhone sizes. They do not cover the iOS keyboard, the safe areas of a real iPhone, or a real VNC server.
+- Open a VNC session from the iPhone app to the Mac. In portrait, check that the Mac's screen spans the width, that the pointer shows at the centre of it, and that one bar is at the bottom, above the home indicator. Expected: no bar at the top, and no app navigation.
+- Turn the iPhone to landscape. Expected: the Mac's screen uses the full height above the bar, and the app's navigation rail does not show.
+- Move one finger on the screen. Expected: the drawn pointer and the Mac's pointer move together. Tap a harmless spot. Expected: the click lands at the tip of the drawn pointer.
+- Tap the text field and type a word. Expected: the bar sits on the keyboard, the field stays visible, the page does not zoom, and the word appears once on the Mac.
+- Use Back, then reopen the session from its tab. Expected: the session stayed connected.
 
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 
@@ -5679,7 +5689,7 @@ On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing
 On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
 
 
-## HT-NEW-mobileinventory — Installed mobile tool reporting (TH135)
+## HT-191 — Installed mobile tool reporting (TH135)
 
 State: Open. Built locally: the typed K8 snapshot, bounded collector, hub storage and
 K1/CLI/MCP read path. New collection is off in normal builds. `mobile-inventory` is an
