@@ -89,11 +89,11 @@ fn patch_listing(output: &[u8]) -> Option<(&[u8], &str)> {
 ///
 /// # Errors
 /// [`GitRefusal::UnknownCheckpoint`] for a turn with no checkpoint; a failure of `git`.
-async fn of(
+pub(super) async fn of(
     git: &Git,
     worktree: &Worktree,
     scope: Scope,
-    ignore_whitespace: bool,
+    look: Look,
 ) -> Result<Changes, GitRefusal> {
     let turns = checkpoint::list(git, worktree).await?;
     let at = |turn: u32| {
@@ -118,10 +118,12 @@ async fn of(
             _ => return Err(GitRefusal::UnknownCheckpoint),
         },
     };
-    let look = Look::Patches { ignore_whitespace };
     let mut changes = between(git, worktree, (&from, &to), look).await?;
     changes.snapshot = (scope == Scope::Uncommitted
-        && !ignore_whitespace
+        && look
+            == (Look::Patches {
+                ignore_whitespace: false,
+            })
         && !changes.truncated
         && !changes.files.iter().any(|file| file.binary))
     .then_some(to);
@@ -139,7 +141,7 @@ pub async fn shown(
     (scope, ignore_whitespace): (Scope, bool),
     keep: bool,
 ) -> Result<Changes, GitRefusal> {
-    let mut changes = of(git, worktree, scope, ignore_whitespace).await?;
+    let mut changes = of(git, worktree, scope, Look::Patches { ignore_whitespace }).await?;
     if !keep {
         changes.snapshot = None;
     } else if let Some(shown) = &changes.snapshot {

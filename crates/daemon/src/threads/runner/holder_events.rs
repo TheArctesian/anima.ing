@@ -30,7 +30,9 @@ impl Runner {
                 version,
                 threads,
                 build,
+                ..
             } => self.hello(version, threads, build.as_deref()).await,
+            Event::GitReadRoot { .. } => {}
             Event::Done { id, outcome } => self.done(id, outcome).await,
             Event::Lines {
                 thread,

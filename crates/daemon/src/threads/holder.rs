@@ -25,6 +25,9 @@ use super::record::{self, Record};
 use super::tree;
 use super::wire::{self, Action, Command, Event, Exit, Held, MAX_FRAME, Outcome, ThreadKey};
 
+mod git_reads;
+use git_reads::GitReads;
+
 /// The name of the socket file in the folder of the holder.
 pub const SOCKET: &str = "holder.sock";
 const LOCK: &str = "holder.lock";
@@ -59,6 +62,7 @@ pub struct Slot {
     pub left_behind: bool,
     /// The program ended and was reaped: its ID may belong to a different process now.
     pub reaped: bool,
+    git_root: Option<git_reads::Root>,
     pub exit: Option<Exit>,
 }
 
@@ -82,6 +86,7 @@ pub struct Shared {
     pub draining: bool,
     /// The holder ends: no new start, so that no program outlives it (THR-049).
     pub closing: bool,
+    git_reads: GitReads,
     pub limit: usize,
     /// What an older holder left that this one could not prove ended: kept in the record.
     pub inherited: Vec<record::Entry>,
@@ -163,6 +168,7 @@ impl Shared {
             seen: tree::Known::new(),
             left_behind: false,
             reaped: false,
+            git_root: None,
             exit: None,
         }
     }
@@ -190,6 +196,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         done_order: VecDeque::new(),
         draining: false,
         closing: false,
+        git_reads: GitReads::default(),
         limit: if limit == 0 { LIMIT } else { limit },
         inherited,
         acting: BTreeSet::new(),
@@ -287,6 +294,7 @@ fn take_place(shared: &Mutex<Shared>, me: u64, sender: mpsc::UnboundedSender<Str
     if state.closing || state.connection.as_ref().is_some_and(|(id, _)| *id > me) {
         return false;
     }
+    state.git_reads.negotiated = false;
     if let Some((older, _)) = state.connection.replace((me, sender)) {
         tracing::warn!(
             older,

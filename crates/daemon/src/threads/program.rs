@@ -179,6 +179,7 @@ pub async fn wait(
     };
     let seen = {
         let mut state = locked(&shared);
+        state.revoke_git_read(&thread);
         state
             .threads
             .get_mut(&thread)

@@ -89,6 +89,7 @@ async fn attach(
         let mut slot = state.new_slot(pid, started, input);
         slot.relay = lease;
         state.threads.insert(thread.clone(), slot);
+        state.enroll_git_read(&thread, pid);
         state.write_record();
     }
     let readers = [

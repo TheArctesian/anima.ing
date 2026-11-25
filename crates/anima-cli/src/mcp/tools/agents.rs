@@ -10,6 +10,8 @@
 //! folder and not its path, and no branch. Each text is cleaned and capped as each text from a
 //! device is (MCP-008).
 
+mod git;
+
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -27,6 +29,7 @@ use crate::mcp::untrusted::{cleaned, fitted};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AgentTool {
     Threads,
+    Git(git::GitTool),
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -51,11 +54,17 @@ enum ProgramName {
 }
 
 impl AgentTool {
-    pub const ALL: [Self; 1] = [Self::Threads];
+    pub const ALL: [Self; 4] = [
+        Self::Threads,
+        Self::Git(git::GitTool::Status),
+        Self::Git(git::GitTool::Checkpoints),
+        Self::Git(git::GitTool::Changes),
+    ];
 
     #[must_use]
     pub fn definition(self) -> Definition {
         match self {
+            Self::Git(tool) => tool.definition(),
             Self::Threads => Definition::new::<ThreadsInput>(
                 "anima_agents_threads",
                 Access::Read,
@@ -80,6 +89,7 @@ impl AgentTool {
     /// [`ToolError`] for wrong arguments or a home folder that is not known.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
+            Self::Git(tool) => tool.call(arguments).await,
             Self::Threads => {
                 let input: ThreadsInput = parse(arguments)?;
                 if let Some(device) = input.device {

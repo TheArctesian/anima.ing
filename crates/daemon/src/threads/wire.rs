@@ -48,7 +48,11 @@ pub struct Command {
 pub enum Action {
     /// The first frame of a connection; the holder answers with [`Event::Hello`] and gives again
     /// each line that the daemon did not confirm.
-    Hello { version: u32 },
+    Hello {
+        version: u32,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        git_reads: bool,
+    },
     /// Start a program for a thread: an absolute path, no shell, this environment and folder.
     Start {
         /// Holder-owned relay: no address or secret crosses this wire.
@@ -90,6 +94,13 @@ pub enum Event {
         /// The build of the holder ([`this_build`]); a holder from before this member says none.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         build: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        git_read_roots: Option<Vec<GitReadRoot>>,
+    },
+    /// Changes to the live roots, only on a connection that requested Git reads.
+    GitReadRoot {
+        root: GitReadRoot,
+        enrolled: bool,
     },
     /// The answer to the command `id`.
     Done {
@@ -111,6 +122,14 @@ pub enum Event {
         thread: ThreadKey,
         exit: Exit,
     },
+}
+
+/// A live child identity derived by the holder before it can reap the child.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GitReadRoot {
+    pub thread: ThreadKey,
+    pub process: super::tree::identity::Identity,
+    pub generation: u64,
 }
 
 /// A thread that the holder holds.

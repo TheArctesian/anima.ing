@@ -95,5 +95,9 @@ hyper = { version = "1", features = ["client", "http1"] }
 hyper-util.workspace = true
 http-body-util.workspace = true
 
+[target.'cfg(all(target_os = "linux", target_pointer_width = "64"))'.dependencies]
+nix-peer = { package = "nix", version = "0.31", default-features = false, features = ["socket"] }
+rustix = { version = "1.1", features = ["event"] }
+
 [target.'cfg(windows)'.dev-dependencies]
 uds_windows = "1.2"
