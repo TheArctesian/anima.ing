@@ -68,6 +68,10 @@ impl Home {
             .write(file_name(file)?, bytes)
     }
 
+    pub(in super::super) fn sync_state(&self, file: &Path) -> io::Result<()> {
+        self.state_parent(file, false)?.sync()
+    }
+
     pub(in super::super) fn remove_state(&self, file: &Path) -> io::Result<()> {
         match self.state_parent(file, false) {
             Ok(folder) => folder.remove(file_name(file)?),

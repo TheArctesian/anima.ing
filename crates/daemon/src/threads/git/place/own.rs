@@ -246,14 +246,9 @@ pub async fn give(
     .map_err(GitError::Files)
 }
 
-/// Synchronizes the directory entries of a W1 snapshot whose file contents were already
-/// synced before placement. The caller can then republish its kept ref.
-pub(in crate::threads::git) fn sync_legacy_snapshot(common: &Path, own: &Path) -> io::Result<()> {
+/// Verifies that the legacy LFS cache's copies reached the project and syncs their entries.
+pub(in crate::threads::git) fn sync_legacy_lfs(common: &Path, own: &Path) -> io::Result<()> {
     let common = Dir::open(common)?;
-    let packs = common
-        .below(Path::new("objects/pack"), Make::Existing)?
-        .ok_or(io::ErrorKind::NotFound)?;
-    packs.sync()?;
     large_files(own, |source, path| {
         let (leaf, name) = common
             .above(path, Make::Existing)?

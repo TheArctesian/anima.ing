@@ -25,14 +25,16 @@ pub(super) struct Retirement {
 
 impl Retirement {
     pub(super) fn existing(home: &Home, record: &Record) -> Result<Option<Self>, GitRefusal> {
-        match home.read_state(&journal(record)) {
+        let journal = journal(record);
+        match home.read_state(&journal) {
             Ok(Some(text)) => {
                 let existing: Self = serde_json::from_slice(&text).map_err(failed)?;
                 if Some(existing.original) == record.folder_id {
+                    home.sync_state(&journal).map_err(failed)?;
                     return Ok(Some(existing));
                 }
                 // The old active record was already released. Its directory stays recoverable.
-                home.remove_state(&journal(record)).map_err(failed)?;
+                home.remove_state(&journal).map_err(failed)?;
                 Ok(None)
             }
             Ok(None) => Ok(None),
@@ -160,6 +162,8 @@ impl Completion {
                 .ok_or_else(|| failed("recovery receipt has no folder identity"))?;
             verify(recovery, proof).map_err(failed)?;
         }
+        // The receipt and the removed active record share this directory.
+        home.sync_state(&path).map_err(failed)?;
         Ok(completed.outcome())
     }
 

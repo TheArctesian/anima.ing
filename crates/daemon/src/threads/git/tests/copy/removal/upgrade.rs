@@ -6,6 +6,11 @@ use sha2::Digest as _;
 use super::{Bench, PERSON, own_of};
 use crate::threads::git::tests::THREAD;
 
+#[cfg(unix)]
+mod barriers;
+#[cfg(unix)]
+mod verification;
+
 #[tokio::test]
 async fn interrupted_w1_removal_preserves_its_complete_ref_with_partial_or_absent_tree() {
     for absent in [false, true] {
@@ -170,7 +175,14 @@ async fn saved_lfs_snapshot(bench: &Bench) -> (String, std::path::PathBuf) {
         payload.len()
     );
     std::fs::write(bench.project.join("pointer.bin"), pointer).unwrap();
-    bench.git_in(&bench.project, &["add", "pointer.bin"]).await;
+    std::fs::write(
+        bench.project.join(".gitattributes"),
+        "pointer.bin filter=lfs\n",
+    )
+    .unwrap();
+    bench
+        .git_in(&bench.project, &["add", ".gitattributes", "pointer.bin"])
+        .await;
     bench
         .git_in(&bench.project, &["commit", "-qm", "legacy snapshot"])
         .await;
@@ -225,7 +237,8 @@ async fn an_archived_legacy_marker_keeps_its_ref_when_registry_release_is_retrie
     std::fs::remove_dir_all(folder).unwrap();
 
     let parent = own.parent().unwrap();
-    let fault = sync_probe::fail_for(parent, || {});
+    let original_git = own.clone();
+    let fault = sync_probe::fail_when(parent, move || !original_git.exists());
     let interrupted = bench.call(PERSON, GitAction::Remove).await;
     drop(fault);
     assert!(

@@ -123,7 +123,7 @@ pub(super) async fn legacy_saved(
     }
     let saved = saved.unwrap_or_default();
     legacy::verify(git, record, saved).await?;
-    own::sync_legacy_snapshot(&record.common_dir, &record.own).map_err(GitError::Files)?;
+    own::sync_legacy_lfs(&record.common_dir, &record.own).map_err(GitError::Files)?;
     // Re-publish after verifying the snapshot and synchronizing its directory entries.
     refs::put(&record.common_dir, &kept, saved, refs::Was::At(saved))?;
     Ok(Some(kept))

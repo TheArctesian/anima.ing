@@ -36,13 +36,22 @@ pub(in crate::threads::git) fn fail_for(
     path: &std::path::Path,
     mut before_error: impl FnMut() + 'static,
 ) -> Guard {
+    fail_when(path, move || {
+        before_error();
+        true
+    })
+}
+
+pub(in crate::threads::git) fn fail_when(
+    path: &std::path::Path,
+    mut should_fail: impl FnMut() -> bool + 'static,
+) -> Guard {
     use std::os::unix::fs::MetadataExt as _;
 
     let metadata = path.metadata().expect("the target to sync");
     install(move |fd| {
         let opened = std::fs::File::from(fd.try_clone_to_owned()?).metadata()?;
-        if opened.dev() == metadata.dev() && opened.ino() == metadata.ino() {
-            before_error();
+        if opened.dev() == metadata.dev() && opened.ino() == metadata.ino() && should_fail() {
             return Err(io::Error::other("injected directory sync failure"));
         }
         Ok(())

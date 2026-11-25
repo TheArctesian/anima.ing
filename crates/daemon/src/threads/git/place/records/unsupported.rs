@@ -30,6 +30,10 @@ impl Directory {
         unsupported()
     }
 
+    pub(crate) fn sync(&self) -> io::Result<()> {
+        unsupported()
+    }
+
     pub(crate) fn remove(&self, _: &OsStr) -> io::Result<()> {
         unsupported()
     }

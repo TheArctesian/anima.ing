@@ -7,8 +7,7 @@ use std::os::fd::OwnedFd;
 use std::path::{Path, PathBuf};
 
 use rustix::fs::{
-    AtFlags, FileType, Mode, OFlags, fchmod, fstat, fsync, mkdirat, openat, renameat, statat,
-    unlinkat,
+    AtFlags, FileType, Mode, OFlags, fchmod, fstat, mkdirat, openat, renameat, statat, unlinkat,
 };
 use rustix::io::Errno;
 
@@ -114,19 +113,22 @@ impl Directory {
             self.file(name)?;
             let dir = self.current()?;
             renameat(dir, temporary.as_str(), dir, name)?;
-            Ok(fsync(dir)?)
+            super::super::walk::sync_directory(dir)
         })();
         let _ = unlinkat(dir, temporary.as_str(), AtFlags::empty());
         result
+    }
+
+    pub(crate) fn sync(&self) -> io::Result<()> {
+        super::super::walk::sync_directory(self.current()?)
     }
 
     pub(crate) fn remove(&self, name: &OsStr) -> io::Result<()> {
         if self.file(name)?.is_some() {
             let dir = self.current()?;
             unlinkat(dir, name, AtFlags::empty())?;
-            fsync(dir)?;
         }
-        Ok(())
+        self.sync()
     }
 
     pub(crate) fn remove_tree(&self, name: &OsStr) -> io::Result<()> {

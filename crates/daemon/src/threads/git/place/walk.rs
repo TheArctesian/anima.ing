@@ -20,6 +20,9 @@ mod tests;
 #[cfg(unix)]
 mod publication;
 
+#[cfg(unix)]
+mod links;
+
 /// Whether a path walk is for reading or for writing durable directory entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Make {
@@ -333,6 +336,10 @@ mod none {
     }
 
     impl Dir {
+        pub(in crate::threads::git) fn link_file(&self, _: &OsStr, _: &Self) -> io::Result<()> {
+            none()
+        }
+
         pub(in crate::threads::git) fn publish(&self, _: &OsStr, _: File) -> io::Result<()> {
             none()
         }
