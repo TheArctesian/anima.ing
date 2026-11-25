@@ -64,10 +64,27 @@ These are in the idea [hosting-serveros-gaps](../../ideas/hosting-serveros-gaps/
 | G4 | The Catalogue says "a machine", not "this device", and the main action of Hosting is a button | 6, F2 |
 | G5 | One format for sizes in Hosting | F3 |
 
-## 6. Persona test
+## 6. Persona test (2026-11-25)
 
-Waits. The task says to run the `persona-test` skill when H53 and H55 are on `dev`, or after about 36 hours with what is there. This record will get a Section 7 with the result in a later commit.
+H53 and H55 were not on `dev` after 36 hours (both "Not started" on `dev` at 2026-11-25 05:21 PST). As the task says, the test ran on what is on `dev`. It is a light form of the `persona-test` skill: its workflow could not serve this client to the persona browsers, because the synthetic hub exists only inside the request interception of Playwright. So a temporary driver replayed each persona's actions in WebKit against the synthetic hub and gave back the accessibility tree and a picture. Three blinded agents (told not to read code or documents) did two tasks each: a desktop home-lab owner (1280 x 800), a phone user (375 x 812, touch) and a screen-reader user (accessibility tree only). The findings were not reproduced by a second agent. Each one below was checked against the source or the pictures by the session; "unconfirmed" marks a finding that can come from the synthetic data.
+
+| Rank | Finding | Personas | Nielsen severity | Check |
+| --- | --- | --- | --- | --- |
+| P1 | **On a phone, Hosting cannot be found.** The phone persona tried Code, then Settings, and reached Hosting only through a link on the Containers tab of one device. Same as rank 3 of Section 3. | phone | 4 | `Nav.svelte` (certain) |
+| P2 | **Nothing outside Hosting says that an application needs the operator.** The Devices page says each machine is Up; the bar has a count beside Code but none beside Hosting. All three personas had to guess where to look. ServerOS puts the issues on its home page. | all three | 3 | rendered (measured) |
+| P3 | **A broken application has no action.** The unhealthy row has only Details and Log. No Restart, no link to a shell on the machine, no reason for the state. The desktop persona stopped there. | desktop | 3 | `HostingList.svelte` (certain); stage 2 of the plan |
+| P4 | **No answer to "where is my application reached?"** Routes says "No routes yet" and the Details of a container list no published port. Same as rank 9 and G2. | screen reader | 3 | rendered (measured) |
+| P5 | **The room of a machine is not in Hosting, and the device page gives percentages only** (memory 41 %, disk 63 %, no totals), with "No drives yet" beside "Disk 63 %". | desktop | 3 | rendered; the second part is outside Hosting (unconfirmed for the real hub) |
+| P6 | **The machine group row looks healthy above an unhealthy row** ("Up", "1 of 1 running"). The device state and the application state are one dot. Same as F4. | desktop, screen reader | 2 | rendered (measured) |
+| P7 | **The Docker error is read as part of the machine name.** In the machine row the text "Docker was not read ..." is inside the row header and is not announced as a problem. Same as rank 10 and G3. | screen reader | 2 | `HostingList.svelte` (certain) |
+| P8 | **Internal words reach the operator:** "(task H6)" on Routes; "Not managed", "Read only" and "Compose project" were not understood by two personas; "Read only" sits in the column Updates. | all three | 2 | rendered (measured) |
+| P9 | **The Containers tab of a device and Applications in Hosting do not agree.** The phone persona saw an application that is partly running on `nas` in the device tab, but Applications in Hosting lists only machines with SSH on, so it showed neither `nas` nor that application. | phone | 3 if real | unconfirmed: the synthetic hub serves containers for a device with SSH off. A check on a real hub is in G6. |
+| P10 | On a phone, the links "Volumes in Hosting" and "View in Hosting" on the Containers tab of a device are cut at the right edge. | phone | 1 | pictures of the phone persona (measured); outside Hosting |
+
+What worked: the table has a caption and headers; "Log of ollama" and "Details of ollama" are clear names; the choice Needs you was "the clearest thing in the app" for the phone persona; Storage answered "how much space can I free, and where" in two steps.
+
+G6 is added to the idea: check on a real hub whether a device with SSH off can show containers in its tab while Hosting leaves it out, and if so make both lists use one rule.
 
 ## 7. Verdict
 
-Hosting does not beat ServerOS yet. Anima is still ahead on models, on routes as a section, on the one Needs you count and on honest Not managed rows (comparison record, Section 6). ServerOS is ahead on each screen that shows machines, use and installs, and on the phone. H50 to H59 close ranks 1, 2, 4, 6, 7 and 8 when they land; ranks 3, 9 and 10 have no task.
+Hosting does not beat ServerOS yet. Anima is still ahead on models, on routes as a section, on the one Needs you count and on honest Not managed rows (comparison record, Section 6). ServerOS is ahead on each screen that shows machines, use and installs, and on the phone. H50 to H59 close ranks 1, 2, 4, 6, 7 and 8 when they land; ranks 3, 9 and 10 have no task. The persona test adds two more costs that no task holds: no signal outside Hosting (P2) and no action on a broken application (P3).

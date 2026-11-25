@@ -9,7 +9,7 @@
 
 ## The idea
 
-Five small changes close the gaps where Hosting loses to the panel of ServerOS and no task holds the work: G1, a place for Hosting in the phone layout; G2, the column Reached at in Applications, as the mockup draws it; G3, a machine whose Docker was not read shows one short line and a next step; G4, the Catalogue says "a machine", not "this device", and the main action of Hosting is a button; G5, one format for sizes.
+Five small changes close the gaps where Hosting loses to the panel of ServerOS and no task holds the work: G1, a place for Hosting in the phone layout; G2, the column Reached at in Applications, as the mockup draws it; G3, a machine whose Docker was not read shows one short line and a next step; G4, the Catalogue says "a machine", not "this device", and the main action of Hosting is a button; G5, one format for sizes; G6, check that the Containers tab of a device and Applications in Hosting list the same machines (persona finding P9). The persona test of 2026-11-25 adds: a count of what needs the operator beside Hosting in the bar (P2).
 
 ## Evidence
 
