@@ -15,16 +15,24 @@ pub(in super::super) async fn sweep(runner: Uuid) -> bool {
 
 async fn end_marked(runner: Uuid) -> bool {
     let wanted = format!("{MARK}={runner}");
-    let Ok(mut folders) = tokio::fs::read_dir("/proc").await else {
-        return false;
-    };
+    loop {
+        match empty_after_sweep(&wanted).await {
+            Some(true) => return true,
+            Some(false) => {}
+            None => return false,
+        }
+    }
+}
+
+async fn empty_after_sweep(wanted: &str) -> Option<bool> {
+    let mut folders = tokio::fs::read_dir("/proc").await.ok()?;
     let mut complete = true;
     let mut signalled = Vec::new();
     loop {
         let folder = match folders.next_entry().await {
             Ok(Some(folder)) => folder,
             Ok(None) => break,
-            Err(_) => return false,
+            Err(_) => return None,
         };
         let Some(pid) = folder
             .file_name()
@@ -33,10 +41,10 @@ async fn end_marked(runner: Uuid) -> bool {
         else {
             continue;
         };
-        match marked(&folder.path(), &wanted).await {
+        match marked(&folder.path(), wanted).await {
             Some(true) => {
                 if let Some(process) = Process::open(pid)
-                    && marked(&folder.path(), &wanted).await == Some(true)
+                    && marked(&folder.path(), wanted).await == Some(true)
                     && process.live()
                     && process.signal(Signal::KILL).is_ok()
                 {
@@ -52,7 +60,7 @@ async fn end_marked(runner: Uuid) -> bool {
     while !signalled.iter().all(Process::terminated) {
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
-    complete
+    complete.then_some(signalled.is_empty())
 }
 
 async fn marked(folder: &Path, wanted: &str) -> Option<bool> {
