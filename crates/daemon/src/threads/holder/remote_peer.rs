@@ -121,12 +121,8 @@ impl Peer {
         None
     }
 
-    #[expect(
-        clippy::unused_async,
-        reason = "other platforms verify their socket peer asynchronously"
-    )]
-    pub(in crate::threads) async fn is_daemon(&self) -> bool {
-        false
+    pub(in crate::threads) fn is_daemon(&self) -> std::future::Ready<bool> {
+        std::future::ready(false)
     }
 }
 

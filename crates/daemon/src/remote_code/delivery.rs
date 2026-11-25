@@ -82,6 +82,10 @@ impl Delivery {
         &self.config
     }
 
+    pub(crate) fn credential_stamp(&self) -> [u8; 32] {
+        self.credential.token.hash().to_bytes()
+    }
+
     fn observed<T>(&self, answer: Answer<T>) -> Answer<T> {
         if matches!(
             answer,

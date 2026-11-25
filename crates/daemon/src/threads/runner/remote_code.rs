@@ -3,6 +3,7 @@
 mod control;
 mod launch;
 mod polling;
+mod publication;
 
 use std::{collections::BTreeMap, time::Duration};
 
@@ -15,6 +16,7 @@ use crate::remote_code::{
     launch::{ProcessIdentity, Reservation},
     wire::{ClaimedLaunch, DispatchRequest},
 };
+use crate::threads::wire::remote_code::Enrollment;
 
 #[derive(Default)]
 pub(super) struct Remote {
@@ -23,6 +25,7 @@ pub(super) struct Remote {
     reserving: bool,
     claiming: bool,
     holder: Holder,
+    connection: u64,
     polling: bool,
     threads: Option<daemon_core::wire::Switch>,
     due_claim: Option<Instant>,
@@ -44,12 +47,17 @@ enum Holder {
 pub(super) enum Event {
     Look,
     Tick,
-    Claim(Option<ClaimedLaunch>),
+    Claim {
+        connection: u64,
+        result: Option<(Enrollment, ClaimedLaunch)>,
+    },
     Poll {
-        enrollment: Option<crate::config::Config>,
+        connection: u64,
+        enrollment: Option<(crate::config::Config, [u8; 32])>,
         result: crate::hub::answer::Answer<Vec<Delivered>>,
     },
     Relay {
+        connection: u64,
         request: DispatchRequest,
         result: crate::hub::answer::Answer<Reply>,
     },
@@ -63,7 +71,10 @@ impl Remote {
     }
 
     pub(super) fn disconnect(&mut self) {
+        self.connection = self.connection.wrapping_add(1);
         self.active = None;
+        self.claiming = false;
+        self.polling = false;
         self.reserving = false;
         self.holder = Holder::Unknown;
         self.live.clear();

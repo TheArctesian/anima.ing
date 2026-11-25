@@ -51,10 +51,11 @@ pub(super) async fn run(
     let store = Store::at(&home);
     let response = match frame {
         ToHolder::Open | ToHolder::Prove { .. } => return,
-        ToHolder::Reserve { claim } => home
+        ToHolder::Reserve { enrollment, claim } => home
             .read_config()
             .ok()
             .flatten()
+            .filter(|config| enrollment.matches(config))
             .and_then(|config| store.reserve((config.device, &config.hub), &claim).ok())
             .map_or(ToRunner::Refused, |saved| ToRunner::Reserved {
                 request: *saved.request(),

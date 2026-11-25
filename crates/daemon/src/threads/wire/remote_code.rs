@@ -19,6 +19,7 @@ pub(in crate::threads) enum ToHolder {
         nonce: uuid::Uuid,
     },
     Reserve {
+        enrollment: Enrollment,
         claim: ClaimedLaunch,
     },
     Start(Box<Start>),
@@ -35,6 +36,26 @@ pub(in crate::threads) enum ToHolder {
         request: DispatchRequest,
         cause: NotCreated,
     },
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(in crate::threads) struct Enrollment {
+    pub device: uuid::Uuid,
+    pub origin: String,
+}
+
+impl Enrollment {
+    pub(in crate::threads) fn of(config: &crate::config::Config) -> Self {
+        Self {
+            device: config.device,
+            origin: config.hub.as_text(),
+        }
+    }
+
+    pub(in crate::threads) fn matches(&self, config: &crate::config::Config) -> bool {
+        self.device == config.device && self.origin == config.hub.as_text()
+    }
 }
 
 #[derive(Serialize, Deserialize)]

@@ -10,7 +10,7 @@ use crate::{
     remote_code::{
         Store, claim::Advertised, delivery::Delivery, launch::Progress, wire::NotCreated,
     },
-    threads::wire::remote_code::ToHolder,
+    threads::wire::remote_code::{Enrollment, ToHolder},
 };
 
 use super::{super::Runner, Event, request_of};
@@ -45,33 +45,43 @@ impl Runner {
 
     pub(in crate::threads::runner) async fn remote_event(&mut self, event: Event) {
         match event {
-            Event::Claim(claim) => {
+            Event::Claim { connection, result } if connection == self.remote.connection => {
                 self.remote.claiming = false;
-                if let Some(claim) = claim
+                if let Some((enrollment, claim)) = result
+                    && self.remote.holder == super::Holder::Ready
                     && !self.remote.busy()
                 {
                     self.remote.reserving = true;
-                    self.remote_send(ToHolder::Reserve { claim }).await;
+                    self.remote_send(ToHolder::Reserve { enrollment, claim })
+                        .await;
                 }
             }
-            Event::Poll { enrollment, result } => {
+            Event::Poll {
+                connection,
+                enrollment,
+                result,
+            } if connection == self.remote.connection => {
                 self.remote.polling = false;
                 self.remote.delay_poll(&result);
-                if let (Some(enrollment), Answer::Accepted(commands)) = (enrollment, result)
-                    && self
-                        .remote_home()
-                        .read_config()
-                        .ok()
-                        .flatten()
-                        .is_some_and(|current| {
-                            current.device == enrollment.device && current.hub == enrollment.hub
-                        })
+                if let (Some((enrollment, stamp)), Answer::Accepted(commands)) =
+                    (enrollment, result)
+                    && !commands.is_empty()
+                    && self.remote.holder == super::Holder::Ready
+                    && enrolled(self.remote_home()).await.is_some_and(|current| {
+                        current.config().device == enrollment.device
+                            && current.config().hub == enrollment.hub
+                            && current.credential_stamp() == stamp
+                    })
                 {
                     self.remote_commands(commands, &enrollment).await;
                 }
                 self.remote_poll();
             }
-            Event::Relay { request, result } if self.remote.active == Some(request) => {
+            Event::Relay {
+                connection,
+                request,
+                result,
+            } if connection == self.remote.connection && self.remote.active == Some(request) => {
                 let frame = match result {
                     Answer::Accepted(reply) => Some(ToHolder::Reply { reply }),
                     Answer::Refused(RefusalCode::WorkOff) => Some(ToHolder::Close {
@@ -88,7 +98,7 @@ impl Runner {
                     self.remote_send(frame).await;
                 }
             }
-            Event::Relay { .. } => {}
+            Event::Relay { .. } | Event::Claim { .. } | Event::Poll { .. } => {}
             Event::Look => self.look_around().await,
             Event::Tick => self.remote_tick().await,
         }
@@ -123,6 +133,7 @@ impl Runner {
             self.may_start(0).is_ok() && self.remote.holder == super::Holder::Ready,
         );
         let cadence = Advertised::new(&base, Switch::Off, switch, &targets).cadence();
+        let connection = self.remote.connection;
         self.remote.claiming = true;
         self.remote.threads = Some(switch);
         self.remote.due_claim = Some(now + cadence);
@@ -130,13 +141,15 @@ impl Runner {
             let result = if let Some(delivery) = enrolled(home).await {
                 let advert = Advertised::new(&base, Switch::Off, switch, &targets);
                 match delivery.claim(&advert).await {
-                    Answer::Accepted(Claimed::Work(work)) => serde_json::from_value(work).ok(),
+                    Answer::Accepted(Claimed::Work(work)) => serde_json::from_value(work)
+                        .ok()
+                        .map(|claim| (Enrollment::of(delivery.config()), claim)),
                     _ => None,
                 }
             } else {
                 None
             };
-            let _ = sender.send(Event::Claim(result)).await;
+            let _ = sender.send(Event::Claim { connection, result }).await;
         });
     }
 
@@ -163,13 +176,23 @@ impl Runner {
         let Some(sender) = self.remote.events.clone() else {
             return;
         };
+        let connection = self.remote.connection;
         self.remote.polling = true;
         tokio::spawn(async move {
             let (enrollment, result) = match enrolled(home).await {
-                Some(delivery) => (Some(delivery.config().clone()), delivery.poll().await),
+                Some(delivery) => (
+                    Some((delivery.config().clone(), delivery.credential_stamp())),
+                    delivery.poll().await,
+                ),
                 None => (None, Answer::Failed(Cause::Unreadable)),
             };
-            let _ = sender.send(Event::Poll { enrollment, result }).await;
+            let _ = sender
+                .send(Event::Poll {
+                    connection,
+                    enrollment,
+                    result,
+                })
+                .await;
         });
     }
 

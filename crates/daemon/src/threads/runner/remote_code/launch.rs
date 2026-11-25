@@ -8,7 +8,6 @@ use crate::{
     hub::answer::Answer,
     remote_code::{
         Store,
-        delivery::Delivery,
         launch::Progress,
         policy::Policy,
         wire::{DispatchRequest, NotCreated},
@@ -43,6 +42,7 @@ impl Runner {
             }
             ToRunner::Ask { ask } if self.remote.active.as_ref() == Some(ask.request()) => {
                 let request = *ask.request();
+                let connection = self.remote.connection;
                 let home = self.remote_home();
                 let Some(sender) = self.remote.events.clone() else {
                     return;
@@ -52,7 +52,13 @@ impl Runner {
                         Some(delivery) => delivery.relay(ask.generation(), ask).await,
                         None => Answer::Failed(crate::hub::answer::Cause::Unreadable),
                     };
-                    let _ = sender.send(Event::Relay { request, result }).await;
+                    let _ = sender
+                        .send(Event::Relay {
+                            connection,
+                            request,
+                            result,
+                        })
+                        .await;
                 });
             }
             ToRunner::Created { request, process } => {
@@ -262,49 +268,4 @@ impl Runner {
             })
             .collect()
     }
-
-    pub(super) fn remote_publish(&mut self, request: DispatchRequest) {
-        let Some(row) = self
-            .threads
-            .get(&request.runner)
-            .filter(|thread| thread.remote_ready())
-            .map(|thread| thread.row.clone())
-        else {
-            return;
-        };
-        let now = tokio::time::Instant::now();
-        if self
-            .remote
-            .publications
-            .get(&request.runner)
-            .is_some_and(|at| *at > now)
-        {
-            return;
-        }
-        self.remote
-            .publications
-            .insert(request.runner, now + std::time::Duration::from_secs(10));
-        let home = self.remote_home();
-        tokio::spawn(async move {
-            if let Some(delivery) = super::polling::enrolled(home.clone()).await {
-                publish(&home, &delivery, request, row).await;
-            }
-        });
-    }
-}
-
-async fn publish(
-    home: &Home,
-    delivery: &Delivery,
-    request: DispatchRequest,
-    row: agent_threads::control::ThreadRow,
-) {
-    let allowed = || crate::runtime::thread_sync::remote_publishable(home, &row);
-    if allowed() && delivery.publish_summary(home, &row, &request).await && allowed() {
-        let _ = delivery.report_started(&request).await;
-    }
-    if !allowed() && Store::at(home).withdraw(&request).is_err() {
-        return;
-    }
-    let _ = delivery.evidence(&request).await;
 }
