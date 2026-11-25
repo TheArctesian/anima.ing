@@ -106,6 +106,7 @@ pub fn spawn(dependencies: &Dependencies, hosted: Hosted) -> Vec<tokio::task::Jo
         clock.clone(),
     )));
     jobs.push(tokio::spawn(build_leases(builds)));
+    jobs.push(tokio::spawn(remote_receipts(pool.clone())));
     jobs.extend(loops(dependencies));
     jobs.extend(hosted.spawn());
     jobs
@@ -260,9 +261,18 @@ async fn job_leases(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) {
         if jobs::end_lost(queue, clock.now()).await.is_err() {
             tracing::warn!(job = "job_leases", fault = "jobs", "scheduled job failed");
         }
+    }
+}
+
+/// Closes expired remote receipts and publication deadlines (K10 Section 6.5).
+async fn remote_receipts(db: PgPool) {
+    let mut ticks = tokio::time::interval(jobs::LEASE_SWEEP);
+    ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    loop {
+        ticks.tick().await;
         if agent_threads::sweep_remote(&db).await.is_err() {
             tracing::warn!(
-                job = "job_leases",
+                job = "remote_receipts",
                 fault = "agent_threads",
                 "scheduled job failed"
             );
