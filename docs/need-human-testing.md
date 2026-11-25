@@ -5135,6 +5135,8 @@ hub and OS versions. This is not included in the already published 2026112301363
 
 Built: the Git engine, the runner calls (W1), and the local command (W2). The tests use made repositories in temporary folders and a launcher that stands in. The command tests use a made runner socket. They do not cover: the installed runner and command together, a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.
 
+Synthetic upgrade tests cover interrupted W1 removal with a partial or missing worktree. Recovery metadata and rename parents are synced before a completed receipt is released; source review and normal filesystem tests do not simulate power loss or establish storage-device persistence guarantees. Crash recovery remains an installed-system check.
+
 To check W2, start a thread in a worktree as in HT-169. Use the command prefix `anima code git --thread <thread ID> --repository <worktree folder name>`.
 
 1. Run `status`, then `checkpoints` and `changes` after the first turn.

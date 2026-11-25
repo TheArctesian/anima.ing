@@ -172,7 +172,8 @@ impl Completion {
                 "the original worktree or its records could not be verified",
             ));
         }
-        Self::without_copy(record, None)
+        let kept = super::removal::legacy_saved(home, record, thread)?;
+        Self::without_copy(record, kept)
             .release(home, (thread, repository), (&record.own, Uuid::now_v7()))
             .map_err(failed)
     }

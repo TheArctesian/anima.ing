@@ -19,12 +19,21 @@ pub(in crate::threads::git) fn protect(layout: &Layout) -> Result<(), ProjectErr
     if let Some(dir) = registered(layout)? {
         let lock = walk::name("locked");
         match dir.new_file(lock, false) {
-            Ok(mut file) => file.write_all(b"Anima retained this worktree for recovery\n")?,
+            Ok(mut file) => {
+                file.write_all(b"Anima retained this worktree for recovery\n")?;
+                file.sync_all()?;
+            }
             Err(error)
                 if error.kind() == std::io::ErrorKind::AlreadyExists
-                    && dir.file(lock)?.is_some() => {}
+                    && dir.file(lock)?.is_some() =>
+            {
+                dir.file(lock)?
+                    .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?
+                    .sync_all()?;
+            }
             Err(error) => return Err(error.into()),
         }
+        dir.sync()?;
     }
     Ok(())
 }
@@ -45,7 +54,10 @@ pub(in crate::threads::git) fn point_at_recovery(
         .write_all(text.as_bytes())
         .and_then(|()| file.sync_all());
     drop(file);
-    if let Err(error) = result.and_then(|()| dir.rename(fresh, walk::name("gitdir"))) {
+    if let Err(error) = result
+        .and_then(|()| dir.rename(fresh, walk::name("gitdir")))
+        .and_then(|()| dir.sync())
+    {
         let _ = dir.remove(fresh, false);
         return Err(error.into());
     }
@@ -83,7 +95,7 @@ pub fn add(common: &Path, name: &str, folder: &Path, branch: &str) -> Result<Lay
     let made = (|| {
         let inside = entries
             .below(Path::new(name), Make::No)?
-            .ok_or(std::io::ErrorKind::NotFound)?;
+            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?;
         // The folder of the worktree is made in its open folder, and its `.git` file in it.
         let (above, last) = (folder.parent(), folder.file_name());
         let (Some(above), Some(last)) = (above, last) else {
@@ -93,7 +105,7 @@ pub fn add(common: &Path, name: &str, folder: &Path, branch: &str) -> Result<Lay
         above.new_folder(last)?;
         let made = above
             .below(Path::new(last), Make::No)?
-            .ok_or(std::io::ErrorKind::NotFound)?;
+            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?;
         let dot_git = folder.join(".git");
         let texts = [
             ("HEAD", format!("ref: refs/heads/{branch}\n")),

@@ -92,7 +92,7 @@ fn show_removed(
         Ok(())
     } else if let Some(original) = original {
         output.line(&format!(
-            "Cleared the worktree registration. Former path: {}. No recovery directory was created.{kept} An existing branch stays in the repository.",
+            "Cleared the worktree registration. Former path: {}. No worktree was found at the recorded recovery path.{kept} An existing branch stays in the repository.",
             original.display().to_string().escape_debug()
         ))
     } else {

@@ -66,6 +66,14 @@ mod held {
             Self(fd)
         }
 
+        /// Makes prior entry changes in this directory durable.
+        ///
+        /// # Errors
+        /// The filesystem could not synchronize the directory.
+        pub fn sync(&self) -> io::Result<()> {
+            Ok(rustix::fs::fsync(&self.0)?)
+        }
+
         /// Opens the folder at `folder`; a link at its place is not opened.
         ///
         /// # Errors
@@ -100,7 +108,8 @@ mod held {
                 let _ = unlinkat(&self.0, part, AtFlags::empty());
             }
             match mkdirat(&self.0, part, Mode::from_raw_mode(0o755)) {
-                Ok(()) | Err(Errno::EXIST) => {}
+                Ok(()) => self.sync()?,
+                Err(Errno::EXIST) => {}
                 Err(failed) => return Err(failed.into()),
             }
             Ok(Some(Self(openat(&self.0, part, FOLDER, Mode::empty())?)))
@@ -304,6 +313,10 @@ mod none {
     }
 
     impl Dir {
+        pub fn sync(&self) -> io::Result<()> {
+            none()
+        }
+
         pub fn open(_folder: &Path) -> io::Result<Self> {
             none()
         }

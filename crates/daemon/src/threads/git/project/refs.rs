@@ -196,7 +196,8 @@ fn replace(
     let written = check().and_then(|()| {
         held.write_all(text.as_bytes())?;
         held.sync_all()?;
-        Ok(above.rename(&lock, name)?)
+        above.rename(&lock, name)?;
+        Ok(above.sync()?)
     });
     if written.is_err() {
         // The lock is of this call alone; the first failure is the answer.

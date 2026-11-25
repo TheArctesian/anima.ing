@@ -272,7 +272,7 @@ async fn tc7_git_remove_reports_the_saved_ref_when_recovery_has_no_directory() {
     assert!(
         removed
             .stdout
-            .contains("No recovery directory was created."),
+            .contains("No worktree was found at the recorded recovery path."),
         "{removed:?}"
     );
     assert!(

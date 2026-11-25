@@ -77,15 +77,16 @@ pub(super) fn verify(home: &Path, container: &Path, original: FolderId) -> io::R
 pub(super) fn retire(record: &Record, container: &Path, original: FolderId) -> io::Result<()> {
     let destination = Destination::open(&record.home, container, true)?;
     keep_origin(&destination.folder, record)?;
-    if let Some(retired) = destination.worktree()? {
-        require(Some(retired), original)?;
-        destination.check()?;
-        return destination.sync();
-    }
     let source = record.folder.parent().ok_or(io::ErrorKind::InvalidInput)?;
     let parent_name = source.file_name().ok_or(io::ErrorKind::InvalidInput)?;
     let parent = openat(&destination.home, parent_name, DIRECTORY, Mode::empty())?;
     at_path(&parent, source)?;
+    if let Some(retired) = destination.worktree()? {
+        require(Some(retired), original)?;
+        destination.check()?;
+        rustix::fs::fsync(&parent)?;
+        return destination.sync();
+    }
     let name = record
         .folder
         .file_name()

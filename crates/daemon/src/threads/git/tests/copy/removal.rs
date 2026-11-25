@@ -9,6 +9,7 @@ use super::budget::own_of;
 mod nested;
 #[cfg(unix)]
 mod pending;
+mod upgrade;
 
 #[cfg(unix)]
 #[tokio::test]

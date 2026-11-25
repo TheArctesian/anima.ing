@@ -26,7 +26,11 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<GitOu
     let retirement = if let Some(pending) = Retirement::existing(home, record)? {
         pending
     } else {
-        let kept = save(git, worktree).await?;
+        let kept = if let Some(kept) = legacy_saved(home, record, worktree.thread())? {
+            kept
+        } else {
+            save(git, worktree).await?
+        };
         Retirement::prepare(home, record, kept)?
     };
     retirement.finish(home, target, record)
@@ -88,4 +92,33 @@ pub async fn remove_broken(
     } else {
         Completion::orphan(home, target, &record)
     }
+}
+
+/// Preserve the complete snapshot saved by an interrupted pre-retirement removal.
+pub(super) fn legacy_saved(
+    home: &Home,
+    record: &super::super::place::Record,
+    thread: Uuid,
+) -> Result<Option<String>, GitRefusal> {
+    let marker = home
+        .read_state(&record.own.join(own::SAVED))
+        .map_err(|error| GitRefusal::Failed {
+            said: format!("Could not read the earlier removal: {error}"),
+        })?;
+    let Some(marker) = marker else {
+        return Ok(None);
+    };
+    let kept = checkpoint::kept_ref(thread);
+    let saved = std::str::from_utf8(&marker).ok().map(str::trim);
+    let resolved = refs::resolve(&record.common_dir, &kept)?;
+    if saved.is_none() || resolved.as_deref() != saved {
+        return Err(GitRefusal::Failed {
+            said:
+                "The earlier removal snapshot could not be verified; keep its records for recovery"
+                    .into(),
+        });
+    }
+    // Re-publish the verified ref with durable directory metadata before a receipt.
+    refs::own_put(&record.common_dir, &kept, saved.unwrap_or_default())?;
+    Ok(Some(kept))
 }
