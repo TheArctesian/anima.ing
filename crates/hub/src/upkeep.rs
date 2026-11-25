@@ -106,7 +106,6 @@ pub fn spawn(dependencies: &Dependencies, hosted: Hosted) -> Vec<tokio::task::Jo
         clock.clone(),
     )));
     jobs.push(tokio::spawn(build_leases(builds)));
-    jobs.push(tokio::spawn(remote_receipts(pool.clone())));
     jobs.extend(loops(dependencies));
     jobs.extend(hosted.spawn());
     jobs
@@ -121,6 +120,7 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
         dependencies.config.tailscale_localapi.clone(),
     );
     let mut loops = vec![
+        tokio::spawn(remote_receipts(pool.clone())),
         checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing),
         metrics::spawn_collector(
             pool.clone(),
