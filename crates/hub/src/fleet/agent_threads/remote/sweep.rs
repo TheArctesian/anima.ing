@@ -8,7 +8,7 @@ pub(in crate::fleet::agent_threads) async fn sweep(db: &PgPool) -> Result<(), Er
         "SELECT DISTINCT launch.device_id FROM agent_threads.launches launch
          JOIN devices.devices device ON device.id = launch.device_id
          WHERE (launch.deadline <= clock_timestamp() AND launch.publication IS NULL
-                AND (launch.authorization IS NOT NULL OR (launch.claimed_at IS NULL AND launch.evidence IS NULL)))
+                AND (launch.\"authorization\" IS NOT NULL OR (launch.claimed_at IS NULL AND launch.evidence IS NULL)))
             OR (launch.lease_end IS NOT NULL AND
                 least(launch.lease_end, launch.claimed_at + interval '120 seconds') <= clock_timestamp())
             OR EXISTS (SELECT FROM agent_threads.commands command
@@ -40,7 +40,7 @@ async fn sweep_device(db: &PgPool, device: Uuid) -> Result<(), Error> {
     let due: Vec<(Uuid, Uuid)> = sqlx::query_as(
         "SELECT account_id, launch_id FROM agent_threads.launches
          WHERE device_id = $1 AND deadline <= $2 AND publication IS NULL
-           AND (authorization IS NOT NULL OR (claimed_at IS NULL AND evidence IS NULL))",
+           AND (\"authorization\" IS NOT NULL OR (claimed_at IS NULL AND evidence IS NULL))",
     )
     .bind(device)
     .bind(at)

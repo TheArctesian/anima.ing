@@ -205,7 +205,7 @@ pub(in crate::fleet::agent_threads) async fn published(
 ) -> Result<(), sqlx::Error> {
     let row: Option<(Uuid, Uuid)> = sqlx::query_as(
         "SELECT account_id, launch_id FROM agent_threads.launches
-         WHERE device_id = $1 AND runner_id = $2 AND authorization IS NOT NULL",
+         WHERE device_id = $1 AND runner_id = $2 AND \"authorization\" IS NOT NULL",
     )
     .bind(device)
     .bind(runner)

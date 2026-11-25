@@ -257,7 +257,7 @@ async fn denial(
     let used: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT FROM agent_threads.summaries WHERE device_id = $1 AND runner_id = $2)
              OR EXISTS (SELECT FROM agent_threads.launches
-                        WHERE device_id = $1 AND runner_id = $2 AND authorization IS NOT NULL)",
+                        WHERE device_id = $1 AND runner_id = $2 AND \"authorization\" IS NOT NULL)",
     )
     .bind(owner.device)
     .bind(runner)
@@ -294,7 +294,7 @@ async fn record_grant(
     (sample, issued, valid_until): (grant::Tick, DateTime<Utc>, DateTime<Utc>),
 ) -> Result<(), Error> {
     sqlx::query(
-        "UPDATE agent_threads.launches SET runner_id = $3, authorization = gen_random_uuid(),
+        "UPDATE agent_threads.launches SET runner_id = $3, \"authorization\" = gen_random_uuid(),
                 clock_generation = $4, issued_tick = $5, issued_at = $6, valid_until = $7
          WHERE account_id = $1 AND launch_id = $2",
     )

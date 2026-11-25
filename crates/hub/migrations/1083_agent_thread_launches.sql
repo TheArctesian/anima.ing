@@ -39,7 +39,7 @@ create table agent_threads.launches (
         'claimed', 'preparing', 'running', 'finishing', 'done', 'refused', 'failed', 'stopped', 'expired'
     )),
     runner_id uuid,
-    authorization uuid,
+    "authorization" uuid,
     clock_generation uuid,
     issued_tick bigint,
     issued_at timestamptz,
@@ -56,15 +56,15 @@ create table agent_threads.launches (
     primary key (account_id, launch_id),
     unique (account_id, device_id, launch_id),
 
-    check ((authorization is null) = (valid_until is null)),
-    check (authorization is null or
+    check (("authorization" is null) = (valid_until is null)),
+    check ("authorization" is null or
         (runner_id is not null and issued_at is not null and clock_generation is not null and issued_tick is not null)),
-    check (evidence is distinct from 'created' or authorization is not null),
+    check (evidence is distinct from 'created' or "authorization" is not null),
     check (thread_id is null or (evidence = 'created' and publication = 'timely'))
 );
 
 create unique index agent_thread_authorized_runner on agent_threads.launches (device_id, runner_id)
-    where authorization is not null;
+    where "authorization" is not null;
 
 create index agent_thread_launch_queue on agent_threads.launches (device_id, admitted_at, work_id)
     where attempt_phase is null and evidence is null;
