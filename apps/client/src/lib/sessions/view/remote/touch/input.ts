@@ -2,7 +2,7 @@ import type { Size } from '../../display';
 import type { SessionTunnel } from '../../../tunnel/guacamole/tunnel';
 
 type Client = Pick<SessionTunnel['client'], 'getDisplay' | 'sendMouseState'>;
-interface Point { readonly x: number; readonly y: number }
+export interface Point { readonly x: number; readonly y: number }
 
 export interface TouchViewport extends Point {
   readonly zoom: number;
@@ -27,6 +27,17 @@ export function boundViewport(view: TouchViewport, pane: Size, remote: Size, sca
     x: boundAxis(view.x, pane.width - remote.width * scale * view.zoom),
     y: boundAxis(view.y, pane.height - remote.height * scale * view.zoom),
   };
+}
+
+/**
+ * Where the touch pointer shows in the pane, in CSS px. Before the first touch it is at the display's centre, where the
+ * first tap clicks.
+ */
+export function pointerInPane(at: Point | undefined, remote: Size, view: TouchViewport, scale: number): Point {
+  const shown = scale * view.zoom;
+  const x = at === undefined ? remote.width / 2 : limit(at.x, 0, Math.max(0, remote.width - 1));
+  const y = at === undefined ? remote.height / 2 : limit(at.y, 0, Math.max(0, remote.height - 1));
+  return { x: view.x + x * shown, y: view.y + y * shown };
 }
 
 interface Pinch {
@@ -56,16 +67,20 @@ function pinched(start: Pinch, next: Pinch): TouchViewport {
   };
 }
 
-interface ViewportChanges {
+interface TouchHooks {
   read(): TouchViewport;
   show(view: TouchViewport): void;
+  /** The remote pointer moved to `at`, in remote pixels. */
+  pointer(at: Point): void;
 }
 
 type Button = 'left' | 'right' | null;
 type Send = (delta: Point, button: Button) => void;
 
-function cursorSender(client: Client): Send {
+/** The display's own cursor stays hidden: a touch screen has no pointer, so the view draws one at a readable size. */
+function cursorSender(client: Client, moved: (at: Point) => void): Send {
   const display = client.getDisplay();
+  display.showCursor?.(false);
   let cursor: Point | undefined;
   return (delta, button) => {
     const width = display.getWidth();
@@ -77,7 +92,7 @@ function cursorSender(client: Client): Send {
       x: limit(from.x + delta.x / scale, 0, width - 1),
       y: limit(from.y + delta.y / scale, 0, height - 1),
     };
-    display.showCursor?.(true);
+    moved(cursor);
     client.sendMouseState({ ...cursor, left: button === 'left', right: button === 'right', middle: false, up: false, down: false }, false);
   };
 }
@@ -100,7 +115,7 @@ function pointInPane(state: TouchState, event: PointerEvent): Point {
   return { x: event.clientX - state.origin.x, y: event.clientY - state.origin.y };
 }
 
-function down(state: TouchState, pane: HTMLElement, viewport: ViewportChanges, event: PointerEvent): void {
+function down(state: TouchState, pane: HTMLElement, viewport: TouchHooks, event: PointerEvent): void {
   if (event.pointerType !== 'touch' || state.touches.size >= 2) return;
   event.preventDefault();
   if (state.touches.size === 0) {
@@ -118,7 +133,7 @@ function down(state: TouchState, pane: HTMLElement, viewport: ViewportChanges, e
   }
 }
 
-function move(state: TouchState, viewport: ViewportChanges, event: PointerEvent): void {
+function move(state: TouchState, viewport: TouchHooks, event: PointerEvent): void {
   const previous = state.touches.get(event.pointerId);
   if (previous === undefined) return;
   const point = pointInPane(state, event);
@@ -161,9 +176,10 @@ function end(state: TouchState, event: PointerEvent): void {
   state.cancelled = false;
 }
 
-export function touchRemote(pane: HTMLElement, client: Client, viewport: ViewportChanges): () => void {
+export function touchRemote(pane: HTMLElement, client: Client, viewport: TouchHooks): () => void {
   const state: TouchState = {
-    touches: new Map(), origin: STILL, moved: false, dragged: false, pinching: false, cancelled: false, send: cursorSender(client),
+    touches: new Map(), origin: STILL, moved: false, dragged: false, pinching: false, cancelled: false,
+    send: cursorSender(client, (at) => { viewport.pointer(at); }),
   };
   const listeners = new AbortController();
   const options = { signal: listeners.signal };

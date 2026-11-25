@@ -214,6 +214,16 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Tap the text field. Type ordinary text, one accented character and one IME composition, then use Enter and Backspace. Confirm each appears once on the remote desktop.
 - Background the app and interrupt its network. Reopen the app, check the session reconnect behavior, and use the pointer again.
 
+### HT-NEW-phonevnc: a remote desktop on an iPhone fills the screen and shows the pointer
+
+- State: Open.
+- Built: on a phone, a VNC or RDP session uses the whole screen inside the safe area in each orientation, with the app's navigation hidden; one bar under the display holds Back, Keys, Fit, Displays and the text field; a pointer of a fixed size shows where a tap clicks (`apps/client/src/lib/sessions/strip/SessionPanes.svelte`, `apps/client/src/lib/sessions/view/remote/`). The client tests cover the pointer position, and a browser test covers the layout at iPhone sizes. They do not cover the iOS keyboard, the safe areas of a real iPhone, or a real VNC server.
+- Open a VNC session from the iPhone app to the Mac. In portrait, check that the Mac's screen spans the width, that the pointer shows at the centre of it, and that one bar is at the bottom, above the home indicator. Expected: no bar at the top, and no app navigation.
+- Turn the iPhone to landscape. Expected: the Mac's screen uses the full height above the bar, and the app's navigation rail does not show.
+- Move one finger on the screen. Expected: the drawn pointer and the Mac's pointer move together. Tap a harmless spot. Expected: the click lands at the tip of the drawn pointer.
+- Tap the text field and type a word. Expected: the bar sits on the keyboard, the field stays visible, the page does not zoom, and the word appears once on the Mac.
+- Use Back, then reopen the session from its tab. Expected: the session stayed connected.
+
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 
 - State: Open.
