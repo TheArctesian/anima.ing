@@ -1,0 +1,62 @@
+# W3 part 2, proposed exact K1 text for the operator's inspection under R-270.
+# This amendment is separate from the served K1 until its inspection and implementation.
+# OD-W53's deviceId on enqueue belongs to the B4 and A2 mutations that create work.
+
+extend type Query {
+  "List work in descending creation order. First is from 1 to 100."
+  jobs(first: Int = 50, after: String, state: WorkJobState): WorkJobPage!
+  "Read one work item and the bounded tail of its log."
+  job(id: ID!): WorkJobDetail
+}
+
+extend type Mutation {
+  "Stop queued work immediately or tell its live holder to stop on the next report."
+  stopJob(id: ID!): Boolean!
+  "Set the hub work switch for one device. The local switch and cooldown keep their values."
+  setDeviceWork(deviceId: ID!, on: Boolean!): Boolean!
+  "Replace the project's complete list of devices that may receive work that needs its secrets."
+  setProjectWorkDevices(projectId: ID!, deviceIds: [ID!]!): Boolean!
+  "Pin the project's unnamed work to one device. A null device ID removes the pin."
+  setProjectWorkMachine(projectId: ID!, deviceId: ID): Boolean!
+  "Exclude a device from work that names no device."
+  setDeviceWorkExcluded(deviceId: ID!, excluded: Boolean!): Boolean!
+}
+
+enum WorkJobState {
+  QUEUED
+  CLAIMED
+  PREPARING
+  RUNNING
+  FINISHING
+  DONE
+  FAILED
+  STOPPED
+}
+
+type WorkJob {
+  id: ID!
+  type: String!
+  kind: String!
+  projectId: ID
+  repository: String
+  state: WorkJobState!
+  attempt: Int!
+  deviceId: ID
+  createdAt: DateTime!
+  claimedAt: DateTime
+  changedAt: DateTime!
+  endedAt: DateTime
+  "Untrusted text. The hub's placement reason is one line of up to 2048 UTF-8 bytes."
+  placement: String
+}
+
+type WorkJobPage {
+  nodes: [WorkJob!]!
+  pageInfo: PageInfo!
+}
+
+type WorkJobDetail {
+  job: WorkJob!
+  "Untrusted text. Up to 65536 UTF-8 bytes from the end of the redacted job log."
+  log: String!
+}
