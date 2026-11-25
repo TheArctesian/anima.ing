@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Version 0.7 (2026-11-23). Adds a native Mobile notification channel and phased push delivery. Version 0.6 (2026-11-22). R-429 makes new threads, handoff and approvals a single public launch scope on iOS and Android. Version 0.5 (2026-11-19). Task M3-4 (the account sign-in on a phone) is built and waits for HT-055; OD-M9 is open. The build number (M5-3) and the iOS archive script (M5-4) are built; the archive with a signature waits for HT-053. Version 0.4: R-181 adds M5-7 for F-Droid and puts Google Play aside. The operator decided OD-M1 to OD-M8 and approved the phone mockups on 2026-11-16. It serves Section 4, tier 4, "iOS client and Android client (Phase 5)", and starts now (OD-M2). MOB-001 to MOB-042. Its Section 5 holds the state of each task. The branch `mobile/m1-shell` was merged into `main` on 2026-11-17, and again with the Paste invite and Joining screens (M3-2). Its facts are from a test build on the local branch `spike/mobile`, which is not for merge.
+evidence: Version 0.9 (2026-11-25). R-457 includes mobile writes, notifications, widgets and live activities in this release. Version 0.8 (2026-11-25). Mobile Code is in the scope of this release. The launch check covers read-only handoff from the desk and control of confirmed hub launches on both phones. Version 0.7 (2026-11-23). Adds a native Mobile notification channel and phased push delivery. Version 0.6 (2026-11-22). R-429 makes new threads, handoff and approvals a single public launch scope on iOS and Android. Version 0.5 (2026-11-19). Task M3-4 (the account sign-in on a phone) is built and waits for HT-055; OD-M9 is open. The build number (M5-3) and the iOS archive script (M5-4) are built; the archive with a signature waits for HT-053. Version 0.4: R-181 adds M5-7 for F-Droid and puts Google Play aside. The operator decided OD-M1 to OD-M8 and approved the phone mockups on 2026-11-16. It serves Section 4, tier 4, "iOS client and Android client (Phase 5)", and starts now (OD-M2). MOB-001 to MOB-042. Its Section 5 holds the state of each task. The branch `mobile/m1-shell` was merged into `main` on 2026-11-17, and again with the Paste invite and Joining screens (M3-2). Its facts are from a test build on the local branch `spike/mobile`, which is not for merge.
 ---
 
 # Anima Mobile Plan
@@ -11,8 +11,8 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Mobile plan: the iOS client and the Android client |
-| Version | 0.7 |
-| Date | 2026-11-23 |
+| Version | 0.9 |
+| Date | 2026-11-25 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | The header of this document holds the state (PLN-020). History: Approved. The operator decided OD-M1 to OD-M8 on 2026-11-16 (Section 3). Version 0.2 writes Section 4.4 again for the ruling on OD-M3. MOB-032 waits for the test of task M1-4. Version 0.3: the operator approved the phone mockups on 2026-11-16 ("Mock are good enough now as well"); Section 4.2 follows them. Version 0.5 (2026-11-19): task M3-4 is built, MOB-002 names the cloud commands, and OD-M9 is added; the build number (M5-3), the iOS archive script (M5-4) and the iOS build procedure (M1-3, in part) are built. |
 | Parent | [work-plan.md](../work-plan.md) Section 4, tier 4, row "iOS client and Android client (Phase 5)" (PLN-003) |
@@ -35,7 +35,7 @@ The operator gave the instruction on 2026-11-16: "I want to talk about the andro
 - A phone layout of the client.
 - Sign-in, the device list, the device page, checks, the event log and Settings on a phone.
 - SSH, VNC and RDP sessions on a phone (RA-050).
-- Code on iOS and Android (R-429). See [the agent threads plan](../proposals/agent-threads.md#67-stage-6-code-on-ios-and-android) for TH50 to TH52 and the shared hub work.
+- Code on iOS and Android in this release (R-429, operator confirmation 2026-11-25). See [the agent threads plan](../proposals/agent-threads.md#67-stage-6-code-on-ios-and-android) for TH50 to TH52 and the shared hub work.
 - The device link inside the client, so that a phone gets to its hub with no other application (OD-M3).
 
 ### 1.3 Not in scope
@@ -235,10 +235,12 @@ The test for the end of M3: the operator installs the application on a real iPho
 
 **Mobile Code launch check (R-429).** The public mobile launch needs TH50 to TH52 on both platforms. Internal builds can exercise each part as it becomes ready. Test a signed build on a real iPhone and a real Android phone. On each phone:
 
-1. Start a new thread in a permitted project on a connected machine. Retry after a network interruption and check that the machine starts one thread.
-2. Open a live thread started on desktop. Check that the thread continues while the app is in the background. Change from Wi-Fi to mobile data, return to Code, and check that the same thread catches up.
-3. Use a thread in Supervised mode and give it a task that produces an approval request. Review the request and answer it on the phone. Check that the host observes one answer and that both clients show the result. Exercise both allow and decline.
-4. Check that the phone shows a clear result when the machine is offline or refuses the launch. Use a test machine with remote starts off and then a project outside its permitted folders.
+1. From the phone, explicitly request Supervised mode and start a new thread in a permitted project on a connected machine. The unset owner ceiling is Full access (OD-THR89); the lower requested mode still applies. Retry after a network interruption and check that the machine starts one thread.
+2. Reopen the confirmed hub-launched thread from step 1. Check that the thread continues while the app is in the background. Change from Wi-Fi to mobile data, return to Code, and check that the same thread catches up.
+3. Use the confirmed hub-launched thread from step 1 and give it a task that produces an approval request. Review the request and answer it on the phone. Check that the host observes one answer and that both clients show the result. Exercise both allow and decline.
+4. On the connected machine, start a separate thread through Anima at the desk with sharing enabled. From the authorized phone, read it and follow updates. Verify that a remote prompt, approval answer or stop cannot act on it. Ingest a session started outside Anima. Neither it nor a thread from a different account may reveal content through the inbox, search, counts, history, a direct ID or a subscription.
+5. On the confirmed launch, submit a follow-up and answer a live provider question. Retry across reconnect and verify one answer to the original request. Exercise the accepted stop operation and confirm that a later turn is unaffected.
+6. Check that the phone shows a clear result when the machine is offline or refuses the launch. Use a test machine with remote starts off and then a project outside its permitted folders.
 
 ### Mobile notifications
 
@@ -250,7 +252,10 @@ For M7-1 the operator supplies the full HTTPS destination and a relay bearer tok
 | --- | --- | --- | --- | --- | --- |
 | M7-1 | M7 Notifications | Add Mobile to the notification channel kinds. Send a versioned alert to a configured relay through the existing notification outbox. | NOT-002 to NOT-004 | Built on `mobile/notification-channel` | Channel settings, Send test and the delivery log |
 | M7-2 | M7 Notifications | Enroll and revoke mobile push subscriptions, deliver alerts through the relay, and open the corresponding hub destination on tap. | M7-1 | Not started | A real iPhone and Android phone receive a test with the app in the background. The Android distribution path must document provider availability. |
-| M7-3 | M7 Notifications | Route Code alerts that need the operator to Mobile and open the corresponding thread from the alert. | M7-2, THR-059 to THR-064 | Not started | A desktop thread asks for approval and the phone opens the same thread. The push contains no transcript, command, diff or path. |
+| M7-3 | M7 Notifications | Route Code alerts that need the operator to Mobile and open the corresponding thread from the alert. | M7-2, THR-059 to THR-064 | Not started | A desktop thread asks for approval and the phone opens the same thread. The push carries opaque routing IDs only. Use a generic OS notice with no sensitive template text. On tap, authenticate and refetch the target; sign-out, revoked access or a stale ID reveals no content. The operator reviews and answers only in the app. This delivery task proceeds independently of TH30 contract review. |
+| M7-4 | Mobile widgets and live activities | Expose eligible Code status in native widgets and live activities. Open the authorized mobile destination when selected. | TH50 and TH51 read authorization, native app targets. Reuse M7-2 for updates delivered by push. | Not started | On a real device verify status, return to the same authorized thread, removal of stale content on sign-out, and the platform fallback where a surface is unavailable. |
+
+M7-2, M7-3 and M7-4 are release work under R-457 in [the Code owner](../proposals/agent-threads.md#67-stage-6-code-on-ios-and-android). TH52 owns writes after the phone opens Code. Notification and widget entry points use the same read and command checks as the app.
 
 ## 6. Not planned here
 
