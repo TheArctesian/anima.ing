@@ -236,6 +236,8 @@ async fn accept(
     let (quit, mut quitting) = mpsc::channel::<()>(1);
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut count: u64 = 0;
+    let mut pending = tokio::time::interval(std::time::Duration::from_secs(2));
+    pending.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tokio::select! {
             accepted = listener.accept() => match accepted {
@@ -254,6 +256,7 @@ async fn accept(
                     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                 }
             },
+            _ = pending.tick() => remote_code::reap_pending(shared, turn).await,
             _ = terminate.recv() => return Ok(()),
             _ = quitting.recv() => return Ok(()),
         }

@@ -1,6 +1,7 @@
-use std::path::Path;
+use std::{path::Path, time::Duration};
 
 use agent_threads::drive::Mode;
+use rustix::process::{Pid, Signal, WaitId, WaitIdOptions, kill_process_group, waitid};
 use tokio::process::{Child, Command};
 use uuid::Uuid;
 
@@ -75,6 +76,7 @@ impl Store {
         };
         let reservation = saved.clone();
         locked.save()?;
+        command.process_group(0);
         if !bounded(&reservation) || !clock().is_some_and(|now| grant.live(lease, now)) {
             return Ok(Dispatch::NoChild(Progress::Reconciling));
         }
@@ -98,12 +100,34 @@ fn prepared_for(saved: &Reservation, command: &Command) -> bool {
 }
 
 impl Spawned {
-    pub(crate) fn exited(&mut self) -> std::io::Result<bool> {
-        self.child.try_wait().map(|exit| exit.is_some())
+    pub(crate) fn exited(&self) -> std::io::Result<bool> {
+        let Some(pid) = child_pid(&self.child) else {
+            return Ok(true);
+        };
+        waitid(
+            WaitId::Pid(pid),
+            WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT,
+        )
+        .map(|status| status.is_some())
+        .map_err(Into::into)
     }
 
     pub(crate) async fn end(&mut self) -> std::io::Result<()> {
-        self.child.kill().await
+        let Some(group) = child_pid(&self.child) else {
+            return Ok(());
+        };
+        // The pending child has no other waiter. Its PID cannot be reused as long as
+        // this holder leaves it waitable, even when the group leader has already exited.
+        match kill_process_group(group, Signal::KILL) {
+            Ok(()) | Err(rustix::io::Errno::SRCH) => {}
+            Err(error) => return Err(error.into()),
+        }
+        if !self.exited()? {
+            self.child.start_kill()?;
+        }
+        tokio::time::timeout(Duration::from_secs(2), self.child.wait())
+            .await?
+            .map(|_| ())
     }
 
     /// Record creation using the retained live child. The holder retains this value if
@@ -112,18 +136,18 @@ impl Spawned {
     /// # Errors
     /// Child status could not be verified, the original marker differs, or storage failed.
     pub fn record(&mut self, store: &Store) -> Result<Progress, StoreError> {
+        let mut locked = store.lock()?;
+        if self.exited()? {
+            return Ok(Progress::Reconciling);
+        }
         if self.recorded {
             return Ok(Progress::Created);
         }
-        let mut locked = store.lock()?;
         let saved = find(&mut locked.journal, &self.request)?;
         match &saved.state {
             LaunchState::Created { grant, process, .. }
                 if *grant == self.grant && *process == self.process => {}
             LaunchState::Dispatching { grant, access } if *grant == self.grant => {
-                if self.child.try_wait()?.is_some() {
-                    return Ok(Progress::Reconciling);
-                }
                 saved.state = LaunchState::Created {
                     grant: self.grant.clone(),
                     access: *access,
@@ -149,6 +173,13 @@ impl Spawned {
         }
         Ok((self.child, self.process))
     }
+}
+
+fn child_pid(child: &Child) -> Option<Pid> {
+    child
+        .id()
+        .and_then(|id| i32::try_from(id).ok())
+        .and_then(Pid::from_raw)
 }
 
 #[cfg(test)]

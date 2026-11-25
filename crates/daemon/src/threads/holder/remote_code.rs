@@ -5,7 +5,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+mod pending;
+use pending::keep_or_end;
+pub(super) use pending::{end_pending, reap_pending};
+
 use agent_threads::drive::{Launch, Program, SessionStart};
+use tokio::time::Instant;
 
 use super::{Shared, locked};
 use crate::{
@@ -34,6 +39,7 @@ pub(super) struct Exchange {
 pub(super) struct PendingChild {
     request: DispatchRequest,
     child: Box<Spawned>,
+    since: Instant,
 }
 
 pub(super) async fn run(
@@ -174,7 +180,11 @@ async fn launch(
     };
     match store.spawn(authority, guard, (order.mode, command)) {
         Ok(Dispatch::Spawned(child)) => {
-            locked(shared).remote_child = Some(PendingChild { request, child });
+            locked(shared).remote_child = Some(PendingChild {
+                request,
+                child,
+                since: Instant::now(),
+            });
             recover(shared, &store, request).await
         }
         Ok(Dispatch::NoChild(Progress::Closed(_))) => ToRunner::Refused,
@@ -230,9 +240,7 @@ fn prepare(
 }
 
 async fn recover(shared: &Arc<Mutex<Shared>>, store: &Store, request: DispatchRequest) -> ToRunner {
-    let Ok(reserved) = store.reservation(&request) else {
-        return ToRunner::Pending { request };
-    };
+    let reserved = store.reservation(&request).ok();
     let key = request.runner.to_string();
     let pending = {
         let mut state = locked(shared);
@@ -240,7 +248,9 @@ async fn recover(shared: &Arc<Mutex<Shared>>, store: &Store, request: DispatchRe
             && !slot.reaped
             && slot.exit.is_none()
             && let Some(process) = &slot.remote_process
-            && reserved.matches_process(process)
+            && reserved
+                .as_ref()
+                .is_some_and(|saved| saved.matches_process(process))
         {
             return ToRunner::Created {
                 request,
@@ -256,29 +266,18 @@ async fn recover(shared: &Arc<Mutex<Shared>>, store: &Store, request: DispatchRe
         }
         state.remote_child.take()
     };
-    let Some(PendingChild { mut child, .. }) = pending else {
+    let Some(mut pending) = pending else {
         return ToRunner::Pending { request };
     };
-    if matches!(child.record(store), Ok(Progress::Created)) {
-        match (*child).into_child() {
+    if reserved.is_some() && matches!(pending.child.record(store), Ok(Progress::Created)) {
+        match (*pending.child).into_child() {
             Ok((child, process)) => {
                 let _ = attach(shared, key, child, (None, Some(process.clone()))).await;
                 return ToRunner::Created { request, process };
             }
-            Err(pending) => child = pending,
+            Err(child) => pending.child = child,
         }
     }
-    if !matches!(child.exited(), Ok(true)) {
-        locked(shared).remote_child = Some(PendingChild { request, child });
-    }
+    keep_or_end(shared, pending).await;
     ToRunner::Pending { request }
-}
-
-pub(super) async fn end_pending(shared: &Mutex<Shared>) {
-    let pending = locked(shared).remote_child.take();
-    if let Some(mut pending) = pending
-        && let Err(error) = pending.child.end().await
-    {
-        tracing::warn!(%error, "could not reap a pending remote Code child");
-    }
 }
