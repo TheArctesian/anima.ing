@@ -32,10 +32,11 @@ impl Query {
     async fn jobs(
         &self,
         ctx: &Context<'_>,
-        #[graphql(default = 50)] first: i32,
+        #[graphql(default_with = "Some(50)")] first: Option<i32>,
         after: Option<String>,
         state: Option<WorkJobState>,
     ) -> Result<WorkJobPage> {
+        let first = first.unwrap_or(50);
         let limit = usize::try_from(first)
             .ok()
             .filter(|value| (1..=100).contains(value))
