@@ -20,7 +20,7 @@ use daemon_core::wire::{Reported, StopReason, WorkJob, WorkType};
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
-pub use claiming::claim;
+pub use claiming::{claim, claim_in};
 pub use model::{Fault, Job, Machine, NewJob, State};
 pub use pinning::{exclude, pin_project, placement_reason, unpin_project};
 pub use placement::{Unfit, Verdict};

@@ -8,6 +8,7 @@ pub(crate) mod harness;
 mod last_batch;
 mod push;
 mod refusals;
+mod remote_threads;
 mod renewal;
 mod revocation;
 mod secrecy;

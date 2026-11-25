@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use daemon_core::wire::{Claim, Lease, Switch, WorkJob};
+use daemon_core::wire::{Claim, Lease, Switch, WorkJob, WorkKind};
 use sqlx::PgConnection;
 use uuid::Uuid;
 
@@ -25,15 +25,26 @@ pub async fn claim(
     (client, now): (ClientAddr, DateTime<Utc>),
 ) -> Result<Claimed, Error> {
     let mut tx = queue.db.begin().await?;
-    let outcome = claim_in(&mut tx, queue.bus, (device, name, claim), (client, now)).await;
+    let outcome = claim_in(
+        &mut tx,
+        queue.bus,
+        (device, name, claim),
+        (client, now, None),
+    )
+    .await;
     ended(tx, outcome).await
 }
 
-async fn claim_in(
+/// Places ordinary work in the caller's authenticated claim transaction.
+/// A ready thread wins over a newer non-container job.
+///
+/// # Errors
+/// Returns a store error if the claim cannot be recorded.
+pub async fn claim_in(
     conn: &mut PgConnection,
     bus: &Bus,
     (device, name, claim): (DeviceId, &str, &Claim),
-    (client, now): (ClientAddr, DateTime<Utc>),
+    (client, now, thread_at): (ClientAddr, DateTime<Utc>, Option<DateTime<Utc>>),
 ) -> Result<Claimed, Error> {
     let known = store::machine_locked(conn, device).await?;
     let first_on = claim.switch == Switch::On && known.is_none_or(|old| old.first_on_at.is_none());
@@ -75,13 +86,13 @@ async fn claim_in(
         return Ok(Claimed::Nothing);
     }
     let offer = Offer::of(claim, &machine);
-    place(conn, (&offer, name), (client, now)).await
+    place(conn, (&offer, name), (client, now, thread_at)).await
 }
 
 async fn place(
     conn: &mut PgConnection,
     (offer, name): (&Offer, &str),
-    (client, now): (ClientAddr, DateTime<Utc>),
+    (client, now, thread_at): (ClientAddr, DateTime<Utc>, Option<DateTime<Utc>>),
 ) -> Result<Claimed, Error> {
     let queued = store::oldest_queued(conn).await?;
     let pins = store::pins(conn).await?;
@@ -102,7 +113,24 @@ async fn place(
         .zip(verdicts.iter().copied())
         .collect();
     store::save_decisions(conn, (offer, name), &decided, now).await?;
-    let Some(chosen) = placement::choose(&queued, &verdicts, offer.device) else {
+    let chosen = if let Some(thread_at) = thread_at {
+        queued
+            .iter()
+            .zip(&verdicts)
+            .find_map(|(job, verdict)| {
+                (*verdict == placement::Verdict::Fits && job.asked.kind == WorkKind::Container)
+                    .then_some(job)
+            })
+            .or_else(|| {
+                queued.iter().zip(&verdicts).find_map(|(job, verdict)| {
+                    (*verdict == placement::Verdict::Fits && job.created_at <= thread_at)
+                        .then_some(job)
+                })
+            })
+    } else {
+        placement::choose(&queued, &verdicts, offer.device)
+    };
+    let Some(chosen) = chosen else {
         return Ok(Claimed::Nothing);
     };
     let job = lifecycle::claimed(chosen, offer.device, now);

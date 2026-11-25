@@ -10,6 +10,7 @@ pub mod files;
 pub(crate) mod hub_threads;
 #[cfg(unix)]
 pub mod listing;
+mod remote_threads;
 pub mod report;
 #[cfg(unix)]
 pub mod runner;
@@ -24,6 +25,11 @@ use crate::invocation::Invocation;
 
 #[derive(Debug, clap::Subcommand)]
 pub enum AgentCommand {
+    /// Start, control and inspect threads on an enrolled device.
+    Remote {
+        #[command(subcommand)]
+        command: remote_threads::RemoteCommand,
+    },
     /// Sum the sessions, prompts, tool calls and tokens of Claude Code and Codex, with an
     /// estimate of their cost.
     Usage(usage::UsageArgs),
@@ -137,6 +143,7 @@ impl AgentCommand {
     /// [`Failure`] for a refusal, an unknown device or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
+            Self::Remote { command } => command.run(invocation).await,
             Self::Usage(args) => args.run(invocation).await,
             Self::Sessions(args) => args.run(invocation).await,
             Self::Threads(args) => args.run(invocation).await,

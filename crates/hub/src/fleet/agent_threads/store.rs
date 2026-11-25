@@ -63,8 +63,9 @@ pub(super) async fn record_summary(
     .bind(row.activity_at)
     .bind(row.repository.as_deref())
     .bind(row.revision)
-    .fetch_one(tx)
+    .fetch_one(&mut *tx)
     .await?;
+    super::remote::published(tx, device.into(), row.runner_id).await?;
     Ok(ThreadSummaryReceipt {
         runner_id: row.runner_id,
         id,

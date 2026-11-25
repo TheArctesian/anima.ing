@@ -33,6 +33,7 @@ pub struct Query(
     os_updates::graphql::Query,
     access::graphql::Query,
     agent_threads::graphql::Query,
+    agent_threads::graphql::RemoteQuery,
     agent_usage::graphql::Query,
     agent_usage::graphql::SessionsQuery,
     builds::graphql::Query,
@@ -70,6 +71,7 @@ pub struct Query(
 pub struct Mutation(
     os_updates::graphql::Mutation,
     access::graphql::Mutation,
+    agent_threads::graphql::RemoteMutation,
     builds::graphql::Mutation,
     builds::graphql::BuilderMutation,
     catalogue::graphql::Mutation,

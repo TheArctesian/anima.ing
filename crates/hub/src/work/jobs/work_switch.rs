@@ -6,7 +6,7 @@ use sqlx::PgConnection;
 use super::{Error, placement, store};
 use crate::ids::DeviceId;
 
-/// Checks both WORK_OFF causes and holds the machine's work state until commit.
+/// Checks both `WORK_OFF` causes and holds the machine's work state until commit.
 /// The caller takes the device lock first, including for a machine with no claim row.
 ///
 /// # Errors

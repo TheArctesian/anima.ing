@@ -129,7 +129,11 @@
       "events"
     ],
     "link": [],
-    "agent_threads": [],
+    "agent_threads": [
+      "devices",
+      "events",
+      "jobs"
+    ],
     "agent_usage": [
       "devices"
     ],

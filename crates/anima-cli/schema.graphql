@@ -5,7 +5,7 @@
 # CON-002 (crates/hub/tests/it/contract.rs) keeps the hub's schema equal to it.
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
-# Accepted TH30 addition pending hub and CLI implementation: compose agent-threads.graphql (R-NEW-th30acceptance).
+# The remote Code operations implement the accepted TH30 amendment (R-NEW-th30acceptance).
 # Conventions: contracts/conventions.md.
 # A token of the kind command_line (R-383) may do what a login token may do, except issueCommandLineToken.
 # Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket`, `hostedBrowserSignIn` and `claimComputerEnrolment` (API-003, D-4, R-111, R-129, HMD-061, HM-T33).
@@ -4183,6 +4183,10 @@ type AgentThreadSnapshot {
 }
 
 type Query {
+  agentThreadStartTargets: [AgentThreadStartTarget!]!
+  agentThreadLaunch(launch: ID!): AgentThreadLaunchReceipt!
+  agentThreadControl(thread: ID!): AgentThreadControlView!
+  agentThreadCommand(command: ID!): AgentThreadCommandReceipt!
   commandLineSessions(offset: Int! = 0): [CommandLineSession!]!
 
   deviceOsUpdate(deviceId: ID!): JSON!
@@ -4383,6 +4387,10 @@ type Query {
 }
 
 type Mutation {
+  startAgentThread(input: AgentThreadStartInput!): AgentThreadLaunchReceipt!
+  sendAgentThreadPrompt(input: AgentThreadPromptInput!): AgentThreadCommandReceipt!
+  answerAgentThreadRequest(input: AgentThreadAnswerInput!): AgentThreadCommandReceipt!
+  stopAgentThread(input: AgentThreadStopInput!): AgentThreadCommandReceipt!
   hostedCommandLineClaim(cloudKey: String!, computer: String!): HostedDeviceInvite!
   claimCommandLineToken(claim: String!): RemoteAuthPayload!
 
@@ -4876,3 +4884,97 @@ type RemoteAuthPayload {
   expiresAt: DateTime
   operator: Operator!
 }
+
+type AgentThreadStartTarget {
+  device: ID!
+  project: String!
+  folder: String!
+  program: AgentThreadLaunchProgram!
+  expiresAt: DateTime!
+}
+
+enum AgentThreadLaunchProgram { claude_code codex }
+enum AgentThreadAction { prompt answer stop }
+enum AgentThreadRequestKind { approval question }
+enum AgentThreadStopKind { interrupt end }
+enum AgentThreadDecision { allow_once allow_session decline }
+enum AgentThreadValueKind { choice free_text }
+enum AgentThreadBinding { waiting bound unavailable }
+enum AgentThreadLaunchState { queued claimed reconciling started refused failed stopped expired retired }
+enum AgentThreadCommandState { waiting delivered recorded refused expired retired }
+
+input AgentThreadStartInput {
+  launch: ID!
+  device: ID!
+  project: String!
+  folder: String!
+  program: AgentThreadLaunchProgram!
+  access: String!
+  prompt: String!
+}
+
+type AgentThreadLaunchReceipt {
+  launch: ID!
+  state: AgentThreadLaunchState!
+  cause: String
+  thread: ID
+  binding: AgentThreadBinding!
+  firstCommand: ID!
+}
+
+type AgentThreadCommandReceipt {
+  command: ID!
+  state: AgentThreadCommandState!
+  cause: String
+}
+
+type AgentThreadControlView { thread: ID!, offer: AgentThreadControlOffer }
+type AgentThreadControlOffer {
+  process: ID!
+  "Whole number from 1 through 2^53 - 1."
+  revision: Float!
+  actions: [AgentThreadAction!]!
+  stopTargets: [AgentThreadStopTarget!]!
+  requests: [AgentThreadRequestOffer!]!
+}
+
+type AgentThreadStopTarget { kind: AgentThreadStopKind!, process: ID!, turn: ID }
+type AgentThreadRule { selector: ID!, label: String! }
+type AgentThreadChoice { id: ID!, label: String! }
+type AgentThreadQuestion {
+  key: String!
+  text: String!
+  choices: [AgentThreadChoice!]!
+  many: Boolean!
+  freeText: Boolean!
+}
+type AgentThreadRequestOffer {
+  kind: AgentThreadRequestKind!
+  id: ID!
+  subject: String!
+  details: String
+  decisions: [AgentThreadDecision!]
+  rules: [AgentThreadRule!]
+  questions: [AgentThreadQuestion!]
+}
+
+input AgentThreadPromptInput { command: ID!, thread: ID!, prompt: String! }
+input AgentThreadStopInput { command: ID!, thread: ID!, target: AgentThreadStopTargetInput! }
+input AgentThreadStopTargetInput { kind: AgentThreadStopKind!, process: ID!, turn: ID }
+
+input AgentThreadAnswerInput {
+  command: ID!
+  thread: ID!
+  process: ID!
+  revision: Float!
+  request: ID!
+  answer: AgentThreadAnswerPayload!
+}
+input AgentThreadAnswerPayload {
+  kind: AgentThreadRequestKind!
+  decision: AgentThreadDecision
+  selector: ID
+  answers: [AgentThreadQuestionAnswer!]
+}
+input AgentThreadQuestionAnswer { key: String!, values: [AgentThreadAnswerValue!]! }
+input AgentThreadAnswerValue { kind: AgentThreadValueKind!, id: ID, text: String }

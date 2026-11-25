@@ -77,8 +77,9 @@ pub(super) async fn replace_token(
     .bind(device)
     .bind(token.to_bytes().as_slice())
     .bind(expires_at)
-    .execute(conn)
+    .execute(&mut *conn)
     .await?;
+    crate::fleet::agent_threads::remote::clear_offers(conn, device).await?;
     Ok(needed.unwrap_or(false))
 }
 
@@ -153,8 +154,9 @@ pub(super) async fn revoke(conn: &mut PgConnection, device: DeviceId) -> Result<
         .await?;
     sqlx::query("DELETE FROM metrics.enrolments WHERE device_id = $1")
         .bind(device)
-        .execute(conn)
+        .execute(&mut *conn)
         .await?;
+    crate::fleet::agent_threads::remote::clear_offers(conn, device).await?;
     Ok(deleted.rows_affected() > 0)
 }
 
