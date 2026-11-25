@@ -17,6 +17,9 @@ pub(in crate::threads::git) mod sync_probe;
 #[cfg(all(test, unix))]
 mod tests;
 
+#[cfg(unix)]
+mod publication;
+
 /// Whether a path walk is for reading or for writing durable directory entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Make {
@@ -74,7 +77,7 @@ mod held {
 
     /// A folder that is held open.
     #[derive(Debug)]
-    pub struct Dir(OwnedFd);
+    pub struct Dir(pub(super) OwnedFd);
 
     impl Dir {
         pub(in super::super) const fn from_fd(fd: OwnedFd) -> Self {
@@ -330,6 +333,10 @@ mod none {
     }
 
     impl Dir {
+        pub(in crate::threads::git) fn publish(&self, _: &OsStr, _: File) -> io::Result<()> {
+            none()
+        }
+
         pub fn sync(&self) -> io::Result<()> {
             none()
         }

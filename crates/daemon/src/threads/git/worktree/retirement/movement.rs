@@ -79,14 +79,20 @@ pub(super) fn retire(record: &Record, container: &Path, original: FolderId) -> i
     keep_origin(&destination.folder, record)?;
     let source = record.folder.parent().ok_or(io::ErrorKind::InvalidInput)?;
     let parent_name = source.file_name().ok_or(io::ErrorKind::InvalidInput)?;
-    let parent = openat(&destination.home, parent_name, DIRECTORY, Mode::empty())?;
-    at_path(&parent, source)?;
+    let parent = optional_child(&destination.home, parent_name)?;
+    if let Some(parent) = &parent {
+        at_path(parent, source)?;
+    }
     if let Some(retired) = destination.worktree()? {
         require(Some(retired), original)?;
         destination.check()?;
-        rustix::fs::fsync(&parent)?;
+        if let Some(parent) = &parent {
+            rustix::fs::fsync(parent)?;
+        }
+        // Syncing the home also persists the deletion of a now-empty source parent.
         return destination.sync();
     }
+    let parent = parent.ok_or(io::ErrorKind::NotFound)?;
     let name = record
         .folder
         .file_name()

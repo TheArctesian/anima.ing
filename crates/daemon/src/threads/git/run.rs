@@ -320,7 +320,10 @@ impl Git {
         }
     }
 
-    async fn finished(&self, run: Run<'_>) -> Result<(Option<i32>, Vec<u8>, String), GitError> {
+    pub(super) async fn finished(
+        &self,
+        run: Run<'_>,
+    ) -> Result<(Option<i32>, Vec<u8>, String), GitError> {
         // Directly before the run: the work folder is still the one that the runner made, not
         // a folder or a link that an agent put in its place (P12).
         if let Some((folder, made)) = &self.folder

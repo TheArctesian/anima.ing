@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::super::place::{Home, Record};
 use super::super::project::{Layout, linked};
-use super::super::run::folder::FolderId;
+use super::super::run::{Git, folder::FolderId};
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod movement;
@@ -163,7 +163,8 @@ impl Completion {
         Ok(completed.outcome())
     }
 
-    pub(super) fn orphan(
+    pub(super) async fn orphan(
+        git: &Git,
         home: &Home,
         (thread, repository): (Uuid, &str),
         record: &Record,
@@ -184,7 +185,7 @@ impl Completion {
             .map_err(failed)?;
         let kept = match prior.filter(|receipt| receipt.belongs_to(record)) {
             Some(receipt) => receipt.kept,
-            None => super::removal::legacy_saved(home, record, thread)?,
+            None => super::removal::legacy_saved(git, home, record, thread).await?,
         };
         let mut record = record.clone();
         let archive = record.orphan_removal.unwrap_or_else(Uuid::now_v7);

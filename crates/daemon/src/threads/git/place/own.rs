@@ -8,7 +8,7 @@
 //!
 //! I/O: `git init`, `git pack-objects`, `git read-tree`, and a few files.
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io;
 use std::path::Path;
@@ -254,10 +254,14 @@ pub(in crate::threads::git) fn sync_legacy_snapshot(common: &Path, own: &Path) -
         .below(Path::new("objects/pack"), Make::Existing)?
         .ok_or(io::ErrorKind::NotFound)?;
     packs.sync()?;
-    large_files(own, |_, path| {
-        let (leaf, _) = common
+    large_files(own, |source, path| {
+        let (leaf, name) = common
             .above(path, Make::Existing)?
             .ok_or(io::ErrorKind::NotFound)?;
+        let target = leaf.file(name)?.ok_or(io::ErrorKind::NotFound)?;
+        if source.metadata()?.len() != target.metadata()?.len() {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
         leaf.sync()
     })
 }
@@ -298,15 +302,8 @@ fn copy_large_file(common: &Dir, file: File, path: &Path) -> io::Result<()> {
 
 /// Copies the runner file into the open folder `into` as `name`: written under
 /// a different name first, then moved into place, so no half file has the name.
-fn placed(into: &Dir, name: &OsStr, mut from: File) -> io::Result<()> {
-    let mut partial = OsString::from("anima-");
-    partial.push(name);
-    into.remove(&partial, false)?;
-    let mut written = into.new_file(&partial, false)?;
-    io::copy(&mut from, &mut written)?;
-    written.sync_all()?;
-    into.rename(&partial, name)?;
-    into.sync()
+fn placed(into: &Dir, name: &OsStr, from: File) -> io::Result<()> {
+    into.publish(name, from)
 }
 
 /// Makes the index of the worktree, the one that the `git` of the agent and of the person
@@ -330,3 +327,6 @@ pub async fn follow(git: &Git, worktree: &Worktree, commit: &str) -> Result<(), 
     let content = File::open(fresh).map_err(GitError::Files)?;
     placed(&git_dir, walk::name("index"), content).map_err(GitError::Files)
 }
+
+#[cfg(all(test, unix))]
+mod tests;

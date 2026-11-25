@@ -9,6 +9,8 @@ use super::super::project::refs;
 use super::super::run::{Git, GitError};
 use super::retirement::{Completion, Retirement};
 
+mod legacy;
+
 /// Saves a private ref before moving the whole original directory out of use. Files that
 /// cannot go in a Git snapshot stay in the original directory, as do late writes to it.
 /// The branch and linked Git metadata stay for recovery.
@@ -26,7 +28,7 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<GitOu
     let retirement = if let Some(pending) = Retirement::existing(home, record)? {
         pending
     } else {
-        let kept = if let Some(kept) = legacy_saved(home, record, worktree.thread())? {
+        let kept = if let Some(kept) = legacy_saved(git, home, record, worktree.thread()).await? {
             kept
         } else {
             save(git, worktree).await?
@@ -90,12 +92,13 @@ pub async fn remove_broken(
     if let Some(worktree) = home.for_removal(thread, repository) {
         remove(git, home, &worktree).await
     } else {
-        Completion::orphan(home, target, &record)
+        Completion::orphan(git, home, target, &record).await
     }
 }
 
 /// Preserve the complete snapshot saved by an interrupted pre-retirement removal.
-pub(super) fn legacy_saved(
+pub(super) async fn legacy_saved(
+    git: &Git,
     home: &Home,
     record: &super::super::place::Record,
     thread: Uuid,
@@ -118,9 +121,10 @@ pub(super) fn legacy_saved(
                     .into(),
         });
     }
-    own::sync_legacy_snapshot(&record.common_dir, &record.own).map_err(GitError::Files)?;
-    // Re-publish after the snapshot's directory entries are durable.
     let saved = saved.unwrap_or_default();
+    legacy::verify(git, record, saved).await?;
+    own::sync_legacy_snapshot(&record.common_dir, &record.own).map_err(GitError::Files)?;
+    // Re-publish after verifying the snapshot and synchronizing its directory entries.
     refs::put(&record.common_dir, &kept, saved, refs::Was::At(saved))?;
     Ok(Some(kept))
 }
