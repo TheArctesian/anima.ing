@@ -48,13 +48,17 @@ impl Runner {
                     return;
                 };
                 tokio::spawn(async move {
-                    let result = match super::polling::enrolled(home).await {
-                        Some(delivery) => delivery.relay(ask.generation(), ask).await,
-                        None => Answer::Failed(crate::hub::answer::Cause::Unreadable),
+                    let (credential, result) = match super::polling::enrolled(home).await {
+                        Some(delivery) => (
+                            Some(delivery.credential_stamp()),
+                            delivery.relay(ask.generation(), ask).await,
+                        ),
+                        None => (None, Answer::Failed(crate::hub::answer::Cause::Unreadable)),
                     };
                     let _ = sender
                         .send(Event::Relay {
                             connection,
+                            credential,
                             request,
                             result,
                         })

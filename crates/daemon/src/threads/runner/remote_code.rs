@@ -58,6 +58,7 @@ pub(super) enum Event {
     },
     Relay {
         connection: u64,
+        credential: Option<[u8; 32]>,
         request: DispatchRequest,
         result: crate::hub::answer::Answer<Reply>,
     },

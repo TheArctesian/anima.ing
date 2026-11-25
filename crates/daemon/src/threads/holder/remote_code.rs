@@ -168,7 +168,8 @@ async fn launch(
             return Err(Refusal::ThreadsOff);
         }
         let policy = Policy::read(home, user.clone());
-        let targets = policy.targets(order.candidates.clone());
+        let mut targets = policy.configured_targets();
+        targets.retain(|target| order.candidates.contains(target));
         policy.check_launch(saved.project(), saved.parameters(), &targets)
     };
     match store.spawn(authority, guard, (order.mode, command)) {

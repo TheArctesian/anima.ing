@@ -79,29 +79,43 @@ impl Runner {
             }
             Event::Relay {
                 connection,
+                credential,
                 request,
                 result,
             } if connection == self.remote.connection && self.remote.active == Some(request) => {
-                let frame = match result {
-                    Answer::Accepted(reply) => Some(ToHolder::Reply { reply }),
-                    Answer::Refused(RefusalCode::WorkOff) => Some(ToHolder::Close {
-                        request,
-                        cause: NotCreated::Refused,
-                    }),
-                    Answer::Refused(RefusalCode::NotHolder) => Some(ToHolder::Close {
-                        request,
-                        cause: NotCreated::Expired,
-                    }),
-                    _ => Some(ToHolder::Reset { request }),
-                };
-                if let Some(frame) = frame {
-                    self.remote_send(frame).await;
-                }
+                self.remote_relay(request, credential, result).await;
             }
             Event::Relay { .. } | Event::Claim { .. } | Event::Poll { .. } => {}
             Event::Look => self.look_around().await,
             Event::Tick => self.remote_tick().await,
         }
+    }
+
+    async fn remote_relay(
+        &mut self,
+        request: crate::remote_code::wire::DispatchRequest,
+        credential: Option<[u8; 32]>,
+        result: Answer<crate::remote_code::broker::Reply>,
+    ) {
+        let current = match credential {
+            Some(stamp) => enrolled(self.remote_home()).await.is_some_and(|current| {
+                current.config().device == request.device && current.credential_stamp() == stamp
+            }),
+            None => false,
+        };
+        let frame = match result {
+            Answer::Accepted(reply) if current => ToHolder::Reply { reply },
+            Answer::Refused(RefusalCode::WorkOff) if current => ToHolder::Close {
+                request,
+                cause: NotCreated::Refused,
+            },
+            Answer::Refused(RefusalCode::NotHolder) if current => ToHolder::Close {
+                request,
+                cause: NotCreated::Expired,
+            },
+            _ => ToHolder::Reset { request },
+        };
+        self.remote_send(frame).await;
     }
 
     fn remote_claim(

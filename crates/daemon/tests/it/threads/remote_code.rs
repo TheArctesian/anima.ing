@@ -23,6 +23,8 @@ use uuid::Uuid;
 
 use super::runner::Kit;
 
+mod races;
+
 const DEVICE: Uuid = Uuid::from_u128(1);
 const LAUNCH: Uuid = Uuid::from_u128(2);
 const WORK: Uuid = Uuid::from_u128(3);
@@ -34,6 +36,7 @@ const COMMAND: &str = "../β:prompt";
 
 const CLAUDE: &str = r#"#!/usr/bin/perl
 $| = 1;
+open(my $started, ">", "started") or die "startup marker"; close($started);
 while (my $line = <STDIN>) {
     if ($line =~ /"type":"user"/) {
         open(my $file, ">>", "effects"); print $file "prompt\n"; close($file);
@@ -43,7 +46,7 @@ while (my $line = <STDIN>) {
 "#;
 
 #[derive(Clone)]
-struct Hub(Arc<Mutex<Launch>>);
+struct Hub(Arc<Mutex<Launch>>, Option<Arc<races::DispatchGate>>);
 
 #[derive(Debug)]
 struct Launch {
@@ -56,40 +59,12 @@ struct Launch {
     delivered: u32,
     receipts: u32,
     withdrawn: bool,
+    refusal: Option<String>,
 }
 
 #[tokio::test]
 async fn th32_remote_code_claim_spawn_publish_receipt_and_withdrawal() {
-    let mut kit = Kit::unstarted(CLAUDE);
-    let home = Home::at(kit.path("daemon"));
-    let folder = kit.path("work").canonicalize().unwrap();
-    let listener = synthetic_enrollment(&home, &folder);
-    let hub = Hub(Arc::new(Mutex::new(Launch {
-        folder: folder.clone(),
-        claims: Vec::new(),
-        claimed: false,
-        runner: None,
-        summary: false,
-        done: false,
-        delivered: 0,
-        receipts: 0,
-        withdrawn: false,
-    })));
-    let router = Router::new()
-        .route("/work/v1/claim", post(claim))
-        .route("/work/v1/report", post(report_work))
-        .route("/work/v1/thread-dispatch", post(dispatch))
-        .route("/work/v1/thread-launch-evidence", post(evidence))
-        .route("/work/v1/commands", post(poll))
-        .route("/work/v1/command-result", post(receipt))
-        .route(
-            "/work/v1/thread-control",
-            post(|| async { StatusCode::NO_CONTENT }),
-        )
-        .route("/daemon/v1/threads/entries", post(publish))
-        .with_state(hub.clone());
-    let serving = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
-    kit.start();
+    let (_kit, home, folder, hub, serving) = fixture(None);
     wait_for(&hub, |launch| launch.receipts == 2).await;
     assert_eq!(
         std::fs::read_to_string(folder.join("effects")).unwrap(),
@@ -105,6 +80,46 @@ async fn th32_remote_code_claim_spawn_publish_receipt_and_withdrawal() {
     assert_eq!(hub.0.lock().unwrap().delivered, 2);
     serving.abort();
 }
+
+fn fixture(grant: Option<Arc<races::DispatchGate>>) -> Fixture {
+    let mut kit = Kit::unstarted(CLAUDE);
+    let home = Home::at(kit.path("daemon"));
+    let folder = kit.path("work").canonicalize().unwrap();
+    let listener = synthetic_enrollment(&home, &folder);
+    let hub = Hub(
+        Arc::new(Mutex::new(Launch {
+            folder: folder.clone(),
+            claims: Vec::new(),
+            claimed: false,
+            runner: None,
+            summary: false,
+            done: false,
+            delivered: 0,
+            receipts: 0,
+            withdrawn: false,
+            refusal: None,
+        })),
+        grant,
+    );
+    let router = Router::new()
+        .route("/work/v1/claim", post(claim))
+        .route("/work/v1/report", post(report_work))
+        .route("/work/v1/thread-dispatch", post(dispatch))
+        .route("/work/v1/thread-launch-evidence", post(evidence))
+        .route("/work/v1/commands", post(poll))
+        .route("/work/v1/command-result", post(receipt))
+        .route(
+            "/work/v1/thread-control",
+            post(|| async { StatusCode::NO_CONTENT }),
+        )
+        .route("/daemon/v1/threads/entries", post(publish))
+        .with_state(hub.clone());
+    let serving = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+    kit.start();
+    (kit, home, folder, hub, serving)
+}
+
+type Fixture = (Kit, Home, PathBuf, Hub, tokio::task::JoinHandle<()>);
 
 fn synthetic_enrollment(home: &Home, folder: &std::path::Path) -> tokio::net::UnixListener {
     use std::os::unix::fs::PermissionsExt as _;
@@ -188,7 +203,22 @@ fn lease() -> Lease {
     }
 }
 
-async fn dispatch(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value> {
+async fn dispatch(
+    State(hub): State<Hub>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<Value>,
+) -> Response {
+    record_dispatch(&hub, &body);
+    if let Some(gate) = &hub.1
+        && let Some(final_reply) = gate.hold(&headers).await
+    {
+        return final_reply;
+    }
+    Json(json!({"authorization": GRANT, "validUntil": chrono::Utc::now(), "remainingMs": 10_000}))
+        .into_response()
+}
+
+fn record_dispatch(hub: &Hub, body: &Value) {
     let mut state = hub.0.lock().unwrap();
     assert!(state.claimed);
     assert_eq!(body["device"], DEVICE.to_string());
@@ -199,7 +229,6 @@ async fn dispatch(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value
     let runner: Uuid = serde_json::from_value(body["runner"].clone()).unwrap();
     assert!(state.runner.is_none_or(|expected| expected == runner));
     state.runner = Some(runner);
-    Json(json!({"authorization": GRANT, "validUntil": chrono::Utc::now(), "remainingMs": 10_000}))
 }
 
 async fn report_work(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value> {
@@ -209,7 +238,7 @@ async fn report_work(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Va
         assert_eq!(body["result"]["thread"], state.runner.unwrap().to_string());
         state.done = true;
     }
-    Json(json!({"lease":lease(), "stop":null}))
+    Json(json!({"lease":lease(), "logEnd":0, "stop":null}))
 }
 
 async fn publish(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value> {
@@ -228,6 +257,15 @@ async fn publish(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value>
 async fn evidence(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value> {
     let mut state = hub.0.lock().unwrap();
     assert_eq!(body["launch"], LAUNCH.to_string());
+    if body["outcome"] == "not_created" {
+        assert!(body.get("thread").is_none());
+        let cause = body["cause"].as_str().unwrap();
+        state.refusal = Some(cause.to_owned());
+        return Json(
+            json!({"launch":LAUNCH, "state":cause, "cause":cause, "thread":null,
+            "binding":"unbound", "firstCommand":Uuid::from_u128(8)}),
+        );
+    }
     assert_eq!(body["thread"], state.runner.unwrap().to_string());
     state.withdrawn |= body["publication"] == "withdrawn";
     Json(
