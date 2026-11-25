@@ -1,10 +1,12 @@
 ---
 task: E0-6 T8
 plan: docs/plans/extensions-plan.md
-machine: pop-os
-agent: Claude Code
-branch: fix/e0-6-t8-dev-red
-started: 2026-11-24
+machine: Stephens-MacBook-Pro.local
+agent: Codex
+branch: t3/e0-6-t8-auth-baseline
+started: 2026-11-25
 ---
 
-Make dev green again: the CMD-010 sign-in tests that fail on macOS (end_to_end::sign_in timeouts), Windows (credential lock in basics::auth) and rust-test after 2dc22d998.
+The operator transferred the CMD-010 runner repair to this session on 2026-11-25. Claude Code on pop-os started it on 2026-11-24. Its branch `fix/e0-6-t8-dev-red` and commit `47d74e79baf990e6aa789cc0608b79b943a7242d` remain the source of the original fix.
+
+Validate default names for sign-in and app adoption, narrow Windows credential-lock retries, and run native gates with the reviewed setup fixture.
