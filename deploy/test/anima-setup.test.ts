@@ -24,15 +24,17 @@ exit 0
   }
   const path = join(home, "tools");
   mkdirSync(path);
-  writeFileSync(join(path, "id"), '#!/bin/sh\ncase "$1" in -u) echo 1001 ;; -un) echo test-user ;; esac\n');
-  chmodSync(join(path, "id"), 0o755);
-  return { home, bundle, path };
+  writeFileSync(join(path, "id"), '#!/bin/sh\ncase "$1" in -u) echo 1001 ;; -un) echo test-user ;; esac\n', { mode: 0o755 });
+  writeFileSync(join(path, "uname"), '#!/bin/sh\nprintf "%s\\n" Linux\n', { mode: 0o755 });
+  return home;
 }
 
 function run(args: string[]) {
-  const { home, bundle, path } = fixture();
-  const result = Bun.spawnSync(["sh", join(bundle, "anima-setup"), ...args], {
-    env: { ...process.env, HOME: home, XDG_CONFIG_HOME: join(home, "config"), PATH: `${path}:${process.env.PATH}`, ANIMA_TOKEN: "synthetic-token-must-not-be-used", ANIMA_HUB: "https://wrong.invalid" },
+  const home = fixture();
+  // Let sh use its own path syntax, including when it runs under MSYS.
+  const result = Bun.spawnSync(["sh", "-c", 'export HOME="$PWD" XDG_CONFIG_HOME="$PWD/config" PATH="$PWD/tools:$PATH"; exec sh ./bundle/anima-setup "$@"', "anima-setup", ...args], {
+    cwd: home,
+    env: { ...process.env, ANIMA_TOKEN: "synthetic-token-must-not-be-used", ANIMA_HUB: "https://wrong.invalid" },
     stdout: "pipe", stderr: "pipe",
   });
   return { home, result, calls: existsSync(join(home, "calls")) ? readFileSync(join(home, "calls"), "utf8") : "" };
@@ -40,7 +42,7 @@ function run(args: string[]) {
 
 test("first setup installs before approval and enrols without inherited credentials", () => {
   const { home, result, calls } = run(["--computer", "Build VPS"]);
-  expect(result.exitCode).toBe(0);
+  expect(result.exitCode, result.stderr.toString()).toBe(0);
   for (const name of ["anima", "anima-link", "anima-daemon"]) expect(existsSync(join(home, ".local/bin", name))).toBe(true);
   expect(calls.split("\n").filter(Boolean).map((line) => line.includes("auth status") ? "status" : line.includes("auth login") ? "login" : "enrol")).toEqual(["status", "login", "enrol"]);
   expect(calls).toContain("auth login --hosted --computer Build VPS");
@@ -50,7 +52,7 @@ test("first setup installs before approval and enrols without inherited credenti
 
 test("CLI-only setup installs programs without approval or device enrolment", () => {
   const { home, result, calls } = run(["--cli-only"]);
-  expect(result.exitCode).toBe(0);
+  expect(result.exitCode, result.stderr.toString()).toBe(0);
   expect(existsSync(join(home, ".local/bin/anima"))).toBe(true);
   expect(calls).toBe("");
 });
