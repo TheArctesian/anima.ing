@@ -1,5 +1,5 @@
 import { SvelteMap } from 'svelte/reactivity';
-import type { ThreadEntry } from './api';
+import type { ThreadEntry, ThreadSummary } from './api';
 
 export interface Message {
   readonly sequence: string;
@@ -9,6 +9,7 @@ export interface Message {
 
 interface PendingRequest {
   readonly id: string;
+  readonly sequence: number;
   readonly title: string;
   readonly subject: string;
   readonly diff: string;
@@ -34,11 +35,12 @@ function requestTitle(kind: unknown): string {
   }
 }
 
-function pendingRequest(id: string, value: unknown): PendingRequest {
+function pendingRequest(id: string, sequence: number, value: unknown): PendingRequest {
   const detail = record(value);
   const questions = Array.isArray(detail['questions']) ? detail['questions'] : [];
   return {
     id,
+    sequence,
     title: requestTitle(detail['kind']),
     subject: questions.map((question: unknown) => text(record(question)['text'])).filter(Boolean).join('\n')
       || text(detail['subject']),
@@ -63,10 +65,30 @@ function appendReply(event: Record<string, unknown>, sequence: string, messages:
   }
 }
 
-export function createTranscript() {
+function attentionCleared(state: string): boolean {
+  return state === 'idle' || state === 'starting' || state === 'working' || state === 'stopped';
+}
+
+export function createConversation() {
   const messages = $state<Message[]>([]);
   const pending = new SvelteMap<string, PendingRequest>();
   let draft = $state.raw<Message | null>(null);
+  let published = $state.raw<{ summary: ThreadSummary; through: number } | null>(null);
+  let streamed = $state.raw<{ state: string; sequence: number } | null>(null);
+  let requestsClearedThrough = -1;
+
+  function acceptSummary(summary: ThreadSummary, lastSequence: string): void {
+    const through = Number(lastSequence);
+    if (published !== null && through < published.through) return;
+    // The summary covers status through this sequence; replay still supplies transcript entries.
+    published = { summary, through };
+    if (streamed !== null && streamed.sequence <= through) streamed = null;
+    if (!attentionCleared(summary.state)) return;
+    requestsClearedThrough = through;
+    for (const request of pending.values()) {
+      if (request.sequence <= through) pending.delete(request.id);
+    }
+  }
 
   function append({ sequence, content }: ThreadEntry): void {
     const change = record(content);
@@ -79,9 +101,16 @@ export function createTranscript() {
       case 'said':
         draft = appendReply(record(change['event']), sequence, messages, draft);
         break;
+      case 'state': {
+        const state = text(change['state']);
+        const position = Number(sequence);
+        if (state !== '' && position > (published?.through ?? -1)) streamed = { state, sequence: position };
+        break;
+      }
       case 'asked': {
         const id = text(change['request']);
-        if (id !== '') pending.set(id, pendingRequest(id, change['detail']));
+        const position = Number(sequence);
+        if (id !== '' && position > requestsClearedThrough) pending.set(id, pendingRequest(id, position, change['detail']));
         break;
       }
       case 'closed':
@@ -91,15 +120,13 @@ export function createTranscript() {
   }
 
   return {
+    get summary() { return published?.summary ?? null; },
+    get state() { return streamed?.state ?? published?.summary.state ?? ''; },
     get messages(): readonly Message[] { return draft === null ? messages : [...messages, draft]; },
     get pending(): readonly PendingRequest[] { return [...pending.values()]; },
+    acceptSummary,
     append,
   };
-}
-
-export function updatedState(entry: ThreadEntry): string | undefined {
-  const change = record(entry.content);
-  return change['change'] === 'state' ? text(change['state']) || undefined : undefined;
 }
 
 export function stateLabel(state: string): string {
