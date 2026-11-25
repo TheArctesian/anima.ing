@@ -33,6 +33,15 @@ const Snapshot = graphql(`
   }
 `);
 
+const Summary = graphql(`
+  query MobileThreadSummaryRefresh($id: ID!) {
+    agentThread(id: $id) {
+      summary { ...MobileThreadSummary }
+      lastSequence
+    }
+  }
+`);
+
 const Entries = graphql(`
   subscription MobileThreadEntries($id: ID!, $afterSequence: String!) {
     agentThreadEntries(id: $id, afterSequence: $afterSequence) {
@@ -55,6 +64,10 @@ export function mobileCodeApi(hub: Hub) {
     },
     async snapshot(id: string) {
       const result = await hub.request(Snapshot, { id });
+      return result.ok ? { ok: true as const, value: result.value.agentThread } : result;
+    },
+    async summary(id: string) {
+      const result = await hub.request(Summary, { id });
       return result.ok ? { ok: true as const, value: result.value.agentThread } : result;
     },
     follow(id: string, cursor: () => string, sink: Sink<ThreadEntry>) {

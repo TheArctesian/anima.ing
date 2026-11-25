@@ -56,6 +56,11 @@ async function open(snapshots: readonly ThreadSnapshot[], token = 'account-a'): 
         const thread = snapshots.find(({ summary }) => summary.id === variables.id);
         return Promise.resolve(Response.json({ data: { agentThread: thread ?? null } }));
       }
+      if (query.startsWith('query MobileThreadSummaryRefresh')) {
+        const thread = snapshots.find(({ summary }) => summary.id === variables.id);
+        const agentThread = thread === undefined ? null : { summary: thread.summary, lastSequence: thread.lastSequence };
+        return Promise.resolve(Response.json({ data: { agentThread } }));
+      }
       throw new Error('Unexpected GraphQL operation');
     },
   });

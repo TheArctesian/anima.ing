@@ -22,7 +22,7 @@
   let failure = $state('');
   let summary = $state.raw<ThreadSummary | null>(null);
   let entryState = $state.raw<{ sequence: string; state: string } | null>(null);
-  const state = $derived(entryState?.state ?? summary?.state ?? '');
+  const displayedState = $derived(entryState?.state ?? summary?.state ?? '');
   let refreshSummary: (() => void) | undefined;
   let live = $state.raw<ReturnType<typeof followThread> | null>(null);
   let latest: HTMLDivElement | undefined = $state();
@@ -50,7 +50,7 @@
     function refresh(): void {
       if (refreshing) return;
       refreshing = true;
-      void api.snapshot(id).then((result) => {
+      void api.summary(id).then((result) => {
         refreshing = false;
         if (!active || !result.ok || result.value === null) return;
         const { summary: thread, lastSequence } = result.value;
@@ -110,7 +110,7 @@
       <h1 id="mobile-thread-title">{threadTitle(summary.title)}</h1>
       <div class="context">
         <span>{machines.get(summary.deviceId) ?? 'Connected computer'}{summary.repository ? ` · ${summary.repository}` : ''} · {displayProgram}</span>
-        <ThreadState state={conversation.pending.length > 0 ? 'needs_you' : state} />
+        <ThreadState state={conversation.pending.length > 0 ? 'needs_you' : displayedState} />
       </div>
     </header>
 
@@ -123,7 +123,7 @@
       <p class="notice" role="status">Reconnecting to the hub…</p>
     {/if}
 
-    {#if conversation.pending.length > 0 || state === 'needs_you'}
+    {#if conversation.pending.length > 0 || displayedState === 'needs_you'}
       <section class="pending" aria-labelledby="mobile-pending-title">
         <h2 id="mobile-pending-title"><CodeIcon name="shield-question" /> Needs you</h2>
         {#each conversation.pending as request (request.id)}
