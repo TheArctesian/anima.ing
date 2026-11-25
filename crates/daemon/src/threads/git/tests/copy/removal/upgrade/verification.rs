@@ -6,7 +6,22 @@ mod cache;
 mod scratch;
 
 async fn saved(bench: &Bench) -> (String, String) {
-    bench.git_in(&bench.project, &["add", "."]).await;
+    // Write the fixture as an already-saved W1 snapshot, with its original pointer bytes.
+    bench
+        .git_in(
+            &bench.project,
+            &[
+                "-c",
+                "filter.lfs.process=",
+                "-c",
+                "filter.lfs.clean=",
+                "-c",
+                "filter.lfs.required=false",
+                "add",
+                ".",
+            ],
+        )
+        .await;
     bench
         .git_in(
             &bench.project,
@@ -91,7 +106,23 @@ async fn pointer(bench: &Bench, tracked: bool, variant: &str) -> (String, PathBu
         )
         .unwrap();
     }
-    let (kept, _) = saved(bench).await;
+    let raw = bench
+        .git_in(
+            &bench.project,
+            &["hash-object", "--no-filters", "example.bin"],
+        )
+        .await;
+    let (kept, commit) = saved(bench).await;
+    let saved_blob = bench
+        .git_in(
+            &bench.project,
+            &["rev-parse", &format!("{commit}:example.bin")],
+        )
+        .await;
+    assert_eq!(
+        saved_blob, raw,
+        "the saved pointer must contain the fixture bytes"
+    );
     let leaf = bench
         .project
         .join(format!(".git/lfs/objects/{}/{}", &oid[..2], &oid[2..4]));
