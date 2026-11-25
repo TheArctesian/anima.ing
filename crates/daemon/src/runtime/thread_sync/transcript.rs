@@ -186,7 +186,7 @@ fn redact(value: &mut Value) {
     }
 }
 
-fn enabled(home: &Home) -> bool {
+pub(crate) fn enabled(home: &Home) -> bool {
     private_file::read(&home.dir().join(SETTINGS))
         .ok()
         .flatten()

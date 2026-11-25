@@ -13,6 +13,7 @@ impl HubClient {
             route: "work/v1/claim",
             bearer: Some(token),
             body: json(claim),
+            response_limit: super::body::LIMIT,
             ok: &[204, 200],
         };
         self.post(call, |status, body| {
@@ -30,6 +31,7 @@ impl HubClient {
             route: "work/v1/report",
             bearer: Some(token),
             body: json(report),
+            response_limit: super::body::LIMIT,
             ok: &[200],
         };
         self.post(call, |_, body| read_json(body)).await

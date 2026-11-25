@@ -1,5 +1,7 @@
 mod transcript;
 
+pub(crate) use transcript::enabled as transcripts_enabled;
+
 use std::{path::Path, sync::Arc, time::Duration};
 
 use agent_threads::control::{Action, Outcome, RunState, ThreadRow};
