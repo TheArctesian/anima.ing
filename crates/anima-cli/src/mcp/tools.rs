@@ -243,6 +243,16 @@ mod tests {
     }
 
     #[test]
+    fn job_lookup_schema_allows_a_missing_job() {
+        let tool = Tool::Jobs(jobs::JobTool::Get).definition().tool();
+        let schema = tool.output_schema.expect("job lookup has an output schema");
+        assert_eq!(
+            schema["properties"]["job"]["type"],
+            serde_json::json!(["object", "null"])
+        );
+    }
+
+    #[test]
     fn mcp_009_every_tool_has_a_description_and_an_object_output_schema() {
         for tool in Tool::all() {
             let definition = tool.definition();

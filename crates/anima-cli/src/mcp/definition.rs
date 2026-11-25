@@ -62,7 +62,21 @@ impl Definition {
     /// meaning).
     #[must_use]
     pub fn returns(mut self, fields: &[(&str, &str, &str)]) -> Self {
+        let fields = fields
+            .iter()
+            .map(|&(name, kind, meaning)| (name, json!(kind), meaning));
         self.output = Arc::new(output(fields));
+        self
+    }
+
+    /// The same definition with one top-level field that can also be null.
+    #[must_use]
+    pub fn returns_nullable(mut self, name: &str, kind: &str, meaning: &str) -> Self {
+        self.output = Arc::new(output(std::iter::once((
+            name,
+            json!([kind, "null"]),
+            meaning,
+        ))));
         self
     }
 
@@ -86,11 +100,11 @@ impl Definition {
 
 /// An object schema with these properties; every result may also say it was cut
 /// (`truncated`, `note`).
-fn output(fields: &[(&str, &str, &str)]) -> JsonObject {
+fn output<'a>(fields: impl IntoIterator<Item = (&'a str, Value, &'a str)>) -> JsonObject {
     let mut properties = serde_json::Map::new();
     for (name, kind, meaning) in fields {
         properties.insert(
-            (*name).to_owned(),
+            name.to_owned(),
             json!({ "type": kind, "description": meaning }),
         );
     }
