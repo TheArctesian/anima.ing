@@ -118,7 +118,7 @@ async fn insert_start(
     .bind(first)
     .bind(fingerprint)
     .bind(KEY)
-    .bind(&request.pair.project)
+    .bind(request.pair.project.to_string())
     .bind(&request.pair.folder)
     .bind(request.pair.program.word())
     .bind(&request.access)

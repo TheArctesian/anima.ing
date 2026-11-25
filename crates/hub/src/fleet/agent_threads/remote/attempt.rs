@@ -53,6 +53,7 @@ pub(in crate::fleet) struct ThreadWork {
     attempt: u32,
     lease: Value,
     limits: Value,
+    project: Uuid,
     parameters: Value,
 }
 
@@ -129,6 +130,7 @@ pub(in crate::fleet) async fn claim(
         kind: "person",
         attempt: 1,
         lease: json!({ "until": end }),
+        project: row.project.parse().map_err(|_| Error::malformed())?,
         limits: json!({ "seconds": 120, "idleSeconds": 0, "memoryBytes": 0, "diskBytes": 0, "orphanSeconds": 0 }),
         parameters: json!({
             "launch": row.id, "account": owner.account, "program": row.program, "folder": row.folder, "access": row.access,

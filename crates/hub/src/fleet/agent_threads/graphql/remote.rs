@@ -31,7 +31,7 @@ impl RemoteQuery {
             .into_iter()
             .map(|row| AgentThreadStartTarget {
                 device: row.device.to_string().into(),
-                project: row.pair.project,
+                project: row.pair.project.to_string(),
                 folder: row.pair.folder,
                 program: match row.pair.program {
                     Program::ClaudeCode => AgentThreadLaunchProgram::ClaudeCode,
@@ -103,7 +103,7 @@ impl RemoteMutation {
             Start {
                 launch: uuid(&input.launch)?,
                 pair: Pair {
-                    project: input.project,
+                    project: uuid(&input.project.into())?,
                     folder: input.folder,
                     program: match input.program {
                         AgentThreadLaunchProgram::ClaudeCode => Program::ClaudeCode,

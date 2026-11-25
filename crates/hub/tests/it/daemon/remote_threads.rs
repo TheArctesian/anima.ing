@@ -11,6 +11,7 @@ use super::{
 };
 
 const LAUNCH: &str = "00000000-0000-4000-8000-000000000010";
+const PROJECT: &str = "00000000-0000-4000-8000-000000000030";
 const RUNNER: &str = "00000000-0000-4000-8000-000000000020";
 const START: &str = "mutation($input: AgentThreadStartInput!) {
     startAgentThread(input: $input) { launch state binding thread firstCommand }
@@ -36,13 +37,13 @@ fn offer() -> Value {
         "device": PVE_01, "switch": "off", "threads": "on",
         "types": ["agent_thread"], "kinds": ["person"], "os": "linux", "architecture": "x86_64",
         "free": {"slots": 1, "memoryBytes": 0, "diskBytes": 0},
-        "threadTargets": [{"project": "owner/repo", "folder": "/var/code/example", "program": "codex"}]
+        "threadTargets": [{"project": PROJECT, "folder": "/var/code/example", "program": "codex"}]
     })
 }
 
 fn start(launch: &str) -> Value {
     json!({"input": {
-        "launch": launch, "device": PVE_01, "project": "owner/repo",
+        "launch": launch, "device": PVE_01, "project": PROJECT,
         "folder": "/var/code/example", "program": "codex", "access": "ask",
         "prompt": "Synthetic first prompt"
     }})
@@ -61,6 +62,7 @@ async fn admitted(hub: &Daemons, token: &str) -> (Value, Value) {
     let (status, work) = post(hub, token, "/work/v1/claim", offer()).await;
     assert_eq!(status, StatusCode::OK, "{work}");
     assert_eq!(work["type"], "agent_thread");
+    assert_eq!(work["project"], PROJECT);
     assert!(work.get("secrets").is_none());
     assert!(work.get("repository").is_none());
     assert!(!work.to_string().contains("Synthetic first prompt"));

@@ -27,7 +27,7 @@ impl Program {
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(in crate::fleet) struct Pair {
-    pub project: String,
+    pub project: Uuid,
     pub folder: String,
     pub program: Program,
 }
@@ -42,9 +42,7 @@ impl Pair {
                 .split('/')
                 .skip(1)
                 .all(|part| !part.is_empty() && part != "." && part != "..")
-            && !self.project.is_empty()
-            && self.project.len() <= 512
-            && !self.project.chars().any(char::is_control)
+            && !self.project.is_nil()
     }
 }
 
