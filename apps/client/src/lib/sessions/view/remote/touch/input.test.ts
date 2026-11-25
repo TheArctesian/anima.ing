@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
-import { FIT_VIEWPORT, touchRemote } from './input';
+import { FIT_VIEWPORT, pointerInPane, touchRemote } from './input';
 
 function surface() {
   const element = document.createElement('div');
@@ -16,19 +16,21 @@ function surface() {
     flush: (done: () => void) => done(),
   });
   const show = vi.fn();
-  const stop = touchRemote(element, { sendMouseState, getDisplay }, { read: () => FIT_VIEWPORT, show });
+  const pointer = vi.fn();
+  const stop = touchRemote(element, { sendMouseState, getDisplay }, { read: () => FIT_VIEWPORT, show, pointer });
   const send = (type: string, pointerId: number, clientX: number): boolean =>
     element.dispatchEvent(new PointerEvent(type, { pointerType: 'touch', pointerId, clientX, clientY: 40, cancelable: true }));
-  return { send, show, sendMouseState, stop };
+  return { send, show, pointer, sendMouseState, stop };
 }
 
 it('moves the remote pointer by the scaled touch delta and cancels compatibility mouse events', () => {
-  const { send, sendMouseState, stop } = surface();
+  const { send, pointer, sendMouseState, stop } = surface();
   try {
     expect(send('pointerdown', 1, 10)).toBe(false);
     send('pointermove', 1, 30);
     send('pointerup', 1, 30);
     expect(sendMouseState.mock.calls).toEqual([[expect.objectContaining({ x: 540, y: 250, left: false }), false]]);
+    expect(pointer).toHaveBeenLastCalledWith({ x: 540, y: 250 });
   } finally {
     stop();
   }
@@ -64,4 +66,11 @@ it('sends a secondary click for a two-finger tap', () => {
   } finally {
     stop();
   }
+});
+
+it('draws the pointer at the display centre before the first touch, then where the remote pointer is', () => {
+  const remote = { width: 1000, height: 500 };
+  expect(pointerInPane(undefined, remote, FIT_VIEWPORT, 0.5)).toEqual({ x: 250, y: 125 });
+  expect(pointerInPane({ x: 100, y: 40 }, remote, { x: -30, y: 10, zoom: 2 }, 0.5)).toEqual({ x: 70, y: 50 });
+  expect(pointerInPane({ x: 5000, y: -9 }, remote, FIT_VIEWPORT, 0.5)).toEqual({ x: 499.5, y: 0 });
 });
