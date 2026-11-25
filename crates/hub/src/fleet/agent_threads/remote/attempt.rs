@@ -1,12 +1,13 @@
+mod claim_reply;
 mod evidence;
 mod reports;
 
 use chrono::{DateTime, TimeDelta, Utc};
-use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::json;
 use sqlx::PgConnection;
 use uuid::Uuid;
 
+use claim_reply::ThreadWork;
 pub(in crate::fleet) use evidence::evidence;
 pub(in crate::fleet::agent_threads) use evidence::{published, reconcile};
 pub(in crate::fleet) use reports::report;
@@ -41,20 +42,6 @@ pub(in crate::fleet) async fn replace_targets(
     .execute(conn)
     .await?;
     Ok(())
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(in crate::fleet) struct ThreadWork {
-    id: Uuid,
-    #[serde(rename = "type")]
-    work_type: &'static str,
-    kind: &'static str,
-    attempt: u32,
-    lease: Value,
-    limits: Value,
-    project: Uuid,
-    parameters: Value,
 }
 
 pub(in crate::fleet) async fn candidate(
@@ -125,18 +112,7 @@ pub(in crate::fleet) async fn claim(
     .bind(end)
     .execute(conn)
     .await?;
-    Ok(ThreadWork {
-        id: row.work_id,
-        work_type: "agent_thread",
-        kind: "person",
-        attempt: 1,
-        lease: json!({ "until": end }),
-        project: row.project.parse().map_err(|_| Error::malformed())?,
-        limits: json!({ "seconds": 120, "idleSeconds": 0, "memoryBytes": 0, "diskBytes": 0, "orphanSeconds": 0 }),
-        parameters: json!({
-            "launch": row.id, "account": owner.account, "program": row.program, "folder": row.folder, "access": row.access,
-        }),
-    })
+    ThreadWork::for_launch(&row, owner.account, end)
 }
 
 async fn still_offered(

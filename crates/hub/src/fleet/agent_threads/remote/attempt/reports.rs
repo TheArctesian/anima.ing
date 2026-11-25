@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use daemon_core::wire::WorkState;
+use daemon_core::wire::{Lease, WorkState};
 use serde::Deserialize;
 use sqlx::PgConnection;
 use uuid::Uuid;
@@ -77,9 +77,11 @@ pub(in crate::fleet) async fn report(
             evidence::result_audit(conn, (owner, at), actor, &receipt).await?;
         }
     }
-    Ok(Some(
-        serde_json::json!({ "lease": {"until": lease.unwrap_or(at)}, "logEnd": 0 }),
-    ))
+    Ok(Some(reply(lease.unwrap_or(at))))
+}
+
+fn reply(until: DateTime<Utc>) -> serde_json::Value {
+    serde_json::json!({ "lease": Lease { until }, "logEnd": 0 })
 }
 
 fn allowed(from: Option<&str>, to: WorkState) -> bool {
@@ -130,5 +132,25 @@ async fn settle(
         }
         ("failed", "failed", None) | ("stopped", "stopped", None) => Ok(()),
         _ => Err(Error::malformed()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{DateTime, Utc};
+    use daemon_core::wire::Reported;
+
+    #[test]
+    fn report_reply_uses_k8_lease_time() {
+        let until = "2026-11-25T17:23:45.123456Z"
+            .parse::<DateTime<Utc>>()
+            .unwrap();
+        let body = serde_json::to_vec(&super::reply(until)).unwrap();
+        let reply: Reported = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            reply.lease.until,
+            "2026-11-25T17:23:45Z".parse::<DateTime<Utc>>().unwrap()
+        );
+        assert_eq!(reply.log_end, Some(0));
     }
 }
