@@ -38,9 +38,7 @@ impl InstallArgs {
             "macos" => local_computer_enrolment::OperatingSystem::MACOS,
             _ => return Err(failed("Standalone daemon setup supports Linux and macOS.")),
         };
-        let name = self
-            .computer
-            .unwrap_or_else(|| whoami::hostname().unwrap_or_else(|_| "This computer".to_owned()));
+        let name = self.computer.unwrap_or_else(crate::auth::this_computer);
         let setup = hub
             .run::<LocalComputerInstall>(local_computer_install::Variables { name })
             .await?

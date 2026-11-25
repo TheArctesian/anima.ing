@@ -143,8 +143,7 @@ async fn sign_in(
     computer: Option<String>,
 ) -> Result<(), Failure> {
     let destination = destination(invocation, hosted, with_token)?;
-    let computer = computer
-        .unwrap_or_else(|| whoami::hostname().unwrap_or_else(|_| "This computer".to_owned()));
+    let computer = computer.unwrap_or_else(crate::auth::this_computer);
     let prompter = invocation.prompter;
     let (origin, signed_in) = match destination {
         Destination::Hosted => hosted::sign_in(invocation, web, &computer).await?,
@@ -266,4 +265,35 @@ async fn status(invocation: &Invocation) -> Result<(), Failure> {
         );
         table
     })
+}
+
+/// The name of this computer as the hub takes it: the host name with no control characters,
+/// trimmed, and at most 64 characters. A CI host name can be longer, or end in a NUL.
+pub(crate) fn this_computer() -> String {
+    let host = whoami::hostname().unwrap_or_default();
+    computer_name(&host)
+}
+
+fn computer_name(host: &str) -> String {
+    let clean: String = host.chars().filter(|c| !c.is_control()).collect();
+    let name: String = clean.trim().chars().take(64).collect();
+    let name = name.trim_end();
+    if name.is_empty() {
+        "This computer".to_owned()
+    } else {
+        name.to_owned()
+    }
+}
+
+#[cfg(test)]
+mod computer_tests {
+    use super::computer_name;
+
+    #[test]
+    fn cmd_010_the_default_computer_name_is_one_the_hub_takes() {
+        assert_eq!(computer_name("mac-1.local\0"), "mac-1.local");
+        assert_eq!(computer_name(" \t\0"), "This computer");
+        assert_eq!(computer_name(&"a".repeat(100)).chars().count(), 64);
+        assert_eq!(computer_name("pop-os"), "pop-os");
+    }
 }
