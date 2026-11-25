@@ -794,11 +794,11 @@ their grants; this section is the wire.
 ## 10. Proposed amendment: installed mobile tools (TH135)
 
 Status: **Accepted by the programme orchestrator; implementation on this branch awaits review**,
-version 2, 2026-11-24 (R-NEW-mobileinventorycontract, CON-001). Sections 1 to 9 remain
+version 2, 2026-11-24 (R-455, CON-001). Sections 1 to 9 remain
 unchanged. Acceptance becomes part of the shared baseline when this branch lands in `dev`. Owner: TH135 and
 THR-172 in [agent-threads.md](../docs/proposals/agent-threads.md), Section 6.11;
 CAP-020 to CAP-031 in [compute-plan.md](../docs/plans/compute-plan.md).
-**R-NEW-mobileinventorycontract (programme orchestrator, 2026-11-24; CON-001).**
+**R-455 (programme orchestrator, 2026-11-24; CON-001).**
 Accept the K8 reporting amendment reviewed at `e2e07dce2`, after independent re-review
 found no remaining blocking findings. This implements the already approved TH135/THR-172
 inventory scope; it adds no lease authority, provisioning, download, wipe or freshness policy.
@@ -951,7 +951,7 @@ not prove a local SDK installation, offline tool behaviour or device readiness.
 
 ### 10.4 Accepted K1 read surface (implementation awaits review)
 
-**R-NEW-mobileinventoryread (programme orchestrator, 2026-11-24; CON-001).**
+**R-456 (programme orchestrator, 2026-11-24; CON-001).**
 Accept the additive K1 read contract reviewed at
 `2e49e0a8d0568a2a5b0b01ed3d2dc3bd59b448a7`, after independent re-review closed the
 older-hub compatibility finding with no remaining actionable contract findings.
