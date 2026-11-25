@@ -5,9 +5,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[cfg(all(test, target_os = "linux", target_pointer_width = "64"))]
+mod cleanup_tests;
 mod pending;
 use pending::keep_or_end;
-pub(super) use pending::{end_pending, reap_pending};
+pub(super) use pending::{end_pending, reap_pending, recover_stale};
 
 use agent_threads::drive::{Launch, Program, SessionStart};
 use tokio::time::Instant;
@@ -40,6 +42,7 @@ pub(super) struct PendingChild {
     request: DispatchRequest,
     child: Box<Spawned>,
     since: Instant,
+    ending: bool,
 }
 
 pub(super) async fn run(
@@ -164,6 +167,9 @@ async fn launch(
     let Some((command, user)) = prepare(shared, &store, &order) else {
         return close(&store, request, NotCreated::Refused);
     };
+    if !pending::reserve(shared, request.runner) {
+        return ToRunner::Pending { request };
+    }
     let guard = |saved: &crate::remote_code::launch::Reservation| {
         let config = home
             .read_config()
@@ -184,6 +190,7 @@ async fn launch(
                 request,
                 child,
                 since: Instant::now(),
+                ending: false,
             });
             recover(shared, &store, request).await
         }
@@ -269,11 +276,20 @@ async fn recover(shared: &Arc<Mutex<Shared>>, store: &Store, request: DispatchRe
     let Some(mut pending) = pending else {
         return ToRunner::Pending { request };
     };
-    if reserved.is_some() && matches!(pending.child.record(store), Ok(Progress::Created)) {
+    if !pending.ending
+        && reserved.is_some()
+        && matches!(pending.child.record(store), Ok(Progress::Created))
+    {
         match (*pending.child).into_child() {
             Ok((child, process)) => {
-                let _ = attach(shared, key, child, (None, Some(process.clone()))).await;
-                return ToRunner::Created { request, process };
+                if matches!(
+                    attach(shared, key, child, (None, Some(process.clone()))).await,
+                    crate::threads::wire::Outcome::Started { .. }
+                ) {
+                    pending::attached(shared);
+                    return ToRunner::Created { request, process };
+                }
+                return ToRunner::Pending { request };
             }
             Err(child) => pending.child = child,
         }

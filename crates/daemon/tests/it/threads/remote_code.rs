@@ -125,7 +125,7 @@ fn fixture_with_publication(
         grant,
         replies,
     );
-    let router = Router::new()
+    let router = publication::routes(Router::new())
         .route("/work/v1/claim", post(claim))
         .route("/work/v1/report", post(report_work))
         .route("/work/v1/thread-dispatch", post(dispatch))
@@ -136,9 +136,8 @@ fn fixture_with_publication(
             "/work/v1/thread-control",
             post(|| async { StatusCode::NO_CONTENT }),
         )
-        .route("/daemon/v1/push", post(publication::push))
         .with_state(hub.clone());
-    let pushing = publication::sample(home.clone(), hub.clone());
+    let pushing = publication::sample(home.clone(), kit.path(""));
     let serving = tokio::spawn(async move {
         tokio::select! {
             result = axum::serve(listener, router) => result.unwrap(),

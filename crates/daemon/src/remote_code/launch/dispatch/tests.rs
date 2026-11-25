@@ -258,3 +258,36 @@ fn narrowing_the_owner_ceiling_during_the_marker_write_prevents_spawn() {
 
 #[cfg(target_os = "linux")]
 mod cleanup;
+
+#[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+pub(crate) fn pending_for_shutdown(
+    program: &Path,
+    args: &[&str],
+) -> (tempfile::TempDir, Home, DispatchRequest, Box<Spawned>) {
+    let (dir, home, claim, device) = launch();
+    let store = Store::at(&home);
+    let saved = store
+        .reserve((device, &Origin::default_hub()), &claim)
+        .unwrap();
+    let request = *saved.request();
+    let lease = PreparingReport(ticks(80_000)).accepted(request);
+    let mut command = Command::new(program);
+    command
+        .args(args)
+        .current_dir(dir.path())
+        .env("AGENT_THREAD", request.runner.to_string());
+    let Dispatch::Spawned(mut child) = store
+        .spawn_with_clock(
+            (grant(&saved), &lease),
+            (|_| Ok(Mode::Ask), || Some(ticks(201_000))),
+            (Mode::Ask, command),
+        )
+        .unwrap()
+    else {
+        panic!("fixture should spawn")
+    };
+    let unavailable = store.lock().unwrap();
+    assert!(matches!(child.record(&store), Err(StoreError::Busy)));
+    drop(unavailable);
+    (dir, home, request, child)
+}

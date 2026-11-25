@@ -118,16 +118,26 @@ impl Spawned {
         };
         // The pending child has no other waiter. Its PID cannot be reused as long as
         // this holder leaves it waitable, even when the group leader has already exited.
-        match kill_process_group(group, Signal::KILL) {
-            Ok(()) | Err(rustix::io::Errno::SRCH) => {}
-            Err(error) => return Err(error.into()),
-        }
-        if !self.exited()? {
-            self.child.start_kill()?;
-        }
-        tokio::time::timeout(Duration::from_secs(2), self.child.wait())
-            .await?
-            .map(|_| ())
+        let owned = self.exited();
+        let signalled = if owned.is_ok() {
+            kill_process_group(group, Signal::KILL).or_else(|error| {
+                (error == rustix::io::Errno::SRCH)
+                    .then_some(())
+                    .ok_or(error)
+            })
+        } else {
+            Ok(())
+        };
+        let direct = if matches!(owned, Ok(false)) {
+            self.child.start_kill()
+        } else {
+            Ok(())
+        };
+        let waited = tokio::time::timeout(Duration::from_secs(2), self.child.wait()).await;
+        owned?;
+        signalled?;
+        direct?;
+        waited?.map(|_| ())
     }
 
     /// Record creation using the retained live child. The holder retains this value if

@@ -356,5 +356,7 @@ pub(super) fn find<'a>(
 }
 
 mod dispatch;
+#[cfg(all(test, target_os = "linux", target_pointer_width = "64"))]
+pub(crate) use dispatch::tests::pending_for_shutdown;
 #[cfg(test)]
 pub(super) use dispatch::tests::started_fixture;

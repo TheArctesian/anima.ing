@@ -31,9 +31,12 @@ pub(crate) struct Target {
     pub(crate) tokens: TokenStore,
 }
 
-pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Target) {
-    let env = |name: &str| std::env::var(name).ok();
-    let Some(user) = user_home(env) else { return };
+pub(in crate::runtime) async fn publish(
+    home: Home,
+    events: mpsc::Sender<Event>,
+    target: Target,
+    user: std::path::PathBuf,
+) {
     let mut ticks = tokio::time::interval(Duration::from_secs(5));
     ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
     let mut last: Option<Vec<ThreadSummary>> = None;
@@ -60,7 +63,7 @@ pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Tar
             last = None;
             previous_policy = Some(settings.clone());
         }
-        let Some(Outcome::Threads { threads, .. }) = runner::call(env, Action::List).await else {
+        let Some(Outcome::Threads { threads, .. }) = list(&home).await else {
             continue;
         };
         let mut rows: Vec<_> = threads
@@ -82,6 +85,31 @@ pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Tar
         if let Some(rows) = &last {
             transcript::publish(&home, &target, rows, (&settings, &permitted)).await;
         }
+    }
+}
+
+async fn list(home: &Home) -> Option<Outcome> {
+    let home = home.dir().to_str()?;
+    let env = |name: &str| (name == "ANIMA_DAEMON_HOME").then(|| home.to_owned());
+    runner::call(env, Action::List).await
+}
+
+impl crate::push::Pusher {
+    /// Starts thread publications for this pusher and the runner at its enrolled home.
+    #[must_use]
+    pub fn publish_threads(
+        &self,
+        home: Home,
+        events: mpsc::Sender<Event>,
+        env: impl Fn(&str) -> Option<String>,
+    ) -> tokio::task::JoinHandle<()> {
+        let target = self.thread_sync_target();
+        let user = user_home(env);
+        tokio::spawn(async move {
+            if let Some(user) = user {
+                publish(home, events, target, user).await;
+            }
+        })
     }
 }
 

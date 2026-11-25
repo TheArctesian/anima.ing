@@ -11,6 +11,7 @@
 //! is never locked out by the one that died.
 
 mod connection;
+mod records;
 mod remote_code;
 pub(super) mod remote_peer;
 
@@ -25,7 +26,7 @@ use tokio::sync::mpsc;
 
 use super::outbox::{LIMIT, Outbox};
 use super::program::Input;
-use super::record::{self, Record};
+use super::record;
 use super::tree;
 use super::wire::{self, Event, Exit, Held, Outcome, ThreadKey};
 
@@ -115,30 +116,6 @@ impl Shared {
         self.connection.as_ref().is_some_and(|(id, _)| *id == me)
     }
 
-    /// Writes the record of the programs, so that a new holder ends what an old one left (H9).
-    pub fn write_record(&self) {
-        let running = self
-            .threads
-            .iter()
-            .filter(|(_, slot)| slot.exit.is_none() || slot.left_behind)
-            .map(|(thread, slot)| record::Entry {
-                thread: thread.clone(),
-                pid: slot.pid,
-                started: slot.started.clone(),
-                left: (slot.exit.is_some() && slot.left_behind).then(|| slot.seen.clone()),
-            });
-        let written = record::write(
-            &self.dir,
-            &Record {
-                version: wire::VERSION,
-                threads: running.chain(self.inherited.iter().cloned()).collect(),
-            },
-        );
-        if let Err(error) = written {
-            tracing::warn!(%error, "the record of the holder was not written");
-        }
-    }
-
     pub fn remember(&mut self, id: u64, outcome: Outcome) {
         self.done.insert(id, outcome);
         self.done_order.push_back(id);
@@ -193,8 +170,14 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
     let _ = wire::this_build();
     let _lock = lock(dir)?;
     let inherited = record::end_left_over(dir).await;
+    let shared = holder_state(dir, limit, inherited);
+    remote_code::recover_stale(&shared).await;
     let listener = bind(dir)?;
-    let shared = Arc::new(Mutex::new(Shared {
+    serve_holder(dir, listener, shared).await
+}
+
+fn holder_state(dir: &Path, limit: usize, inherited: Vec<record::Entry>) -> Arc<Mutex<Shared>> {
+    Arc::new(Mutex::new(Shared {
         relays: Arc::default(),
         remote_child: None,
         threads: BTreeMap::new(),
@@ -208,7 +191,14 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         limit: if limit == 0 { LIMIT } else { limit },
         inherited,
         acting: BTreeSet::new(),
-    }));
+    }))
+}
+
+async fn serve_holder(
+    dir: &Path,
+    listener: UnixListener,
+    shared: Arc<Mutex<Shared>>,
+) -> Result<(), HolderError> {
     // One command at a time, from any connection: the check that a command was done and the
     // command itself are one step, so a command sent again on a new connection while the first
     // runs is still done one time (H10).

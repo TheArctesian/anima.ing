@@ -1,21 +1,14 @@
-use std::{
-    collections::BTreeSet,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use agent_threads::control::{Action, Outcome, RunState};
 use anima_daemon::{
-    config::agent_usage::UsageSettings,
     hub::{HubClient, TIMEOUT},
     push::{Event, Pusher},
 };
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::{
     points::{Kind, Point, SeriesKey, Window},
-    wire::{
-        Batch, PushAccepted, ThreadSummaries, ThreadSummariesReceipt, ThreadSummary,
-        ThreadSummaryReceipt,
-    },
+    wire::{Batch, PushAccepted, ThreadSummaries, ThreadSummariesReceipt, ThreadSummaryReceipt},
 };
 use tokio::sync::Notify;
 
@@ -70,19 +63,20 @@ pub(super) async fn before_running_reply(hub: &Hub, body: &Value) {
     }
 }
 
-pub(super) async fn sample(home: Home, hub: Hub) {
-    let Some(runner) = ready(&home, &hub).await else {
-        return;
-    };
+pub(super) async fn sample(home: Home, user: PathBuf) {
     let mut pusher = publisher(&home);
-    let policy = UsageSettings::read(&home).unwrap();
-    pusher.accept(Event::ThreadSummaries(Some((
-        snapshot(runner),
-        policy,
-        BTreeSet::from([runner]),
-    ))));
+    let (events, mut snapshots) = tokio::sync::mpsc::channel(16);
+    let publishing = pusher.publish_threads(home, events, |key| {
+        (key == "HOME").then(|| user.to_str().unwrap().to_owned())
+    });
     let mut wait = Duration::ZERO;
     loop {
+        while let Ok(event) = snapshots.try_recv() {
+            pusher.accept(event);
+        }
+        if publishing.is_finished() {
+            panic!("the production summary publisher ended");
+        }
         tokio::time::sleep(wait.min(Duration::from_secs(1))).await;
         let now = Utc::now();
         pusher.accept(Event::Point(point(now)));
@@ -106,52 +100,14 @@ fn publisher(home: &Home) -> Pusher {
     Pusher::new(link, DEVICE, credential, store).with_marks(home.clone())
 }
 
-async fn ready(home: &Home, hub: &Hub) -> Option<Uuid> {
-    tokio::time::timeout(Duration::from_secs(60), async {
-        loop {
-            let runner = hub.0.lock().unwrap().runner;
-            if let Some(runner) = runner
-                && publication_requested(home)
-            {
-                return runner;
-            }
-            tokio::time::sleep(Duration::from_millis(50)).await;
-        }
-    })
-    .await
-    .ok()
+pub(super) fn routes(router: Router<Hub>) -> Router<Hub> {
+    router.route("/daemon/v1/push", post(push)).route(
+        "/daemon/v1/threads/entries",
+        post(|| async { StatusCode::SERVICE_UNAVAILABLE }),
+    )
 }
 
-fn publication_requested(home: &Home) -> bool {
-    let journal = std::fs::read(home.dir().join("remote-code.json")).ok();
-    let Some(journal) = journal.and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
-    else {
-        return false;
-    };
-    journal["launches"][LAUNCH.to_string()]["publication"].is_object()
-}
-
-fn snapshot(runner_id: Uuid) -> ThreadSummaries {
-    let now = Utc::now();
-    let revision = now.timestamp_micros() + 1_000_000;
-    let time = DateTime::from_timestamp(now.timestamp(), 0).unwrap();
-    ThreadSummaries {
-        count: 1,
-        count_revision: revision,
-        summaries: vec![ThreadSummary {
-            runner_id,
-            program: "claude_code".to_owned(),
-            state: "idle".to_owned(),
-            title: String::new(),
-            started_at: time,
-            activity_at: time,
-            revision,
-            repository: None,
-        }],
-    }
-}
-
-pub(super) async fn push(State(hub): State<Hub>, Json(body): Json<Batch>) -> Response {
+async fn push(State(hub): State<Hub>, Json(body): Json<Batch>) -> Response {
     assert!(body.daemon_version.is_some());
     let accepted = body
         .check(DEVICE, Utc::now())
@@ -159,6 +115,12 @@ pub(super) async fn push(State(hub): State<Hub>, Json(body): Json<Batch>) -> Res
     let Some(summary) = accepted.agent_threads else {
         return StatusCode::NO_CONTENT.into_response();
     };
+    if summary.summaries.is_empty() {
+        return Json(json!({})).into_response();
+    }
+    if summary.summaries[0].state != "idle" {
+        return Json(json!({})).into_response();
+    }
     let (attempt, mut receipt) = observe(&hub, &summary);
     match &hub.2 {
         Replies::Retry(_) if attempt == 1 => return StatusCode::BAD_GATEWAY.into_response(),

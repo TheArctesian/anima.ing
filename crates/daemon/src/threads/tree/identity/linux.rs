@@ -4,7 +4,7 @@ use std::sync::Arc;
 use nix_peer::sys::socket::{getsockopt, sockopt::PeerPidfd};
 use rustix::event::{PollFd, PollFlags, Timespec, poll};
 use rustix::fs::{fstat, fstatfs, statfs};
-use rustix::process::{Pid, PidfdFlags, pidfd_open};
+use rustix::process::{Pid, PidfdFlags, Signal, pidfd_open, pidfd_send_signal};
 
 use super::Identity;
 
@@ -59,6 +59,16 @@ impl Process {
     pub fn live(&self) -> bool {
         let mut fd = [PollFd::new(self.fd.as_ref(), PollFlags::IN)];
         matches!(poll(&mut fd, Some(&Timespec::default())), Ok(0))
+    }
+
+    pub fn terminated(&self) -> bool {
+        let mut fd = [PollFd::new(self.fd.as_ref(), PollFlags::IN)];
+        matches!(poll(&mut fd, Some(&Timespec::default())), Ok(1))
+            && fd[0].revents().contains(PollFlags::IN)
+    }
+
+    pub fn signal(&self, signal: Signal) -> rustix::io::Result<()> {
+        pidfd_send_signal(self.fd.as_ref(), signal)
     }
 
     pub fn parent(&self) -> Option<Self> {
