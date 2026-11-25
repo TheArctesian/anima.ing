@@ -894,7 +894,7 @@ type Storage {
 # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned).
 "A device's capabilities: today the tool inventory its daemon last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
 type DeviceCapabilities {
-  "Last reported mobile tooling; null when not reported. R-NEW-mobileinventoryread."
+  "Last reported mobile tooling; null when not reported. R-456."
   mobileTools: MobileTools
   device: Device!
   "aarch64 or x86_64."
