@@ -1,5 +1,8 @@
 //! A runner UUID survives retries. Only a live exchange can move it past the dispatch marker.
 
+pub(crate) mod publication;
+pub(crate) use publication::PublicationProgress;
+
 use agent_threads::drive::Mode;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -26,6 +29,8 @@ pub struct Reservation {
     pub(super) state: LaunchState,
     #[serde(default)]
     pub(super) control: Option<super::command::SavedOffer>,
+    #[serde(default)]
+    publication: Option<publication::Intent>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -254,6 +259,7 @@ impl Store {
             parameters: claim.parameters.clone(),
             state: LaunchState::Reserved,
             control: None,
+            publication: None,
         };
         locked.journal.launches.insert(launch, reservation.clone());
         locked.save_admission()?;

@@ -2,7 +2,7 @@ mod transcript;
 
 pub(crate) use transcript::enabled as transcripts_enabled;
 
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, path::Path, sync::Arc, time::Duration};
 
 use agent_threads::control::{Action, Outcome, RunState, ThreadRow};
 use agent_threads::drive::Program;
@@ -18,6 +18,7 @@ use crate::{
     hub::HubClient,
     push::Event,
     readers::agent_sessions::{shared_repository, user_home},
+    remote_code::Store,
     token_store::TokenStore,
 };
 
@@ -69,13 +70,12 @@ pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Tar
         rows.sort_unstable_by_key(|row| row.runner_id);
         let permitted: Vec<_> = rows.iter().map(|row| row.runner_id).collect();
         transcript::discard_unshared(&home, target.device, &permitted);
-        if let Some(batch) = revised(&home, rows, last.as_deref()) {
+        let priority = Store::at(&home)
+            .publication_requests(target.device, &target.origin)
+            .unwrap_or_default();
+        if let Some(batch) = revised(&home, rows, last.as_deref(), &priority) {
             last = Some(batch.summaries.clone());
-            if events
-                .send(Event::ThreadSummaries(Some((batch, settings.clone()))))
-                .await
-                .is_err()
-            {
+            if !offer(&events, batch, &settings, priority).await {
                 return;
             }
         }
@@ -83,6 +83,22 @@ pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Tar
             transcript::publish(&home, &target, rows, (&settings, &permitted)).await;
         }
     }
+}
+
+async fn offer(
+    events: &mpsc::Sender<Event>,
+    batch: ThreadSummaries,
+    settings: &UsageSettings,
+    priority: BTreeMap<Uuid, i64>,
+) -> bool {
+    events
+        .send(Event::ThreadSummaries(Some((
+            batch,
+            settings.clone(),
+            priority.into_keys().collect(),
+        ))))
+        .await
+        .is_ok()
 }
 
 fn summary(row: &ThreadRow, user: &Path, settings: &UsageSettings) -> Option<ThreadSummary> {
@@ -121,11 +137,15 @@ fn revised(
     home: &Home,
     rows: Vec<ThreadSummary>,
     last: Option<&[ThreadSummary]>,
+    priority: &BTreeMap<Uuid, i64>,
 ) -> Option<ThreadSummaries> {
     let old = last.unwrap_or_default();
     if last.is_some()
         && rows.len() == old.len()
-        && rows.iter().zip(old).all(|(row, old)| same(row, old))
+        && rows
+            .iter()
+            .zip(old)
+            .all(|(row, old)| already_current(row, old, priority))
     {
         return None;
     }
@@ -141,7 +161,7 @@ fn revised(
             old.binary_search_by_key(&row.runner_id, |old| old.runner_id)
                 .ok()
                 .map(|at| &old[at])
-                .filter(|old| same(&row, old))
+                .filter(|old| already_current(&row, old, priority))
                 .cloned()
                 .unwrap_or_else(|| ThreadSummary {
                     revision,
@@ -157,6 +177,17 @@ fn revised(
     })
 }
 
+fn already_current(
+    row: &ThreadSummary,
+    old: &ThreadSummary,
+    priority: &BTreeMap<Uuid, i64>,
+) -> bool {
+    priority
+        .get(&row.runner_id)
+        .is_none_or(|minimum| old.revision >= *minimum)
+        && same(row, old)
+}
+
 fn same(row: &ThreadSummary, old: &ThreadSummary) -> bool {
     row.runner_id == old.runner_id
         && row.state == old.state
@@ -166,9 +197,15 @@ fn same(row: &ThreadSummary, old: &ThreadSummary) -> bool {
         && row.started_at == old.started_at
 }
 
-fn revision(home: &Home) -> Option<i64> {
-    static WRITING: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let _writing = WRITING.lock().ok()?;
+pub(crate) fn revision(home: &Home) -> Option<i64> {
+    use rustix::fs::{FlockOperation, Mode, OFlags, flock, open};
+    let writing = open(
+        home.dir().join("thread-summary-revision.lock"),
+        OFlags::CREATE | OFlags::WRONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        Mode::RUSR | Mode::WUSR,
+    )
+    .ok()?;
+    flock(&writing, FlockOperation::NonBlockingLockExclusive).ok()?;
 
     let stored = private_file::read(&home.dir().join(REVISION)).ok()?;
     let previous = stored.as_ref().map_or(Some(0_i64), |bytes| {
@@ -190,31 +227,4 @@ pub(crate) fn remote_publishable(home: &Home, row: &ThreadRow) -> bool {
         return false;
     };
     transcripts_enabled(home) && summary(row, &user, &settings).is_some()
-}
-
-pub(crate) async fn publish_remote(
-    home: &Home,
-    connection: (&HubClient, Uuid, &crate::token_store::Credential),
-    row: &ThreadRow,
-) -> bool {
-    let Some(user) = user_home(|name| std::env::var(name).ok()) else {
-        return false;
-    };
-    let Ok(settings) = UsageSettings::read(home) else {
-        return false;
-    };
-    if !transcripts_enabled(home) {
-        return false;
-    }
-    let Some(mut summary) = summary(row, &user, &settings) else {
-        return false;
-    };
-    let Some(revision) = revision(home) else {
-        return false;
-    };
-    summary.revision = revision;
-    let (hub, device, credential) = connection;
-    transcript::send_thread(home, (hub, device), &summary, (credential, &settings))
-        .await
-        .is_some()
 }

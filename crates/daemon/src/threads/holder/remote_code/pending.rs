@@ -32,10 +32,17 @@ impl PendingChild {
     }
 
     async fn end(&mut self) -> bool {
-        if let Err(error) = self.child.end().await {
-            tracing::warn!(%error, "could not reap a pending remote Code child");
-            return false;
-        }
+        self.child
+            .end()
+            .await
+            .inspect_err(|error| {
+                tracing::warn!(%error, "could not reap a pending remote Code child");
+            })
+            .is_ok()
+            && self.sweep_marks().await
+    }
+
+    async fn sweep_marks(&self) -> bool {
         let thread = self.request.runner.to_string();
         let ended =
             crate::threads::marker::end_marked(&thread, &crate::threads::marker::Keep::nothing())

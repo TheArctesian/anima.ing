@@ -23,6 +23,8 @@ use uuid::Uuid;
 
 use super::runner::Kit;
 
+mod commands;
+mod publication;
 mod races;
 
 const DEVICE: Uuid = Uuid::from_u128(1);
@@ -46,7 +48,11 @@ while (my $line = <STDIN>) {
 "#;
 
 #[derive(Clone)]
-struct Hub(Arc<Mutex<Launch>>, Option<Arc<races::DispatchGate>>);
+struct Hub(
+    Arc<Mutex<Launch>>,
+    Option<Arc<races::DispatchGate>>,
+    publication::Replies,
+);
 
 #[derive(Debug)]
 struct Launch {
@@ -55,6 +61,7 @@ struct Launch {
     claimed: bool,
     runner: Option<Uuid>,
     summary: bool,
+    summary_attempts: u32,
     done: bool,
     delivered: u32,
     receipts: u32,
@@ -64,7 +71,11 @@ struct Launch {
 
 #[tokio::test]
 async fn th32_remote_code_claim_spawn_publish_receipt_and_withdrawal() {
-    let (_kit, home, folder, hub, serving) = fixture(None);
+    let retry = Arc::new(publication::Retry::default());
+    let (mut kit, home, folder, hub, serving) =
+        fixture_with_publication(None, publication::Replies::Retry(retry.clone()));
+    retry.ack.restart(&mut kit).await;
+    retry.running.restart(&mut kit).await;
     wait_for(&hub, |launch| launch.receipts == 2).await;
     assert_eq!(
         std::fs::read_to_string(folder.join("effects")).unwrap(),
@@ -77,11 +88,20 @@ async fn th32_remote_code_claim_spawn_publish_receipt_and_withdrawal() {
     )
     .unwrap();
     wait_for(&hub, |launch| launch.withdrawn).await;
-    assert_eq!(hub.0.lock().unwrap().delivered, 2);
+    let observed = hub.0.lock().unwrap();
+    assert_eq!(observed.delivered, 2);
+    assert!(observed.summary_attempts >= 5);
     serving.abort();
 }
 
 fn fixture(grant: Option<Arc<races::DispatchGate>>) -> Fixture {
+    fixture_with_publication(grant, publication::Replies::Normal)
+}
+
+fn fixture_with_publication(
+    grant: Option<Arc<races::DispatchGate>>,
+    replies: publication::Replies,
+) -> Fixture {
     let mut kit = Kit::unstarted(CLAUDE);
     let home = Home::at(kit.path("daemon"));
     let folder = kit.path("work").canonicalize().unwrap();
@@ -93,6 +113,7 @@ fn fixture(grant: Option<Arc<races::DispatchGate>>) -> Fixture {
             claimed: false,
             runner: None,
             summary: false,
+            summary_attempts: 0,
             done: false,
             delivered: 0,
             receipts: 0,
@@ -100,21 +121,28 @@ fn fixture(grant: Option<Arc<races::DispatchGate>>) -> Fixture {
             refusal: None,
         })),
         grant,
+        replies,
     );
     let router = Router::new()
         .route("/work/v1/claim", post(claim))
         .route("/work/v1/report", post(report_work))
         .route("/work/v1/thread-dispatch", post(dispatch))
         .route("/work/v1/thread-launch-evidence", post(evidence))
-        .route("/work/v1/commands", post(poll))
-        .route("/work/v1/command-result", post(receipt))
+        .route("/work/v1/commands", post(commands::poll))
+        .route("/work/v1/command-result", post(commands::receipt))
         .route(
             "/work/v1/thread-control",
             post(|| async { StatusCode::NO_CONTENT }),
         )
-        .route("/daemon/v1/threads/entries", post(publish))
+        .route("/daemon/v1/push", post(publication::push))
         .with_state(hub.clone());
-    let serving = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+    let pushing = publication::sample(home.clone(), hub.clone());
+    let serving = tokio::spawn(async move {
+        tokio::select! {
+            result = axum::serve(listener, router) => result.unwrap(),
+            () = pushing => {},
+        }
+    });
     kit.start();
     (kit, home, folder, hub, serving)
 }
@@ -232,6 +260,7 @@ fn record_dispatch(hub: &Hub, body: &Value) {
 }
 
 async fn report_work(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value> {
+    publication::before_running_reply(&hub, &body).await;
     let mut state = hub.0.lock().unwrap();
     if body["state"] == "done" {
         assert!(state.summary);
@@ -239,19 +268,6 @@ async fn report_work(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Va
         state.done = true;
     }
     Json(json!({"lease":lease(), "logEnd":0, "stop":null}))
-}
-
-async fn publish(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value> {
-    let mut state = hub.0.lock().unwrap();
-    assert_eq!(body["device"], DEVICE.to_string());
-    assert_eq!(
-        body["summary"]["runnerId"],
-        state.runner.unwrap().to_string()
-    );
-    state.summary = true;
-    Json(
-        json!({"id":THREAD, "lastSequence":body["entries"].as_array().unwrap().last().unwrap()["sequence"]}),
-    )
 }
 
 async fn evidence(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value> {
@@ -272,27 +288,6 @@ async fn evidence(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value
         json!({"launch":LAUNCH, "state":"started", "cause":null, "thread":THREAD,
         "binding":"bound", "firstCommand":Uuid::from_u128(8)}),
     )
-}
-
-async fn poll(State(hub): State<Hub>) -> Response {
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    let mut state = hub.0.lock().unwrap();
-    if !state.done || state.delivered == 2 || state.delivered != state.receipts {
-        return StatusCode::NO_CONTENT.into_response();
-    }
-    state.delivered += 1;
-    Json(json!({"commands":[{
-        "id":COMMAND, "account":ACCOUNT, "device":DEVICE, "launch":LAUNCH, "thread":state.runner,
-        "payload":{"kind":"prompt", "prompt":"fixture"},
-    }]}))
-    .into_response()
-}
-
-async fn receipt(State(hub): State<Hub>, Json(body): Json<Value>) -> StatusCode {
-    assert_eq!(body["id"], COMMAND);
-    assert_eq!(body["outcome"], "recorded");
-    hub.0.lock().unwrap().receipts += 1;
-    StatusCode::OK
 }
 
 #[tokio::test]

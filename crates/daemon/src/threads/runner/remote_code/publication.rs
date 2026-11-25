@@ -1,6 +1,9 @@
+use daemon_core::wire::RefusalCode;
+
 use crate::{
     config::home::Home,
-    remote_code::{Store, delivery::Delivery, wire::DispatchRequest},
+    hub::answer::Answer,
+    remote_code::{Store, delivery::Delivery, launch::PublicationProgress, wire::DispatchRequest},
 };
 
 use super::super::Runner;
@@ -45,12 +48,26 @@ async fn publish(
     request: DispatchRequest,
     row: agent_threads::control::ThreadRow,
 ) {
+    let store = Store::at(home);
     let allowed = || crate::runtime::thread_sync::remote_publishable(home, &row);
-    if allowed() && delivery.publish_summary(home, &row, &request).await && allowed() {
-        let _ = delivery.report_started(&request).await;
+    if allowed()
+        && delivery.publication(home, &request) == Some(PublicationProgress::Accepted)
+        && delivery.remains_enrolled(home).await
+        && allowed()
+    {
+        let reported = delivery.report_started(home, &request, allowed).await;
+        let settled = match reported {
+            Answer::Accepted(_) => true,
+            Answer::Refused(RefusalCode::NotHolder) if allowed() => {
+                matches!(delivery.evidence(&request).await, Answer::Accepted(_))
+            }
+            _ => false,
+        };
+        if settled {
+            let _ = store.publication_reported(&request, delivery.credential_stamp());
+        }
     }
-    if !allowed() && Store::at(home).withdraw(&request).is_err() {
-        return;
+    if !allowed() && store.withdraw(&request).is_ok() {
+        let _ = delivery.evidence(&request).await;
     }
-    let _ = delivery.evidence(&request).await;
 }

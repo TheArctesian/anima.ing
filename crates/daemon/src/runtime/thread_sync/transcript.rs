@@ -1,24 +1,16 @@
-mod journal;
-mod lock;
-
-use journal::Journal;
-
-use lock::journal_lock;
-
 use agent_threads::control::{Action, Change, Outcome, Update};
 use agent_threads::drive::DriveEvent;
 use daemon_core::wire::{
     MAX_THREAD_ENTRIES, MAX_THREAD_ENTRY, ThreadEntry, ThreadSummary, ThreadUpload,
-    ThreadUploadReceipt,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use uuid::Uuid;
 
 use super::{Target, runner};
 use crate::{
     config::{agent_usage::UsageSettings, home::Home, private_file},
-    hub::{HubClient, answer::Answer},
+    hub::answer::Answer,
     token_store::Credential,
 };
 
@@ -31,6 +23,13 @@ const PAGE: usize = 64;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Settings {
     share_transcripts: bool,
+}
+
+#[derive(Default, Deserialize, Serialize)]
+struct Journal {
+    observed: u64,
+    accepted: i64,
+    pending: Vec<ThreadEntry>,
 }
 
 pub(super) async fn publish(
@@ -57,34 +56,32 @@ pub(super) async fn publish(
         if !authorized(home, policy) {
             return;
         }
-        let _ = send_thread(
-            home,
-            (&target.hub, target.device),
-            row,
-            (&credential, policy),
-        )
-        .await;
+        send_thread(home, target, row, (&credential, policy)).await;
     }
 }
 
-pub(super) async fn send_thread(
+async fn send_thread(
     home: &Home,
-    (hub, device): (&HubClient, Uuid),
+    target: &Target,
     row: &ThreadSummary,
     (credential, policy): (&Credential, &UsageSettings),
-) -> Option<ThreadUploadReceipt> {
-    let _serial = journal_lock(home)?;
-    let name = journal_name(device, row.runner_id);
-    let mut journal = read(home, &name)?;
-    journal.refresh(home, row.runner_id, policy).await?;
-    if journal.pending.is_empty() {
-        return journal.confirmed;
+) {
+    let name = journal_name(target.device, row.runner_id);
+    let Some(mut journal) = read(home, &name) else {
+        return;
+    };
+    if journal.pending.len() < MAX_PENDING {
+        let updates = earlier(row.runner_id, journal.observed).await;
+        if !authorized(home, policy) {
+            return;
+        }
+        journal.record(updates);
     }
-    if !save(home, &name, &journal) {
-        return None;
+    if journal.pending.is_empty() || !save(home, &name, &journal) || !authorized(home, policy) {
+        return;
     }
     let upload = ThreadUpload {
-        device,
+        device: target.device,
         summary: row.clone(),
         entries: journal
             .pending
@@ -93,15 +90,17 @@ pub(super) async fn send_thread(
             .cloned()
             .collect(),
     };
-    let through = upload.entries.last()?.sequence;
-    let Answer::Accepted(receipt) = hub.upload_thread(&credential.token, &upload).await else {
-        return None;
+    let Answer::Accepted(receipt) = target.hub.upload_thread(&credential.token, &upload).await
+    else {
+        return;
     };
-    journal.note_receipt(receipt, through)?;
+    journal.accepted = journal.accepted.max(receipt.last_sequence);
+    journal
+        .pending
+        .retain(|entry| entry.sequence > receipt.last_sequence);
     if !save(home, &name, &journal) {
         tracing::warn!("the thread upload receipt could not be stored");
     }
-    journal.confirmed
 }
 
 async fn earlier(thread: Uuid, observed: u64) -> Vec<Update> {
@@ -134,6 +133,22 @@ async fn earlier(thread: Uuid, observed: u64) -> Vec<Update> {
         .flatten()
         .filter(|update| update.seq > observed)
         .collect()
+}
+
+impl Journal {
+    fn record(&mut self, updates: Vec<Update>) {
+        for update in updates {
+            if self.pending.len() == MAX_PENDING {
+                break;
+            }
+            self.observed = self.observed.max(update.seq);
+            let Some(content) = content(update.change) else {
+                continue;
+            };
+            let sequence = self.accepted + i64::try_from(self.pending.len()).unwrap_or(0) + 1;
+            self.pending.push(ThreadEntry { sequence, content });
+        }
+    }
 }
 
 fn content(change: Change) -> Option<Value> {

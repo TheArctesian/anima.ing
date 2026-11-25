@@ -138,30 +138,48 @@ impl Delivery {
             .then_some(saved)
     }
 
-    pub async fn publish_summary(
+    pub(crate) fn publication(
         &self,
         home: &Home,
-        row: &agent_threads::control::ThreadRow,
         request: &DispatchRequest,
-    ) -> bool {
-        if row.id != request.runner
-            || !self
-                .reservation(request)
-                .is_some_and(|saved| saved.publication_open())
-        {
-            return false;
-        }
-        crate::runtime::thread_sync::publish_remote(
-            home,
-            (&self.hub, self.config.device, &self.credential),
-            row,
-        )
+    ) -> Option<super::launch::PublicationProgress> {
+        self.reservation(request)?;
+        self.store
+            .request_publication(request, self.credential_stamp(), || {
+                crate::runtime::thread_sync::revision(home)
+            })
+            .ok()
+    }
+
+    pub(crate) async fn remains_enrolled(&self, home: &Home) -> bool {
+        let home = home.clone();
+        let scope = (
+            self.config.device,
+            self.config.hub.clone(),
+            self.credential_stamp(),
+        );
+        tokio::task::spawn_blocking(move || {
+            let config = home.read_config().ok().flatten();
+            let credential = TokenStore::open(&home).load().ok().flatten();
+            config.is_some_and(|config| config.device == scope.0 && config.hub == scope.1)
+                && credential.is_some_and(|credential| {
+                    credential.hub == scope.1
+                        && !refused(&credential)
+                        && credential.token.hash().to_bytes() == scope.2
+                })
+        })
         .await
+        .unwrap_or(false)
     }
 
     /// Ordinary reports do not renew or reopen a final attempt. After `NOT_HOLDER` the caller
     /// sends evidence on the original launch tuple; it leaves the local process running.
-    pub async fn report_started(&self, request: &DispatchRequest) -> Answer<Reported> {
+    pub(crate) async fn report_started(
+        &self,
+        home: &Home,
+        request: &DispatchRequest,
+        allowed: impl Fn() -> bool,
+    ) -> Answer<Reported> {
         use super::wire::EvidenceOutcome;
         let Some(started) = self.reservation(request).and_then(|saved| saved.evidence()) else {
             return Answer::Failed(Cause::Unreadable);
@@ -179,6 +197,9 @@ impl Delivery {
             if !matches!(result, Answer::Accepted(_)) {
                 return result;
             }
+        }
+        if !self.remains_enrolled(home).await || !allowed() {
+            return Answer::Failed(Cause::Unreadable);
         }
         let report = json!({
             "id": started.work, "attempt": started.attempt, "state": WorkState::Done,
