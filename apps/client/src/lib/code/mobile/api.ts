@@ -57,8 +57,9 @@ export function mobileCodeApi(hub: Hub) {
       const result = await hub.request(Snapshot, { id });
       return result.ok ? { ok: true as const, value: result.value.agentThread } : result;
     },
-    follow(id: string, afterSequence: string, sink: Sink<ThreadEntry>) {
-      return hub.subscribe(Entries, { id, afterSequence }, {
+    follow(id: string, cursor: () => string, sink: Sink<ThreadEntry>) {
+      // The socket serializes its subscription variables again when it retries.
+      return hub.subscribe(Entries, { id, get afterSequence() { return cursor(); } }, {
         next: (value) => { sink.next(value.agentThreadEntries); },
         error: sink.error,
         complete: sink.complete,

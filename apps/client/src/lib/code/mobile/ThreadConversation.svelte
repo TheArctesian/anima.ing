@@ -6,7 +6,7 @@
   import type { Connection } from '$lib/hub/hub';
   import EmptyState from '$lib/states/EmptyState.svelte';
   import type { MobileCodeApi, ThreadEntry, ThreadSummary } from './api';
-  import { followThread } from './live.svelte';
+  import { followThread, watchSummary } from './live.svelte';
   import ThreadState from './ThreadState.svelte';
   import { createTranscript, threadTitle, updatedState } from './transcript.svelte';
 
@@ -21,6 +21,9 @@
   let read = $state(() => api.snapshot(id));
   let failure = $state('');
   let summary = $state.raw<ThreadSummary | null>(null);
+  let entryState = $state.raw<{ sequence: string; state: string } | null>(null);
+  const state = $derived(entryState?.state ?? summary?.state ?? '');
+  let refreshSummary: (() => void) | undefined;
   let live = $state.raw<ReturnType<typeof followThread> | null>(null);
   let latest: HTMLDivElement | undefined = $state();
   const conversation = createTranscript();
@@ -31,13 +34,33 @@
   function append(entry: ThreadEntry): void {
     conversation.append(entry);
     const state = updatedState(entry);
-    if (state !== undefined && summary !== null) summary = { ...summary, state };
+    if (state !== undefined) entryState = { sequence: entry.sequence, state };
   }
+
+  $effect(() => {
+    if (connection === 'connected') refreshSummary?.();
+  });
 
   $effect(() => {
     const request = read();
     let active = true;
     let stop: (() => void) | undefined;
+    let refreshing = false;
+
+    function refresh(): void {
+      if (refreshing) return;
+      refreshing = true;
+      void api.snapshot(id).then((result) => {
+        refreshing = false;
+        if (!active || !result.ok || result.value === null) return;
+        const { summary: thread, lastSequence } = result.value;
+        const changed = thread.activityAt !== summary?.activityAt || thread.state !== summary.state;
+        // A refresh can have started before the socket applied a newer state.
+        if (changed && entryState !== null && Number(lastSequence) >= Number(entryState.sequence)) entryState = null;
+        summary = thread;
+      });
+    }
+
     void request.then((result) => {
       if (!active) return;
       if (!result.ok || result.value === null) {
@@ -49,10 +72,16 @@
       for (const entry of recent) conversation.append(entry);
       const stream = followThread(api, id, lastSequence, append);
       live = stream;
-      stop = stream.stop;
+      refreshSummary = refresh;
+      const stopWatching = watchSummary(refresh);
+      stop = () => {
+        stream.stop();
+        stopWatching();
+      };
     });
     return () => {
       active = false;
+      refreshSummary = undefined;
       stop?.();
     };
   });
@@ -81,7 +110,7 @@
       <h1 id="mobile-thread-title">{threadTitle(summary.title)}</h1>
       <div class="context">
         <span>{machines.get(summary.deviceId) ?? 'Connected computer'}{summary.repository ? ` · ${summary.repository}` : ''} · {displayProgram}</span>
-        <ThreadState state={conversation.pending.length > 0 ? 'needs_you' : summary.state} />
+        <ThreadState state={conversation.pending.length > 0 ? 'needs_you' : state} />
       </div>
     </header>
 
@@ -94,7 +123,7 @@
       <p class="notice" role="status">Reconnecting to the hub…</p>
     {/if}
 
-    {#if conversation.pending.length > 0 || summary.state === 'needs_you'}
+    {#if conversation.pending.length > 0 || state === 'needs_you'}
       <section class="pending" aria-labelledby="mobile-pending-title">
         <h2 id="mobile-pending-title"><CodeIcon name="shield-question" /> Needs you</h2>
         {#each conversation.pending as request (request.id)}

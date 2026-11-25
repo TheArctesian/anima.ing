@@ -3,9 +3,9 @@ import { flushSync, mount, unmount } from 'svelte';
 import { SvelteURL } from 'svelte/reactivity';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createHub, NO_HUB_ADDRESS, type Hub } from '$lib/hub/hub';
-import { acknowledge, FakeSocket, FAKE_WEBSOCKET, settle } from '$lib/hub/socket/fake';
+import { acknowledge, FakeSocket, FAKE_WEBSOCKET, FIRST_RETRY_MS, settle } from '$lib/hub/socket/fake';
 import MobileCode from './MobileCode.svelte';
-import type { ThreadSnapshot } from './api';
+import type { ThreadEntry, ThreadSnapshot } from './api';
 
 const url = new SvelteURL('https://hub.test/code?thread=thread-a');
 let hub: Hub;
@@ -17,7 +17,7 @@ vi.mock('$lib/hub/context', () => ({ useHub: () => hub }));
 beforeEach(() => {
   FakeSocket.opened = [];
   url.search = '?thread=thread-a';
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
 });
 
@@ -81,7 +81,7 @@ function currentSubscription(socket: FakeSocket, id: string, afterSequence: stri
   return subscription.id;
 }
 
-function deliver(socket: FakeSocket, id: string, entry: ReturnType<typeof prompt>): void {
+function deliver(socket: FakeSocket, id: string, entry: ThreadEntry): void {
   socket.receive({ id, type: 'next', payload: { data: { agentThreadEntries: entry } } });
 }
 
@@ -104,6 +104,74 @@ test('returning online resumes the open thread at its latest cursor and renders 
   await settle();
 
   expect(messages()).toEqual(['Before the drop', 'Last seen before reconnect', 'Caught up after reconnect']);
+});
+
+async function retry(socket: FakeSocket): Promise<FakeSocket> {
+  socket.close(1006);
+  await settle(FIRST_RETRY_MS);
+  const next = FakeSocket.opened.at(-1);
+  if (next === undefined || next === socket) throw new Error('No retry socket opened');
+  await acknowledge(next);
+  return next;
+}
+
+test('an automatic socket retry starts at the last applied sequence', async () => {
+  const socket = await open([snapshot('thread-a', '64', 'Snapshot message')]);
+  const first = currentSubscription(socket, 'thread-a', '64');
+  deliver(socket, first, prompt('65', 'Last message on the first socket'));
+  await settle();
+
+  const next = await retry(socket);
+  const resumed = currentSubscription(next, 'thread-a', '65');
+  deliver(next, resumed, prompt('66', 'First message on the new socket'));
+  await settle();
+  expect(messages()).toEqual(['Snapshot message', 'Last message on the first socket', 'First message on the new socket']);
+});
+
+test('an open thread refreshes its state and attention when it has no shared entries', async () => {
+  const initial = { ...snapshot('thread-a', '0', ''), entries: [] };
+  const snapshots = [initial];
+  const socket = await open(snapshots);
+  const header = document.querySelector('header');
+  expect(header?.textContent).toContain('Idle');
+
+  snapshots[0] = { ...initial, summary: { ...initial.summary, state: 'working' } };
+  await retry(socket);
+  expect(header?.textContent).toContain('Working');
+
+  snapshots[0] = { ...initial, summary: { ...initial.summary, state: 'needs_you' } };
+  await settle(30_000);
+  expect(header?.textContent).toContain('Needs you');
+  expect(document.querySelector('[aria-labelledby="mobile-pending-title"]')).not.toBeNull();
+  expect(messages()).toEqual([]);
+});
+
+test('a summary behind the stream preserves the newer state until the summary catches up', async () => {
+  const initial = snapshot('thread-a', '64', 'Shared before reconnect');
+  const snapshots = [initial];
+  const socket = await open(snapshots);
+  const first = currentSubscription(socket, 'thread-a', '64');
+  const liveState = { sequence: '65', content: { change: 'state', state: 'working' } };
+  deliver(socket, first, liveState);
+  await settle();
+  const header = document.querySelector('header');
+  expect(header?.textContent).toContain('Working');
+
+  snapshots[0] = { ...initial, summary: { ...initial.summary, state: 'needs_you' } };
+  window.dispatchEvent(new Event('online'));
+  await settle();
+  expect(header?.textContent).toContain('Working');
+
+  snapshots[0] = {
+    ...initial,
+    entries: [...initial.entries, liveState],
+    lastSequence: '65',
+    summary: { ...initial.summary, state: 'stopped' },
+  };
+  window.dispatchEvent(new Event('online'));
+  await settle();
+  expect(header?.textContent).toContain('Stopped');
+  expect(messages()).toEqual(['Shared before reconnect']);
 });
 
 test('opening another thread retires the old subscription and resumes only the selected thread', async () => {
