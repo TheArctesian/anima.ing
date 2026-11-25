@@ -32,7 +32,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | --- | --- | --- | --- |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
-| HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
+| HT-187 | Desktop Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and ordinary browser | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-186 | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
@@ -227,15 +227,15 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 
 - State: Open.
-- On iOS and Android, open Code. Check that a thread shows the computer, project, agent and state. Open it and check that recent prompts and replies display in order.
+- On native iOS and Android, sign in and open a shared Anima-started desk thread in the Code inbox. Check that it shows the computer, project, agent and state. Open it and check that recent prompts and replies display in order.
 - Background the app or interrupt its connection. On the computer, send another prompt and reach an approval request. Return to the same thread on the phone. Check that the new reply appears once and the request shows what it asks. Answer on the computer and check that the request clears on the phone.
-- Start a fresh thread on a computer with transcript sharing off. Open it on the phone. Check that its summary appears and the phone has no shared messages.
+- Start a fresh thread through Anima at the desk with transcript sharing off. Open it on the phone. Check that its summary appears and the phone has no shared messages.
 
 ### HT-149: reporting after an iPad update and the phone Code tab
 
 - State: Open.
 - On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. Keep the app open for two samples and check that CPU also shows. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
-- On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
+- On a native phone, tap Code in the bottom bar. It opens the signed-in hub’s read-only Code inbox. Open a device page and check that the device's sessions are still available there.
 
 ### HT-183: Device Overview and tabs on iPad
 
@@ -5773,7 +5773,7 @@ State: Open. Built on `code/local-anima-sessions-only`. Synthetic tests mount th
    Expected: only the Anima-started session and its project appear. There is no imported-history control. Imported sessions do not contribute to the Code attention badge.
 2. Open the local Anima session, leave Code, reopen it, then restart the app and reopen the persisted session.
    Expected: the Anima session remains available. An old selected/imported session or history entry never reveals its title, messages, details or composer.
-3. Open Code on a client that cannot read this computer's local runner, including the phone client.
+3. Open Code in an ordinary browser without a local runner. For the native phone use HT-149 and HT-170-code-handoff.
    Expected: an explanation that Code currently shows Anima-started threads on this computer; no remote computer/session chooser is exposed.
 4. Confirm existing ingestion and session records are retained by the normal ingestion workflow.
    Expected: records remain available for future use; this UI change deletes no sessions and does not stop the watcher.
