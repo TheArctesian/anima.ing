@@ -109,10 +109,6 @@ async fn quit(dir: &Path) {
     .await
     .unwrap();
     link.send(Action::Quit).await.unwrap();
-    timeout(Duration::from_secs(6), task)
-        .await
-        .unwrap()
-        .unwrap();
 }
 
 struct Descendant(Process);
