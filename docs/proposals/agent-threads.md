@@ -1949,6 +1949,17 @@ been removed. Reclaim only recorded orphaned groups and stages after restart. Se
 full clones, including large ref advertisements, packs and worktrees. Before release, use synthetic over-budget fixtures
 to prove refusal, process cleanup, and that the destination and project list stay untouched.
 
+
+### Deferred project preparation cleanup
+
+Two Low findings of the TH60B cancellation review remain open. These are lifetime and responsiveness issues.
+
+- A blocking destination check already in progress can outlive the runner's drain. It can still create a private stage
+  after shutdown begins. The dropped job discards that stage when the blocking call returns. Only the runner publishes
+  a prepared result. Track the blocking work through shutdown if the runner must confirm that no stage can still appear.
+- If publication fails, the runner drops the private stage in its event loop. Removing a large directory can delay
+  other calls. Move the removal to a tracked background cleanup step and keep its preparation permit until removal ends.
+
 ## 11. Changes that this proposal asks of other documents
 
 Not made in this version; each needs the ruling named.
