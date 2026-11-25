@@ -25,9 +25,7 @@ pub async fn of(git: &Git, worktree: &Worktree, listed: &[Setting]) -> Result<St
     let mut status = files(git, worktree, head.commit.as_deref()).await?;
     let remote = remote(listed);
     status.has_remote = remote.is_some();
-    status.push_url = remote
-        .as_ref()
-        .map(|(_, url)| said::without_credentials(url));
+    status.push_url = remote.as_ref().map(|(_, url)| said::destination(url));
     let remote_name = remote.as_ref().map(|(name, _)| name.as_str());
     status.default_branch = default_branch(common, remote_name)?;
     // What the remote says is the default can be changed in the repository, so the two usual

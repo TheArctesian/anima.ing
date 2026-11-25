@@ -136,20 +136,27 @@ async fn tc7_git_reviewed_snapshot_can_be_committed_with_selected_paths() {
 #[tokio::test]
 async fn tc7_git_trust_uses_the_digest_of_the_settings_the_operator_saw() {
     let runner = Runner::new();
+    let destination = format!("{REMOTE}/\u{200b}exact");
     let answer = json!({
         "outcome": "git", "result": "status", "branch": "review",
         "is_default_branch": false, "has_remote": true, "ahead": 1, "behind": 2,
         "ahead_of_default": 1, "files": [], "additions": 0, "deletions": 0,
-        "changed": [format!("push to origin: {REMOTE}"), "hook pre-commit\u{1b}[2J"],
+        "push_url": destination,
+        "changed": [format!("push to origin: {destination}"), "hook pre-commit\u{1b}[2J"],
         "accept": DIGEST
     });
     let (status, action) = runner.exchange(&["status"], &answer).await;
     assert_eq!(status.code, 0, "{status:?}");
     assert_eq!(action, json!({ "git": "status" }));
-    assert!(status.stdout.contains(&format!("push to origin: {REMOTE}")));
+    assert!(
+        status
+            .stdout
+            .contains(&format!("push to origin: {REMOTE}/\\u{{200b}}exact"))
+    );
     assert!(status.stdout.contains("hook pre-commit"));
     assert!(status.stdout.contains("Ahead: 1  Behind: 2"));
     status.assert_never_shows("\u{1b}");
+    status.assert_never_shows("\u{200b}");
     let shown = status
         .stdout
         .lines()

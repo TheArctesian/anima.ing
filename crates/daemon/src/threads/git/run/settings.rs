@@ -109,6 +109,41 @@ pub fn person(settings: &[Setting]) -> Person {
     }
 }
 
+/// Authentication settings Git may use with a pinned push destination. Repository settings
+/// cannot supply credential helpers, and URL rewrite and remote settings are never replayed.
+pub(in crate::threads::git) fn push_auth(
+    settings: &[Setting],
+) -> impl Iterator<Item = (&str, &str)> {
+    settings
+        .iter()
+        .filter(|setting| {
+            if !matches!(setting.scope.as_str(), "system" | "global") {
+                return false;
+            }
+            let key = setting.name.as_str();
+            key.starts_with("credential.")
+                || (key.starts_with("http.")
+                    && key.rsplit_once('.').is_some_and(|(_, name)| {
+                        matches!(
+                            name,
+                            "extraheader"
+                                | "cookiefile"
+                                | "proxy"
+                                | "proxyauthmethod"
+                                | "sslcert"
+                                | "sslkey"
+                                | "sslcainfo"
+                                | "sslcapath"
+                                | "sslcertpasswordprotected"
+                                | "pinnedpubkey"
+                                | "emptyauth"
+                                | "proactiveauth"
+                        )
+                    }))
+        })
+        .map(|setting| (setting.name.as_str(), setting.value.as_str()))
+}
+
 /// The folder of the hooks that the configuration names (`core.hooksPath`), when a file
 /// names one. What the runner sets for its own run on the command line does not count.
 #[must_use]

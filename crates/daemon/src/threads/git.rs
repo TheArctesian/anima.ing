@@ -237,7 +237,7 @@ impl Engine {
         trust::accepted(worktree, listed, hooks.as_ref())?;
         let ready = push::ready(git, worktree, listed, default_branch_allowed).await?;
         drop(index);
-        push::send(git, worktree, ready, hooks.as_ref()).await
+        push::send(git, worktree, (ready, listed), hooks.as_ref()).await
     }
 
     async fn act(

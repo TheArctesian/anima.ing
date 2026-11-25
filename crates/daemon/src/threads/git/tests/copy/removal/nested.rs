@@ -34,6 +34,7 @@ async fn a_repository_inside_the_worktree_is_saved_before_the_worktree_goes() {
     let GitOutcome::Removed {
         kept: Some(kept),
         recovery: Some(recovery),
+        ..
     } = bench.call(PERSON, GitAction::Remove).await
     else {
         panic!("not removed");
@@ -137,6 +138,7 @@ async fn retirement_keeps_ignored_nested_files_out_of_the_companion_ref() {
     let GitOutcome::Removed {
         kept: Some(kept),
         recovery: Some(recovery),
+        ..
     } = removal
     else {
         panic!("not retired: {removal:?}");
@@ -189,5 +191,70 @@ async fn tc7_removal_leaves_a_file_that_replaced_a_submodule() {
     assert_eq!(
         std::fs::read_to_string(recovery.join("sub")).expect("the work stays"),
         "unpreserved work\n"
+    );
+}
+
+#[tokio::test]
+async fn tc7_absorbed_submodule_metadata_can_be_located_from_the_reported_original_path() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let add = [
+        "-c",
+        "protocol.file.allow=always",
+        "submodule",
+        "add",
+        "--quiet",
+        bench.project.to_str().expect("UTF-8 path"),
+        "module",
+    ];
+    bench.git_in(&folder, &add).await;
+    bench.git_in(&folder, &["commit", "-qm", "submodule"]).await;
+    let module = folder.join("module");
+    let link = std::fs::read_to_string(module.join(".git")).expect("relative Git link");
+    let relative = link
+        .trim_end()
+        .strip_prefix("gitdir: ")
+        .expect("Git directory pointer");
+    assert!(std::path::Path::new(relative).is_relative(), "{link}");
+    let git_dir = module
+        .join(relative)
+        .canonicalize()
+        .expect("original admin directory");
+    std::fs::write(module.join("a.txt"), "staged only\n").expect("staged file");
+    bench.git_in(&module, &["add", "a.txt"]).await;
+    std::fs::write(module.join("a.txt"), "working version\n").expect("working file");
+
+    let outcome = bench.call(PERSON, GitAction::Remove).await;
+    let GitOutcome::Removed {
+        original: Some(original),
+        recovery: Some(recovery),
+        ..
+    } = outcome
+    else {
+        panic!("expected a retirement receipt: {outcome:?}");
+    };
+    assert_eq!(original, folder);
+    let origin = recovery
+        .parent()
+        .expect("recovery container")
+        .join("original.json");
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(origin).expect("durable origin"))
+            .expect("origin record");
+    assert_eq!(
+        manifest["original_worktree"],
+        folder.to_str().expect("path")
+    );
+    assert_eq!(
+        std::fs::read_to_string(recovery.join("module/.git")).expect("retained pointer"),
+        link
+    );
+    let spec = format!("--git-dir={}", git_dir.display());
+    let work = format!("--work-tree={}", recovery.join("module").display());
+    assert_eq!(
+        bench
+            .git_in(&bench.project, &[&spec, &work, "show", ":a.txt"])
+            .await,
+        "staged only"
     );
 }

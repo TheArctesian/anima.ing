@@ -147,6 +147,7 @@ async fn retirement_preserves_ignored_worktree_notes_outside_git() {
     let GitOutcome::Removed {
         kept: Some(kept),
         recovery: Some(recovery),
+        ..
     } = outcome
     else {
         panic!("not retired: {outcome:?}");
@@ -173,6 +174,7 @@ async fn a_removed_worktree_leaves_its_work_under_a_ref_and_its_branch_in_place(
     let GitOutcome::Removed {
         kept: Some(kept),
         recovery: Some(recovery),
+        ..
     } = bench.call(PERSON, GitAction::Remove).await
     else {
         panic!("not removed");
@@ -207,4 +209,93 @@ async fn a_removed_worktree_leaves_its_work_under_a_ref_and_its_branch_in_place(
         folder,
         "the thread gets its branch again"
     );
+}
+
+#[tokio::test]
+async fn tc7_orphan_record_release_leaves_the_moved_worktree_and_can_be_retried() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let moved = bench.home.with_file_name("moved-worktree");
+    std::fs::rename(&folder, &moved).expect("a manual move");
+    let result = bench.call(PERSON, GitAction::Remove).await;
+    assert!(
+        matches!(&result, GitOutcome::Removed { kept: None, recovery: None, original: Some(path) }
+        if path == &folder),
+        "{result:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(moved.join("a.txt")).expect("moved data"),
+        "one\n"
+    );
+    assert_eq!(bench.call(PERSON, GitAction::Remove).await, result);
+    let start = bench
+        .engine
+        .worktree(bench.plan(super::super::THREAD))
+        .await;
+    assert_eq!(
+        start.err(),
+        Some(agent_threads::git::GitRefusal::BranchExists)
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[tokio::test]
+async fn tc7_recovery_refuses_macos_acls_on_a_fresh_move_and_on_receipt_retry() {
+    use std::os::unix::fs::PermissionsExt as _;
+    fn acl(path: &std::path::Path, arguments: &[&str]) {
+        let status = std::process::Command::new("/bin/chmod")
+            .env_clear()
+            .args(arguments)
+            .arg(path)
+            .status()
+            .expect("chmod");
+        assert!(status.success(), "{status}");
+    }
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let base = bench.home.join(".anima-retired");
+    std::fs::create_dir(&base).expect("the recovery base");
+    std::fs::set_permissions(&base, std::fs::Permissions::from_mode(0o700)).expect("private mode");
+    acl(
+        &base,
+        &["+a", "everyone allow list,search,directory_inherit"],
+    );
+    let refused = bench.call(PERSON, GitAction::Remove).await;
+    assert!(matches!(refused, GitOutcome::Refused { .. }), "{refused:?}");
+    assert!(folder.join("a.txt").is_file());
+    acl(&base, &["-N"]);
+    let outcome = bench.call(PERSON, GitAction::Remove).await;
+    let GitOutcome::Removed {
+        recovery: Some(recovery),
+        ..
+    } = &outcome
+    else {
+        panic!("expected a retained directory: {outcome:?}");
+    };
+    assert_eq!(bench.call(PERSON, GitAction::Remove).await, outcome);
+    let container = recovery.parent().expect("the private container");
+    acl(container, &["+a", "everyone allow list,search"]);
+    let refused = bench.call(PERSON, GitAction::Remove).await;
+    assert!(matches!(refused, GitOutcome::Refused { .. }), "{refused:?}");
+    assert!(recovery.join("a.txt").is_file());
+}
+
+#[tokio::test]
+async fn tc7_expired_git_records_release_without_moving_the_worktree() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let own = own_of(&bench);
+    std::fs::rename(&own, bench.home.with_file_name("expired-records"))
+        .expect("expired records fixture");
+    let result = bench.call(PERSON, GitAction::Remove).await;
+    assert!(
+        matches!(&result, GitOutcome::Removed { kept: None, recovery: None, original: Some(path) }
+        if path == &folder),
+        "{result:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(folder.join("a.txt")).expect("untouched worktree"),
+        "one\n"
+    );
+    assert_eq!(bench.call(PERSON, GitAction::Remove).await, result);
 }

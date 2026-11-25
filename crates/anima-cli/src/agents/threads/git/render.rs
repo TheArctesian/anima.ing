@@ -49,21 +49,29 @@ pub(super) fn show(result: &GitOutcome, output: Output) -> Result<(), Failure> {
                 "{verb}: {} at {} ({})",
                 clean(branch),
                 clean(remote),
-                clean(url)
+                visible_text(url)
             ))
         }
         GitOutcome::PullRequest(page) => output.line(&clean(&page.url)),
-        GitOutcome::Removed { kept, recovery } => {
-            show_removed(kept.as_deref(), recovery.as_deref(), output)
-        }
+        GitOutcome::Removed {
+            kept,
+            recovery,
+            original,
+        } => show_removed(
+            (kept.as_deref(), recovery.as_deref(), original.as_deref()),
+            output,
+        ),
         GitOutcome::Trusted => output.line("Git settings accepted."),
         GitOutcome::Refused { why } => Err(super::refused(why.clone())),
     }
 }
 
 fn show_removed(
-    kept: Option<&str>,
-    recovery: Option<&std::path::Path>,
+    (kept, recovery, original): (
+        Option<&str>,
+        Option<&std::path::Path>,
+        Option<&std::path::Path>,
+    ),
     output: Output,
 ) -> Result<(), Failure> {
     let kept = kept.map_or_else(String::new, |reference| {
@@ -74,6 +82,18 @@ fn show_removed(
         output.line(&format!(
             "Worktree retired.{kept} Complete directory: {}",
             recovery.escape_debug()
+        ))?;
+        if let Some(original) = original {
+            output.line(&format!(
+                "Original directory: {}. Resolve relative nested Git links from their original locations. Use --git-dir and --work-tree to inspect recovered submodules.",
+                original.display().to_string().escape_debug()
+            ))?;
+        }
+        Ok(())
+    } else if let Some(original) = original {
+        output.line(&format!(
+            "Cleared the worktree registration. Former path: {}. No recovery directory was created. An existing branch stays in the repository.",
+            original.display().to_string().escape_debug()
         ))
     } else {
         output.line(&format!("Worktree removed.{kept}"))
@@ -92,13 +112,13 @@ fn show_status(status: &Status, output: Output) -> Result<(), Failure> {
         status.ahead_of_default
     ))?;
     if let Some(url) = &status.push_url {
-        output.line(&format!("Push URL: {}", clean(url)))?;
+        output.line(&format!("Push URL: {}", visible_text(url)))?;
     }
     show_files(&status.files, output)?;
     if !status.changed.is_empty() {
         output.line("Review these Git settings before accepting them:")?;
         for line in &status.changed {
-            output.line(&format!("  {}", clean(line)))?;
+            output.line(&format!("  {}", visible_text(line)))?;
         }
         output.line(&format!("Acceptance digest: {}", clean(&status.accept)))?;
     }
@@ -118,7 +138,7 @@ fn show_changes(changes: &Changes, output: Output) -> Result<(), Failure> {
         .iter()
         .filter_map(|file| file.patch.as_deref())
     {
-        output.line(visible_patch(patch.trim_end_matches('\n')).as_str())?;
+        output.line(visible(patch.trim_end_matches('\n'), true).as_str())?;
     }
     if let Some(snapshot) = &changes.snapshot {
         output.line(&format!("Reviewed snapshot: {}", clean(snapshot)))?;
@@ -128,12 +148,17 @@ fn show_changes(changes: &Changes, output: Output) -> Result<(), Failure> {
 
 /// Keep Git's line structure. Escape non-ASCII and controls, including tabs, so invisible
 /// characters and literal text that looks like an escape remain distinguishable.
-fn visible_patch(patch: &str) -> String {
+pub(super) fn visible_text(text: &str) -> String {
+    visible(text, false)
+}
+
+fn visible(patch: &str, multiline: bool) -> String {
     let mut visible = String::with_capacity(patch.len());
     for character in patch.chars() {
         match character {
             '\\' => visible.push_str("\\\\"),
-            '\n' | ' '..='~' => visible.push(character),
+            '\n' if multiline => visible.push(character),
+            ' '..='~' => visible.push(character),
             other => {
                 let _ = write!(visible, "\\u{{{:x}}}", u32::from(other));
             }

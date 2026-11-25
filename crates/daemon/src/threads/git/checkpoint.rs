@@ -59,7 +59,7 @@ fn old_reviewed_refs(thread: Uuid) -> [String; 2] {
 pub fn pushed_ref(url: &str, branch: &str) -> String {
     let destination = sha2::Sha256::digest(url.as_bytes());
     let destination = crate::model::fetch::hex(&destination);
-    format!("refs/anima/pushed-to/{destination}/{branch}")
+    format!("refs/anima/pinned-push/{destination}/{branch}")
 }
 
 /// The ref in the repository of the person that keeps the work of a worktree that was

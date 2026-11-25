@@ -3,7 +3,7 @@
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
-use agent_threads::git::GitRefusal;
+use agent_threads::git::{GitOutcome, GitRefusal};
 use uuid::Uuid;
 
 use super::super::place::{Home, Record};
@@ -47,20 +47,7 @@ impl Retirement {
             original,
             kept,
         };
-        let text = serde_json::to_vec(&retirement).map_err(failed)?;
-        let path = journal(record);
-        let temporary = path.with_extension(format!("{}.tmp", retirement.id));
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)
-            .map_err(failed)?;
-        let written = file.write_all(&text).and_then(|()| file.sync_all());
-        drop(file);
-        if let Err(error) = written.and_then(|()| std::fs::rename(&temporary, &path)) {
-            let _ = std::fs::remove_file(temporary);
-            return Err(failed(error));
-        }
+        write(&journal(record), &retirement).map_err(failed)?;
         Ok(retirement)
     }
 
@@ -76,37 +63,22 @@ impl Retirement {
             git_dir: record.git_dir.clone(),
             common_dir: record.common_dir.clone(),
         };
-        if FolderId::of(&recovery) != Some(self.original) {
-            linked::protect(&layout)?;
-            self.move_tree(record, &container).map_err(|error| {
-                if FolderId::of(&recovery).is_some() {
-                    recovery_failed(&recovery, error)
-                } else {
-                    failed(error)
-                }
-            })?;
-        }
+        linked::protect(&layout)?;
+        self.move_tree(record, &container)
+            .map_err(|error| recovery_failed(&recovery, error))?;
         linked::point_at_recovery(&layout, &recovery)
             .map_err(|error| recovery_failed(&recovery, error))?;
-        // The engine's old Git directory must vacate the active name too. Keep it beside
-        // the journal on its own filesystem, independently of the retained worktree.
-        let held = record
-            .own
-            .with_file_name(format!("retired-{}.git", self.id));
-        if record.own.exists() {
-            match held.symlink_metadata() {
-                Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-                Err(error) => return Err(recovery_failed(&recovery, error)),
-                Ok(_) => {
-                    return Err(recovery_failed(
-                        &recovery,
-                        "the Git recovery name is occupied",
-                    ));
-                }
-            }
-            std::fs::rename(&record.own, held)
-                .map_err(|error| recovery_failed(&recovery, error))?;
-        }
+        archive(&record.own, self.id).map_err(|error| recovery_failed(&recovery, error))?;
+        verify(&recovery, self.original).map_err(|error| recovery_failed(&recovery, error))?;
+        let completion = Completion {
+            kept: Some(self.kept.clone()),
+            recovery: Some(recovery.clone()),
+            original: record.folder.clone(),
+            proof: Some(self.original),
+        };
+        completion
+            .store(home, (thread, repository))
+            .map_err(|error| recovery_failed(&recovery, error))?;
         home.release(thread, repository)
             .map_err(|error| recovery_failed(&recovery, error))?;
         // A stale journal is identified by its folder identity if a new worktree reuses the name.
@@ -128,6 +100,107 @@ impl Retirement {
     fn move_tree(&self, _record: &Record, _container: &Path) -> io::Result<()> {
         Err(io::Error::from(io::ErrorKind::Unsupported))
     }
+}
+
+/// The last completed removal remains available after its active registration is released.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(super) struct Completion {
+    kept: Option<String>,
+    recovery: Option<PathBuf>,
+    original: PathBuf,
+    proof: Option<FolderId>,
+}
+
+impl Completion {
+    pub(super) fn get(
+        home: &Home,
+        (thread, repository): (Uuid, &str),
+    ) -> Result<GitOutcome, GitRefusal> {
+        let path = home.own(thread, repository)?.with_extension("removed");
+        let text = std::fs::read(path).map_err(|error| {
+            if error.kind() == io::ErrorKind::NotFound {
+                GitRefusal::NoWorktree
+            } else {
+                failed(error)
+            }
+        })?;
+        let completed: Self = serde_json::from_slice(&text).map_err(failed)?;
+        if let Some(recovery) = &completed.recovery {
+            let proof = completed
+                .proof
+                .ok_or_else(|| failed("recovery receipt has no folder identity"))?;
+            verify(recovery, proof).map_err(failed)?;
+        }
+        Ok(completed.outcome())
+    }
+
+    pub(super) fn orphan(
+        home: &Home,
+        (thread, repository): (Uuid, &str),
+        record: &Record,
+    ) -> Result<GitOutcome, GitRefusal> {
+        let completed = Self {
+            kept: None,
+            recovery: None,
+            original: record.folder.clone(),
+            proof: None,
+        };
+        archive(&record.own, Uuid::now_v7()).map_err(failed)?;
+        completed
+            .store(home, (thread, repository))
+            .map_err(failed)?;
+        home.release(thread, repository).map_err(failed)?;
+        Ok(completed.outcome())
+    }
+
+    fn store(&self, home: &Home, (thread, repository): (Uuid, &str)) -> io::Result<()> {
+        let own = home.own(thread, repository).map_err(io::Error::other)?;
+        write(&own.with_extension("removed"), self)
+    }
+
+    fn outcome(self) -> GitOutcome {
+        GitOutcome::Removed {
+            kept: self.kept,
+            recovery: self.recovery,
+            original: Some(self.original),
+        }
+    }
+}
+
+fn write(path: &Path, value: &impl serde::Serialize) -> io::Result<()> {
+    let parent = path.parent().ok_or(io::ErrorKind::InvalidInput)?;
+    let mut tmp = tempfile::NamedTempFile::new_in(parent)?;
+    serde_json::to_writer(&mut tmp, value)?;
+    tmp.flush()?;
+    tmp.as_file().sync_all()?;
+    tmp.persist(path).map_err(|error| error.error)?;
+    std::fs::File::open(parent)?.sync_all()
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn archive(source: &Path, id: Uuid) -> io::Result<()> {
+    let saved = format!("retired-{id}.git");
+    movement::archive(source, saved.as_ref())
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn archive(_source: &Path, _id: Uuid) -> io::Result<()> {
+    Err(io::Error::from(io::ErrorKind::Unsupported))
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn verify(recovery: &Path, original: FolderId) -> io::Result<()> {
+    let container = recovery.parent().ok_or(io::ErrorKind::InvalidInput)?;
+    let home = container
+        .parent()
+        .and_then(Path::parent)
+        .ok_or(io::ErrorKind::InvalidInput)?;
+    movement::verify(home, container, original)
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn verify(_recovery: &Path, _original: FolderId) -> io::Result<()> {
+    Err(io::Error::from(io::ErrorKind::Unsupported))
 }
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]

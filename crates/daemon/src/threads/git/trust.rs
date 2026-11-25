@@ -52,8 +52,11 @@ pub fn now(listed: &[Setting], hooks: Option<&Hooks<'_>>) -> BTreeMap<String, St
         );
     }
     if let Some((remote, url)) = status::remote(listed) {
-        let place = said::without_credentials(&url);
-        seen.insert(shown(&format!("push to {remote}: {place}")), digest(&url));
+        let place = said::destination(&url);
+        seen.insert(
+            format!("push to {remote}: {place}"),
+            digest(&format!("pinned push\0{url}")),
+        );
     }
     seen
 }
@@ -92,7 +95,13 @@ pub fn changed(
     names.dedup();
     names
         .into_iter()
-        .map(|name| said::without_credentials(name))
+        .map(|name| {
+            if name.starts_with("push to ") {
+                (*name).clone()
+            } else {
+                said::without_credentials(name)
+            }
+        })
         .collect()
 }
 

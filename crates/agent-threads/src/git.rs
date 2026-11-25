@@ -125,6 +125,9 @@ pub enum GitOutcome {
         /// The complete retained directory, when the runner supports retirement.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         recovery: Option<std::path::PathBuf>,
+        /// The former worktree path, needed to resolve relative nested Git links.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        original: Option<std::path::PathBuf>,
     },
     Trusted,
     Refused {

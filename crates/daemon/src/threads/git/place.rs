@@ -197,7 +197,7 @@ impl Home {
         self.projects().join(format!("{name}.git"))
     }
 
-    fn record_file(&self, thread: Uuid, repository: &str) -> Result<PathBuf, BadPlace> {
+    pub(super) fn record_file(&self, thread: Uuid, repository: &str) -> Result<PathBuf, BadPlace> {
         self.planned(thread, repository)?;
         let thread = thread.as_hyphenated().to_string();
         Ok(self.records.join(thread).join(format!("{repository}.json")))

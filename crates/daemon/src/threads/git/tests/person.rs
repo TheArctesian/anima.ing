@@ -1,6 +1,8 @@
 //! The actions of the person (commit, push, pull request) and each refusal: an agent, a thread
 //! with no worktree, a path that leaves the worktree, a push that was not allowed.
 
+mod destination;
+
 use agent_threads::git::{GitAction, GitOutcome, GitRefusal, Scope};
 
 use super::{Bench, PERSON, THREAD, refused};
@@ -217,63 +219,6 @@ async fn a_push_goes_to_the_remote_once_and_a_pull_request_needs_a_pushed_branch
     // The made remote is a folder, not a forge: the checks pass and no page can be made.
     let page = bench.call(PERSON, GitAction::PullRequest).await;
     assert_eq!(refused(&page), Some(&GitRefusal::UnknownForge));
-}
-
-#[tokio::test]
-async fn a_push_receipt_applies_only_to_the_destination_that_received_the_commit() {
-    let bench = Bench::new().await;
-    bench.with_origin().await;
-    let folder = bench.worktree().await;
-    std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
-    assert!(matches!(
-        bench.call(PERSON, commit("change", None, None)).await,
-        GitOutcome::Committed { .. }
-    ));
-    let first = bench.call(PERSON, PUSH).await;
-    let GitOutcome::Pushed {
-        branch,
-        up_to_date: false,
-        ..
-    } = first
-    else {
-        panic!("no first push: {first:?}");
-    };
-
-    // Page preparation performs no network I/O, even for a forge URL.
-    let url = "remote.origin.pushurl";
-    bench
-        .git_in(
-            &folder,
-            &["config", url, "https://github.com/example/fixture.git"],
-        )
-        .await;
-    let new_page = bench.call(PERSON, GitAction::PullRequest).await;
-    assert_eq!(refused(&new_page), Some(&GitRefusal::NotPushed));
-
-    let second = bench.project.with_file_name("second.git");
-    std::fs::create_dir(&second).expect("second local destination");
-    bench.git_in(&second, &["init", "--quiet", "--bare"]).await;
-    bench
-        .git_in(&folder, &["config", url, second.to_str().expect("path")])
-        .await;
-    assert_eq!(bench.trust(PERSON).await, GitOutcome::Trusted);
-    let second_push = bench.call(PERSON, PUSH).await;
-    assert!(
-        matches!(
-            second_push,
-            GitOutcome::Pushed {
-                up_to_date: false,
-                ..
-            }
-        ),
-        "{second_push:?}"
-    );
-    assert_eq!(
-        bench
-            .git_in(&second, &["log", "--format=%s", &branch])
-            .await,
-        "change\nfirst"
-    );
 }
 
 #[tokio::test]

@@ -155,10 +155,12 @@ pub fn read(names: &[u8], counts: &[u8], whole: Option<&str>) -> Changes {
     let mut counts = counted(counts).into_iter();
     let mut complete = std::str::from_utf8(names).is_ok();
     let mut files = Vec::new();
+    let mut sections = Vec::new();
     let mut fields = names
         .split(|byte| *byte == 0)
         .map(|field| String::from_utf8_lossy(field).into_owned());
     while let Some(status) = fields.next().filter(|status| !status.is_empty()) {
+        sections.push(if status.starts_with('T') { 2 } else { 1 });
         let kind = match status.chars().next() {
             Some('A') => ChangeKind::Added,
             Some('D') => ChangeKind::Deleted,
@@ -184,11 +186,13 @@ pub fn read(names: &[u8], counts: &[u8], whole: Option<&str>) -> Changes {
     }
     let patches = whole.and_then(patch_sections);
     complete &= counts.next().is_none();
-    let paired = patches.filter(|patches| complete && patches.len() == files.len());
+    let paired =
+        patches.filter(|patches| complete && patches.len() == sections.iter().sum::<usize>());
     let truncated = paired.is_none();
     if let Some(patches) = paired {
-        for (file, patch) in files.iter_mut().zip(patches) {
-            file.patch = Some(patch.to_owned());
+        let mut patches = patches.into_iter();
+        for (file, count) in files.iter_mut().zip(sections) {
+            file.patch = Some(patches.by_ref().take(count).collect());
         }
     }
     Changes {

@@ -62,3 +62,26 @@ fn a_failed_active_registry_release_keeps_recovery_and_can_be_retried() {
     assert_eq!(recovered, expected);
     assert!(home.recorded(thread, repository).is_err());
 }
+
+#[test]
+fn tc7_archiving_git_records_keeps_an_occupied_recovery_directory() {
+    let temp = tempfile::tempdir().expect("temporary records");
+    let base = temp.path().canonicalize().expect("real records");
+    let id = Uuid::now_v7();
+    let active = base.join("active.git");
+    let retained = base.join(format!("retired-{id}.git"));
+    std::fs::create_dir(&active).expect("active record");
+    std::fs::create_dir(&retained).expect("existing empty recovery record");
+    std::fs::write(active.join("HEAD"), "work").expect("one active file");
+    assert!(archive(&active, id).is_err());
+    assert_eq!(
+        std::fs::read_to_string(active.join("HEAD")).expect("active record untouched"),
+        "work"
+    );
+    assert_eq!(
+        std::fs::read_dir(retained)
+            .expect("existing directory")
+            .count(),
+        0
+    );
+}

@@ -9,7 +9,6 @@ use uuid::Uuid;
 use crate::agents::runner::{self, RunnerLink};
 use crate::failure::{Failure, Hint, exit};
 use crate::invocation::Invocation;
-use crate::output::text::clean;
 
 #[derive(Debug, clap::Args)]
 pub struct GitArgs {
@@ -222,7 +221,10 @@ fn refused(why: GitRefusal) -> Failure {
         GitRefusal::NotARepository => "That folder is not the top folder of a Git repository.",
         GitRefusal::GitNotFound => "Git is not on the PATH of your login.",
         GitRefusal::Changed { what } => {
-            let names = what.iter().map(|name| clean(name)).collect::<Vec<_>>();
+            let names = what
+                .iter()
+                .map(|name| render::visible_text(name))
+                .collect::<Vec<_>>();
             return Failure::Conflict {
                 message: format!(
                     "Git settings changed. Read status and accept the new digest before retrying. Settings: {}",

@@ -5144,7 +5144,7 @@ To check W2, start a thread in a worktree as in HT-169. Use the command prefix `
 3. On a disposable worktree, run `revert 0` and confirm.
    Expected: revert restores the files at turn 0 and shows an undo ref.
 4. Put a note in the worktree and add its name to `.gitignore`. Run `remove` and confirm.
-   Expected: the active worktree path goes away. The command prints the saved ref and the recovery directory. The ignored note is in the recovery directory and is absent from the saved Git ref.
+   Expected: the active worktree path goes away. The command prints the saved ref and the recovery directory. The ignored note is in the recovery directory and is absent from the saved Git ref. Run `remove` again with the same thread and repository. It returns the same original and recovery paths.
 
 For the remaining checks, use the page when W4 is available. The remote query and the hook and LFS notices also require the separate remote step in Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md).
 

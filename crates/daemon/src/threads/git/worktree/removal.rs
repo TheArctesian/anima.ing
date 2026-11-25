@@ -7,7 +7,7 @@ use super::super::checkpoint;
 use super::super::place::{Home, Worktree, own, shared};
 use super::super::project::refs;
 use super::super::run::Git;
-use super::retirement::Retirement;
+use super::retirement::{Completion, Retirement};
 
 /// Saves a private ref before moving the whole original directory out of use. Files that
 /// cannot go in a Git snapshot stay in the original directory, as do late writes to it.
@@ -30,7 +30,7 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<GitOu
         Retirement::prepare(record, kept)?
     };
     let (kept, recovery) = retirement.finish(home, target, record)?;
-    Ok(removed(kept, recovery))
+    Ok(removed(kept, recovery, record.folder.clone()))
 }
 
 async fn save(git: &Git, worktree: &Worktree) -> Result<String, GitRefusal> {
@@ -73,20 +73,32 @@ pub async fn remove_broken(
     target: (Uuid, &str),
 ) -> Result<GitOutcome, GitRefusal> {
     let (thread, repository) = target;
-    let record = home.recorded(thread, repository)?;
+    let record = match home.recorded(thread, repository) {
+        Ok(record) => record,
+        Err(error) => {
+            let path = home.record_file(thread, repository)?;
+            if matches!(path.symlink_metadata(), Err(error) if error.kind() == std::io::ErrorKind::NotFound)
+            {
+                return Completion::get(home, target);
+            }
+            return Err(error.into());
+        }
+    };
     if let Some(pending) = Retirement::existing(&record)? {
         let (kept, recovery) = pending.finish(home, target, &record)?;
-        return Ok(removed(kept, recovery));
+        return Ok(removed(kept, recovery, record.folder.clone()));
     }
-    let worktree = home
-        .for_removal(thread, repository)
-        .ok_or(GitRefusal::NoWorktree)?;
-    remove(git, home, &worktree).await
+    if let Some(worktree) = home.for_removal(thread, repository) {
+        remove(git, home, &worktree).await
+    } else {
+        Completion::orphan(home, target, &record)
+    }
 }
 
-fn removed(kept: String, recovery: std::path::PathBuf) -> GitOutcome {
+fn removed(kept: String, recovery: std::path::PathBuf, original: std::path::PathBuf) -> GitOutcome {
     GitOutcome::Removed {
         kept: Some(kept),
         recovery: Some(recovery),
+        original: Some(original),
     }
 }
