@@ -3,8 +3,6 @@
 //! signed link passes; the ruling that chose this check says so.
 
 mod signature;
-#[cfg(target_os = "macos")]
-pub(crate) use signature::own_code_hash;
 
 use std::io;
 

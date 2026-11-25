@@ -89,24 +89,6 @@ pub(super) async fn is_the_link(_process: i32, _team: &TeamId) -> Result<bool, P
 }
 
 #[cfg(target_os = "macos")]
-pub(crate) async fn own_code_hash() -> Option<&'static str> {
-    static HASH: tokio::sync::OnceCell<Option<String>> = tokio::sync::OnceCell::const_new();
-    HASH.get_or_init(|| async {
-        let own = std::process::id().to_string();
-        let (true, shown) = codesign(&["-d", "--verbose=4", &own]).await.ok()?? else {
-            return None;
-        };
-        let hash = shown
-            .lines()
-            .find_map(|line| line.strip_prefix("CDHash="))?;
-        (hash.len() == 40 && hash.bytes().all(|byte| byte.is_ascii_hexdigit()))
-            .then(|| hash.to_owned())
-    })
-    .await
-    .as_deref()
-}
-
-#[cfg(target_os = "macos")]
 async fn codesign(args: &[&str]) -> io::Result<Option<(bool, String)>> {
     let mut command = tokio::process::Command::new(CODESIGN);
     command

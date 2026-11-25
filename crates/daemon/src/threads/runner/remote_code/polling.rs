@@ -27,8 +27,12 @@ impl Runner {
         let Some(policy) = self.remote_policy(&home) else {
             return;
         };
-        if self.holder.fits && !self.holder.older && self.remote.holder == super::Holder::Unknown {
-            self.remote.holder = super::Holder::Probing;
+        if self.holder.fits
+            && !self.holder.older
+            && self.remote.holder == super::Holder::Unknown
+            && self.link.accepts_remote_peer().await
+        {
+            self.remote.holder = super::Holder::Opening;
             self.remote_send(ToHolder::Open).await;
         }
         if self.remote.holder == super::Holder::Ready {
@@ -99,7 +103,7 @@ impl Runner {
         if self.remote.claiming || self.remote.busy() {
             return;
         }
-        let switch = if policy.starts_enabled() {
+        let switch = if policy.starts_enabled() && self.remote.holder == super::Holder::Ready {
             Switch::On
         } else {
             Switch::Off
@@ -137,7 +141,10 @@ impl Runner {
     }
 
     fn remote_poll(&mut self) {
-        if self.remote.polling || self.remote.due_poll.is_some_and(|due| Instant::now() < due) {
+        if self.remote.holder != super::Holder::Ready
+            || self.remote.polling
+            || self.remote.due_poll.is_some_and(|due| Instant::now() < due)
+        {
             return;
         }
         let home = self.remote_home();

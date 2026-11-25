@@ -36,7 +36,8 @@ pub(super) struct Remote {
 enum Holder {
     #[default]
     Unknown,
-    Probing,
+    Opening,
+    Proving,
     Ready,
 }
 

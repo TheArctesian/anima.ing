@@ -67,10 +67,6 @@ zeroize.workspace = true
 keyring.workspace = true
 # Inspect effective recovery permissions on the pinned directory descriptor.
 calcifer-macos-acl = "=0.1.0"
-# Verify the process bound to the holder socket's audit token.
-core-foundation = "0.10"
-security-framework = "3.7"
-nix-peer = { package = "nix", version = "0.31", default-features = false, features = ["socket"] }
 
 [dev-dependencies]
 anima-daemon = { path = ".", features = ["test-person"] }

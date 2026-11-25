@@ -17,7 +17,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
-use daemon_core::wire::DaemonToken;
+use daemon_core::wire::{DaemonToken, Lease};
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -45,7 +45,9 @@ while (my $line = <STDIN>) {
 #[derive(Clone)]
 struct Hub(Arc<Mutex<Launch>>);
 
+#[derive(Debug)]
 struct Launch {
+    claims: Vec<(Value, Value)>,
     folder: PathBuf,
     claimed: bool,
     runner: Option<Uuid>,
@@ -64,6 +66,7 @@ async fn th32_remote_code_claim_spawn_publish_receipt_and_withdrawal() {
     let listener = synthetic_enrollment(&home, &folder);
     let hub = Hub(Arc::new(Mutex::new(Launch {
         folder: folder.clone(),
+        claims: Vec::new(),
         claimed: false,
         runner: None,
         summary: false,
@@ -154,11 +157,14 @@ async fn wait_for(hub: &Hub, reached: impl Fn(&Launch) -> bool) {
         }
     })
     .await
-    .unwrap();
+    .unwrap_or_else(|_| panic!("remote fixture stalled: {:?}", hub.0.lock().unwrap()));
 }
 
 async fn claim(State(hub): State<Hub>, Json(body): Json<Value>) -> Response {
     let mut state = hub.0.lock().unwrap();
+    state
+        .claims
+        .push((body["free"]["slots"].clone(), body["threadTargets"].clone()));
     if state.claimed || body["free"]["slots"] != 1 {
         return StatusCode::NO_CONTENT.into_response();
     }
@@ -168,12 +174,18 @@ async fn claim(State(hub): State<Hub>, Json(body): Json<Value>) -> Response {
     state.claimed = true;
     Json(json!({
         "id": WORK, "type": "agent_thread", "kind": "person", "attempt": 1,
-        "lease": { "until": chrono::Utc::now() + chrono::TimeDelta::seconds(90) },
+        "lease": lease(),
         "limits": { "seconds": 120, "idleSeconds": 0, "memoryBytes": 0, "diskBytes": 0, "orphanSeconds": 0 },
         "project": PROJECT,
         "parameters": { "launch": LAUNCH, "account": ACCOUNT, "program": "claude_code",
             "folder": state.folder, "access": "ask" },
     })).into_response()
+}
+
+fn lease() -> Lease {
+    Lease {
+        until: chrono::Utc::now() + chrono::TimeDelta::seconds(90),
+    }
 }
 
 async fn dispatch(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value> {
@@ -197,9 +209,7 @@ async fn report_work(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Va
         assert_eq!(body["result"]["thread"], state.runner.unwrap().to_string());
         state.done = true;
     }
-    Json(
-        json!({"lease":{"until": chrono::Utc::now() + chrono::TimeDelta::seconds(90)}, "stop":null}),
-    )
+    Json(json!({"lease":lease(), "stop":null}))
 }
 
 async fn publish(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value> {

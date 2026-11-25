@@ -30,8 +30,11 @@ impl Runner {
             return;
         };
         match frame {
-            ToRunner::Challenge { nonce } => self.remote_send(ToHolder::Prove { nonce }).await,
-            ToRunner::Ready => {
+            ToRunner::Challenge { nonce } if self.remote.holder == super::Holder::Opening => {
+                self.remote.holder = super::Holder::Proving;
+                self.remote_send(ToHolder::Prove { nonce }).await;
+            }
+            ToRunner::Ready if self.remote.holder == super::Holder::Proving => {
                 self.remote.holder = super::Holder::Ready;
                 self.remote.due_claim = None;
             }
@@ -221,6 +224,10 @@ impl Runner {
     }
 
     pub(super) async fn remote_send(&mut self, frame: ToHolder) {
+        if !self.link.accepts_remote_peer().await {
+            self.remote.disconnect();
+            return;
+        }
         if let Some(action) = frame.action()
             && self.command(action).await.is_none()
         {

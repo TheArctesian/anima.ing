@@ -46,6 +46,7 @@ impl Session {
                 None
             }
             ToHolder::Prove { nonce } => {
+                self.exchange = None;
                 self.authenticated = self.challenge.take() == Some(nonce);
                 if self.authenticated {
                     notify(shared, &ToRunner::Ready);
@@ -109,63 +110,12 @@ impl Peer {
     }
 }
 
-#[cfg(target_os = "macos")]
-pub(in crate::threads) struct Peer([u32; 8]);
-
-#[cfg(target_os = "macos")]
-impl Peer {
-    pub(in crate::threads) fn of(stream: &UnixStream) -> Option<Self> {
-        if stream.peer_cred().ok()?.uid() != rustix::process::getuid().as_raw() {
-            return None;
-        }
-        let token = nix_peer::sys::socket::getsockopt(
-            stream,
-            nix_peer::sys::socket::sockopt::LocalPeerToken,
-        )
-        .ok()?;
-        Some(Self(token.val))
-    }
-
-    pub(in crate::threads) async fn is_daemon(&self) -> bool {
-        let Some(hash) = crate::hub::peer::own_code_hash().await else {
-            return false;
-        };
-        let token = self.0;
-        tokio::task::spawn_blocking(move || matches_audit_token(token, hash))
-            .await
-            .unwrap_or(false)
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn matches_audit_token(token: [u32; 8], hash: &str) -> bool {
-    use core_foundation::{base::TCFType as _, data::CFData};
-    use security_framework::os::macos::code_signing::{
-        Flags, GuestAttributes, SecCode, SecRequirement,
-    };
-    let bytes: Vec<u8> = token.into_iter().flat_map(u32::to_ne_bytes).collect();
-    let bytes = CFData::from_buffer(&bytes);
-    let mut attrs = GuestAttributes::new();
-    attrs.set_audit_token(bytes.as_concrete_TypeRef());
-    let Ok(code) = SecCode::copy_guest_with_attribues(None, &attrs, Flags::NONE) else {
-        return false;
-    };
-    let Ok(requirement) = format!("cdhash H\"{hash}\"").parse::<SecRequirement>() else {
-        return false;
-    };
-    code.check_validity(Flags::NONE, &requirement).is_ok()
-}
-
-#[cfg(not(any(
-    target_os = "macos",
-    all(target_os = "linux", target_pointer_width = "64")
-)))]
+// On macOS LOCAL_PEERTOKEN looks up the peer's last numeric PID at query time.
+// It cannot prove that a live code signature belongs to the original socket peer.
+#[cfg(not(all(target_os = "linux", target_pointer_width = "64")))]
 pub(in crate::threads) struct Peer;
 
-#[cfg(not(any(
-    target_os = "macos",
-    all(target_os = "linux", target_pointer_width = "64")
-)))]
+#[cfg(not(all(target_os = "linux", target_pointer_width = "64")))]
 impl Peer {
     pub(in crate::threads) const fn of(_: &UnixStream) -> Option<Self> {
         None
@@ -185,14 +135,13 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn th32_remote_peer_macos_uses_the_connected_process_audit_token() {
+    async fn th32_remote_peer_macos_requires_stable_socket_provenance() {
         let dir = tempfile::tempdir().unwrap();
         let socket = dir.path().join("peer.sock");
         let listener = tokio::net::UnixListener::bind(&socket).unwrap();
         let client = UnixStream::connect(&socket).await.unwrap();
         let (server, _) = listener.accept().await.unwrap();
-        let peer = Peer::of(&server).expect("the socket captures the peer audit token");
-        assert!(peer.is_daemon().await);
+        assert!(Peer::of(&server).is_none());
         drop(client);
     }
 }
