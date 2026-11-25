@@ -83,20 +83,11 @@ impl JobCommand {
                 first,
                 after,
                 state,
-            } => {
-                let vars = job_list::Variables {
-                    first,
-                    after,
-                    state: state.map(Into::into),
-                };
-                print(invocation, &hub.run::<JobList>(vars).await?.jobs)
+            } => list(invocation, &hub, (first, after, state)).await,
+            Self::Get { id } => {
+                let result = hub.run::<JobDetail>(job_detail::Variables { id }).await?;
+                print(invocation, &result.job)
             }
-            Self::Get { id } => print(
-                invocation,
-                &hub.run::<JobDetail>(job_detail::Variables { id })
-                    .await?
-                    .job,
-            ),
             Self::Stop { id } => {
                 let result = hub.run::<JobStop>(job_stop::Variables { id }).await?;
                 print(invocation, &result)
@@ -138,6 +129,19 @@ impl JobCommand {
             }
         }
     }
+}
+
+async fn list(
+    invocation: &Invocation,
+    hub: &crate::hub::Hub,
+    (first, after, state): (i64, Option<String>, Option<State>),
+) -> Result<(), Failure> {
+    let vars = job_list::Variables {
+        first,
+        after,
+        state: state.map(Into::into),
+    };
+    print(invocation, &hub.run::<JobList>(vars).await?.jobs)
 }
 
 fn print(invocation: &Invocation, value: &impl Serialize) -> Result<(), Failure> {
