@@ -6,7 +6,7 @@ use uuid::Uuid;
 use super::super::checkpoint;
 use super::super::place::{Home, Worktree, own, shared};
 use super::super::project::refs;
-use super::super::run::Git;
+use super::super::run::{Git, GitError};
 use super::retirement::{Completion, Retirement};
 
 /// Saves a private ref before moving the whole original directory out of use. Files that
@@ -118,7 +118,8 @@ pub(super) fn legacy_saved(
                     .into(),
         });
     }
-    // Re-publish the verified ref with durable directory metadata before a receipt.
+    own::sync_legacy_snapshot(&record.common_dir, &record.own).map_err(GitError::Files)?;
+    // Re-publish after the snapshot's directory entries are durable.
     let saved = saved.unwrap_or_default();
     refs::put(&record.common_dir, &kept, saved, refs::Was::At(saved))?;
     Ok(Some(kept))

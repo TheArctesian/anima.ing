@@ -64,3 +64,51 @@ async fn interrupted_w1_removal_preserves_its_complete_ref_with_partial_or_absen
         assert_eq!(bench.call(PERSON, GitAction::Remove).await, outcome);
     }
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn legacy_snapshot_keeps_its_records_until_pack_and_lfs_directories_sync() {
+    use crate::threads::git::place::walk::sync_probe;
+
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let kept = crate::threads::git::checkpoint::kept_ref(THREAD);
+    let original = bench.git_in(&bench.project, &["rev-parse", "HEAD"]).await;
+    bench
+        .git_in(&bench.project, &["update-ref", &kept, &original])
+        .await;
+    bench.git_in(&bench.project, &["repack", "-ad"]).await;
+    let own = own_of(&bench);
+    std::fs::write(own.join("anima-saved"), &original).unwrap();
+    let common = bench.project.join(".git");
+    let lfs = "lfs/objects/ab/cd";
+    for root in [&own, &common] {
+        let leaf = root.join(lfs);
+        std::fs::create_dir_all(&leaf).unwrap();
+        std::fs::write(leaf.join("abcd1234"), "fixture LFS content").unwrap();
+    }
+    let competing_lock = common.join(format!("{kept}.lock"));
+    std::fs::write(&competing_lock, "another writer").unwrap();
+    for dir in ["objects/pack", lfs] {
+        let fault = sync_probe::fail_for(&common.join(dir), || {});
+        let removal = bench.call(PERSON, GitAction::Remove).await;
+        drop(fault);
+        assert!(
+            matches!(removal, GitOutcome::Refused { why: agent_threads::git::GitRefusal::Failed { said } }
+            if said.contains("injected directory sync failure")),
+            "{dir}"
+        );
+        assert!(own.join("anima-saved").is_file());
+        assert!(folder.is_dir());
+        assert!(!own.with_extension("removed").exists());
+    }
+    std::fs::remove_file(competing_lock).unwrap();
+    let removal = bench.call(PERSON, GitAction::Remove).await;
+    assert!(matches!(removal, GitOutcome::Removed { kept: Some(name), .. } if name == kept));
+    assert_eq!(
+        bench
+            .git_in(&bench.project, &["show", &format!("{kept}:a.txt")])
+            .await,
+        "one"
+    );
+}

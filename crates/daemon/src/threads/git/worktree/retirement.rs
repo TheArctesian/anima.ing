@@ -111,6 +111,7 @@ impl Retirement {
             recovery: Some(recovery),
             original: record.folder.clone(),
             proof: Some(self.original),
+            orphan_removal: None,
         }
         .release(home, target, (&record.own, self.id))
     }
@@ -138,6 +139,8 @@ pub(super) struct Completion {
     recovery: Option<PathBuf>,
     original: PathBuf,
     proof: Option<FolderId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    orphan_removal: Option<Uuid>,
 }
 
 impl Completion {
@@ -179,19 +182,26 @@ impl Completion {
             .map(|bytes| serde_json::from_slice(&bytes))
             .transpose()
             .map_err(failed)?;
-        let kept = match prior {
-            Some(receipt)
-                if receipt.original == record.folder
-                    && receipt.proof.is_some()
-                    && receipt.proof == record.folder_id =>
-            {
-                receipt.kept
-            }
-            _ => super::removal::legacy_saved(home, record, thread)?,
+        let kept = match prior.filter(|receipt| receipt.belongs_to(record)) {
+            Some(receipt) => receipt.kept,
+            None => super::removal::legacy_saved(home, record, thread)?,
         };
-        Self::without_copy(record, kept)
-            .release(home, (thread, repository), (&record.own, Uuid::now_v7()))
+        let mut record = record.clone();
+        let archive = record.orphan_removal.unwrap_or_else(Uuid::now_v7);
+        if record.folder_id.is_none() && record.orphan_removal.is_none() {
+            record.orphan_removal = Some(archive);
+            home.keep(thread, repository, &record)?;
+        }
+        Self::without_copy(&record, kept)
+            .release(home, (thread, repository), (&record.own, archive))
             .map_err(failed)
+    }
+
+    fn belongs_to(&self, record: &Record) -> bool {
+        self.original == record.folder
+            && self.proof == record.folder_id
+            && (self.proof.is_some()
+                || self.orphan_removal.is_some() && self.orphan_removal == record.orphan_removal)
     }
 
     fn without_copy(record: &Record, kept: Option<String>) -> Self {
@@ -200,6 +210,7 @@ impl Completion {
             recovery: None,
             original: record.folder.clone(),
             proof: record.folder_id,
+            orphan_removal: record.orphan_removal,
         }
     }
 

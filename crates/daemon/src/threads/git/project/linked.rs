@@ -70,7 +70,10 @@ fn registered(layout: &Layout) -> Result<Option<Dir>, ProjectError> {
         return Err(ProjectError::Escapes);
     }
     let path = Path::new(ENTRIES).join(name);
-    Ok(Dir::open(&layout.common_dir)?.below(&path, Make::No)?)
+    match Dir::open(&layout.common_dir)?.below(&path, Make::Existing) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        found => Ok(found?),
+    }
 }
 
 /// Makes the entry `name` of a worktree at `folder` on `branch`, and `folder` itself with its
@@ -94,7 +97,7 @@ pub fn add(common: &Path, name: &str, folder: &Path, branch: &str) -> Result<Lay
         })?;
     let made = (|| {
         let inside = entries
-            .below(Path::new(name), Make::No)?
+            .below(Path::new(name), Make::Existing)?
             .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?;
         // The folder of the worktree is made in its open folder, and its `.git` file in it.
         let (above, last) = (folder.parent(), folder.file_name());
@@ -104,7 +107,7 @@ pub fn add(common: &Path, name: &str, folder: &Path, branch: &str) -> Result<Lay
         let above = Dir::open(above)?;
         above.new_folder(last)?;
         let made = above
-            .below(Path::new(last), Make::No)?
+            .below(Path::new(last), Make::Existing)?
             .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?;
         let dot_git = folder.join(".git");
         let texts = [

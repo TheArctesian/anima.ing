@@ -79,6 +79,9 @@ pub struct Record {
     /// What the work folder was when it was made; `None` where the system has no such number.
     #[serde(default)]
     pub folder_id: Option<super::run::folder::FolderId>,
+    /// Binds an interrupted orphan removal to a legacy record without a folder identity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) orphan_removal: Option<Uuid>,
 }
 
 /// A worktree of a thread that passed each check: its real folder is below the home and is the

@@ -148,7 +148,7 @@ impl Directory {
             Err(error) => return Err(error),
         }
         rustix::fs::renameat_with(dir, name, dir, saved, rustix::fs::RenameFlags::NOREPLACE)?;
-        Ok(fsync(dir)?)
+        super::super::walk::sync_directory(dir)
     }
 
     pub(super) fn touch(&self, now: std::fs::FileTimes) -> io::Result<()> {

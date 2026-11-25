@@ -11,11 +11,19 @@
 
 use std::ffi::OsStr;
 
-/// What to do when a folder on the way is not there.
+#[cfg(all(test, unix))]
+pub(in crate::threads::git) mod sync_probe;
+
+#[cfg(all(test, unix))]
+mod tests;
+
+/// Whether a path walk is for reading or for writing durable directory entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Make {
-    /// Nothing: the path is then not there.
+    /// Read the path without syncing or making directories.
     No,
+    /// Sync the directory entries on the path. Refuse a missing directory.
+    Existing,
     /// Make the folder. A file or a link in its place is an error.
     Missing,
     /// Make the folder; a file or a link in its place is removed first.
@@ -30,6 +38,13 @@ pub fn name(text: &str) -> &OsStr {
 
 #[cfg(unix)]
 pub use held::Dir;
+
+#[cfg(unix)]
+pub(super) fn sync_directory(fd: &std::os::fd::OwnedFd) -> std::io::Result<()> {
+    #[cfg(test)]
+    sync_probe::before(fd)?;
+    Ok(rustix::fs::fsync(fd)?)
+}
 
 #[cfg(unix)]
 mod held {
@@ -71,7 +86,7 @@ mod held {
         /// # Errors
         /// The filesystem could not synchronize the directory.
         pub fn sync(&self) -> io::Result<()> {
-            Ok(rustix::fs::fsync(&self.0)?)
+            super::sync_directory(&self.0)
         }
 
         /// Opens the folder at `folder`; a link at its place is not opened.
@@ -89,33 +104,32 @@ mod held {
 
         /// The folder `part` of this folder, opened or made as `make` says.
         fn step(&self, part: &OsStr, make: Make) -> io::Result<Option<Self>> {
-            match openat(&self.0, part, FOLDER, Mode::empty()) {
-                Ok(next) => {
-                    self.sync()?;
-                    return Ok(Some(Self(next)));
-                }
-                // Nothing, a link or a file at the name: no folder. Each other failure (no
-                // right to open it) is a failure: what is below a folder that is there and
-                // is not read would be taken as gone.
-                // A name that is too long for the disk cannot be on it.
+            let next = match openat(&self.0, part, FOLDER, Mode::empty()) {
+                Ok(next) => next,
+                // A missing directory or a non-directory cannot hold any files.
                 Err(
                     Errno::NOENT | Errno::NOTDIR | Errno::LOOP | Errno::MLINK | Errno::NAMETOOLONG,
-                ) if make == Make::No => {
-                    return Ok(None);
+                ) if make == Make::No => return Ok(None),
+                Err(error) if matches!(make, Make::No | Make::Existing) => {
+                    return Err(error.into());
                 }
-                Err(failed) if make == Make::No => return Err(failed.into()),
-                Err(_) => {}
+                Err(_) => self.make_step(part, make)?,
+            };
+            if make != Make::No {
+                self.sync()?;
             }
+            Ok(Some(Self(next)))
+        }
+
+        fn make_step(&self, part: &OsStr, make: Make) -> io::Result<OwnedFd> {
             if make == Make::Over {
-                // A link or a file is in the way: it goes, a link is never followed.
                 let _ = unlinkat(&self.0, part, AtFlags::empty());
             }
             match mkdirat(&self.0, part, Mode::from_raw_mode(0o755)) {
-                Ok(()) => self.sync()?,
-                Err(Errno::EXIST) => {}
-                Err(failed) => return Err(failed.into()),
+                Ok(()) | Err(Errno::EXIST) => {}
+                Err(error) => return Err(error.into()),
             }
-            Ok(Some(Self(openat(&self.0, part, FOLDER, Mode::empty())?)))
+            Ok(openat(&self.0, part, FOLDER, Mode::empty())?)
         }
 
         /// The folder at `path` below this one; `None` when a part is no folder and `make`

@@ -89,9 +89,17 @@ impl Layout {
     /// # Errors
     /// The error of the system; `NotFound` when a part is no folder.
     pub fn entry(&self) -> std::io::Result<Dir> {
+        self.open_entry(Make::No)
+    }
+
+    pub(super) fn entry_for_write(&self) -> std::io::Result<Dir> {
+        self.open_entry(Make::Existing)
+    }
+
+    fn open_entry(&self, make: Make) -> std::io::Result<Dir> {
         match self.git_dir.strip_prefix(&self.common_dir) {
             Ok(inside) if inside.file_name().is_some() => Dir::open(&self.common_dir)?
-                .below(inside, Make::No)?
+                .below(inside, make)?
                 .ok_or_else(|| std::io::ErrorKind::NotFound.into()),
             _ => Dir::open(&self.git_dir),
         }

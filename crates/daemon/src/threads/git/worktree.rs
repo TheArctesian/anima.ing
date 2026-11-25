@@ -294,6 +294,7 @@ async fn filled(
         project: new.project.to_owned(),
         home: home.folder().to_owned(),
         folder_id: FolderId::of(&folder),
+        orphan_removal: None,
         folder,
         git_dir: layout.git_dir.clone(),
         common_dir: layout.common_dir.clone(),

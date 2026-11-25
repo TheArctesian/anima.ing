@@ -9,6 +9,8 @@
 //! I/O: `git init`, `git pack-objects`, `git read-tree`, and a few files.
 
 use std::ffi::{OsStr, OsString};
+use std::fs::File;
+use std::io;
 use std::path::Path;
 
 use super::super::project::refs::{self, Head};
@@ -212,7 +214,7 @@ pub async fn give(
     // The folder of the packs is found from the open Git folder: a link in its place or in
     // the place of `objects` does not send a file out of the repository.
     let common = Dir::open(&worktree.record().common_dir).map_err(GitError::Files)?;
-    let packs = common.below(Path::new("objects/pack"), Make::No);
+    let packs = common.below(Path::new("objects/pack"), Make::Existing);
     let packs = packs.map_err(GitError::Files)?.ok_or(GitError::Replaced)?;
     let wanted = match known {
         Some(known) => format!("{commit}\n^{known}\n"),
@@ -233,60 +235,75 @@ pub async fn give(
         // The pack first: git reads a pack only when its list of names is beside it.
         for file in [pack.clone(), pack.with_extension("idx")] {
             let name = file.file_name().ok_or(GitError::NotFound)?;
-            placed(&packs, name, &file).map_err(GitError::Files)?;
+            let content = File::open(&file).map_err(GitError::Files)?;
+            placed(&packs, name, content).map_err(GitError::Files)?;
         }
     }
     let _ = std::fs::remove_dir_all(&outgoing);
-    large_files(&common, &worktree.record().own).map_err(GitError::Files)
+    large_files(&worktree.record().own, |file, path| {
+        copy_large_file(&common, file, path)
+    })
+    .map_err(GitError::Files)
 }
 
-/// Copies the contents that Git LFS keeps for the runner's folder at `own` into the store of
-/// the repository of the person. When the person uses Git LFS for all their repositories, a
-/// snapshot holds only a short pointer for each such file and the content is beside the Git
-/// folder (`lfs/objects`). A commit or a saved worktree without that content would name
-/// files that are nowhere. Each content is a file named by its hash; one that is there stays.
-fn large_files(common: &Dir, own: &Path) -> std::io::Result<()> {
-    let mut folders = vec![(
-        own.join("lfs/objects"),
-        std::path::PathBuf::from("lfs/objects"),
-    )];
-    while let Some((from, to)) = folders.pop() {
-        let Ok(listed) = std::fs::read_dir(&from) else {
+/// Synchronizes the directory entries of a W1 snapshot whose file contents were already
+/// synced before placement. The caller can then republish its kept ref.
+pub(in crate::threads::git) fn sync_legacy_snapshot(common: &Path, own: &Path) -> io::Result<()> {
+    let common = Dir::open(common)?;
+    let packs = common
+        .below(Path::new("objects/pack"), Make::Existing)?
+        .ok_or(io::ErrorKind::NotFound)?;
+    packs.sync()?;
+    large_files(own, |_, path| {
+        let (leaf, _) = common
+            .above(path, Make::Existing)?
+            .ok_or(io::ErrorKind::NotFound)?;
+        leaf.sync()
+    })
+}
+
+/// Visits the runner's LFS content without following any links.
+fn large_files(own: &Path, mut visit: impl FnMut(File, &Path) -> io::Result<()>) -> io::Result<()> {
+    let objects = Path::new("lfs/objects");
+    let own = Dir::open(own)?;
+    let mut folders = vec![objects.to_owned()];
+    while let Some(to) = folders.pop() {
+        let Some(from) = own.below(&to, Make::No)? else {
             continue;
         };
-        for entry in listed.flatten() {
-            let (path, kind) = (entry.path(), entry.file_type()?);
-            let at = to.join(entry.file_name());
-            if kind.is_dir() {
-                folders.push((path, at));
-            } else if kind.is_file() {
-                let Some((into, name)) = common.above(&at, Make::Missing)? else {
-                    continue;
-                };
-                // A content with its whole length is there already. A shorter one is what
-                // a copy that was stopped left: it is written again.
-                let whole = match into.file(name)? {
-                    Some(there) => there.metadata()?.len() == entry.metadata()?.len(),
-                    None => false,
-                };
-                if !whole {
-                    placed(&into, name, &path)?;
-                }
-                into.sync()?;
+        for name in from.names()? {
+            let at = to.join(&name);
+            if from.below(Path::new(&name), Make::No)?.is_some() {
+                folders.push(at);
+            } else if let Some(file) = from.file(&name)? {
+                visit(file, &at)?;
             }
         }
     }
     Ok(())
 }
 
-/// Copies the file `from` of the runner into the open folder `into` as `name`: written under
+fn copy_large_file(common: &Dir, file: File, path: &Path) -> io::Result<()> {
+    let Some((into, name)) = common.above(path, Make::Missing)? else {
+        return Ok(());
+    };
+    // An existing whole copy may have been placed just before a failed directory sync.
+    if let Some(there) = into.file(name)?
+        && there.metadata()?.len() == file.metadata()?.len()
+    {
+        return into.sync();
+    }
+    placed(&into, name, file)
+}
+
+/// Copies the runner file into the open folder `into` as `name`: written under
 /// a different name first, then moved into place, so no half file has the name.
-fn placed(into: &Dir, name: &OsStr, from: &Path) -> std::io::Result<()> {
+fn placed(into: &Dir, name: &OsStr, mut from: File) -> io::Result<()> {
     let mut partial = OsString::from("anima-");
     partial.push(name);
     into.remove(&partial, false)?;
     let mut written = into.new_file(&partial, false)?;
-    std::io::copy(&mut std::fs::File::open(from)?, &mut written)?;
+    io::copy(&mut from, &mut written)?;
     written.sync_all()?;
     into.rename(&partial, name)?;
     into.sync()
@@ -306,6 +323,10 @@ pub async fn follow(git: &Git, worktree: &Worktree, commit: &str) -> Result<(), 
     let _ = std::fs::remove_file(&fresh);
     let read = Run::new(worktree.folder(), ["read-tree", commit]);
     git.output(read.with_env("GIT_INDEX_FILE", &fresh)).await?;
-    let git_dir = worktree.layout().entry().map_err(GitError::Files)?;
-    placed(&git_dir, walk::name("index"), &fresh).map_err(GitError::Files)
+    let git_dir = worktree
+        .layout()
+        .entry_for_write()
+        .map_err(GitError::Files)?;
+    let content = File::open(fresh).map_err(GitError::Files)?;
+    placed(&git_dir, walk::name("index"), content).map_err(GitError::Files)
 }

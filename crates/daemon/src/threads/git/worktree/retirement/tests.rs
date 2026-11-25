@@ -9,8 +9,7 @@ fn a_failed_active_registry_release_keeps_recovery_and_can_be_retried() {
     std::fs::create_dir(&worktrees).expect("worktree home");
     super::super::super::place::private_folder(&records).expect("private records");
     let home = Home::at(&worktrees, &records).expect("record store");
-    let thread = Uuid::now_v7();
-    let repository = "fixture";
+    let (thread, repository) = (Uuid::now_v7(), "fixture");
     let folder = home.planned(thread, repository).expect("worktree path");
     let own = home.own(thread, repository).expect("own Git path");
     let common = root.join("project.git");
@@ -22,6 +21,7 @@ fn a_failed_active_registry_release_keeps_recovery_and_can_be_retried() {
         project: root.join("project"),
         home: worktrees,
         folder_id: FolderId::of(&folder),
+        orphan_removal: None,
         folder,
         git_dir: common.join("worktrees").join("fixture"),
         common_dir: common,
@@ -87,4 +87,80 @@ fn tc7_archiving_git_records_keeps_an_occupied_recovery_directory() {
             .count(),
         0
     );
+}
+
+#[test]
+fn an_archived_legacy_marker_keeps_its_ref_when_registry_release_is_retried() {
+    let temp = tempfile::tempdir().expect("temporary home");
+    let root = temp.path().canonicalize().expect("real home");
+    let records = root.join("records");
+    let worktrees = root.join("worktrees");
+    crate::threads::git::place::private_folder(&records).unwrap();
+    let home = Home::at(&worktrees, &records).unwrap();
+    let (thread, repository) = (Uuid::now_v7(), "fixture");
+    let folder = home.planned(thread, repository).unwrap();
+    let own = home.own(thread, repository).unwrap();
+    let common = root.join("project.git");
+    std::fs::create_dir_all(common.join("objects/pack")).unwrap();
+    std::fs::create_dir_all(&own).unwrap();
+    let record = Record {
+        project: root.join("project"),
+        home: worktrees,
+        folder_id: None,
+        orphan_removal: None,
+        folder,
+        git_dir: common
+            .join("worktrees")
+            .join(format!("anima-{}", Uuid::now_v7().as_simple())),
+        common_dir: common.clone(),
+        own,
+        shared: root.join("shared"),
+        branches: Vec::new(),
+        trusted: None,
+    };
+    home.keep(thread, repository, &record).unwrap();
+    let kept = crate::threads::git::checkpoint::kept_ref(thread);
+    let saved = "1111111111111111111111111111111111111111";
+    super::super::super::project::refs::own_put(&common, &kept, saved).unwrap();
+    std::fs::write(record.own.join("anima-saved"), saved).unwrap();
+    let target = (thread, repository);
+    let fault =
+        crate::threads::git::place::walk::sync_probe::fail_for(record.own.parent().unwrap(), || {});
+    let interrupted = Completion::orphan(&home, target, &record);
+    drop(fault);
+    assert!(matches!(interrupted, Err(GitRefusal::Failed { said })
+        if said.contains("injected directory sync failure")));
+    assert_eq!(archived_marker(&record.own), saved);
+    assert!(!record.own.exists());
+    let pending = home
+        .recorded(thread, repository)
+        .expect("registry still active");
+    let retry = Completion::orphan(&home, target, &pending).expect("orphan release can resume");
+    assert!(
+        matches!(&retry, GitOutcome::Removed { kept: Some(name), recovery: None, .. } if name == &kept),
+        "{retry:?}"
+    );
+    assert_eq!(Completion::get(&home, target).unwrap(), retry);
+    assert!(home.recorded(thread, repository).is_err());
+
+    // A new W1 registration at the same paths has no identity from the prior removal.
+    home.keep(thread, repository, &record).unwrap();
+    let next = Completion::orphan(&home, target, &record).unwrap();
+    assert!(
+        matches!(next, GitOutcome::Removed { kept: None, .. }),
+        "{next:?}"
+    );
+}
+
+fn archived_marker(own: &Path) -> String {
+    let archived = own
+        .parent()
+        .unwrap()
+        .read_dir()
+        .unwrap()
+        .flatten()
+        .map(|entry| entry.path().join("anima-saved"))
+        .find(|file| file.is_file())
+        .expect("the marker was archived before release failed");
+    std::fs::read_to_string(archived).unwrap()
 }
