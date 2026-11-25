@@ -117,6 +117,8 @@ The hub reads at most the limit and answers 413 without reading further. A body 
 
 ## 2. Secrets
 
+R-460 permits the authenticated claims, reports, dispatch authorization, late evidence, control snapshot, command poll and result requests of [K10 Section 6.5](work-route.md#65-agent-threads-th30). Its device binding, link transport limits and pre-W7 restriction apply to all of them.
+
 | Value | Format | Hub keeps | Lifetime |
 | --- | --- | --- | --- |
 | Enrolment code | `anima_enrol_` + 22 base64url characters (16 bytes, 128 bits, MET-012) | SHA-256 only | 15 minutes, one use |
@@ -490,6 +492,8 @@ The hub:
 
 ### 4.1 Agent thread summaries (TH20, R-431)
 
+For TH30, record the first accepted summary observation in this transaction under the device/runner lock, as specified in [K10 Section 6.5](work-route.md#65-agent-threads-th30). Both ingestion paths share the same immutable observation. A row from either path still requires matching authenticated holder creation evidence before remote commands are eligible.
+
 `agentThreads` is optional. An absent member leaves stored thread data unchanged. The member has
 `count` (zero or more, at most 2³² − 1), `countRevision` and `summaries` (zero to 256 rows).
 `count` gives the device's total after the exclusions of AIS-008. The device persists revisions
@@ -521,6 +525,8 @@ commit. See [agent threads, Section 6.3.1](../docs/proposals/agent-threads.md#63
 An approval or transcript entry does not go in `agentThreads`.
 
 ### 4.2 Agent thread entries (TH21, R-431)
+
+For TH30, record the first accepted summary observation in this transaction under the device/runner lock, as specified in [K10 Section 6.5](work-route.md#65-agent-threads-th30). Both ingestion paths share the same immutable observation. A row from either path still requires matching authenticated holder creation evidence before remote commands are eligible.
 
 `POST /daemon/v1/threads/entries` takes `device`, `summary` (as in Section 4.1), and
 `entries`, with 1 to 12 entries in sequence order. Each entry has a `sequence` from 1 to

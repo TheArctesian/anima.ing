@@ -5,6 +5,7 @@
 # CON-002 (crates/hub/tests/it/contract.rs) keeps the hub's schema equal to it.
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
+# Accepted TH30 addition pending hub and CLI implementation: compose agent-threads.graphql (R-460).
 # Conventions: contracts/conventions.md.
 # A token of the kind command_line (R-383) may do what a login token may do, except issueCommandLineToken.
 # Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket`, `hostedBrowserSignIn` and `claimComputerEnrolment` (API-003, D-4, R-111, R-129, HMD-061, HM-T33).
