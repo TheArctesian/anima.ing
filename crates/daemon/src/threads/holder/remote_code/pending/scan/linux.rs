@@ -87,3 +87,6 @@ async fn marked(folder: &Path, wanted: &str) -> Option<bool> {
         Err(_) => None,
     }
 }
+
+#[cfg(test)]
+mod tests;
