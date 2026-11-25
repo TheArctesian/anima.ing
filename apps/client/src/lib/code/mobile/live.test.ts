@@ -1,33 +1,315 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from 'vitest';
-import type { Sink } from '$lib/hub/hub';
-import type { MobileCodeApi, ThreadEntry } from './api';
-import { followThread } from './live.svelte';
+import { flushSync, mount, unmount } from 'svelte';
+import { SvelteURL } from 'svelte/reactivity';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { createHub, NO_HUB_ADDRESS, type Hub } from '$lib/hub/hub';
+import { acknowledge, FakeSocket, FAKE_WEBSOCKET, FIRST_RETRY_MS, settle } from '$lib/hub/socket/fake';
+import MobileCode from './MobileCode.svelte';
+import type { ThreadEntry, ThreadSnapshot } from './api';
 
-test('coming online continues the open thread at its latest cursor and skips replayed entries', () => {
-  let receiver: Sink<ThreadEntry> | undefined;
-  const stop = vi.fn();
-  const follow: MobileCodeApi['follow'] = vi.fn((_thread, _cursor, sink) => {
-    receiver = sink;
-    return stop;
-  });
-  const api = {
-    follow,
-    inbox: vi.fn<MobileCodeApi['inbox']>(),
-    snapshot: vi.fn<MobileCodeApi['snapshot']>(),
+const url = new SvelteURL('https://hub.test/code?thread=thread-a');
+let hub: Hub;
+let app: ReturnType<typeof mount> | undefined;
+
+vi.mock('$app/state', () => ({ page: { get url() { return url; } } }));
+vi.mock('$lib/hub/context', () => ({ useHub: () => hub }));
+
+beforeEach(() => {
+  FakeSocket.opened = [];
+  url.search = '?thread=thread-a';
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+});
+
+afterEach(async () => {
+  await leave();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
+
+function prompt(sequence: string, text: string) {
+  return { sequence, content: { change: 'prompt', text } };
+}
+
+function snapshot(id: string, sequence: string, text: string): ThreadSnapshot {
+  return {
+    summary: {
+      id, title: id, deviceId: 'device-a', program: 'codex', state: 'idle',
+      activityAt: '2026-11-21T00:00:00Z', repository: null,
+    },
+    entries: [prompt(sequence, text)],
+    lastSequence: sequence,
   };
-  const received: string[] = [];
-  const stream = followThread(api, 'thread-a', '64', (entry) => { received.push(entry.sequence); });
-  try {
-    receiver?.next({ sequence: '65', content: { change: 'prompt', text: 'Check the build.' } });
-    window.dispatchEvent(new Event('online'));
-    expect(stop).toHaveBeenCalledTimes(1);
-    expect(follow).toHaveBeenLastCalledWith('thread-a', '65', expect.anything());
+}
 
-    receiver?.next({ sequence: '65', content: { change: 'prompt', text: 'Check the build.' } });
-    receiver?.next({ sequence: '66', content: { change: 'state', state: 'working' } });
-    expect(received).toEqual(['65', '66']);
-  } finally {
-    stream.stop();
+async function open(
+  snapshots: readonly ThreadSnapshot[],
+  token = 'account-a',
+  refreshFails = () => false,
+): Promise<FakeSocket> {
+  hub = createHub({
+    address: NO_HUB_ADDRESS,
+    token: () => Promise.resolve(token),
+    WebSocket: FAKE_WEBSOCKET,
+    fetch: (_url, init) => {
+      const { query, variables } = JSON.parse(String(init?.body)) as { query: string; variables: { id?: string } };
+      if (query.startsWith('query DeviceHosts')) {
+        return Promise.resolve(Response.json({ data: { devices: { edges: [], pageInfo: { hasNextPage: false } } } }));
+      }
+      if (query.startsWith('query MobileThreadSnapshot')) {
+        const thread = snapshots.find(({ summary }) => summary.id === variables.id);
+        return Promise.resolve(Response.json({ data: { agentThread: thread ?? null } }));
+      }
+      if (query.startsWith('query MobileThreadSummaryRefresh')) {
+        if (refreshFails()) {
+          return Promise.resolve(Response.json({ errors: [{ message: 'A synthetic refresh failed.', extensions: { code: 'INTERNAL' } }] }));
+        }
+        const thread = snapshots.find(({ summary }) => summary.id === variables.id);
+        const agentThread = thread === undefined ? null : { summary: thread.summary, lastSequence: thread.lastSequence };
+        return Promise.resolve(Response.json({ data: { agentThread } }));
+      }
+      throw new Error('Unexpected GraphQL operation');
+    },
+  });
+  app = mount(MobileCode, { target: document.body });
+  await settle();
+  const socket = FakeSocket.opened.at(-1);
+  if (socket === undefined) throw new Error('No socket opened');
+  await acknowledge(socket);
+  return socket;
+}
+
+async function leave(): Promise<void> {
+  if (app === undefined) return;
+  await unmount(app);
+  app = undefined;
+  await hub.close();
+}
+
+function currentSubscription(socket: FakeSocket, id: string, afterSequence: string): string {
+  const subscription = socket.sent.findLast(({ type }) => type === 'subscribe');
+  expect(subscription).toMatchObject({ payload: { variables: { id, afterSequence } } });
+  if (typeof subscription?.id !== 'string') throw new Error('Missing subscription ID');
+  return subscription.id;
+}
+
+function deliver(socket: FakeSocket, id: string, entry: ThreadEntry): void {
+  socket.receive({ id, type: 'next', payload: { data: { agentThreadEntries: entry } } });
+}
+
+function messages(): string[] {
+  return [...document.querySelectorAll('ol[aria-label="Recent messages"] li p')].map((line) => line.textContent);
+}
+
+test('returning online resumes the open thread at its latest cursor and renders replayed messages once', async () => {
+  const socket = await open([snapshot('thread-a', '64', 'Before the drop')]);
+  const first = currentSubscription(socket, 'thread-a', '64');
+  deliver(socket, first, prompt('65', 'Last seen before reconnect'));
+
+  window.dispatchEvent(new Event('online'));
+  await settle();
+  const resumed = currentSubscription(socket, 'thread-a', '65');
+  expect(socket.sent).toContainEqual({ id: first, type: 'complete' });
+  deliver(socket, first, prompt('66', 'From the replaced subscription'));
+  deliver(socket, resumed, prompt('65', 'Last seen before reconnect'));
+  deliver(socket, resumed, prompt('66', 'Caught up after reconnect'));
+  await settle();
+
+  expect(messages()).toEqual(['Before the drop', 'Last seen before reconnect', 'Caught up after reconnect']);
+});
+
+async function retry(socket: FakeSocket): Promise<FakeSocket> {
+  socket.close(1006);
+  await settle(FIRST_RETRY_MS);
+  const next = FakeSocket.opened.at(-1);
+  if (next === undefined || next === socket) throw new Error('No retry socket opened');
+  await acknowledge(next);
+  return next;
+}
+
+test('an automatic socket retry starts at the last applied sequence', async () => {
+  const socket = await open([snapshot('thread-a', '64', 'Snapshot message')]);
+  const first = currentSubscription(socket, 'thread-a', '64');
+  deliver(socket, first, prompt('65', 'Last message on the first socket'));
+  await settle();
+
+  const next = await retry(socket);
+  const resumed = currentSubscription(next, 'thread-a', '65');
+  deliver(next, resumed, prompt('66', 'First message on the new socket'));
+  await settle();
+  expect(messages()).toEqual(['Snapshot message', 'Last message on the first socket', 'First message on the new socket']);
+});
+
+test('an open thread refreshes its state and attention when it has no shared entries', async () => {
+  const initial = { ...snapshot('thread-a', '0', ''), entries: [] };
+  const snapshots = [initial];
+  const socket = await open(snapshots);
+  const header = document.querySelector('header');
+  expect(header?.textContent).toContain('Idle');
+
+  snapshots[0] = { ...initial, summary: { ...initial.summary, state: 'working' } };
+  await retry(socket);
+  expect(header?.textContent).toContain('Working');
+
+  snapshots[0] = { ...initial, summary: { ...initial.summary, state: 'needs_you' } };
+  await settle(30_000);
+  expect(header?.textContent).toContain('Needs you');
+  expect(document.querySelector('[aria-labelledby="mobile-pending-title"]')).not.toBeNull();
+  expect(messages()).toEqual([]);
+});
+
+test('a summary behind the stream preserves the newer state until the summary catches up', async () => {
+  const initial = snapshot('thread-a', '64', 'Shared before reconnect');
+  const snapshots = [initial];
+  const socket = await open(snapshots);
+  const first = currentSubscription(socket, 'thread-a', '64');
+  const liveState = { sequence: '65', content: { change: 'state', state: 'working' } };
+  deliver(socket, first, liveState);
+  await settle();
+  const header = document.querySelector('header');
+  expect(header?.textContent).toContain('Working');
+
+  const attention = { ...initial.summary, state: 'needs_you' };
+  snapshots[0] = { ...initial, summary: attention };
+  window.dispatchEvent(new Event('online'));
+  await settle();
+  expect(header?.textContent).toContain('Working');
+
+  snapshots[0] = {
+    ...initial,
+    entries: [...initial.entries, liveState],
+    lastSequence: '65',
+    summary: attention,
+  };
+  window.dispatchEvent(new Event('online'));
+  await settle();
+  expect(header?.textContent).toContain('Needs you');
+  expect(messages()).toEqual(['Shared before reconnect']);
+});
+
+test('a summary ahead of replay owns state through its cursor without advancing the subscription', async () => {
+  const initial = snapshot('thread-a', '64', 'Before reconnect');
+  const snapshots = [initial];
+  const socket = await open(snapshots);
+  const replay = { sequence: '65', content: { change: 'state', state: 'working' } };
+  snapshots[0] = {
+    ...initial, entries: [...initial.entries, replay], lastSequence: '65',
+    summary: { ...initial.summary, state: 'stopped' },
+  };
+
+  const next = await retry(socket);
+  const header = document.querySelector('header');
+  expect(header?.textContent).toContain('Stopped');
+  const resumed = currentSubscription(next, 'thread-a', '64');
+  deliver(next, resumed, replay);
+  await settle();
+  expect(header?.textContent).toContain('Stopped');
+
+  deliver(next, resumed, { sequence: '66', content: { change: 'state', state: 'working' } });
+  await settle();
+  expect(header?.textContent).toContain('Working');
+});
+
+test.each(['before', 'after'])('a non-attention summary clears a covered request arriving %s its refresh', async (order) => {
+  const initial = snapshot('thread-a', '64', 'Shared transcript');
+  const snapshots = [initial];
+  const socket = await open(snapshots);
+  const first = currentSubscription(socket, 'thread-a', '64');
+  const asked = {
+    sequence: '65',
+    content: { change: 'asked', request: 'request-a', detail: { kind: 'command', subject: 'Check the fixtures' } },
+  };
+  if (order === 'before') {
+    deliver(socket, first, asked);
+    await settle();
+    expect(document.body.textContent).toContain('Check the fixtures');
+    expect(document.querySelector('header')?.textContent).toContain('Needs you');
   }
+
+  snapshots[0] = { ...initial, entries: [...initial.entries, asked], lastSequence: '65' };
+  await settle(30_000);
+  if (order === 'after') {
+    deliver(socket, first, asked);
+    await settle();
+  }
+  expect(document.querySelector('header')?.textContent).toContain('Idle');
+  expect(document.querySelector('[aria-labelledby="mobile-pending-title"]')).toBeNull();
+  expect(messages()).toEqual(['Shared transcript']);
+});
+
+test('a failed summary refresh marks retained content stale until a refresh succeeds', async () => {
+  let failed = false;
+  await open([snapshot('thread-a', '64', 'Last shared message')], 'account-a', () => failed);
+  failed = true;
+  await settle(30_000);
+
+  expect(document.querySelector('[role="status"]')?.textContent ?? '').toContain('Showing the last known state.');
+  expect(messages()).toEqual(['Last shared message']);
+
+  failed = false;
+  await settle(30_000);
+  expect(document.querySelector('[role="status"]')).toBeNull();
+  expect(messages()).toEqual(['Last shared message']);
+});
+
+test('a missing thread retires the conversation and its subscription', async () => {
+  const snapshots = [snapshot('thread-a', '64', 'Previously shared content')];
+  const socket = await open(snapshots);
+  const first = currentSubscription(socket, 'thread-a', '64');
+  snapshots.length = 0;
+  await settle(30_000);
+
+  expect(document.querySelector('[role="status"]')?.textContent ?? '').toContain('This thread is no longer on the hub.');
+  expect(messages()).toEqual([]);
+  expect(document.querySelector('[aria-label="Jump to latest message"]')).toBeNull();
+  expect(socket.sent).toContainEqual({ id: first, type: 'complete' });
+
+  const before = socket.sent.length;
+  deliver(socket, first, prompt('65', 'From a retired subscription'));
+  window.dispatchEvent(new Event('online'));
+  await settle(30_000);
+  expect(socket.sent).toHaveLength(before);
+  expect(messages()).toEqual([]);
+});
+
+test('opening another thread retires the old subscription and resumes only the selected thread', async () => {
+  const socket = await open([
+    snapshot('thread-a', '64', 'First conversation'),
+    snapshot('thread-b', '9', 'Second conversation'),
+  ]);
+  const first = currentSubscription(socket, 'thread-a', '64');
+
+  flushSync(() => { url.search = '?thread=thread-b'; });
+  await settle();
+  const second = currentSubscription(socket, 'thread-b', '9');
+  expect(socket.sent).toContainEqual({ id: first, type: 'complete' });
+  deliver(socket, first, prompt('65', 'A late message from the first conversation'));
+  deliver(socket, second, prompt('10', 'A new message from the second conversation'));
+
+  const beforeReturn = socket.sent.length;
+  window.dispatchEvent(new Event('online'));
+  await settle();
+  const returnFrames = socket.sent.slice(beforeReturn);
+  expect(returnFrames).toEqual([
+    { id: second, type: 'complete' },
+    expect.objectContaining({ type: 'subscribe', payload: expect.objectContaining({ variables: { id: 'thread-b', afterSequence: '10' } }) }),
+  ]);
+  await settle();
+  expect(messages()).toEqual(['Second conversation', 'A new message from the second conversation']);
+});
+
+test('a fresh client session opens the same URL with the new account snapshot and cursor', async () => {
+  const oldSocket = await open([snapshot('thread-a', '64', 'Previous account message')]);
+  const previous = currentSubscription(oldSocket, 'thread-a', '64');
+  expect(messages()).toEqual(['Previous account message']);
+  await leave();
+  expect(oldSocket.sent).toContainEqual({ id: previous, type: 'complete' });
+
+  const newSocket = await open([snapshot('thread-a', '3', 'Current account message')], 'account-b');
+  expect(newSocket.sent).toContainEqual({ type: 'connection_init', payload: { authorization: 'Bearer account-b' } });
+  const current = currentSubscription(newSocket, 'thread-a', '3');
+  deliver(oldSocket, previous, prompt('65', 'Late previous account message'));
+  deliver(newSocket, current, prompt('4', 'New current account message'));
+  await settle();
+  expect(messages()).toEqual(['Current account message', 'New current account message']);
 });
