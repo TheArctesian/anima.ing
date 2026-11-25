@@ -103,7 +103,7 @@ fn proc_matches_namespace() -> bool {
     if !statfs("/proc").is_ok_and(|fs| u32::try_from(fs.f_type) == Ok(PROC_FS_MAGIC)) {
         return false;
     }
-    status.ok().is_some_and(|status| {
+    status.is_ok_and(|status| {
         let Some(ids) = status.lines().find_map(|line| line.strip_prefix("NSpid:")) else {
             return false;
         };

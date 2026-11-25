@@ -88,7 +88,9 @@ impl Fixture {
         );
         let bound = summary_step(&mut self.runner).await;
         self.runner
-            .completed(super::super::super::completed::Completed::GitRead(bound));
+            .completed(super::super::super::completed::Completed::GitRead(
+                Box::new(bound),
+            ));
         let completion = summary_step(&mut self.runner).await;
         assert!(
             matches!(
@@ -156,11 +158,11 @@ async fn holder_link(dir: &Path) -> (HolderLink, UnixStream) {
         .await
         .expect("production holder link");
     let (mut side, _) = bounded(listener.accept()).await.expect("holder connected");
-    let mut line = String::new();
-    bounded(BufReader::new(&mut side).read_line(&mut line))
+    let mut frame = String::new();
+    bounded(BufReader::new(&mut side).read_line(&mut frame))
         .await
         .expect("read Hello");
-    let command: wire::Command = serde_json::from_str(&line).expect("Hello frame");
+    let command: wire::Command = serde_json::from_str(&frame).expect("Hello frame");
     assert!(matches!(
         command.action,
         wire::Action::Hello {

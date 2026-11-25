@@ -58,7 +58,7 @@ async fn th32_holder_reconnect_keeps_the_existing_command_poll_slot() {
         let mut state = hub.0.lock().unwrap();
         state.poll_gate = Some(gate.clone());
         // The launch interval remains enabled but the hub has no work for this device.
-        state.claimed = true;
+        state.claim = super::Claim::Taken;
     }
     tokio::time::timeout(Duration::from_secs(60), gate.first.notified())
         .await

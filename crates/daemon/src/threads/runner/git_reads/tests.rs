@@ -203,7 +203,7 @@ async fn deliver(
 ) -> Vec<Reply> {
     fixture
         .runner
-        .completed(completed::Completed::GitRead(completion));
+        .completed(completed::Completed::GitRead(Box::new(completion)));
     // The writer drains all queued replies before closing, so EOF is an enqueue barrier.
     client.close();
     drop(client);

@@ -8,6 +8,7 @@ use std::{
 
 use anima_daemon::{
     config::{Config, home::Home, origin::Origin, private_file},
+    threads::wire::{Action, Event},
     token_store::{Credential, TokenStore},
 };
 use axum::{
@@ -54,11 +55,17 @@ struct Hub(
     publication::Replies,
 );
 
+#[derive(Debug, PartialEq, Eq)]
+enum Claim {
+    Available,
+    Taken,
+}
+
 #[derive(Debug)]
 struct Launch {
     claims: Vec<(Value, Value)>,
     folder: PathBuf,
-    claimed: bool,
+    claim: Claim,
     runner: Option<Uuid>,
     summary: bool,
     summary_attempts: u32,
@@ -111,7 +118,7 @@ fn fixture_with_publication(
         Arc::new(Mutex::new(Launch {
             folder: folder.clone(),
             claims: Vec::new(),
-            claimed: false,
+            claim: Claim::Available,
             runner: None,
             summary: false,
             summary_attempts: 0,
@@ -209,13 +216,13 @@ async fn claim(State(hub): State<Hub>, Json(body): Json<Value>) -> Response {
     state
         .claims
         .push((body["free"]["slots"].clone(), body["threadTargets"].clone()));
-    if state.claimed || body["free"]["slots"] != 1 {
+    if state.claim == Claim::Taken || body["free"]["slots"] != 1 {
         return StatusCode::NO_CONTENT.into_response();
     }
     assert_eq!(body["switch"], "off");
     assert_eq!(body["threads"], "on");
     assert_eq!(body["threadTargets"][0]["project"], PROJECT.to_string());
-    state.claimed = true;
+    state.claim = Claim::Taken;
     Json(json!({
         "id": WORK, "type": "agent_thread", "kind": "person", "attempt": 1,
         "lease": lease(),
@@ -249,7 +256,7 @@ async fn dispatch(
 
 fn record_dispatch(hub: &Hub, body: &Value) {
     let mut state = hub.0.lock().unwrap();
-    assert!(state.claimed);
+    assert_eq!(state.claim, Claim::Taken);
     assert_eq!(body["device"], DEVICE.to_string());
     assert_eq!(body["launch"], LAUNCH.to_string());
     assert_eq!(body["work"], WORK.to_string());
@@ -295,7 +302,6 @@ async fn evidence(State(hub): State<Hub>, Json(body): Json<Value>) -> Json<Value
 async fn th32_same_user_client_cannot_open_the_remote_holder_exchange() {
     let holder = super::Holder::start(0);
     let mut talk = holder.link().await;
-    use anima_daemon::threads::wire::{Action, Event};
     talk.link
         .send(Action::RemoteCode {
             frame: r#"{"op":"open"}"#.to_owned(),

@@ -56,16 +56,7 @@ async fn th32_holder_restart_recovers_cleanup_after_shutdown_cannot_inspect_a_de
     );
 
     std::fs::write(fixture.path().join("readable"), []).unwrap();
-    let mut second = tokio::process::Command::new(program)
-        .args([
-            "--ignored",
-            "--exact",
-            "threads::holder::remote_code::cleanup_tests::restart_fixture",
-        ])
-        .current_dir(&dir)
-        .kill_on_drop(true)
-        .spawn()
-        .unwrap();
+    let mut second = restart(&program, &dir);
     timeout(Duration::from_secs(5), async {
         while descendant.0.live() {
             sleep(Duration::from_millis(20)).await;
@@ -84,6 +75,19 @@ async fn th32_holder_restart_recovers_cleanup_after_shutdown_cannot_inspect_a_de
     let saved = Store::at(&home).reservation(&request).unwrap();
     assert_eq!(saved.progress(), Progress::Reconciling);
     assert!(saved.evidence().is_none());
+}
+
+fn restart(program: &Path, dir: &Path) -> tokio::process::Child {
+    tokio::process::Command::new(program)
+        .args([
+            "--ignored",
+            "--exact",
+            "threads::holder::remote_code::cleanup_tests::restart_fixture",
+        ])
+        .current_dir(dir)
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap()
 }
 
 async fn serve_here(dir: PathBuf, listener: UnixListener, shared: Arc<Mutex<Shared>>) {

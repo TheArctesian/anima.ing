@@ -74,9 +74,10 @@ pub(super) async fn sample(home: Home, user: PathBuf) {
         while let Ok(event) = snapshots.try_recv() {
             pusher.accept(event);
         }
-        if publishing.is_finished() {
-            panic!("the production summary publisher ended");
-        }
+        assert!(
+            !publishing.is_finished(),
+            "the production summary publisher ended"
+        );
         tokio::time::sleep(wait.min(Duration::from_secs(1))).await;
         let now = Utc::now();
         pusher.accept(Event::Point(point(now)));

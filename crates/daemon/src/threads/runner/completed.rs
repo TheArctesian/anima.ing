@@ -8,7 +8,7 @@ use super::{Runner, git_reads, models, projects};
 pub(super) enum Completed {
     Models(Program, models::Listed),
     Project(projects::Created),
-    GitRead(git_reads::Completed),
+    GitRead(Box<git_reads::Completed>),
 }
 
 pub(super) async fn next(
@@ -19,7 +19,7 @@ pub(super) async fn next(
     tokio::select! {
         Some((program, listed)) = models.recv() => Completed::Models(program, listed),
         Some(created) = projects.recv() => Completed::Project(created),
-        Some(read) = git_reads.recv() => Completed::GitRead(read),
+        Some(read) = git_reads.recv() => Completed::GitRead(Box::new(read)),
     }
 }
 
@@ -28,7 +28,7 @@ impl Runner {
         match result {
             Completed::Models(program, listed) => self.models_asked(program, listed),
             Completed::Project(created) => self.project_created(created),
-            Completed::GitRead(read) => self.git_read_completed(read),
+            Completed::GitRead(read) => self.git_read_completed(*read),
         }
     }
 }
