@@ -34,7 +34,7 @@ pub(in crate::fleet) async fn poll(
     .fetch_all(&mut *conn)
     .await?;
     for (id, launch, body, state) in rows {
-        let Some(thread) = release(conn, (owner, at), (launch, &state), &body).await? else {
+        let Some(thread) = release(conn, (owner, at), (launch, &id, &state), &body).await? else {
             continue;
         };
         let payload = serde_json::from_value(body)?;
@@ -62,20 +62,38 @@ pub(in crate::fleet) async fn poll(
 async fn release(
     conn: &mut PgConnection,
     (owner, at): (Owner, DateTime<Utc>),
-    (launch, state): (Uuid, &str),
+    (launch, id, state): (Uuid, &str, &str),
     body: &serde_json::Value,
 ) -> Result<Option<Uuid>, Error> {
     let row = store::launch(conn, owner.account, launch).await?;
+    let payload: Payload = serde_json::from_value(body.clone())?;
     if state == "delivered" {
+        if matches!(payload, Payload::Prompt { .. })
+            && (row.withdrawn
+                || row.control_closed
+                || store::blocked(conn, owner.device, at).await?
+                || !prompt_on(conn, owner, at).await?)
+        {
+            return Ok(None);
+        }
         return Ok(row.runner_id);
     }
     let receipt = attempt::reconcile(conn, owner, launch, at).await?;
     if receipt.binding != "bound" {
         return Ok(None);
     }
-    let payload: Payload = serde_json::from_value(body.clone())?;
-    let offer = control::live(conn, owner, launch, at).await?;
-    if !offer.is_some_and(|offer| offered(&offer, &payload)) {
+    let Some(offer) = control::live(conn, owner, launch, at).await? else {
+        return Ok(None);
+    };
+    if !offered(&offer, &payload) {
+        let cause = match payload {
+            Payload::Stop { .. } => Some("target_stale"),
+            Payload::Answer { .. } => Some("request_expired"),
+            Payload::Prompt { .. } => None,
+        };
+        if let Some(cause) = cause {
+            refuse_waiting(conn, (owner, at), (id, cause)).await?;
+        }
         return Ok(None);
     }
     if matches!(payload, Payload::Prompt { .. }) && !prompt_allowed(conn, owner, launch, at).await?
@@ -83,6 +101,24 @@ async fn release(
         return Ok(None);
     }
     Ok(row.runner_id)
+}
+
+async fn refuse_waiting(
+    conn: &mut PgConnection,
+    (owner, at): (Owner, DateTime<Utc>),
+    (id, cause): (&str, &str),
+) -> Result<(), Error> {
+    sqlx::query(
+        "UPDATE agent_threads.commands SET state = 'refused', cause = $3, payload = NULL, closed_at = $4
+         WHERE account_id = $1 AND command_id = $2 AND state = 'waiting'",
+    )
+    .bind(owner.account)
+    .bind(id)
+    .bind(cause)
+    .bind(at)
+    .execute(conn)
+    .await?;
+    Ok(())
 }
 
 async fn prompt_allowed(

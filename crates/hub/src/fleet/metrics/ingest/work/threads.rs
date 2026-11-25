@@ -116,6 +116,7 @@ pub(super) async fn report(
     state: &DaemonState,
     holder: Holder,
     body: &Value,
+    actor: remote::Actor,
 ) -> Result<Option<Response>, Error> {
     let (mut tx, at) = holder.locked(state).await?;
     let owner = match holder.owner(&mut tx).await {
@@ -123,7 +124,7 @@ pub(super) async fn report(
         Err(Error::Refused("TOKEN_REFUSED")) => return Ok(None),
         Err(error) => return Err(error),
     };
-    let result = remote::report(&mut tx, owner, body, at).await?;
+    let result = remote::report(&mut tx, (owner, at), body, actor).await?;
     tx.commit().await?;
     Ok(result.map(|result| refusals::json(StatusCode::OK, &result)))
 }

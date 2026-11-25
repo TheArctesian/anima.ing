@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::{PgConnection, PgPool};
+use subtle::ConstantTimeEq as _;
 use uuid::Uuid;
 
 use crate::fleet::events::AuditAction;
@@ -43,8 +44,6 @@ async fn admit_start(
     {
         return Err(Error::Refused("target_unavailable"));
     }
-    store::reserve_record(conn, KEY).await?;
-    store::reserve_record(conn, KEY).await?;
     let receipt = insert_start(conn, owner, request, at).await?;
     audit::write(
         conn,
@@ -86,7 +85,7 @@ async fn retry(
     };
     let digest =
         store::fingerprint(conn, prior.key_version, "launch", &(owner.device, request)).await?;
-    if prior.fingerprint != digest {
+    if !bool::from(prior.fingerprint.as_slice().ct_eq(digest.as_slice())) {
         return Err(Error::Refused("LAUNCH_CONFLICT"));
     }
     store::lock_existing(conn, owner.device).await?;
@@ -124,6 +123,16 @@ async fn insert_start(
     .bind(at + store::TEN_MINUTES)
     .execute(&mut *conn)
     .await?;
+    let bytes: i32 = sqlx::query_scalar(
+        "SELECT pg_column_size(ROW(account_id, launch_id, work_id, device_id, first_command,
+                                   fingerprint, key_version, deadline))
+         FROM agent_threads.launches WHERE account_id = $1 AND launch_id = $2",
+    )
+    .bind(owner.account)
+    .bind(request.launch)
+    .fetch_one(&mut *conn)
+    .await?;
+    store::reserve_record(conn, KEY, bytes).await?;
     super::commands::insert_first(conn, (owner, request.launch, first), &request.prompt, at)
         .await?;
     store::launch(conn, owner.account, request.launch)

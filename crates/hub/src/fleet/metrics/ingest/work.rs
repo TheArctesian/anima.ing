@@ -33,7 +33,7 @@ use super::{
     turns::Turn,
 };
 use crate::{
-    fleet::events::ClientAddr,
+    fleet::events::{ClientAddr, Operator},
     ids::DeviceId,
     work::jobs::{self, Queue, Reporting},
 };
@@ -165,7 +165,7 @@ async fn reported(
         device,
         token: asked.token,
     };
-    match threads::report(state, holder, &asked.body).await {
+    match threads::report(state, holder, &asked.body, (Operator::hub(), client)).await {
         Ok(Some(response)) => return Ok(response),
         Ok(None) => {}
         Err(error) => return Ok(remote_threads::response(&error)),

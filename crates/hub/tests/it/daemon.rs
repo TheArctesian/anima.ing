@@ -8,6 +8,7 @@ pub(crate) mod harness;
 mod last_batch;
 mod push;
 mod refusals;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 mod remote_threads;
 mod renewal;
 mod revocation;

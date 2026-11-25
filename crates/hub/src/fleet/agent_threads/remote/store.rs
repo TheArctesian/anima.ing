@@ -136,12 +136,18 @@ pub(super) async fn fingerprint(
     Ok(mac.sign().as_ref().to_vec())
 }
 
-pub(super) async fn reserve_record(conn: &mut PgConnection, key: i16) -> Result<(), Error> {
+pub(super) async fn reserve_record(
+    conn: &mut PgConnection,
+    key: i16,
+    bytes: i32,
+) -> Result<(), Error> {
     let updated = sqlx::query(
-        "UPDATE agent_threads.fingerprint_keys SET records = records + 1
-         WHERE version = $1 AND records < 100000",
+        "UPDATE agent_threads.fingerprint_keys
+         SET records = records + 1, receipt_bytes = receipt_bytes + $2
+         WHERE version = $1 AND records < 100000 AND receipt_bytes + $2 <= receipt_byte_cap",
     )
     .bind(key)
+    .bind(i64::from(bytes))
     .execute(conn)
     .await?;
     if updated.rows_affected() == 0 {

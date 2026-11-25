@@ -1,15 +1,18 @@
 use chrono::{DateTime, Utc};
+use serde_json::json;
 use sqlx::PgConnection;
 use uuid::Uuid;
 
-use super::super::{Error, Evidence, EvidenceOutcome, Launch, LaunchReceipt, Owner, store};
+use super::super::{
+    Actor, Error, Evidence, EvidenceOutcome, Launch, LaunchReceipt, Owner, audit, store,
+};
 use super::original;
 
 pub(in crate::fleet) async fn evidence(
     conn: &mut PgConnection,
-    owner: Owner,
+    (owner, at): (Owner, DateTime<Utc>),
     request: Evidence,
-    at: DateTime<Utc>,
+    actor: Actor,
 ) -> Result<LaunchReceipt, Error> {
     let row = original(conn, owner, request.claim).await?;
     let outcome = match (request.outcome, request.thread, request.cause.as_deref()) {
@@ -25,7 +28,30 @@ pub(in crate::fleet) async fn evidence(
         _ => return Err(Error::malformed()),
     };
     write(conn, (owner, &row), outcome, request.publication.is_some()).await?;
-    reconcile(conn, owner, row.id, at).await
+    let receipt = reconcile(conn, owner, row.id, at).await?;
+    if row.evidence.is_none() || (request.publication.is_some() && !row.withdrawn) {
+        result_audit(conn, (owner, at), actor, &receipt).await?;
+    }
+    Ok(receipt)
+}
+
+pub(super) async fn result_audit(
+    conn: &mut PgConnection,
+    (owner, at): (Owner, DateTime<Utc>),
+    actor: Actor,
+    receipt: &LaunchReceipt,
+) -> Result<(), Error> {
+    audit::write(
+        conn,
+        (owner, at),
+        actor,
+        (
+            crate::fleet::events::AuditAction::Update,
+            json!({"launch": receipt.launch, "thread": receipt.thread, "actor": "daemon",
+               "action": "launch_result", "outcome": receipt.state, "cause": receipt.cause}),
+        ),
+    )
+    .await
 }
 
 pub(super) fn require_runner(row: &Launch, thread: Uuid) -> Result<(), Error> {
@@ -69,7 +95,7 @@ pub(super) async fn write(
         .await?;
         close_waiting(conn, (owner, row.id), "sharing_withdrawn").await?;
     } else if outcome != "created" {
-        store::close_first(conn, (owner, row, outcome)).await?;
+        store::close_first(conn, (owner, row, row.refusal_cause(outcome))).await?;
     }
     Ok(())
 }

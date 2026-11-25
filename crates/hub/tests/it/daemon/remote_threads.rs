@@ -153,6 +153,21 @@ async fn exact_retry_survives_capacity_and_summary_alone_never_binds(pool: PgPoo
         .unwrap();
     assert_eq!(work["parameters"]["account"], owner.to_string());
 
+    sqlx::query(
+        "UPDATE agent_threads.launches SET issued_tick = issued_tick - 11000000000
+                 WHERE launch_id = $1::uuid",
+    )
+    .bind(LAUNCH)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let (status, expired) = post(&hub, &token, "/work/v1/thread-dispatch", dispatch(&work)).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(
+        expired,
+        json!({"error": "NOT_HOLDER", "authorization": grant["authorization"]})
+    );
+
     let mut batch = cpu_batch(PVE_01, now, 4.0);
     batch["agentThreads"] = json!({"count": 1, "countRevision": 1, "summaries": [{
         "runnerId": RUNNER, "program": "codex", "state": "idle", "title": "Synthetic",
@@ -186,6 +201,52 @@ async fn exact_retry_survives_capacity_and_summary_alone_never_binds(pool: PgPoo
     assert_eq!(status, StatusCode::OK, "{confirmed}");
     assert_eq!(confirmed["state"], "started");
     assert_eq!(confirmed["thread"], *thread);
+    settle_first(&hub, &token, (&original, thread), owner).await;
+}
+
+async fn settle_first(
+    hub: &Daemons,
+    token: &str,
+    (original, thread): (&Value, &Value),
+    owner: uuid::Uuid,
+) {
+    let control = json!({"device": PVE_01, "launch": LAUNCH, "runner": RUNNER,
+        "offer": {"process": "process-1", "revision": 7, "actions": ["prompt"],
+                  "stopTargets": [], "requests": []}});
+    assert_eq!(
+        post(hub, token, "/work/v1/thread-control", control).await.0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        reopen(hub, thread).await["data"]["agentThreadControl"]["offer"]["revision"],
+        7
+    );
+    let first = &original["data"]["startAgentThread"]["firstCommand"];
+    let (status, delivered) =
+        post(hub, token, "/work/v1/commands", json!({"device": PVE_01})).await;
+    assert_eq!(status, StatusCode::OK, "{delivered}");
+    assert_eq!(
+        delivered["commands"],
+        json!([{
+            "id": first, "account": owner, "device": PVE_01, "launch": LAUNCH, "thread": RUNNER,
+            "payload": {"kind": "prompt", "prompt": "Synthetic first prompt"}
+        }])
+    );
+    let receipt = json!({"id": first, "outcome": "recorded", "cause": null});
+    assert_eq!(
+        post(hub, token, "/work/v1/command-result", receipt).await.0,
+        StatusCode::OK
+    );
+    let settled = hub
+        .operate(
+            "query($id: ID!) { agentThreadCommand(command: $id) { state cause } }",
+            json!({"id": first}),
+        )
+        .await;
+    assert_eq!(
+        settled["data"]["agentThreadCommand"],
+        json!({"state": "recorded", "cause": null})
+    );
 }
 
 async fn fill(hub: &Daemons) {

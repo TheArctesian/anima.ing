@@ -16,7 +16,7 @@ use super::{
 };
 
 const LEASE: TimeDelta = TimeDelta::seconds(90);
-const MAX_ATTEMPT: TimeDelta = TimeDelta::seconds(120);
+pub(super) const MAX_ATTEMPT: TimeDelta = TimeDelta::seconds(120);
 
 pub(in crate::fleet) async fn replace_targets(
     conn: &mut PgConnection,

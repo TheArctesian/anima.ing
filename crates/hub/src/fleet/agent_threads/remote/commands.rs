@@ -3,6 +3,7 @@ mod delivery;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgConnection, PgPool};
+use subtle::ConstantTimeEq as _;
 use uuid::Uuid;
 
 pub(in crate::fleet) use delivery::{poll, result};
@@ -44,17 +45,21 @@ impl Payload {
     }
 
     fn validate(&self) -> Result<(), Error> {
-        let valid = match self {
-            Self::Prompt { prompt } => valid_prompt(prompt),
-            Self::Answer { .. } => serde_json::to_vec(self)?.len() <= CONTENT_LIMIT,
-            Self::Stop { .. } => true,
-        };
-        valid.then_some(()).ok_or(Error::Refused("invalid_answer"))
+        match self {
+            Self::Prompt { prompt } if !valid_prompt(prompt) => Err(Error::malformed()),
+            Self::Answer { .. } if serde_json::to_vec(self)?.len() > CONTENT_LIMIT => {
+                Err(Error::Refused("invalid_answer"))
+            }
+            _ => Ok(()),
+        }
     }
 }
 
 pub(super) fn valid_prompt(prompt: &str) -> bool {
-    !prompt.trim().is_empty() && prompt.len() <= CONTENT_LIMIT && !prompt.contains('\0')
+    !prompt.trim().is_empty()
+        && prompt.len() <= CONTENT_LIMIT
+        && !prompt.contains('\0')
+        && serde_json::to_vec(prompt).is_ok_and(|encoded| encoded.len() <= CONTENT_LIMIT)
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -110,7 +115,7 @@ async fn retry(
         return Ok(None);
     };
     let digest = store::fingerprint(conn, key, "command", &(thread, payload)).await?;
-    if fingerprint != digest {
+    if !bool::from(fingerprint.as_slice().ct_eq(digest.as_slice())) {
         return Err(Error::Refused("COMMAND_CONFLICT"));
     }
     store::lock_device(conn, device).await?;
@@ -140,7 +145,6 @@ async fn admit_new(
         matches!(payload, Payload::Prompt { .. }),
     )
     .await?;
-    store::reserve_record(conn, KEY).await?;
     let fingerprint = store::fingerprint(conn, KEY, "command", &(thread, payload)).await?;
     insert(conn, (owner, row.id, command, at), payload, fingerprint).await?;
     receipt(conn, owner.account, command).await
@@ -211,11 +215,13 @@ async fn insert(
     payload: &Payload,
     fingerprint: Vec<u8>,
 ) -> Result<(), Error> {
-    sqlx::query(
+    let bytes: i32 = sqlx::query_scalar(
         "INSERT INTO agent_threads.commands (
              account_id, command_id, device_id, launch_id, kind, payload, fingerprint,
              key_version, state, created_at, deadline
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'waiting',$9,$10)",
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'waiting',$9,$10)
+          RETURNING pg_column_size(ROW(account_id, command_id, device_id, launch_id,
+                                      fingerprint, key_version, kind, deadline))",
     )
     .bind(owner.account)
     .bind(command)
@@ -227,9 +233,9 @@ async fn insert(
     .bind(KEY)
     .bind(at)
     .bind(at + store::TEN_MINUTES)
-    .execute(conn)
+    .fetch_one(&mut *conn)
     .await?;
-    Ok(())
+    store::reserve_record(conn, KEY, bytes).await
 }
 
 pub(in crate::fleet) async fn command_receipt(

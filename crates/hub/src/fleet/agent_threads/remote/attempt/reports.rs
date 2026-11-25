@@ -4,7 +4,7 @@ use serde::Deserialize;
 use sqlx::PgConnection;
 use uuid::Uuid;
 
-use super::super::{Error, Launch, Owner};
+use super::super::{Actor, Error, Launch, Owner};
 use super::{LEASE, evidence, live_lease};
 
 #[derive(Deserialize)]
@@ -26,9 +26,9 @@ struct ThreadReport {
 
 pub(in crate::fleet) async fn report(
     conn: &mut PgConnection,
-    owner: Owner,
+    (owner, at): (Owner, DateTime<Utc>),
     body: &serde_json::Value,
-    at: DateTime<Utc>,
+    actor: Actor,
 ) -> Result<Option<serde_json::Value>, Error> {
     let request: ThreadReport =
         serde_json::from_value(body.clone()).map_err(|_| Error::malformed())?;
@@ -64,7 +64,10 @@ pub(in crate::fleet) async fn report(
     .execute(&mut *conn)
     .await?;
     if request.state.is_final() {
-        evidence::reconcile(conn, owner, row.id, at).await?;
+        let receipt = evidence::reconcile(conn, owner, row.id, at).await?;
+        if row.evidence.is_none() {
+            evidence::result_audit(conn, (owner, at), actor, &receipt).await?;
+        }
     }
     Ok(Some(
         serde_json::json!({ "lease": {"until": lease.unwrap_or(at)}, "logEnd": 0 }),

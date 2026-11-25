@@ -177,7 +177,12 @@ impl Launch {
             proven
         } else if self.claimed_at.is_none() {
             "queued"
-        } else if self.lease_end.is_some_and(|end| end > now) && now < self.deadline {
+        } else if self.lease_end.is_some_and(|end| end > now)
+            && self
+                .claimed_at
+                .is_some_and(|claim| claim + super::attempt::MAX_ATTEMPT > now)
+            && now < self.deadline
+        {
             "claimed"
         } else {
             "reconciling"
@@ -192,17 +197,9 @@ impl Launch {
             ("bound", None, Some(thread))
         } else {
             match evidence {
-                Some(code) if code != "started" => (
-                    "unavailable",
-                    Some(
-                        if self.admission_cause.as_deref() == Some("target_unavailable") {
-                            "target_unavailable"
-                        } else {
-                            code
-                        },
-                    ),
-                    None,
-                ),
+                Some(code) if code != "started" => {
+                    ("unavailable", Some(self.refusal_cause(code)), None)
+                }
                 _ => ("waiting", None, None),
             }
         };
@@ -213,6 +210,14 @@ impl Launch {
             thread,
             binding,
             first_command: self.first_command,
+        }
+    }
+    pub(super) fn refusal_cause<'a>(&self, otherwise: &'a str) -> &'a str {
+        match self.admission_cause.as_deref().or(self.denial.as_deref()) {
+            Some("target_unavailable") => "target_unavailable",
+            Some("WORK_OFF") => "WORK_OFF",
+            Some("LAUNCH_CONFLICT") => "LAUNCH_CONFLICT",
+            _ => otherwise,
         }
     }
 }

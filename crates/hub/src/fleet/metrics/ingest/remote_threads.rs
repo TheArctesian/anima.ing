@@ -179,8 +179,8 @@ endpoint!(dispatch, 4096, |conn, owner, body, at, _client| {
     }
 });
 
-endpoint!(evidence, 4096, |conn, owner, body, at, _client| {
-    let receipt = remote::evidence(conn, owner, body, at).await?;
+endpoint!(evidence, 4096, |conn, owner, body, at, client| {
+    let receipt = remote::evidence(conn, (owner, at), body, (Operator::hub(), client)).await?;
     refusals::json(StatusCode::OK, &receipt)
 });
 

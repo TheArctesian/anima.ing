@@ -11,7 +11,9 @@ create table agent_threads.start_offers (
 create table agent_threads.fingerprint_keys (
     version smallint primary key,
     key bytea not null check (octet_length(key) = 32),
-    records integer not null default 0 check (records between 0 and 100000)
+    records integer not null default 0 check (records between 0 and 100000),
+    receipt_bytes bigint not null default 0 check (receipt_bytes >= 0),
+    receipt_byte_cap bigint not null default 67108864 check (receipt_byte_cap > 0)
 );
 
 insert into agent_threads.fingerprint_keys (version, key)
