@@ -185,3 +185,6 @@ fn refuse(back: &Caller, why: read::Refusal) {
         });
     });
 }
+
+#[cfg(all(test, target_os = "linux", target_pointer_width = "64"))]
+mod tests;

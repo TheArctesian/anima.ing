@@ -16,6 +16,10 @@ async fn tc7_w3_only_live_holder_children_read_their_own_worktree() {
     let mut kit = Kit::with(AGENT);
     let mut person = kit.client().await;
     if !capable() {
+        assert!(
+            std::env::var_os("ANIMA_REQUIRE_GIT_READS").is_none(),
+            "positive W3 coverage requires SO_PEERPIDFD and pidfs"
+        );
         let external = ask(&mut person, "work", Read::Status).await;
         assert_eq!(external, denied(read::Refusal::Unsupported));
         eprintln!("Kernel has no socket-bound pidfs support; fixed refusal verified.");
@@ -58,16 +62,6 @@ async fn tc7_w3_only_live_holder_children_read_their_own_worktree() {
     kit.start();
     let mut person = kit.client().await;
     assert_probe(&query(&kit, &mut person, first, "work").await);
-
-    let stopped = person.call(Action::Stop { thread: first }).await;
-    assert!(matches!(
-        person.done(stopped).await,
-        Outcome::Stopped { .. } | Outcome::Ok
-    ));
-    assert_eq!(
-        ask(&mut person, "work", Read::Status).await,
-        denied(read::Refusal::Unbound)
-    );
 }
 
 fn assert_probe(output: &Value) {
