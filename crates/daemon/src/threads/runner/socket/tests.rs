@@ -18,12 +18,9 @@ async fn tc7_w3_a_closed_client_cannot_enqueue_a_delayed_reply() {
         .expect("a pending call");
     assert_eq!(pending.client.with_open(|| 1), Some(1));
     drop(client);
-    assert!(
-        tokio::time::timeout(Duration::from_secs(8), calls.recv())
-            .await
-            .expect("the socket reader closed")
-            .is_none()
-    );
+    tokio::time::timeout(Duration::from_secs(8), pending.client.let_go.notified())
+        .await
+        .expect("the socket reader observed EOF");
     assert!(
         pending
             .client
