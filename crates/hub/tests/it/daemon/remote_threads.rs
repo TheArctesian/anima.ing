@@ -220,8 +220,8 @@ async fn settle_first(
         StatusCode::NO_CONTENT
     );
     assert_eq!(
-        reopen(hub, thread).await["data"]["agentThreadControl"]["offer"]["revision"],
-        7
+        reopen(hub, thread).await["data"]["agentThreadControl"]["offer"]["revision"].as_f64(),
+        Some(7.0)
     );
     let first = &original["data"]["startAgentThread"]["firstCommand"];
     let (status, delivered) =
