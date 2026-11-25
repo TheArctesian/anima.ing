@@ -128,7 +128,6 @@ async fn missing_legacy_snapshot_data_prevents_release(pack_index: bool) {
     let bench = Bench::new().await;
     let folder = bench.worktree().await;
     let (kept, lfs) = saved_lfs_snapshot(&bench).await;
-    let own = own_of(&bench);
     let damaged = if pack_index {
         pack_index_at(&bench)
     } else {
@@ -139,16 +138,25 @@ async fn missing_legacy_snapshot_data_prevents_release(pack_index: bool) {
     }
     let removed = std::fs::read(&damaged).unwrap();
     std::fs::remove_file(&damaged).unwrap();
+    assert_legacy_release_refused(&bench).await;
+    assert_eq!(folder.is_dir(), pack_index);
+    std::fs::write(damaged, removed).unwrap();
+    assert_legacy_release_replayed(&bench, &kept).await;
+}
+
+async fn assert_legacy_release_refused(bench: &Bench) {
     let result = bench.call(PERSON, GitAction::Remove).await;
     assert!(matches!(result, GitOutcome::Refused { .. }), "{result:?}");
+    let own = own_of(bench);
     assert!(own.join("anima-saved").is_file());
     assert!(own.with_extension("json").is_file());
     assert!(!own.with_extension("removed").exists());
-    assert_eq!(folder.is_dir(), pack_index);
-    std::fs::write(damaged, removed).unwrap();
+}
+
+async fn assert_legacy_release_replayed(bench: &Bench, kept: &str) {
     let retry = bench.call(PERSON, GitAction::Remove).await;
     assert!(
-        matches!(&retry, GitOutcome::Removed { kept: Some(name), .. } if name == &kept),
+        matches!(&retry, GitOutcome::Removed { kept: Some(name), .. } if name == kept),
         "{retry:?}"
     );
     assert_eq!(bench.call(PERSON, GitAction::Remove).await, retry);
