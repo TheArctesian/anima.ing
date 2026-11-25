@@ -65,6 +65,8 @@ zeroize.workspace = true
 # The macOS Keychain holds the daemon token (MET-013). Linux uses a 0600 file and never builds this.
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring.workspace = true
+# Inspect effective recovery permissions on the pinned directory descriptor.
+calcifer-macos-acl = "=0.1.0"
 
 [dev-dependencies]
 anima-daemon = { path = ".", features = ["test-person"] }
@@ -93,6 +95,10 @@ nix = { version = "0.29", default-features = false, features = ["fs", "time"] }
 hyper = { version = "1", features = ["client", "http1"] }
 hyper-util.workspace = true
 http-body-util.workspace = true
+
+[target.'cfg(all(target_os = "linux", target_pointer_width = "64"))'.dependencies]
+nix-peer = { package = "nix", version = "0.31", default-features = false, features = ["socket"] }
+rustix = { version = "1.1", features = ["event"] }
 
 [target.'cfg(windows)'.dev-dependencies]
 uds_windows = "1.2"

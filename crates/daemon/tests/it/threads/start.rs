@@ -115,7 +115,11 @@ async fn thr_113_no_line_is_lost_or_doubled_while_the_daemon_is_away_and_the_lim
 async fn thr_113_a_daemon_of_a_different_version_gets_no_new_start() {
     let holder = Holder::start(0);
     let mut link = holder.link().await;
-    link.send(Action::Hello { version: 999 }).await;
+    link.send(Action::Hello {
+        version: 999,
+        git_reads: false,
+    })
+    .await;
     let id = link.send(start("new", "/bin/cat", &[])).await;
     assert_eq!(
         link.answer(id).await,

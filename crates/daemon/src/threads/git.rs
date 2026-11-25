@@ -19,6 +19,7 @@ pub mod changes;
 pub mod checkpoint;
 pub mod commit;
 pub mod place;
+mod read;
 pub use place::wired;
 pub mod project;
 pub mod push;
@@ -112,6 +113,7 @@ pub struct Engine {
 impl Engine {
     #[must_use]
     pub fn new(git: Git, home: Home) -> Self {
+        let git = git.with_records(home.records());
         Self {
             git,
             home,
@@ -164,6 +166,7 @@ impl Engine {
         self.closed()?;
         let _alone = self.alone(target.thread, target.repository).await;
         let _index = self.index(target).await;
+        self.closed()?;
         let worktree = self.home.worktree(target.thread, target.repository)?;
         let git = self.git.for_worktree(&worktree).await?;
         checkpoint::capture(&git, &worktree, turn).await?;
@@ -194,6 +197,9 @@ impl Engine {
         // Each use of the index of the runner waits for the one before it; a push lets go of
         // it before it speaks to the remote, so that the page can read while a push runs.
         let index = self.index(target).await;
+        if let Err(why) = self.closed() {
+            return GitOutcome::Refused { why };
+        }
         let done = match self.home.worktree(target.thread, target.repository) {
             Ok(worktree) if own_thread => match action {
                 GitAction::Push {
@@ -208,9 +214,7 @@ impl Engine {
             // A worktree that is not whole is still removed, so that it holds nothing.
             Err(_) if own_thread && action == GitAction::Remove && !caller.running => {
                 let of = (target.thread, target.repository);
-                worktree::remove_broken(&self.git, &self.home, of)
-                    .await
-                    .map(|kept| GitOutcome::Removed { kept })
+                worktree::remove_broken(&self.git, &self.home, of).await
             }
             Err(bad) => Err(bad.into()),
         };
@@ -239,7 +243,7 @@ impl Engine {
         trust::accepted(worktree, listed, hooks.as_ref())?;
         let ready = push::ready(git, worktree, listed, default_branch_allowed).await?;
         drop(index);
-        push::send(git, worktree, ready, hooks.as_ref()).await
+        push::send(git, worktree, (ready, listed), hooks.as_ref()).await
     }
 
     async fn act(
@@ -299,9 +303,7 @@ impl Engine {
             GitAction::Forget { before } => GitOutcome::Checkpoints {
                 checkpoints: checkpoint::forget_before(git, worktree, before).await?,
             },
-            GitAction::Remove => GitOutcome::Removed {
-                kept: Some(worktree::remove(&self.git, &self.home, worktree).await?),
-            },
+            GitAction::Remove => worktree::remove(&self.git, &self.home, worktree).await?,
             GitAction::Trust { shown } => {
                 self.accepting(caller, (git, worktree), Some(&shown))
                     .await?

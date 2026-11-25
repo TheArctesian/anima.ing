@@ -5133,14 +5133,29 @@ hub and OS versions. This is not included in the already published 2026112301363
    Expected: a connection failure, never a false claim that the server was installed. Installing/enabling host SSH on arbitrary operating systems is not implemented by this connection-settings change.
 ### HT-163: the Git actions of a thread, when a person can reach them (TC7, steps W1 to W4)
 
-Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` at `56e0132c6` and `6791fb123`). Nothing reaches it yet: this check cannot start before step W2 (the command) or W4 (the page) of Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md). The tests use made repositories in temporary folders, a launcher that stands in, and no remote on the network. They do not cover: a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.
+Built: the Git engine, the runner calls (W1), and the local command (W2). The tests use made repositories in temporary folders and a launcher that stands in. The command tests use a made runner socket. They do not cover: the installed runner and command together, a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.
+
+Synthetic upgrade tests cover interrupted W1 removal with a partial or missing worktree. Recovery metadata and rename parents are synced before a completed receipt is released; source review and normal filesystem tests do not simulate power loss or establish storage-device persistence guarantees. Crash recovery remains an installed-system check.
+
+To check W2, start a thread in a worktree as in HT-169. Use the command prefix `anima code git --thread <thread ID> --repository <worktree folder name>`.
+
+1. Run `status`, then `checkpoints` and `changes` after the first turn.
+   Expected: the thread's branch and the files that changed. Checkpoints show turn 0 and the completed turn. Changes show a patch and a reviewed snapshot.
+2. If status lists Git settings to accept, read them and run `trust --shown <acceptance digest>`. Run `commit -m "Check the CLI" --reviewed <reviewed snapshot>`.
+   Expected: the command prints the commit. In the worktree, `git show HEAD` shows the changes from the snapshot.
+3. On a disposable worktree, run `revert 0` and confirm.
+   Expected: revert restores the files at turn 0 and shows an undo ref.
+4. Put a note in the worktree and add its name to `.gitignore`. Run `remove` and confirm.
+   Expected: the active worktree path goes away. The command prints the saved ref and the recovery directory. The ignored note is in the recovery directory and is absent from the saved Git ref. Run `remove` again with the same thread and repository. It returns the same original and recovery paths.
+
+For the remaining checks, use the page when W4 is available. The remote query and the hook and LFS notices also require the separate remote step in Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md).
 
 1. In a repository with a `pre-commit` hook, commit from a thread in Accept edits, then from a thread in Full access.
    Expected: the first commit runs no hook and says in a short line that the hooks of the repository were skipped; the second runs the hook.
 2. Push a branch of a thread through Anima to a private remote. Then push one more commit with `git push` in a terminal, and look at the status of the thread.
    Expected: no prompt for credentials that Anima shows; after the question to the remote the status says "pushed" for the commit that the remote has, however it came there; the upstream is not written into the settings of the repository.
 3. Remove a worktree that has files that are not committed, with one large file tracked by Git LFS.
-   Expected: the removal names the ref that keeps the work; `git show` of that ref in the repository has each file; the large file can be checked out.
+   Expected: the removal names the saved ref and the directory with the complete worktree. The large file remains in the retained directory and can be checked out from the saved ref.
 4. Start a thread in `/Users/Shared`, and one in the home folder.
    Expected: the first is refused with words that say why; the second starts with the warning of THR-041.
 5. Open a project that was made with `git clone --shared`, and a project on Windows.
@@ -5148,7 +5163,7 @@ Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` 
 6. Look at the folder of the records (`/Users/Shared/anima-<uid>` on a Mac) as a different user of the same Mac.
    Expected: that user cannot list it or read it.
 
-Result: Open. Not started: the steps W1 to W4 are not built.
+Result: Open.
 ### HT-164-bootstrap: One-action local SSH setup (OS3-R12)
 
 Built on `access/ssh-bootstrap`. The shared helper is called by the desktop SSH switch and `anima link enable-ssh`. Native macOS and Windows installation and system authorization dialogs have not been verified. The operator waived the Mac-before-push check for this change.

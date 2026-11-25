@@ -3,6 +3,8 @@
 //!
 //! Pure: only the frames. The runner does the work (`anima-daemon`, `threads::git`).
 
+pub mod read;
+
 use serde::{Deserialize, Serialize};
 
 /// What a client asks about the worktree of one repository of a thread.
@@ -43,7 +45,7 @@ pub enum GitAction {
     /// Checks the branch and gives the page of the forge where the person opens the pull
     /// request. For the person only.
     PullRequest,
-    /// Saves the work to a private ref and removes the worktree. For the person only.
+    /// Saves a private ref and retires the original directory. For the person only.
     Remove,
     /// Removes the checkpoints of the turns before `before`, to free the disk that they use.
     /// The files of the worktree and the later checkpoints stay. For the person only.
@@ -122,6 +124,12 @@ pub enum GitOutcome {
     PullRequest(PullRequestPage),
     Removed {
         kept: Option<String>,
+        /// The complete retained directory, when the runner supports retirement.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        recovery: Option<std::path::PathBuf>,
+        /// The former worktree path, needed to resolve relative nested Git links.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        original: Option<std::path::PathBuf>,
     },
     Trusted,
     Refused {
@@ -244,10 +252,10 @@ pub struct Changes {
     pub files: Vec<ChangedFile>,
     pub additions: u32,
     pub deletions: u32,
-    /// The patches were over the limit: the counts are whole, the patches are left out.
+    /// The complete patches could not be shown. The counts are still available.
     pub truncated: bool,
-    /// For [`Scope::Uncommitted`]: the snapshot of the files that these changes show, which a
-    /// [`GitAction::Commit`] names as `reviewed`.
+    /// For a person's complete, unfiltered [`Scope::Uncommitted`] view: the snapshot
+    /// that [`GitAction::Commit`] names as `reviewed`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub snapshot: Option<String>,
 }

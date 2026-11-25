@@ -41,6 +41,7 @@ async fn h10_a_newer_connection_takes_the_place_of_the_older_and_the_older_stops
     let id = newer
         .send(Action::Hello {
             version: anima_daemon::threads::wire::VERSION,
+            git_reads: false,
         })
         .await;
     let events = newer
@@ -71,6 +72,7 @@ async fn h10_a_start_sent_again_on_a_new_connection_is_done_one_time() {
     let id = second
         .send(Action::Hello {
             version: anima_daemon::threads::wire::VERSION,
+            git_reads: false,
         })
         .await;
     let events = second

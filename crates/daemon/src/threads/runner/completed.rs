@@ -3,20 +3,23 @@
 use agent_threads::drive::Program;
 use tokio::sync::mpsc;
 
-use super::{Runner, models, projects};
+use super::{Runner, git_reads, models, projects};
 
 pub(super) enum Completed {
     Models(Program, models::Listed),
     Project(projects::Created),
+    GitRead(git_reads::Completed),
 }
 
 pub(super) async fn next(
     models: &mut mpsc::Receiver<(Program, models::Listed)>,
     projects: &mut mpsc::Receiver<projects::Created>,
+    git_reads: &mut mpsc::Receiver<git_reads::Completed>,
 ) -> Completed {
     tokio::select! {
         Some((program, listed)) = models.recv() => Completed::Models(program, listed),
         Some(created) = projects.recv() => Completed::Project(created),
+        Some(read) = git_reads.recv() => Completed::GitRead(read),
     }
 }
 
@@ -25,6 +28,7 @@ impl Runner {
         match result {
             Completed::Models(program, listed) => self.models_asked(program, listed),
             Completed::Project(created) => self.project_created(created),
+            Completed::GitRead(read) => self.git_read_completed(read),
         }
     }
 }

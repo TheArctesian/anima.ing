@@ -3,8 +3,6 @@
 //!
 //! [`read`] is pure; [`between`] runs `git diff` with no external diff and no text conversion.
 
-use std::collections::HashMap;
-
 use agent_threads::git::{ChangeKind, ChangedFile, Changes, GitRefusal, Scope};
 
 use super::checkpoint;
@@ -57,30 +55,45 @@ pub async fn between(
         git.output(Run::new(worktree.folder(), args))
     };
     let names = diff(&["--name-status", "-z"]).await?;
-    let counts = diff(&["--numstat", "-z"]).await?;
-    if look == Look::Counts {
-        let mut listed = read(&names, &counts, None);
-        listed.truncated = false;
-        return Ok(listed);
+    if let Look::Patches { .. } = look {
+        // Git emits the NUL-delimited stats and the patch sections in the same file-pair
+        // order. The paths in patch headers use Git quoting, so use the stats as their keys.
+        match diff(&["--numstat", "-z", "--patch"]).await {
+            Ok(output) => {
+                if let Some((counts, patch)) = patch_listing(&output) {
+                    return Ok(read(&names, counts, Some(patch)));
+                }
+            }
+            Err(GitError::TooLarge) => {}
+            Err(other) => return Err(other),
+        }
     }
-    let patch = match diff(&["--patch"]).await {
-        Ok(patch) => Some(String::from_utf8_lossy(&patch).into_owned()),
-        Err(GitError::TooLarge) => None,
-        Err(other) => return Err(other),
-    };
-    Ok(read(&names, &counts, patch.as_deref()))
+    let counts = diff(&["--numstat", "-z"]).await?;
+    let mut listed = read(&names, &counts, None);
+    listed.truncated = look != Look::Counts;
+    Ok(listed)
+}
+
+/// The blank NUL after the stats ends the machine-readable part of a combined diff.
+fn patch_listing(output: &[u8]) -> Option<(&[u8], &str)> {
+    if output.is_empty() {
+        return Some((output, ""));
+    }
+    let boundary = output.windows(2).position(|pair| pair == b"\0\0")?;
+    let (counts, patch) = output.split_at(boundary + 1);
+    Some((counts, std::str::from_utf8(&patch[1..]).ok()?))
 }
 
 /// The changes of `scope`: between two checkpoints, or from the last commit to the files now.
-/// For the files of now, [`Changes::snapshot`] names the snapshot that holds them.
+/// A complete, unfiltered view of the files of now can authorize its snapshot for commit.
 ///
 /// # Errors
 /// [`GitRefusal::UnknownCheckpoint`] for a turn with no checkpoint; a failure of `git`.
-pub async fn of(
+pub(super) async fn of(
     git: &Git,
     worktree: &Worktree,
     scope: Scope,
-    ignore_whitespace: bool,
+    look: Look,
 ) -> Result<Changes, GitRefusal> {
     let turns = checkpoint::list(git, worktree).await?;
     let at = |turn: u32| {
@@ -105,10 +118,15 @@ pub async fn of(
             _ => return Err(GitRefusal::UnknownCheckpoint),
         },
     };
-    let look = Look::Patches { ignore_whitespace };
     let mut changes = between(git, worktree, (&from, &to), look).await?;
-    // A commit of the person names this snapshot: it holds what the page shows.
-    changes.snapshot = (scope == Scope::Uncommitted).then_some(to);
+    changes.snapshot = (scope == Scope::Uncommitted
+        && look
+            == (Look::Patches {
+                ignore_whitespace: false,
+            })
+        && !changes.truncated
+        && !changes.files.iter().any(|file| file.binary))
+    .then_some(to);
     Ok(changes)
 }
 
@@ -123,10 +141,11 @@ pub async fn shown(
     (scope, ignore_whitespace): (Scope, bool),
     keep: bool,
 ) -> Result<Changes, GitRefusal> {
-    let changes = of(git, worktree, scope, ignore_whitespace).await?;
-    if let (true, Some(shown)) = (keep, &changes.snapshot) {
-        let name = checkpoint::reviewed_ref(worktree.thread());
-        checkpoint::keep(git, worktree, &name, shown).await?;
+    let mut changes = of(git, worktree, scope, Look::Patches { ignore_whitespace }).await?;
+    if !keep {
+        changes.snapshot = None;
+    } else if let Some(shown) = &changes.snapshot {
+        checkpoint::keep_reviewed(git, worktree, shown).await?;
     }
     Ok(changes)
 }
@@ -135,13 +154,15 @@ pub async fn shown(
 /// list of files. `whole` (the patch of all files) is `None` when it was over the limit.
 #[must_use]
 pub fn read(names: &[u8], counts: &[u8], whole: Option<&str>) -> Changes {
-    let counts = counted(counts);
-    let mut by_file = whole.map_or_else(HashMap::new, by_path);
+    let mut counts = counted(counts).into_iter();
+    let mut complete = std::str::from_utf8(names).is_ok();
     let mut files = Vec::new();
+    let mut sections = Vec::new();
     let mut fields = names
         .split(|byte| *byte == 0)
         .map(|field| String::from_utf8_lossy(field).into_owned());
     while let Some(status) = fields.next().filter(|status| !status.is_empty()) {
+        sections.push(if status.starts_with('T') { 2 } else { 1 });
         let kind = match status.chars().next() {
             Some('A') => ChangeKind::Added,
             Some('D') => ChangeKind::Deleted,
@@ -152,9 +173,11 @@ pub fn read(names: &[u8], counts: &[u8], whole: Option<&str>) -> Changes {
             .then(|| fields.next())
             .flatten();
         let Some(path) = fields.next() else { break };
-        let (additions, deletions, binary) = counts.get(&path).copied().unwrap_or_default();
+        let stats = counts.next().filter(|(name, _)| name == &path);
+        complete &= stats.is_some();
+        let (additions, deletions, binary) = stats.map_or_default(|(_, stats)| stats);
         files.push(ChangedFile {
-            patch: by_file.remove(&path),
+            patch: None,
             path,
             old_path,
             kind,
@@ -163,18 +186,29 @@ pub fn read(names: &[u8], counts: &[u8], whole: Option<&str>) -> Changes {
             binary,
         });
     }
+    let patches = whole.and_then(patch_sections);
+    complete &= counts.next().is_none();
+    let paired =
+        patches.filter(|patches| complete && patches.len() == sections.iter().sum::<usize>());
+    let truncated = paired.is_none();
+    if let Some(patches) = paired {
+        let mut patches = patches.into_iter();
+        for (file, count) in files.iter_mut().zip(sections) {
+            file.patch = Some(patches.by_ref().take(count).collect());
+        }
+    }
     Changes {
         additions: files.iter().map(|file| file.additions).sum(),
         deletions: files.iter().map(|file| file.deletions).sum(),
         files,
-        truncated: whole.is_none(),
+        truncated,
         snapshot: None,
     }
 }
 
 /// The counts of `--numstat -z` by the new path of each file; `-` (a binary file) counts 0.
-fn counted(counts: &[u8]) -> HashMap<String, (u32, u32, bool)> {
-    let mut found = HashMap::new();
+fn counted(counts: &[u8]) -> Vec<(String, (u32, u32, bool))> {
+    let mut found = Vec::new();
     let mut fields = counts
         .split(|byte| *byte == 0)
         .map(|field| String::from_utf8_lossy(field).into_owned());
@@ -192,60 +226,38 @@ fn counted(counts: &[u8]) -> HashMap<String, (u32, u32, bool)> {
             path.to_owned()
         };
         let binary = added == "-";
-        found.insert(
+        found.push((
             path,
             (
                 added.parse().unwrap_or(0),
                 deleted.parse().unwrap_or(0),
                 binary,
             ),
-        );
+        ));
     }
     found
 }
 
-/// The patch of each file by its path: the new path, or the old one for a deleted file.
-fn by_path(patch: &str) -> HashMap<String, String> {
-    let mut found = HashMap::new();
+/// A patch section starts at an unprefixed diff header. Hunk lines carry a prefix.
+fn patch_sections(patch: &str) -> Option<Vec<&str>> {
+    if patch.is_empty() {
+        return Some(Vec::new());
+    }
     let mut starts: Vec<usize> = patch
         .match_indices("diff --git ")
         .map(|(at, _)| at)
         .filter(|at| *at == 0 || patch.as_bytes()[at - 1] == b'\n')
         .collect();
+    if starts.first() != Some(&0) {
+        return None;
+    }
     starts.push(patch.len());
-    for pair in starts.windows(2) {
-        let one = &patch[pair[0]..pair[1]];
-        if let Some(path) = path_of(one) {
-            found.insert(path, one.to_owned());
-        }
-    }
-    found
-}
-
-/// The path a patch of one file is for, from its header lines.
-fn path_of(one: &str) -> Option<String> {
-    let mut old = None;
-    for line in one.lines().skip(1) {
-        if line.starts_with("@@") {
-            break;
-        }
-        if let Some(path) = line.strip_prefix("+++ b/") {
-            return Some(path.to_owned());
-        }
-        if let Some(path) = line.strip_prefix("rename to ") {
-            return Some(path.to_owned());
-        }
-        if let Some(path) = line.strip_prefix("--- a/") {
-            old = Some(path.to_owned());
-        }
-    }
-    // A binary file or a change of mode has no `+++` line: the header names `a/x b/x`.
-    old.or_else(|| {
-        let header = one.lines().next()?.strip_prefix("diff --git a/")?;
-        let half = header.len().checked_sub(3)? / 2;
-        let (left, right) = (header.get(..half)?, header.get(half..)?);
-        (right.strip_prefix(" b/") == Some(left)).then(|| left.to_owned())
-    })
+    Some(
+        starts
+            .windows(2)
+            .map(|pair| &patch[pair[0]..pair[1]])
+            .collect(),
+    )
 }
 
 #[cfg(test)]
@@ -300,10 +312,12 @@ mod tests {
     }
 
     #[test]
-    fn patches_over_the_limit_leave_the_counts_whole() {
-        let changes = read(b"M\0a\0", b"5\t2\ta\0", None);
-        assert!(changes.truncated);
-        assert_eq!((changes.additions, changes.deletions), (5, 2));
-        assert_eq!(changes.files[0].patch, None);
+    fn missing_patches_leave_the_counts_whole() {
+        for whole in [None, Some("")] {
+            let changes = read(b"M\0a\0", b"5\t2\ta\0", whole);
+            assert!(changes.truncated);
+            assert_eq!((changes.additions, changes.deletions), (5, 2));
+            assert_eq!(changes.files[0].patch, None);
+        }
     }
 }

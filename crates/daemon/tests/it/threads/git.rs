@@ -13,6 +13,9 @@ use uuid::Uuid;
 
 use super::runner::{Client, Kit, state_is};
 
+#[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+mod agent_reads;
+
 #[tokio::test]
 async fn th116_a_git_call_is_answered_by_the_engine_of_the_runner() {
     let kit = Kit::new();

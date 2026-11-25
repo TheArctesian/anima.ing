@@ -62,11 +62,9 @@ impl Runner {
             call: Call { id, action },
             client,
             agent,
+            ..
         } = incoming;
-        let back = Caller {
-            call: id,
-            client: client.clone(),
-        };
+        let back = client.reply_to(id);
         let named = thread_of(&action);
         let answer = match self.read(&action) {
             Some(read) => read,

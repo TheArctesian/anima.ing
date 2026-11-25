@@ -1,5 +1,7 @@
 //! The lifetime of the runner socket and its event loop.
 
+use agent_threads::control::{Action, Call};
+
 use super::{Runner, RunnerError, completed, socket};
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -27,6 +29,7 @@ impl Runner {
         let mut asked = self.asks.receiver.take().expect("one serve loop");
         let mut listed = self.model_asks.receiver.take().expect("one serve loop");
         let mut made = self.asks.made.take().expect("one serve loop");
+        let mut git_reads = self.git_reads.receive.take().expect("one serve loop");
         let mut created = self
             .project_creations
             .receiver
@@ -35,14 +38,32 @@ impl Runner {
         loop {
             tokio::select! {
                 event = self.link.events.recv() => self.heard_holder(event).await,
-                Some(call) = incoming.recv() => self.call(call).await,
+                Some(call) = incoming.recv() => self.incoming(call).await,
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
-                result = completed::next(&mut listed, &mut created) => self.completed(result),
+                result = completed::next(&mut listed, &mut created, &mut git_reads) => self.completed(result),
                 Some(worktree) = made.recv() => self.worktree_made(worktree).await,
                 _ = look.tick() => self.look_around().await,
                 () = &mut stop => break,
             }
         }
         accepting.abort();
+    }
+
+    async fn incoming(&mut self, incoming: socket::Incoming) {
+        match incoming {
+            socket::Incoming {
+                call:
+                    Call {
+                        id,
+                        action: Action::GitRead(request),
+                    },
+                client,
+                git_peer,
+                ..
+            } => {
+                self.git_read(client.reply_to(id), git_peer, request);
+            }
+            other => self.call(other).await,
+        }
     }
 }
