@@ -1,4 +1,4 @@
-# K1 amendment accepted under R-NEW-th30acceptance. Compose with schema.graphql.
+# K1 amendment accepted under R-460. Compose with schema.graphql.
 # TH31 moves these definitions into the served schema with the hub and CLI operations.
 # K10 section 6.5 defines validation, exact wire tags, authorization and retries.
 extend type Query {

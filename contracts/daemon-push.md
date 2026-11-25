@@ -117,7 +117,7 @@ The hub reads at most the limit and answers 413 without reading further. A body 
 
 ## 2. Secrets
 
-R-NEW-th30acceptance permits the authenticated claims, reports, dispatch authorization, late evidence, control snapshot, command poll and result requests of [K10 Section 6.5](work-route.md#65-agent-threads-th30). Its device binding, link transport limits and pre-W7 restriction apply to all of them.
+R-460 permits the authenticated claims, reports, dispatch authorization, late evidence, control snapshot, command poll and result requests of [K10 Section 6.5](work-route.md#65-agent-threads-th30). Its device binding, link transport limits and pre-W7 restriction apply to all of them.
 
 | Value | Format | Hub keeps | Lifetime |
 | --- | --- | --- | --- |
