@@ -67,14 +67,22 @@ describe.skipIf(process.platform === "win32")("make-secrets token prompt (DNS-00
     const folder = newSecretsPath();
     const { shims, log } = sttyShim();
     const child = startMakeSecrets(folder, { shimDirectories: [shims], assumeTerminal: true });
-    for (let waited = 0; !existsSync(log) && waited < 100; waited++) await Bun.sleep(50);
-    expect(readFileSync(log, "utf8")).toContain("-echo");
-    child.kill("SIGINT");
-    expect(await child.exited).toBe(130);
-    const [first, ...rest] = readFileSync(log, "utf8").trim().split("\n");
-    expect(first).toBe("-echo");
-    expect(rest.length).toBeGreaterThan(0);
-    expect(rest.every((call) => call === "echo")).toBe(true);
-    expect(existsSync(tokenFile(folder))).toBe(false);
+    try {
+      for (let waited = 0; waited < 100; waited++) {
+        if (existsSync(log) && readFileSync(log, "utf8").includes("-echo\n")) break;
+        await Bun.sleep(50);
+      }
+      expect(readFileSync(log, "utf8")).toContain("-echo");
+      child.kill("SIGINT");
+      expect(await child.exited).toBe(130);
+      const [first, ...rest] = readFileSync(log, "utf8").trim().split("\n");
+      expect(first).toBe("-echo");
+      expect(rest.length).toBeGreaterThan(0);
+      expect(rest.every((call) => call === "echo")).toBe(true);
+      expect(existsSync(tokenFile(folder))).toBe(false);
+    } finally {
+      if (child.exitCode === null) child.kill("SIGKILL");
+      await child.exited;
+    }
   });
 });

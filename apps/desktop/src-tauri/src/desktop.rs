@@ -6,9 +6,9 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use crate::{
-    agent_runner, agent_threads, builder, cloud, command_line, daemon, hub_listener, keystore,
-    link, local_hub, mcp_agents, mcp_permissions, process_log, stay_awake, system_browser,
-    system_settings, this_machine, web_view,
+    agent_runner, agent_threads, builder, cloud, command_line, command_line_sign_in, daemon,
+    hub_listener, keystore, link, local_hub, mcp_agents, mcp_permissions, process_log, stay_awake,
+    system_browser, system_settings, this_machine, web_view,
 };
 
 /// Starts the desktop application and returns when it ends.
@@ -71,6 +71,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         builder::upload::builder_upload,
         agent_threads::agent_threads_list,
         agent_threads::agent_thread_read,
+        agent_threads::watch::agent_threads_watch,
         agent_runner::agent_runner_call,
         agent_runner::agent_runner_watch,
         agent_runner::agent_thread_notify,
@@ -105,6 +106,9 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         command_line::command_line_read,
         command_line::command_line_install,
         command_line::command_line_remove,
+        command_line_sign_in::command_line_computer,
+        command_line_sign_in::command_line_adopt,
+        command_line_sign_in::command_line_sign_out,
         system_browser::system_browser_open,
         stay_awake::stay_awake_read,
         stay_awake::stay_awake_choose,
@@ -127,6 +131,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
 fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
     app.manage(web_view::Tabs::default())
         .manage(agent_runner::Watching::default())
+        .manage(agent_threads::watch::Watching::default())
         .manage(cloud::Cloud::default())
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())
@@ -149,7 +154,12 @@ fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
 /// No build step, agent run, device link or stay-awake hold outlives the app (BLD-026,
 /// MET-019, AWK-007, S6 2.6).
 fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
+    if matches!(event, tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::Destroyed, .. } if label == web_view::MAIN)
+    {
+        app.state::<agent_threads::watch::Watching>().stop();
+    }
     if matches!(event, tauri::RunEvent::Exit) {
+        app.state::<agent_threads::watch::Watching>().stop();
         app.state::<builder::Running>().cancel();
         app.state::<daemon::Installing>().stop();
         app.state::<Arc<link::DeviceLink>>().stop();

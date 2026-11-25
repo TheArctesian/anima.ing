@@ -125,6 +125,7 @@ pub(super) const fn recorded_token(token: TokenKind) -> Option<events::TokenKind
         TokenKind::Login => Some(events::TokenKind::Login),
         TokenKind::Browser => Some(events::TokenKind::Browser),
         TokenKind::ApiKey => Some(events::TokenKind::ApiKey),
+        TokenKind::CommandLine => Some(events::TokenKind::CommandLine),
         TokenKind::Builder => None,
     }
 }

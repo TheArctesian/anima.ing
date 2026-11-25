@@ -6,6 +6,7 @@
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
+# A token of the kind command_line (R-383) may do what a login token may do, except issueCommandLineToken.
 # Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket`, `hostedBrowserSignIn` and `claimComputerEnrolment` (API-003, D-4, R-111, R-129, HMD-061, HM-T33).
 
 scalar DateTime # RFC 3339, UTC
@@ -892,6 +893,8 @@ type Storage {
 # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned).
 "A device's capabilities: today the tool inventory its daemon last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
 type DeviceCapabilities {
+  "Last reported mobile tooling; null when not reported. R-NEW-mobileinventoryread."
+  mobileTools: MobileTools
   device: Device!
   "aarch64 or x86_64."
   architecture: String!
@@ -907,6 +910,58 @@ type DeviceCapabilities {
   foundAt: DateTime!
   "The hardware values its daemon last sent; null until it sends them (CAP-001 to CAP-005, CAP-032). R-165 permits this field of the optional K8 member `hardware`."
   hardware: Hardware
+}
+
+type MobileTools {
+  receivedAt: DateTime!
+  apple: AppleMobileTools!
+  android: AndroidMobileTools!
+}
+type AppleMobileTools {
+  simulatorRuntimes: SimulatorRuntimeInventory!
+  deviceTypes: SimulatorDeviceTypeInventory!
+}
+type AndroidMobileTools {
+  sdkPackages: AndroidSdkInventory!
+  emulator: AndroidEmulatorInventory!
+}
+enum MobileInventoryState {
+  READ
+  MISSING
+  UNSUPPORTED
+  TIMED_OUT
+  EXITED
+  INVALID_OUTPUT
+  TOO_LARGE
+  UNKNOWN
+}
+type SimulatorRuntimeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorRuntime!]
+}
+type SimulatorRuntime {
+  identifier: String!
+  version: String!
+  available: Boolean!
+}
+type SimulatorDeviceTypeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorDeviceType!]
+}
+type SimulatorDeviceType {
+  identifier: String!
+}
+type AndroidSdkInventory {
+  state: MobileInventoryState!
+  entries: [AndroidSdkPackage!]
+}
+type AndroidSdkPackage {
+  path: String!
+  revision: String!
+}
+type AndroidEmulatorInventory {
+  state: MobileInventoryState!
+  version: String
 }
 
 # The device policy of a compute node (CMP-002, CAP-010 to CAP-012). Waits for a ruling: R-335.
@@ -2118,6 +2173,8 @@ enum TokenKind {
   LOGIN
   BROWSER
   API_KEY
+  "The anima program with the token that the desktop app gave it (R-383)."
+  COMMAND_LINE
 }
 
 type Event {
@@ -4125,6 +4182,8 @@ type AgentThreadSnapshot {
 }
 
 type Query {
+  commandLineSessions(offset: Int! = 0): [CommandLineSession!]!
+
   deviceOsUpdate(deviceId: ID!): JSON!
   agentThreads(device: ID, program: String, project: String, state: String, first: Int! = 50, after: String): AgentThreadPage!
   agentThread(id: ID!): AgentThreadSnapshot
@@ -4323,10 +4382,22 @@ type Query {
 }
 
 type Mutation {
+  hostedCommandLineClaim(cloudKey: String!, computer: String!): HostedDeviceInvite!
+  claimCommandLineToken(claim: String!): RemoteAuthPayload!
+
+  revokeCommandLineSession(id: ID!): Boolean!
+
+  startCommandLineSignIn(computer: String!): CommandLineSignIn!
+  pollCommandLineSignIn(deviceCode: String!): CommandLineSignInState!
+  commandLineSignIn(userCode: String!): CommandLineSignInDetails
+  approveCommandLineSignIn(userCode: String!, approve: Boolean!): Boolean!
+
   requestDeviceOsUpdate(deviceId: ID!, input: OsUpdateRequest!): Boolean!
   login(input: LoginInput!): AuthPayload!
-  "Login or browser token only (D-23, R-100)."
+  "Login or browser token only (D-23, R-100), and a command-line token (R-383). The sign-out of the desktop app's login token also ends its command-line token, with an audit entry for each (R-383, SGN-NEW-linked)."
   logout: Boolean!
+  "A token of the kind COMMAND_LINE for the anima program on computer (its name: 1 to 64 characters, no control characters), linked to the login token of this request. It acts as the person (R-383) and ends with that token: its logout, its expiry, and its deletion. A device of a hosted hub that signs in again moves it to its new login token. A new one for the same login token ends the one before. The desktop app's login token only, with no agent declaration, never an API key: FORBIDDEN for each other token. The response is no-store. Writes an audit entry without the token (LOG-005, LOG-007)."
+  issueCommandLineToken(computer: String!): AuthPayload!
 
   createSite(name: String!, subnet: Cidr!): Site!
   createDevice(input: CreateDeviceInput!): Device!
@@ -4766,4 +4837,41 @@ enum OsUpdateAction {
 input OsUpdateRequest {
   action: OsUpdateAction!
   confirmed: Boolean! = false
+}
+
+# SGN-NEW-selfhosted: short-lived approval; the resulting remote session has no expiry (OD-E32).
+type CommandLineSignIn {
+  deviceCode: String!
+  userCode: String!
+  verificationUri: String!
+  expiresAt: DateTime!
+  interval: Int!
+}
+enum CommandLineSignInStatus { WAITING SLOW_DOWN DENIED EXPIRED APPROVED }
+type CommandLineSignInState {
+  status: CommandLineSignInStatus!
+  token: String
+  interval: Int!
+}
+type CommandLineSignInDetails {
+  computer: String!
+  address: String!
+  createdAt: DateTime!
+  expiresAt: DateTime!
+}
+
+type CommandLineSession {
+  id: ID!
+  computer: String!
+  createdAt: DateTime!
+  lastUsedAt: DateTime
+  expiresAt: DateTime
+  linked: Boolean!
+  current: Boolean!
+}
+
+type RemoteAuthPayload {
+  token: String!
+  expiresAt: DateTime
+  operator: Operator!
 }

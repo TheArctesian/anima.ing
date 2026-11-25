@@ -6,6 +6,7 @@
   import { forgetHubAddress } from '$lib/desktop/address';
   import { leaveDaemonOnThisComputer } from '$lib/desktop/daemon/leave';
   import { signOut } from '$lib/access/sign-out';
+  import { signOutCommandLine } from '$lib/desktop/command-line/sign-in';
   import { clearAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
@@ -37,7 +38,14 @@
     // The daemon of a hosted hub leaves this computer first, while the token can still revoke it there (HMD-056).
     const daemon = await leaveDaemonOnThisComputer(hub);
     // `signOut` returns fixed sentences and does not throw; its own messages are shown whole, as SignOutRow shows them.
-    const kept = await signOut({ api, address: hub.address, desktop: true, clearToken: clearAccessToken, forgetCopy: forgetRecentCopy });
+    const kept = await signOut({
+      api,
+      address: hub.address,
+      desktop: true,
+      clearToken: clearAccessToken,
+      forgetCopy: forgetRecentCopy,
+      signOutCommandLine,
+    });
     if (kept === null) forgetHubAddress(localStorage, hub.address.origin);
     // A sentence of what stays keeps the page, so that it is read; the next press goes on.
     if (kept === null && daemon === null) loadClientAt(WELCOME_PATH);

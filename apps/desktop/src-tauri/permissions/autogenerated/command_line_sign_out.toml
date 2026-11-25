@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-command-line-sign-out"
+description = "Enables the command_line_sign_out command without any pre-configured scope."
+commands.allow = ["command_line_sign_out"]
+
+[[permission]]
+identifier = "deny-command-line-sign-out"
+description = "Denies the command_line_sign_out command without any pre-configured scope."
+commands.deny = ["command_line_sign_out"]

@@ -84,6 +84,10 @@ pub enum TokenKind {
     /// An enrolled builder computer's token: a bearer value, the token text alone. It always has
     /// the `builder` scope and stands for no operator (BLD-022, D-1).
     Builder,
+    /// The `anima` program's sign-in, which the desktop app asks for and gives it: a bearer
+    /// value, the token text alone. It acts as the person and ends with the app's login token
+    /// (R-383, SGN-NEW-linked).
+    CommandLine,
 }
 
 impl TokenKind {
@@ -94,6 +98,7 @@ impl TokenKind {
             Self::Browser => "browser",
             Self::ApiKey => "api_key",
             Self::Builder => "builder",
+            Self::CommandLine => "command_line",
         }
     }
 
@@ -104,6 +109,7 @@ impl TokenKind {
             "browser" => Some(Self::Browser),
             "api_key" => Some(Self::ApiKey),
             "builder" => Some(Self::Builder),
+            "command_line" => Some(Self::CommandLine),
             _ => None,
         }
     }
@@ -128,16 +134,22 @@ pub(super) enum Spelling {
 }
 
 /// Whether a token of `kind`, spelled so, may be used from `transport`: a browser token only
-/// from the cookie, a login token, a builder token and an API key only as a bearer, and only an
+/// from the cookie, a login token, a command-line token, a builder token and an API key only as
+/// a bearer, and only an
 /// API key with the `anima_` prefix. Anything else is no identity, so a browser token taken from a cookie jar is
 /// no bearer and a cookie cannot carry a key (A-3).
 pub(super) fn admitted(kind: TokenKind, spelling: Spelling, transport: Transport) -> bool {
     match (kind, transport) {
         (TokenKind::Browser, Transport::Cookie)
-        | (TokenKind::Login | TokenKind::Builder, Transport::Bearer) => spelling == Spelling::Plain,
+        | (TokenKind::Login | TokenKind::Builder | TokenKind::CommandLine, Transport::Bearer) => {
+            spelling == Spelling::Plain
+        }
         (TokenKind::ApiKey, Transport::Bearer) => spelling == Spelling::Key,
         (TokenKind::Browser, Transport::Bearer)
-        | (TokenKind::Login | TokenKind::ApiKey | TokenKind::Builder, Transport::Cookie) => false,
+        | (
+            TokenKind::Login | TokenKind::ApiKey | TokenKind::Builder | TokenKind::CommandLine,
+            Transport::Cookie,
+        ) => false,
     }
 }
 
