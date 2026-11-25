@@ -272,6 +272,7 @@ fn large_files(common: &Dir, own: &Path) -> std::io::Result<()> {
                 if !whole {
                     placed(&into, name, &path)?;
                 }
+                into.sync()?;
             }
         }
     }
@@ -287,7 +288,8 @@ fn placed(into: &Dir, name: &OsStr, from: &Path) -> std::io::Result<()> {
     let mut written = into.new_file(&partial, false)?;
     std::io::copy(&mut std::fs::File::open(from)?, &mut written)?;
     written.sync_all()?;
-    into.rename(&partial, name)
+    into.rename(&partial, name)?;
+    into.sync()
 }
 
 /// Makes the index of the worktree, the one that the `git` of the agent and of the person

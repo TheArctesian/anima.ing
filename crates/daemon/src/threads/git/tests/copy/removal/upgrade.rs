@@ -21,6 +21,27 @@ async fn interrupted_w1_removal_preserves_its_complete_ref_with_partial_or_absen
         } else {
             std::fs::remove_file(folder.join("a.txt")).unwrap();
         }
+        let obstruction = if absent {
+            let receipt = own_of(&bench).with_extension("removed");
+            std::fs::create_dir(&receipt).unwrap();
+            receipt
+        } else {
+            let lock = bench.project.join(".git").join(format!("{kept}.lock"));
+            std::fs::write(&lock, "another writer").unwrap();
+            lock
+        };
+        let refused = bench.call(PERSON, GitAction::Remove).await;
+        assert!(matches!(refused, GitOutcome::Refused { .. }), "{refused:?}");
+        assert_eq!(
+            bench.git_in(&bench.project, &["rev-parse", &kept]).await,
+            original
+        );
+        assert!(own_of(&bench).join("anima-saved").is_file());
+        if absent {
+            std::fs::remove_dir(obstruction).unwrap();
+        } else {
+            std::fs::remove_file(obstruction).unwrap();
+        }
         let outcome = bench.call(PERSON, GitAction::Remove).await;
         let GitOutcome::Removed {
             kept: Some(ref reported),

@@ -172,7 +172,23 @@ impl Completion {
                 "the original worktree or its records could not be verified",
             ));
         }
-        let kept = super::removal::legacy_saved(home, record, thread)?;
+        let prior = home
+            .read_state(&record.own.with_extension("removed"))
+            .map_err(failed)?;
+        let prior: Option<Self> = prior
+            .map(|bytes| serde_json::from_slice(&bytes))
+            .transpose()
+            .map_err(failed)?;
+        let kept = match prior {
+            Some(receipt)
+                if receipt.original == record.folder
+                    && receipt.proof.is_some()
+                    && receipt.proof == record.folder_id =>
+            {
+                receipt.kept
+            }
+            _ => super::removal::legacy_saved(home, record, thread)?,
+        };
         Self::without_copy(record, kept)
             .release(home, (thread, repository), (&record.own, Uuid::now_v7()))
             .map_err(failed)
@@ -183,7 +199,7 @@ impl Completion {
             kept,
             recovery: None,
             original: record.folder.clone(),
-            proof: None,
+            proof: record.folder_id,
         }
     }
 
@@ -197,8 +213,8 @@ impl Completion {
         if expected != own {
             return Err(io::ErrorKind::InvalidData.into());
         }
-        archive(home, own, id)?;
         write(home, &expected.with_extension("removed"), &self)?;
+        archive(home, own, id)?;
         home.release(thread, repository)?;
         Ok(self.outcome())
     }

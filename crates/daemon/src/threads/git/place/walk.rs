@@ -90,7 +90,10 @@ mod held {
         /// The folder `part` of this folder, opened or made as `make` says.
         fn step(&self, part: &OsStr, make: Make) -> io::Result<Option<Self>> {
             match openat(&self.0, part, FOLDER, Mode::empty()) {
-                Ok(next) => return Ok(Some(Self(next))),
+                Ok(next) => {
+                    self.sync()?;
+                    return Ok(Some(Self(next)));
+                }
                 // Nothing, a link or a file at the name: no folder. Each other failure (no
                 // right to open it) is a failure: what is below a folder that is there and
                 // is not read would be taken as gone.

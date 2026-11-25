@@ -119,6 +119,7 @@ pub(super) fn legacy_saved(
         });
     }
     // Re-publish the verified ref with durable directory metadata before a receipt.
-    refs::own_put(&record.common_dir, &kept, saved.unwrap_or_default())?;
+    let saved = saved.unwrap_or_default();
+    refs::put(&record.common_dir, &kept, saved, refs::Was::At(saved))?;
     Ok(Some(kept))
 }
