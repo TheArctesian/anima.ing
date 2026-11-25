@@ -74,8 +74,7 @@ impl Remote {
     pub(super) fn disconnect(&mut self) {
         self.connection = self.connection.wrapping_add(1);
         self.active = None;
-        self.claiming = false;
-        self.polling = false;
+        // The old HTTP calls retain their slots until their completion events arrive.
         self.reserving = false;
         self.holder = Holder::Unknown;
         self.live.clear();

@@ -45,9 +45,10 @@ impl Runner {
 
     pub(in crate::threads::runner) async fn remote_event(&mut self, event: Event) {
         match event {
-            Event::Claim { connection, result } if connection == self.remote.connection => {
+            Event::Claim { connection, result } => {
                 self.remote.claiming = false;
-                if let Some((enrollment, claim)) = result
+                if connection == self.remote.connection
+                    && let Some((enrollment, claim)) = result
                     && self.remote.holder == super::Holder::Ready
                     && !self.remote.busy()
                 {
@@ -60,8 +61,12 @@ impl Runner {
                 connection,
                 enrollment,
                 result,
-            } if connection == self.remote.connection => {
+            } => {
                 self.remote.polling = false;
+                if connection != self.remote.connection {
+                    self.remote_poll();
+                    return;
+                }
                 self.remote.delay_poll(&result);
                 if let (Some((enrollment, stamp)), Answer::Accepted(commands)) =
                     (enrollment, result)
@@ -85,7 +90,7 @@ impl Runner {
             } if connection == self.remote.connection && self.remote.active == Some(request) => {
                 self.remote_relay(request, credential, result).await;
             }
-            Event::Relay { .. } | Event::Claim { .. } | Event::Poll { .. } => {}
+            Event::Relay { .. } => {}
             Event::Look => self.look_around().await,
             Event::Tick => self.remote_tick().await,
         }

@@ -67,6 +67,7 @@ struct Launch {
     receipts: u32,
     withdrawn: bool,
     refusal: Option<String>,
+    poll_gate: Option<Arc<commands::PollGate>>,
 }
 
 #[tokio::test]
@@ -119,6 +120,7 @@ fn fixture_with_publication(
             receipts: 0,
             withdrawn: false,
             refusal: None,
+            poll_gate: None,
         })),
         grant,
         replies,
