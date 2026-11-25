@@ -7,6 +7,7 @@ mod fixed;
 pub mod folder;
 pub mod hooks;
 mod one;
+mod output;
 mod records;
 pub mod said;
 pub mod settings;
@@ -16,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 pub(super) use fixed::{fixed_configuration, fixed_environment};
 use folder::FolderId;
@@ -343,7 +344,11 @@ impl Git {
                     let _ = pipe.write_all(&bytes).await;
                 }
             };
-            let ((), out, said) = tokio::join!(write, held(stdout), held(stderr));
+            let ((), out, said) = tokio::join!(
+                write,
+                output::held(stdout, run.output_prefix),
+                output::held(stderr, None)
+            );
             let status = child.wait().await.map_err(GitError::Start)?;
             Ok::<_, GitError>((status.code(), out, said))
         };
@@ -408,17 +413,4 @@ impl Git {
     pub(super) fn env_names(&self) -> Vec<OsString> {
         self.env.iter().map(|(name, _)| name.clone()).collect()
     }
-}
-
-/// Reads a pipe to its end; `None` when it gave more than [`MAX_OUTPUT`].
-async fn held(pipe: Option<impl tokio::io::AsyncRead + Unpin>) -> Option<Vec<u8>> {
-    let mut kept = Vec::new();
-    let Some(pipe) = pipe else {
-        return Some(kept);
-    };
-    let limit = u64::try_from(MAX_OUTPUT).unwrap_or(u64::MAX);
-    let mut pipe = pipe.take(limit.saturating_add(1));
-    // A pipe that fails gives what it gave so far; the exit code tells the rest.
-    let _ = pipe.read_to_end(&mut kept).await;
-    (kept.len() <= MAX_OUTPUT).then_some(kept)
 }

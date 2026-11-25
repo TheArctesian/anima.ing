@@ -6,17 +6,44 @@ use std::path::Path;
 
 use agent_threads::git::GitRefusal;
 
-use super::super::super::place::{Record, shared, walk::Dir};
+use super::super::super::place::{Home, Record, records::Directory, shared, walk::Dir};
 use super::super::super::run::{Git, Run};
 
 mod attributes;
 mod objects;
 mod pointer;
 
+const SCRATCH_PREFIX: &str = "verify-retirement-";
+const SCRATCH_SUFFIX: usize = 6;
+
+pub(in crate::threads::git::worktree) fn clean_scratch(home: &Home, own: &Path) -> io::Result<()> {
+    let private = match Directory::open(home.records(), own, false) {
+        Ok(private) => private,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    for entry in private.names()? {
+        if scratch_name(&entry) {
+            private.remove_tree(&entry)?;
+        }
+    }
+    private.sync()
+}
+
+fn scratch_name(name: &OsStr) -> bool {
+    name.to_str()
+        .and_then(|name| name.strip_prefix(SCRATCH_PREFIX))
+        .is_some_and(|suffix| {
+            suffix.len() == SCRATCH_SUFFIX
+                && suffix.bytes().all(|byte| byte.is_ascii_alphanumeric())
+        })
+}
+
 pub(super) async fn verify(git: &Git, record: &Record, commit: &str) -> Result<(), GitRefusal> {
     let common = Dir::open(&record.common_dir).map_err(|_| incomplete())?;
     let scratch = tempfile::Builder::new()
-        .prefix("verify-retirement-")
+        .prefix(SCRATCH_PREFIX)
+        .rand_bytes(SCRATCH_SUFFIX)
         .tempdir_in(&record.own)
         .map_err(|_| incomplete())?;
     let view = scratch.path();
@@ -69,7 +96,7 @@ fn probe(view: &Path, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Run<
 
 const RECOVERY: &str = "Keep the worktree and Anima records. Restore missing or damaged Git objects and LFS payloads to the project before retrying. If verification still fails, recover the saved ref manually before removing the registration.";
 
-fn object_failure(error: &io::Error) -> GitRefusal {
+pub(super) fn object_failure(error: &io::Error) -> GitRefusal {
     GitRefusal::Failed {
         said: format!("Could not verify the project object files: {error}. {RECOVERY}"),
     }

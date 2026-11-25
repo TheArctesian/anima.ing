@@ -20,6 +20,7 @@ pub struct Run<'a> {
     pub settings: Vec<(String, String)>,
     pub input: Option<Vec<u8>>,
     pub time: Duration,
+    pub(super) output_prefix: Option<u64>,
 }
 
 impl<'a> Run<'a> {
@@ -36,6 +37,7 @@ impl<'a> Run<'a> {
             settings: Vec::new(),
             input: None,
             time: LOCAL_TIME,
+            output_prefix: None,
         }
     }
 
@@ -60,6 +62,12 @@ impl<'a> Run<'a> {
     #[must_use]
     pub fn with_input(mut self, input: Vec<u8>) -> Self {
         self.input = Some(input);
+        self
+    }
+
+    #[must_use]
+    pub(in crate::threads::git) const fn with_output_prefix(mut self, bytes: u64) -> Self {
+        self.output_prefix = Some(bytes);
         self
     }
 

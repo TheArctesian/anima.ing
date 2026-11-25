@@ -87,15 +87,17 @@ async fn legacy_snapshot_keeps_its_records_until_pack_and_lfs_directories_sync()
     let own = own_of(&bench);
     std::fs::write(own.join("anima-saved"), &original).unwrap();
     let common = bench.project.join(".git");
-    let lfs = "lfs/objects/ab/cd";
+    let content = b"fixture LFS content";
+    let oid = crate::model::fetch::hex(&sha2::Sha256::digest(content));
+    let lfs = format!("lfs/objects/{}/{}", &oid[..2], &oid[2..4]);
     for root in [&own, &common] {
-        let leaf = root.join(lfs);
+        let leaf = root.join(&lfs);
         std::fs::create_dir_all(&leaf).unwrap();
-        std::fs::write(leaf.join("abcd1234"), "fixture LFS content").unwrap();
+        std::fs::write(leaf.join(&oid), content).unwrap();
     }
     let competing_lock = common.join(format!("{kept}.lock"));
     std::fs::write(&competing_lock, "another writer").unwrap();
-    for dir in ["objects/pack", lfs] {
+    for dir in ["objects/pack", &lfs] {
         let fault = sync_probe::fail_for(&common.join(dir), || {});
         let removal = bench.call(PERSON, GitAction::Remove).await;
         drop(fault);

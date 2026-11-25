@@ -6,6 +6,7 @@
 
 pub mod chosen;
 pub mod disk;
+pub(super) mod lfs;
 pub mod own;
 pub mod records;
 mod registry;

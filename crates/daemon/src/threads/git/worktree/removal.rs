@@ -6,10 +6,11 @@ use uuid::Uuid;
 use super::super::checkpoint;
 use super::super::place::{Home, Worktree, own, shared};
 use super::super::project::refs;
-use super::super::run::{Git, GitError};
+use super::super::run::Git;
 use super::retirement::{Completion, Retirement};
 
 mod legacy;
+pub(super) use legacy::clean_scratch;
 
 /// Saves a private ref before moving the whole original directory out of use. Files that
 /// cannot go in a Git snapshot stay in the original directory, as do late writes to it.
@@ -123,7 +124,8 @@ pub(super) async fn legacy_saved(
     }
     let saved = saved.unwrap_or_default();
     legacy::verify(git, record, saved).await?;
-    own::sync_legacy_lfs(&record.common_dir, &record.own).map_err(GitError::Files)?;
+    own::sync_legacy_lfs(&record.common_dir, &record.own)
+        .map_err(|error| legacy::object_failure(&error))?;
     // Re-publish after verifying the snapshot and synchronizing its directory entries.
     refs::put(&record.common_dir, &kept, saved, refs::Was::At(saved))?;
     Ok(Some(kept))

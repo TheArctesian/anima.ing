@@ -250,14 +250,14 @@ pub async fn give(
 pub(in crate::threads::git) fn sync_legacy_lfs(common: &Path, own: &Path) -> io::Result<()> {
     let common = Dir::open(common)?;
     large_files(own, |source, path| {
-        let (leaf, name) = common
-            .above(path, Make::Existing)?
-            .ok_or(io::ErrorKind::NotFound)?;
-        let target = leaf.file(name)?.ok_or(io::ErrorKind::NotFound)?;
-        if source.metadata()?.len() != target.metadata()?.len() {
-            return Err(io::ErrorKind::InvalidData.into());
+        let oid = path
+            .file_name()
+            .and_then(OsStr::to_str)
+            .ok_or_else(|| io::Error::other("the LFS cache has an invalid object name"))?;
+        if super::lfs::path(oid)? != path {
+            return Err(io::Error::other("the LFS cache has an invalid object path"));
         }
-        leaf.sync()
+        super::lfs::verify(&common, oid, source.metadata()?.len())
     })
 }
 

@@ -2,6 +2,9 @@ use std::path::{Path, PathBuf};
 
 use super::*;
 
+mod cache;
+mod scratch;
+
 async fn saved(bench: &Bench) -> (String, String) {
     bench.git_in(&bench.project, &["add", "."]).await;
     bench

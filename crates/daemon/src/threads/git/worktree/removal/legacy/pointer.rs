@@ -1,15 +1,13 @@
 //! Verification of saved Git LFS payloads, without invoking Git LFS or its extensions.
 
-use std::io::{self, Read as _};
 use std::path::Path;
 
 use agent_threads::git::GitRefusal;
-use sha2::{Digest as _, Sha256};
 
 use super::{Dir, Git, incomplete, probe};
-use crate::threads::git::place::walk::Make;
+use crate::threads::git::place::lfs;
 
-const POINTER_WINDOW: usize = 1024;
+const POINTER_WINDOW: u64 = 1024;
 
 pub(super) async fn verify(
     git: &Git,
@@ -18,22 +16,24 @@ pub(super) async fn verify(
     oid: &str,
 ) -> Result<(), GitRefusal> {
     let bytes = git
-        .output(probe(view, ["cat-file", "blob", oid]))
+        .output(probe(view, ["cat-file", "blob", oid]).with_output_prefix(POINTER_WINDOW))
         .await
         .map_err(|_| incomplete())?;
-    if let Some((oid, size)) = pointer(&bytes[..bytes.len().min(POINTER_WINDOW)])? {
-        payload(common, oid, size).map_err(|_| incomplete())?;
+    if let Some((oid, size)) = pointer(&bytes)? {
+        lfs::verify(common, oid, size).map_err(|_| incomplete())?;
     }
     Ok(())
 }
 
 fn pointer(bytes: &[u8]) -> Result<Option<(&str, u64)>, GitRefusal> {
-    // The LFS smudge reader parses the first 1024 bytes after trimming outer whitespace.
-    let text = std::str::from_utf8(bytes).map_err(|_| incomplete())?;
-    let mut lines = text.trim().lines().filter(|line| !line.is_empty());
-    if !lines.clone().any(version) {
+    // Only candidate headers need strict decoding. Ordinary filtered blobs can be binary.
+    let header = String::from_utf8_lossy(bytes);
+    let first = lines(&header).find(|line| !line.starts_with("ext-"));
+    if !first.is_some_and(version) {
         return Ok(None);
     }
+    let text = std::str::from_utf8(bytes).map_err(|_| incomplete())?;
+    let mut lines = lines(text);
     let head = lines.next().ok_or_else(incomplete)?;
     let hash = lines
         .next()
@@ -44,7 +44,7 @@ fn pointer(bytes: &[u8]) -> Result<Option<(&str, u64)>, GitRefusal> {
         return Err(incomplete());
     }
     let hash = hash
-        .filter(|hash| hash.len() == 64 && super::super::refs::id(hash).is_some())
+        .filter(|hash| lfs::is_oid(hash))
         .ok_or_else(incomplete)?;
     let size = size
         .and_then(|text| text.parse::<i64>().ok())
@@ -62,29 +62,6 @@ fn version(line: &str) -> bool {
     )
 }
 
-fn payload(common: &Dir, oid: &str, size: u64) -> io::Result<()> {
-    let path = format!("lfs/objects/{}/{}/{oid}", &oid[..2], &oid[2..4]);
-    let (leaf, name) = common
-        .above(Path::new(&path), Make::Existing)?
-        .ok_or(io::ErrorKind::NotFound)?;
-    let file = leaf.file(name)?.ok_or(io::ErrorKind::NotFound)?;
-    if file.metadata()?.len() != size || !matches_payload(&file, oid, size)? {
-        return Err(io::ErrorKind::InvalidData.into());
-    }
-    file.sync_all()?;
-    leaf.sync()
-}
-
-fn matches_payload(file: &std::fs::File, oid: &str, size: u64) -> io::Result<bool> {
-    let mut reader = file.take(size.saturating_add(1));
-    let mut digest = Sha256::new();
-    let mut block = [0_u8; 8192];
-    loop {
-        let count = reader.read(&mut block)?;
-        if count == 0 {
-            break;
-        }
-        digest.update(&block[..count]);
-    }
-    Ok(crate::model::fetch::hex(&digest.finalize()) == oid)
+fn lines(text: &str) -> impl Iterator<Item = &str> {
+    text.trim().lines().filter(|line| !line.is_empty())
 }

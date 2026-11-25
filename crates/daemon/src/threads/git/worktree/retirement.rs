@@ -25,6 +25,7 @@ pub(super) struct Retirement {
 
 impl Retirement {
     pub(super) fn existing(home: &Home, record: &Record) -> Result<Option<Self>, GitRefusal> {
+        super::removal::clean_scratch(home, &record.own).map_err(failed)?;
         let journal = journal(record);
         match home.read_state(&journal) {
             Ok(Some(text)) => {
@@ -229,6 +230,7 @@ impl Completion {
         if expected != own {
             return Err(io::ErrorKind::InvalidData.into());
         }
+        super::removal::clean_scratch(home, own)?;
         write(home, &expected.with_extension("removed"), &self)?;
         archive(home, own, id)?;
         home.release(thread, repository)?;
