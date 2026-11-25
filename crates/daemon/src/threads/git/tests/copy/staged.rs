@@ -61,16 +61,27 @@ async fn a_file_that_cannot_be_read_is_named_with_what_to_do() {
 async fn a_large_file_content_that_was_copied_in_part_is_copied_whole() {
     let bench = Bench::new().await;
     bench.worktree().await;
-    let content = own_of(&bench).join("lfs/objects/ab/cd");
+    let content = own_of(&bench).join("lfs/objects/e2/92");
     std::fs::create_dir_all(&content).expect("a folder");
-    std::fs::write(content.join("abcd1234"), "the large file\n").expect("a file");
+    std::fs::write(
+        content.join("e292f0def1cdcf4f6c105008b52515ac0ad72622d5fc230a02cbd2b7bcb5f4e2"),
+        "the large file\n",
+    )
+    .expect("a file");
     // What a removal that was stopped in the middle of the copy left.
-    let part = bench.project.join(".git/lfs/objects/ab/cd");
+    let part = bench.project.join(".git/lfs/objects/e2/92");
     std::fs::create_dir_all(&part).expect("a folder");
-    std::fs::write(part.join("abcd1234"), "the lar").expect("a file");
+    std::fs::write(
+        part.join("e292f0def1cdcf4f6c105008b52515ac0ad72622d5fc230a02cbd2b7bcb5f4e2"),
+        "the lar",
+    )
+    .expect("a file");
     let removed = bench.call(PERSON, GitAction::Remove).await;
     assert!(matches!(removed, GitOutcome::Removed { .. }), "{removed:?}");
-    let text = std::fs::read_to_string(part.join("abcd1234")).expect("the content");
+    let text = std::fs::read_to_string(
+        part.join("e292f0def1cdcf4f6c105008b52515ac0ad72622d5fc230a02cbd2b7bcb5f4e2"),
+    )
+    .expect("the content");
     assert_eq!(text, "the large file\n");
 }
 

@@ -19,7 +19,9 @@ pub(super) async fn verify(
         .output(probe(view, ["cat-file", "blob", oid]).with_output_prefix(POINTER_WINDOW))
         .await
         .map_err(|_| incomplete())?;
-    if let Some((oid, size)) = pointer(&bytes)? {
+    if let Some((oid, size)) = pointer(&bytes)?
+        && size != 0
+    {
         lfs::verify(common, oid, size).map_err(|_| incomplete())?;
     }
     Ok(())

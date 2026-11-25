@@ -4,7 +4,7 @@ use agent_threads::git::{GitOutcome, GitRefusal};
 use uuid::Uuid;
 
 use super::super::checkpoint;
-use super::super::place::{Home, Worktree, own, shared};
+use super::super::place::{Home, Worktree, lfs, own, shared};
 use super::super::project::refs;
 use super::super::run::Git;
 use super::retirement::{Completion, Retirement};
@@ -123,6 +123,7 @@ pub(super) async fn legacy_saved(
         });
     }
     let saved = saved.unwrap_or_default();
+    lfs::check_storage(git, &record.own).await?;
     legacy::verify(git, record, saved).await?;
     own::sync_legacy_lfs(&record.common_dir, &record.own)
         .map_err(|error| legacy::object_failure(&error))?;

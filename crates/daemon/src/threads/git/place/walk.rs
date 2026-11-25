@@ -23,6 +23,9 @@ mod publication;
 #[cfg(unix)]
 mod links;
 
+#[cfg(all(test, unix))]
+pub(in crate::threads::git) use links::force_exdev;
+
 /// Whether a path walk is for reading or for writing durable directory entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Make {
@@ -341,6 +344,15 @@ mod none {
         }
 
         pub(in crate::threads::git) fn publish(&self, _: &OsStr, _: File) -> io::Result<()> {
+            none()
+        }
+
+        pub(in crate::threads::git) fn publish_checked(
+            &self,
+            _: &OsStr,
+            _: File,
+            _: impl FnOnce(&File) -> io::Result<()>,
+        ) -> io::Result<()> {
             none()
         }
 

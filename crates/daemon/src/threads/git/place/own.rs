@@ -211,6 +211,7 @@ pub async fn give(
     commit: &str,
     known: Option<&str>,
 ) -> Result<(), GitError> {
+    super::lfs::check_storage(git, &worktree.record().own).await?;
     // The folder of the packs is found from the open Git folder: a link in its place or in
     // the place of `objects` does not send a file out of the repository.
     let common = Dir::open(&worktree.record().common_dir).map_err(GitError::Files)?;
@@ -240,8 +241,8 @@ pub async fn give(
         }
     }
     let _ = std::fs::remove_dir_all(&outgoing);
-    large_files(&worktree.record().own, |file, path| {
-        copy_large_file(&common, file, path)
+    super::lfs::visit(&worktree.record().own, |file, oid| {
+        super::lfs::copy(&common, file, oid)
     })
     .map_err(GitError::Files)
 }
@@ -249,50 +250,9 @@ pub async fn give(
 /// Verifies that the legacy LFS cache's copies reached the project and syncs their entries.
 pub(in crate::threads::git) fn sync_legacy_lfs(common: &Path, own: &Path) -> io::Result<()> {
     let common = Dir::open(common)?;
-    large_files(own, |source, path| {
-        let oid = path
-            .file_name()
-            .and_then(OsStr::to_str)
-            .ok_or_else(|| io::Error::other("the LFS cache has an invalid object name"))?;
-        if super::lfs::path(oid)? != path {
-            return Err(io::Error::other("the LFS cache has an invalid object path"));
-        }
+    super::lfs::visit(own, |source, oid| {
         super::lfs::verify(&common, oid, source.metadata()?.len())
     })
-}
-
-/// Visits the runner's LFS content without following any links.
-fn large_files(own: &Path, mut visit: impl FnMut(File, &Path) -> io::Result<()>) -> io::Result<()> {
-    let objects = Path::new("lfs/objects");
-    let own = Dir::open(own)?;
-    let mut folders = vec![objects.to_owned()];
-    while let Some(to) = folders.pop() {
-        let Some(from) = own.below(&to, Make::No)? else {
-            continue;
-        };
-        for name in from.names()? {
-            let at = to.join(&name);
-            if from.below(Path::new(&name), Make::No)?.is_some() {
-                folders.push(at);
-            } else if let Some(file) = from.file(&name)? {
-                visit(file, &at)?;
-            }
-        }
-    }
-    Ok(())
-}
-
-fn copy_large_file(common: &Dir, file: File, path: &Path) -> io::Result<()> {
-    let Some((into, name)) = common.above(path, Make::Missing)? else {
-        return Ok(());
-    };
-    // An existing whole copy may have been placed just before a failed directory sync.
-    if let Some(there) = into.file(name)?
-        && there.metadata()?.len() == file.metadata()?.len()
-    {
-        return into.sync();
-    }
-    placed(&into, name, file)
 }
 
 /// Copies the runner file into the open folder `into` as `name`: written under

@@ -139,3 +139,26 @@ async fn lfs_pointer_with_leading_whitespace_and_blank_lines_requires_its_payloa
 async fn a_1024_byte_lfs_pointer_requires_its_payload() {
     payload_is_required_for_variant("1024").await;
 }
+
+#[tokio::test]
+async fn legacy_verification_works_when_hardlinks_cross_a_device_boundary() {
+    let bench = Bench::new().await;
+    bench.worktree().await;
+    std::fs::write(bench.project.join("saved.bin"), b"offline recovery").unwrap();
+    let (kept, _) = saved(&bench).await;
+    bench.git_in(&bench.project, &["repack", "-ad"]).await;
+    let index = pack_index_at(&bench);
+    let contents = std::fs::read(&index).unwrap();
+    std::fs::remove_file(&index).unwrap();
+    let exdev = crate::threads::git::place::walk::force_exdev();
+    assert_legacy_release_refused(&bench).await;
+    std::fs::write(index, contents).unwrap();
+    assert_legacy_release_replayed(&bench, &kept).await;
+    drop(exdev);
+    assert_eq!(
+        bench
+            .git_in(&bench.project, &["show", &format!("{kept}:saved.bin")])
+            .await,
+        "offline recovery"
+    );
+}

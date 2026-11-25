@@ -131,9 +131,13 @@ async fn retirement_keeps_ignored_nested_files_out_of_the_companion_ref() {
     std::fs::write(inside.join("build/out.o"), "built\n").expect("a file");
     std::fs::write(inside.join("src.c"), "source\n").expect("a file");
     // What Git LFS keeps beside the Git folder of the runner for a file of a snapshot.
-    let content = own_of(&bench).join("lfs/objects/ab/cd");
+    let content = own_of(&bench).join("lfs/objects/e2/92");
     std::fs::create_dir_all(&content).expect("a folder");
-    std::fs::write(content.join("abcd1234"), "the large file\n").expect("a file");
+    std::fs::write(
+        content.join("e292f0def1cdcf4f6c105008b52515ac0ad72622d5fc230a02cbd2b7bcb5f4e2"),
+        "the large file\n",
+    )
+    .expect("a file");
     let removal = bench.call(PERSON, GitAction::Remove).await;
     let GitOutcome::Removed {
         kept: Some(kept),
@@ -154,7 +158,9 @@ async fn retirement_keeps_ignored_nested_files_out_of_the_companion_ref() {
         !names.contains("out.o"),
         "what the repository ignores was saved: {names}"
     );
-    let kept_content = bench.project.join(".git/lfs/objects/ab/cd/abcd1234");
+    let kept_content = bench.project.join(
+        ".git/lfs/objects/e2/92/e292f0def1cdcf4f6c105008b52515ac0ad72622d5fc230a02cbd2b7bcb5f4e2",
+    );
     let text = std::fs::read_to_string(kept_content).expect("the content of the large file");
     assert_eq!(text, "the large file\n");
 }

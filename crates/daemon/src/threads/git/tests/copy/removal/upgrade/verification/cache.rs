@@ -77,3 +77,62 @@ async fn a_malformed_pointer_candidate_remains_a_refusal() {
     saved(&bench).await;
     assert_legacy_release_refused(&bench).await;
 }
+
+#[tokio::test]
+async fn a_custom_legacy_cache_with_unproved_destination_prevents_removal() {
+    let bench = Bench::new().await;
+    let original = bench.worktree().await;
+    let attributes = bench.home.with_file_name("external-legacy-lfs");
+    std::fs::write(&attributes, "example.bin filter=lfs\n").unwrap();
+    bench
+        .git_in(
+            &bench.project,
+            &[
+                "config",
+                "core.attributesFile",
+                attributes.to_str().unwrap(),
+            ],
+        )
+        .await;
+    let (_, project_cache) = pointer(&bench, false, "plain").await;
+    bench
+        .git_in(&bench.project, &["config", "lfs.storage", "custom-lfs"])
+        .await;
+    bench
+        .git_own(&["config", "lfs.storage", "custom-lfs"])
+        .await;
+    let suffix = project_cache
+        .strip_prefix(bench.project.join(".git/lfs"))
+        .unwrap();
+    let private = own_of(&bench).join("custom-lfs").join(suffix);
+    std::fs::create_dir_all(private.parent().unwrap()).unwrap();
+    std::fs::write(&private, b"verified payload").unwrap();
+
+    assert_legacy_release_refused(&bench).await;
+    bench.git_own(&["config", "--unset", "lfs.storage"]).await;
+    assert_legacy_release_refused(&bench).await;
+    assert!(original.is_dir());
+    assert_eq!(std::fs::read(private).unwrap(), b"verified payload");
+    assert!(!own_of(&bench).join("lfs").exists());
+    assert!(!bench.project.join(".git/custom-lfs").join(suffix).exists());
+}
+
+#[tokio::test]
+async fn an_explicit_empty_pointer_needs_no_lfs_payload() {
+    let bench = Bench::new().await;
+    bench.worktree().await;
+    std::fs::write(
+        bench.project.join(".gitattributes"),
+        "empty.bin filter=lfs\n",
+    )
+    .unwrap();
+    let hash = crate::model::fetch::hex(&sha2::Sha256::digest(b""));
+    std::fs::write(
+        bench.project.join("empty.bin"),
+        format!("version https://git-lfs.github.com/spec/v1\noid sha256:{hash}\nsize 0\n"),
+    )
+    .unwrap();
+    let (kept, _) = saved(&bench).await;
+    assert_legacy_release_replayed(&bench, &kept).await;
+    assert!(!bench.project.join(".git/lfs/objects").exists());
+}

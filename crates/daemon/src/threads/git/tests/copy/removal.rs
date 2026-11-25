@@ -6,6 +6,7 @@ use agent_threads::git::{GitAction, GitOutcome};
 use super::super::{Bench, PERSON};
 use super::budget::own_of;
 
+mod lfs;
 mod nested;
 #[cfg(unix)]
 mod pending;
