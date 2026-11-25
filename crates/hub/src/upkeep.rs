@@ -10,7 +10,7 @@ use anima_hub::{
     config::Config,
     engine::{locations, reminders, sources},
     fleet::{
-        access, builds, checks,
+        access, agent_threads, builds, checks,
         credentials::{Vault, operational},
         events::{self, Bus},
         metrics, notifications,
@@ -260,10 +260,7 @@ async fn job_leases(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) {
         if jobs::end_lost(queue, clock.now()).await.is_err() {
             tracing::warn!(job = "job_leases", fault = "jobs", "scheduled job failed");
         }
-        if crate::fleet::agent_threads::sweep_remote(&db)
-            .await
-            .is_err()
-        {
+        if agent_threads::sweep_remote(&db).await.is_err() {
             tracing::warn!(
                 job = "job_leases",
                 fault = "agent_threads",
