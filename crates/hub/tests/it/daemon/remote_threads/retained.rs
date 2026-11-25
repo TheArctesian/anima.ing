@@ -128,10 +128,14 @@ async fn device_removal_scrubs_content_but_retains_receipts_and_conflicts(pool: 
         .await
         .unwrap();
     assert_scrubbed(&pool).await;
+    retained_retries(&hub, &first, prompt).await;
+}
+
+async fn retained_retries(hub: &Daemons, first: &Value, prompt: Value) {
     let deleted_retry = hub.operate(START, start(LAUNCH)).await;
     assert_eq!(
         deleted_retry["data"]["startAgentThread"]["firstCommand"],
-        first
+        *first
     );
     assert_eq!(
         deleted_retry["data"]["startAgentThread"]["thread"],

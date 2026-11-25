@@ -33,7 +33,7 @@ pub(in crate::fleet) async fn upload(
     }
     let launch = store::launch(conn, owner.account, request.launch).await?;
     if launch.device_id != owner.device
-        || launch.device_gone
+        || launch.device_removed_at.is_some()
         || launch.runner_id != Some(request.runner)
     {
         return Err(Error::Refused("LAUNCH_CONFLICT"));
@@ -146,7 +146,7 @@ pub(super) async fn bound(
         "SELECT launches.* FROM agent_threads.launches launches
          JOIN agent_threads.summaries summary ON summary.id = launches.thread_id
          WHERE launches.account_id = $1 AND launches.device_id = $2 AND thread_id = $3
-           AND NOT withdrawn AND NOT control_closed AND NOT retired AND NOT device_gone AND evidence = 'created'",
+           AND NOT withdrawn AND NOT control_closed AND NOT retired AND device_removed_at IS NULL AND evidence = 'created'",
     )
     .bind(owner.account)
     .bind(owner.device)

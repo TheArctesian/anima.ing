@@ -50,7 +50,7 @@ create table agent_threads.launches (
     publication text check (publication in ('timely', 'timed_out')),
     withdrawn boolean not null default false,
     control_closed boolean not null default false,
-    device_gone boolean not null default false,
+    device_removed_at timestamptz,
     thread_id uuid unique,
     retired boolean not null default false,
     primary key (account_id, launch_id),
@@ -128,7 +128,8 @@ begin
     end if;
 
     update agent_threads.launches
-    set device_gone = true, thread_id = null, folder = '', project = ''
+    set device_removed_at = coalesce(device_removed_at, clock_timestamp()),
+        thread_id = null, folder = '', project = ''
     where device_id = old.id;
 
     update agent_threads.commands

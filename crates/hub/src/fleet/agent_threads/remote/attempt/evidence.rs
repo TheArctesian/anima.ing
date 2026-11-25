@@ -150,7 +150,7 @@ pub(in crate::fleet::agent_threads) async fn reconcile(
     let row = store::launch(conn, owner.account, id).await?;
     if row.claimed_at.is_none() && row.evidence.is_none() && at >= row.deadline {
         never_claimed(conn, (owner, &row), "expired").await?;
-    } else if !row.device_gone
+    } else if row.device_removed_at.is_none()
         && row.authorization.is_some()
         && row.publication.as_deref() != Some("timed_out")
     {

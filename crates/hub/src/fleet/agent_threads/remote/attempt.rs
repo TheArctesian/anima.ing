@@ -65,7 +65,7 @@ pub(in crate::fleet) async fn candidate(
 ) -> Result<Option<(Uuid, DateTime<Utc>)>, Error> {
     let held: Option<(Uuid,)> = sqlx::query_as(
         "SELECT work_id FROM agent_threads.launches WHERE account_id = $1 AND device_id = $2
-         AND NOT device_gone AND (evidence IS NULL OR evidence = 'created')
+         AND device_removed_at IS NULL AND (evidence IS NULL OR evidence = 'created')
          AND lease_end > $3 AND claimed_at + interval '120 seconds' > $3
          AND deadline > $3",
     )
@@ -89,7 +89,7 @@ pub(in crate::fleet) async fn candidate(
     let waiting: Vec<(Uuid, DateTime<Utc>)> = sqlx::query_as(
         "SELECT launch_id, admitted_at FROM agent_threads.launches
          WHERE account_id = $1 AND device_id = $2 AND attempt_phase IS NULL AND evidence IS NULL
-           AND deadline > $3 AND NOT device_gone
+           AND deadline > $3 AND device_removed_at IS NULL
          ORDER BY admitted_at, work_id LIMIT 31",
     )
     .bind(owner.account)
@@ -165,7 +165,7 @@ async fn original(
         return Err(Error::Refused("WRONG_DEVICE"));
     }
     let launch = store::launch(conn, owner.account, request.launch).await?;
-    if launch.device_id != owner.device || launch.device_gone {
+    if launch.device_id != owner.device || launch.device_removed_at.is_some() {
         return Err(Error::Refused("LAUNCH_UNKNOWN"));
     }
     if request.work != launch.work_id || request.attempt != 1 {

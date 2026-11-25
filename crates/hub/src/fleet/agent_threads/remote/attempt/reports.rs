@@ -41,7 +41,7 @@ pub(in crate::fleet) async fn report(
     .await?;
     let Some(row) = row else { return Ok(None) };
     if row.device_id != owner.device
-        || row.device_gone
+        || row.device_removed_at.is_some()
         || row
             .evidence
             .as_deref()

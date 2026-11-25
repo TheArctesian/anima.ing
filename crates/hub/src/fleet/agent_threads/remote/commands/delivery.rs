@@ -232,7 +232,7 @@ pub(in crate::fleet) async fn result(
         "SELECT c.launch_id, c.state, c.payload FROM agent_threads.commands c
          JOIN agent_threads.launches l ON l.account_id = c.account_id AND l.launch_id = c.launch_id
          WHERE c.account_id = $1 AND c.device_id = $2 AND c.command_id = $3
-           AND c.delivered_at IS NOT NULL AND NOT l.device_gone",
+           AND c.delivered_at IS NOT NULL AND l.device_removed_at IS NULL",
     )
     .bind(owner.account)
     .bind(owner.device)
