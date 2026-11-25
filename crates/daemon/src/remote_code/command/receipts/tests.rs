@@ -24,11 +24,11 @@ impl Running {
     fn start() -> Self {
         let (temp, home, saved, process) = started_fixture();
         let mut offer = Offer {
-            process: process.0.to_string(),
+            process: process.id().to_string(),
             revision: 0,
             actions: vec![Action::Prompt, Action::Answer, Action::Stop],
             stop_targets: vec![Target::Interrupt {
-                process: process.0.to_string(),
+                process: process.id().to_string(),
                 turn: "turn-4".to_owned(),
             }],
             requests: vec![Request::Approval {

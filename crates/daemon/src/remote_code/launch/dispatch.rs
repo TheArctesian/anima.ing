@@ -1,49 +1,70 @@
-use super::{
-    DispatchGrant, GrantReference, LaunchState, LiveLease, NotCreated, Progress, Refusal,
-    Reservation, Sample, Spawn, SpawnPermit, Store, StoreError, VerifiedCreation, find, lower,
-    sample,
-};
+use std::path::Path;
+
 use agent_threads::drive::Mode;
+use tokio::process::{Child, Command};
+use uuid::Uuid;
+
+use super::{
+    DispatchGrant, GrantReference, LaunchState, LiveLease, NotCreated, ProcessIdentity, Progress,
+    Refusal, Reservation, Sample, Store, StoreError, find, lower, sample,
+};
+use crate::remote_code::wire::DispatchRequest;
+
+pub enum Dispatch {
+    NoChild(Progress),
+    Spawned(Box<Spawned>),
+}
+
+/// Creation evidence stays with the actual child returned by the guarded OS call.
+pub struct Spawned {
+    child: Child,
+    request: DispatchRequest,
+    grant: GrantReference,
+    process: ProcessIdentity,
+    recorded: bool,
+}
 
 impl Store {
-    /// Execute at the holder boundary, after preparing all I/O needed to issue the OS call.
-    /// `immediate` must reread policy and attest the prepared program and canonical folder.
-    /// `spawn` issues the OS call without awaiting work or preparing more resources.
+    /// The holder supplies a fully prepared command from the selected provider launcher.
+    /// Final policy validation and the elapsed check finish before the concrete OS call.
     ///
     /// # Errors
-    /// The original tuple could not be verified or the durable state could not be saved.
-    pub fn dispatch(
+    /// The reservation could not be verified or the dispatch marker could not be stored.
+    pub fn spawn(
         &self,
         authority: (DispatchGrant, &LiveLease),
         immediate: impl Fn(&Reservation) -> Result<Mode, Refusal>,
-        spawn: impl FnOnce(&Reservation, Mode, SpawnPermit) -> Spawn,
-    ) -> Result<Progress, StoreError> {
-        self.dispatch_with_clock(authority, (immediate, sample), spawn)
+        prepared: (Mode, Command),
+    ) -> Result<Dispatch, StoreError> {
+        self.spawn_with_clock(authority, (immediate, sample), prepared)
     }
 
-    fn dispatch_with_clock(
+    fn spawn_with_clock(
         &self,
         (grant, lease): (DispatchGrant, &LiveLease),
         (immediate, clock): (
             impl Fn(&Reservation) -> Result<Mode, Refusal>,
             impl Fn() -> Option<Sample>,
         ),
-        spawn: impl FnOnce(&Reservation, Mode, SpawnPermit) -> Spawn,
-    ) -> Result<Progress, StoreError> {
+        (access, mut command): (Mode, Command),
+    ) -> Result<Dispatch, StoreError> {
         let mut locked = self.lock()?;
         let saved = find(&mut locked.journal, &grant.request)?;
         if saved.progress() != Progress::Reserved {
-            return Ok(saved.progress());
+            return Ok(Dispatch::NoChild(saved.progress()));
         }
-        let Ok(access) = immediate(saved) else {
+        let bounded = |reservation: &Reservation| {
+            immediate(reservation)
+                .is_ok_and(|mode| lower(reservation.parameters.access, mode) == access)
+        };
+        if !prepared_for(saved, &command) || !bounded(saved) {
             saved.state = LaunchState::Closed(NotCreated::Refused);
             locked.save()?;
-            return Ok(Progress::Closed(NotCreated::Refused));
-        };
-        if !clock().is_some_and(|now| grant.live(lease, now)) {
-            return Ok(Progress::WaitingForGrant);
+            return Ok(Dispatch::NoChild(Progress::Closed(NotCreated::Refused)));
         }
-        let access = lower(saved.parameters.access, access);
+        if !clock().is_some_and(|now| grant.live(lease, now)) {
+            return Ok(Dispatch::NoChild(Progress::WaitingForGrant));
+        }
         let reference = GrantReference {
             authorization: grant.grant.authorization,
             valid_until: grant.grant.valid_until,
@@ -54,63 +75,71 @@ impl Store {
         };
         let reservation = saved.clone();
         locked.save()?;
-        if !immediate(&reservation).is_ok_and(|current| lower(access, current) == access)
-            || !clock().is_some_and(|now| grant.live(lease, now))
-        {
-            return Ok(Progress::Reconciling);
+        if !bounded(&reservation) || !clock().is_some_and(|now| grant.live(lease, now)) {
+            return Ok(Dispatch::NoChild(Progress::Reconciling));
         }
-        let permit = SpawnPermit {
+        let Ok(child) = command.spawn() else {
+            return Ok(Dispatch::NoChild(Progress::Reconciling));
+        };
+        Ok(Dispatch::Spawned(Box::new(Spawned {
+            child,
             request: grant.request,
             grant: reference,
-        };
-        let Spawn::Created(proof) = spawn(&reservation, access, permit) else {
-            return Ok(Progress::Reconciling);
-        };
-        if proof.request != grant.request {
-            return Err(StoreError::Conflict);
-        }
-        let saved = find(&mut locked.journal, &grant.request)?;
-        if created(&mut saved.state, proof)? {
-            locked.save()?;
-        }
-        Ok(Progress::Created)
-    }
-
-    /// Reconcile with proof obtained at the original OS call, retained by the live holder.
-    ///
-    /// # Errors
-    /// The proof does not match the original marker, or storage is unavailable.
-    pub fn recover_created(&self, proof: VerifiedCreation) -> Result<Progress, StoreError> {
-        let mut locked = self.lock()?;
-        let saved = find(&mut locked.journal, &proof.request)?;
-        if created(&mut saved.state, proof)? {
-            locked.save()?;
-        }
-        Ok(Progress::Created)
+            process: ProcessIdentity(Uuid::now_v7()),
+            recorded: false,
+        })))
     }
 }
 
-fn created(state: &mut LaunchState, proof: VerifiedCreation) -> Result<bool, StoreError> {
-    if proof.process.0.is_nil() {
-        return Err(StoreError::Invalid);
+fn prepared_for(saved: &Reservation, command: &Command) -> bool {
+    let command = command.as_std();
+    Path::new(command.get_program()).is_absolute()
+        && command.get_current_dir() == Some(saved.parameters.folder.as_path())
+}
+
+impl Spawned {
+    /// Record creation using the retained live child. The holder retains this value if
+    /// storage fails and can retry against the same marker.
+    ///
+    /// # Errors
+    /// Child status could not be verified, the original marker differs, or storage failed.
+    pub fn record(&mut self, store: &Store) -> Result<Progress, StoreError> {
+        if self.recorded {
+            return Ok(Progress::Created);
+        }
+        let mut locked = store.lock()?;
+        let saved = find(&mut locked.journal, &self.request)?;
+        match &saved.state {
+            LaunchState::Created { grant, process, .. }
+                if *grant == self.grant && *process == self.process => {}
+            LaunchState::Dispatching { grant, access } if *grant == self.grant => {
+                if self.child.try_wait()?.is_some() {
+                    return Ok(Progress::Reconciling);
+                }
+                saved.state = LaunchState::Created {
+                    grant: self.grant.clone(),
+                    access: *access,
+                    process: self.process.clone(),
+                    withdrawn: false,
+                    ended: false,
+                };
+            }
+            _ => return Err(StoreError::Conflict),
+        }
+        locked.save()?;
+        self.recorded = true;
+        Ok(Progress::Created)
     }
-    match state {
-        LaunchState::Dispatching { grant, access } if *grant == proof.grant => {
-            *state = LaunchState::Created {
-                grant: proof.grant,
-                access: *access,
-                process: proof.process,
-                withdrawn: false,
-                ended: false,
-            };
-            Ok(true)
+
+    /// Release the child to the holder's normal attach and waiter paths after recording it.
+    ///
+    /// # Errors
+    /// The original child is returned still joined to its pending creation evidence.
+    pub fn into_child(self) -> Result<(Child, ProcessIdentity), Box<Self>> {
+        if !self.recorded {
+            return Err(Box::new(self));
         }
-        LaunchState::Created { grant, process, .. }
-            if *grant == proof.grant && *process == proof.process =>
-        {
-            Ok(false)
-        }
-        _ => Err(StoreError::Conflict),
+        Ok((self.child, self.process))
     }
 }
 

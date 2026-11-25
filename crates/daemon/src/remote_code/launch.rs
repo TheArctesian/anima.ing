@@ -4,6 +4,8 @@ use agent_threads::drive::Mode;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::config::origin::Origin;
+
 use super::{
     Store, StoreError,
     policy::{Refusal, lower},
@@ -17,6 +19,7 @@ use super::{
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Reservation {
     owner: Owner,
+    origin: String,
     request: DispatchRequest,
     project: Uuid,
     parameters: LaunchParameters,
@@ -44,43 +47,21 @@ pub(super) enum LaunchState {
 
 /// One holder-observed lifetime, independent of a PID or a thread UUID.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ProcessIdentity(pub Uuid);
+pub struct ProcessIdentity(Uuid);
+
+impl ProcessIdentity {
+    #[must_use]
+    pub const fn id(&self) -> Uuid {
+        self.0
+    }
+}
+
+pub use dispatch::{Dispatch, Spawned};
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct GrantReference {
     authorization: Uuid,
     valid_until: chrono::DateTime<chrono::Utc>,
-}
-
-/// Only a holder admitted through the last elapsed check can attest process creation.
-pub struct SpawnPermit {
-    request: DispatchRequest,
-    grant: GrantReference,
-}
-
-/// Proof retained by the holder beside the original child identity.
-#[derive(Clone)]
-pub struct VerifiedCreation {
-    request: DispatchRequest,
-    grant: GrantReference,
-    process: ProcessIdentity,
-}
-
-impl SpawnPermit {
-    #[must_use]
-    pub fn confirm(self, process: ProcessIdentity) -> VerifiedCreation {
-        VerifiedCreation {
-            request: self.request,
-            grant: self.grant,
-            process,
-        }
-    }
-}
-
-/// Evidence of the OS boundary. An ambiguous failure after the marker stays unresolved.
-pub enum Spawn {
-    Created(VerifiedCreation),
-    Uncertain,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -159,6 +140,10 @@ impl Reservation {
         })
     }
 
+    pub(super) fn enrolled_at(&self, device: Uuid, hub: &Origin) -> bool {
+        self.owner.device == device && self.origin == hub.as_text()
+    }
+
     pub(super) fn owns(&self, owner: &Owner, runner: Uuid) -> bool {
         self.owner == *owner && self.request.runner == runner
     }
@@ -212,7 +197,11 @@ impl Store {
     ///
     /// # Errors
     /// Conflicting claim fields, or the reservation could not be stored durably.
-    pub fn reserve(&self, device: Uuid, claim: &ClaimedLaunch) -> Result<Reservation, StoreError> {
+    pub fn reserve(
+        &self,
+        (device, hub): (Uuid, &Origin),
+        claim: &ClaimedLaunch,
+    ) -> Result<Reservation, StoreError> {
         if !claim.valid() || device.is_nil() {
             return Err(StoreError::Invalid);
         }
@@ -223,7 +212,8 @@ impl Store {
         };
         let mut locked = self.lock()?;
         if let Some(saved) = locked.journal.launches.get(&launch) {
-            if saved.owner != owner
+            if !saved.enrolled_at(device, hub)
+                || saved.owner != owner
                 || saved.request.work != claim.id
                 || saved.request.attempt != claim.attempt
                 || saved.project != claim.project
@@ -243,6 +233,7 @@ impl Store {
                 runner: Uuid::now_v7(),
             },
             owner,
+            origin: hub.as_text(),
             project: claim.project,
             parameters: claim.parameters.clone(),
             state: LaunchState::Reserved,

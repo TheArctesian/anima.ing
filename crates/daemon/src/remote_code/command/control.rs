@@ -42,6 +42,22 @@ impl Store {
         launch.control = Some(SavedOffer { revision, hash });
         locked.save()
     }
+
+    pub(in crate::remote_code) fn confirms_offer(
+        &self,
+        request: &DispatchRequest,
+        offer: &Offer,
+    ) -> Result<bool, StoreError> {
+        let mut locked = self.lock()?;
+        let key = locked.journal.key;
+        let saved = find(&mut locked.journal, request)?;
+        Ok(matches!(&saved.state,
+            LaunchState::Created { process, withdrawn: false, ended: false, .. } if offer.observes(process)
+        ) && saved
+            .control
+            .as_ref()
+            .is_some_and(|current| current.matches(offer, &key)))
+    }
 }
 
 impl SavedOffer {
@@ -52,7 +68,7 @@ impl SavedOffer {
 
 impl Offer {
     pub(super) fn observes(&self, live: &ProcessIdentity) -> bool {
-        self.process.parse::<uuid::Uuid>() == Ok(live.0)
+        self.process.parse::<uuid::Uuid>() == Ok(live.id())
             && self.stop_targets.iter().all(|target| {
                 let process = match target {
                     Target::End { process } | Target::Interrupt { process, .. } => process,
