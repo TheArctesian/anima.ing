@@ -69,7 +69,12 @@ fn selected(answer: &[u8], blobs: Vec<Blob<'_>>) -> Result<Vec<String>, GitRefus
         if answer.next() != Some(path) || answer.next() != Some(b"filter") {
             return Err(incomplete());
         }
-        if answer.next().ok_or_else(incomplete)? == b"lfs" {
+        // W1 did not retain external attribute provenance. An unspecified filter
+        // cannot prove that pointer-shaped content was ordinary text.
+        if matches!(
+            answer.next().ok_or_else(incomplete)?,
+            b"lfs" | b"unspecified"
+        ) {
             checked.insert(oid.to_owned());
         }
     }

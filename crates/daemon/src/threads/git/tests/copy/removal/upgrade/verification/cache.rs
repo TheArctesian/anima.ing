@@ -136,3 +136,26 @@ async fn an_explicit_empty_pointer_needs_no_lfs_payload() {
     assert_legacy_release_replayed(&bench, &kept).await;
     assert!(!bench.project.join(".git/lfs/objects").exists());
 }
+
+#[tokio::test]
+async fn a_legacy_pointer_without_attribute_provenance_requires_payload_proof() {
+    for absent in [false, true] {
+        let bench = Bench::new().await;
+        let original = bench.worktree().await;
+        let (kept, project_cache) = pointer(&bench, false, "plain").await;
+        let cache = own_of(&bench)
+            .parent()
+            .unwrap()
+            .join("external-review-cache");
+        std::fs::create_dir_all(&cache).unwrap();
+        let payload = cache.join(project_cache.file_name().unwrap());
+        std::fs::write(&payload, b"verified payload").unwrap();
+        if absent {
+            std::fs::remove_dir_all(&original).unwrap();
+        }
+        assert_legacy_release_refused(&bench).await;
+        assert_eq!(std::fs::read(&payload).unwrap(), b"verified payload");
+        std::fs::write(&project_cache, b"verified payload").unwrap();
+        assert_legacy_release_replayed(&bench, &kept).await;
+    }
+}

@@ -100,9 +100,14 @@ async fn pointer(bench: &Bench, tracked: bool, variant: &str) -> (String, PathBu
 }
 
 #[tokio::test]
-async fn accepts_pointer_shaped_text_without_a_saved_lfs_filter() {
+async fn accepts_pointer_shaped_text_with_an_explicit_saved_filter_opt_out() {
     let bench = Bench::new().await;
     bench.worktree().await;
+    std::fs::write(
+        bench.project.join(".gitattributes"),
+        "example.bin -filter\n",
+    )
+    .unwrap();
     let (kept, _) = pointer(&bench, false, "plain").await;
     // The current worktree attributes are irrelevant to the saved checkout.
     std::fs::write(
