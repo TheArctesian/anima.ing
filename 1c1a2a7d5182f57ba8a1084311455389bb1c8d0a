@@ -1,0 +1,2 @@
+2026-11-24T23:59:04.589Z
+`bun run quality:documents` failed on the merge commit: docs/mockup/records/mobile.md: screen-changed-after-mockup apps/client/src/routes/settings has 1 layout file(s) that changed after 7f4aa20f4; compare [mobile/index.html](mobile/index.html) again
