@@ -42,7 +42,11 @@ function snapshot(id: string, sequence: string, text: string): ThreadSnapshot {
   };
 }
 
-async function open(snapshots: readonly ThreadSnapshot[], token = 'account-a'): Promise<FakeSocket> {
+async function open(
+  snapshots: readonly ThreadSnapshot[],
+  token = 'account-a',
+  refreshFails = () => false,
+): Promise<FakeSocket> {
   hub = createHub({
     address: NO_HUB_ADDRESS,
     token: () => Promise.resolve(token),
@@ -57,6 +61,9 @@ async function open(snapshots: readonly ThreadSnapshot[], token = 'account-a'): 
         return Promise.resolve(Response.json({ data: { agentThread: thread ?? null } }));
       }
       if (query.startsWith('query MobileThreadSummaryRefresh')) {
+        if (refreshFails()) {
+          return Promise.resolve(Response.json({ errors: [{ message: 'A synthetic refresh failed.', extensions: { code: 'INTERNAL' } }] }));
+        }
         const thread = snapshots.find(({ summary }) => summary.id === variables.id);
         const agentThread = thread === undefined ? null : { summary: thread.summary, lastSequence: thread.lastSequence };
         return Promise.resolve(Response.json({ data: { agentThread } }));
@@ -178,6 +185,91 @@ test('a summary behind the stream preserves the newer state until the summary ca
   await settle();
   expect(header?.textContent).toContain('Needs you');
   expect(messages()).toEqual(['Shared before reconnect']);
+});
+
+test('a summary ahead of replay owns state through its cursor without advancing the subscription', async () => {
+  const initial = snapshot('thread-a', '64', 'Before reconnect');
+  const snapshots = [initial];
+  const socket = await open(snapshots);
+  const replay = { sequence: '65', content: { change: 'state', state: 'working' } };
+  snapshots[0] = {
+    ...initial, entries: [...initial.entries, replay], lastSequence: '65',
+    summary: { ...initial.summary, state: 'stopped' },
+  };
+
+  const next = await retry(socket);
+  const header = document.querySelector('header');
+  expect(header?.textContent).toContain('Stopped');
+  const resumed = currentSubscription(next, 'thread-a', '64');
+  deliver(next, resumed, replay);
+  await settle();
+  expect(header?.textContent).toContain('Stopped');
+
+  deliver(next, resumed, { sequence: '66', content: { change: 'state', state: 'working' } });
+  await settle();
+  expect(header?.textContent).toContain('Working');
+});
+
+test.each(['before', 'after'])('a non-attention summary clears a covered request arriving %s its refresh', async (order) => {
+  const initial = snapshot('thread-a', '64', 'Shared transcript');
+  const snapshots = [initial];
+  const socket = await open(snapshots);
+  const first = currentSubscription(socket, 'thread-a', '64');
+  const asked = {
+    sequence: '65',
+    content: { change: 'asked', request: 'request-a', detail: { kind: 'command', subject: 'Check the fixtures' } },
+  };
+  if (order === 'before') {
+    deliver(socket, first, asked);
+    await settle();
+    expect(document.body.textContent).toContain('Check the fixtures');
+    expect(document.querySelector('header')?.textContent).toContain('Needs you');
+  }
+
+  snapshots[0] = { ...initial, entries: [...initial.entries, asked], lastSequence: '65' };
+  await settle(30_000);
+  if (order === 'after') {
+    deliver(socket, first, asked);
+    await settle();
+  }
+  expect(document.querySelector('header')?.textContent).toContain('Idle');
+  expect(document.querySelector('[aria-labelledby="mobile-pending-title"]')).toBeNull();
+  expect(messages()).toEqual(['Shared transcript']);
+});
+
+test('a failed summary refresh marks retained content stale until a refresh succeeds', async () => {
+  let failed = false;
+  await open([snapshot('thread-a', '64', 'Last shared message')], 'account-a', () => failed);
+  failed = true;
+  await settle(30_000);
+
+  expect(document.querySelector('[role="status"]')?.textContent ?? '').toContain('Showing the last known state.');
+  expect(messages()).toEqual(['Last shared message']);
+
+  failed = false;
+  await settle(30_000);
+  expect(document.querySelector('[role="status"]')).toBeNull();
+  expect(messages()).toEqual(['Last shared message']);
+});
+
+test('a missing thread retires the conversation and its subscription', async () => {
+  const snapshots = [snapshot('thread-a', '64', 'Previously shared content')];
+  const socket = await open(snapshots);
+  const first = currentSubscription(socket, 'thread-a', '64');
+  snapshots.length = 0;
+  await settle(30_000);
+
+  expect(document.querySelector('[role="status"]')?.textContent ?? '').toContain('This thread is no longer on the hub.');
+  expect(messages()).toEqual([]);
+  expect(document.querySelector('[aria-label="Jump to latest message"]')).toBeNull();
+  expect(socket.sent).toContainEqual({ id: first, type: 'complete' });
+
+  const before = socket.sent.length;
+  deliver(socket, first, prompt('65', 'From a retired subscription'));
+  window.dispatchEvent(new Event('online'));
+  await settle(30_000);
+  expect(socket.sent).toHaveLength(before);
+  expect(messages()).toEqual([]);
 });
 
 test('opening another thread retires the old subscription and resumes only the selected thread', async () => {

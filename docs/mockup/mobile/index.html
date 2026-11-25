@@ -617,13 +617,21 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
         <div class="navrow"><button class="back"><svg class="i"><use href="#i-left"/></svg>Threads</button><button class="iconbtn fill" aria-label="Jump to latest message">↓</button></div>
         <h3 class="devname">Fix checkout validation</h3>
         <div class="statline"><span>Studio Mac · storefront · Codex</span><span class="badge degraded">Needs you</span></div>
+        <p class="statline" role="status">Couldn’t refresh this thread. Showing the last known state.</p>
         <div class="scroll">
           <div class="code-note approval"><b>Needs you</b><p>Command approval</p><p class="mono">bun test checkout</p><p>Open the thread on its computer to respond.</p></div>
           <div class="code-note"><b>You</b><p>Check the required fields at checkout.</p></div>
           <div class="code-note"><b>Codex</b><p>I updated the validation and am ready to run the checkout tests.</p></div>
         </div>
       </div></div></div>
-      <figcaption><b>Conversation</b><span class="tag">light, Android</span><p>Recent shared messages and the current request follow the thread as it runs on the computer. This frame shows a read-only desk-started thread.</p></figcaption></figure>
+      <figcaption><b>Conversation during a refresh failure</b><span class="tag">light, Android</span><p>The phone keeps the last shared messages and status while it waits for the hub.</p></figcaption></figure>
+      <figure class="shot"><div class="phone gd ios"><div class="screen" data-tabs="code"><div class="body tabsroom">
+        <div class="navrow"><button class="back"><svg class="i"><use href="#i-left"/></svg>Threads</button></div>
+        <h3 class="devname">Thread</h3>
+        <p class="statline" role="status">This thread is no longer on the hub.</p>
+        <div class="connect"><button class="btn line">Try again</button></div>
+      </div></div></div>
+      <figcaption><b>Thread missing from the hub</b><span class="tag">dark, iOS</span><p>The phone clears the conversation and stops following it.</p></figcaption></figure>
     </div>
   </section>
 
