@@ -1,4 +1,4 @@
-//! Git resolves the saved tree's attributes without running any filters.
+//! Enumerates legacy regular blobs without assuming missing filter provenance.
 
 use std::path::Path;
 
@@ -8,7 +8,7 @@ use super::{Git, incomplete, probe};
 
 type Blob<'a> = (&'a [u8], &'a str);
 
-pub(super) async fn lfs_blobs(
+pub(super) async fn regular_blobs(
     git: &Git,
     view: &Path,
     commit: &str,
@@ -17,25 +17,14 @@ pub(super) async fn lfs_blobs(
         .output(probe(view, ["ls-tree", "-r", "-z", "--full-tree", commit]))
         .await
         .map_err(|_| incomplete())?;
-    let blobs = blobs(&listing)?;
-    if blobs.is_empty() {
-        return Ok(Vec::new());
-    }
-    git.output(probe(view, ["read-tree", commit]))
-        .await
-        .map_err(|_| incomplete())?;
-    let mut paths = Vec::new();
-    for (path, _) in &blobs {
-        paths.extend_from_slice(path);
-        paths.push(0);
-    }
-    let query =
-        probe(view, ["check-attr", "--cached", "-z", "--stdin", "filter"]).with_input(paths);
-    let (code, answer, warnings) = git.finished(query).await.map_err(|_| incomplete())?;
-    if code != Some(0) || !warnings.is_empty() {
-        return Err(incomplete());
-    }
-    selected(&answer, blobs)
+    // W1 did not retain filter provenance, including external attribute macros.
+    // Every regular blob must therefore be checked for a pointer candidate.
+    Ok(blobs(&listing)?
+        .into_iter()
+        .map(|(_, oid)| oid.to_owned())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect())
 }
 
 fn blobs(listing: &[u8]) -> Result<Vec<Blob<'_>>, GitRefusal> {
@@ -60,28 +49,6 @@ fn blobs(listing: &[u8]) -> Result<Vec<Blob<'_>>, GitRefusal> {
         })
         .filter_map(Result::transpose)
         .collect()
-}
-
-fn selected(answer: &[u8], blobs: Vec<Blob<'_>>) -> Result<Vec<String>, GitRefusal> {
-    let mut answer = fields(answer)?;
-    let mut checked = std::collections::BTreeSet::new();
-    for (path, oid) in blobs {
-        if answer.next() != Some(path) || answer.next() != Some(b"filter") {
-            return Err(incomplete());
-        }
-        // W1 did not retain external attribute provenance. An unspecified filter
-        // cannot prove that pointer-shaped content was ordinary text.
-        if matches!(
-            answer.next().ok_or_else(incomplete)?,
-            b"lfs" | b"unspecified"
-        ) {
-            checked.insert(oid.to_owned());
-        }
-    }
-    if answer.next().is_some() {
-        return Err(incomplete());
-    }
-    Ok(checked.into_iter().collect())
 }
 
 fn fields(bytes: &[u8]) -> Result<impl Iterator<Item = &[u8]>, GitRefusal> {

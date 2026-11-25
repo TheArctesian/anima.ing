@@ -9,7 +9,7 @@ use agent_threads::git::GitRefusal;
 use super::super::super::place::{Home, Record, records::Directory, shared, walk::Dir};
 use super::super::super::run::{Git, Run};
 
-mod attributes;
+mod blobs;
 mod objects;
 mod pointer;
 
@@ -76,7 +76,7 @@ pub(super) async fn verify(git: &Git, record: &Record, commit: &str) -> Result<(
     git.output(probe(view, check))
         .await
         .map_err(|_| incomplete())?;
-    for blob in attributes::lfs_blobs(&git, view, commit).await? {
+    for blob in blobs::regular_blobs(&git, view, commit).await? {
         pointer::verify(&git, view, &common, &blob).await?;
     }
     Ok(())

@@ -22,7 +22,12 @@ pub(super) async fn verify(
     if let Some((oid, size)) = pointer(&bytes)?
         && size != 0
     {
-        lfs::verify(common, oid, size).map_err(|_| incomplete())?;
+        lfs::verify(common, oid, size).map_err(|_| GitRefusal::Failed {
+            said: format!(
+                "Could not verify LFS payload {oid} ({size} bytes) at lfs/objects/{}/{}/{oid} inside the project Git directory. {} Ordinary pointer-shaped text also needs manual recovery when legacy filter provenance is unavailable.",
+                &oid[..2], &oid[2..4], super::RECOVERY
+            ),
+        })?;
     }
     Ok(())
 }

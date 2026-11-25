@@ -100,7 +100,7 @@ async fn pointer(bench: &Bench, tracked: bool, variant: &str) -> (String, PathBu
 }
 
 #[tokio::test]
-async fn accepts_pointer_shaped_text_with_an_explicit_saved_filter_opt_out() {
+async fn a_saved_filter_opt_out_does_not_prove_legacy_pointer_provenance() {
     let bench = Bench::new().await;
     bench.worktree().await;
     std::fs::write(
@@ -108,13 +108,15 @@ async fn accepts_pointer_shaped_text_with_an_explicit_saved_filter_opt_out() {
         "example.bin -filter\n",
     )
     .unwrap();
-    let (kept, _) = pointer(&bench, false, "plain").await;
+    let (kept, payload) = pointer(&bench, false, "plain").await;
     // The current worktree attributes are irrelevant to the saved checkout.
     std::fs::write(
         bench.project.join(".gitattributes"),
         "example.bin filter=lfs\n",
     )
     .unwrap();
+    assert_legacy_release_refused(&bench).await;
+    std::fs::write(payload, b"verified payload").unwrap();
     assert_legacy_release_replayed(&bench, &kept).await;
 }
 
