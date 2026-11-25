@@ -56,7 +56,11 @@ pub enum JobCommand {
     /// Stop queued work or ask its holder to stop it.
     Stop { id: String },
     /// Set whether the hub gives work to one device.
-    DeviceWork { device_id: String, on: bool },
+    DeviceWork {
+        device_id: String,
+        #[arg(action = clap::ArgAction::Set, required = true)]
+        on: bool,
+    },
     /// Replace one project's complete device allowlist for secret-bearing work.
     ProjectDevices {
         project_id: String,
@@ -68,7 +72,11 @@ pub enum JobCommand {
         device_id: Option<String>,
     },
     /// Set whether a device is excluded from unnamed work.
-    DeviceExcluded { device_id: String, excluded: bool },
+    DeviceExcluded {
+        device_id: String,
+        #[arg(action = clap::ArgAction::Set, required = true)]
+        excluded: bool,
+    },
 }
 
 impl JobCommand {
