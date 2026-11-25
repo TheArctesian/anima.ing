@@ -3,6 +3,7 @@
 pub mod graphql;
 mod model;
 pub(in crate::fleet) mod remote;
+pub(crate) use remote::MutationPace;
 mod store;
 mod upload;
 

@@ -38,15 +38,9 @@ pub(in crate::fleet) async fn poll(
             continue;
         };
         let payload = serde_json::from_value(body)?;
-        sqlx::query(
-            "UPDATE agent_threads.commands SET state = 'delivered', delivered_at = $3
-             WHERE account_id = $1 AND command_id = $2 AND state = 'waiting'",
-        )
-        .bind(owner.account)
-        .bind(&id)
-        .bind(at)
-        .execute(&mut *conn)
-        .await?;
+        if state == "waiting" && !mark_delivery(conn, owner, &id).await? {
+            continue;
+        }
         return Ok(vec![Delivered {
             id,
             account: owner.account,
@@ -57,6 +51,20 @@ pub(in crate::fleet) async fn poll(
         }]);
     }
     Ok(Vec::new())
+}
+
+async fn mark_delivery(conn: &mut PgConnection, owner: Owner, id: &str) -> Result<bool, Error> {
+    let changed = sqlx::query(
+        "WITH sampled AS MATERIALIZED (SELECT clock_timestamp() AS at)
+         UPDATE agent_threads.commands SET state = 'delivered', delivered_at = sampled.at
+         FROM sampled WHERE account_id = $1 AND command_id = $2
+           AND state = 'waiting' AND deadline > sampled.at",
+    )
+    .bind(owner.account)
+    .bind(id)
+    .execute(conn)
+    .await?;
+    Ok(changed.rows_affected() == 1)
 }
 
 async fn release(

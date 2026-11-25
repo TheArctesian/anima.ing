@@ -211,7 +211,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(link::Claims::default())
     .data(link::ComputerClaims::default())
     .data(link::CommandLineClaims::default())
-    .data(access::BrowserTickets::default());
+    .data(access::BrowserTickets::default())
+    .data(agent_threads::MutationPace::default());
     let builder = with_devices_loaders(builder, &pool, &clock)
         .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))

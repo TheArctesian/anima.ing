@@ -6,7 +6,9 @@ use uuid::Uuid;
 
 use crate::fleet::events::AuditAction;
 
-use super::{Actor, Error, LaunchReceipt, Owner, Pair, Start, Target, audit, store};
+use super::{
+    Actor, Error, LaunchReceipt, MutationPace, Owner, Pair, Start, Target, audit, pace::Lane, store,
+};
 
 pub(super) const KEY: i16 = 1;
 
@@ -14,7 +16,7 @@ pub(in crate::fleet) async fn start(
     db: &PgPool,
     owner: Owner,
     request: Start,
-    actor: Actor,
+    actor: (Actor, &MutationPace),
 ) -> Result<LaunchReceipt, Error> {
     if !request.valid() {
         return Err(Error::malformed());
@@ -30,11 +32,12 @@ async fn admit_start(
     conn: &mut PgConnection,
     owner: Owner,
     request: &Start,
-    actor: Actor,
+    (actor, pace): (Actor, &MutationPace),
 ) -> Result<LaunchReceipt, Error> {
     if let Some(receipt) = retry(conn, owner, request).await? {
         return Ok(receipt);
     }
+    pace.admit(owner.account, Lane::Prompt)?;
     store::lock_device(conn, owner.device).await?;
     let at = store::now(conn).await?;
     store::expire_waiting(conn, owner.device, at).await?;

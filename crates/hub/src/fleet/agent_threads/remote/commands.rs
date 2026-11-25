@@ -9,10 +9,11 @@ use uuid::Uuid;
 pub(in crate::fleet) use delivery::{poll, result};
 
 use super::{
-    Actor, Error, Owner,
+    Actor, Error, MutationPace, Owner,
     admission::KEY,
     audit,
     control::{self, Action, Answer, StopTarget},
+    pace::Lane,
     store,
 };
 
@@ -44,6 +45,14 @@ impl Payload {
         }
     }
 
+    const fn lane(&self) -> Lane {
+        match self {
+            Self::Prompt { .. } => Lane::Prompt,
+            Self::Answer { .. } => Lane::Answer,
+            Self::Stop { .. } => Lane::Stop,
+        }
+    }
+
     fn validate(&self) -> Result<(), Error> {
         match self {
             Self::Prompt { prompt } if !valid_prompt(prompt) => Err(Error::malformed()),
@@ -71,7 +80,7 @@ pub(in crate::fleet) struct CommandReceipt {
 }
 
 pub(in crate::fleet) async fn admit(
-    (db, actor): (&PgPool, Actor),
+    (db, actor, pace): (&PgPool, Actor, &MutationPace),
     account: Uuid,
     (command, thread): (&str, Uuid),
     payload: Payload,
@@ -84,6 +93,7 @@ pub(in crate::fleet) async fn admit(
     let receipt = if let Some(prior) = retry(&mut tx, account, (command, thread), &payload).await? {
         prior
     } else {
+        pace.admit(account, payload.lane())?;
         let device = control::thread_device(&mut *tx, thread).await?;
         store::lock_device(&mut tx, device).await?;
         let at = store::now(&mut tx).await?;

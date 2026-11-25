@@ -7,6 +7,7 @@ mod commands;
 mod control;
 mod grant;
 mod model;
+mod pace;
 mod store;
 mod sweep;
 
@@ -16,6 +17,7 @@ pub(in crate::fleet) use audit::Actor;
 pub(in crate::fleet) use commands::{Payload, admit, command_receipt, poll, result};
 pub(in crate::fleet) use control::{control, upload};
 pub(in crate::fleet) use model::*;
+pub(crate) use pace::MutationPace;
 
 #[derive(Debug, thiserror::Error)]
 pub(in crate::fleet) enum Error {

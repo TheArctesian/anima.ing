@@ -113,7 +113,7 @@ impl RemoteMutation {
                 access: input.access,
                 prompt: input.prompt,
             },
-            actor(ctx)?,
+            (actor(ctx)?, schema_dependency::<remote::MutationPace>(ctx)?),
         )
         .await
         .map_err(|error| refusal(&error))?;
@@ -170,7 +170,11 @@ async fn command(
     payload: Payload,
 ) -> Result<AgentThreadCommandReceipt> {
     let row = remote::admit(
-        (pool(ctx)?, actor(ctx)?),
+        (
+            pool(ctx)?,
+            actor(ctx)?,
+            schema_dependency::<remote::MutationPace>(ctx)?,
+        ),
         account(ctx)?,
         (id.as_str(), uuid(&thread)?),
         payload,
@@ -222,8 +226,12 @@ fn refusal(error: &Error) -> async_graphql::Error {
 }
 
 fn refused(code: &'static str) -> async_graphql::Error {
-    async_graphql::Error::new("Remote thread request refused.")
-        .extend_with(|_, extensions| extensions.set("code", code))
+    let message = if code == "RATE_LIMITED" {
+        "Too many new remote thread requests. Try again shortly with the same request ID."
+    } else {
+        "Remote thread request refused."
+    };
+    async_graphql::Error::new(message).extend_with(|_, extensions| extensions.set("code", code))
 }
 
 #[derive(SimpleObject)]
