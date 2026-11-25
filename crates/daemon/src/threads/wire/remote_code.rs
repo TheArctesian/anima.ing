@@ -14,6 +14,10 @@ use crate::remote_code::{
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub(in crate::threads) enum ToHolder {
+    Open,
+    Prove {
+        nonce: uuid::Uuid,
+    },
     Reserve {
         claim: ClaimedLaunch,
     },
@@ -46,6 +50,10 @@ pub(in crate::threads) struct Start {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub(in crate::threads) enum ToRunner {
+    Challenge {
+        nonce: uuid::Uuid,
+    },
+    Ready,
     Reserved {
         request: DispatchRequest,
     },

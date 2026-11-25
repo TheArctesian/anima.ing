@@ -12,6 +12,7 @@
 
 mod connection;
 mod remote_code;
+pub(super) mod remote_peer;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io;
@@ -333,6 +334,7 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
     if !same_user {
         return;
     }
+    let remote_peer = remote_peer::Peer::of(&stream);
     let (reading, mut writing) = stream.into_split();
     let (sender, mut outgoing) = mpsc::unbounded_channel::<String>();
     {
@@ -348,7 +350,7 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
             }
         }
     });
-    let quitting = connection::serve_commands(&shared, reading, (me, &turn)).await;
+    let quitting = connection::serve_commands(&shared, reading, (me, &turn), remote_peer).await;
     if let Ok(mut state) = shared.lock()
         && state.serves(me)
     {

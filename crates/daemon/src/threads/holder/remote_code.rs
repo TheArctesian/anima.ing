@@ -50,6 +50,7 @@ pub(super) async fn run(
     };
     let store = Store::at(&home);
     let response = match frame {
+        ToHolder::Open | ToHolder::Prove { .. } => return,
         ToHolder::Reserve { claim } => home
             .read_config()
             .ok()

@@ -30,6 +30,11 @@ impl Runner {
             return;
         };
         match frame {
+            ToRunner::Challenge { nonce } => self.remote_send(ToHolder::Prove { nonce }).await,
+            ToRunner::Ready => {
+                self.remote.holder = super::Holder::Ready;
+                self.remote.due_claim = None;
+            }
             ToRunner::Reserved { request } if self.remote.reserving => {
                 self.remote_reserved(request).await;
             }

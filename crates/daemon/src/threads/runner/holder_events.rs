@@ -33,7 +33,11 @@ impl Runner {
                 ..
             } => self.hello(version, threads, build.as_deref()).await,
             Event::GitReadRoot { .. } => {}
-            Event::RemoteCode { frame } => self.remote_holder(&frame).await,
+            Event::RemoteCode { frame } => {
+                if self.link.accepts_remote_peer().await {
+                    self.remote_holder(&frame).await;
+                }
+            }
             Event::Done { id, outcome } => self.done(id, outcome).await,
             Event::Lines {
                 thread,

@@ -47,7 +47,7 @@ impl Journal {
     }
 }
 impl Journal {
-    fn record(&mut self, updates: Vec<Update>) {
+    pub(super) fn record(&mut self, updates: Vec<Update>) {
         for update in updates {
             if self.pending.len() == MAX_PENDING {
                 break;

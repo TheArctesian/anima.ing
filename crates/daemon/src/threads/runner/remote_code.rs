@@ -22,6 +22,7 @@ pub(super) struct Remote {
     active: Option<DispatchRequest>,
     reserving: bool,
     claiming: bool,
+    holder: Holder,
     polling: bool,
     threads: Option<daemon_core::wire::Switch>,
     due_claim: Option<Instant>,
@@ -29,6 +30,14 @@ pub(super) struct Remote {
     live: BTreeMap<Uuid, (DispatchRequest, ProcessIdentity)>,
     backed_off: crate::push::pacing::Backoff,
     publications: BTreeMap<Uuid, Instant>,
+}
+
+#[derive(Default, PartialEq, Eq)]
+enum Holder {
+    #[default]
+    Unknown,
+    Probing,
+    Ready,
 }
 
 pub(super) enum Event {
@@ -55,6 +64,7 @@ impl Remote {
     pub(super) fn disconnect(&mut self) {
         self.active = None;
         self.reserving = false;
+        self.holder = Holder::Unknown;
         self.live.clear();
     }
 

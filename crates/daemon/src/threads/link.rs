@@ -38,6 +38,7 @@ pub struct HolderLink {
     writer: OwnedWriteHalf,
     next: u64,
     git_reads: GitReads,
+    remote_peer: Option<super::holder::remote_peer::Peer>,
     /// The events of the holder, in the order it sent them.
     pub events: mpsc::Receiver<Event>,
 }
@@ -65,6 +66,7 @@ impl HolderLink {
             .ok()
             .filter(|peer| peer.uid() == rustix::process::getuid().as_raw())
             .and_then(|peer| Process::peer(&stream, peer.pid()));
+        let remote_peer = super::holder::remote_peer::Peer::of(&stream);
         let git_reads = GitReads::new(holder);
         let observed = git_reads.clone();
         let (reading, writer) = stream.into_split();
@@ -80,6 +82,7 @@ impl HolderLink {
             next: first,
             events,
             git_reads,
+            remote_peer,
         };
         link.send(Action::Hello {
             version: wire::VERSION,
@@ -87,6 +90,13 @@ impl HolderLink {
         })
         .await?;
         Ok(link)
+    }
+
+    pub(super) async fn accepts_remote_peer(&self) -> bool {
+        match &self.remote_peer {
+            Some(peer) => peer.is_daemon().await,
+            None => false,
+        }
     }
 
     pub(super) fn suppress_git_root(&self, thread: &str) {

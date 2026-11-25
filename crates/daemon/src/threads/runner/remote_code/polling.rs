@@ -27,7 +27,13 @@ impl Runner {
         let Some(policy) = self.remote_policy(&home) else {
             return;
         };
-        self.remote_recover(&home, &config).await;
+        if self.holder.fits && !self.holder.older && self.remote.holder == super::Holder::Unknown {
+            self.remote.holder = super::Holder::Probing;
+            self.remote_send(ToHolder::Open).await;
+        }
+        if self.remote.holder == super::Holder::Ready {
+            self.remote_recover(&home, &config).await;
+        }
         self.remote_claim(&home, config.device, &policy);
         self.remote_poll();
         self.remote_controls();
@@ -108,7 +114,10 @@ impl Runner {
         };
         let home = home.clone();
         let targets = self.remote_targets(policy);
-        let base = claim(device, self.may_start(0).is_ok() && !self.holder.older);
+        let base = claim(
+            device,
+            self.may_start(0).is_ok() && self.remote.holder == super::Holder::Ready,
+        );
         let cadence = Advertised::new(&base, Switch::Off, switch, &targets).cadence();
         self.remote.claiming = true;
         self.remote.threads = Some(switch);
