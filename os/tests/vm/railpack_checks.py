@@ -65,11 +65,14 @@ class BuildFixture:
                      workspace=self.workspace, generation=0, confirmed=True)
 
     def diagnose(self):
-        try:
-            self.request('failure-status', 'build-status', '.value.attempt.id == ' + json.dumps(self.attempt),
-                         attempt=self.attempt)
-        except Exception:
-            pass
+        for name, operation, identity in (
+            ('failure-status', 'build-status', '.value.attempt.id'),
+            ('failure-logs', 'build-logs', '.value.attempt'),
+        ):
+            try:
+                self.request(name, operation, f'{identity} == {json.dumps(self.attempt)}', attempt=self.attempt)
+            except Exception:
+                pass
         try:
             self.machine.command(f'journalctl -b -u {self.unit} --no-pager -n 40')
         except Exception:

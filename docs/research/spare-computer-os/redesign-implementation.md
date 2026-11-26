@@ -3434,7 +3434,29 @@ but the one-request listing did not return before the fixture's
 deadline. Tokio's Linux process pipe leaves the file descriptor open
 on `shutdown()`. The execution stream now releases the input pipe
 at the caller's EOF while continuing to relay the response. The
-installed runner and preview checks must exercise this fix.
+x86 Linux pipe regression used the pinned Tokio version and both
+source versions of the send loop. The previous loop timed out. The
+revised loop delivered the child's reply after EOF. The installed
+preview checks must exercise this fix.
+
+The `eb2374930970` generation built with the execution package
+compiled and checked on the x86 Linux builder. Docker's x86 emulation
+returned ENOSYS for `openat2`; the same syscall probe passed in the
+builder. The native package run passed all 30 enabled tests, including
+the two handoff archive checks. The source marker, console hashes and
+offline generation delta checksum matched.
+
+The installed `eb2374930970` guest returned the managed runner's
+`done` frame and `threads` outcome after the caller closed request
+input. The verified installed generation returned and closed the
+stream in 4.223 seconds. The focused case ran before the wider
+installed suite.
+
+The wider installed check then passed the runner request and reached
+the packaged provider version checks. Its Claude command exceeded
+the 30-second fixture deadline inside the constrained workspace.
+The version checks now record each command's duration and wait up to
+120 seconds. The repeat remains on the same installed generation.
 
 ### Console accessibility review, 2026-11-26
 

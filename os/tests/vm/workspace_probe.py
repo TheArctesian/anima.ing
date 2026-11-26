@@ -78,10 +78,10 @@ def wait_for(observe, description):
     raise RuntimeError(f'Timed out waiting for {description}')
 
 
-def docker_exec(container, *args, detached=False):
+def docker_exec(container, *args, detached=False, timeout=30):
     options = ['--detach'] if detached else []
     return subprocess.run(['docker', 'exec', *options, '--user=1000:1000', container, *args],
-                          capture_output=True, timeout=30)
+                          capture_output=True, timeout=timeout)
 
 
 def check_runner(workspace):
@@ -104,9 +104,11 @@ def start(identity, marker):
     check_runner(workspace)
     container = f'anima-workspace-{workspace}-1'
     for provider in ('codex', 'claude'):
-        version = docker_exec(container, f'/bin/{provider}', '--version')
+        start = time.monotonic()
+        version = docker_exec(container, f'/bin/{provider}', '--version', timeout=120)
         version.check_returncode()
         assert version.stdout.strip(), provider
+        print(f'{provider} version returned in {time.monotonic() - start:.1f}s', flush=True)
     docker_exec(container, '/bin/bash', '-c', 'printf "%s" "$1" > anima-fixture',
                 'bash', marker).check_returncode()
     docker_exec(container, '/bin/python3', '-m', 'http.server', '3000', '--bind', '127.0.0.1',
