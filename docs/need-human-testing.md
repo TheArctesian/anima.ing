@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-wheelsteps | The scroll wheel of the trackpad and the motion of the connection steps on an iPhone (M4-2, RA-050, 5.7.3) | The iPhone app from a build of `dev` with this change; a Mac with a long page in a browser | Open |
 | HT-193 | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
@@ -226,6 +227,19 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Turn Wi-Fi off, so that the iPhone uses the mobile network. Switch to a different app for 1 minute and come back. Expected: the same result as after the lock.
 - If the banner shows, read it. Expected: "Hosted by Anima.ing", not an address such as 127.0.0.1, and "Check this device's network".
 
+### HT-NEW-wheelsteps: the scroll wheel of the trackpad and the motion of the connection steps on an iPhone
+
+- State: Open.
+- Built: a scroll wheel in the middle of the trackpad of a touch session (R-NEW-scrollwheel; `apps/client/src/lib/sessions/view/remote/touch/wheel.ts`, `touch/input.ts`, `touch/Trackpad.svelte`): a finger that lands on it and moves up or down sends one notch of a mouse wheel for each 14 px, with the content following the finger; a fast release lets it coast and slow down; a tap on it clicks. The connection steps at the start of a session (R-NEW-stepsmotion; `apps/client/src/lib/sessions/view/steps/ConnectionSteps.svelte`, `steps/motion.ts`): a reel in the middle of the pane, where the step that runs is in the middle with a ring and a turning arc, the steps that ended roll up over it, and a step shows only when it starts; a check that grows in with one ring; a line and a row of segments under the reel. The client tests cover the notches, the coast and its stop, the tap, the place of each step in the reel, the line, and that the repeating motions do not start with reduced motion or in a hidden window. They do not cover a real finger, the feel of the coast, or the motion on a real screen.
+- Needs: the iPhone app from a build of `dev` with this change; a Mac with a long web page open in a browser.
+- Open a VNC session to the Mac from the iPhone app, in portrait. Expected: while it connects, the step that runs is large in the middle of the screen, with a ring that goes out from its mark and an arc that turns around it, and a line of text under it says what runs. When a step ends, its mark turns into a check, it rolls up and gets smaller, and the next step rises into the middle. A step that has not started is not shown. The segment of each step that ended fills.
+- Turn on Reduce Motion in the iPhone's settings (Accessibility, Motion) and open the session again. Expected: no ring, no turning arc and no light; the steps change place at once and the marks and the text cross-fade.
+- In the session, move the pointer over the long web page. Look at the trackpad under the Mac's screen. Expected: a wheel in its middle, with the words Trackpad on one side and Wheel on the other.
+- Put a finger on the wheel and move it down slowly. Expected: the ridges of the wheel move with the finger, and the page scrolls up a little for each small step, as on an iPhone. Move it up. Expected: the page scrolls down.
+- Flick the wheel and lift the finger. Expected: the page keeps scrolling for a moment and slows down to a stop. Flick it again, then touch the trackpad. Expected: the scrolling stops at once.
+- Tap the wheel without moving. Expected: the Mac clicks at the tip of the pointer, as a tap on the rest of the trackpad does.
+- Turn the iPhone to landscape. Expected: the wheel is in the middle of the trackpad beside the Mac's screen, with Trackpad above it and Wheel below it.
+
 ### HT-192: a remote desktop on an iPhone fills the screen and shows the pointer
 
 - State: Open.
@@ -236,6 +250,7 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - In portrait, look at the part under the Mac's screen. Expected: it shows a small trackpad with the word Trackpad. Slide one finger on it in large circles for 10 seconds. Expected: the pointer moves on the Mac's screen, and no copies of the pointer stay on the Mac's screen. Slide the pointer to the right edge of the Mac's screen, then to the left edge. Expected: the view moves with the pointer, and the pointer stays in view. Turn the iPhone to landscape. Expected: the Mac's screen shows at its full height, or larger when the full height would make it narrower than the trackpad, and the trackpad at the right of it is narrower than the Mac's screen.
 - Tap the text field and type a word. Expected: the bar sits on the keyboard, the field stays visible, the page does not zoom, and the word appears once on the Mac.
 - Use Back, then reopen the session from its tab. Expected: the session stayed connected.
+- 2026-11-26: the operator still saw old pointers on the Mac's screen in a session from the iPhone app with the hosted hub. The session that built the change found that the hosted hub then ran a hub image of 2026-11-22, and the gateway asks for the cursor shape only from `c5f2c0347` (2026-11-25), so that session did not have the change. The step must be done again after the hosted hub runs an image with it. The state stays Open.
 
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 

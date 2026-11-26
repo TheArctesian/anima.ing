@@ -366,5 +366,7 @@
     overflow: auto;
     padding: var(--space-6);
     background: var(--surface-base);
+    /* The connection steps measure it, to stand in its middle (5.7.3). */
+    container-type: size;
   }
 </style>

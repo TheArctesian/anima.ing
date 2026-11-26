@@ -144,14 +144,17 @@ describe('MAT-008: the terminal', () => {
     }
   });
 
-  it('MOT-007: the connection step icon cell has a fixed width, so a mark glyph of another width moves no label', () => {
-    const columns = componentRules('./steps/ConnectionSteps.svelte').get('.step')?.get('grid-template-columns') ?? '';
-    expect(columns).toMatch(/^var\(--icon-[a-z]+\) 1fr$/);
+  it('MOT-007: each step mark sits in a node of a fixed size, so a mark of another width moves no label', () => {
+    const node = componentRules('./steps/ConnectionSteps.svelte').get('.node');
+    expect(node?.get('inline-size')).toMatch(/^var\(--space-\d+\)$/);
+    expect(node?.get('block-size')).toBe(node?.get('inline-size'));
   });
 
-  it('MOT-007, MV-004: the steps keep four fixed columns, and the wake slot is one line high even when empty', () => {
+  it('MOT-007, MV-004: the steps share one cell of the reel, and the line under them and the wake slot are one line high', () => {
     const rules = componentRules('./steps/ConnectionSteps.svelte');
-    expect(rules.get('.steps')?.get('grid-template-columns')).toMatch(/^repeat\(4,/);
+    expect([rules.get('.step')?.get('grid-area'), rules.get('.reel')?.get('block-size')]).toEqual(['1 / 1', 'var(--row)']);
+    expect(rules.get('.caption')?.get('block-size')).toBe('1lh');
+    expect(rules.get('.line')?.get('grid-area')).toBe('1 / 1');
     expect(rules.get('.wake')?.get('block-size')).toBe('1lh');
     expect(rules.get('.wake')?.get('max-inline-size')).toBe('100%');
     expect(rules.get('.label')?.get('text-overflow')).toBe('ellipsis');
