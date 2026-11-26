@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { arrive, beacon, signal, spin } from './motion';
+import { arrive, beacon, rise, spin } from './motion';
 
 function animated() {
   const cancel = vi.fn();
@@ -18,7 +18,7 @@ afterEach(() => {
   seen('visible');
 });
 
-const REPEATING = { beacon, spin, signal };
+const REPEATING = { beacon, spin };
 
 it.each(Object.entries(REPEATING))('MOT-011: the %s of the running step repeats in a visible window and stops with it', (_name, motion) => {
   const { element, animate, cancel } = animated();
@@ -43,4 +43,11 @@ it('5.7.3: the reel comes up into the pane once, and with reduced motion it is t
   const still = animated();
   arrive({ reduced: true })(still.element);
   expect(still.animate).not.toHaveBeenCalled();
+});
+
+it.each([false, true])('5.7.3: a new line under the steps starts only when the old one is gone (reduced motion: %s)', (reduced) => {
+  const line = document.createElement('span');
+  const swap = rise(line, { preference: { reduced } });
+  const old = swap({ direction: 'out' });
+  expect(swap({ direction: 'in' }).delay).toBe((old.delay ?? 0) + (old.duration ?? 0));
 });

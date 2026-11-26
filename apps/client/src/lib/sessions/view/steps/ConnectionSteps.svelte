@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
   import type { IconName } from '$lib/icons/icons';
-  import { arrive, beacon, landed, pop, rise, signal, spin } from './motion';
+  import { arrive, beacon, landed, pop, rise, spin } from './motion';
   import { reelFocus, rowPose } from './reel';
   import { connectionSteps, stepsLine, wakeLine, type Progress, type StepMark } from './steps';
 
@@ -38,7 +38,8 @@
 <!--
   A reel in the middle of the pane (5.7.3): the step that runs is in the middle, the steps that ended roll up over it,
   and a step shows only when it starts. Every row shares one cell of a fixed height, so a change moves nothing around the
-  reel (MOT-007, MV-004). A screen reader reads each step and its mark, also a step that is not shown yet.
+  reel (MOT-007, MV-004). A screen reader reads each step and its mark, also a step that is not shown yet, and the line
+  under the reel is a status, so it hears each change.
 -->
 <div class="connection">
   <ol class="reel" aria-label="Connection steps" {@attach arrive()}>
@@ -52,7 +53,7 @@
         aria-current={step.mark === 'active' ? 'step' : undefined}
         style:translate="0 calc({pose.y} * var(--row))"
         style:scale={pose.scale}
-        style:opacity={pose.opacity}
+        style:--fade={pose.opacity}
       >
         <span class="node" aria-hidden="true">
           {#if step.mark === 'active'}
@@ -71,16 +72,13 @@
       </li>
     {/each}
   </ol>
-  <p class="caption" data-caption>
+  <p class="caption" role="status" data-caption>
     {#key line}<span class="line" transition:rise>{line}</span>{/key}
   </p>
   <!-- One segment for each step: it fills when the step ends, never before (MOT-009). -->
   <span class="progress" aria-hidden="true" style:--steps={steps.length}>
     {#each steps as step (step.name)}
-      <span class="segment" data-mark={step.mark}>
-        <span class="fill"></span>
-        {#if step.mark === 'active'}<span class="light" {@attach signal()}></span>{/if}
-      </span>
+      <span class="segment" data-mark={step.mark}><span class="fill"></span></span>
     {/each}
   </span>
   <!-- The slot is always there, one line high, so the line filling it moves nothing (MOT-007, MV-004). -->
@@ -118,6 +116,8 @@
 
   /* Each row in the one cell: its place in the reel is a translate and a scale on a spring (MOT-006). */
   .step {
+    --shown: var(--fade);
+
     display: flex;
     grid-area: 1 / 1;
     align-items: center;
@@ -127,7 +127,15 @@
     color: var(--text);
     font-size: var(--text-2xl);
     line-height: var(--leading-tight);
+    opacity: var(--shown);
     transition: translate var(--spring-move), scale var(--spring-move), opacity var(--duration-base) var(--ease-enter);
+  }
+
+  /* With more contrast the step that ended last stays whole and the older ones go (MAT-006): no row is faint. */
+  @media (prefers-contrast: more) {
+    .reel .step {
+      --shown: round(nearest, var(--fade), 1);
+    }
   }
 
   /* A node of a fixed size: the dot, the check and the cross share its one cell (MOT-007). */
@@ -258,13 +266,6 @@
   .segment[data-mark='failed'] .fill {
     background: var(--status-down);
     scale: 1 1;
-  }
-
-  .light {
-    position: absolute;
-    inset-block: 0;
-    inline-size: 40%;
-    background: linear-gradient(to right, transparent, var(--accent), transparent);
   }
 
   .wake {

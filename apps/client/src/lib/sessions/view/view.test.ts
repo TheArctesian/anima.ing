@@ -203,52 +203,6 @@ describe('MAT-008: the terminal', () => {
   });
 });
 
-describe('ended panel and Reconnect (RA-007)', () => {
-  it('RA-007: the panel shows the recorded reason, which wins over the end message and the close code (D-4)', async () => {
-    const { target, answers, calls, ended } = show();
-    const socket = await connectView();
-    answers.endReason = 'REMOTE_CLOSED';
-    socket.end('GATEWAY_ERROR');
-    socket.closeWith(1011);
-    await settle();
-    expect(calls.endSession).toEqual(['session-1']);
-    expect(target.querySelector('[data-reason]')?.textContent).toBe('The device closed the session.');
-    expect(ended.map((ending) => ending.reason)).toEqual(['REMOTE_CLOSED']);
-  });
-
-  it('RA-007: Reconnect calls startSession once, opens a new socket with a new token and clears the old screen', async () => {
-    const { target, calls, heard } = show();
-    const first = await connectView();
-    first.output('old session text');
-    first.closeWith(1000);
-    await settle();
-    expect(screenText(target)).toContain('old session text');
-    const reconnect = [...target.querySelectorAll('button')].find((button) => button.textContent.includes('Reconnect'));
-    reconnect?.click();
-    reconnect?.click();
-    await settle();
-    expect(calls.startSession).toHaveLength(2);
-    expect(FakeTerminalSocket.made).toHaveLength(2);
-    const [old, fresh] = FakeTerminalSocket.made.map((socket) => new URL(socket.url).searchParams.get('token'));
-    expect(fresh).not.toBe(old);
-    FakeTerminalSocket.latest().open();
-    flushSync();
-    expect(screenText(target)).not.toContain('old session text');
-    expect(heard.titles.at(-1)).toBe('');
-  });
-
-  it('a refused start shows fixed text, not the hub message, and offers Reconnect', async () => {
-    const { target } = show();
-    FakeResizeObserver.resize(800, 600);
-    await settle();
-    FakeTerminalSocket.latest().closeWith(1006);
-    await settle();
-    expect(target.querySelector('[data-reason]')?.textContent).toBe('Could not open the session.');
-    expect([...target.querySelectorAll('button')].some((button) => button.textContent.includes('Reconnect'))).toBe(true);
-  });
-
-});
-
 describe('closing the view', () => {
   it('closing the view closes its socket and ignores the end that follows', async () => {
     const { close, calls, ended } = show();

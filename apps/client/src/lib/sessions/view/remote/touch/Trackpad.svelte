@@ -80,7 +80,8 @@
     border: var(--border-thin) solid var(--border-subtle);
     border-radius: var(--radius-lg);
     background: var(--surface-raised);
-    color: var(--text-tertiary);
+    /* The hints teach the gestures, so they are text-secondary: text-tertiary is for placeholders only (5.1, UI-002). */
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     text-align: center;
     user-select: none;
@@ -117,7 +118,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--text-secondary);
+    color: var(--text);
     font-size: var(--text-md);
   }
 

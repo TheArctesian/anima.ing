@@ -8,17 +8,14 @@ import { duration } from '$lib/motion/tokens';
 
 /*
  * The motion of the connection steps (5.7.3 "Connection steps"; operator, 2026-11-26). Each motion says something: the
- * ring, the arc and the light say which step runs now and run only while it runs, in a visible window without reduced
- * motion (MOT-011); the ripple and the check say that a step ended; the line under the steps says what runs. Each moves
- * only transform and opacity (MOT-006).
+ * ring and the arc say which step runs now and run only while it runs, in a visible window without reduced motion
+ * (MOT-011); the ripple and the check say that a step ended; the line under the steps says what runs. Each moves only
+ * transform and opacity (MOT-006).
  */
 
 /** How far the ring of a step goes out from its mark, as a scale of the mark. */
 const BEACON_SCALE = 2;
 const LANDED_SCALE = 1.8;
-/** The light is 2/5 of a lane wide, and crosses the whole lane from before its start to past its end. */
-const LIGHT_FROM = '-100%';
-const LIGHT_TO = '250%';
 /** The check grows from this scale into the mark; the new line rises this far into the old one's place. */
 const CHECK_FROM = 0.6;
 const RISE_PX = 6;
@@ -52,20 +49,6 @@ export function spin(preference: MotionPreference = motionPreference()): Attachm
     const turn = arc.animate([{ rotate: '0turn' }, { rotate: '1turn' }], { duration: duration.highlight, iterations: Infinity });
     return () => {
       turn.cancel();
-    };
-  };
-}
-
-/** A light that runs along the segment of the step that runs: the start is on its way through that step. */
-export function signal(preference: MotionPreference = motionPreference()): Attachment<Animated> {
-  return (light) => {
-    if (!ambientAllowedNow(preference) || light.animate === undefined) return;
-    const run = light.animate(
-      [{ translate: `${LIGHT_FROM} 0`, opacity: 0 }, { opacity: 1, offset: 0.35 }, { translate: `${LIGHT_TO} 0`, opacity: 0 }],
-      { duration: duration.highlight, iterations: Infinity, easing: enterCurve(light) },
-    );
-    return () => {
-      run.cancel();
     };
   };
 }
@@ -118,10 +101,16 @@ export function pop(_node: Element, { preference = motionPreference() }: { prefe
   };
 }
 
-/** The line under the steps: the new line rises into place on `spring-default` while the old one fades up and out. */
+/**
+ * The line under the steps: the old one fades up and out, then the new line rises into place on `spring-default`. The
+ * two never print over each other, so each one can be read.
+ */
 export function rise(_node: Element, { preference = motionPreference() }: { preference?: MotionPreference } = {}) {
   return ({ direction }: { direction?: Direction } = {}): TransitionConfig =>
     direction === 'out'
       ? leave(preference.reduced, (t) => `opacity: ${String(t)}; translate: 0 ${String((t - 1) * RISE_PX)}px;`)
-      : sprung('default', preference.reduced, (t) => `opacity: ${String(t)}; translate: 0 ${String((1 - t) * RISE_PX)}px;`);
+      : {
+          ...sprung('default', preference.reduced, (t) => `opacity: ${String(t)}; translate: 0 ${String((1 - t) * RISE_PX)}px;`),
+          delay: modeTokens(preference.reduced).duration.fast,
+        };
 }
