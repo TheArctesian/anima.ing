@@ -3,7 +3,11 @@
 
 def installed_docker(machine):
     """Called from the guest's authenticated root shell, never on the host."""
-    machine.command('systemctl is-active docker; docker load -i /etc/anima-smoke-image.tar.gz', timeout=120)
+    machine.command("""timeout 180 sh -c 'until systemctl is-active --quiet docker.service; do
+          if systemctl is-failed --quiet docker.service; then exit 1; fi
+          sleep 1
+        done' || { journalctl -b -u docker.service --no-pager -n 25; exit 1; }""", timeout=190)
+    machine.command('docker load -i /etc/anima-smoke-image.tar.gz', timeout=120)
     limits = '--pull=never --network=none --read-only --memory=64m --cpus=1 --pids-limit=32 --cap-drop=ALL --security-opt=no-new-privileges'
     health = "--health-cmd 'test -f /scratch/healthy' --health-interval=1s --health-retries=1"
     labels = '--label com.docker.compose.project=fixture-health --label com.docker.compose.service=web'
@@ -21,12 +25,20 @@ def installed_docker(machine):
         docker_details(machine)
         machine.command('docker exec anima-docker-smoke /bin/touch /scratch/healthy')
         docker_health(machine, 'healthy')
+        wait_workspace_image(machine)
         machine.command('systemctl restart docker', timeout=120)
         machine.command("docker inspect --format '{{.State.Pid}}' anima-docker-smoke | cmp /run/anima-smoke-pid -; docker exec anima-docker-smoke /bin/wget -qO- http://127.0.0.1:8080 | grep -qx anima-app-ok")
         machine.command(f'docker run --rm {limits} anima-preview-smoke:local /bin/sh -c "! touch /write-test && echo anima-job-ok" | grep -qx anima-job-ok', timeout=60)
     finally:
         machine.command('docker rm -f anima-docker-smoke', timeout=60)
     docker_log_snapshot(machine, limits)
+
+
+def wait_workspace_image(machine):
+    machine.command("""timeout 1860 sh -c 'until systemctl is-active --quiet anima-workspace-image.service; do
+          if systemctl is-failed --quiet anima-workspace-image.service; then exit 1; fi
+          sleep 2
+        done' || { journalctl -b -u anima-workspace-image.service --no-pager -n 40; exit 1; }""", timeout=1870)
 
 
 def docker_health(machine, expected):

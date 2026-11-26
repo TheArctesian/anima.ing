@@ -188,7 +188,7 @@ in {
     wantedBy = [ "multi-user.target" ];
     requires = [ "docker.service" "anima-workspace-storage.service" ];
     after = [ "docker.service" "anima-workspace-storage.service" ];
-    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; TimeoutStartSec = "10min"; Nice = 10; IOSchedulingClass = "idle"; };
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; TimeoutStartSec = "30min"; Nice = 10; IOSchedulingClass = "idle"; };
     script = ''
       if ! ${pkgs.docker}/bin/docker image inspect '${image.imageName}:${image.imageTag}' >/dev/null 2>&1; then
         ${pkgs.docker}/bin/docker load --input ${image}

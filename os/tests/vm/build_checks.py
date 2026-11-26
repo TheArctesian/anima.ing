@@ -3,6 +3,7 @@ import json
 from functools import partial
 import shlex
 import uuid
+from container_checks import wait_workspace_image
 
 
 def installed_build(machine):
@@ -12,7 +13,7 @@ def installed_build(machine):
     unit = f'anima-build-{attempt}.service'
     machine.command(f'mkdir -m 700 {receipts}')
     machine.command("timeout 180 sh -c 'until systemctl is-active --quiet anima-execution-recovery; do sleep 2; done'", timeout=190)
-    machine.command("timeout 600 sh -c 'until systemctl is-active --quiet anima-workspace-image; do systemctl is-failed --quiet anima-workspace-image && exit 1; sleep 2; done'", timeout=610)
+    wait_workspace_image(machine)
 
     request = partial(build_request, machine, receipts)
 

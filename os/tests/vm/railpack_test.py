@@ -3,6 +3,7 @@ import argparse
 import json
 from pathlib import Path
 import secrets
+from container_checks import wait_workspace_image
 from gui_test import require_system
 from installer_checks import install_request, install_selected, prepare_serial_disk
 from remote_test import clone
@@ -61,7 +62,7 @@ def build_online(output, password, expected_system, results):
             results.append({'case': 'installed-candidate-generation', 'result': 'Passed'})
         machine.command('test ! -e /var/lib/anima-daemon/token; ! systemctl is-active --quiet anima-daemon')
         machine.command("timeout 180 sh -c 'until systemctl is-active --quiet anima-execution-recovery; do sleep 2; done'", timeout=190)
-        machine.command("timeout 600 sh -c 'until systemctl is-active --quiet anima-workspace-image; do systemctl is-failed --quiet anima-workspace-image && exit 1; sleep 2; done'", timeout=610)
+        wait_workspace_image(machine)
         machine.command('curl --connect-timeout 10 --max-time 30 --silent --show-error --head https://ghcr.io/v2/ >/dev/null', timeout=40)
         language = 'unsupported-source'
         installed_unsupported_railpack(machine)

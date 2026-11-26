@@ -3306,3 +3306,35 @@ distinct timeout error. The TCG harness allows 70 minutes for setup.
 Graphical and serial fixtures capture the installer's failure message
 before closing the guest. A fresh installation is required to verify the
 change.
+
+The clean snapshot `5b3500722930b0332b544cdead37dd06bdc7d011` passed all
+four Linux installer integration tests. The cutover marker, Workloads
+asset and private-access fixture receipts verified. The unsigned ISO has
+SHA-256 `cda06f93fd61112bff685728c85ad7b32be444bdcd487f572f565bddaffbf497`.
+The graphical retry reached the system copy with that ISO.
+
+The retry finished the offline install in about 36 minutes after copy
+started and shut down through Calamares. On cold boot with the ISO
+removed, the owner authenticated. The exact installed generation and
+the legacy data-volume UUID and prewritten sentinel checks passed.
+The unselected disk checksum passed. The suite stopped at a one-shot
+Docker status assertion while the unit was still activating. The
+fixture now waits for readiness and records the Docker journal on
+failure. A disposable clone rechecks the installed path with a fresh
+synthetic diagnostic password.
+
+The clone passed the Docker smoke checks, including live restore. Its
+intentional Docker restart stopped the workspace image import. systemd
+started it again. A focused boot of the frozen clone without a Docker
+restart then reported `Result=timeout` for
+`anima-workspace-image.service`. The journal measured ten minutes
+between import start and termination.
+
+With a temporary 30-minute systemd setting, the same installed image
+imported in about 17 minutes on QEMU TCG. A container started offline
+with networking disabled and read-only root, ran as UID 1000 and found
+Anima daemon, Codex, Claude and Railpack. The OS now uses that bounded
+30-minute import deadline. The VM fixtures share the readiness check
+and wait for import before exercising Docker live restore. This is
+focused installed evidence from the frozen system with a runtime
+override. The revised ISO and full installed suite remain open.
