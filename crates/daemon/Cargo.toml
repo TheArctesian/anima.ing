@@ -16,6 +16,8 @@ name = "anima-daemon"
 path = "src/main.rs"
 
 [features]
+# THR-172: enable only after review of the real probe implementation.
+mobile-inventory = []
 # The integration tests start the daemon as a child of the test and call its runner as the
 # person. On a system that keeps a read of that test from the daemon (the Mac runner of GitHub,
 # 2026-11-23) the rule of R-315 fails closed and takes the test for an agent; with this feature

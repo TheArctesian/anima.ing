@@ -61,6 +61,7 @@ mod tests {
     fn mac(cargo: Verdict) -> Inventory {
         Inventory {
             remote_access: None,
+            mobile_tools: None,
             architecture: Architecture::Aarch64,
             os: Os::Macos,
             os_version: "27.0".to_owned(),

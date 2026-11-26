@@ -67,6 +67,7 @@ type Documents = {
     "\n  fragment MobileThreadSummary on AgentThreadSummary {\n    id\n    deviceId\n    program\n    state\n    title\n    activityAt\n    repository\n  }\n": typeof types.MobileThreadSummaryFragmentDoc,
     "\n  query MobileThreadInbox($after: String) {\n    agentThreads(after: $after) {\n      nodes { ...MobileThreadSummary }\n      pageInfo { hasNextPage endCursor }\n    }\n  }\n": typeof types.MobileThreadInboxDocument,
     "\n  query MobileThreadSnapshot($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      entries { sequence content }\n      lastSequence\n    }\n  }\n": typeof types.MobileThreadSnapshotDocument,
+    "\n  query MobileThreadSummaryRefresh($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      lastSequence\n    }\n  }\n": typeof types.MobileThreadSummaryRefreshDocument,
     "\n  subscription MobileThreadEntries($id: ID!, $afterSequence: String!) {\n    agentThreadEntries(id: $id, afterSequence: $afterSequence) {\n      sequence\n      content\n    }\n  }\n": typeof types.MobileThreadEntriesDocument,
     "\n  query Containers($deviceId: ID!) {\n    containers(deviceId: $deviceId) {\n      id\n      name\n      image\n      state\n      status\n      health\n      ports\n      createdAt\n      composeProject\n      composeService\n      composeWorkingDir\n      composeFiles\n      composeProjectState\n    }\n  }\n": typeof types.ContainersDocument,
     "\n  query ContainerLog($deviceId: ID!, $containerId: String!, $lines: Int) {\n    containerLog(deviceId: $deviceId, containerId: $containerId, lines: $lines) {\n      lines {\n        at\n        text\n      }\n      cut\n    }\n  }\n": typeof types.ContainerLogDocument,
@@ -265,6 +266,7 @@ const documents: Documents = {
     "\n  fragment MobileThreadSummary on AgentThreadSummary {\n    id\n    deviceId\n    program\n    state\n    title\n    activityAt\n    repository\n  }\n": types.MobileThreadSummaryFragmentDoc,
     "\n  query MobileThreadInbox($after: String) {\n    agentThreads(after: $after) {\n      nodes { ...MobileThreadSummary }\n      pageInfo { hasNextPage endCursor }\n    }\n  }\n": types.MobileThreadInboxDocument,
     "\n  query MobileThreadSnapshot($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      entries { sequence content }\n      lastSequence\n    }\n  }\n": types.MobileThreadSnapshotDocument,
+    "\n  query MobileThreadSummaryRefresh($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      lastSequence\n    }\n  }\n": types.MobileThreadSummaryRefreshDocument,
     "\n  subscription MobileThreadEntries($id: ID!, $afterSequence: String!) {\n    agentThreadEntries(id: $id, afterSequence: $afterSequence) {\n      sequence\n      content\n    }\n  }\n": types.MobileThreadEntriesDocument,
     "\n  query Containers($deviceId: ID!) {\n    containers(deviceId: $deviceId) {\n      id\n      name\n      image\n      state\n      status\n      health\n      ports\n      createdAt\n      composeProject\n      composeService\n      composeWorkingDir\n      composeFiles\n      composeProjectState\n    }\n  }\n": types.ContainersDocument,
     "\n  query ContainerLog($deviceId: ID!, $containerId: String!, $lines: Int) {\n    containerLog(deviceId: $deviceId, containerId: $containerId, lines: $lines) {\n      lines {\n        at\n        text\n      }\n      cut\n    }\n  }\n": types.ContainerLogDocument,
@@ -636,6 +638,10 @@ export function graphql(source: "\n  query MobileThreadInbox($after: String) {\n
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query MobileThreadSnapshot($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      entries { sequence content }\n      lastSequence\n    }\n  }\n"): (typeof documents)["\n  query MobileThreadSnapshot($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      entries { sequence content }\n      lastSequence\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MobileThreadSummaryRefresh($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      lastSequence\n    }\n  }\n"): (typeof documents)["\n  query MobileThreadSummaryRefresh($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      lastSequence\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

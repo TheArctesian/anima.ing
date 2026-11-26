@@ -8,6 +8,7 @@ mod hardware;
 mod inventory;
 mod linux;
 mod macos;
+pub mod mobile;
 #[cfg(windows)]
 mod windows;
 

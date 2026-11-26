@@ -30,14 +30,15 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
-| HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
+| HT-187 | Desktop Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and ordinary browser | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-186 | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
-| HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
+| HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with an account-authorized Anima-started desk thread and transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
 | HT-183 | Check the Overview and device tabs for the Hub and Pop!_OS (M2-7) | iPad with a current build, and a linked Linux device with several metric types | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
@@ -213,18 +214,33 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Tap the text field. Type ordinary text, one accented character and one IME composition, then use Enter and Backspace. Confirm each appears once on the remote desktop.
 - Background the app and interrupt its network. Reopen the app, check the session reconnect behavior, and use the pointer again.
 
+### HT-192: a remote desktop on an iPhone fills the screen and shows the pointer
+
+- State: Open.
+- Built: on a phone, a VNC or RDP session uses the whole screen inside the safe area in each orientation, with the app's navigation hidden; one bar under the display holds Back, Keys, Fit, Displays and the text field; a pointer of a fixed size shows where a tap clicks (`apps/client/src/lib/sessions/strip/SessionPanes.svelte`, `apps/client/src/lib/sessions/view/remote/`). The room that the display leaves shows as a trackpad (`touch/Trackpad.svelte`); the display keeps the whole height of a landscape screen, grows until the trackpad is 160 px, is always bigger than the trackpad, and follows the pointer to its sides (`touch/trackpad.ts`, `touch/input.ts`). The gateway asks the VNC device for the cursor shape, so the device does not draw its pointer into the screen (`crates/anima-gateway/src/vnc/messages.rs`). The client tests cover the pointer position, the trackpad layout and the view that follows the pointer, the gateway tests cover the cursor shape, and a browser test covers the layout at iPhone sizes. They do not cover the iOS keyboard, the safe areas of a real iPhone, or a real VNC server.
+- Open a VNC session from the iPhone app to the Mac. In portrait, check that the Mac's screen shows its full height, from the menu bar to the Dock, that the pointer shows at the centre of it, and that one bar is at the bottom, above the home indicator. Expected: no bar at the top, and no app navigation.
+- Turn the iPhone to landscape. Expected: the Mac's screen uses the full height above the bar, and the app's navigation rail does not show.
+- Move one finger on the screen. Expected: the drawn pointer and the Mac's pointer move together. Tap a harmless spot. Expected: the click lands at the tip of the drawn pointer.
+- In portrait, look at the part under the Mac's screen. Expected: it shows a small trackpad with the word Trackpad. Slide one finger on it in large circles for 10 seconds. Expected: the pointer moves on the Mac's screen, and no copies of the pointer stay on the Mac's screen. Slide the pointer to the right edge of the Mac's screen, then to the left edge. Expected: the view moves with the pointer, and the pointer stays in view. Turn the iPhone to landscape. Expected: the Mac's screen shows at its full height, or larger when the full height would make it narrower than the trackpad, and the trackpad at the right of it is narrower than the Mac's screen.
+- Tap the text field and type a word. Expected: the bar sits on the keyboard, the field stays visible, the page does not zoom, and the word appears once on the Mac.
+- Use Back, then reopen the session from its tab. Expected: the session stayed connected.
+
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 
 - State: Open.
-- On iOS and Android, open Code. Check that a thread shows the computer, project, agent and state. Open it and check that recent prompts and replies display in order.
+- On iOS and Android, sign in as the operator and open the shared Anima-started desk thread in Code. Check that it shows the computer, project, agent and state. Open it and check that recent prompts and replies display in order.
+- Background the app or interrupt its connection. On its computer, send another prompt to that same thread and reach an approval request. Return to the same thread on the phone. Check that the new reply appears once and the request shows what it asks. Answer on the computer and check that the request clears on the phone.
+- Start a fresh thread through Anima at the desk on a computer with transcript sharing off. Open it on the phone. Check that its summary appears and the phone has no shared messages.
+- On native iOS and Android, sign in and open a shared Anima-started desk thread in the Code inbox. Check that it shows the computer, project, agent and state. Open it and check that recent prompts and replies display in order.
 - Background the app or interrupt its connection. On the computer, send another prompt and reach an approval request. Return to the same thread on the phone. Check that the new reply appears once and the request shows what it asks. Answer on the computer and check that the request clears on the phone.
-- Start a fresh thread on a computer with transcript sharing off. Open it on the phone. Check that its summary appears and the phone has no shared messages.
+- Start a fresh thread through Anima at the desk with transcript sharing off. Open it on the phone. Check that its summary appears and the phone has no shared messages.
 
 ### HT-149: reporting after an iPad update and the phone Code tab
 
 - State: Open.
 - On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. Keep the app open for two samples and check that CPU also shows. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
-- On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
+- On a native phone build with the TH50 read route, tap Code in the bottom bar. It opens the shared inbox for the signed-in hub. Open a device page and check that the device's sessions are still available there.
+- On a native phone, tap Code in the bottom bar. It opens the signed-in hub’s read-only Code inbox. Open a device page and check that the device's sessions are still available there.
 
 ### HT-183: Device Overview and tabs on iPad
 
@@ -5677,6 +5693,50 @@ On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing
 
 On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
 
+
+## HT-191 — Installed mobile tool reporting (TH135)
+
+State: Open. Built locally: the typed K8 snapshot, bounded collector, hub storage and
+K1/CLI/MCP read path. New collection is off in normal builds. `mobile-inventory` is an
+explicit build feature pending implementation review, not a default-on probe.
+Synthetic output and filesystem tests do not prove real Xcode behaviour, SDK layout,
+absence of tool-side cache writes, or a blocked filesystem on each host platform.
+Windows collection is not implemented; no positive Windows inventory is claimed.
+
+Independent review of `00e1cc235` found no blocking code findings for default-off CI.
+Before real-probe enablement, TH135 must add synthetic tests through the parent
+collection boundary for a blocked worker and a descendant retaining stdout. The tests
+must prove the five-second deadline, bounded return and descendant cleanup, and run
+with `mobile-inventory` enabled. Direct worker-dispatch tests do not establish these
+properties. This validation follow-up remains open; review did not authorize probes.
+
+After that validation, implementation review and operator authorization for real
+probes, use a disposable enrolled Mac with an existing Xcode and Android SDK installation:
+
+1. Build the daemon with `cargo build -p anima-daemon --features mobile-inventory`.
+   Use a test hub with the mobile-inventory migration and this branch's CLI. Do not
+   replace a production service for this check. Start the test daemon as prescribed
+   by the existing enrolment procedure, with its own test state and token.
+2. Set `ANDROID_SDK_ROOT` to the existing SDK root and put its emulator directory on
+   the test daemon's `PATH`. Do not install a tool or accept a licence for this check.
+   Read `anima capability list --json` after the next inventory report. The Xcode
+   version stays in `tools`; mobile runtime identifiers, device-type identifiers,
+   package identifiers/revisions and emulator version match the installed tools.
+   No UDID, device instance, filesystem path, session, account or raw error appears.
+3. Read `anima_capability_list` from a test MCP client. It gives the same typed snapshot
+   and receipt time. The CLI table says "last reported", not ready. An unavailable
+   runtime has `available: false`; neither client promises that a device can boot.
+4. Repeat with the tools absent from the test daemon's search path and without its SDK
+   root setting. The affected result says `missing`, not successful empty inventory;
+   unrelated results remain independent. On Linux, Apple results say `unsupported`.
+5. Point the CLI at an older test hub. Capability listing still succeeds through its
+   legacy query; mobile tools are null in JSON/MCP and "Not reported" in the table.
+6. Confirm no simulator or emulator was created, booted or removed, no SDK downloaded,
+   and no phone or personal simulator was listed. Record any unexpected service/cache
+   activity for implementation review before enabling collection on a real account.
+
+Database migration/replacement tests are reserved for CI in this session: no local
+PostgreSQL was started. Passing fixture tests is not a Passed result for this entry.
 ## HT-190 — Native session list refresh
 
 State: Open. Built on `t3/session-folder-watcher` (TH7, THR-058).
@@ -5718,7 +5778,8 @@ State: Open. Built on `code/local-anima-sessions-only`. Synthetic tests mount th
    Expected: only the Anima-started session and its project appear. There is no imported-history control. Imported sessions do not contribute to the Code attention badge.
 2. Open the local Anima session, leave Code, reopen it, then restart the app and reopen the persisted session.
    Expected: the Anima session remains available. An old selected/imported session or history entry never reveals its title, messages, details or composer.
-3. Open Code on a client that cannot read this computer's local runner, including the phone client.
+3. Open Code in an ordinary browser without a local runner. For a native phone use HT-149 and HT-170-code-handoff.
+3. Open Code in an ordinary browser without a local runner. For the native phone use HT-149 and HT-170-code-handoff.
    Expected: an explanation that Code currently shows Anima-started threads on this computer; no remote computer/session chooser is exposed.
 4. Confirm existing ingestion and session records are retained by the normal ingestion workflow.
    Expected: records remain available for future use; this UI change deletes no sessions and does not stop the watcher.

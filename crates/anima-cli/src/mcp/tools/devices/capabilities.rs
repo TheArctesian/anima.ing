@@ -36,7 +36,9 @@ pub fn definition() -> Definition {
          whether it is usable (when not, a reason code and a repair hint), the installed Rust build \
          targets, and the hardware values: memory, usable GPU memory of Apple silicon, free \
          disk, CPU features, each backend (metal, cuda, rocm, vulkan, cpu) with a verdict, \
-         power source, thermal state and operator activity. tool keeps the devices \
+         power source, thermal state and operator activity. Mobile tools are last reported installed \
+         runtimes, device types, SDK packages and emulator version with probe states and hub receipt time, \
+         not device readiness. tool keeps the devices \
          where that tool is usable; buildTarget those with that target. A device without an \
          agent is not listed. Next: anima_device_get.",
     )
@@ -51,7 +53,10 @@ pub fn definition() -> Definition {
              usableMemoryBytes, usableMemorySource WIRED_LIMIT or DEFAULT_SHARE, freeDiskBytes, \
              cpuFeatures, backends (name, usable, reason: NO_DEVICE, NO_DRIVER, NO_PERMISSION, \
              NOT_SUPPORTED or FAILED, hint), powerSource MAINS or BATTERY, thermalState NOMINAL \
-             or THROTTLED, operatorActive, foundAt).",
+             or THROTTLED, operatorActive, foundAt), mobileTools (null when not reported; receivedAt, \
+             apple.simulatorRuntimes and apple.deviceTypes: state and nullable entries; \
+             android.sdkPackages: state and nullable entries of path/revision; \
+             android.emulator: state and nullable version).",
         ),
         ("count", "integer", "How many devices are listed."),
     ])
