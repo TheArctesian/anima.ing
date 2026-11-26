@@ -17,7 +17,8 @@ def fingerprint():
     import hashlib
     tree = subprocess.check_output(['git', 'ls-tree', '-r', 'HEAD', '--',
                                     'os', 'crates', 'link', 'Cargo.toml',
-                                    'Cargo.lock', 'rust-toolchain.toml', '.cargo', '.github/workflows/os-release.yml'])
+                                    'Cargo.lock', 'rust-toolchain.toml', '.cargo', 'quality/bin/rustc-cache.sh',
+                                    '.github/workflows/os-release.yml'])
     return hashlib.sha256(tree).hexdigest()
 
 

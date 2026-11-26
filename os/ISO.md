@@ -234,16 +234,17 @@ its progress or the staged release ready for restart.
 
 This initial transport downloads a full system closure, rather than a delta. Automatic retirement of old EFI assets and Nix store garbage collection are not implemented yet; low-space staging is refused rather than deleting recovery material. It needs enough free storage for the archive, imported closure and recovery. Local boot checks determine whether a candidate is accepted; loss of hub connectivity alone is not a rollback trigger. Hardware-specific failures and real-account enrollment still require the human checks above.
 
-Publisher commands (credentials and the signing key must remain outside the repository):
+To package a closure for local signed-update testing, supply a signing key
+outside the repository whose public key is trusted by the test installation.
 
 ```sh
 python3 os/updates/package.py /nix/store/SYSTEM /disk-backed/release \
-  --key /private/path/preview-signing.pem
-python3 os/updates/publish.py /disk-backed/release \
-  --credentials /private/path/r2.env
+  --key /private/path/test-signing.pem
 ```
 
-The publisher requires boto3. It uploads only the OS preview namespace in the existing release bucket, checks the public artifact digest, and then publishes the signed feed. Keep the signing key backed up securely: future updates must verify against the key already installed on machines.
+For a disposable key and matching test installation, use the
+[pre-move upgrade rehearsal](#rehearse-an-upgrade-from-before-the-os-move).
+Public releases use the qualified workflow below.
 
 `update_test.py ISO PACKAGE OUTPUT` installs the previous release into disposable VM disks, stages the signed candidate, checks that it boots with the same identity and data disk contents, then verifies owner rollback to the previous system. The release workflow passes `--baseline-manifest` to check the installed baseline against the verified public update manifest. The updater uses a test-only TLS origin on a disposable attached disk with certificate verification enabled and no host networking. The separate fresh-install lane captures daemon storage telemetry and checks displayed capacity for the attached and absent volumes.
 
@@ -341,9 +342,17 @@ Other link ports and managed Code previews keep their own authorization.
 
 ## Publishing an OS release
 
-Publish only after the tested ISO and signed update target the same installed-system closure. Upload the immutable ISO under `os/preview/x86_64-linux/<version>/anima-os-x86_64.iso`, verify its complete public bytes, then publish the signed installed-OS package with `updates/publish.py`. Keep the local artifact and public verification receipts.
+The [preview release workflow](../.github/workflows/os-release.yml) hands
+the matching ISO, signed update and VM reports to `os/release/channel.py`.
+The publisher verifies the reports for the exact candidate and upgrade
+baseline. It uploads the immutable artifacts under
+`os/preview/x86_64-linux/<version>/` and verifies their public bytes before
+advancing the two feed pointers.
 
-Finish every ISO publication with the site repository's `scripts/publish-os.py <version> /path/to/anima-os-x86_64.iso --credentials /path/to/r2.env`. It verifies the complete public ISO and atomically advances `latest-iso.json`, preserving the previous pointer if verification fails. The permanent website address `https://anima.ing/download/os` and its version/size/checksum display read this manifest at runtime. No website rebuild is needed. Confirm both the signed update feed and `/download/os?format=json` name the intended version before reporting publication complete.
+The permanent website address `https://anima.ing/download/os` reads
+`latest-iso.json` for the version, size and checksum. Confirm that
+`/download/os?format=json` and the signed update feed name the released
+version. Keep the artifact and qualification receipts.
 
 ## Automatic preview releases
 

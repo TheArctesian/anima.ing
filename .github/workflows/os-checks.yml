@@ -12,6 +12,7 @@ on:
       - 'crates/oci-artifact/**'
       - 'crates/daemon/**'
       - 'crates/daemon-core/**'
+      - 'crates/model-relay/**'
       - 'crates/power/**'
       - 'crates/redaction/**'
       - 'crates/agent-threads/**'
@@ -21,6 +22,8 @@ on:
       - 'rust-toolchain.toml'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - '.cargo/**'
+      - 'quality/bin/rustc-cache.sh'
       - '.github/workflows/os-checks.yml'
       - '.github/workflows/os-release.yml'
   workflow_dispatch:

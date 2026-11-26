@@ -37,6 +37,7 @@
   systemd.tmpfiles.rules = [ "d /var/lib/anima-link 0700 anima-daemon anima-daemon -" "d /var/lib/anima-daemon 0700 anima-daemon anima-daemon -" "d /persist/apps 0750 root root -" ];
   environment.systemPackages = [ (import ../packages/link-package.nix { inherit pkgs; }) daemonPackage.provenance ] ++ (with pkgs; [ daemonPackage btrfs-progs curl jq git vim nano tmux ])
     ++ import ../packages/local-tools.nix { inherit pkgs daemonPackage workspaceRoot; };
+  environment.pathsToLink = [ "/share/anima-build" ];
   environment.etc."anima-smoke-image.tar.gz".source = import ./smoke-image.nix { inherit pkgs; };
   services.logind.settings.Login = { HandleLidSwitch = "ignore"; HandleLidSwitchExternalPower = "ignore"; IdleAction = "ignore"; };
   systemd.targets.sleep.enable = false;

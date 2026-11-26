@@ -11,6 +11,27 @@ instructions and requirements are in [ISO.md](ISO.md).
 - [release](release) prepares runtime inputs, builds candidates and records provenance.
 - [tests](tests) owns the NixOS, session, browser and installed-image fixtures. [benchmarks](benchmarks) measures installed performance.
 
+### Rust controllers
+
+The Qt console sends authenticated requests over standard input to
+[`anima-os-session`](../crates/anima-os-session). That program owns the
+local session and validates console commands before calling the relevant
+controller. Calamares passes the reviewed disk selection to the separate
+[`anima-os-install`](../crates/anima-os-install) CLI.
+
+| Owner | Responsibility |
+| --- | --- |
+| [`anima-osd`](../crates/anima-osd) | Local observations and diagnostic jobs over a Unix socket. |
+| [`anima-os-update`](../crates/anima-os-update) | Signed update verification, staging, activation and rollback. |
+| [`anima-os-storage`](../crates/anima-os-storage) | Mount recorded data filesystems by UUID at boot. |
+| [`anima-os-maintenance`](../crates/anima-os-maintenance) | Shared maintenance leases, hosting pressure and admission reservations. |
+| [`anima-os-execution`](../crates/anima-os-execution) | Isolated workspaces, agent runs, previews and source builds. |
+| [`anima-applications`](../crates/anima-applications) | Managed Docker deployments, application terminals and Podman cutover. |
+
+Nix configures the service accounts, state directories and socket permissions.
+Coding sessions start from Code in the Anima apps.
+The installed console provides host and application administration.
+
 Run non-publishing source checks from the repository root with:
 
 ```sh

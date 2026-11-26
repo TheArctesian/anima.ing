@@ -3216,3 +3216,29 @@ The Openbox and D-Bus lock shortcut passed with xterm focused. Eight
 screen-off and bridge tests passed. Installed display and application
 terminal acceptance remain open under
 [HT-190](../../need-human-testing.md#ht-190--animaos-hosting-container-actions).
+
+### Frozen controller packages on x86 Linux, 2026-11-26
+
+The unsigned candidate uses the detached revision
+`4bee5fa3d816d35f59977054202d789d99fb121a`. The Mac Docker x86 container
+returned `ENOSYS` for `openat2` with the flags used by the applications
+store. Disabling Docker's syscall filter did not change that result.
+The disposable QEMU x86 Linux builder accepted those flags.
+
+Nix built the same applications derivation in that guest. All 96 unit
+tests passed, including the storage containment and cleanup cases that
+failed under Docker emulation. The execution derivation passed 27
+execution tests and three OCI artifact tests in the same guest. Eleven
+tests marked for a privileged fixture remained excluded by the package
+check. Nix copied both tested packages back to the assembly store and
+resumed generation assembly from the original runtime inputs. The
+final ISO receipt and installed acceptance remain open.
+
+### Installed source provenance, 2026-11-26
+
+The first frozen generation built, but its verifier rejected the closure.
+The system profile omitted the provenance package's `/share/anima-build`
+directory. The appliance now links that directory into its system profile.
+A focused Nix profile build linked the source revision, source manifest,
+Cargo lock digest and daemon binary digest. All four matched the prepared
+payload byte for byte. The corrected candidate requires a new frozen build.

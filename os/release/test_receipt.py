@@ -8,7 +8,7 @@ from receipt import fingerprint
 
 
 class SourceFingerprint(unittest.TestCase):
-    def test_relocated_sources_are_tracked_without_releasing_for_documents(self):
+    def test_build_inputs_select_a_release_without_releasing_for_documents(self):
         previous = Path.cwd()
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -32,7 +32,13 @@ class SourceFingerprint(unittest.TestCase):
                 self.assertEqual(fingerprint(), baseline)
                 source.write_text('{ revision = 2; }')
                 commit()
-                self.assertNotEqual(fingerprint(), baseline)
+                relocated = fingerprint()
+                self.assertNotEqual(relocated, baseline)
+                wrapper = root / 'quality/bin/rustc-cache.sh'
+                wrapper.parent.mkdir(parents=True)
+                wrapper.write_text('#!/bin/bash\nexec "$@"\n')
+                commit()
+                self.assertNotEqual(fingerprint(), relocated)
             finally:
                 os.chdir(previous)
 
