@@ -117,6 +117,8 @@ The hub reads at most the limit and answers 413 without reading further. A body 
 
 ## 2. Secrets
 
+R-460 permits the authenticated claims, reports, dispatch authorization, late evidence, control snapshot, command poll and result requests of [K10 Section 6.5](work-route.md#65-agent-threads-th30). Its device binding, link transport limits and pre-W7 restriction apply to all of them.
+
 | Value | Format | Hub keeps | Lifetime |
 | --- | --- | --- | --- |
 | Enrolment code | `anima_enrol_` + 22 base64url characters (16 bytes, 128 bits, MET-012) | SHA-256 only | 15 minutes, one use |
@@ -490,6 +492,8 @@ The hub:
 
 ### 4.1 Agent thread summaries (TH20, R-431)
 
+For TH30, record the first accepted summary observation in this transaction under the device/runner lock, as specified in [K10 Section 6.5](work-route.md#65-agent-threads-th30). Both ingestion paths share the same immutable observation. A row from either path still requires matching authenticated holder creation evidence before remote commands are eligible.
+
 `agentThreads` is optional. An absent member leaves stored thread data unchanged. The member has
 `count` (zero or more, at most 2³² − 1), `countRevision` and `summaries` (zero to 256 rows).
 `count` gives the device's total after the exclusions of AIS-008. The device persists revisions
@@ -521,6 +525,8 @@ commit. See [agent threads, Section 6.3.1](../docs/proposals/agent-threads.md#63
 An approval or transcript entry does not go in `agentThreads`.
 
 ### 4.2 Agent thread entries (TH21, R-431)
+
+For TH30, record the first accepted summary observation in this transaction under the device/runner lock, as specified in [K10 Section 6.5](work-route.md#65-agent-threads-th30). Both ingestion paths share the same immutable observation. A row from either path still requires matching authenticated holder creation evidence before remote commands are eligible.
 
 `POST /daemon/v1/threads/entries` takes `device`, `summary` (as in Section 4.1), and
 `entries`, with 1 to 12 entries in sequence order. Each entry has a `sequence` from 1 to
@@ -794,11 +800,11 @@ their grants; this section is the wire.
 ## 10. Proposed amendment: installed mobile tools (TH135)
 
 Status: **Accepted by the programme orchestrator; implementation on this branch awaits review**,
-version 2, 2026-11-24 (R-NEW-mobileinventorycontract, CON-001). Sections 1 to 9 remain
+version 2, 2026-11-24 (R-455, CON-001). Sections 1 to 9 remain
 unchanged. Acceptance becomes part of the shared baseline when this branch lands in `dev`. Owner: TH135 and
 THR-172 in [agent-threads.md](../docs/proposals/agent-threads.md), Section 6.11;
 CAP-020 to CAP-031 in [compute-plan.md](../docs/plans/compute-plan.md).
-**R-NEW-mobileinventorycontract (programme orchestrator, 2026-11-24; CON-001).**
+**R-455 (programme orchestrator, 2026-11-24; CON-001).**
 Accept the K8 reporting amendment reviewed at `e2e07dce2`, after independent re-review
 found no remaining blocking findings. This implements the already approved TH135/THR-172
 inventory scope; it adds no lease authority, provisioning, download, wipe or freshness policy.
@@ -951,7 +957,7 @@ not prove a local SDK installation, offline tool behaviour or device readiness.
 
 ### 10.4 Accepted K1 read surface (implementation awaits review)
 
-**R-NEW-mobileinventoryread (programme orchestrator, 2026-11-24; CON-001).**
+**R-456 (programme orchestrator, 2026-11-24; CON-001).**
 Accept the additive K1 read contract reviewed at
 `2e49e0a8d0568a2a5b0b01ed3d2dc3bd59b448a7`, after independent re-review closed the
 older-hub compatibility finding with no remaining actionable contract findings.

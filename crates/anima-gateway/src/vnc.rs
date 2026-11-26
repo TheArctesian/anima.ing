@@ -33,6 +33,8 @@ pub enum Malformed {
     TooManyPixels,
     #[error("a rectangle outside the screen")]
     OutsideScreen,
+    #[error("a pointer shape larger than the screen")]
+    LargePointer,
     #[error("more bytes for a rectangle than its pixels need")]
     TooManyBytes,
     #[error("a ZRLE tile that does not decode")]
