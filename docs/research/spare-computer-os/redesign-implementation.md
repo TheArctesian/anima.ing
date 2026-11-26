@@ -3267,3 +3267,42 @@ derivation at `83a01d481c9b`. Its generated C++ retained unresolved
 substitutions under Docker's x86 emulation. The legacy derivations are
 being retried on the disposable x86 Linux builder. The baseline receipt,
 activation and rollback results remain pending.
+
+### Packaged workspace and hosting policy, 2026-11-26
+
+Inspection of the workspace image in the verified `7a1cf1c5d9c3` closure
+resolved the executable entries for Anima daemon, Codex 0.146.0, Claude
+Code 2.1.223 and Railpack 0.43.1 through the actual image layers. Its
+entry point runs under UID and GID 1000. The installed profile contains
+the Anima Powerline configuration for the administration shell.
+
+The installed Docker unit loads a configuration with live restore and
+`anima-hosting.slice` as the container cgroup parent. Hosting has the
+higher CPU and I/O weights and protected memory. The agent slice has
+separate limits, and the admission config names both slices. Provider
+sign-in, real builds and service continuity under load remain installed
+acceptance checks.
+
+The same closure enables SSH, RDP and VNC at boot. Their packaged listeners
+bind to loopback. RDP uses TLS and the shared console socket, VNC uses
+X509Plain, and the private link requires the remote-defaults initializer.
+Actual enrollment and authenticated sessions remain part of the installed
+qualification.
+
+### Installer deadline and failure reporting, 2026-11-26
+
+Revision `0f8a14044db2` built an unsigned ISO with SHA-256
+`dab75204fecffeced4c4977a72d8f60a00751b2f7264dcad972ade6e6e4c41f6`.
+The ISO contained the expected installed system, cutover marker, Workloads
+asset and four source provenance files. Its graphical installation reached
+the system copy and returned status 1 about 30 minutes into the copy.
+The selected image grew to 6 GiB and the unselected disk checksum passed.
+The serial report captured the failure status but omitted the installer
+message. The timing matches the native installer's 30-minute command
+deadline.
+
+The installer now allows 60 minutes for `nixos-install` and reports a
+distinct timeout error. The TCG harness allows 70 minutes for setup.
+Graphical and serial fixtures capture the installer's failure message
+before closing the guest. A fresh installation is required to verify the
+change.

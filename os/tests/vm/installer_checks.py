@@ -33,6 +33,7 @@ def install_request(machine, password):
 
 
 def install_selected(machine):
-    machine.command('anima-install < /run/install.json > /run/install-progress.jsonl',
+    machine.command('anima-install < /run/install.json > /run/install-progress.jsonl '
+                    '|| { tail -n 12 /run/install-progress.jsonl; exit 1; }',
                     timeout=vm_host.install_copy_timeout())
     machine.command("grep -q ANIMA_INSTALL_COMPLETE /run/install-progress.jsonl")

@@ -42,7 +42,7 @@ fn execute(program: &'static str, arguments: &[&str], capture: bool) -> Result<O
     });
     let deadline = Instant::now()
         + Duration::from_secs(if program == "nixos-install" {
-            1800
+            3600
         } else {
             120
         });
@@ -58,7 +58,7 @@ fn execute(program: &'static str, arguments: &[&str], capture: bool) -> Result<O
             }
             let _ = child.kill();
             let _ = child.wait();
-            return Err(Error::Command(program));
+            return Err(Error::CommandTimeout(program));
         }
         std::thread::sleep(Duration::from_millis(20));
     };

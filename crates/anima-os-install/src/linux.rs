@@ -27,6 +27,10 @@ enum Error {
     Storage(#[from] anima_os_storage::Error),
     #[error("The installation command {0} failed. Check the local system journal.")]
     Command(&'static str),
+    #[error(
+        "The installation command {0} timed out. Check the installation media and target disk before retrying."
+    )]
+    CommandTimeout(&'static str),
 }
 type Result<T> = std::result::Result<T, Error>;
 

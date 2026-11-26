@@ -146,7 +146,16 @@ Locking conceals the local interface and closes its authenticated command sessio
 
 ## Automated VM installation tests
 
-Requires `qemu-img`, `qemu-system-x86_64`, ImageMagick (`magick`) and Tesseract on PATH. On Linux, install the OVMF files named in `vm_host.py`. On macOS, the harness discovers the x86-64 UEFI firmware from Homebrew QEMU's descriptors. The install copy deadline is 40 minutes on Apple Silicon TCG and 20 minutes with hardware acceleration.
+Requires `qemu-img`, `qemu-system-x86_64`, ImageMagick (`magick`) and Tesseract on PATH. On Linux, install the OVMF files named in `vm_host.py`. On macOS, the harness discovers the x86-64 UEFI firmware from Homebrew QEMU's descriptors. The installer allows 60 minutes for `nixos-install`. The VM harness allows up to 70 minutes for setup on Apple Silicon TCG and 20 minutes with hardware acceleration.
+
+The private-access and signed-upgrade fixtures also use `mkfs.ext4` and
+an `openssl` that supports `x509 -copy_extensions`. On a Mac with the
+Homebrew `e2fsprogs` and `openssl@3` packages, add both tool directories
+to `PATH`.
+
+```sh
+export PATH="$(brew --prefix e2fsprogs)/sbin:$(brew --prefix openssl@3)/bin:$PATH"
+```
 
 ```sh
 python3 os/tests/vm/gui_test.py \

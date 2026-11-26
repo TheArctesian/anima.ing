@@ -116,7 +116,7 @@ def graphical_install(machine, output, password):
     machine.command(
         f"timeout {copy_timeout} sh -c '"
         'until grep -q ANIMA_INSTALL_COMPLETE /root/.cache/calamares/session.log; do '
-        'if grep -q "Installation failed:" /root/.cache/calamares/session.log; then exit 1; fi; '
+        'if grep -E "ANIMA_INSTALL_FAILED|Installation failed:" /root/.cache/calamares/session.log; then exit 1; fi; '
         "sleep 2; done'",
         timeout=copy_timeout + 10,
     )

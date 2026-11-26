@@ -75,4 +75,5 @@ def native_install(request):
                 libcalamares.job.setprogress(progress)
             succeeded = event.get('state') == 'succeeded' or succeeded
         if process.wait() != 0 or not succeeded:
+            libcalamares.utils.debug(f'ANIMA_INSTALL_FAILED {failure}')
             raise ValueError(failure)

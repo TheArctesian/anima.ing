@@ -15,7 +15,7 @@ def accelerator():
 
 
 def install_copy_timeout():
-    return 2400 if accelerator() == 'tcg' else 1200
+    return 4200 if accelerator() == 'tcg' else 1200
 
 
 def firmware():
