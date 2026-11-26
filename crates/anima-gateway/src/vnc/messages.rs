@@ -14,8 +14,19 @@ const COPY_RECT: i32 = 1;
 const ZLIB: i32 = 6;
 const ZRLE: i32 = 16;
 const DESKTOP_SIZE: i32 = -223;
+/// The pointer's shape (RFC 6143 Section 7.8.1). A device that may send it does not draw its pointer
+/// into the screen, where an old pointer stays until that part of the screen changes.
+const CURSOR: i32 = -239;
 /// The encodings the gateway asks for, most wanted first.
-pub(super) const ENCODINGS: [i32; 6] = [ZRLE, ZLIB, COPY_RECT, RAW, EXTENDED_SIZE, DESKTOP_SIZE];
+pub(super) const ENCODINGS: [i32; 7] = [
+    ZRLE,
+    ZLIB,
+    COPY_RECT,
+    RAW,
+    EXTENDED_SIZE,
+    DESKTOP_SIZE,
+    CURSOR,
+];
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Body<'a> {
@@ -152,11 +163,32 @@ pub(super) fn rect(
                 body: Body::NewSize,
             });
         }
+        if encoding == CURSOR {
+            return cursor_rect(unread, area, size);
+        }
         if area.x + area.width > size.0 || area.y + area.height > size.1 {
             return Err(Malformed::OutsideScreen.into());
         }
         let body = pixel_body(unread, encoding, area.width * area.height)?;
         Ok(Rect { area, body })
+    })
+}
+
+/// A pointer shape is read and dropped: the client draws its own pointer, as for an RDP device. Its
+/// corner is the hot spot, not a place on the screen, so only its size is checked.
+fn cursor_rect(
+    unread: &mut Unread<'_>,
+    area: Area,
+    size: (usize, usize),
+) -> Result<Rect<'static>, Stop> {
+    if area.width > size.0 || area.height > size.1 {
+        return Err(Malformed::LargePointer.into());
+    }
+    // The pixels, then a mask with one bit for each pixel and each row padded to a whole byte.
+    unread.take(area.width * area.height * PIXEL_BYTES + area.width.div_ceil(8) * area.height)?;
+    Ok(Rect {
+        area,
+        body: Body::Ignored,
     })
 }
 
