@@ -43,6 +43,10 @@ fn messages_and_rectangles_a_device_may_not_send_end_the_session() {
         refusal(&rfb::update(&[rfb::desktop_size(8193, 10)])),
         Some(Malformed::BadSize)
     );
+    assert_eq!(
+        refusal(&rfb::update(&[rfb::cursor(151, 1, (0, 0))])),
+        Some(Malformed::LargePointer)
+    );
     let three_screens = vec![rfb::copy_rect(ALL, (0, 0)); 3];
     assert_eq!(
         refusal(&rfb::update(&three_screens)),
