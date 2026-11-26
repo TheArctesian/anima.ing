@@ -4,6 +4,8 @@
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
 
+mod mobile;
+
 use async_graphql::{Enum, Object, SimpleObject};
 use chrono::{DateTime, Utc};
 use daemon_core::hardware::{
@@ -137,6 +139,14 @@ impl From<&Tool> for FoundTool {
 
 #[Object]
 impl DeviceCapabilities {
+    async fn mobile_tools(&self) -> Option<mobile::MobileTools> {
+        self.capabilities
+            .inventory
+            .mobile_tools
+            .as_ref()
+            .map(|found| mobile::MobileTools::of(found, self.capabilities.found_at))
+    }
+
     async fn device(&self) -> &Device {
         &self.device
     }

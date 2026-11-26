@@ -11,6 +11,7 @@ use tokio::net::TcpListener;
 #[derive(Clone, Debug)]
 pub struct Seen {
     pub operation: String,
+    pub query: String,
     pub authorization: Option<String>,
     /// The `Anima-Actor` header, when the request declared itself (LOG-016).
     pub actor: Option<String>,
@@ -80,6 +81,7 @@ async fn answer(State(script): State<Shared>, headers: HeaderMap, body: String) 
     let mut script = script.lock().expect("script");
     script.seen.push(Seen {
         operation: operation.clone(),
+        query: request["query"].as_str().unwrap_or_default().to_owned(),
         authorization: headers
             .get(header::AUTHORIZATION)
             .and_then(|value| value.to_str().ok())

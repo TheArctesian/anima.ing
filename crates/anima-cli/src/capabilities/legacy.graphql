@@ -1,0 +1,38 @@
+# `anima capability list` and the MCP tool `anima_capability_list`.
+query LegacyCapabilityList($tool: String, $buildTarget: String) {
+  capabilities(tool: $tool, buildTarget: $buildTarget) {
+    device {
+      id
+      name
+    }
+    architecture
+    os
+    osVersion
+    tools {
+      name
+      version
+      usable
+      reason
+    }
+    buildTargets
+    foundAt
+    hardware {
+      systemMemoryBytes
+      unifiedMemoryBytes
+      dedicatedMemoryBytes
+      usableMemoryBytes
+      usableMemorySource
+      freeDiskBytes
+      cpuFeatures
+      backends {
+        name
+        usable
+        reason
+      }
+      powerSource
+      thermalState
+      operatorActive
+      foundAt
+    }
+  }
+}

@@ -72,6 +72,7 @@ pub async fn inventory(platform: Platform) -> Option<Inventory> {
     let search = Search::here(os).await;
     let mut found = probe_all((architecture, os, os_version), &search).await;
     found.remote_access = remote_access().await;
+    found.mobile_tools = super::mobile::collect().await;
     Some(found)
 }
 

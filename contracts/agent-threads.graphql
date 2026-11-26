@@ -1,0 +1,110 @@
+# K1 amendment accepted under R-460. Compose with schema.graphql.
+# TH31 moves these definitions into the served schema with the hub and CLI operations.
+# K10 section 6.5 defines validation, exact wire tags, authorization and retries.
+extend type Query {
+  agentThreadStartTargets: [AgentThreadStartTarget!]!
+  agentThreadLaunch(launch: ID!): AgentThreadLaunchReceipt!
+  agentThreadControl(thread: ID!): AgentThreadControlView!
+  agentThreadCommand(command: ID!): AgentThreadCommandReceipt!
+}
+
+extend type Mutation {
+  startAgentThread(input: AgentThreadStartInput!): AgentThreadLaunchReceipt!
+  sendAgentThreadPrompt(input: AgentThreadPromptInput!): AgentThreadCommandReceipt!
+  answerAgentThreadRequest(input: AgentThreadAnswerInput!): AgentThreadCommandReceipt!
+  stopAgentThread(input: AgentThreadStopInput!): AgentThreadCommandReceipt!
+}
+
+type AgentThreadStartTarget {
+  device: ID!
+  project: String!
+  folder: String!
+  program: AgentThreadLaunchProgram!
+  expiresAt: DateTime!
+}
+
+enum AgentThreadLaunchProgram { claude_code codex }
+enum AgentThreadAction { prompt answer stop }
+enum AgentThreadRequestKind { approval question }
+enum AgentThreadStopKind { interrupt end }
+enum AgentThreadDecision { allow_once allow_session decline }
+enum AgentThreadValueKind { choice free_text }
+enum AgentThreadBinding { waiting bound unavailable }
+enum AgentThreadLaunchState { queued claimed reconciling started refused failed stopped expired retired }
+enum AgentThreadCommandState { waiting delivered recorded refused expired retired }
+
+input AgentThreadStartInput {
+  launch: ID!
+  device: ID!
+  project: String!
+  folder: String!
+  program: AgentThreadLaunchProgram!
+  access: String!
+  prompt: String!
+}
+
+type AgentThreadLaunchReceipt {
+  launch: ID!
+  state: AgentThreadLaunchState!
+  cause: String
+  thread: ID
+  binding: AgentThreadBinding!
+  firstCommand: ID!
+}
+
+type AgentThreadCommandReceipt {
+  command: ID!
+  state: AgentThreadCommandState!
+  cause: String
+}
+
+type AgentThreadControlView { thread: ID!, offer: AgentThreadControlOffer }
+type AgentThreadControlOffer {
+  process: ID!
+  "Whole number from 1 through 2^53 - 1."
+  revision: Float!
+  actions: [AgentThreadAction!]!
+  stopTargets: [AgentThreadStopTarget!]!
+  requests: [AgentThreadRequestOffer!]!
+}
+
+type AgentThreadStopTarget { kind: AgentThreadStopKind!, process: ID!, turn: ID }
+type AgentThreadRule { selector: ID!, label: String! }
+type AgentThreadChoice { id: ID!, label: String! }
+type AgentThreadQuestion {
+  key: String!
+  text: String!
+  choices: [AgentThreadChoice!]!
+  many: Boolean!
+  freeText: Boolean!
+}
+type AgentThreadRequestOffer {
+  kind: AgentThreadRequestKind!
+  id: ID!
+  subject: String!
+  details: String
+  decisions: [AgentThreadDecision!]
+  rules: [AgentThreadRule!]
+  questions: [AgentThreadQuestion!]
+}
+
+input AgentThreadPromptInput { command: ID!, thread: ID!, prompt: String! }
+input AgentThreadStopInput { command: ID!, thread: ID!, target: AgentThreadStopTargetInput! }
+input AgentThreadStopTargetInput { kind: AgentThreadStopKind!, process: ID!, turn: ID }
+
+input AgentThreadAnswerInput {
+  command: ID!
+  thread: ID!
+  process: ID!
+  revision: Float!
+  request: ID!
+  answer: AgentThreadAnswerPayload!
+}
+input AgentThreadAnswerPayload {
+  kind: AgentThreadRequestKind!
+  decision: AgentThreadDecision
+  selector: ID
+  answers: [AgentThreadQuestionAnswer!]
+}
+input AgentThreadQuestionAnswer { key: String!, values: [AgentThreadAnswerValue!]! }
+input AgentThreadAnswerValue { kind: AgentThreadValueKind!, id: ID, text: String }
