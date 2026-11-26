@@ -1,6 +1,9 @@
-{ pkgs, workspaceRoot, ... }:
+{ config, lib, pkgs, workspaceRoot, ... }:
 let
   applications = import ../packages/applications-package.nix { inherit pkgs workspaceRoot; };
+  containerd = pkgs.docker.docker-containerd;
+  containerdRoot = "/var/lib/docker/containerd";
+  containerdRuntime = "/run/docker/containerd";
   applicationRoot = "/persist/anima-applications";
   applicationSettings = "${applicationRoot}/settings.json";
   applicationClient = "${applicationRoot}/docker-client";
@@ -54,13 +57,49 @@ in
     enableOnBoot = true;
     autoPrune.enable = false;
     daemon.settings = {
+      containerd = "${containerdRuntime}/containerd.sock";
       live-restore = true;
       log-driver = "local";
       log-opts = { max-size = "10m"; max-file = "3"; };
     };
   };
-  # Keep pending dependants queued while Docker retries a transient startup failure.
-  systemd.services.docker.serviceConfig.RestartMode = "direct";
+  # Use Docker's bundled engine and its existing data paths. systemd owns startup.
+  virtualisation.containerd = {
+    enable = true;
+    settings = {
+      root = "${containerdRoot}/daemon";
+      state = "${containerdRuntime}/daemon";
+      grpc.address = "${containerdRuntime}/containerd.sock";
+      disabled_plugins = [
+        "io.containerd.grpc.v1.cri"
+        "io.containerd.cri.v1.images"
+        "io.containerd.cri.v1.runtime"
+        "io.containerd.podsandbox.controller.v1.podsandbox"
+      ];
+      required_plugins = [ "io.containerd.grpc.v1.diff" "io.containerd.grpc.v1.tasks" ];
+      plugins."io.containerd.internal.v1.opt".path = "${containerdRoot}/opt";
+    };
+  };
+  systemd.services.containerd = {
+    after = [ "anima-root-lock.service" ];
+    unitConfig.RequiresMountsFor = containerdRoot;
+    path = lib.mkBefore [ containerd pkgs.docker.docker-runc ];
+    serviceConfig = {
+      ExecStart = lib.mkForce "${containerd}/bin/containerd --config ${config.virtualisation.containerd.args.config}";
+      StateDirectory = lib.mkForce "docker/containerd";
+      StateDirectoryMode = "0711";
+      RuntimeDirectory = lib.mkForce "docker/containerd";
+      RuntimeDirectoryMode = "0700";
+      TimeoutStartSec = "5min";
+      RestartMode = "direct";
+    };
+  };
+  systemd.services.docker = {
+    after = [ "containerd.service" ];
+    requires = [ "containerd.service" ];
+    # Keep pending dependants queued while Docker retries a transient startup failure.
+    serviceConfig.RestartMode = "direct";
+  };
   # Retain the legacy engine and its data until each workload has been migrated.
   virtualisation.podman = { enable = true; dockerCompat = false; };
   systemd.tmpfiles.rules = [

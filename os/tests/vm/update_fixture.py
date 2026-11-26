@@ -45,8 +45,9 @@ server.serve_forever()
 
 def attach(machine, output, disk, *, serve_https=True):
     from gui_test import qmp
-    qmp(output,'blockdev-add',{'node-name':'updates','driver':'raw','read-only':True,'file':{'driver':'file','filename':str(disk)}})
-    qmp(output,'device_add',{'driver':'virtio-blk-pci','drive':'updates','id':'update-fixture','bus':'update-port'})
+    if machine.fixture_disk != disk.resolve():
+        qmp(output,'blockdev-add',{'node-name':'updates','driver':'raw','read-only':True,'file':{'driver':'file','filename':str(disk)}})
+        qmp(output,'device_add',{'driver':'virtio-blk-pci','drive':'updates','id':'update-fixture','bus':'update-port'})
     if serve_https:
         serve(machine)
     else:

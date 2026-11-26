@@ -190,9 +190,16 @@ in {
     after = [ "docker.service" "anima-workspace-storage.service" ];
     serviceConfig = { Type = "oneshot"; RemainAfterExit = true; TimeoutStartSec = "30min"; Nice = 10; IOSchedulingClass = "idle"; };
     script = ''
-      if ! ${pkgs.docker}/bin/docker image inspect '${image.imageName}:${image.imageTag}' >/dev/null 2>&1; then
-        ${pkgs.docker}/bin/docker load --input ${image}
+      docker=${pkgs.docker}/bin/docker
+      reference='${image.imageName}:${image.imageTag}'
+      if ! "$docker" image inspect "$reference" >/dev/null 2>&1; then
+        "$docker" load --input ${image}
       fi
+      # Docker can register a tag even when its layer unpack fails.
+      exec "$docker" run --rm --pull=never --network=none --read-only \
+        --cgroup-parent=anima-agents.slice --memory=64m --pids-limit=16 \
+        --cap-drop=ALL --security-opt=no-new-privileges \
+        --entrypoint /bin/true "$reference"
     '';
   };
   systemd.services.anima-workspace-network = {

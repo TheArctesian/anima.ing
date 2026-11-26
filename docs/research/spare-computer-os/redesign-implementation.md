@@ -3364,3 +3364,31 @@ metrics at 1280 pixels. The uptime now occupies its own row and the
 metrics wrap based on available width. A Chromium layout fixture
 reproduced the earlier placement and passed with live and unavailable
 readings at 360, 800, 1280 and 1920 pixels.
+
+The clean Docker store on generation `a48674cd5b71` reached the
+packaged import deadline with margin and matched the shipped archive's
+SHA-256. Docker registered the image tag, but its journal reported a
+layer unpacking failure and the offline container could not start.
+Workspace readiness now requires a short offline container start even
+when the tag is already present. The containerd startup failure and
+controlled Docker retry remain under investigation.
+
+The installed `5b3500722930` guest passed the separate private-access
+diagnostic with the fixture disk present at boot. The clients used
+synthetic private-link peers for authenticated SSH, RDP and VNC.
+Both graphical protocols rendered the shared lock screen. The three
+identities and saved disabled-port choices survived reboot, and the
+owner re-enabled both graphical protocols. The guest shut down and
+the sentinel disk checksum matched. Production account enrollment
+remains open. The installed VM harness attaches its offline
+fixture read-only at boot when it creates a new guest after install.
+
+The clean-store boot journal identified an interrupted containerd
+initialization. Docker's 15-second startup deadline fired during Bolt
+database creation. The retry opened a 4096-byte database and could not
+register the mount manager, layer differ or task plugins. systemd now
+starts Docker's bundled containerd before Docker, using the existing
+Docker runtime and persistent data paths. The instance requires the
+diff and tasks gRPC plugins before it can become ready. Its optional
+tool directory lives under the writable Docker state path. An existing
+database failure is reported through the service without deleting data.

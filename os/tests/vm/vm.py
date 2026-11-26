@@ -76,8 +76,13 @@ class Machine:
         ]
         if (directory / 'data.raw').exists():
             args.extend(['-drive', f'file={directory / "data.raw"},format=raw,if=virtio'])
-        if (directory / 'update-origin.raw').exists():
+        fixture = directory / 'update-origin.raw'
+        self.fixture_disk = None
+        if fixture.is_file():
             args.extend(['-device', 'pcie-root-port,id=update-port'])
+            if boot_iso is None:
+                self.fixture_disk = fixture.resolve()
+                args.extend(['-drive', f'file={fixture},format=raw,if=virtio,readonly=on'])
         if boot_iso is not None:
             args.extend(['-drive', f'file={boot_iso},format=raw,media=cdrom,if=none,id=installer',
                          '-device', 'ide-cd,drive=installer,bootindex=0'])
