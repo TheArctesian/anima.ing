@@ -15,7 +15,7 @@
   import { REMOTE_CONFLICT, SessionConnection, progressOf, type Stage } from '../session.svelte';
   import type { RemoteStart } from '../start';
   import { clipboardRules, NO_CLIPBOARD } from '../clipboard/clipboard';
-  import ConnectionSteps from '../steps/ConnectionSteps.svelte';
+  import ConnectionPanel from '../steps/ConnectionPanel.svelte';
   import { displayScale, fillDisplay } from './fit';
   import { followPixelRatio, remotePane, type RemotePane } from './pane';
   import { gatewayAsk, PROMPT_CANCELLED, PROMPT_REFUSED } from './prompt';
@@ -275,22 +275,21 @@
       {/if}
     </div>
     {#if !ready}
-      <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
-      <div class="panel">
-        {#if !progressOf(stage).connected}
-          <ConnectionSteps progress={progressOf(stage)} deviceName={device.name} />
-        {/if}
-        {#if stage.kind === 'ending' || stage.kind === 'ended'}
-          {@const changed = stage.kind === 'ended' && stage.certificateChanged}
-          <EndedPanel
-            bind:this={ended}
-            ending={stage.ending}
-            settled={stage.kind === 'ended'}
-            certificateChanged={changed}
-            onreconnect={changed ? checkCertificate : reconnect}
-          />
-        {/if}
-      </div>
+      <ConnectionPanel progress={progressOf(stage)} deviceName={device.name}>
+        {#snippet end(underSteps)}
+          {#if stage.kind === 'ending' || stage.kind === 'ended'}
+            {@const changed = stage.kind === 'ended' && stage.certificateChanged}
+            <EndedPanel
+              bind:this={ended}
+              ending={stage.ending}
+              settled={stage.kind === 'ended'}
+              certificateChanged={changed}
+              onreconnect={changed ? checkCertificate : reconnect}
+              {underSteps}
+            />
+          {/if}
+        {/snippet}
+      </ConnectionPanel>
     {/if}
   </div>
   {#if onback !== undefined}{@render toolbar()}{/if}
@@ -352,19 +351,5 @@
     inset: 0;
     pointer-events: none;
     box-shadow: inset 0 0 0 var(--border-focus) var(--accent);
-  }
-
-  /* Shown only while no display is: before ready and after the end. A narrow pane scrolls it, never the page (UI-009). */
-  .panel {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: var(--space-4);
-    overflow: auto;
-    padding: var(--space-6);
-    background: var(--surface-base);
   }
 </style>

@@ -5,6 +5,7 @@
   import { boundViewport, followPointer, middleViewport, pointerInPane, touchRemote, type Point, type TouchViewport } from './touch/input';
   import { trackpadLayout } from './touch/trackpad';
   import Trackpad from './touch/Trackpad.svelte';
+  import { wheelOf } from './touch/wheel';
 
   interface Props {
     client: SessionTunnel['client'];
@@ -27,6 +28,10 @@
   const viewport = $derived(boundViewport(zoom ?? middleViewport(layout.screen, remote, layout.scale), layout.screen, remote, layout.scale));
   const renderedScale = $derived(layout.scale * viewport.zoom);
   const pointerAt = $derived(pointerInPane(pointer, remote, viewport, layout.scale));
+  const wheel = $derived(layout.pad && wheelOf(layout.pad));
+  /** How far the trackpad's wheel turned, and whether a finger holds it, so it turns under the finger (MOT-001). */
+  let roll = $state(0);
+  let rolling = $state(false);
 
   export function fit(): void {
     zoom = undefined;
@@ -55,6 +60,11 @@
         pointer = at;
         zoom = boundViewport(followPointer(viewport, pointerAt, layout.screen), layout.screen, remote, layout.scale);
       },
+      wheel: () => wheel,
+      rolled: (travel, held) => {
+        roll = travel;
+        rolling = held;
+      },
     });
   });
 </script>
@@ -69,7 +79,7 @@
     </svg>
   {/if}
 </div>
-{#if layout.pad}<Trackpad region={layout.pad} />{/if}
+{#if layout.pad && wheel}<Trackpad region={layout.pad} {wheel} {roll} held={rolling} />{/if}
 
 <style>
   .screen {
