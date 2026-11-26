@@ -12,6 +12,9 @@ from storage_checks import check_data_volume, seed_data_volume, storage_reportin
 import vm_host
 
 
+GUEST_MEMORY_MIB = 8192
+
+
 def qmp(directory, command, arguments):
     with socket.socket(socket.AF_UNIX) as connection:
         connection.connect(str(directory / 'qmp.sock'))
@@ -195,7 +198,7 @@ def run(iso, output, power="shutdown", remote_tools=None, *, expected_system=Non
     password = secrets.token_hex(12)
     results = []
     installed_system = None
-    machine = Machine(output, disk, boot_iso=iso)
+    machine = Machine(output, disk, boot_iso=iso, memory_mib=GUEST_MEMORY_MIB)
     try:
         graphical_install(machine, output, password)
         results.append({'case': 'graphical-multidrive-install-and-authorization-reset', 'result': 'Passed'})
@@ -209,7 +212,7 @@ def run(iso, output, power="shutdown", remote_tools=None, *, expected_system=Non
             raise AssertionError('Continue must not appear after installation')
         if power == 'shutdown':
             tap(machine, output, 'Shut down'); machine.wait_exit(); machine.close()
-            machine = Machine(output, disk)
+            machine = Machine(output, disk, memory_mib=GUEST_MEMORY_MIB)
         else:
             tap(machine, output, 'Restart')
             machine.expect('reboot: Restarting system', timeout=90)

@@ -167,7 +167,7 @@ python3 os/tests/vm/iso_test.py \
   "$HOME/.local/share/anima-os-prototype/iso-test-new"
 ```
 
-Use a fresh disk-backed directory with at least 64 GiB free. The serial and GUI tests create a sparse 128 GiB OS disk so build acceptance retains the production hosting-storage reserve. The GUI test also creates a 40 GiB data disk and a separate 32 GiB sentinel disk. It attaches no NIC, checks erase authorization and its reset after selection changes, installs, removes the ISO, logs in and checks persistence after reboot. The native CLI test separately covers missing or changed identity/confirmation refusal. All disks are disposable regular files. No host disk is attached. Raw logs and results remain in that directory.
+Use a fresh disk-backed directory with at least 64 GiB free. The serial and GUI tests create a sparse 128 GiB OS disk so build acceptance retains the production hosting-storage reserve. The GUI test uses an 8 GiB guest for the graphical console, Docker and managed work under the packaged memory reserve. It also creates a 40 GiB data disk and a separate 32 GiB sentinel disk. It attaches no NIC, checks erase authorization and its reset after selection changes, installs, removes the ISO, logs in and checks persistence after reboot. The native CLI test separately covers missing or changed identity/confirmation refusal. All disks are disposable regular files. No host disk is attached. Raw logs and results remain in that directory.
 
 The graphical test compares the attached filesystem's capacity with `df` and
 checks the rendered figures under **Data volumes**. A temporary record for an

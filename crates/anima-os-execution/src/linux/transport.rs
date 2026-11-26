@@ -72,7 +72,9 @@ async fn stream(
     output.flush().await?;
     let send = async {
         tokio::io::copy(&mut input, &mut sending).await?;
-        sending.shutdown().await
+        sending.shutdown().await?;
+        drop(sending);
+        Ok::<(), std::io::Error>(())
     };
     let receive = async { tokio::io::copy(&mut reading, &mut output).await.map(drop) };
     tokio::try_join!(send, receive)?;

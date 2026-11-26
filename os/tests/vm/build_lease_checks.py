@@ -31,8 +31,18 @@ def installed_build_leases(machine):
     fields = dict(workspace=workspace, generation=0, context=context, strategy='dockerfile',
                   resources={'memory_bytes': 512*1024**2, 'cpu_millis': 500, 'tasks': 128},
                   lease={'job': job, 'attempt': 1})
-    expiry_journey(machine, receipts, request, fields)
-    watchdog_journey(machine, receipts, request, dict(fields, lease=dict(fields['lease'], attempt=2)))
+    try:
+        expiry_journey(machine, receipts, request, fields)
+        watchdog_journey(machine, receipts, request, dict(fields, lease=dict(fields['lease'], attempt=2)))
+    except (RuntimeError, TimeoutError):
+        try:
+            machine.command("grep -E '^(MemTotal|MemAvailable):' /proc/meminfo; "
+                            'getconf _NPROCESSORS_ONLN; cat /etc/anima/admission.json; '
+                            'find /persist/anima-admission/reservations -maxdepth 1 '
+                            '-type f -name "*.json" -exec cat {} +')
+        except (RuntimeError, TimeoutError):
+            pass
+        raise
     request('context-release', 'context-release', '.value.phase == "deleted"',
             workspace=workspace, generation=0, context=context, confirmed=True)
     request('workspace-release', 'workspace-release', '.value.phase == "deleted"',

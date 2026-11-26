@@ -3393,6 +3393,23 @@ diff and tasks gRPC plugins before it can become ready. Its optional
 tool directory lives under the writable Docker state path. An existing
 database failure is reported through the service without deleting data.
 
+Generation `e56205794c0e` passed the focused installed test on a
+disposable clone with an empty Docker store. Its packaged 30-minute
+unit loaded and tested the image in 18 minutes 42 seconds according
+to the journal. The archive matched SHA-256
+`afd1b40c791780aabf17d2bb3acd745a46a87728824a090c5565a14cda726020`.
+An independent offline run confirmed UID 1000 and the presence of
+Anima's daemon, Codex, Claude and Railpack in that image.
+
+The original journal records Docker's first start failure, the two
+dependent jobs failing, and Docker recovering by itself. The same
+focused candidate then injected a single Docker startup failure with
+the image already loaded. Its journal records Docker's automatic
+retry and both dependent jobs starting and completing after Docker.
+The existing containerd process remained active and another isolated
+image run passed. The guest shut down and the unselected disk digest
+matched.
+
 The storage telemetry fixture enrolled its synthetic account and then
 timed out waiting for the monitoring daemon to start. The daemon's unit
 was ordered after the workspace broker and its first image import.
@@ -3400,6 +3417,24 @@ Monitoring and the private link now start alongside the execution
 services. The managed Code and workload paths query their brokers for
 readiness, so ordinary monitoring can proceed during image preparation.
 The installed startup-order regression remains open.
+
+### Graphical acceptance and workspace stream, 2026-11-26
+
+The `e56205794c0e` ISO completed graphical installation, shut down
+from the completion screen, cold-booted and mounted the recorded data
+volume. The installed offline Dockerfile build exported and verified
+its OCI archive. The next lease start was refused by admission on
+the 4 GiB guest. An 8 GiB clone reached both the lease expiry and
+watchdog cases and cleaned up their reservations. The graphical
+harness now uses 8 GiB and captures the packaged policy, observed
+memory, online CPU count and reservation records on a lease error.
+
+The first managed workspace connected to its runner on that clone,
+but the one-request listing did not return before the fixture's
+deadline. Tokio's Linux process pipe leaves the file descriptor open
+on `shutdown()`. The execution stream now releases the input pipe
+at the caller's EOF while continuing to relay the response. The
+installed runner and preview checks must exercise this fix.
 
 ### Console accessibility review, 2026-11-26
 
@@ -3436,9 +3471,16 @@ production presentation with synthetic responses.
    HIG `layout.md` › Adaptability.
 
 The browser run covered 30 destination and size combinations, with
-additional 2× lock and Overview captures. It exercised keyboard
-focus, accessible names and tooltips for icon actions, held and unavailable workload
-reports, absent and unavailable storage, private access outcomes,
-and reduced motion. The reduced-motion lock renders a still hero.
-Installed post-change rendering and assistive-technology navigation
-remain open.
+additional 2× lock and Overview captures. The 30 cases also passed
+with the packaged IBM Plex font. Hashes matched for the four revised
+assets in the frozen console package and for the Calamares stylesheet
+in the installer extension. The suite exercised keyboard
+focus, accessible names and tooltips for icon actions, held and
+unavailable workload reports, absent and unavailable storage, private
+access outcomes, and reduced motion. The reduced-motion lock renders
+a still hero.
+Linux Qt WebEngine 6.11.3 also reproduced the old unlock behavior
+and verified the revised alert, form border and heading focus at
+640 × 480 with 2× scaling. That renderer used synthetic local
+responses. Installed post-change rendering and assistive-technology
+navigation remain open.
