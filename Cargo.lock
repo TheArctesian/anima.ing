@@ -175,6 +175,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-account-session",
  "tauri-plugin-dialog",
+ "tauri-plugin-haptics",
  "tauri-plugin-keyboard",
  "tauri-plugin-log",
  "tauri-plugin-notification",
@@ -8781,6 +8782,15 @@ dependencies = [
  "thiserror 2.0.21",
  "toml 1.2.0+spec-1.1.0",
  "url",
+]
+
+[[package]]
+name = "tauri-plugin-haptics"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tauri",
+ "tauri-plugin",
 ]
 
 [[package]]
