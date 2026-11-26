@@ -35,10 +35,18 @@ def installed_docker(machine):
 
 
 def wait_workspace_image(machine):
-    machine.command("""timeout 1860 sh -c 'until systemctl is-active --quiet anima-workspace-image.service; do
-          if systemctl is-failed --quiet anima-workspace-image.service; then exit 1; fi
+    machine.command(
+        """timeout 1860 sh -c 'until systemctl is-active --quiet anima-workspace-image.service; do
+          if ! systemctl list-jobs --no-legend --plain | grep -q " anima-workspace-image.service "; then
+            systemctl is-active --quiet anima-workspace-image.service
+            exit $?
+          fi
           sleep 2
-        done' || { journalctl -b -u anima-workspace-image.service --no-pager -n 40; exit 1; }""", timeout=1870)
+        done' || { journalctl -b """
+        "-u anima-workspace-image.service -u anima-workspace-storage.service "
+        "-u docker.service --no-pager -n 60; exit 1; }",
+        timeout=1870,
+    )
 
 
 def docker_health(machine, expected):

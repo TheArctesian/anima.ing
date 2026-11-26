@@ -59,6 +59,8 @@ in
       log-opts = { max-size = "10m"; max-file = "3"; };
     };
   };
+  # Keep pending dependants queued while Docker retries a transient startup failure.
+  systemd.services.docker.serviceConfig.RestartMode = "direct";
   # Retain the legacy engine and its data until each workload has been migrated.
   virtualisation.podman = { enable = true; dockerCompat = false; };
   systemd.tmpfiles.rules = [

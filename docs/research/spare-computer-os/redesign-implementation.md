@@ -3338,3 +3338,29 @@ Anima daemon, Codex, Claude and Railpack. The OS now uses that bounded
 and wait for import before exercising Docker live restore. This is
 focused installed evidence from the frozen system with a runtime
 override. The revised ISO and full installed suite remain open.
+
+The installed system built from `df1a41bdd93e` contains the
+`TimeoutStartSec=30min` unit directive. The build verified the source
+provenance, cutover marker and Workloads asset in that generation.
+
+### Docker restart and operator console, 2026-11-26
+
+On an installed reboot, Docker's managed containerd missed its startup
+deadline. Docker retried and became active, while systemd had already
+discarded the image-import and execution-recovery start jobs. Docker
+now uses systemd's direct restart mode to keep those dependants queued
+through a transient failure. The VM readiness check reports when the
+image unit has no remaining start job and collects its dependency
+journals. The revised generation still needs a controlled retry.
+
+A separate installed clone passed local unlock, screen blanking and
+wake, shell prompt output and storage capacity rendering. The attached
+volume's displayed capacity matched its filesystem. The missing volume
+had no capacity, and the system filesystem stayed mounted. The storage
+telemetry test timed out after those checks.
+
+The Overview viewport exposed uptime text on the same line as the
+metrics at 1280 pixels. The uptime now occupies its own row and the
+metrics wrap based on available width. A Chromium layout fixture
+reproduced the earlier placement and passed with live and unavailable
+readings at 360, 800, 1280 and 1920 pixels.

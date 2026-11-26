@@ -96,11 +96,11 @@ html,body{margin:0;background:var(--card);overflow:hidden}
 #anima-console .battery[data-low=true]{color:var(--danger)}
 #anima-console .shell[data-locked] #battery-status{position:relative;z-index:6}
 #telemetry-readings{display:flex;flex-wrap:wrap;gap:16px 28px;margin:16px 0}
-#telemetry-readings .metric{flex:1;min-width:120px;display:grid;grid-template-columns:1fr auto;gap:8px}
+#telemetry-readings .metric{flex:1 1 14rem;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
 #telemetry-readings .metric-value{display:grid;min-width:11ch;text-align:end;font-variant-numeric:tabular-nums}
 #telemetry-readings .metric-value>*{grid-area:1/1;font-weight:600}
 #telemetry-readings meter{grid-column:1/-1;width:100%;height:8px;accent-color:var(--primary)}
-#telemetry-readings p{width:100%;margin:0}
+#telemetry-readings>p{flex:0 0 100%;max-width:none;margin:0;overflow-wrap:anywhere}
 #telemetry-readings meter::-webkit-meter-bar{background:#2C3036;border:0;border-radius:var(--radius)}
 #telemetry-readings meter::-webkit-meter-optimum-value{background:var(--primary)}
 @media(min-width:1600px){#anima-console .shell{padding:32px 48px;column-gap:48px}#anima-console h1{font-size:38px}}
@@ -162,4 +162,4 @@ html,body{margin:0;background:var(--card);overflow:hidden}
 
 .remote-connections{font-size:.8rem;color:var(--muted,#a4a8b0);max-width:24rem}.remote-connections[data-active="true"]{color:#b7d59b}.header-status{flex-wrap:wrap}.lock-description+.remote-connections{margin-block:1rem}
 
-#telemetry-readings .metric-label{display:flex;align-items:center;gap:8px}
+#telemetry-readings .metric-label{display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere}
