@@ -4,6 +4,8 @@
 //! logs the changes of state (never a token or a body, LOG-007).
 
 pub mod accounts;
+mod batch;
+mod inventory;
 pub mod pacing;
 pub mod renewal;
 mod renewing;
@@ -20,8 +22,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::hardware::Hardware;
 use daemon_core::points::{BATCH_POINTS, Backlog, Point};
 use daemon_core::wire::{
-    Announcements, Batch, BatchBattery, BatchDrive, BatchGpu, BatchInventory, PushAccepted,
-    RefusalCode,
+    Announcements, BatchBattery, BatchDrive, BatchGpu, BatchInventory, PushAccepted, RefusalCode,
 };
 use uuid::Uuid;
 
@@ -74,6 +75,7 @@ pub struct Pusher {
     backlog: Backlog,
     /// The GPUs, drives, batteries and inventory waiting to ride along with the next batch.
     announced: Announcements,
+    inventory_deferred: bool,
     /// The agent usage waiting for the hub, a part of it in each batch.
     usage: UsageBacklog,
     #[cfg(unix)]
@@ -107,6 +109,7 @@ impl Pusher {
             store,
             backlog: Backlog::new(),
             announced: Announcements::default(),
+            inventory_deferred: false,
             usage: UsageBacklog::default(),
             #[cfg(unix)]
             thread_summaries: thread_summaries::Pending::default(),
@@ -201,7 +204,7 @@ impl Pusher {
             self.backlog.drop_stale(now);
             let waiting = self.backlog.batch().points().len();
             if waiting == 0 {
-                return RHYTHM;
+                return self.send_inventory(now).await;
             }
             match self.send(waiting.min(self.limit), now).await {
                 Round::Sent => {}
@@ -218,22 +221,18 @@ impl Pusher {
             let Some(receipt) = outgoing.receipt() else {
                 return Round::Sent;
             };
-            let announced = Announcements {
-                agent_usage: self.usage.outgoing(),
-                #[cfg(unix)]
-                agent_threads: self.thread_summaries.outgoing(self.marks.as_ref()),
-                ..self.announced.clone()
+            let mut batch = self.batch(count);
+            let deferred_inventory = inventory::defer(&mut batch);
+            self.inventory_deferred = deferred_inventory;
+            let answer = if inventory::fits(&batch) {
+                self.hub.push(&self.credential.token, &batch).await
+            } else {
+                Answer::Refused(RefusalCode::TooLarge)
             };
-            let mut batch =
-                Batch::new(self.device, outgoing.points(), announced).from_daemon(VERSION);
-            if let Some(keys) = &self.keys {
-                batch = batch.with_keys(keys.held());
-            }
-            let answer = self.hub.push(&self.credential.token, &batch).await;
             match pacing::action(&answer) {
                 Action::Remove => {
                     self.backlog.remove_through(receipt);
-                    self.announced = Announcements::default();
+                    self.clear_announcements(deferred_inventory);
                     self.usage.done();
                     self.limit = pacing::grown(count);
                     self.recovered();
@@ -254,7 +253,7 @@ impl Pusher {
                     // MALFORMED clears the lists, so a correct one in a batch refused for its
                     // points also waits for the next discovery or change.
                     if code == RefusalCode::Malformed {
-                        self.announced = Announcements::default();
+                        self.clear_announcements(deferred_inventory);
                         self.usage.done();
                     }
                     return Round::Sent;

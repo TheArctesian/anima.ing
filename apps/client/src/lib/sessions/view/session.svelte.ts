@@ -1,5 +1,5 @@
 import type { HubError } from '$lib/hub/hub';
-import type { SessionDisplay, SessionsApi } from '../api';
+import type { RemoteProtocol, SessionDisplay, SessionsApi } from '../api';
 import { ending, recordedEnding, type SessionEnding, type TunnelClose } from '../ending';
 import type { TunnelRefusal } from '../tunnel/state';
 import type { TerminalLink } from '../tunnel/terminal/link';
@@ -64,6 +64,11 @@ const REFUSED: Readonly<Record<string, string>> = {
   unreachable: 'Could not open the session. The hub did not answer.',
 };
 const REFUSED_OTHER = 'Could not open the session.';
+/** The `CONFLICT` refusal of a remote start (K4 §1); never the hub's own message (LOG-007). */
+export const REMOTE_CONFLICT: Readonly<Record<RemoteProtocol, string>> = {
+  RDP: 'Could not open the session. RDP certificate not accepted yet: run the connection test first.',
+  VNC: 'Could not open the session. The hub refused it: check the VNC settings, then run the connection test.',
+};
 
 function refusedEnding(error: HubError | TunnelRefusal, conflict: string | undefined): SessionEnding {
   if ('problem' in error) return { reason: undefined, opened: false, text: `${REFUSED_OTHER} ${error.message}` };

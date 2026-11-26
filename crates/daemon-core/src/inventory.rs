@@ -1,6 +1,8 @@
 //! The tool inventory of a device (CAP-020 to CAP-028). Pure: the daemon runs the programs
 //! (CAP-028); the hub cannot send a probe or a command line (CAP-021).
 
+pub mod mobile;
+
 mod probes;
 mod search;
 #[cfg(test)]
@@ -24,6 +26,7 @@ pub const MAX_BUILD_TARGETS: usize = 128;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Inventory {
+    pub mobile_tools: Option<mobile::MobileTools>,
     pub remote_access: Option<RemoteAccess>,
     pub architecture: Architecture,
     pub os: Os,
@@ -142,6 +145,7 @@ impl Inventory {
         tools.dedup_by_key(|tool| tool.name);
         Self {
             remote_access: None,
+            mobile_tools: None,
             architecture,
             os,
             os_version,
