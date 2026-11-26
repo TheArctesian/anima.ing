@@ -100,9 +100,8 @@ in {
   systemd.services.anima-link.environment.ANIMA_MANAGED_PREVIEWS = "1";
   systemd.services.anima-link.environment.ANIMA_MANAGED_PROVIDER_LOGIN = "1";
   systemd.services.anima-link.wants = [ "anima-execution-broker.service" ];
-  systemd.services.anima-link.after = [ "anima-execution-broker.service" ];
+  # The clients check the broker on each request. Monitoring and access can start independently.
   systemd.services.anima-daemon.wants = [ "anima-execution-broker.service" "anima-workspace-broker.service" ];
-  systemd.services.anima-daemon.after = [ "anima-execution-broker.service" "anima-workspace-broker.service" ];
   systemd.services.anima-build-leases = {
     description = "Enforce local deadlines for leased source builds";
     wantedBy = [ "multi-user.target" ];

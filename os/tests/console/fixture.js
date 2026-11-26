@@ -99,7 +99,7 @@ const consoleBridge={
   return;
  }
  if(r.op==='diagnostics')value={monitoring:'inactive',private_link:'unknown',network:'Ethernet connected'};
- const failed=r.op==='data-volumes'&&fixture.failDataVolumes||r.op==='scan'&&fixture.failScan||r.op==='work-admission'&&fixture.failWorkAdmission||r.op==='workloads'&&fixture.failWorkloads||r.op==='workload-logs'&&fixture.failLog||r.op==='remote-access-status'&&fixture.failRemoteCheck||r.op==='workload-build-logs'&&fixture.failBuildLog;
+ const failed=r.op==='unlock'&&fixture.failUnlock||r.op==='data-volumes'&&fixture.failDataVolumes||r.op==='scan'&&fixture.failScan||r.op==='work-admission'&&fixture.failWorkAdmission||r.op==='workloads'&&fixture.failWorkloads||r.op==='workload-logs'&&fixture.failLog||r.op==='remote-access-status'&&fixture.failRemoteCheck||r.op==='workload-build-logs'&&fixture.failBuildLog;
  const delay=r.op==='scan'?fixture.scanDelay:r.op==='status'?(fixture.statusDelay||20):r.op==='workloads'?(fixture.workloadDelay||20):r.op==='workload-logs'?(fixture.logDelay||20):20;
  setTimeout(()=>callbacks.answer(JSON.stringify({id:r.id,ok:!failed,value,error:'The local request could not finish.'})),delay);
  }};

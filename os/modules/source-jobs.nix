@@ -71,5 +71,4 @@
     };
   };
   systemd.services.anima-daemon.wants = [ "anima-source-jobs.service" ];
-  systemd.services.anima-daemon.after = [ "anima-source-jobs.service" ];
 }

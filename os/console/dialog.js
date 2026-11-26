@@ -38,7 +38,7 @@ const AnimaDialog = {
         closing = false;
         shell.removeAttribute('data-locked');
         backgroundInert(false);
-        if (returnFocus?.isConnected) {
+        if (returnFocus?.isConnected && returnFocus !== document.body) {
           returnFocus.focus();
         } else {
           const fallback = root.querySelector(returnSelector || '.page-content h1') || main.querySelector('h1');

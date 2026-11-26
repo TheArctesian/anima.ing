@@ -3392,3 +3392,53 @@ Docker runtime and persistent data paths. The instance requires the
 diff and tasks gRPC plugins before it can become ready. Its optional
 tool directory lives under the writable Docker state path. An existing
 database failure is reported through the service without deleting data.
+
+The storage telemetry fixture enrolled its synthetic account and then
+timed out waiting for the monitoring daemon to start. The daemon's unit
+was ordered after the workspace broker and its first image import.
+Monitoring and the private link now start alongside the execution
+services. The managed Code and workload paths query their brokers for
+readiness, so ordinary monitoring can proceed during image preparation.
+The installed startup-order regression remains open.
+
+### Console accessibility review, 2026-11-26
+
+The installed Qt WebEngine console is a local operator surface. The
+review used Apple's layout, accessibility and feedback principles in
+the existing Linux application. Installed screenshots show the Anima
+hero, lock and screen-off controls, the Overview and Storage pages,
+and Calamares disk selection and completion. The installed shell test
+observed the Powerline prompt. The Chromium fixture exercises the
+production presentation with synthetic responses.
+
+1. **High · Unlock feedback and focus.** A rejected unlock appeared
+   below the screen-off action and had no accessible announcement.
+   Successful first unlock left keyboard focus on the document body.
+   The error now appears by the cleared password field and is exposed
+   as an alert. First unlock focuses the current page heading.
+   The existing browser regression fails on the old console and
+   passes with both behaviors. HIG `accessibility.md` › Vision,
+   `feedback.md` › Best practices and `focus-and-selection.md` ›
+   Best practices.
+2. **High · Form field boundaries.** The console input border measured
+   1.46:1 against the panel and 1.54:1 against the field. The revised
+   border measures 3.52:1 and 3.71:1 respectively. Calamares text fields
+   and combo boxes use the same border color. Console body text
+   measures 13.64:1 and secondary panel text 6.36:1. HIG
+   `accessibility.md` › Vision and `color.md` › Best
+   practices.
+3. **Medium · Overview and short displays.** The installed Overview
+   capture showed the uptime message overlapping Memory. The corrected
+   layout keeps those readings separate at compact and wide sizes.
+   In a 901 × 540 fixture, the lock canvas previously had 12 px of
+   vertical overflow. The shorter padding keeps the hero and actions
+   visible there. The lock form takes priority on compact displays.
+   HIG `layout.md` › Adaptability.
+
+The browser run covered 30 destination and size combinations, with
+additional 2× lock and Overview captures. It exercised keyboard
+focus, accessible names and tooltips for icon actions, held and unavailable workload
+reports, absent and unavailable storage, private access outcomes,
+and reduced motion. The reduced-motion lock renders a still hero.
+Installed post-change rendering and assistive-technology navigation
+remain open.

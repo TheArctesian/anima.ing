@@ -141,7 +141,7 @@ function lock(heroMotion=true){
  scanState='not-scanned';scanVersion++;enrollment.clear();updates.clear();refreshFailed=false;
  root.querySelector('#node-label').textContent='Anima OS';
  clearInterval(poll);poll=null;
- modal('Local session locked','<p class="lock-summary">Your node keeps working.</p><p class="remote-connections" data-remote-connections role="status">'+remoteConnectionText()+'</p><p class="lock-description">Unlock to manage this computer. Turning off the display leaves applications and remote access running.</p><form id="unlock-form"><label>Local admin password<input type="password" name="password" autocomplete="current-password" aria-label="Local admin password" required></label><button class="primary" type="submit">'+icon('password')+'Unlock</button></form>',button('Turn screen off','screen-off'),heroMotion);
+ modal('Local session locked','<p class="lock-summary">Your node keeps working.</p><p class="remote-connections" data-remote-connections role="status">'+remoteConnectionText()+'</p><p class="lock-description">Unlock to manage this computer. Turning off the display leaves applications and remote access running.</p><form id="unlock-form"><label>Local admin password<input type="password" name="password" autocomplete="current-password" aria-describedby="unlock-feedback" required></label><p class="message" id="unlock-feedback" role="alert"></p><button class="primary" type="submit">'+icon('password')+'Unlock</button></form>',button('Turn screen off','screen-off'),heroMotion);
 }
 const networkSignature=value=>JSON.stringify([value?.radio,value?.supplicant,(value?.devices||[]).filter(d=>d.type==='wifi').map(d=>d.device).sort()]);
 const attentionPage=()=>page==='Overview'||page==='Activity';
@@ -248,9 +248,14 @@ root.addEventListener('submit',async e=>{
  e.preventDefault();const form=e.target,epoch=lockEpoch;if(form.closest('[inert]')||(pending&&!updates.working()))return;
  try{
   if(form.id==='unlock-form'){
-   const password=form.elements.password.value;form.elements.password.value='';
-   await call('unlock',{password});if(epoch!==lockEpoch)return;
-   locked=false;close();void updates.refresh();
+   const input=form.elements.password,feedback=form.querySelector('#unlock-feedback'),password=input.value;
+   input.value='';feedback.textContent='';
+   try{await call('unlock',{password});}catch(error){
+    if(epoch===lockEpoch&&form.isConnected){feedback.textContent=error.message;input.focus();}
+    return;
+   }
+   if(epoch!==lockEpoch)return;
+   locked=false;draw();close();void updates.refresh();
    await refresh();
    await refreshPage(page);
    return;
@@ -263,7 +268,7 @@ root.addEventListener('submit',async e=>{
    await busy('connect',{device:selected.device,bssid:selected.bssid,password},'Connecting to Wi-Fi');await refresh();
   }
   if(form.id==='display-form')await display.preview(form,dialog);
- }catch(error){if(epoch===lockEpoch||form.id==='unlock-form'&&form.isConnected&&locked)errorMessage(error);}
+ }catch(error){if(epoch===lockEpoch)errorMessage(error);}
 });
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.altKey&&e.key.toLowerCase()==='l'&&bridge){e.preventDefault();bridge.lock();}});
 root.addEventListener('change',e=>{

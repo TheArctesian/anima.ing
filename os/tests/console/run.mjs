@@ -40,7 +40,13 @@ try{
  const cmd=(method,params={})=>new Promise((resolve,reject)=>{const id=++next;const timer=setTimeout(()=>{waiting.delete(id);reject(Error('Browser command timed out: '+method));},20000);waiting.set(id,r=>{clearTimeout(timer);r.error?reject(Error(JSON.stringify(r.error))):resolve(r.result);});ws.send(JSON.stringify({id,method,params}));});
  const js=async expression=>{const r=await cmd('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text+JSON.stringify(r.exceptionDetails));return r.result.value;};
  const until=async expression=>{for(let i=0;i<100;i++){if(await js(expression))return true;await Bun.sleep(50);}return false;};
- const click=async selector=>{if(!await until(`!!document.querySelector(${JSON.stringify(selector)})`))throw Error('Missing control '+selector);await js(`document.querySelector(${JSON.stringify(selector)}).focus();document.querySelector(${JSON.stringify(selector)}).click()`);await until('fixture.pending <= (fixture.download?1:0)');await Bun.sleep(50);};
+ const click=async selector=>{
+  const activated=`(()=>{const control=[...document.querySelectorAll(${JSON.stringify(selector)})].find(node=>
+    !node.closest('[inert]')&&!node.matches(':disabled')&&node.checkVisibility({visibilityProperty:true}));
+    if(!control)return false;control.focus();control.click();return true;})()`;
+  if(!await until(activated))throw Error('Control not available '+selector);
+  await until('fixture.pending <= (fixture.download?1:0)');await Bun.sleep(50);
+ };
  const assert=async(expression,message)=>{if(!await until(expression))throw Error(message);};
  await cmd('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
  await Bun.sleep(300);
@@ -51,7 +57,12 @@ try{
  await click('.overlay [data-action=screen-off]');
  await cmd('Emulation.setDeviceMetricsOverride',{width:1280,height:800,deviceScaleFactor:1,mobile:false});
  await assert(`fixture.screenOff===1&&!!document.querySelector('#unlock-form')&&!fixture.calls.includes('unlock')&&!fixture.calls.includes('shutdown')&&!fixture.calls.includes('restart')`,'Screen-off while locked needs no unlock or power operation');
- await js(`document.querySelector('[name=password]').value='synthetic';document.querySelector('#unlock-form').requestSubmit()`);await Bun.sleep(200);
+ await js(`fixture.failUnlock=true;document.querySelector('[name=password]').value='synthetic';document.querySelector('#unlock-form').requestSubmit()`);
+ await assert(`(()=>{const input=document.querySelector('#unlock-form input'),alert=document.getElementById(input.getAttribute('aria-describedby'));
+  return document.activeElement===input&&input.value===''&&alert?.getAttribute('role')==='alert'&&alert.textContent.includes('The local request could not finish.');})()`,
+  'Failed unlock announces recovery at the cleared password field and keeps keyboard focus there');
+ await js(`delete fixture.failUnlock;document.querySelector('[name=password]').value='synthetic';document.querySelector('#unlock-form').requestSubmit()`);
+ await assert(`document.querySelector('.overlay').hidden&&document.activeElement===document.querySelector('main h1')`,'First unlock puts keyboard focus on the current page heading');
  await assert(`document.querySelector('#telemetry-readings').textContent.includes('7%')&&document.querySelector('#battery-status .battery')`,'Overview shows the available observation');
  await js(`fixture.telemetrySnapshot=null;consoleBridge.telemetry()`);
  await assert(`document.querySelector('#telemetry-readings').textContent.includes('Local readings unavailable')&&!document.querySelector('#battery-status .battery')&&document.querySelector('header [data-remote-connections]').textContent.includes('unavailable')`,'An unavailable publication clears readings, battery badges and transport counts');

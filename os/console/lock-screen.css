@@ -42,6 +42,7 @@
 #anima-console .lock-screen .dialog > .actions { justify-content: flex-start; margin-top: 24px; }
 #anima-console .lock-screen .dialog > .actions button { background: transparent; min-height: 44px; }
 #anima-console .lock-screen .message { overflow-wrap: anywhere; }
+#anima-console .lock-screen #unlock-feedback:empty { margin: 0; }
 @media (max-width: 900px) {
   #anima-console .overlay.lock-screen { grid-template-columns: minmax(0, 440px); justify-content: center; gap: 16px; padding: 24px; }
   #anima-console .lock-art { max-width: 340px; justify-self: center; }
@@ -50,6 +51,9 @@
   #anima-console .lock-art { display: none; }
   #anima-console .lock-screen form { margin-top: 18px; }
   #anima-console .lock-screen .dialog > .actions { margin-top: 16px; }
+}
+@media (max-height: 600px) {
+  #anima-console .overlay.lock-screen { padding-block: 24px; align-content: safe center; }
 }
 @media (max-height: 500px) {
   #anima-console .overlay.lock-screen { align-content: start; padding-top: 20px; padding-bottom: 20px; }
