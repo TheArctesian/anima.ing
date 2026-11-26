@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-haptic-play"
+description = "Enables the haptic_play command without any pre-configured scope."
+commands.allow = ["haptic_play"]
+
+[[permission]]
+identifier = "deny-haptic-play"
+description = "Denies the haptic_play command without any pre-configured scope."
+commands.deny = ["haptic_play"]

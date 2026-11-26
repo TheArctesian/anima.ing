@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "haptics",
+  "description": "Play the haptic feedback of iOS: a tick for a notch of the trackpad wheel, and a success or an error when a session start ends (mobile plan M4-4, MOT-050). The command takes one of three pattern names. Main web view only.",
+  "platforms": ["iOS"],
+  "webviews": ["main"],
+  "permissions": ["allow-haptic-play"]
+}

@@ -7,6 +7,8 @@ use tauri::{Manager, RunEvent, WindowEvent};
 use crate::{cloud, phone_browser, phone_link, phone_resume::Away};
 
 pub(crate) mod account_session;
+#[cfg(target_os = "ios")]
+mod haptics;
 mod metrics;
 mod runner;
 pub(crate) mod tokens;
@@ -18,6 +20,7 @@ pub fn run() {
         .plugin(tauri_plugin_keyboard::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_account_session::init())
+        .plugin(tauri_plugin_haptics::init())
         .manage(cloud::Cloud::default())
         .manage(Away::default())
         .setup(|app| {
@@ -45,6 +48,8 @@ pub fn run() {
             cloud::cloud_hub_usage,
             phone_browser::system_browser_open,
             runner::runner_capabilities_read,
+            #[cfg(target_os = "ios")]
+            haptics::haptic_play,
         ])
         .build(tauri::generate_context!())
         .expect("the Tauri application failed to start")

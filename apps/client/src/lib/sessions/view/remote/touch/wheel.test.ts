@@ -12,7 +12,8 @@ function pane() {
   const sendMouseState = vi.fn();
   const getDisplay = () => ({ getWidth: () => 1000, getHeight: () => 500, getScale: () => 0.5, getElement: () => document.createElement('div'), scale: vi.fn(), onresize: null, flush: (done: () => void) => done() });
   const rolled = vi.fn();
-  const stop = touchRemote(element, { sendMouseState, getDisplay }, { read: () => FIT_VIEWPORT, show: vi.fn(), pointer: vi.fn(), wheel: () => WHEEL, rolled });
+  const ticked = vi.fn();
+  const stop = touchRemote(element, { sendMouseState, getDisplay }, { read: () => FIT_VIEWPORT, show: vi.fn(), pointer: vi.fn(), wheel: () => WHEEL, rolled, ticked });
   let time = 0;
   const touch = (type: string, x: number, y: number, after = 16): void => {
     time += after;
@@ -24,7 +25,7 @@ function pane() {
     const state = call[0] as { up: boolean; down: boolean; left: boolean };
     return state.up ? 'up' : state.down ? 'down' : state.left ? 'left' : 'none';
   });
-  return { touch, buttons, rolled, sendMouseState, stop };
+  return { touch, buttons, rolled, ticked, sendMouseState, stop };
 }
 
 /** Frames that run only when the test asks, each a frame of 16 ms. */
@@ -52,8 +53,8 @@ describe('RA-050: the wheel in the middle of the trackpad', () => {
     expect(wheelOf({ x: 600, y: 0, width: 200, height: 340 })).toEqual({ x: 700 - WHEEL_WIDTH / 2, y: 110, width: WHEEL_WIDTH, height: 120 });
   });
 
-  it('a finger that rolls the wheel sends a notch for each step, up when it moves down, at the pointer, and no click', () => {
-    const { touch, buttons, sendMouseState, rolled, stop } = pane();
+  it('a finger that rolls the wheel sends a notch for each step, up when it moves down, at the pointer, and no click; the finger feels each notch (M4-4)', () => {
+    const { touch, buttons, sendMouseState, rolled, ticked, stop } = pane();
     try {
       touch('pointerdown', 200, 560);
       expect(rolled).toHaveBeenLastCalledWith(0, true);
@@ -63,6 +64,7 @@ describe('RA-050: the wheel in the middle of the trackpad', () => {
       expect(buttons()).toEqual(['up', 'none', 'up', 'none', 'up', 'none', 'down', 'none', 'down', 'none']);
       expect(sendMouseState).toHaveBeenCalledWith(expect.objectContaining({ x: 500, y: 250 }), false);
       expect(rolled).toHaveBeenLastCalledWith(NOTCH, false);
+      expect(ticked).toHaveBeenCalledTimes(5);
     } finally {
       stop();
     }
@@ -120,5 +122,37 @@ describe('RA-050: a flick throws the wheel', () => {
     roll.move(60, 40);
     roll.release(400);
     expect(waiting()).toBe(false);
+  });
+});
+
+describe('M4-4: the finger feels the notches of the wheel (MOT-050)', () => {
+  it('M4-4: after a flick the finger feels the notches that it rolled, not the notches of the coast', () => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'performance'] });
+    const { touch, buttons, ticked, stop } = pane();
+    try {
+      touch('pointerdown', 200, 560);
+      touch('pointermove', 200, 560 + 4 * NOTCH);
+      touch('pointerup', 200, 560 + 4 * NOTCH);
+      vi.advanceTimersByTime(2000);
+      expect(ticked).toHaveBeenCalledTimes(4);
+      expect(buttons().filter((button) => button === 'up').length).toBeGreaterThan(4);
+    } finally {
+      stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it('M4-4: the notches under the finger are held and the notches of the coast are not, so a coast does not tick', () => {
+    const held: boolean[] = [];
+    const { frames, run } = manualFrames();
+    const roll = wheelRoll({ notch: (_direction, under) => held.push(under), rolled: vi.fn() }, frames);
+    roll.start(0, 0);
+    roll.move(60, 40);
+    const rolledUnder = held.length;
+    roll.release(50);
+    run(1000);
+    expect(rolledUnder).toBe(Math.trunc(60 / NOTCH));
+    expect(held.length).toBeGreaterThan(rolledUnder);
+    expect(held).toEqual(held.map((_, index) => index < rolledUnder));
   });
 });

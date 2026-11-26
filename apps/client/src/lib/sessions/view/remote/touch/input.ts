@@ -100,6 +100,8 @@ interface TouchHooks {
   wheel?(): Region | undefined;
   /** The wheel turned to `travel` CSS px in all; `held` while a finger is on it. */
   rolled?(travel: number, held: boolean): void;
+  /** One notch of the wheel under the finger, which the finger feels as a tick (mobile plan M4-4). A coasting wheel does not tick. */
+  ticked?(): void;
 }
 
 type Button = 'left' | 'right' | Notch | null;
@@ -223,9 +225,10 @@ function end(state: TouchState, event: PointerEvent): void {
 export function touchRemote(pane: HTMLElement, client: Client, viewport: TouchHooks): () => void {
   const send = cursorSender(client, (at) => { viewport.pointer(at); });
   const roll = wheelRoll({
-    notch: (direction) => {
+    notch: (direction, held) => {
       send(STILL, direction);
       send(STILL, null);
+      if (held) viewport.ticked?.();
     },
     rolled: (travel, held) => { viewport.rolled?.(travel, held); },
   });

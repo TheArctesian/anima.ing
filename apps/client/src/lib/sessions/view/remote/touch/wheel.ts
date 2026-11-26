@@ -37,8 +37,8 @@ export function onWheel(point: { readonly x: number; readonly y: number }, wheel
 }
 
 export interface WheelHooks {
-  /** One notch: `up` for a finger that moves down, so the content follows the finger as on iOS. */
-  notch(direction: Notch): void;
+  /** One notch: `up` for a finger that moves down, so the content follows the finger as on iOS; `held` while a finger is on it. */
+  notch(direction: Notch, held: boolean): void;
   /** The wheel turned to `travel` CSS px in all; `held` while a finger is on it. */
   rolled(travel: number, held: boolean): void;
 }
@@ -76,8 +76,8 @@ export function wheelRoll(hooks: WheelHooks, frames: Frames = BROWSER_FRAMES): W
 
   const turn = (held: boolean): void => {
     const reached = Math.trunc(travel / NOTCH);
-    for (; sent < reached; sent += 1) hooks.notch('up');
-    for (; sent > reached; sent -= 1) hooks.notch('down');
+    for (; sent < reached; sent += 1) hooks.notch('up', held);
+    for (; sent > reached; sent -= 1) hooks.notch('down', held);
     hooks.rolled(travel, held);
   };
 

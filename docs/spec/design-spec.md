@@ -1005,7 +1005,7 @@ Springs use the two Apple parameters: damping ratio and response. The token buil
 
 #### 5.7.6 Multimodal feedback (iOS)
 
-- **MOT-050.** Use haptic feedback only for: a session that connects, a power action that completes, an error, and a snap at the end of a drag.
+- **MOT-050.** Use haptic feedback only for: a session that connects, a power action that completes, an error, a snap at the end of a drag, and a notch of the trackpad wheel under the finger (R-NEW-wheelhaptics).
 - **MOT-051.** The haptic feedback and the visual change must occur in the same frame.
 - **MOT-052.** The desktop clients do not play sounds.
 
