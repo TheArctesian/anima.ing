@@ -16,6 +16,7 @@
   import type { RemoteStart } from '../start';
   import { clipboardRules, NO_CLIPBOARD } from '../clipboard/clipboard';
   import ConnectionPanel from '../steps/ConnectionPanel.svelte';
+  import { playStartFeedback } from '../steps/feedback.svelte';
   import { displayScale, fillDisplay } from './fit';
   import { followPixelRatio, remotePane, type RemotePane } from './pane';
   import { gatewayAsk, PROMPT_CANCELLED, PROMPT_REFUSED } from './prompt';
@@ -79,6 +80,7 @@
   const stage = $derived(connection.stage);
   const client = $derived(connection.tunnel?.client);
   const ready = $derived(connection.ready);
+  playStartFeedback(() => progressOf(connection.stage));
   const displayState = $derived(protocol === 'VNC' && stage.kind === 'open' ? stage.state : undefined);
   const rules = $derived(stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
   const ask = $derived(gatewayAsk(protocol, stage.kind === 'open' ? stage.state.required : undefined, answered));

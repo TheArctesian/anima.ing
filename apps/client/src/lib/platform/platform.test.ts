@@ -58,6 +58,10 @@ describe('shellCapabilities (WP-42 D-4)', () => {
   it('MOB-004: an iPad that asks for the desktop site still gets the mobile answers', () => {
     expect(shellCapabilities(touch(MAC))).toEqual(MOBILE_APPLE);
   });
+
+  it('M4-4, MOT-050: only the app on an iPhone or an iPad plays haptics, not the Android app or a desktop app', () => {
+    expect([touch(IPHONE), touch(ANDROID), computer(MAC), computer(LINUX)].map((agent) => shellCapabilities(agent)?.haptics)).toEqual([true, false, false, false]);
+  });
 });
 
 describe('isMobile (MOB-004)', () => {

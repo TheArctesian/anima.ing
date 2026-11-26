@@ -18,6 +18,7 @@
   import { SessionConnection, progressOf, type Stage } from './session.svelte';
   import type { SessionStart } from './start';
   import ConnectionPanel from './steps/ConnectionPanel.svelte';
+  import { playStartFeedback } from './steps/feedback.svelte';
   import { phoneLayout } from '$lib/nav/phone/layout.svelte';
   import { NO_LATCH, latched, toggled, withLatch, type Latch } from './phone/keys';
   import PhoneKeys from './phone/PhoneKeys.svelte';
@@ -73,6 +74,7 @@
 
   const stage = $derived(connection.stage);
   const ready = $derived(connection.ready);
+  playStartFeedback(() => progressOf(connection.stage));
   /** What this attempt may do with the clipboard, from the policy read at its start (RA-033). */
   const rules = $derived(stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
   /** The parent gives this pane the keyboard; the terminal then takes the focus (D-8). */

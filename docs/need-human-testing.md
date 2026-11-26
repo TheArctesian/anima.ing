@@ -243,6 +243,19 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Tap the wheel without moving. Expected: the Mac clicks at the tip of the pointer, as a tap on the rest of the trackpad does.
 - Turn the iPhone to landscape. Expected: the wheel is in the middle of the trackpad beside the Mac's screen, with Trackpad above it and Wheel below it.
 
+### HT-195: the haptics of the trackpad wheel and of a session start on an iPhone
+
+- State: Open.
+- Built: haptic feedback in the iPhone app (mobile plan M4-4, R-464, MOT-050). The web view of iOS cannot vibrate, so a local Tauri plugin plays the feedback generators of iOS (`apps/desktop/haptics`) for the shell command `haptic_play` (`apps/desktop/src-tauri/src/mobile/haptics.rs`; capability `haptics.json`, iOS only). The client plays a selection tick for each notch of the trackpad wheel under the finger and none while the wheel coasts (`remote/touch/wheel.ts`, `touch/input.ts`, `RemoteDisplay.svelte`); a success when the connection steps reach connected and an error when a start stops before it, in the terminal and in the remote view (`steps/feedback.svelte.ts`); and nothing on Android, in a browser or on a desktop (`$lib/desktop/haptics/haptics.ts`). The client tests cover which change plays which pattern, that a coast plays nothing, and that only the app on an iPhone or an iPad calls the shell. The Swift package was compiled for the iOS simulator and the shell passes Clippy for it. They do not cover the feel on a real iPhone (the simulator plays no haptics), the time between a notch and its tick, or the System Haptics setting.
+- Needs: an iPhone with haptics (iPhone 8 or later) with System Haptics on (Settings, Sounds & Haptics); the iPhone app from a build of `dev` with this change; a Mac with Screen Sharing on and a long web page open in a browser.
+- Open a VNC session to the Mac. Expected: one short success feedback at the moment the screen of the Mac shows, and none while the steps run.
+- Put a finger on the wheel of the trackpad and move it down slowly. Expected: a light tick for each small step that the page scrolls, in time with the ridges of the wheel, as in a picker of iOS.
+- Flick the wheel and lift the finger. Expected: ticks while the finger is on the wheel; no ticks while the page keeps scrolling after the finger lifted.
+- While the session is connected, turn off Screen Sharing on the Mac. Expected: the session ends and the iPhone plays nothing.
+- Open the session again, with Screen Sharing still off. Expected: one error feedback, stronger than the success, at the moment the step that stopped turns red. Turn Screen Sharing on again.
+- Open an SSH session to a device. Expected: one success feedback when the terminal shows.
+- Turn off System Haptics. Open the VNC session and roll the wheel. Expected: no feedback at all. Turn System Haptics on again.
+
 ### HT-192: a remote desktop on an iPhone fills the screen and shows the pointer
 
 - State: Open.

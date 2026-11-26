@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { playHaptic } from '$lib/desktop/haptics/haptics';
   import type { DisplayChoices, SessionTunnel } from '../../tunnel/guacamole/tunnel';
   import type { Size } from '../display';
   import { showDisplay } from '../guacamole/input';
@@ -65,6 +66,7 @@
         roll = travel;
         rolling = held;
       },
+      ticked: () => { playHaptic('selection'); },
     });
   });
 </script>

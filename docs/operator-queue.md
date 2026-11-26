@@ -313,7 +313,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (129)
+## 4. Checks that only the operator can do (130)
 
 | Check | What |
 | --- | --- |
@@ -321,6 +321,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-186 | one VNC monitor at a time on iPad |
 | HT-193 | the iPhone app is back on the network a few seconds after it comes back from the background |
 | HT-194 | the scroll wheel of the trackpad and the motion of the connection steps on an iPhone |
+| HT-195 | the haptics of the trackpad wheel and of a session start on an iPhone |
 | HT-192 | a remote desktop on an iPhone fills the screen and shows the pointer |
 | HT-149 | reporting after an iPad update and the phone Code tab |
 | HT-183 | Device Overview and tabs on iPad |
