@@ -12,6 +12,8 @@ export const FIT_VIEWPORT: TouchViewport = { x: 0, y: 0, zoom: 1 };
 const MAX_ZOOM = 4;
 const TAP_DISTANCE = 7;
 const DRAG_HOLD_MS = 350;
+/** Room, in CSS px, that the view keeps between the touch pointer and the edge of the screen. */
+const FOLLOW_MARGIN = 32;
 
 function limit(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -38,6 +40,26 @@ export function pointerInPane(at: Point | undefined, remote: Size, view: TouchVi
   const x = at === undefined ? remote.width / 2 : limit(at.x, 0, Math.max(0, remote.width - 1));
   const y = at === undefined ? remote.height / 2 : limit(at.y, 0, Math.max(0, remote.height - 1));
   return { x: view.x + x * shown, y: view.y + y * shown };
+}
+
+/** The view at rest: the middle of the remote is in the middle of the pane, where the touch pointer starts. */
+export function middleViewport(pane: Size, remote: Size, scale: number): TouchViewport {
+  return { zoom: 1, x: (pane.width - remote.width * scale) / 2, y: (pane.height - remote.height * scale) / 2 };
+}
+
+function followAxis(position: number, at: number, size: number): number {
+  const margin = Math.min(FOLLOW_MARGIN, size / 2);
+  if (at < margin) return position + margin - at;
+  if (at > size - margin) return position + size - margin - at;
+  return position;
+}
+
+/**
+ * The view moved so that the pointer, shown at `shown` in the pane, is inside the screen's margin: a display larger than
+ * its screen moves under the pointer, so the pointer does not leave the view. `boundViewport` then keeps the display on it.
+ */
+export function followPointer(view: TouchViewport, shown: Point, screen: Size): TouchViewport {
+  return { zoom: view.zoom, x: followAxis(view.x, shown.x, screen.width), y: followAxis(view.y, shown.y, screen.height) };
 }
 
 interface Pinch {
