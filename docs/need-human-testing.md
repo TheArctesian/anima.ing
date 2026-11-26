@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-linkresume | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
 | HT-187 | Desktop Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and ordinary browser | Open |
@@ -213,6 +214,17 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Pinch to zoom and move both fingers to pan. Check that the desktop stays under the fingers, that lifting a finger does not click, and that Fit restores the original view.
 - Tap the text field. Type ordinary text, one accented character and one IME composition, then use Enter and Backspace. Confirm each appears once on the remote desktop.
 - Background the app and interrupt its network. Reopen the app, check the session reconnect behavior, and use the pointer again.
+
+### HT-NEW-linkresume: the iPhone app is back on the network a few seconds after it comes back from the background
+
+- State: Open.
+- Built: on a phone, the app starts its link again when it comes back to the screen after 10 s or more away. After iOS suspended the app, the tunnel of the link and its local port were stale, but the link still reported that it ran, so the app showed "Not on the network" for a minute or more (MOB-036; `apps/desktop/src-tauri/src/phone_resume.rs`, `phone_link.rs`, `mobile.rs`). The restart keeps the port, so the address of the hub and its token stay the same. The live connection of the client retries at once when the app shows again, and then waits from 1 s again (`apps/client/src/lib/hub/socket/socket.ts`). For a hub that Anima.ing hosts, the banner shows "Hosted by Anima.ing" in place of the port, and on a phone or a tablet it says "Check this device's network" (NET-004, R-NEW-phonenetwork). The tests cover the decision to restart, the retry when the page shows and the words of the banner. They do not cover iOS suspending the app, a real tunnel or a real network.
+- Needs: the iPhone app from a build of `dev` with this change, signed in to the hosted hub.
+- Open the app on the Devices page. Expected: no banner.
+- Lock the iPhone for 5 minutes. Unlock it and open the app. Expected: the Devices page updates within about 5 seconds; the banner "Not on the network" shows for a few seconds or not at all.
+- Open a VNC session. Switch to a different app for 5 seconds and come back. Expected: the session is still connected, and the pointer moves.
+- Turn Wi-Fi off, so that the iPhone uses the mobile network. Switch to a different app for 1 minute and come back. Expected: the same result as after the lock.
+- If the banner shows, read it. Expected: "Hosted by Anima.ing", not an address such as 127.0.0.1, and "Check this device's network".
 
 ### HT-192: a remote desktop on an iPhone fills the screen and shows the pointer
 
