@@ -146,7 +146,7 @@ Locking conceals the local interface and closes its authenticated command sessio
 
 ## Automated VM installation tests
 
-Requires `qemu-img`, `qemu-system-x86_64`, ImageMagick (`magick`) and Tesseract on PATH. On Linux, install the OVMF files named in `vm_host.py`; on macOS, the harness discovers the x86-64 UEFI firmware from Homebrew QEMU's descriptors. Apple Silicon uses TCG emulation.
+Requires `qemu-img`, `qemu-system-x86_64`, ImageMagick (`magick`) and Tesseract on PATH. On Linux, install the OVMF files named in `vm_host.py`. On macOS, the harness discovers the x86-64 UEFI firmware from Homebrew QEMU's descriptors. The install copy deadline is 40 minutes on Apple Silicon TCG and 20 minutes with hardware acceleration.
 
 ```sh
 python3 os/tests/vm/gui_test.py \

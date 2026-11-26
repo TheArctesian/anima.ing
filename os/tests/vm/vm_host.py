@@ -14,6 +14,10 @@ def accelerator():
     return 'kvm'
 
 
+def install_copy_timeout():
+    return 2400 if accelerator() == 'tcg' else 1200
+
+
 def firmware():
     if platform.system() != 'Darwin':
         return (Path('/usr/share/edk2/x64/OVMF_CODE.4m.fd'),

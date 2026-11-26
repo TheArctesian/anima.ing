@@ -3242,3 +3242,28 @@ directory. The appliance now links that directory into its system profile.
 A focused Nix profile build linked the source revision, source manifest,
 Cargo lock digest and daemon binary digest. All four matched the prepared
 payload byte for byte. The corrected candidate requires a new frozen build.
+
+### Corrected unsigned candidate, 2026-11-26
+
+Revision `7a1cf1c5d9c34a84e02dd0481ff7227f9ead5d2e` built the unsigned
+ISO, installed generation and offline private-access fixtures. The ISO
+SHA-256 is `8004408320586e4d34f226d4fca0ef7ca7f804d8bf46fc3b150800e35f289124`.
+The installer names the same generation as the candidate receipt. Direct
+inspection of the ISO matched the cutover marker, Workloads asset and all
+four provenance files to the frozen inputs. The receipt verifier checked
+the ISO and all three offline fixture files. These are build and artifact
+checks. Installed acceptance is recorded separately.
+
+### First frozen install and upgrade attempts, 2026-11-26
+
+The offline graphical install reached the copy phase. At the 20-minute
+deadline the guest returned status 124 and QEMU still reported writes to
+the selected system disk. The unselected disk passed the final checksum.
+The harness now allows 40 minutes for the copy on TCG. The accelerated
+deadline remains 20 minutes. Installed acceptance requires another run.
+
+The signed upgrade fixture stopped in the unchanged pre-move Shiboken
+derivation at `83a01d481c9b`. Its generated C++ retained unresolved
+substitutions under Docker's x86 emulation. The legacy derivations are
+being retried on the disposable x86 Linux builder. The baseline receipt,
+activation and rollback results remain pending.

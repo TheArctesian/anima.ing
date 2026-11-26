@@ -112,7 +112,14 @@ def graphical_install(machine, output, password):
     _, y, _, height = locate(output, 'authorize erasing'); click(machine, 220, y+height//2)
     tap(machine, output, 'Erase selected disks')
     time.sleep(2); screenshot(output, 'installing')
-    machine.command("timeout 1200 sh -c 'until grep -q ANIMA_INSTALL_COMPLETE /root/.cache/calamares/session.log; do if grep -q \"Installation failed:\" /root/.cache/calamares/session.log; then exit 1; fi; sleep 2; done'", timeout=1210)
+    copy_timeout = vm_host.install_copy_timeout()
+    machine.command(
+        f"timeout {copy_timeout} sh -c '"
+        'until grep -q ANIMA_INSTALL_COMPLETE /root/.cache/calamares/session.log; do '
+        'if grep -q "Installation failed:" /root/.cache/calamares/session.log; then exit 1; fi; '
+        "sleep 2; done'",
+        timeout=copy_timeout + 10,
+    )
     time.sleep(2); screenshot(output, 'finished')
     seed_data_volume(machine)
 
