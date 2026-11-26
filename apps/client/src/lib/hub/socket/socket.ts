@@ -28,6 +28,7 @@ export interface Socket {
     document: TypedDocumentNode<TResult, TVariables>,
     variables: TVariables,
     sink: Sink<TResult>,
+    options?: { retry?: boolean },
   ): () => void;
   /** Completes every subscription, also later ones; rejects only when an open socket could not be closed. */
   close(): Promise<void>;
@@ -96,7 +97,7 @@ function stoppedSignal(reason: unknown, state: SocketState): StatusSignal | unde
   return isHubCloseCode(closeCode(reason)) ? 'answered' : 'failed';
 }
 
-function lifecycle(transport: SocketTransport, state: SocketState, refuse: () => void) {
+function lifecycle(transport: SocketTransport, state: SocketState, refuse: (event: unknown) => void) {
   const signal = (value: StatusSignal | undefined): void => {
     if (value !== undefined && !state.closed) transport.signal(value);
   };
@@ -116,14 +117,14 @@ function lifecycle(transport: SocketTransport, state: SocketState, refuse: () =>
       state.phase = 'waiting';
       clearDeadline(state);
       // The socket keeps probing after a refusal; the subscriptions end, so they are not sent again.
-      if (closeCode(event) === REFUSED_CLOSE_CODE) refuse();
+      refuse(event);
       signal(closeSignal(event));
     },
     stopped: (reason: unknown) => signal(stoppedSignal(reason, state)),
   };
 }
 
-function connect(transport: SocketTransport, state: SocketState, refuse: () => void): Client {
+function connect(transport: SocketTransport, state: SocketState, refuse: (event: unknown) => void): Client {
   const events = lifecycle(transport, state, refuse);
   return createClient({
     url: transport.address.socket,
@@ -170,11 +171,13 @@ function deliverTo<T>(sink: Sink<T>, tokenUnreadable: () => boolean, origin: str
 export function createSocket(transport: SocketTransport): Socket {
   const state: SocketState = { phase: 'opening', closed: false, tokenUnreadable: false, deadline: undefined, retryTimer: undefined };
   const live = new Set<(error?: HubError) => void>();
-  const client = connect(transport, state, () => {
-    for (const finish of [...live]) finish(REFUSED);
+  const transient = new Set<(error?: HubError) => void>();
+  const client = connect(transport, state, (event) => {
+    const refused = closeCode(event) === REFUSED_CLOSE_CODE;
+    for (const finish of [...(refused ? live : transient)]) finish(refused ? REFUSED : noAnswer(transport.address.origin));
   });
   return {
-    subscribe(document, variables, sink) {
+    subscribe(document, variables, sink, options) {
       if (state.closed) {
         sink.complete();
         return () => undefined;
@@ -185,6 +188,7 @@ export function createSocket(transport: SocketTransport): Socket {
         if (ended) return;
         ended = true;
         live.delete(finish);
+        transient.delete(finish);
         stop();
         deliver();
       };
@@ -197,6 +201,7 @@ export function createSocket(transport: SocketTransport): Socket {
         complete: () => finish(),
       };
       live.add(finish);
+      if (options?.retry === false) transient.add(finish);
       stop = client.subscribe({ query: print(document), variables }, deliverTo(guarded, () => state.tokenUnreadable, transport.address.origin));
       return () => end(() => undefined);
     },

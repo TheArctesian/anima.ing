@@ -1,6 +1,8 @@
 //! Docker reads of a device (HOST-001, HOST-013, HOST-019 to HOST-021). No tool returns a
 //! container's log or details: a log, a command or a label can hold a secret (MCP-004, HOST-017).
 
+mod actions;
+
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -28,6 +30,8 @@ pub fn definition_of(tool: DeviceTool) -> Definition {
         DeviceTool::ContainerStorage => storage_definition(),
         DeviceTool::ContainerNetworks => networks_definition(),
         DeviceTool::ContainerUpdates => updates_definition(),
+        DeviceTool::ContainerAction => actions::queue_definition(),
+        DeviceTool::ContainerActionStatus => actions::status_definition(),
         _ => definition(),
     }
 }
@@ -45,6 +49,8 @@ pub async fn call(
         DeviceTool::ContainerStorage => storage(hub, arguments).await,
         DeviceTool::ContainerNetworks => networks(hub, arguments).await,
         DeviceTool::ContainerUpdates => updates(hub, arguments).await,
+        DeviceTool::ContainerAction => actions::queue(hub, arguments).await,
+        DeviceTool::ContainerActionStatus => actions::status(hub, arguments).await,
         _ => list(hub, arguments).await,
     }
 }

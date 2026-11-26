@@ -48,3 +48,28 @@ impl Loader<DeviceId> for ServerCertificatesByDevice {
         server_certificates(&self.0, keys).await.map_err(Arc::new)
     }
 }
+
+/// A separate loader key prevents RDP and VNC cache entries sharing an identity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VncCertificateKey(pub DeviceId);
+
+impl Loader<VncCertificateKey> for ServerCertificatesByDevice {
+    type Value = ServerCertificate;
+    type Error = Arc<Error>;
+
+    async fn load(
+        &self,
+        keys: &[VncCertificateKey],
+    ) -> Result<HashMap<VncCertificateKey, ServerCertificate>, Self::Error> {
+        let devices: Vec<_> = keys.iter().map(|key| key.0).collect();
+        crate::fleet::trust::vnc_server_certificates(&self.0, &devices)
+            .await
+            .map(|certificates| {
+                certificates
+                    .into_iter()
+                    .map(|(device, certificate)| (VncCertificateKey(device), certificate))
+                    .collect()
+            })
+            .map_err(Arc::new)
+    }
+}

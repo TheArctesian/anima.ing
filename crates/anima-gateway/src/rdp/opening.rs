@@ -1,8 +1,6 @@
 //! No credential leaves before the certificate is checked (SEC-007). No error holds a
 //! value from the device or the account (LOG-007).
 
-use std::sync::Arc;
-
 use ironrdp_cliprdr::CliprdrClient;
 use ironrdp_connector::connection_activation::ConnectionActivationFactory;
 use ironrdp_connector::sspi::generator::NetworkRequest;
@@ -17,13 +15,9 @@ use ironrdp_pdu::nego::NegoRequestData;
 use ironrdp_pdu::rdp::capability_sets::{MajorPlatformType, RailSupportLevel};
 use ironrdp_pdu::rdp::client_info::{PerformanceFlags, TimezoneInfo};
 use ironrdp_tokio::{NetworkClient, TokioFramed};
-use rustls::pki_types::ServerName as TlsName;
-use sha2::{Digest as _, Sha256};
 use tokio::net::TcpStream;
-use tokio_rustls::TlsConnector;
 use tokio_rustls::client::TlsStream;
 
-use super::certificate::any_certificate;
 use super::clipboard::ClipboardNotes;
 use crate::handshake::{Certificate, Security};
 
@@ -98,12 +92,7 @@ pub async fn open(
             _ => OpenError::NotRdp,
         })?;
 
-    let (stream, public_key) = secure(
-        plain.into_inner_no_leftover(),
-        peer.ip(),
-        wanted.certificate,
-    )
-    .await?;
+    let (stream, public_key) = secure(plain.into_inner_no_leftover(), wanted.certificate).await?;
 
     let upgraded = ironrdp_tokio::mark_as_upgraded(upgrade, &mut connector);
     let mut connection = TokioFramed::new(stream);
@@ -144,26 +133,20 @@ pub async fn open(
 
 async fn secure(
     device: TcpStream,
-    address: std::net::IpAddr,
     rule: Certificate,
 ) -> Result<(TlsStream<TcpStream>, Vec<u8>), OpenError> {
-    let tls = TlsConnector::from(Arc::new(any_certificate().map_err(|_| OpenError::Failed)?));
-    let name = TlsName::IpAddress(address.into());
-    let stream = tls
-        .connect(name, device)
+    let stream = crate::tls::connect(device, rule)
         .await
-        .map_err(|_| OpenError::Failed)?;
+        .map_err(|error| match error {
+            crate::tls::ConnectError::Failed => OpenError::Failed,
+            crate::tls::ConnectError::Certificate => OpenError::Certificate,
+        })?;
     let shown = stream
         .get_ref()
         .1
         .peer_certificates()
-        .and_then(<[_]>::first);
-    let shown = shown.ok_or(OpenError::Certificate)?;
-    if let Certificate::Accepted(accepted) = rule
-        && Sha256::digest(shown).as_slice() != accepted
-    {
-        return Err(OpenError::Certificate);
-    }
+        .and_then(<[_]>::first)
+        .ok_or(OpenError::Certificate)?;
     let public_key = public_key(shown).ok_or(OpenError::Certificate)?;
     Ok((stream, public_key))
 }

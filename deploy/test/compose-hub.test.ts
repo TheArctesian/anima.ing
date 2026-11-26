@@ -325,7 +325,7 @@ describe("hub image build context", () => {
       .filter((line) => line !== "" && !line.startsWith("#"));
     expect(lines[0]).toBe("*");
     const allowed = lines.filter((line) => line.startsWith("!"));
-    expect(allowed.filter((line) => !/^!(Cargo\.(toml|lock)|bun\.lock|package\.json|crates\/|apps\/client\/|apps\/desktop\/((src-tauri|keyboard|account-session|runner)\/|package\.json)|(deploy(\/dns|\/headscale)?|design|quality)\/package\.json)$/.test(line))).toEqual([]);
+    expect(allowed.filter((line) => !/^!(Cargo\.(toml|lock)|bun\.lock|package\.json|crates\/|apps\/client\/|apps\/desktop\/((src-tauri|keyboard|account-session|runner|workspace-preview)\/|package\.json)|(deploy(\/dns|\/headscale)?|design|quality)\/package\.json)$/.test(line))).toEqual([]);
     expect(allowed).toContain("!crates/");
   });
 });

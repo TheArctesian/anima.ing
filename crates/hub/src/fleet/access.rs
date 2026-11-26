@@ -52,7 +52,7 @@ pub use identity::{Identity, client_addr, identify, identify_connection, operato
 pub use layer::{Edge, permitted_networks_layer};
 pub use login::browser_ticket::{BrowserTickets, TICKET_BYTES};
 pub use login::hosted::{BrowserSession, HostedDevice, sign_in_hosted, sign_in_hosted_browser};
-pub use origin::PublicOrigin;
+pub use origin::{CLIENT_ORIGINS, PublicOrigin};
 pub use password::Password;
 pub use rebinding::loopback_names_layer;
 pub use recheck::{RECHECK_WINDOW, Recheck, recheck_totp};

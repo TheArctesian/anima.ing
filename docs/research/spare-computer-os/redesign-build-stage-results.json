@@ -1,0 +1,24 @@
+{
+  "iso_sha256": "ba0a11ef7857c3d45c40da9d3c66e8d128b87016db46c9bef3dccd38c59dc631",
+  "execution_package": "/nix/store/wnnywcyn9cb74grl7qg4yxd6rywlgqcy-anima-os-execution-0.1.0",
+  "sandbox_config": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+  "results": [
+    {
+      "case": "immutable-build-context",
+      "result": "Passed"
+    },
+    {
+      "case": "rootless-offline-run-stage-oci-verification",
+      "result": "Passed"
+    },
+    {
+      "case": "build-artifact-and-context-release",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "limitation": "Candidate unit override ProtectKernelTunables=no; offline Dockerfile RUN stage; no Railpack detection, provider, secrets, network or deployment"
+}

@@ -1,0 +1,6 @@
+mutation ProjectBuildPinSet($project: ID!, $device: ID) {
+  setProjectBuildPin(project: $project, device: $device) {
+    pinned { id name target privateCheckout }
+    candidates { id name target privateCheckout }
+  }
+}

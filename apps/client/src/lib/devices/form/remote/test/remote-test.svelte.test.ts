@@ -27,7 +27,7 @@ const WITH_RDP: DeviceFields = {
     resizeMethod: 'DISPLAY_UPDATE', audioOut: true, microphone: false, sharedDrive: false, credentialStored: false,
     serverCertificate: null,
   },
-  vnc: { enabled: true, port: 5900, username: null, credentialStored: false },
+  vnc: { serverCertificate: null, enabled: true, port: 5900, username: null, credentialStored: false },
 };
 
 function answer(extra: Partial<RemoteTestResult>): { ok: true; value: RemoteTestResult } {

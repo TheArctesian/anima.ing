@@ -10,6 +10,7 @@ pub mod files;
 pub(crate) mod hub_threads;
 #[cfg(unix)]
 pub mod listing;
+pub mod managed;
 pub mod report;
 #[cfg(unix)]
 pub mod runner;
@@ -24,6 +25,9 @@ use crate::invocation::Invocation;
 
 #[derive(Debug, clap::Subcommand)]
 pub enum AgentCommand {
+    /// Control managed Code on an enrolled `AnimaOS` node through the hub.
+    #[command(subcommand)]
+    Node(managed::Command),
     /// Sum the sessions, prompts, tool calls and tokens of Claude Code and Codex, with an
     /// estimate of their cost.
     Usage(usage::UsageArgs),
@@ -137,6 +141,7 @@ impl AgentCommand {
     /// [`Failure`] for a refusal, an unknown device or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
+            Self::Node(command) => command.run(invocation).await,
             Self::Usage(args) => args.run(invocation).await,
             Self::Sessions(args) => args.run(invocation).await,
             Self::Threads(args) => args.run(invocation).await,

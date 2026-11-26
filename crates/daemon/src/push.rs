@@ -123,8 +123,8 @@ impl Pusher {
     }
 
     #[cfg(unix)]
-    pub(crate) fn thread_sync_target(&self) -> crate::runtime::thread_sync::Target {
-        crate::runtime::thread_sync::Target {
+    pub(crate) fn runtime_target(&self) -> crate::runtime::HubTarget {
+        crate::runtime::HubTarget {
             hub: self.hub.clone(),
             device: self.device,
             origin: self.credential.hub.clone(),

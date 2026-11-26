@@ -76,3 +76,36 @@ async fn sec_007_a_fingerprint_the_hub_did_not_see_is_conflict_exit_6() {
     assert_eq!(run.code, 6, "{run:?}");
     assert!(run.stderr.contains("not the certificate the hub saw"));
 }
+
+#[tokio::test]
+async fn vnc_acceptance_uses_the_vnc_mutation_and_exact_fingerprint() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "VncCertificateAccept",
+        data(json!({"acceptVncServerCertificate": {
+            "fingerprintSha256": "aa:bb", "subject": "CN=synthetic-vnc",
+            "notAfter": null, "firstSeenAt": "2026-11-24T09:00:00+00:00"
+        }})),
+    );
+    let run = signed_in()
+        .run(&[
+            "device",
+            "trust",
+            "accept-certificate",
+            DEVICE,
+            "aa:bb",
+            "--protocol",
+            "vnc",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert!(run.stdout.contains("aa:bb"));
+    let seen = hub.seen();
+    assert_eq!(seen.len(), 1);
+    assert_eq!(
+        seen[0].variables,
+        json!({"deviceId": DEVICE, "fingerprintSha256": "aa:bb"})
+    );
+}

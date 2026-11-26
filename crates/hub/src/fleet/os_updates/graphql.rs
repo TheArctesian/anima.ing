@@ -24,7 +24,7 @@ impl Query {
     #[graphql(guard = "Authenticated")]
     async fn device_os_update(&self, ctx: &Context<'_>, device_id: ID) -> Result<Json<Value>> {
         let (_, mut link) = connection(ctx, device_id).await?;
-        run(&mut link, None)
+        run(&mut link, None, None)
             .await
             .map(Json)
             .map_err(|error| refusal(&error))
@@ -36,6 +36,7 @@ pub struct OsUpdateRequest {
     action: OsUpdateAction,
     #[graphql(default)]
     confirmed: bool,
+    review_revision: Option<String>,
 }
 
 #[derive(Default)]
@@ -51,13 +52,24 @@ impl Mutation {
         input: OsUpdateRequest,
     ) -> Result<bool> {
         person_only(ctx)?;
-        let OsUpdateRequest { action, confirmed } = input;
+        let OsUpdateRequest {
+            action,
+            confirmed,
+            review_revision,
+        } = input;
         if action.restarts() && !confirmed {
             return Err(coded(
                 "Confirm restarting the device first.",
                 ErrorCode::Validation,
             ));
         }
+        let review = match review_revision.as_deref() {
+            None if !action.restarts() => None,
+            Some(revision) if action.restarts() && revision.len() == 64 => {
+                Some(ssh::HexDigits::parse(revision).ok_or_else(review_required)?)
+            }
+            _ => return Err(review_required()),
+        };
         let (device, mut link) = connection(ctx, device_id).await?;
         let db = schema_dependency::<PgPool>(ctx)?;
         let mut tx = db.begin().await.map_err(internal)?;
@@ -71,13 +83,13 @@ impl Mutation {
                     message: format!("OS update {action:?} requested for {}.", device.name),
                     action: AuditAction::Update,
                     target: AuditTarget::Device(device.id),
-                    change: json!({"osUpdate":format!("{action:?}"),"confirmed":confirmed}),
+                    change: json!({"osUpdate":format!("{action:?}"),"confirmed":confirmed,"reviewRevision":review_revision}),
                 },
             )
             .await
             .map_err(internal)?;
         tx.commit().await.map_err(internal)?;
-        let result = run(&mut link, Some(action))
+        let result = run(&mut link, Some(action), review.as_ref())
             .await
             .map_err(|error| refusal(&error))?;
         Ok(result["requested"] == true)
@@ -116,5 +128,17 @@ async fn connection(ctx: &Context<'_>, id: ID) -> Result<(devices::Device, ssh::
 }
 
 fn refusal(error: &super::Error) -> async_graphql::Error {
-    coded(error.to_string(), ErrorCode::Unavailable)
+    let code = if matches!(error, super::Error::ReviewChanged) {
+        ErrorCode::Conflict
+    } else {
+        ErrorCode::Unavailable
+    };
+    coded(error.to_string(), code)
+}
+
+fn review_required() -> async_graphql::Error {
+    coded(
+        "Review the current update before restarting.",
+        ErrorCode::Validation,
+    )
 }

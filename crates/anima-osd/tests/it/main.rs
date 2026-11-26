@@ -2,4 +2,5 @@
 
 mod endpoint;
 mod jobs;
+mod observation;
 mod protocol;

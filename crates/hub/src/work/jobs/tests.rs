@@ -30,12 +30,16 @@ fn asked(work_type: WorkType) -> NewJob {
         os: Some(WorkOs::Linux),
         architecture: Some(WorkArchitecture::X86_64),
         project: None,
-        repository: WorkRepository {
+        repository: Some(WorkRepository {
             forge: "github".to_owned(),
             owner: "example".to_owned(),
             name: "app".to_owned(),
+        }),
+        parameters: if work_type == WorkType::Build {
+            json!({"recipe":"desktop_release"})
+        } else {
+            json!({})
         },
-        parameters: json!({}),
         secrets: Vec::new(),
         limits: Limits {
             seconds: 600,
@@ -72,6 +76,8 @@ fn queued(work_type: WorkType) -> Job {
 
 fn claim_of(text: &str) -> Claim {
     Claim {
+        build_recipes: None,
+        applications: Switch::Off,
         device: device(text).into(),
         switch: Switch::On,
         types: vec![WorkType::Build, WorkType::Runner],

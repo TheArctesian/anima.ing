@@ -1,6 +1,6 @@
 pub(super) mod choices;
 pub(super) mod metadata;
-pub(super) mod reads;
+pub(in crate::work) mod reads;
 pub(super) mod signs;
 
 use chrono::{DateTime, Utc};

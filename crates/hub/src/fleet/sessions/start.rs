@@ -37,6 +37,7 @@ pub struct StartRequest {
     pub device: DeviceId,
     pub protocol: Protocol,
     pub display: DisplayRequest,
+    pub view_only: bool,
     /// `None` never wakes the device, whatever its status.
     pub wake: Option<Waking>,
 }
@@ -144,6 +145,12 @@ async fn admit(
     device: &Device,
     req: &StartRequest,
 ) -> Result<Display, Error> {
+    if req.view_only && req.protocol == Protocol::Ssh {
+        return Err(Error::Validation(vec![FieldError::new(
+            "viewOnly",
+            "View-only sessions are available for RDP and VNC.",
+        )]));
+    }
     let display = &req.display;
     let host = host_problem(&device.host, live.policy());
     let display = match (checked_display(display), host) {
@@ -220,6 +227,7 @@ pub async fn start(
         timezone: held_timezone(req.display.timezone),
         expires_at: now + LIFETIME,
         wake_sent,
+        view_only: req.view_only,
     };
     let mut tx = db.begin().await?;
     limit::check_locked(&mut tx, device.id).await?;
@@ -286,11 +294,14 @@ async fn write_start(
         started_at: now,
     };
     let started = store::insert(&mut *conn, &new).await?;
-    let change = json!({
+    let mut change = json!({
         "deviceId": device.id.to_string(),
         "deviceName": device.name,
         "protocol": protocol.as_str(),
     });
+    if pending.view_only {
+        change["viewOnly"] = json!(true);
+    }
     let audit = NewAudit {
         operator: pending.operator.clone(),
         action: AuditAction::Start,

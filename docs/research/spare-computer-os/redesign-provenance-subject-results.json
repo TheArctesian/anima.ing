@@ -1,0 +1,60 @@
+{
+  "iso_sha256": "ba0a11ef7857c3d45c40da9d3c66e8d128b87016db46c9bef3dccd38c59dc631",
+  "execution_package": "/nix/store/5gffv0z39axhjj4c349c261sc9qx4m65-anima-os-execution-0.1.0",
+  "sandbox_config": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+  "results": [
+    {
+      "case": "build-probe",
+      "result": "Failed",
+      "reason": "Guest command failed: while read -r manifest subject; do tar -xOf /run/anima-build-check-8c7a0506-b9bf-4a98-b07f-b0787e534966/image.oci \"blobs/sha256/${manifest#sha256:}\" > /run/anima-build-check-8c7a0506-b9bf-4a98-b07f-b0787e534966/attestation.json; layer=$(jq -er '.layers[] | select(.mediaType == \"application/vnd.in-toto+json\") | select(.annotations[\"in-toto.io/predicate-type\"] == \"https://slsa.dev/provenance/v0.2\") | .digest' /run/anima-build-check-8c7a0506-b9bf-4a98-b07f-b0787e534966/attestation.json) || exit 1; tar -xOf /run/anima-build-check-8c7a0506-b9bf-4a98-b07f-b0787e534966/image.oci \"blobs/sha256/${layer#sha256:}\" > /run/anima-build-check-8c7a0506-b9bf-4a98-b07f-b0787e534966/provenance.json; jq -e --arg subject \"${subject#sha256:}\" '.predicateType == \"https://slsa.dev/provenance/v0.2\" and any(.subject[]; .digest.sha256 == $subject) and ((.predicate.materials // []) | type == \"array\")' /run/anima-build-check-8c7a0506-b9bf-4a98-b07f-b0787e534966/provenance.json || exit 1; done < /run/anima-build-check-8c7a0506-b9bf-4a98-b07f-b0787e534966/attestations.tsv"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "limitation": "Candidate package via the frozen shared harness; explicit Dockerfile, strategy conflict, write-open isolation and exact archive export with minimum provenance; cached image from probe13; no Railpack detection, provider, secrets, network or deployment",
+  "statement": {
+    "_type": "https://in-toto.io/Statement/v0.1",
+    "predicateType": "https://slsa.dev/provenance/v0.2",
+    "subject": [],
+    "predicate": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "invocation": {
+        "configSource": {},
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ],
+          "compatibilityVersion": 20
+        },
+        "environment": {
+          "dockerfileVersion": "1.24.0-dev",
+          "platform": "linux/amd64"
+        }
+      },
+      "metadata": {
+        "buildInvocationID": "q4cyyb8ydlcmxeqcm02vakvx2",
+        "buildStartedOn": "2026-11-24T19:14:43.116226579Z",
+        "buildFinishedOn": "2026-11-24T19:15:40.997750378Z",
+        "completeness": {
+          "parameters": true,
+          "environment": true,
+          "materials": false
+        },
+        "reproducible": false,
+        "https://mobyproject.org/buildkit@v1#metadata": {}
+      }
+    }
+  },
+  "finding": "Unnamed OCI export produces an empty attestation subject; unchanged digest-binding assertion fails."
+}

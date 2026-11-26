@@ -8,7 +8,9 @@ mod layout;
 mod messages;
 pub mod requests;
 mod sign_in;
+mod vencrypt;
 mod zrle;
+pub(crate) use vencrypt::{plain_sign_in, secure};
 
 use crate::screen::Screen;
 pub use layout::Monitor;

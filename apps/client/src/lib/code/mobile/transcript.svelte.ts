@@ -3,11 +3,13 @@ import type { ThreadEntry } from './api';
 
 export interface Message {
   readonly sequence: string;
-  readonly role: 'you' | 'agent';
+  readonly role: 'you' | 'agent' | 'notice';
   readonly text: string;
 }
 
-interface PendingRequest {
+export interface PendingRequest {
+  readonly kind: string;
+  readonly questions: readonly { key: string; text: string; choices: string[]; many: boolean }[];
   readonly id: string;
   readonly title: string;
   readonly subject: string;
@@ -39,6 +41,11 @@ function pendingRequest(id: string, value: unknown): PendingRequest {
   const questions = Array.isArray(detail['questions']) ? detail['questions'] : [];
   return {
     id,
+    kind: text(detail['kind']),
+    questions: questions.map((value: unknown) => {
+      const q = record(value);
+      return { key: text(q['key']), text: text(q['text']), choices: Array.isArray(q['choices']) ? q['choices'].filter((v): v is string => typeof v === 'string') : [], many: q['many'] === true };
+    }).filter((q) => q.key !== ''),
     title: requestTitle(detail['kind']),
     subject: questions.map((question: unknown) => text(record(question)['text'])).filter(Boolean).join('\n')
       || text(detail['subject']),
@@ -71,6 +78,11 @@ export function createTranscript() {
   function append({ sequence, content }: ThreadEntry): void {
     const change = record(content);
     switch (change['change']) {
+      case 'omitted':
+        if (draft !== null) messages.push(draft);
+        draft = null;
+        messages.push({ sequence, role: 'notice', text: change['reason'] === 'runner_history_gap' ? 'Some earlier activity is no longer available on this node.' : 'An entry exceeded the sharing limit and was omitted.' });
+        break;
       case 'prompt':
         if (draft !== null) messages.push(draft);
         draft = null;
@@ -82,6 +94,11 @@ export function createTranscript() {
       case 'asked': {
         const id = text(change['request']);
         if (id !== '') pending.set(id, pendingRequest(id, change['detail']));
+        break;
+      }
+      case 'open_requests': {
+        const open = new Set(Array.isArray(change['requests']) ? change['requests'].filter((id): id is string => typeof id === 'string') : []);
+        for (const id of pending.keys()) if (!open.has(id)) pending.delete(id);
         break;
       }
       case 'closed':

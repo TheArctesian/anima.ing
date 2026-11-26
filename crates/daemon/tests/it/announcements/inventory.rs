@@ -16,6 +16,7 @@ fn feed(rig: &mut Rig, first: i64, count: i64) {
 fn mac() -> BatchInventory {
     BatchInventory {
         remote_access: None,
+        remote_vnc_user: None,
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),

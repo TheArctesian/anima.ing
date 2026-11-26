@@ -25,6 +25,7 @@ pub const MAX_BUILD_TARGETS: usize = 128;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Inventory {
     pub remote_access: Option<RemoteAccess>,
+    pub remote_vnc_user: Option<String>,
     pub architecture: Architecture,
     pub os: Os,
     pub os_version: String,
@@ -48,14 +49,17 @@ impl RemoteAccess {
         [&self.ssh_user, &self.rdp_user]
             .into_iter()
             .flatten()
-            .all(|user| {
-                !user.is_empty()
-                    && user.len() <= 64
-                    && user
-                        .bytes()
-                        .all(|c| c.is_ascii_alphanumeric() || b"_-.".contains(&c))
-            })
+            .all(|user| is_remote_user(user))
     }
+}
+
+#[must_use]
+pub fn is_remote_user(user: &str) -> bool {
+    !user.is_empty()
+        && user.len() <= 64
+        && user
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"_-.".contains(&c))
 }
 
 /// The processor architecture, as Rust names it (CAP-026).
@@ -142,6 +146,7 @@ impl Inventory {
         tools.dedup_by_key(|tool| tool.name);
         Self {
             remote_access: None,
+            remote_vnc_user: None,
             architecture,
             os,
             os_version,

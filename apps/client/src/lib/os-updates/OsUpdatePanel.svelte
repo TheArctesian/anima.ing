@@ -36,8 +36,9 @@
   {/if}
   {#if update.error}<p role="alert">{update.error}</p>{/if}
   {#if update.confirmation}
-    <p>Restart this device {update.confirmation === 'ACTIVATE' ? 'to install the verified update' : 'to restore the previous OS'}? Open sessions will disconnect.</p>
-    <FormButton busy={update.busy} onclick={() => { if (update.confirmation) void update.request(update.confirmation, true); }}>Confirm restart</FormButton>
+    <p class="restart-review">Restart this device {update.confirmation.action === 'ACTIVATE' ? 'to install release' : 'to restore'}
+      <strong>{update.confirmation.selection}</strong>? Open sessions will disconnect.</p>
+    <FormButton busy={update.busy} onclick={() => { if (update.confirmation) void update.request(update.confirmation.action, true); }}>Confirm restart</FormButton>
     <FormButton tone="ghost" onclick={() => { update.confirmation = null; }}>Cancel</FormButton>
   {/if}
   <FormButton tone="ghost" busy={update.busy} onclick={() => void update.refresh()}>{update.started ? 'Refresh status' : 'View OS update status'}</FormButton>
@@ -45,5 +46,6 @@
 
 <style>
   .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .restart-review { overflow-wrap: anywhere; }
   progress { inline-size: 100%; }
 </style>

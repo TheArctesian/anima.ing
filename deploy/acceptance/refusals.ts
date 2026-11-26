@@ -28,6 +28,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "revokeDaemonToken",
   "acceptHostKey",
   "acceptServerCertificate",
+  "acceptVncServerCertificate",
   "acceptWebCertificate",
   "updateDevice",
   "deleteDevice",
@@ -53,6 +54,8 @@ export const REFUSED_ROOTS: readonly string[] = [
   "cancelWorkflowRun",
   "dispatchWorkflow",
   "setCommitStatus",
+  "queueSourceBuild",
+  "sourceBuild",
   "mergePullRequest",
   "mergePullRequests",
   "createLinkInvite",
@@ -67,6 +70,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "ungrantOperationalKey",
   "containerLog",
   "containerDetail",
+  "queueApplicationApply",
   "createLocationIngestToken",
   "connectDawarich",
   "addApplicationRoute",
@@ -78,7 +82,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "setDaemonNeed",
 ];
 
-export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile", "containerLog", "containerDetail"];
+export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile", "sourceBuild", "containerLog", "containerDetail"];
 
 /** No field has this argument, so the document never reaches a resolver; the guard refuses by root name first. */
 const NO_SUCH_ARGUMENT = "animaProbeOnly: true";

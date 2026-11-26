@@ -32,7 +32,7 @@ const K1: RemoteDeviceFields = {
     credentialStored: true,
     serverCertificate: { fingerprintSha256: 'AA:BB', subject: 'CN=desk', notAfter: '2027-01-02T00:00:00Z', firstSeenAt: '2026-11-04T09:00:00Z' },
   },
-  vnc: { enabled: true, port: 5900, username: null, credentialStored: true },
+  vnc: { serverCertificate: null, enabled: true, port: 5900, username: null, credentialStored: true },
   macAddress: null,
   metricsSource: 'NONE',
   transfer: { upload: true, download: true, copy: true, paste: true },

@@ -1,0 +1,58 @@
+#anima-console .overlay.lock-screen {
+  background: var(--card);
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 440px);
+  gap: clamp(24px, 5vw, 88px);
+  padding: 72px clamp(24px, 7vw, 128px);
+  align-content: center;
+  isolation: isolate;
+}
+#anima-console .lock-art {
+  min-width: 0;
+  position: relative;
+  pointer-events: none;
+  aspect-ratio: 1;
+  max-height: 66vh;
+  align-self: center;
+  overflow: hidden;
+}
+#anima-console .lock-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+#anima-console .lock-art::before {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  z-index: -1;
+  background: radial-gradient(ellipse, #88c0d012, transparent 70%);
+}
+#anima-console .lock-screen .dialog {
+  width: 100%;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+  background: transparent;
+}
+#anima-console .lock-screen .dialog h2 { font-size: clamp(24px, 2.6vw, 36px); line-height: 1.2; }
+#anima-console .lock-screen .lock-summary { color: var(--foreground); margin: 20px 0 6px; }
+#anima-console .lock-screen .lock-description { max-width: 36ch; line-height: 1.6; }
+#anima-console .lock-screen form { margin-top: 28px; }
+#anima-console .lock-screen form button { width: 100%; min-height: 44px; }
+#anima-console .lock-screen input { min-height: 48px; }
+#anima-console .lock-screen .dialog > .actions { justify-content: flex-start; margin-top: 24px; }
+#anima-console .lock-screen .dialog > .actions button { background: transparent; min-height: 44px; }
+#anima-console .lock-screen .message { overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  #anima-console .overlay.lock-screen { grid-template-columns: minmax(0, 440px); justify-content: center; gap: 16px; padding: 24px; }
+  #anima-console .lock-art { max-width: 340px; justify-self: center; }
+}
+@media (max-height: 700px) and (max-width: 900px) {
+  #anima-console .lock-art { display: none; }
+  #anima-console .lock-screen form { margin-top: 18px; }
+  #anima-console .lock-screen .dialog > .actions { margin-top: 16px; }
+}
+@media (max-height: 500px) {
+  #anima-console .overlay.lock-screen { align-content: start; padding-top: 20px; padding-bottom: 20px; }
+}
+
+#anima-console .lock-art canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }

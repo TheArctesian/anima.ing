@@ -47,7 +47,8 @@ pub enum FleetCommand {
         #[command(subcommand)]
         command: compute::ComputeCommand,
     },
-    /// The AI agent programs on the devices (usage).
+    /// Code sessions on this computer and managed `AnimaOS` nodes.
+    #[command(name = "code", visible_alias = "agents")]
     Agents {
         #[command(subcommand)]
         command: agents::AgentCommand,

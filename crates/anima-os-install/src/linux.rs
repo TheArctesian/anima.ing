@@ -2,7 +2,6 @@ mod command;
 mod disks;
 mod install;
 mod persist;
-mod recovery;
 mod volumes;
 
 use clap::{Parser, Subcommand};
@@ -24,6 +23,8 @@ enum Error {
     Io(#[from] std::io::Error),
     #[error("The installation request or disk inventory is invalid.")]
     Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    Storage(#[from] anima_os_storage::Error),
     #[error("The installation command {0} failed. Check the local system journal.")]
     Command(&'static str),
 }
@@ -42,6 +43,7 @@ enum Operation {
         #[arg(long)]
         system: PathBuf,
     },
+    #[command(hide = true)]
     MountVolumes,
 }
 
@@ -74,7 +76,7 @@ impl Plan {
         }
         let plan: Self = serde_json::from_slice(&bytes)?;
         if plan.system != expected
-            || plan.data.len() > 16
+            || plan.data.len() > anima_os_storage::MAX_VOLUMES
             || plan.keymap.is_empty()
             || plan.keymap.len() > 1024 * 1024
             || plan.keymap.contains('\0')
@@ -117,7 +119,7 @@ pub fn main() -> ExitCode {
             Ok(())
         }),
         Operation::Install { system } => Plan::read(&system).and_then(|plan| install::run(&plan)),
-        Operation::MountVolumes => recovery::mount(),
+        Operation::MountVolumes => anima_os_storage::mount_recorded().map_err(Error::from),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

@@ -6,6 +6,10 @@ const NO_KEY_NOUN: &str = "no command yet: K-E5 Section 2.2 names the noun `anim
 
 pub const EXCEPTIONS: &[(&str, &str)] = &[
     (
+        "Mutation.managedCodePreviewHandoff",
+        "Code app browser/native handoff only: returns a one-use secret transferred directly to the isolated preview origin (contracts/managed-code.md)",
+    ),
+    (
         "Mutation.hostedDeviceInvite",
         "the Anima.ing cloud only: takes the cloud key, a secret (R-129)",
     ),

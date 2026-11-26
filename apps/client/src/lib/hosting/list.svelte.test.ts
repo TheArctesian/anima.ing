@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import { fakeHosting, type FakeHosting } from './hosting.fixture';
 import HostingList from './HostingList.svelte';
@@ -18,10 +18,11 @@ afterEach(async () => {
   if (app !== undefined) await unmount(app);
   app = undefined;
   document.body.replaceChildren();
+  vi.useRealTimers();
 });
 
-async function open(): Promise<HostingStore> {
-  const store = new HostingStore(calls);
+async function open(hosting = calls): Promise<HostingStore> {
+  const store = new HostingStore(hosting);
   app = mount(HostingList, { target: document.body, props: { store } });
   await store.load();
   flushSync();
@@ -106,4 +107,70 @@ it('HOST-030: an open project says the folder and the files that Compose started
   store.view = 'containers';
   flushSync();
   expect(document.querySelector('tr.started')).toBeNull();
+});
+
+
+it('queues a confirmed container action for the exact device and refreshes only after completion', async () => {
+  const queue = vi.fn(calls.actions.queue);
+  const status = vi.fn(calls.actions.status);
+  await open({
+    ...calls,
+    containers: async (device) => {
+      const result = await calls.containers(device);
+      return result.ok && device === 'm-pop'
+        ? { ok: true, value: result.value.map((container) => ({ ...container, actionsAvailable: true })) }
+        : result;
+    },
+    actions: { queue, status },
+  });
+  vi.useFakeTimers();
+  const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((each) =>
+    each.getAttribute('aria-label') === label || each.textContent?.trim() === label);
+  expect(button('Actions for samba')).toBeUndefined();
+  button('Actions for watchtower')?.click();
+  flushSync();
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('watchtower on pop-os');
+  const action = document.querySelector<HTMLSelectElement>('[role="dialog"] select');
+  if (action === null) throw new Error('The action selector did not open.');
+  action.value = 'RESTART';
+  action.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  button('Queue restart')?.click();
+  await Promise.resolve();
+  flushSync();
+  expect(queue).toHaveBeenCalledExactlyOnceWith('m-pop', 'c'.repeat(64), 'RESTART');
+  expect(document.querySelector('[role="status"]')?.textContent).toContain('Queued');
+  expect(calls.containersAsked.filter((id) => id === 'm-pop')).toHaveLength(1);
+
+  await vi.advanceTimersByTimeAsync(2500);
+  flushSync();
+  expect(status).toHaveBeenCalledExactlyOnceWith('action-1');
+  expect(document.querySelector('[role="status"]')?.textContent).toContain('Completed.');
+  expect(calls.containersAsked.filter((id) => id === 'm-pop')).toHaveLength(2);
+});
+
+it('marks a project only while each observed member has the same managed application ID', async () => {
+  const id = '0190a000-0000-7000-8002-0000000000ab';
+  let managedMembers = 1;
+  const store = await open({
+    ...calls,
+    containers: async (device) => {
+      const result = await calls.containers(device);
+      return result.ok && device === 'm-pop'
+        ? { ok: true, value: result.value.map((container, index) => ({
+            ...container, managedApplicationId: index < managedMembers ? id : null,
+          })) }
+        : result;
+    },
+  });
+  expect(text('tbody th[scope="row"]')).toContain('▸ immich Not managed Compose project · 2 containers');
+  managedMembers = 2;
+  await store.load();
+  store.toggle('m-pop/project/immich');
+  flushSync();
+  expect(text('tbody th[scope="row"]')).toContain('▾ immich Managed Compose project · 2 containers');
+  expect(text('tr.started th')[0]).toContain(id);
+  store.show = 'not-managed';
+  flushSync();
+  expect(text('tbody th[scope="row"]')).toEqual(['samba Not managed example/samba', 'watchtower Not managed containrrr/watchtower']);
 });

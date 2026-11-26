@@ -5,8 +5,13 @@ mod display;
 mod enrollment;
 mod http;
 mod inventory;
+mod migration;
 mod network;
+mod operator_activity;
+mod remote_access;
 mod session;
+mod storage;
+mod workloads;
 
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -23,6 +28,8 @@ enum Error {
     Json(#[from] serde_json::Error),
     #[error("Could not contact the account service. Check the connection and retry.")]
     Network(#[from] reqwest::Error),
+    #[error(transparent)]
+    Maintenance(#[from] anima_os_maintenance::Error),
     #[error("{0}")]
     Refused(&'static str),
     #[error("{0}")]
@@ -71,6 +78,12 @@ async fn execute() -> Result<()> {
     if args.first().is_some_and(|arg| arg.starts_with("display-")) {
         return display::cli(&args).await;
     }
+    if args.as_slice() == ["remote-access-init"] {
+        return remote_access::initialize();
+    }
+    if args.as_slice() == ["enroll-install"] {
+        return enrollment::install::from_stdin().await;
+    }
     if !args.is_empty() {
         return Err(Error::Refused("Unsupported command."));
     }
@@ -78,7 +91,7 @@ async fn execute() -> Result<()> {
 }
 
 async fn serve() -> Result<()> {
-    let session = Arc::new(session::Session::default());
+    let session = Arc::new(session::Session::new());
     let output = Arc::new(tokio::sync::Mutex::new(tokio::io::stdout()));
     write(&output, &json!({"id":"unlock","ok":true,"value":{}})).await?;
     let mut input = BufReader::new(tokio::io::stdin());

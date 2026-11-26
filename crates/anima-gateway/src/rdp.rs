@@ -1,4 +1,3 @@
-mod certificate;
 mod channels;
 mod clipboard;
 mod device;

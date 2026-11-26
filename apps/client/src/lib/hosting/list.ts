@@ -38,11 +38,8 @@ export interface ApplicationRow {
   readonly state: string;
   readonly tone: Tone;
   readonly needsYou: boolean;
-  /**
-   * Stage 1: Anima installs nothing until task H6, so each row is a thing that Anima did not install and is read
-   * only (HSE-002). Stage 2 sets it from the record of the installs.
-   */
-  readonly managed: boolean;
+  /** The completed AnimaOS apply associated with the observed container or all project members. */
+  readonly managedApplicationId: string | null;
   /** HOST-021: the number of containers with a newer image; null until the operator asked. */
   readonly newer: number | null;
   /** The containers; an application opens to them. */
@@ -103,11 +100,13 @@ export function needingYou(places: readonly Place[], view: View): number {
 }
 
 function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
+  const owned = new Map(place.containers.map(({ id, managedApplicationId }) => [id, managedApplicationId]));
   return projectGroups(place.containers, place.updates).flatMap((group): ApplicationRow[] => {
     const newer = place.updates.length === 0 ? null : group.rows.filter((row) => row.update?.newer === true).length;
     if (group.project !== NO_PROJECT && view === 'applications') {
       const needsYou = group.tone !== 'up';
       const members = place.containers.filter((container) => container.composeProject === group.project);
+      const application = members[0]?.managedApplicationId ?? null;
       return [
         {
           key: `${place.id}/project/${group.project}`,
@@ -116,7 +115,7 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
           state: group.state,
           tone: group.tone,
           needsYou,
-          managed: false,
+          managedApplicationId: members.every((member) => member.managedApplicationId === application) ? application : null,
           newer,
           containers: group.rows,
           folder: members.find((container) => container.composeWorkingDir != null)?.composeWorkingDir ?? null,
@@ -131,7 +130,7 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
       state: row.state,
       tone: row.tone,
       needsYou: row.tone !== 'up',
-      managed: false,
+      managedApplicationId: owned.get(row.id) ?? null,
       newer: newer === null ? null : Number(row.update?.newer === true),
       containers: [row],
       folder: null,
@@ -142,7 +141,7 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
 
 function shown(row: ApplicationRow, show: Show): boolean {
   if (show === 'needs-you') return row.needsYou;
-  if (show === 'not-managed') return !row.managed;
+  if (show === 'not-managed') return row.managedApplicationId === null;
   return true;
 }
 

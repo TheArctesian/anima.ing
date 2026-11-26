@@ -37,6 +37,7 @@ serde_json.workspace = true
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-keyboard = { path = "../keyboard" }
 tauri-plugin-runner = { path = "../runner" }
+tauri-plugin-workspace-preview = { path = "../workspace-preview" }
 # The device link in the app (MOB-031): its answers, its errors and the invite wiped after use (MOB-035).
 serde.workspace = true
 thiserror.workspace = true
@@ -83,6 +84,8 @@ sha2.workspace = true
 rustls.workspace = true
 tokio-rustls.workspace = true
 tokio = { workspace = true, features = ["process"] }
+tokio-tungstenite = { workspace = true, features = ["rustls-tls-native-roots"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 # Device IDs name each device's web store (WEB-006, D-2).
 uuid.workspace = true
 # Challenge hosts go through the URL standard's host parser, as pinned origins do (D-4).
@@ -93,7 +96,7 @@ zeroize.workspace = true
 # The updater public key line in the app's `tauri.conf.json`, for the tool check (R-108).
 base64.workspace = true
 # The upload of a job's files to the presigned URLs the hub gives (BLD-060, BLD-063).
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["rustls-tls-native-roots"] }
 # A name for the daemon file while it is placed (MET-019).
 getrandom = "0.3"
 # Self-update and relaunch: desktop only, registered only in release builds (UPD-001).

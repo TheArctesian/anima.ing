@@ -161,9 +161,9 @@ function end(state: TouchState, event: PointerEvent): void {
   state.cancelled = false;
 }
 
-export function touchRemote(pane: HTMLElement, client: Client, viewport: ViewportChanges): () => void {
+export function touchRemote(pane: HTMLElement, client: Client, viewport: ViewportChanges, viewOnly = false): () => void {
   const state: TouchState = {
-    touches: new Map(), origin: STILL, moved: false, dragged: false, pinching: false, cancelled: false, send: cursorSender(client),
+    touches: new Map(), origin: STILL, moved: false, dragged: false, pinching: false, cancelled: false, send: viewOnly ? () => undefined : cursorSender(client),
   };
   const listeners = new AbortController();
   const options = { signal: listeners.signal };

@@ -1,6 +1,9 @@
 //! The hub's public origin, `ANIMA_PUBLIC_ORIGIN`: the address clients use, which the cookie
 //! Origin check and the web client's CSP name (D-3, K7).
 
+/// The desktop app's web view origins on macOS, Linux and Windows (SEC-002).
+pub const CLIENT_ORIGINS: [&str; 2] = ["tauri://localhost", "http://tauri.localhost"];
+
 /// The public origin as canonical text, `scheme://host[:port]`; the configuration checks the
 /// spelling before it builds one.
 #[derive(Clone)]

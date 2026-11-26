@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+  import type { PendingRequest } from './transcript.svelte';
   import { resolve } from '$app/paths';
   import CodeIcon from '$lib/code/icons/CodeIcon.svelte';
   import { programName } from '$lib/agent-threads/thread';
@@ -15,9 +17,11 @@
     id: string;
     machines: ReadonlyMap<string, string>;
     connection: Connection;
+    embedded?: boolean;
+    respond?: Snippet<[PendingRequest]>;
   }
 
-  const { api, id, machines, connection }: Props = $props();
+  const { api, id, machines, connection, embedded = false, respond }: Props = $props();
   let read = $state(() => api.snapshot(id));
   let failure = $state('');
   let summary = $state.raw<ThreadSummary | null>(null);
@@ -59,14 +63,14 @@
 </script>
 
 <section aria-labelledby="mobile-thread-title">
-  <nav aria-label="Code thread">
+  {#if !embedded}<nav aria-label="Code thread">
     <a href={resolve('/code')}><CodeIcon name="chevron-left" size="md" /> Threads</a>
     {#if conversation.messages.length > 0}
       <button class="jump" type="button" onclick={() => latest?.scrollIntoView({ block: 'end' })} aria-label="Jump to latest message">
         <CodeIcon name="arrow-down" size="md" />
       </button>
     {/if}
-  </nav>
+  </nav>{/if}
 
   {#if summary === null}
     <h1 id="mobile-thread-title">Thread</h1>
@@ -104,9 +108,10 @@
             {#if request.diff !== ''}
               <details><summary>View changes</summary><pre>{request.diff}</pre></details>
             {/if}
+            {#if respond}{@render respond(request)}{/if}
           </div>
         {/each}
-        <p>Open the thread on its computer to respond.</p>
+        {#if !respond}<p>Open the thread on its computer to respond.</p>{/if}
       </section>
     {/if}
 
@@ -116,7 +121,7 @@
       <ol aria-label="Recent messages">
         {#each conversation.messages as message (message.sequence)}
           <li class:prompt={message.role === 'you'}>
-            <h2>{message.role === 'you' ? 'You' : displayProgram}</h2>
+            <h2>{message.role === 'you' ? 'You' : message.role === 'notice' ? 'Transcript notice' : displayProgram}</h2>
             <Markdown text={message.text} />
           </li>
         {/each}
