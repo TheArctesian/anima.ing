@@ -49,6 +49,10 @@ pub(in crate::fleet::devices) async fn write_change(
     }
     if let Some(vnc) = &change.vnc {
         write_vnc(conn, id, vnc).await?;
+        sqlx::query("UPDATE devices.vnc_settings SET configured = true WHERE device_id = $1")
+            .bind(id)
+            .execute(&mut *conn)
+            .await?;
     }
     if let Some(transfer) = change.transfer {
         write_transfer(conn, id, transfer).await?;

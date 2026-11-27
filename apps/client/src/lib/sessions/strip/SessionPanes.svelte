@@ -64,6 +64,10 @@
         <RemoteView
           device={{ id: tab.deviceId, name: tab.deviceName }}
           protocol={tab.protocol}
+          viewOnly={tab.viewOnly ?? false}
+          onopenviewer={tab.viewOnly ? undefined : (button) => {
+            sessions.openSession({ ...tab, viewOnly: true, origin: button.getBoundingClientRect() });
+          }}
           start={sessions.remoteStartIn(tab.id)}
           onback={touch ? () => sessions.deselect() : undefined}
           {api}

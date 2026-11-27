@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/TheArctesian/anima/link/control"
 	"github.com/TheArctesian/anima/link/devicelink"
@@ -31,8 +33,8 @@ type openPorts struct {
 	Open []uint16 `json:"open"`
 }
 
-// runPorts shows or turns the device's open ports (HMD-049); a running link rereads them, so no restart is needed.
-func runPorts(_ context.Context, args []string, streams stdio) error {
+// runPorts shows or turns the device's open ports (HMD-049).
+func runPorts(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("ports")
 	if err := flags.Parse(args); err != nil || *statePath == "" || (flags.NArg() != 0 && flags.NArg() != 2) {
 		return errUsage
@@ -46,7 +48,9 @@ func runPorts(_ context.Context, args []string, streams stdio) error {
 		if err != nil || (flags.Arg(0) != "on" && flags.Arg(0) != "off") {
 			return errUsage
 		}
-		if err := ports.Turn(dir, uint16(port), flags.Arg(0) == "on"); err != nil {
+		enabled := flags.Arg(0) == "on"
+		change := portChoice{Port: uint16(port), Enabled: &enabled}
+		if err := turnPort(ctx, *statePath, change); err != nil {
 			return err
 		}
 	}
@@ -60,6 +64,53 @@ func runPorts(_ context.Context, args []string, streams stdio) error {
 	}
 	_, err = fmt.Fprintln(streams.out, string(answer))
 	return err
+}
+
+const portTurnVerb = "ports.turn"
+
+type portChoice struct {
+	Port    uint16 `json:"port"`
+	Enabled *bool  `json:"enabled"`
+}
+
+func turnPort(ctx context.Context, statePath string, change portChoice) error {
+	if !ports.Allowed(change.Port, runtime.GOOS) {
+		return ports.ErrNotAllowed
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	conn, err := statedir.Dial(ctx, statePath, controlSocket)
+	if err == nil {
+		defer conn.Close()
+		if deadline, ok := ctx.Deadline(); ok {
+			_ = conn.SetDeadline(deadline)
+		}
+		return control.Call(conn, portTurnVerb, change, nil)
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	// An offline edit is safe only while this process owns the directory.
+	owned, err := statedir.Open(statePath)
+	if err != nil {
+		return err
+	}
+	defer owned.Close()
+	return ports.Turn(owned, change.Port, *change.Enabled)
+}
+
+func turnVerb(selected *ports.Selection) control.Verb {
+	return func(_ context.Context, args json.RawMessage) (any, error) {
+		var change portChoice
+		if err := control.Arguments(args, &change); err != nil {
+			return nil, err
+		}
+		if change.Enabled == nil || !ports.Allowed(change.Port, runtime.GOOS) {
+			return nil, &control.Error{Code: control.CodeBadRequest, Message: "Choose a supported port and whether to enable it."}
+		}
+		return nil, selected.Turn(change.Port, *change.Enabled)
+	}
 }
 
 // listenForDaemon makes the daemon's token socket before the link starts; an empty path means none.
@@ -93,10 +144,11 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	if err != nil {
 		return err
 	}
+	selected := ports.Selected(dir)
 	link, err := devicelink.Start(devicelink.Config{
 		Identity: device, Listen: *listen, DaemonSocket: forDaemon,
-		Save:     func(renewed identity.Device) error { return renewed.Save(dir) },
-		OpenPort: func(port uint16) bool { return ports.IsOpen(dir, port) },
+		Save:       func(renewed identity.Device) error { return renewed.Save(dir) },
+		PermitPort: selected.Permit,
 	})
 	if err != nil {
 		return err
@@ -114,6 +166,7 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	}
 	log.Info("the device link is ready", "local", link.LocalAddr().String(), "daemonSocket", *daemonSocket, "key", device.Key.Public())
 	err = control.Serve(ctx, listener, map[string]control.Verb{
+		portTurnVerb: turnVerb(selected),
 		"status": func(context.Context, json.RawMessage) (any, error) {
 			path := link.Path()
 			open, err := ports.List(dir)

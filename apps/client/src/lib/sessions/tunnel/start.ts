@@ -10,9 +10,10 @@ export interface SessionTarget {
 
 export interface ProtocolTarget extends SessionTarget {
   readonly protocol: Protocol;
+  readonly viewOnly?: boolean;
 }
 
-export interface RemoteTarget extends SessionTarget {
+export interface RemoteTarget extends ProtocolTarget {
   readonly protocol: RemoteProtocol;
 }
 
@@ -46,7 +47,10 @@ export async function startWith<Tunnel>(
   target: ProtocolTarget,
   open: (ticket: SessionTicket) => Opening<Tunnel>,
 ): Promise<StartResult<Tunnel>> {
-  const started = await api.startSession(target.deviceId, target.protocol, target.display);
+  const { deviceId, protocol, display, viewOnly } = target;
+  const started = await (viewOnly === true
+    ? api.startSession(deviceId, protocol, display, true)
+    : api.startSession(deviceId, protocol, display));
   if (!started.ok) return started;
   const { sessionId, wakeSent } = started.value;
   const opening = open(started.value);

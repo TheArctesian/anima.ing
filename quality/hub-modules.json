@@ -24,10 +24,10 @@
   "wiring": [
     "main",
     "lib",
+    "routing",
     "schema",
     "upkeep",
-    "operator",
-    "web_client"
+    "operator"
   ],
   "domains": {
     "events": [],
@@ -91,7 +91,9 @@
       "events",
       "agent_usage",
       "agent_threads",
-      "jobs"
+      "jobs",
+      "artifacts",
+      "checkout"
     ],
     "notifications": [
       "events",
@@ -129,7 +131,17 @@
       "events"
     ],
     "link": [],
-    "agent_threads": [],
+    "agent_threads": [
+      "access",
+      "devices",
+      "events",
+      "checkout"
+    ],
+    "code_previews": [
+      "access",
+      "agent_threads",
+      "devices"
+    ],
     "agent_usage": [
       "devices"
     ],
@@ -168,7 +180,21 @@
       "events"
     ],
     "jobs": [
-      "events"
+      "events",
+      "devices",
+      "credentials"
+    ],
+    "artifacts": [
+      "access",
+      "events",
+      "jobs"
+    ],
+    "checkout": [
+      "credentials",
+      "events",
+      "jobs",
+      "projects",
+      "sources"
     ],
     "rollout": [
       "builds"
@@ -233,7 +259,8 @@
       "access"
     ],
     "projects": [
-      "access"
+      "access",
+      "jobs"
     ],
     "timeline": [
       "access"
@@ -251,9 +278,6 @@
       "devices",
       "metrics"
     ],
-    "agent_threads": [
-      "access"
-    ],
     "agent_usage": [
       "access"
     ],
@@ -261,7 +285,9 @@
       "access"
     ],
     "containers": [
-      "access"
+      "access",
+      "events",
+      "jobs"
     ],
     "catalogue": [
       "access"

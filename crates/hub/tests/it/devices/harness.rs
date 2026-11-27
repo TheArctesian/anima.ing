@@ -13,23 +13,29 @@ use anima_hub::{
         checks::graphql::{check_status_loader, check_uptime_loader, last_heartbeat_loader},
         credentials::Vault,
         devices::graphql::{
-            Mutation, Query, checks_loader, credential_loader, device_loader,
+            Mutation as DeviceMutation, Query, checks_loader, credential_loader, device_loader,
             devices_by_site_loader, gpus_loader, rdp_credential_loader, readings_loader,
             resolved_ip_loader, site_loader, status_loader, uptime_loader, vnc_credential_loader,
             web_interface_suggestions_loader, web_interfaces_loader,
         },
         events::{Bus, ClientAddr, Operator},
+        sessions::Live,
     },
     ids::OperatorId,
-    schema::harden,
+    schema::{DeviceRemoval, harden},
 };
-use async_graphql::{EmptySubscription, Request, Response, Schema, SchemaBuilder};
+use async_graphql::{
+    EmptySubscription, Executor, MergedObject, Request, Response, Schema, SchemaBuilder,
+};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;
 use sqlx::PgPool;
 
 pub type TestSchema = Schema<Query, Mutation, EmptySubscription>;
+
+#[derive(Default, MergedObject)]
+pub struct Mutation(DeviceMutation, DeviceRemoval);
 
 pub const OPERATOR_ID: &str = "0190a000-0000-7000-8000-000000000001";
 pub const CLIENT_ADDR: &str = "10.10.0.77";
@@ -78,13 +84,17 @@ fn builder(
     bus: &Bus,
     clock: Arc<dyn Clock>,
 ) -> SchemaBuilder<Query, Mutation, EmptySubscription> {
-    Schema::build(Query, Mutation, EmptySubscription)
+    Schema::build(Query, Mutation::default(), EmptySubscription)
         .data(pool.clone())
+        .data(Live::default())
         .data(site_loader(pool.clone()))
         .data(devices_by_site_loader(pool.clone()))
         .data(credential_loader(pool.clone()))
         .data(rdp_credential_loader(pool.clone()))
         .data(vnc_credential_loader(pool.clone()))
+        .data(anima_hub::fleet::trust::graphql::server_certificate_loader(
+            pool.clone(),
+        ))
         .data(device_loader(pool.clone()))
         .data(status_loader(pool.clone(), Arc::clone(&clock)))
         .data(uptime_loader(pool.clone(), Arc::clone(&clock)))
@@ -128,19 +138,19 @@ pub fn signed_in(query: &str) -> Request {
 }
 
 /// The data of a response that must have no errors.
-pub async fn data(schema: &TestSchema, query: &str) -> Value {
+pub async fn data(schema: &impl Executor, query: &str) -> Value {
     run(schema, signed_in(query)).await
 }
 
 /// The data of a signed-in request that must have no errors.
-pub async fn run(schema: &TestSchema, request: Request) -> Value {
+pub async fn run(schema: &impl Executor, request: Request) -> Value {
     let response = schema.execute(request).await;
     assert!(response.errors.is_empty(), "{:?}", response.errors);
     response.data.into_json().unwrap()
 }
 
 /// The only error of a signed-in request, as JSON with `extensions`.
-pub async fn only_error(schema: &TestSchema, query: &str) -> Value {
+pub async fn only_error(schema: &impl Executor, query: &str) -> Value {
     error_json(&schema.execute(signed_in(query)).await)
 }
 
@@ -161,7 +171,7 @@ pub fn validation_fields(error: &Value) -> Vec<&str> {
 }
 
 /// Runs a signed-in request with variables and returns the whole response.
-pub async fn with_variables(schema: &TestSchema, query: &str, variables: Value) -> Response {
+pub async fn with_variables(schema: &impl Executor, query: &str, variables: Value) -> Response {
     let variables = async_graphql::Variables::from_json(variables);
     schema.execute(signed_in(query).variables(variables)).await
 }

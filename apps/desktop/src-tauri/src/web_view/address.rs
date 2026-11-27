@@ -18,6 +18,33 @@ pub fn may_load(url: &Url, pinning: bool) -> bool {
     is_web(url) && (url.scheme() == "http" || pinning)
 }
 
+/// A preview uses its own HTTPS origin for every navigation and new-window request.
+pub fn may_navigate(url: &Url, pinning: bool, preview_origin: Option<&url::Origin>) -> bool {
+    may_load(url, pinning)
+        && preview_origin.is_none_or(|origin| {
+            url.origin() == *origin && url.username().is_empty() && url.password().is_none()
+        })
+}
+
+pub fn require_preview_url(
+    url: &Url,
+    endpoint: uuid::Uuid,
+    path: &str,
+) -> Result<(), WebViewError> {
+    let label = endpoint.simple().to_string();
+    let host = url.host_str().and_then(|host| host.split_once('.'));
+    if endpoint.is_nil()
+        || url.scheme() != "https"
+        || url.path() != path
+        || url.query().is_some()
+        || url.fragment().is_some()
+        || !host.is_some_and(|(first, suffix)| first == label && !suffix.is_empty())
+    {
+        return Err(WebViewError::Arguments);
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WebUrl(Url);
 

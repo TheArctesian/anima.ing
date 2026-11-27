@@ -1,5 +1,5 @@
 use super::{
-    Error, jobs, probe,
+    Error, jobs, observation, probe,
     protocol::{Failure, Operation, Outcome, REQUEST_LIMIT, Reply, Request, VERSION},
     status,
 };
@@ -60,6 +60,7 @@ pub async fn serve(
     path: &Path,
     systemctl: &Path,
     state_directory: Option<&Path>,
+    console_snapshot: Option<PathBuf>,
 ) -> Result<(), Error> {
     directory(path, Uid::effective().as_raw())?;
     if !systemctl.is_absolute() {
@@ -77,6 +78,11 @@ pub async fn serve(
         inode: fs::symlink_metadata(path)?.ino(),
     };
     fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
+    if let Some(path) = console_snapshot
+        && let Err(error) = observation::start(path)
+    {
+        eprintln!("anima-osd: console observations unavailable: {error}");
+    }
     let slots = Arc::new(Semaphore::new(8));
     eprintln!("anima-osd: read-only endpoint ready");
     loop {

@@ -38,6 +38,7 @@ use crate::{
 use model::Desktop;
 
 pub use end::Actor;
+pub(crate) use end::DeviceSessions;
 pub use files::{FilesMutation, files_router};
 pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{

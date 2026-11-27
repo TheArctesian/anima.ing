@@ -12,8 +12,8 @@ const source = (path: string) => readFileSync(join(import.meta.dir, "../..", pat
 const quoted = (text: string) => [...text.matchAll(/"([^"]+)"/g)].map((match) => String(match[1]));
 
 describe("the probe's copies of the hub's lists", () => {
-  test("SEC-002 G-4: the client origins are CLIENT_ORIGINS of lib.rs", () => {
-    const list = /pub const CLIENT_ORIGINS: \[&str; \d+\] = \[([^\]]*)\]/.exec(source("crates/hub/src/lib.rs"))?.[1];
+  test("SEC-002 G-4: the client origins are CLIENT_ORIGINS of access/origin.rs", () => {
+    const list = /pub const CLIENT_ORIGINS: \[&str; \d+\] = \[([^\]]*)\]/.exec(source("crates/hub/src/fleet/access/origin.rs"))?.[1];
     expect(quoted(list ?? "")).toEqual([...refusals.CLIENT_ORIGINS]);
   });
 

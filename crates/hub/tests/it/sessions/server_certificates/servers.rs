@@ -1,5 +1,8 @@
 //! In-process RDP and VNC servers on the loopback interface that record every byte the hub sends.
 
+mod vencrypt;
+pub use vencrypt::vnc_tls;
+
 use std::{sync::Arc, time::Duration};
 
 use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, Issuer, KeyPair, date_time_ymd};
@@ -182,12 +185,12 @@ async fn rdp_visit(mut stream: TcpStream, answer: Answer, acceptor: TlsAcceptor)
     }
 }
 
-async fn serve<F, Fut>(run: F) -> Server
+async fn serve<F, Fut>(run: F, port: u16) -> Server
 where
     F: Fn(TcpStream) -> Fut + Send + 'static,
     Fut: Future<Output = Visit> + Send + 'static,
 {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let listener = TcpListener::bind(("127.0.0.1", port)).await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let (sender, visits) = mpsc::unbounded_channel();
     let task = tokio::spawn(async move {
@@ -201,16 +204,27 @@ where
 
 pub async fn rdp(answer: Answer, certificate: &Certificate) -> Server {
     let acceptor = certificate.acceptor.clone();
-    serve(move |stream| rdp_visit(stream, answer.clone(), acceptor.clone())).await
+    serve(
+        move |stream| rdp_visit(stream, answer.clone(), acceptor.clone()),
+        0,
+    )
+    .await
 }
 
 pub async fn vnc(banner: &'static [u8]) -> Server {
-    serve(move |mut stream| async move {
-        let _sent = stream.write_all(banner).await;
-        Visit {
-            after: rest(stream).await,
-            ..Visit::default()
-        }
-    })
+    serve(
+        move |mut stream| async move {
+            let _sent = stream.write_all(banner).await;
+            if banner == b"RFB 003.008\n" {
+                // Legacy VNC authentication; discovery stops before selecting it.
+                stream.write_all(&[1, 2]).await.unwrap();
+            }
+            Visit {
+                after: rest(stream).await,
+                ..Visit::default()
+            }
+        },
+        0,
+    )
     .await
 }

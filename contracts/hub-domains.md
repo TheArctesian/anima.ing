@@ -33,7 +33,7 @@ The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. 
 | (Phase 3) `crates/hub/src/fleet/targets.rs` (changed) | Adds `pub async fn resolve_checked(host: &str, port: u16, policy: &AddressPolicy) -> Result<Vec<SocketAddr>, TargetError>` (moved from `checks/probe/resolve.rs`, P3-003). `sessions/target.rs` is deleted (Q2-09); the loopback test switch stays on `AddressPolicy` |
 | `crates/hub/src/scalars.rs` | GraphQL scalars `IpAddr` and `Cidr` (network only, no host bits) for K1 (R-012). `DateTime` is `chrono::DateTime<Utc>` and `JSON` is `async_graphql::Json<T>`. Domains never define their own scalar with a K1 name. |
 
-## Wiring (owned by WP-01: `main.rs`, `schema.rs`)
+## Wiring (owned by WP-01)
 
 There is no shared `AppState` type that domains import (it would create import cycles). `main.rs` builds each dependency once and:
 
@@ -41,6 +41,10 @@ There is no shared `AppState` type that domains import (it would create import c
 - passes them as explicit arguments to background tasks and routers (`checks::spawn_scheduler(pool, bus, clock, ..)`, `sessions::tunnel_router(..)`).
 
 `Db` below is `sqlx::PgPool`; `Clock` is `Arc<dyn clock::Clock>`.
+
+`routing/` composes the HTTP surface and network policy. Its `graphql.rs` serves the schema
+over HTTP and WebSocket. `access` owns the desktop client origins shared by GraphQL and Code
+previews. Artifact routes receive their pool, clock and retained store from `routing/`.
 
 GraphQL composition (`schema.rs`, wiring only, CQ-033):
 
@@ -53,12 +57,12 @@ pub struct Query(access::graphql::Query, devices::graphql::Query, checks::graphq
 
 Each domain exposes `pub mod graphql` with `#[derive(Default)] pub struct Query; pub struct Mutation; pub struct Subscription` (omit the ones it does not need). Resolvers read their dependencies from the GraphQL context data and the `Operator` from the request guard.
 
-(Phase 3) Wiring changes (`main.rs`, `lib.rs`, `schema.rs`, `upkeep.rs`, and new `spawns.rs` and `web_client.rs`):
+(Phase 3) Wiring changes (`main.rs`, `lib.rs`, `schema.rs`, `upkeep.rs`, and new `spawns.rs`):
 
 ```rust
-// web_client.rs (WP-43): wiring only. The static fallback of the router; explicit routes win.
+// routing/web_client.rs (WP-43): the static fallback of the router; explicit routes win.
 pub fn web_client(root: &Path, origin: &PublicOrigin) -> axum::Router;   // headers as K7 "HTTP surface"
-// lib.rs mounts, each logged and behind the NET-002 layer:
+// routing.rs mounts, each logged and behind the NET-002 layer:
 //   /metrics: checks::exposition_router(..) wrapped in access::bearer_layer(.., Scope::Read)
 //   fallback: web_client(..) when ANIMA_WEB_ROOT is set
 // spawns.rs (P3-007): spawn_scheduler, spawn_collector, metrics::spawn_stale_watch, notifications::spawn_dispatcher.
@@ -241,10 +245,17 @@ are private to `events`.
 | `notifications` (R-148; K-E6 Section 5, adds) | no new edge. New for the engine: `Reminder`, `Queued`, `queue_reminder(conn, vault, channels, (reminder, now)) -> Queued` and `RANDOM_TOPIC_MIN`. The vault opens the topic of an ntfy channel for the rule of REM-008 |
 | `credentials` (operational keys, adds; R-147, R-148; K-E5 Section 2) | `events` (the trail types, `audit`, `NewAudit`, `ClientAddr`, `Operator`); `access` (`Authenticated`, `operator_only`) only in `credentials/graphql.rs`, a graphql edge. A device is a `DeviceId` value only: the consumer rows reference `devices.devices` with a cascading foreign key, so `credentials` imports no `devices` code. `metrics` (its daemon ingest) calls `credentials::operational::{fetch, current_for, record_held}` |
 | `compute` (fleet, adds; compute plan task L1-5; waits for a ruling: R-335) | `devices` (`Device`, `list`, `get`, `Error` only), `events` (the trail types), `metrics` (`hardware`, `Error` only), `jobs` (`machines`, `Machine`, `Error` only: the one switch "takes work", OD-C8, R-165) |
+| `agent_threads` (AnimaOS managed Code) | `access` for human identity and GraphQL guards, `events` for the authenticated actor, `devices` to resolve the enrolled node during live provider login |
+| `code_previews` (AnimaOS managed Code) | `access` for cookie and desktop origin rules, `agent_threads` for browser sessions and workspace-bound preview authorization, `devices` for the authorized node's address |
+| `jobs` (AnimaOS Hosting) | `events` for work records, `devices` for the enrolled-device lock during admission, `credentials` for sealing and releasing the exact Compose inputs |
+| `artifacts` (AnimaOS source builds) | `jobs` for live attempt ownership and completed source-build lookup, `access` for operator authentication, `events` for artifact audits |
+| `metrics` (AnimaOS source builds, adds) | `artifacts` for the authenticated daemon upload and retention handoff |
+| `checkout` (AnimaOS private source builds) | `jobs` for the held attempt, pin and one-use release ledger, `projects` for the locked repository binding, `sources` for account standing, scoped issuance and revocation, `credentials` for sealing deferred revocations, `events` for the authenticated request address |
+| `metrics` (AnimaOS private source builds, adds) | `checkout` for single-use release through the authenticated work route |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
-GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also import these domains' public faces, to resolve K1 fields that join domains. These edges never permit a `store` import and do not count toward cycles. They live in `quality/hub-modules.json` under `graphql`.
+GraphQL composition edges (R-011). The domain's `graphql.rs` and modules under `graphql/` may also import these domains' public faces to resolve K1 fields that join domains. These edges never permit a `store` import and do not count toward cycles. They live in `quality/hub-modules.json` under `graphql`.
 
 | Domain `graphql.rs` | May also import | For |
 | --- | --- | --- |
@@ -267,13 +278,15 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `locations` (R-145; K-E4 Section 13) | `access` | the `Authenticated` guard on `locationSamples`, `locationIngestTokens`, `transferContext`, `recordLocationSamples`, `createLocationIngestToken`, `revokeLocationIngestToken`; `operator_only` on `createLocationIngestToken`, which joins `API_KEY_REFUSED_ROOTS` (it returns a secret) |
 | `sources` (R-261; K-E1 Section 7b, adds) | `access` | `operator_only` on `connectDawarich`, which joins `API_KEY_REFUSED_ROOTS` (it takes a secret) |
 | `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage`, `containerNetworks`, `containerImageUpdates`, `composeFileCheck` and `composeFromDockerRun`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
+| `containers` (AnimaOS Hosting, adds) | `events`, `jobs` | operator context for queueing, readback of container actions and Compose applies, and matching Docker inventory to completed applies |
+| `projects` (AnimaOS source builds, adds) | `jobs` | queue and read a source build for the selected project repository and commit |
 | `catalogue` (task H38) | `access` | the `Authenticated` guard on `catalogueEntries`, `catalogueEntry` and `installCatalogueEntry`; none joins `API_KEY_REFUSED_ROOTS`: a key and an agent may ask for the install of an entry of the tested catalogue (R-234) |
 
 | `routes` (R-302; task H21) | `access` | the `Authenticated` guard on `applicationRoutes`, `applicationRoute`, `addApplicationRoute`, `checkApplicationRoute`, `removeApplicationRoute`; `operator_only` and `operator_status` on the three mutations, which join `API_KEY_REFUSED_ROOTS` (making an application public is for a person with a second factor, SF-232) |
 
-`sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
+`sessions` already depends on `access`. GraphQL adapters use `access` for admission. `Operator` and `ClientAddr` belong to `events` (R-019).
 
-Outside `graphql.rs`, `devices` never imports `checks` (that edge would make a cycle). Device deletion relies on foreign keys and the checks retention job instead (see below).
+The `devices` edge to `checks` stays in the GraphQL adapter, since a domain dependency would make a cycle. Foreign keys and the checks retention job handle checks on device deletion (see below).
 
 Any other edge is a contract change.
 
@@ -807,7 +820,12 @@ pub async fn confirmed(db: &Db, owner: &Reference) -> Result<Vec<Proposal>, Erro
 
 ## projects (work, XP-02 first slice; operator, 2026-11-13; ruling number to be assigned)
 
-Folder `crates/hub/src/work/projects/` (group `work/`). Face `projects.rs` exposes `pub fn intake() -> Arc<dyn sources::Intake>` and `pub mod graphql`. No domain imports `projects`; `main.rs` and `schema.rs` wire its intake into the sources registry. Every root field calls `extensions::require_on(db, PROJECTS)` first.
+Folder `crates/hub/src/work/projects/` (group `work/`). Face `projects.rs` exposes `pub fn intake() -> Arc<dyn sources::Intake>` and `pub mod graphql`. `main.rs` and `schema.rs` wire its intake into the sources registry. Every root field calls `extensions::require_on(db, PROJECTS)` first.
+
+For AnimaOS private builds, `checkout` calls the Projects face's
+`locked_checkout_matches` in the release transaction. It verifies the same
+repository, project, GitHub account, external ID and current name, and
+holds the repository row through the audit and release commit.
 
 ### projects: work, code and history (second slice; operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
 
@@ -827,7 +845,7 @@ Sub-folders of `projects/`, each with its face file: `forge/` (repository row to
 
 ## containers (work; R-149, operator, 2026-11-18; HOST-001, HOST-010)
 
-Folder `crates/hub/src/work/containers/` (group `work/`). Stage 1 of hosted applications: the containers of a device, read-only. The domain has no table and no store: each read opens an SSH link to the device and runs one fixed `docker` command (CHK-012). It writes no event and no log line (LOG-007). No domain imports `containers`; `schema.rs` merges `containers::graphql::Query`.
+Folder `crates/hub/src/work/containers/` (group `work/`). Stage 1 of hosted applications: the containers of a device, read-only. The domain has no table and no store: each read opens an SSH link to the device and runs one fixed `docker` command (CHK-012). It writes no event and no log line (LOG-007). No domain imports `containers`; `schema.rs` merges `containers::graphql::Query`. Stage 2 adds the authenticated `queueContainerAction` and `containerAction` fields. Write scope is required to queue. The `jobs` owner stores and dispatches the action. The container resolver reads the daemon's recent action capability only when the client requests it.
 
 ```rust
 /// What a link needs besides the device.

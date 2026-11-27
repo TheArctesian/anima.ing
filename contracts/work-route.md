@@ -217,6 +217,8 @@ application has one machine, and a container identifier has meaning on one machi
 
 More causes of a refusal of a container item, each a fixed code: `busy` (the machine runs an item that changes Docker); `nothing_kept` (`application_back` with no kept version, or a second one); `no_digest` (`pull` false for a service with no digest of an earlier apply); `name_taken` (a project of that name exists with a different folder); `protected` (the item names something of the list "Protected"); `start_not_permitted` (a `start` that Section 6.4.6 does not permit); `no_container` (an identifier that the engine does not have). The cause `busy` is final as each refusal of a container item is: when the count of the hub and the state of the machine differ for a moment, the item fails, and neither the hub nor the machine tries it again by itself. The person or the caller asks again, which makes a new item.
 
+On AnimaOS, `migration_held` means a start or apply for an imported Podman application requires local cutover authorization and a fresh match to the stopped source containers. The machine can also use this cause if the source check fails after the application or container action was prepared. The operator resolves the local hold before requesting a new item.
+
 ## 6. Work types
 
 The list is fixed in the daemon program. There is no type that runs a command which the hub names (USE-006, JOB-015) (for a container type: the paragraph at the end of this section).
@@ -229,7 +231,7 @@ A `build` runs a recipe of Anima on one commit of a repository of a project (PRO
 { "recipe": "desktop_release", "commit": "0123456789abcdef0123456789abcdef01234567", "target": "linux-x86_64", "version": "0.3.0", "trigger": "operator", "origin": "default_branch" }
 ```
 
-- `recipe` is from a fixed list in the daemon. The steps of a recipe are code of the daemon program. Today the list has `desktop_release`.
+- `recipe` is from a fixed list in the daemon. The steps of a recipe are code of the daemon program. Validation recognizes `desktop_release` and `source_image_v1` (see the source-image amendment below); runtime capability advertisement remains separate.
 - `commit` is 40 hexadecimal characters. The job makes a new checkout of that commit (PRO-023, PRO-035). A recipe that publishes checks that the commit is an ancestor of the default branch (BLD-041).
 - `target` and `version` have the rules of the release (BLD-002, BLD-003). `trigger` is `operator` or `push`.
 - `origin` is `default_branch` or `other`. The hub writes `default_branch` only when it has verified that `commit` is an ancestor of the default branch of the repository. A pull request from a fork, a scratch ref (JOB-020) and each commit that the hub did not verify are `other` (SF-009).
@@ -349,6 +351,12 @@ Only the administrator of the machine can set them, on each kind of engine. They
 that the identifier 0 owns, with no write right for a group or for others; the applications program reads it. The program that writes the file runs as the administrator; it starts no program of Docker and opens no socket of an engine. For an adoption, the applications program, as the user that it runs as, makes the form and the comparison and shows the result; the administrator then writes the record. The hub cannot set one,
 the daemon cannot, and a request on the socket cannot (SF-007, SF-018).
 
+On a fresh AnimaOS node, `sudo anima-enable-hosting --enable` creates the
+initial settings for system Docker with the defaults below and asks systemd
+to start the applications service. The settings writer accepts local root
+authority and requires the settings file and pairing record to be absent.
+[Installed Hosting setup](../os/README.md)
+
 | Setting | After the install | Meaning |
 | --- | --- | --- |
 | Manage applications | Off | The machine takes container work (R-210). With it go: the user of the daemon that is accepted, the socket of the engine, and the paths of the Docker programs |
@@ -417,6 +425,7 @@ its own code, not with the reader of Compose.
    characters `A-Z`, `0-9` and `_`, the value is the text after the first `=` with no rule for
    quotes, and a name that is there two times is refused. An empty line and a line that starts with `#` are
    ignored; each other line with no `=`, and a line with a carriage return or a NUL, is refused.
+   The expanded scalar values share a 4 MiB UTF-8 budget (`too_large`).
 4. It applies the list of keys and the rules of values to the result.
 5. It writes the final form itself, as JSON, which Compose reads as a Compose file: each string in
    quotes, with each character below U+0020, U+007F to U+009F, U+2028, U+2029 and U+FEFF escaped as
@@ -1045,3 +1054,101 @@ Before the ruling this section said what comes after it; that is done or stands 
 Version 0.4 (2026-11-19) is the second part of the same ruling, R-209, with the condition that it gives; the status line says how the condition was met. The rulings that decide its points are R-226 to R-238 and R-246. Two of them change an earlier ruling: R-228 changes R-210 (no profile `full`), and R-246 changes R-226 for a machine whose Docker belongs to a user. No code of a container work type exists; tasks H28, H31 and H32 of [hosted-applications-plan.md](../docs/plans/hosted-applications-plan.md) build it, after the queue of task W3 and the daemon part of task W4.
 
 Version 0.5 (2026-11-19) is the text in force by R-251. It has the corrections of the fourth read (SF-070 to SF-089) and the two changes that the owner of this file asked for. The reviewer was a separate agent of the session that wrote Section 6.4; the owner of this file (the session of the runner path) agreed to the nine points outside Section 6.4 and did not review the security of Section 6.4.
+
+## AnimaOS source-build placement amendment, 2026-11-24
+
+The operator's autonomous AnimaOS implementation direction requires source-image builds to use this job owner. Before any source-image executor is advertised, claims may include optional `buildRecipes`: a list of at most eight unique recipe identifiers, each 1–64 lowercase ASCII letters, digits or underscores. Invalid lists fail request decoding. Omission (or null) preserves the legacy `desktop_release` capability; an explicit empty list supports no build recipe. Non-build work types do not use this field.
+
+The hub persists this capability with the machine's last claim and applies it to both immediate placement and the comparison with other recently available machines. A build without a matching recipe remains queued with the `recipe` placement reason. Having more memory, a project pin or an explicit target does not override recipe eligibility. Existing limits, exclusion, repository checks, switch and lease behavior remain in force. This is an execution-capability advertisement, never repository permission or permission to deploy an output image.
+
+No daemon in this amendment advertises `source_image_v1`; its recipe parameters, local executor, source preparation, secret handling, lease reconciliation and result/hosting handoff remain implementation work. Merely accepting a claim field does not enable a new work type or an arbitrary command. Older hubs ignore the optional field and cannot provide this placement guarantee; source-image job submission must require the corresponding new hub/daemon implementation before activation.
+
+
+### Source-image recipe parameters
+
+The source-image executor uses `source_image_v1` with exactly `recipe`, `commit`, `target`, `strategy`, `trigger` and `origin`. The commit is a 40-digit hexadecimal Git revision; target is `linux-x86_64` or `linux-aarch64`; strategy is `auto`, `dockerfile` or `railpack`. Trigger and origin retain the desktop-build rules (`operator`/`push`, `default_branch`/`other`). Source-image work requires container isolation. It accepts neither a shell command nor a path, image tag, environment map or desktop release version. The existing repository allow-list, work switch, policy and secret-purpose rules still apply; a non-default-branch build cannot request project secrets.
+
+At queue entry, a source-image target binds placement to Linux and its named architecture. Omitted outer OS/architecture requirements are filled from that target; conflicting requirements, unsupported targets and non-container isolation are refused before persistence. A node capability alone never overrides these target requirements.
+
+This parameter validation is an implementation step, not an advertised executor. Repository checkout, resource enforcement, lease recovery, scoped secrets, immutable artifact reporting and separately authorized hosting handoff remain required before source-image work is offered by a node. Automatic strategy selection follows the captured source (Dockerfile when present, Railpack otherwise); explicit selection must not silently change strategies.
+
+### Private source checkout capability
+
+A daemon with isolated private checkout advertises
+`source_image_private_checkout_v1` alongside `source_image_v1`. The item
+keeps the existing recipe and declares only `repository_token`. The Hub
+queues private builds for a project with an operator pin to a capable node.
+Placement and secret release both require the current pin. The release
+binds the attempt to the repository and connection named at submission.
+
+The Hub reserves the one release before contacting GitHub. Daemon reports
+can renew or end the lease during minting. The Hub reauthenticates the
+daemon and checks the current lease, pin and repository again before it
+commits the release and its audit. A token that cannot be released is
+retained in sealed form for revocation. The revocation queue also clears
+credentials for ended attempts and retains the one-use record.
+
+The AnimaOS supervisor opens its checkout rendezvous after the isolated
+workspace starts. The daemon records the credential request after a
+preparing report has been accepted. It transfers the token once over the
+authenticated owner socket while lease reports continue. The owner
+requires the exact enrollment, job, attempt and waiting supervisor, and
+caps the credential's effective lifetime at its local grant. The Git
+fetch reads it through a pipe and closes that pipe before the checkout is
+captured. The token is absent from request JSON, durable node records,
+process arguments and Git configuration. An interrupted request with a
+supervisor still waiting settles as `secret_failed` after cleanup.
+
+
+### AnimaOS local build lease enforcement
+
+Routed source builds must carry the hub job identity, attempt number and lease end into the root execution owner. A new local grant may cover at most 90 seconds. The owner persists its boot identity and uptime deadline before launch, rejects renewal of expired or terminal work, and binds renewal to the original job/attempt. Repeating an unchanged grant never extends its uptime deadline. Wall-clock rollback cannot extend an existing grant; reboot invalidates it. The node watchdog cancels expired work through the normal cgroup termination proof before reclaiming resources. Leased build units depend on the watchdog so its exit stops their process groups. Root-local qualification builds without a hub lease retain their existing bounded runtime. This local mechanism does not authorize a hub job or replace the coordinated daemon claim/lease journal.
+
+
+### Private source-artifact delivery amendment (implementation in progress)
+
+The private source-artifact route uses the existing daemon token and permitted-network boundary. It is unavailable unless the hub has explicitly configured private artifact storage, a byte quota and a free-space reserve. This route is separate from public release uploads, registry publication and deployment. It does not enable source-image recipe advertisement by itself.
+
+An artifact offer contains exactly `job`, `attempt`, `bytes`, `archiveDigest` and `manifestDigest`. The job is a non-nil UUID; attempt is a positive 32-bit integer; bytes is between 1 and 8 GiB inclusive; both digests are `sha256:` followed by 64 lowercase hexadecimal digits. No destination path, filename, registry, URL or command comes from the caller. The authenticated enrollment supplies the device identity.
+
+Authorize only the current holder of a `build`/`container`/`source_image_v1` job in `finishing`, with the matching attempt, a live lease, no stop order and a machine permitted to work. Repeat authorization after verification and before retention acknowledgement. A receipt replay requires the same authorization and exact device/job/attempt/length/digests; it cannot replace the identity or let an old holder recover a new attempt's receipt.
+
+Streaming, rehashing and syncing the staged receipt leave the device request turn and database locks free for lease reporting. Final authorization holds the job and machine rows across the archive rename and directory sync. The storage owner checks lease expiry before the rename and after the sync. If it observes expiry during publication, it moves the newly published directory back to incoming storage and syncs the withdrawal before releasing those locks. Expiry or ownership uncertainty prevents acknowledgement. A failed or interrupted filesystem operation may leave retained bytes. The daemon releases its local artifact only after an exact, authorized receipt, and replay verifies retained bytes again.
+
+A retained receipt contains version 1, a stable receipt UUID, the authenticated device UUID and the exact offer. The daemon must check every identity and persist the receipt before requesting root cleanup. The receipt proves private retention of verified archive bytes, not execution provenance, OCI graph validity, permission to publish, or permission to deploy. Hosting must verify and consume the exact image under its separately authorized deployment operation.
+
+On a configured Unix hub, send `POST /work/v1/artifact` with the daemon bearer token. The five offer fields are the single-valued headers `Anima-Artifact-Job`, `Anima-Artifact-Attempt`, `Anima-Artifact-Bytes`, `Anima-Artifact-Archive` and `Anima-Artifact-Manifest`, respectively. The body is the raw archive. If present, `Content-Length` equals the declared archive length for an upload. An exact receipt replay may send an empty body and a zero content length. A matching revalidated receipt returns HTTP 200 with its JSON representation. An empty body without a matching receipt cannot create one.
+
+Set all three variables to enable the route. `ANIMA_ARTIFACTS_DIR` names a dedicated absolute directory under an existing parent. It must be owned by the hub and inaccessible to other users. `ANIMA_ARTIFACTS_QUOTA_BYTES` and `ANIMA_ARTIFACTS_RESERVE_BYTES` are positive decimal byte counts for stored archives and free space to preserve. An unconfigured hub answers `UNAVAILABLE`. Configure the private directory on storage for which the reserve is meaningful. The receiver verifies byte count and digest and the daemon must still persist the receipt before asking for cleanup.
+
+A source-image node can repeat an accepted final report without a log part when it loses the response. The hub returns the original end time as the closed lease and the existing log offset for a matching authenticated device, attempt, terminal state and validated result. A replay writes no state or audit event and cannot renew the lease.
+
+For node cleanup, the daemon presents the saved receipt to the enrolled root broker. The broker checks the device, attempt, byte count and both digests against the verified output it owns, then records the release intent before an independent root worker deletes the local copy. A failed, expired or cancelled source job can queue cleanup without a receipt if it has no retained output. The daemon reports final completion after observing the root-owned released state and, for success, the matching receipt.
+
+An AnimaOS daemon offers the source-image recipe only when its root broker reports one free slot and owner repository permission is configured. A hub without private artifact storage returns `UNAVAILABLE` to a source-capable claim and leaves the build queued. The daemon validates the returned repository, architecture, public-source policy, lease and resource limits. It journals the attempt before contacting the root executor and starts only after an accepted report confirms the hub still holds it. An expired unstarted intent can retire after a complete root inventory proves absence. A confirmed `NOT_HOLDER` stops local work. Cleanup or a root-owned retained artifact must be established before the daemon clears the hold.
+
+Once a coordinated execution is settled and its last lease has expired, the daemon may ask the local source broker to retire the execution metadata. The request and its acknowledgement carry the exact execution, job and attempt IDs. The root owner checks the enrollment and the released phase before removing a present record, then syncs its directory. An absent record with no pending write permits acknowledgement replay. The daemon removes its own settled entry only after an exact reply. Ready output without a delivery receipt remains under root ownership.
+
+The hub accepts the first successful source-image report only when private storage confirms the retained receipt for that device, job and attempt. The report must declare a succeeded outcome and completed checkout and isolation cleanup. A premature or incomplete success report is malformed and leaves the job held. Exact replay of an accepted terminal report still returns its stored acknowledgement.
+
+### Completed source-build downloads
+
+On a hub with private artifact storage, `GET /builds/v1/source-artifacts/{job}/{attempt}` streams the retained OCI archive. Pass a signed-in operator bearer on a permitted network. The route denies daemon credentials, API keys and requests that declare an agent. The job must be a completed source-image job with that attempt, and the receipt must belong to its last holder. An absent receipt, an unavailable attempt or an attempt that has yet to finish returns 404. Unreadable or corrupt storage and exhausted download slots return 503.
+
+HTTP 200 carries exact `Content-Length`, `Anima-Artifact-Job`, `Anima-Artifact-Attempt`, `Anima-Artifact-Receipt`, `Anima-Artifact-Archive` and `Anima-Artifact-Manifest` headers. The hub checks the archive hash, rechecks the login and streams the same open file descriptor. The response is a private, non-cacheable attachment. The hub records the download against the job before sending the body. Downloads use separate slots from intake, and deployment requires separate hosting authorization.
+
+### Inspect the image of a completed source build
+
+`GET /builds/v1/source-artifacts/{job}/{attempt}/image` uses the operator and network checks for the archive download. The hub opens the retained receipt for the completed attempt and independently verifies the archive length, digest and OCI graph. The response names the job, attempt, receipt and archive digest, with the exact image digest, its OCI or Docker media type and the runtime platforms of that descriptor. The image digest can name a runnable manifest or an index with runnable images. An attached attestation alone is not a runnable image.
+
+A retained archive that cannot be verified as a runnable image returns 422. The response holds only verified image metadata and is private and non-cacheable. Registry publication and deployment use separate authorization.
+
+### Publish a completed source-build image
+
+On a Unix hub with private artifact storage, set `ANIMA_ARTIFACT_REGISTRY_ORIGIN` to the HTTPS origin of an OCI Distribution registry and `ANIMA_ARTIFACT_REGISTRY_REPOSITORY` to one private repository. When the registry requires a write credential, `ANIMA_ARTIFACT_REGISTRY_AUTHORIZATION_FILE` names a private file containing a single `Basic …` or `Bearer …` authorization value. The hub loads it at startup. Use a credential scoped to read and write that repository. The registry must accept digest-addressed writes, serve uploads from the same origin and repository, and accept the configured authorization directly.
+
+`POST /builds/v1/source-artifacts/{job}/{attempt}/publish` requires a signed-in operator on a permitted network. Send JSON with the exact `receipt` UUID and `imageDigest` returned by image inspection. The hub checks the completed attempt, verifies the archive on its retained handle, rechecks operator authority, and audits the request before sending bytes. A mismatch returns 409. An unsupported publication graph returns 422. A disabled or busy writer returns 503. A registry failure returns 502. A subsequent request with the same confirmation can verify objects left by a previous request.
+
+The hub copies only the selected manifest or index and its dependencies, with their original bytes and digests. It writes dependencies first and reads the manifest bytes back by digest before confirming success. The writer accepts indexed BuildKit attachments. It refuses a selected graph with an OCI `subject` reference, which can require maintaining a referrers tag. HTTP 200 returns the job, attempt, receipt, image digest and repository reference by digest. The result is private and non-cacheable. The hub audits verified publication separately from the request.
+
+The operator can put that reference in a Compose `image` field and submit an apply through Hosting. The target device must already have pull access to that registry. The hub's write credential stays with the hub. The applications service still authorizes and checks the apply according to Section 6.4.

@@ -21,13 +21,13 @@ use anima_hub::{
         trust::graphql::host_key_loader,
     },
 };
-use async_graphql::{EmptySubscription, Schema};
+use async_graphql::{EmptySubscription, Executor, Schema};
 use serde_json::{Value, json};
 
 use super::{
     credential::{PVE_01, store_password},
     graphql_read::add_bulk,
-    harness::{TestSchema, data, now, vault},
+    harness::{data, now, vault},
 };
 
 /// A pool on the same database whose statements are counted.
@@ -191,7 +191,7 @@ async fn api_005_host_key_costs_a_constant_few_statements_for_13_or_163_devices(
 }
 
 /// The statements one signed-in request costs on the counted pool, and its data.
-async fn cost(schema: &TestSchema, statements: &AtomicUsize, query: &str) -> (usize, Value) {
+async fn cost(schema: &impl Executor, statements: &AtomicUsize, query: &str) -> (usize, Value) {
     statements.store(0, Ordering::SeqCst);
     let result = data(schema, query).await;
     (statements.load(Ordering::SeqCst), result)

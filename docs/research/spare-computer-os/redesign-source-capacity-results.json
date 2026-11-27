@@ -1,0 +1,21 @@
+{
+  "execution": {
+    "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+    "package": "/nix/store/kz4h7yzbp25xvbm3pak6av19d6dqxvdy-anima-os-execution-0.1.0",
+    "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+    "narSha256": "8299a6edaee30ea79c3eed5726a814d3cfe6282414a6cc13479cabfd03f97098",
+    "watchdogUnitSha256": "9ebfc0cdc23bd38ea4acdc63d7a0f9cedc8f9fa4bf6eff51d3bc00f99a8b7f35",
+    "bytes": 6992680
+  },
+  "scope": "Installed root capacity observation on disposable 8 GiB overlay. Checks bounded offer, disabled-work zero offer, no new reservation files and refusal without watchdog. Does not qualify broker dispatch or daemon scheduling.",
+  "results": [
+    {
+      "case": "candidate-setup",
+      "result": "Passed"
+    },
+    {
+      "case": "source-capacity-observation-and-refusals",
+      "result": "Passed"
+    }
+  ]
+}

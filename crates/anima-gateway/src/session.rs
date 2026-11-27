@@ -7,6 +7,7 @@ mod opening;
 mod picture;
 mod rdp;
 mod running;
+mod vencrypt;
 
 use std::time::Duration;
 

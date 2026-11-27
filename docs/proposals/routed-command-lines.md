@@ -115,6 +115,12 @@ The sentences that K10 would get, as a later version of the contract. They are n
 - **RCL-023.** A prompt injection is the usual way in: text that an agent reads (a web page, an issue, a log line of a job) tells it to run a command. With `allow` by default (R-120) and no click, nothing stands between that text and the machine but the isolation and the setting of RCL-006.
 - **RCL-024.** The audit log says who and where, and for a command line what. It does not stop a thing. For a session it does not say what was done.
 
+### AnimaOS profile qualification (2026-11-23)
+
+For ordinary work on AnimaOS, the operator selected an automatically managed isolated workspace, with explicit host administration as a separate broader profile; see [OS Section 17.9](spare-computer-os.md#179-council-review-agentic-operating-system-contract). RCL-021/RCL-022 remain an accurate description of a session's actual login authority. They must not be read as requiring every OS agent session to use the host administrator: the OS integration must select and authenticate the workspace principal/target and enforce that profile before exposing a session. Other devices keep their existing defaults.
+
+An isolated session must not acquire the host engine socket or owner credentials merely because it is reachable through the same device. A deliberately selected owner-native session retains the broader risk stated above. Map these profiles to the approved session/start route and grant schema before implementation; this planning qualification does not approve the draft command work type or widen K10. Shared RDP/VNC console access in the OS plan is host administration and is not the coding-agent control route; coding interaction stays in the mobile/desktop Code panel.
+
 ## 8. On a Mac
 
 - The daemon of a Mac runs as the user of the operator, and with Docker Desktop that user can use the engine (R-246).

@@ -13,12 +13,13 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
   // The iPhone app shows the sign-in page of the account inside the app (mobile plan M3-5) and plays haptics (M4-4).
   if (isMobile(agent)) {
     const apple = isApple(agent);
-    return { ...MOBILE_SHELL, accountSession: apple, haptics: apple, runnerReport: true };
+    return { ...MOBILE_SHELL, accountSession: apple, haptics: apple, runnerReport: true, workspacePreviews: true };
   }
   const { userAgent } = agent;
   return {
     keyStore: true,
     webViewTabs: true,
+    workspacePreviews: false,
     popOut: false,
     updates: true,
     processLog: true,

@@ -14,7 +14,7 @@ fn reads() -> Vec<Action> {
     let thread = Uuid::from_u128(7);
     let other = Uuid::from_u128(8);
     let text = || "words".to_owned();
-    vec![
+    let mut calls = vec![
         Action::List,
         Action::Watch,
         Action::Start {
@@ -59,7 +59,18 @@ fn reads() -> Vec<Action> {
             hidden: true,
         },
         Action::Listings,
-    ]
+        Action::ManagedAttention,
+    ];
+    let mut start = calls[2].clone();
+    if let Action::Start { worktree, base, .. } = &mut start {
+        *worktree = false;
+        *base = None;
+    }
+    calls.push(Action::StartManaged {
+        thread,
+        start: Box::new(start),
+    });
+    calls
 }
 
 /// One of each call that changes a thread or how it is listed.
@@ -77,6 +88,7 @@ fn changes() -> Vec<Action> {
             before: 9,
             most: 3,
         },
+        Action::ManagedTranscript { thread, after: 9 },
         Action::Projects,
         Action::CreateProject {
             folder: PathBuf::from("/work/new"),
@@ -216,10 +228,13 @@ const fn kind(action: &Action) -> usize {
         Action::Commands { .. } => 28,
         Action::Compact { .. } => 29,
         Action::CreateProject { .. } => 30,
+        Action::StartManaged { .. } => 31,
+        Action::ManagedTranscript { .. } => 32,
+        Action::ManagedAttention => 33,
     }
 }
 
-const KINDS: usize = 31;
+const KINDS: usize = 34;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {

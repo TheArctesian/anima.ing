@@ -70,10 +70,15 @@ pub async fn open_tab(app: &AppHandle, body: &serde_json::Value) -> Result<(), W
     let new = Opening::read(body)?.check(pinning_available())?;
     let window = app.get_window(MAIN).ok_or(WebViewError::Window)?;
     let url = new.tab.url.as_url().clone();
+    let scope = if new.tab.preview_endpoint.is_some() {
+        view::ViewScope::Preview(url.origin())
+    } else {
+        view::ViewScope::Device(new.device)
+    };
     let generation = app.state::<Tabs>().reserve(new.id.clone(), new.tab)?;
-    let (id, device, rect) = (new.id.clone(), new.device, new.rect);
+    let (id, rect) = (new.id.clone(), new.rect);
     let attached =
-        tauri::async_runtime::spawn_blocking(move || view::attach(&window, &id, device, rect))
+        tauri::async_runtime::spawn_blocking(move || view::attach(&window, &id, scope, rect))
             .await
             .map_err(|_| WebViewError::Native)
             .flatten();

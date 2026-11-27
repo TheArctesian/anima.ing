@@ -37,12 +37,23 @@ pub struct OsUpdateArgs {
     /// Confirm that activation or rollback restarts the device.
     #[arg(long)]
     confirm_restart: bool,
+    /// The selected action's review revision from the device's update status.
+    #[arg(long)]
+    review_revision: Option<String>,
 }
 
 impl OsUpdateArgs {
     /// # Errors
     /// The hub refuses missing trust, unavailable SSH or an unconfirmed restart.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        if matches!(self.action, Action::Activate | Action::Rollback)
+            && (!self.confirm_restart || self.review_revision.is_none())
+        {
+            return Err(Failure::Usage {
+                message: "Review the device's update status, then provide --confirm-restart and --review-revision.".to_owned(),
+                hint: None,
+            });
+        }
         let hub = invocation.hub()?;
         let device_id = super::get::resolve(&hub, &self.device).await?;
         let action = match self.action {
@@ -58,6 +69,7 @@ impl OsUpdateArgs {
                     device_id,
                     action,
                     confirmed: self.confirm_restart,
+                    review_revision: self.review_revision,
                 })
                 .await?;
             serde_json::json!({"requested":result.request_device_os_update})

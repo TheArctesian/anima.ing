@@ -10,6 +10,7 @@
   import Notice from '$lib/states/Notice.svelte';
   import Tabs from '$lib/tabs/Tabs.svelte';
   import { tabIds } from '$lib/tabs/tabs';
+  import type { SourceBuildApi } from '../builds/api';
   import CodeTab from '../code/CodeTab.svelte';
   import type { ForgeApi } from '../forge/api';
   import HistoryTab from '../history/HistoryTab.svelte';
@@ -24,6 +25,7 @@
     store: ProjectsStore;
     /** The hub's calls for the Work, Code and History tabs; those tabs show once the hub serves them (PRJ-030). */
     forge: ForgeApi;
+    builds?: SourceBuildApi;
     slug: string;
     /** The `?tab=` word of the page; an unbuilt or unknown tab is Overview. */
     tab?: string | null;
@@ -31,7 +33,7 @@
     onTab?: (tab: ProjectTab) => void;
   }
 
-  const { store, forge, slug, tab = null, onTab }: Props = $props();
+  const { store, forge, builds, slug, tab = null, onTab }: Props = $props();
   const project = $derived(store.current);
   const primary = $derived(project == null ? undefined : primaryRepository(project));
   const found = $derived(store.status !== 'loading' && store.status !== 'failed' && project != null);
@@ -92,6 +94,7 @@
       {#if selected === 'overview'}
         <Overview
           {project}
+          {builds}
           onLeaveOut={(id) => void store.leaveOut(id)}
           onRestore={(id) => void store.restore(id)}
           onConfirm={(id) => void store.confirm(id)}

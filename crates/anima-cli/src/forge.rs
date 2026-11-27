@@ -28,10 +28,10 @@ pub enum ForgeCommand {
         #[command(subcommand)]
         command: workflows::WorkflowCommand,
     },
-    /// Repository files (ls, show) and local thread worktrees (git).
-    Code {
+    /// Browse the files of a repository through the hub.
+    Forge {
         #[command(subcommand)]
-        command: code::CodeCommand,
+        command: BrowseCommand,
     },
     /// The history of a repository on GitHub (commits, branches, releases, status set).
     Repo {
@@ -50,7 +50,9 @@ impl ForgeCommand {
             Self::Pr { command } => command.run(invocation).await,
             Self::Issue { command } => command.run(invocation).await,
             Self::Workflow { command } => command.run(invocation).await,
-            Self::Code { command } => command.run(invocation).await,
+            Self::Forge {
+                command: BrowseCommand::Code(command),
+            } => command.run(invocation).await,
             Self::Repo { command } => command.run(invocation).await,
         }
     }
@@ -75,4 +77,12 @@ impl StateArg {
             Self::All => "all",
         }
     }
+}
+
+/// Repository browsing stays distinct from agent-session commands under `anima code`.
+#[derive(Debug, clap::Subcommand)]
+pub enum BrowseCommand {
+    /// List or read repository files.
+    #[command(subcommand)]
+    Code(code::CodeCommand),
 }

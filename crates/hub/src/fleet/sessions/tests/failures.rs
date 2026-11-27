@@ -90,6 +90,7 @@ async fn start_on_pve_01(pool: &PgPool, live: &Live) -> Result<Ticket, Error> {
             dpi: 96,
             timezone: None,
         },
+        view_only: false,
         wake: None,
     };
     start(pool, &clock, live, &operator(), client(), request).await

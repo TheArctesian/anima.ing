@@ -1,0 +1,36 @@
+{
+  "execution": {
+    "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+    "package": "/nix/store/n8paqhlncbm7mc6wzlw2zzammjylv5kk-anima-os-execution-0.1.0",
+    "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+    "narSha256": "47236276dd2c9a614f42171fc913d54e4d0c653eda553b9f7970312f28d26cbc",
+    "watchdogUnitSha256": "54fe71f4eb998c6e5d691ce827a674df18d8ce6e05a1d0255027d6b385d5fd09",
+    "bytes": 5993728
+  },
+  "retainedFixture": "/Users/stephenokita/.local/share/anima-os-prototype/redesign-20261124-railpack-02",
+  "harness": "harness-22",
+  "scope": "128 GiB disposable overlay over the retained fixture; production storage reserves unchanged. Offline synthetic Dockerfile diagnostics plus local lease renewal/expiry/watchdog-stop. Current-worktree Nix watchdog unit and candidate execution package in retained disposable VM. Temporary recovery ExecStart override invokes actual candidate owner. Isolated Docker store supplies test rootfs. Not latest ISO, original-store recovery or daemon-routed hosting acceptance.",
+  "results": [
+    {
+      "case": "candidate-boot-reconciliation",
+      "result": "Passed"
+    },
+    {
+      "case": "offline-build-output-and-release",
+      "result": "Passed"
+    },
+    {
+      "case": "build-lease-renewal-expiry-and-watchdog-stop",
+      "result": "Passed"
+    },
+    {
+      "case": "clean-shutdown",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "qualification": "Candidate execution package and current-worktree watchdog unit passed offline artifact/diagnostics/export/cleanup plus local renewal, expiry, reservation release, late-renewal refusal and watchdog-stop acceptance. This is a retained older system in a 128 GiB overlay with an isolated Docker fixture, not a latest ISO or daemon-routed build. Shutdown exited but serial reports a busy temporary mount and inability to finalize remaining filesystems; clean unmount is not established. Original Docker-store repair, Python/Rust Railpack and routed source execution remain open."
+}

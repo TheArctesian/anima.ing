@@ -13,6 +13,7 @@ pub(super) const fn for_the_person(action: &Action) -> bool {
         Action::Answer { .. }
             | Action::RaiseLimit
             | Action::Start { .. }
+            | Action::StartManaged { .. }
             | Action::ChangeListing { .. }
             | Action::ChangeProject { .. }
             | Action::CreateProject { .. }

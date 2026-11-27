@@ -9,7 +9,7 @@
   /**
    * HOST-013 and HSE-008: what Docker has on a device. The containers are the one list of Hosting narrowed to this
    * machine, with the log or the details of the selected one; the images and the networks (HOST-020) stay here. The
-   * volumes are in the section Storage of Hosting (HSE-015). No control here changes the device.
+   * volumes are in the section Storage of Hosting (HSE-015). Container actions use the same Hosting list.
    */
   const { hosting, storage }: { hosting: HostingStore; storage: StorageStore } = $props();
 

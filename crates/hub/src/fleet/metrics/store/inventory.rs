@@ -128,6 +128,7 @@ impl TryFrom<InventoryRow> for Capabilities {
         tools.sort_by_key(|tool| tool.name);
         let inventory = Inventory {
             remote_access: None,
+            remote_vnc_user: None,
             mobile_tools: row.mobile_tools.map(|snapshot| snapshot.0),
             architecture: Architecture::parse(&row.architecture).ok_or(Error::Unreadable)?,
             os: Os::parse(&row.os).ok_or(Error::Unreadable)?,

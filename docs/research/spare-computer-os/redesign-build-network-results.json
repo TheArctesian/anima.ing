@@ -1,0 +1,23 @@
+{
+  "rootlesskit": "2.3.6",
+  "virtualSubnet": "192.0.2.0/24",
+  "planner": {
+    "language": "node",
+    "result": "Passed",
+    "source": "railpack-inspect-02"
+  },
+  "privateEgress": {
+    "protocol": "UDP",
+    "destinations": [
+      "10.0.2.2",
+      "100.64.0.1",
+      "169.254.169.254",
+      "172.16.0.1",
+      "192.168.1.1"
+    ],
+    "result": "Passed",
+    "observation": "Each write returned Operation not permitted",
+    "source": "railpack-inspect-05"
+  },
+  "scope": "Direct packaged Railpack planner under production-equivalent resource/filesystem/network restrictions. Does not qualify full BuildKit image execution or routed hosting."
+}

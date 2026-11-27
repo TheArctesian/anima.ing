@@ -11,7 +11,7 @@ use crate::invocation::Invocation;
 pub enum TrustCommand {
     /// Trust the SSH host key with this fingerprint.
     AcceptHostKey(accept_host_key::HostKeyArgs),
-    /// Trust the RDP server certificate with this fingerprint.
+    /// Trust the RDP or VNC server certificate with this fingerprint.
     AcceptCertificate(accept_certificate::CertificateArgs),
 }
 

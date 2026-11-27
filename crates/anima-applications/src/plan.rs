@@ -1,4 +1,7 @@
 //! What the program would do for one item, as a value (contract K10 Sections 6.4.1 and 6.4.5).
+mod version;
+
+pub use version::Version;
 
 /// The real paths that the program resolved at its start (Section 6.4.1). Each is absolute,
 /// with each link resolved.
@@ -39,8 +42,6 @@ pub enum Step {
     Folder { path: String },
     /// Writes a file that only the user of the program can read, in place of an earlier one.
     Write { path: String, content: Vec<u8> },
-    /// Moves a file in place of an earlier one, when the source is there.
-    Move { from: String, to: String },
     /// Deletes a file, when it is there.
     Delete { path: String },
     /// Deletes a folder with all below it, when it is there, without following a link.
@@ -53,8 +54,15 @@ pub enum Step {
     /// Stops the plan unless `path` is a real folder directly below the real folder
     /// `below`, checked without following a link (SF-016).
     RealFolder { path: String, below: String },
+    /// Ensure a bind folder exists below the private application boundary.
+    BindFolder { path: String },
     /// Starts a program and waits for its end.
     Run(Command),
+    /// Start with the proposed final form and record the private version on confirmed success.
+    ApplyVersion {
+        command: Command,
+        version: Box<Version>,
+    },
     /// Starts a program and waits for its end; a failure is reported and the plan goes on.
     Attempt(Command),
 }
@@ -72,11 +80,6 @@ impl std::fmt::Debug for Step {
                 .field("path", path)
                 .field("content_bytes", &content.len())
                 .finish(),
-            Self::Move { from, to } => formatter
-                .debug_struct("Move")
-                .field("from", from)
-                .field("to", to)
-                .finish(),
             Self::Delete { path } => one_path(formatter, "Delete", path),
             Self::DeleteFolder { path } => one_path(formatter, "DeleteFolder", path),
             Self::DeleteFolderInEachCase { path } => {
@@ -89,6 +92,12 @@ impl std::fmt::Debug for Step {
                 .field("below", below)
                 .finish(),
             Self::Run(command) => formatter.debug_tuple("Run").field(command).finish(),
+            Self::BindFolder { path } => one_path(formatter, "BindFolder", path),
+            Self::ApplyVersion { command, version } => formatter
+                .debug_struct("ApplyVersion")
+                .field("command", command)
+                .field("version", version)
+                .finish(),
             Self::Attempt(command) => formatter.debug_tuple("Attempt").field(command).finish(),
         }
     }
@@ -107,8 +116,8 @@ pub(crate) struct Project<'a> {
 }
 
 impl Paths {
-    /// Only what the program sets (SF-041, SF-042): the socket and the folder again, for a program that ignores the argument.
-    fn environment(&self) -> Vec<(String, String)> {
+    /// Only the socket and client configuration selected by the local owner.
+    pub(crate) fn environment(&self) -> Vec<(String, String)> {
         vec![
             ("DOCKER_HOST".to_owned(), format!("unix://{}", self.socket)),
             ("DOCKER_CONFIG".to_owned(), self.configuration.clone()),
@@ -139,9 +148,12 @@ impl Paths {
     }
 
     pub(crate) fn compose(&self, project: &Project<'_>, verbs: &[&str]) -> Command {
-        let mut arguments = self.first_arguments();
-        arguments.extend(["--project-name".to_owned(), project.name.to_owned()]);
-        arguments.extend(["--project-directory".to_owned(), project.folder.to_owned()]);
+        let mut arguments = vec![
+            "--project-name".to_owned(),
+            project.name.to_owned(),
+            "--project-directory".to_owned(),
+            project.folder.to_owned(),
+        ];
         for file in project.files {
             arguments.extend(["--file".to_owned(), file.clone()]);
         }
@@ -156,9 +168,7 @@ impl Paths {
 
     /// The folder of one application: `<root>/<UUID>`.
     pub(crate) fn application(&self, application: &str) -> Folders {
-        Folders {
-            application: format!("{}/{application}", self.root),
-        }
+        Folders::at(&self.root, application)
     }
 }
 
@@ -169,6 +179,12 @@ pub struct Folders {
 }
 
 impl Folders {
+    pub(crate) fn at(root: &str, application: &str) -> Self {
+        Self {
+            application: format!("{root}/{application}"),
+        }
+    }
+
     #[must_use]
     pub fn application(&self) -> &str {
         &self.application
@@ -186,7 +202,7 @@ impl Folders {
         format!("{}/binds", self.application)
     }
 
-    fn file(&self, name: &str) -> String {
+    pub(crate) fn file(&self, name: &str) -> String {
         format!("{}/files/{name}", self.application)
     }
 

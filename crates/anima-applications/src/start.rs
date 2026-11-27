@@ -121,6 +121,15 @@ fn configuration(settings: &Settings, facts: &StartFacts) -> Result<(), StartRef
 /// # Errors
 /// The first reason of Section 6.4.1 for which the program refuses to start.
 pub fn decided(settings: &Settings, facts: &StartFacts) -> Result<EngineKind, StartRefusal> {
+    let kind = authority(settings, facts)?;
+    versions(facts.engine, facts.compose)?;
+    Ok(kind)
+}
+
+pub(crate) fn authority(
+    settings: &Settings,
+    facts: &StartFacts,
+) -> Result<EngineKind, StartRefusal> {
     let managed = settings.managed.as_ref().ok_or(StartRefusal::Off)?;
     if !facts.socket_is_a_socket {
         return Err(StartRefusal::NotASocket);
@@ -163,13 +172,17 @@ pub fn decided(settings: &Settings, facts: &StartFacts) -> Result<EngineKind, St
         return Err(StartRefusal::ProgramWritable);
     }
     configuration(settings, facts)?;
-    if facts.engine < LOWEST_ENGINE {
+    Ok(kind)
+}
+
+pub(crate) fn versions(engine: Version, compose: Version) -> Result<(), StartRefusal> {
+    if engine < LOWEST_ENGINE {
         return Err(StartRefusal::EngineTooOld);
     }
-    if facts.compose < LOWEST_COMPOSE {
+    if compose < LOWEST_COMPOSE {
         return Err(StartRefusal::ComposeTooOld);
     }
-    Ok(kind)
+    Ok(())
 }
 
 /// True when the owner of the real socket is the one of the start. The program reads the

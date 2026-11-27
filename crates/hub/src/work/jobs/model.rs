@@ -86,7 +86,7 @@ pub struct NewJob {
     pub os: Option<WorkOs>,
     pub architecture: Option<WorkArchitecture>,
     pub project: Option<ProjectId>,
-    pub repository: WorkRepository,
+    pub repository: Option<WorkRepository>,
     /// The object of the work type (K10 Section 6).
     pub parameters: serde_json::Value,
     /// The purposes of the secrets that the job needs; never a value.
@@ -94,6 +94,42 @@ pub struct NewJob {
     pub limits: Limits,
     /// The one machine that may get the job; no different machine ever gets it (ROU-006).
     pub machine: Option<DeviceId>,
+}
+
+impl NewJob {
+    pub(super) fn bind_source_target(mut self) -> Result<Self, super::Error> {
+        if self.work_type != WorkType::Build || self.parameters["recipe"] != "source_image_v1" {
+            return Ok(self);
+        }
+        let secrets: Vec<_> = self.secrets.iter().map(String::as_str).collect();
+        if !self.parameters.as_object().is_some_and(|parameters| {
+            daemon_core::work::types::build_holds(parameters, &secrets, self.kind)
+        }) {
+            return Err(super::Error::Invalid(
+                "the source-image parameters are invalid",
+            ));
+        }
+        let architecture = match self.parameters["target"].as_str() {
+            Some("linux-x86_64") => WorkArchitecture::X86_64,
+            Some("linux-aarch64") => WorkArchitecture::Aarch64,
+            _ => {
+                return Err(super::Error::Invalid(
+                    "the source-image target is unsupported",
+                ));
+            }
+        };
+        if self.kind != WorkKind::Container
+            || self.os.is_some_and(|os| os != WorkOs::Linux)
+            || self.architecture.is_some_and(|value| value != architecture)
+        {
+            return Err(super::Error::Invalid(
+                "source-image placement must match its container target",
+            ));
+        }
+        self.os = Some(WorkOs::Linux);
+        self.architecture = Some(architecture);
+        Ok(self)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

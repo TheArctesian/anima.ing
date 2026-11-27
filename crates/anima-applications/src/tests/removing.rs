@@ -13,8 +13,12 @@ fn verbs(plan: &Plan) -> Vec<String> {
     commands(plan)
         .iter()
         .map(|command| {
-            assert_eq!(command.arguments[..4], FIRST);
-            command.arguments[4..].join(" ")
+            if command.folder.is_some() {
+                command.arguments.join(" ")
+            } else {
+                assert_eq!(command.arguments[..4], FIRST);
+                command.arguments[4..].join(" ")
+            }
         })
         .collect()
 }

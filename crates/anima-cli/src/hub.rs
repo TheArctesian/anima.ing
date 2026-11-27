@@ -8,6 +8,7 @@ mod capabilities;
 pub mod error;
 pub mod origin;
 pub mod scalars;
+pub mod source_artifacts;
 pub mod subscription;
 pub mod token;
 pub mod tunnel;

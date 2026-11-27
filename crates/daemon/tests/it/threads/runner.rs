@@ -18,6 +18,7 @@ mod commands;
 mod grok;
 mod lifecycle;
 mod made;
+mod managed;
 mod relay;
 
 pub(super) use made::CLAUDE;

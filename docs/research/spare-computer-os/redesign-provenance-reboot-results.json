@@ -1,0 +1,72 @@
+{
+  "iso_sha256": "ba0a11ef7857c3d45c40da9d3c66e8d128b87016db46c9bef3dccd38c59dc631",
+  "memory_mib": 6144,
+  "execution_package": "/nix/store/yjyrfcn4hlv0v8q8lwn4nqja63g2xnd2-anima-os-execution-0.1.0",
+  "sandbox_config": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+  "results": [
+    {
+      "case": "verified-artifact-export-after-clean-reboot",
+      "result": "Passed"
+    },
+    {
+      "case": "rootless-build-export-provenance-candidate",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "limitation": "Candidate package via the frozen shared harness; explicit Dockerfile, strategy conflict, write-open isolation and exact archive export with minimum provenance; cached image from probe13 plus clean reboot and repeat export before release; not abrupt-power-loss, Railpack, provider, secrets, network or deployment",
+  "statement": {
+    "_type": "https://in-toto.io/Statement/v0.1",
+    "predicateType": "https://slsa.dev/provenance/v0.2",
+    "subject": [
+      {
+        "name": "pkg:docker/localhost/anima/build@artifact?platform=linux%2Famd64",
+        "digest": {
+          "sha256": "c4272eae7252195b2f7b1d3c66d743f8e4f2e8fb83dd5e4f779818d101fb9bf2"
+        }
+      }
+    ],
+    "predicate": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "invocation": {
+        "configSource": {},
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ],
+          "compatibilityVersion": 20
+        },
+        "environment": {
+          "dockerfileVersion": "1.24.0-dev",
+          "platform": "linux/amd64"
+        }
+      },
+      "metadata": {
+        "buildInvocationID": "fqfc0outsj8w60kfnf5n40vl2",
+        "buildStartedOn": "2026-11-24T19:21:00.297573904Z",
+        "buildFinishedOn": "2026-11-24T19:21:54.860898125Z",
+        "completeness": {
+          "parameters": true,
+          "environment": true,
+          "materials": false
+        },
+        "reproducible": false,
+        "https://mobyproject.org/buildkit@v1#metadata": {}
+      }
+    }
+  },
+  "harness": "harness-16",
+  "allPassed": true
+}

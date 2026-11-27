@@ -5,6 +5,7 @@
 
 mod address;
 mod at_account;
+mod installation;
 
 use std::{error::Error as StdError, net::IpAddr, sync::Arc, time::Duration};
 
@@ -239,19 +240,6 @@ impl Transport {
             .client
             .get(url)
             .header(AUTHORIZATION, bearer(token.expose())?)
-            .header(ACCEPT, HeaderValue::from_static(MEDIA_TYPE));
-        read(sent.send().await.map_err(|_| Fault::Network)?).await
-    }
-
-    pub(in crate::engine::sources) async fn mint(
-        &self,
-        url: Url,
-        app_token: &str,
-    ) -> Result<Answer, Fault> {
-        let sent = self
-            .client
-            .post(url)
-            .header(AUTHORIZATION, bearer(app_token.as_bytes())?)
             .header(ACCEPT, HeaderValue::from_static(MEDIA_TYPE));
         read(sent.send().await.map_err(|_| Fault::Network)?).await
     }
