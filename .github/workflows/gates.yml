@@ -279,6 +279,12 @@ jobs:
     if: needs.base.outputs.rust == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    env:
+      # Keep debug artifacts and concurrent compiler processes within the hosted runner's budget.
+      CARGO_BUILD_JOBS: "2"
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
     permissions:
       contents: read
     steps:
@@ -310,6 +316,7 @@ jobs:
       - name: Run the gates rust-test, doctest and pinning
         env:
           GATES_RUST_CRATES: ${{ needs.base.outputs.rust_crates }}
+          NEXTEST_TEST_THREADS: "2"
         run: |
           set -eu
           unset DATABASE_URL
