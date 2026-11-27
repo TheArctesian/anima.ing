@@ -57,7 +57,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 		return err
 	}
 	defer dials.Close()
-	go dial.Serve(dials, link.Open)
+	go dial.ServeWithProviders(dials, link.Open, link.OpenPreview, link.OpenProvider)
 
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()

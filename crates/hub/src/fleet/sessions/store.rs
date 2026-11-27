@@ -147,6 +147,18 @@ pub(super) async fn live_count<'e>(
     Ok(count)
 }
 
+pub(super) async fn live_ids(
+    conn: &mut PgConnection,
+    device: DeviceId,
+) -> Result<Vec<SessionId>, Error> {
+    Ok(sqlx::query_scalar(
+        "select id from sessions.sessions where device_id = $1 and ended_at is null order by id",
+    )
+    .bind(device)
+    .fetch_all(conn)
+    .await?)
+}
+
 /// A clock that stepped back cannot leave the row live (MV-003).
 pub(super) async fn end<'e>(
     db: impl PgExecutor<'e>,

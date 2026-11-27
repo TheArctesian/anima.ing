@@ -29,3 +29,18 @@ pub(in crate::fleet::trust) struct Actor {
     pub(in crate::fleet::trust) client: ClientAddr,
     pub(in crate::fleet::trust) at: DateTime<Utc>,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CertificateProtocol {
+    Rdp,
+    Vnc,
+}
+
+impl CertificateProtocol {
+    pub(super) const fn index(self) -> usize {
+        match self {
+            Self::Rdp => 0,
+            Self::Vnc => 1,
+        }
+    }
+}

@@ -33,7 +33,7 @@ pub(super) use self::{
     cursor::{Cut, GITHUB_PAGE, Place, cut},
     failure::{Subject, missing, unusable},
     filter::OpenOrClosed,
-    reach::{RepositoryAccess, Target, access},
+    reach::{BuildVisibility, RepositoryAccess, Target, access},
 };
 use super::{Error, on, store::reads};
 use crate::{
@@ -109,6 +109,13 @@ pub(super) async fn target(ctx: &Context<'_>, repository: &ID) -> Result<Target>
     match (access(row.left_out, row.gone, standing), row.account_id) {
         (RepositoryAccess::Ready, Some(account)) => Ok(Target {
             repository: id,
+            project: row.project_id,
+            build_visibility: match row.active_source_private {
+                Some(true) => BuildVisibility::Private,
+                Some(false) => BuildVisibility::Public,
+                None => BuildVisibility::Archived,
+            },
+            external_id: row.external_id,
             account,
             name: row.full_name,
             home: row.html_url,

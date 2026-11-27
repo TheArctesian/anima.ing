@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use tokio::{
-    io::{AsyncReadExt as _, AsyncWriteExt as _},
+    io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _},
     net::{TcpListener, TcpStream},
     sync::mpsc,
 };
@@ -62,8 +62,8 @@ async fn signed_in(client: &mut TcpStream, accepts: bool) -> std::io::Result<boo
 }
 
 /// The first update request, for the whole screen, is answered with one red Raw rectangle.
-async fn hear(
-    client: &mut TcpStream,
+pub(super) async fn hear(
+    client: &mut (impl AsyncRead + AsyncWrite + Unpin),
     kind: u8,
     heard: &mpsc::UnboundedSender<(u32, bool)>,
 ) -> std::io::Result<()> {

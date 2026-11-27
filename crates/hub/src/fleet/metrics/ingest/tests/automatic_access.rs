@@ -29,7 +29,7 @@ async fn private_access_defaults_and_owner_overrides(pool: PgPool) {
         "at": now.duration_trunc(TimeDelta::seconds(10)).unwrap().format("%Y-%m-%dT%H:%M:%SZ").to_string(), "mean":[1.0]
     }], "inventory": {
         "architecture":"x86_64", "os":"linux", "osVersion":"26.11", "tools":[], "buildTargets":[],
-        "remoteAccess":{"sshUser":"admin", "rdpUser":"admin"}
+        "remoteAccess":{"sshUser":"admin", "rdpUser":"admin"}, "remoteVncUser":"admin"
     }});
     assert_eq!(
         push(&pool, now, &token, &batch).await,
@@ -39,8 +39,15 @@ async fn private_access_defaults_and_owner_overrides(pool: PgPool) {
     assert!(ready.ssh.enabled);
     assert_eq!(ready.ssh.username, "admin");
     assert!(ready.rdp.enabled);
+    assert!(ready.vnc.enabled);
+    assert_eq!(ready.vnc.username.as_deref(), Some("admin"));
     assert!(!ready.rdp.ignore_certificate);
     sqlx::query("UPDATE devices.ssh_settings SET enabled = false WHERE device_id = $1")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE devices.vnc_settings SET enabled = false WHERE device_id = $1")
         .bind(id)
         .execute(&pool)
         .await
@@ -57,6 +64,7 @@ async fn private_access_defaults_and_owner_overrides(pool: PgPool) {
     let kept = devices::get(&pool, id).await.unwrap();
     assert!(!kept.ssh.enabled);
     assert_eq!(kept.rdp.port, 3390);
+    assert!(!kept.vnc.enabled);
     let mut other = batch;
     other["device"] = json!(pve());
     assert_ne!(
@@ -77,7 +85,7 @@ async fn access_announcement_does_not_enable_lan_device(pool: PgPool) {
         "at": now.duration_trunc(TimeDelta::seconds(10)).unwrap().format("%Y-%m-%dT%H:%M:%SZ").to_string(), "mean":[1.0]
     }], "inventory": {
         "architecture":"x86_64", "os":"linux", "osVersion":"26.11", "tools":[], "buildTargets":[],
-        "remoteAccess":{"sshUser":"admin", "rdpUser":"admin"}
+        "remoteAccess":{"sshUser":"admin", "rdpUser":"admin"}, "remoteVncUser":"admin"
     }});
     assert_eq!(
         push(&pool, now, &token, &batch).await,
@@ -86,4 +94,5 @@ async fn access_announcement_does_not_enable_lan_device(pool: PgPool) {
     let kept = devices::get(&pool, id).await.unwrap();
     assert!(!kept.ssh.enabled);
     assert!(!kept.rdp.enabled);
+    assert!(!kept.vnc.enabled);
 }

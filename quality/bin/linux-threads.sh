@@ -28,7 +28,7 @@ extra=""
 if [[ $# -gt 0 ]]; then extra="$(printf ' %q' "$@")"; fi
 
 echo "linux threads: $image, crates anima-daemon and agent-threads, units:: left out"
-docker run --rm \
+docker run --rm --init \
   -v "$root":/src:ro \
   -v anima-linux-target:/target \
   -v anima-linux-cargo:/usr/local/cargo/registry \

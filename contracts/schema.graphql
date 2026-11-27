@@ -321,6 +321,7 @@ type RdpSettings {
 }
 
 type VncSettings {
+  serverCertificate: ServerCertificate
   enabled: Boolean!
   "Default 5900."
   port: Int!
@@ -1103,10 +1104,55 @@ enum ComposeProjectState {
   UNKNOWN
 }
 
+input ApplicationApplyInput {
+  deviceId: ID!
+  applicationId: ID
+  composeFile: String!
+  environmentFile: String
+  pull: Boolean! = true
+  keepPrevious: Boolean! = true
+}
+
+type ApplicationApplyRequest {
+  id: ID!
+  applicationId: ID!
+  deviceId: ID!
+  state: String!
+  reason: String
+  health: String
+}
+
+type ApplicationApplyTarget {
+  id: ID!
+  name: String!
+}
+
+enum ContainerActionVerb {
+  START
+  STOP
+  RESTART
+}
+
+input ContainerActionInput {
+  deviceId: ID!
+  containerId: String!
+  action: ContainerActionVerb!
+}
+
+type ContainerActionRequest {
+  id: ID!
+  state: String!
+  reason: String
+}
+
 "One container of a device (HOST-001). Every text is from the device."
 type Container {
   "The full identifier of Docker: 64 hexadecimal characters."
   id: String!
+  "The daemon recently advertised container actions on this device."
+  actionsAvailable: Boolean!
+  "A completed apply on the device matches the project and its Docker-reported Compose paths."
+  managedApplicationId: ID
   name: String!
   image: String!
   state: ContainerState!
@@ -2626,6 +2672,8 @@ input StartSessionInput {
   deviceId: ID!
   protocol: Protocol!
   display: DisplayInput!
+  "Open an RDP or VNC session without control or data transfer."
+  viewOnly: Boolean
 }
 
 # ---------------------------------------------------------------- builds (WP-36, R-107)
@@ -4124,7 +4172,82 @@ type AgentThreadSnapshot {
   lastSequence: String!
 }
 
+input ManagedCodeWorkspaceInput {
+  workspace: ID!
+  enabled: Boolean!
+}
+
+input ManagedCodeProviderLoginInput {
+  workspace: ID!
+  generation: String!
+  provider: String
+}
+
+input ManagedCodePreviewInput {
+  endpoint: ID!
+  workspace: ID!
+  generation: String!
+  port: Int!
+}
+
+input ManagedWorkspaceInput {
+  request: ID!
+  workspace: ID!
+  action: JSON!
+}
+
+input ManagedCodeInput {
+  request: ID!
+  workspace: ID!
+  generation: String!
+  action: JSON!
+}
+
+enum SourceBuildTarget {
+  LINUX_X86_64
+  LINUX_AARCH64
+}
+
+enum SourceBuildStrategy {
+  AUTO
+  DOCKERFILE
+  RAILPACK
+}
+
+input SourceBuildInput {
+  request: ID
+  repository: ID!
+  commit: String!
+  target: SourceBuildTarget!
+  strategy: SourceBuildStrategy! = AUTO
+  memoryMib: Int
+}
+
+type SourceBuild {
+  id: ID!
+  state: String!
+  attempt: Int!
+  reason: String
+}
+
+type ProjectBuildNode {
+  id: ID!
+  name: String!
+  target: SourceBuildTarget
+  privateCheckout: Boolean!
+}
+
+type ProjectBuildPlacement {
+  pinned: ProjectBuildNode
+  candidates: [ProjectBuildNode!]!
+}
+
 type Query {
+  managedCodePreviews(device: ID!, workspace: ID!): [JSON!]!
+  managedCodeWorkspaces(device: ID!): [JSON!]!
+  managedNodeWorkspaces(device: ID!): JSON!
+  managedWorkspaceRequest(request: ID!): JSON
+  managedCodeCommand(request: ID!): JSON
   deviceOsUpdate(deviceId: ID!): JSON!
   agentThreads(device: ID, program: String, project: String, state: String, first: Int! = 50, after: String): AgentThreadPage!
   agentThread(id: ID!): AgentThreadSnapshot
@@ -4179,6 +4302,10 @@ type Query {
   extensions: [Extension!]!
   sources: [Source!]!
   sourceAccounts(sourceKey: String): [SourceAccount!]!
+  "Lookup by build ID. Login or browser token only (D-23, R-100)."
+  sourceBuild(id: ID!): SourceBuild
+  "Read the current build pin and candidate nodes. Login or browser token only (D-23, R-100)."
+  projectBuildPlacement(project: ID!): ProjectBuildPlacement!
   "By name, then ID. leftOut false: the projects with at least one repository that is not left out. leftOut true: only the projects whose repositories are all left out. The two lists hold every project once. first is 1 to 200. CONFLICT while Projects is off."
   projects(leftOut: Boolean = false, first: Int = 50, after: String, browse: ProjectBrowse): ProjectConnection!
   "Any project, left out or not. Null when no project has this slug. CONFLICT while Projects is off."
@@ -4214,6 +4341,10 @@ type Query {
   agentSessions(filter: AgentUsageFilter, first: Int! = 50): AgentSessions!
   "The containers of a device, running or not, newest first (HOST-001). CONFLICT when the device has no SSH credential in Anima, SSH is off, no host key is accepted, or it has no docker command. UNAVAILABLE when the device or Docker does not answer. NOT_FOUND for an unknown device."
   containers(deviceId: ID!): [Container!]!
+  "The state of a queued container action. Null for an unknown action ID."
+  containerAction(id: ID!): ContainerActionRequest
+  applicationApply(id: ID!): ApplicationApplyRequest
+  applicationApplyTargets: [ApplicationApplyTarget!]!
   "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
   containerLog(deviceId: ID!, containerId: String!, lines: Int): ContainerLog!
   "The details of one container (HOST-017): its command, restart policy, health check, mounts, networks, labels and processes, and the names of its environment variables with no value. containerId is 12 to 64 lower-case hexadecimal characters. The errors of containers apply; NOT_FOUND also when the device has no such container. A command or a label can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
@@ -4323,6 +4454,13 @@ type Query {
 }
 
 type Mutation {
+  replyManagedCodeProviderLogin(session: ID!, code: String!): Boolean!
+  setManagedCodeWorkspaceEnabled(device: ID!, input: ManagedCodeWorkspaceInput!): Boolean!
+  managedCodePreviewHandoff(endpoint: ID!): JSON!
+  openManagedCodePreview(device: ID!, input: ManagedCodePreviewInput!): JSON!
+  closeManagedCodePreview(endpoint: ID!): Boolean!
+  queueManagedCodeCommand(device: ID!, input: ManagedCodeInput!): ID!
+  queueManagedWorkspaceRequest(device: ID!, input: ManagedWorkspaceInput!): ID!
   requestDeviceOsUpdate(deviceId: ID!, input: OsUpdateRequest!): Boolean!
   login(input: LoginInput!): AuthPayload!
   "Login or browser token only (D-23, R-100)."
@@ -4367,6 +4505,8 @@ type Mutation {
   clearVncCredential(deviceId: ID!): VncSettings!
   "The fingerprint must equal the one the hub saw, or CONFLICT. Login or browser token only (D-23, R-100)."
   acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate!
+  "Accepts the fingerprint observed in the last VNC connection test. CONFLICT if it differs. Login or browser token only (D-23, R-100)."
+  acceptVncServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate!
   "A ticket for the files tunnel of a live SSH session (K4 §9). Login or browser token only (D-23, R-100)."
   openFiles(sessionId: ID!): SessionTicket!
   wakeDevice(deviceId: ID!): WakeResult!
@@ -4462,6 +4602,14 @@ type Mutation {
   leaveOutRepository(id: ID!): Project!
   "By the repository's ID. Its proposed resources come back, and its account is made due so its signs are read again on the next sync (PRO-002). No change when it is not left out. Returns its project. NOT_FOUND for an unknown ID; CONFLICT while Projects is off."
   restoreRepository(id: ID!): Project!
+  "Queue an immutable project revision. Login or browser token only (D-23, R-100)."
+  queueSourceBuild(input: SourceBuildInput!): SourceBuild!
+  "Select a node for this project's builds, or clear the pin with a null device. Login or browser token only (D-23, R-100)."
+  setProjectBuildPin(project: ID!, device: ID): ProjectBuildPlacement!
+  "Queue a start, stop or restart by full Docker ID on one named device."
+  queueContainerAction(input: ContainerActionInput!): ContainerActionRequest!
+  "Queue operator-authored Compose and optional environment inputs. Login or browser token only (K10 Section 6.4.12)."
+  queueApplicationApply(input: ApplicationApplyInput!): ApplicationApplyRequest!
   "CONFLICT when it is already confirmed, or while Projects is off. NOT_FOUND for an unknown ID."
   confirmProjectResource(id: ID!): ProjectResource!
   "Imports a device group, reusing a matching name without replacing assigned projects. Returns only IDs known to this hub. Reuse source on retry: receipts preserve later user changes."
@@ -4625,6 +4773,7 @@ type Mutation {
 }
 
 type Subscription {
+  managedCodeProviderLogin(device: ID!, input: ManagedCodeProviderLoginInput!): JSON!
   agentThreadEntries(id: ID!, afterSequence: String!): AgentThreadEntry!
 
   deviceStatusChanged(deviceId: ID): DeviceStatusChange!
@@ -4766,4 +4915,5 @@ enum OsUpdateAction {
 input OsUpdateRequest {
   action: OsUpdateAction!
   confirmed: Boolean! = false
+  reviewRevision: String
 }

@@ -13,3 +13,5 @@ tokio = { workspace = true, features = ["process"] }
 whoami.workspace = true
 [target.'cfg(windows)'.dependencies]
 base64.workspace = true
+[dev-dependencies]
+proptest = "1.12"

@@ -15,7 +15,7 @@ use std::{
 use ipnet::IpNet;
 
 pub use link_port::LinkPort;
-pub use reached::{Reached, connect, on_link};
+pub use reached::{Reached, connect, on_link, preview, provider_login};
 
 /// The default refuses loopback, link-local, cloud metadata and the other addresses the hub
 /// never touches, in each IPv6 form.

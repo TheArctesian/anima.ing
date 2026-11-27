@@ -103,6 +103,10 @@ pub enum Action {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         base: Option<String>,
     },
+    /// An `AnimaOS` owner supplies a durable thread identity before dispatch. Only
+    /// the root-authenticated managed socket accepts this wrapper, and `start`
+    /// must be a direct Start without a new worktree.
+    StartManaged { thread: Uuid, start: Box<Action> },
     /// A prompt to a thread: to its running turn, or as a new turn, with the files that the
     /// person attached for it (TH111).
     Send {
@@ -157,6 +161,10 @@ pub enum Action {
         before: u64,
         most: usize,
     },
+    /// A bounded, redacted transcript projection for the root managed Code owner.
+    ManagedTranscript { thread: Uuid, after: u64 },
+    /// Count live threads waiting for a person in the managed workspace.
+    ManagedAttention,
     /// The projects of this computer (TH107).
     Projects,
     /// Create and register a new local Git project (TH60A); only the person.
@@ -253,6 +261,12 @@ pub enum Reply {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "outcome", rename_all = "snake_case")]
 pub enum Outcome {
+    ManagedTranscript {
+        snapshot: Box<crate::managed::Snapshot>,
+    },
+    ManagedAttention {
+        waiting_threads: usize,
+    },
     Ok,
     Started {
         thread: Uuid,

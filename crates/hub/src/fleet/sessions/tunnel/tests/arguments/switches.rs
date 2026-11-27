@@ -1,6 +1,7 @@
 //! Device switches to guacd arguments (K4 Section 3, RA-021, RA-033).
 
 use super::super::super::arguments::pinned_security;
+use super::Policy;
 use super::{DRIVE_ROOT, Desktop, Sources, TARGET, connect_for, connect_values, device};
 use crate::fleet::devices::{RdpSecurity, ResizeMethod, TransferPolicy};
 
@@ -139,7 +140,7 @@ fn gw_015_without_a_stored_password_guacd_gets_none_and_may_ask() {
             certificate: None,
             drive_root: DRIVE_ROOT,
         };
-        let values = connect_values(desktop, &sources).unwrap();
+        let values = connect_values(Policy::of(desktop, sources.device, false), &sources).unwrap();
         let sent = super::connect_by_name_of(desktop, &device, values);
         assert_eq!(sent["password"], "", "{desktop:?}");
     }

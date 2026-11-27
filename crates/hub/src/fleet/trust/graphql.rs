@@ -10,11 +10,14 @@ use std::sync::Arc;
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use sqlx::PgPool;
 
-pub use self::{host_key::HostKeysByDevice, server_certificate::ServerCertificatesByDevice};
+pub use self::{
+    host_key::HostKeysByDevice,
+    server_certificate::{ServerCertificatesByDevice, VncCertificateKey},
+};
 
 use self::error::to_graphql;
 use super::{
-    Fingerprint, HostKey, ServerCertificate, Sightings,
+    CertificateProtocol, Fingerprint, HostKey, ServerCertificate, Sightings,
     accept::{Acceptance, accept_host_key},
     accept_certificate::{CertificateAcceptance, accept_server_certificate},
     model::Actor,
@@ -94,6 +97,7 @@ fn certificate_acceptance(
     match (device, fingerprint) {
         (Ok(device), Ok(fingerprint)) => Ok(CertificateAcceptance {
             device,
+            protocol: CertificateProtocol::Rdp,
             fingerprint,
         }),
         (device, fingerprint) => Err(device.err().into_iter().chain(fingerprint.err()).collect()),
@@ -138,6 +142,28 @@ impl Mutation {
     ) -> Result<ServerCertificate> {
         let acceptance = certificate_acceptance(&device_id, &fingerprint_sha256)
             .map_err(|fields| invalid(&fields))?;
+        accept_server_certificate(
+            schema_dependency::<PgPool>(ctx)?,
+            schema_dependency::<Sightings>(ctx)?,
+            &actor(ctx)?,
+            acceptance,
+        )
+        .await
+        .map_err(to_graphql)
+    }
+
+    /// Accepts the independently observed VNC server certificate the last connection test saw for the device, when
+    /// the fingerprint matches; else `CONFLICT` (SEC-007).
+    #[graphql(guard = "Authenticated")]
+    async fn accept_vnc_server_certificate(
+        &self,
+        ctx: &Context<'_>,
+        device_id: ID,
+        fingerprint_sha256: String,
+    ) -> Result<ServerCertificate> {
+        let mut acceptance = certificate_acceptance(&device_id, &fingerprint_sha256)
+            .map_err(|fields| invalid(&fields))?;
+        acceptance.protocol = CertificateProtocol::Vnc;
         accept_server_certificate(
             schema_dependency::<PgPool>(ctx)?,
             schema_dependency::<Sightings>(ctx)?,

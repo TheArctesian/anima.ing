@@ -1,0 +1,33 @@
+{
+  "execution": {
+    "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+    "package": "/nix/store/n8paqhlncbm7mc6wzlw2zzammjylv5kk-anima-os-execution-0.1.0",
+    "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+    "narSha256": "47236276dd2c9a614f42171fc913d54e4d0c653eda553b9f7970312f28d26cbc",
+    "watchdogUnitSha256": "54fe71f4eb998c6e5d691ce827a674df18d8ce6e05a1d0255027d6b385d5fd09",
+    "bytes": 5993728
+  },
+  "retainedFixture": "/Users/stephenokita/.local/share/anima-os-prototype/redesign-20261124-railpack-02",
+  "harness": "harness-22",
+  "scope": "Offline synthetic Dockerfile diagnostics plus local lease renewal/expiry/watchdog-stop. Current-worktree Nix watchdog unit and candidate execution package in retained disposable VM. Temporary recovery ExecStart override invokes actual candidate owner. Isolated Docker store supplies test rootfs. Not latest ISO, original-store recovery or daemon-routed hosting acceptance.",
+  "results": [
+    {
+      "case": "candidate-boot-reconciliation",
+      "result": "Passed"
+    },
+    {
+      "case": "offline-build-output-and-release",
+      "result": "Failed",
+      "reason": "Guest command failed: export DOCKER_HOST=unix:///run/anima-railpack-docker.sock; printf '%s\\n' '{\"operation\": \"build\", \"attempt\": \"983f1395-ab52-483c-8e79-cd92048db330\", \"workspace\": \"7a6caefa-abe6-481b-a2ca-8cbee48c6127\", \"generation\": 0, \"context\": \"47914210-ec72-4c4e-93cd-77d13919a100\", \"strategy\": \"dockerfile\", \"resources\": {\"memory_bytes\": 536870912, \"cpu_millis\": 500, \"tasks\": 128}}' | /nix/store/n8paqhlncbm7mc6wzlw2zzammjylv5kk-anima-os-execution-0.1.0/bin/anima-os-execution > /run/anima-build-check-983f1395-ab52-483c-8e79-cd92048db330/launch.json || { cat /run/anima-build-check-983f1395-ab52-483c-8e79-cd92048db330/launch.json; exit 1; }; cat /run/anima-build-check-983f1395-ab52-483c-8e79-cd92048db330/launch.json; jq -e '.ok and (.value.phase == \"running\" and .value.requested_strategy == \"dockerfile\")' /run/anima-build-check-983f1395-ab52-483c-8e79-cd92048db330/launch.json"
+    },
+    {
+      "case": "clean-shutdown",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "qualification": "Recovery, candidate watchdog startup, synthetic rootfs creation and source capture passed. Build admission refused before launch because the 64 GiB fixture could not cover the 16 GiB build quota plus existing workspace/context/build allocations and 32 GiB hosting reserve. This is an observed admission refusal, not build diagnostics or lease acceptance. Next run uses a 128 GiB copy-on-write overlay; no production reserve is lowered."
+}

@@ -44,7 +44,7 @@ impl Local {
         }
     }
 
-    async fn connect(&self) -> Result<UnixStream, Cause> {
+    pub(super) async fn connect(&self) -> Result<UnixStream, Cause> {
         checked(&self.socket, &self.expected).await
     }
 

@@ -30,7 +30,7 @@ type site struct {
 	target    string
 	device    identity.Device
 	permitted *devices.Store
-	openPort  func(port uint16) bool
+	openPort  func(port uint16) context.Context
 }
 
 func newSite(t *testing.T) *site {
@@ -74,7 +74,7 @@ func (s *site) startHub(t *testing.T) *hublink.Link {
 
 func (s *site) startDevice(t *testing.T, keepalive time.Duration) *devicelink.Link {
 	t.Helper()
-	link, err := devicelink.Start(devicelink.Config{Identity: s.device, Listen: "127.0.0.1:0", Keepalive: keepalive, OpenPort: s.openPort})
+	link, err := devicelink.Start(devicelink.Config{Identity: s.device, Listen: "127.0.0.1:0", Keepalive: keepalive, PermitPort: s.openPort})
 	if err != nil {
 		t.Fatalf("devicelink.Start: %v", err)
 	}

@@ -45,6 +45,7 @@ pub struct Tab {
     pub url: WebUrl,
     pub origin: Option<PinnedOrigin>,
     pub pin: Option<Pin>,
+    pub preview_endpoint: Option<uuid::Uuid>,
     pub popped_out: bool,
 }
 
@@ -100,6 +101,9 @@ impl Tabs {
     pub fn set_pin(&self, id: &TabId, fingerprint: Fingerprint) -> Result<Tab, WebViewError> {
         let mut open = self.open();
         let (_, tab) = open.tabs.get_mut(id).ok_or(WebViewError::UnknownTab)?;
+        if tab.preview_endpoint.is_some() {
+            return Err(WebViewError::Arguments);
+        }
         let origin = tab.origin.clone().ok_or(WebViewError::PinScheme)?;
         tab.pin = Some(Pin {
             origin,

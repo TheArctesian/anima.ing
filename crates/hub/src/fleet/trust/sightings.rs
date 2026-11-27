@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use chrono::{DateTime, Utc};
 
 use super::{
+    CertificateProtocol,
     certificate::PresentedCertificate,
     observations::{Endpoint, Observation, Observations},
     public_key::PublicKey,
@@ -14,7 +15,7 @@ use super::{
 pub struct Sightings {
     /// Its own lock: a connection test never waits on a ticket redemption.
     observations: Arc<Mutex<Observations<PublicKey>>>,
-    certificates: Arc<Mutex<Observations<PresentedCertificate>>>,
+    certificates: Arc<Mutex<[Observations<PresentedCertificate>; 2]>>,
 }
 
 impl Sightings {
@@ -24,7 +25,7 @@ impl Sightings {
             .unwrap_or_else(PoisonError::into_inner)
     }
 
-    fn certificates(&self) -> MutexGuard<'_, Observations<PresentedCertificate>> {
+    fn certificates(&self) -> MutexGuard<'_, [Observations<PresentedCertificate>; 2]> {
         self.certificates
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -49,18 +50,18 @@ impl Sightings {
 
     pub(crate) fn observe_certificate(
         &self,
-        endpoint: Endpoint,
+        (endpoint, protocol): (Endpoint, CertificateProtocol),
         certificate: PresentedCertificate,
         now: DateTime<Utc>,
     ) -> Observation<PresentedCertificate> {
-        self.certificates().record(endpoint, certificate, now)
+        self.certificates()[protocol.index()].record(endpoint, certificate, now)
     }
 
     pub(in crate::fleet::trust) fn observed_certificate(
         &self,
-        endpoint: &Endpoint,
+        (endpoint, protocol): (&Endpoint, CertificateProtocol),
         now: DateTime<Utc>,
     ) -> Option<Observation<PresentedCertificate>> {
-        self.certificates().find(endpoint, now)
+        self.certificates()[protocol.index()].find(endpoint, now)
     }
 }

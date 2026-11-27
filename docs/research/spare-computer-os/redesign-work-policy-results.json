@@ -1,0 +1,15 @@
+{
+  "scope": "Real Linux development owner binary in disposable container; no host policy mounted; not installed OS or routed build admission.",
+  "results": [
+    {
+      "case": "atomic-policy-revision-and-validation",
+      "result": "Passed"
+    },
+    {
+      "case": "root-only-and-unsafe-storage-refusal",
+      "result": "Passed"
+    }
+  ],
+  "nixPackage": "/nix/store/rfk7qrnvcpxhimsln333fpra36r2hss1-anima-os-execution-0.1.0",
+  "nixPackageScope": "Separate x86_64 package build; CLI checks used native Linux development binary."
+}

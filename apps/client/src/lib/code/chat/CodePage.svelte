@@ -27,6 +27,8 @@
   import InboxRail from '../shell/InboxRail.svelte';
   import InboxToggle from '../shell/InboxToggle.svelte';
   import TopBand from '../shell/TopBand.svelte';
+  import IconButton from '../kit/IconButton.svelte';
+  import Tooltip from '../kit/Tooltip.svelte';
   import { applyReader, storedReader } from '../settings/reader';
   import ChatColumn from './ChatColumn.svelte';
   import ChatFoot from './ChatFoot.svelte';
@@ -39,11 +41,12 @@
 
   interface Props {
     store: ThreadsStore;
+    onnodes?: () => void;
     /** Open the project filter, a menu or a shelf from the start: the gallery's pictures. */
     view?: InboxView;
   }
 
-  const { store, view = new InboxView(store, inboxEngine(() => store.live), globalThis.localStorage ?? null) }: Props = $props();
+  const { store, onnodes, view = new InboxView(store, inboxEngine(() => store.live), globalThis.localStorage ?? null) }: Props = $props();
   const live = $derived(store.live);
   // The chat width, contrast and font size of Settings, Code (TC6), read each time the page opens.
   applyReader(document.documentElement, storedReader(globalThis.localStorage));
@@ -101,12 +104,6 @@
     await store.open(id, started, sent);
     await tick();
     page?.querySelector<HTMLElement>(`[data-thread="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
-  }
-
-  /** Stops each thread whose program runs, so the holder of this build takes over (TH98). */
-  async function stopRunning(): Promise<void> {
-    const running = [...(live?.threads.values() ?? [])].map((thread) => thread.row).filter((row) => row.state !== 'stopped' && row.state !== 'unknown');
-    await Promise.all(running.map((row) => live?.call({ call: 'stop', thread: row.id })));
   }
 
   /** After a key opened `id`: focus follows in the list; elsewhere the title is said (09 finding 13). */
@@ -202,6 +199,7 @@
   <aside class="inbox" inert={!shown} aria-label="Threads of this computer">
     <TopBand>
       <span class="name">Code</span>
+      {#if onnodes}<Tooltip text="Code on a node" side="below"><IconButton label="Code on a node" icon="server" onclick={onnodes} /></Tooltip>{/if}
       {#if !narrow}<HistoryButtons canGoBack={visits.canGoBack} canGoForward={visits.canGoForward} onback={() => step(-1)} onforward={() => step(1)} keys={mac ? { back: '⌘[', forward: '⌘]' } : { back: 'Ctrl+[', forward: 'Ctrl+]' }} />{/if}
     </TopBand>
     <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={newThread} onShow={() => (narrow ? (sheetOpen = true) : (inboxOpen = true))} bind:field />
@@ -234,7 +232,7 @@
       />
     {/snippet}
     {#snippet aside()}{#if detailed !== undefined}<ThreadAside row={detailed} shown={details} />{/if}{/snippet}
-    {#snippet notice()}{#if linkWords !== null}<RunnerNotice words={linkWords} onStop={live?.linked === true ? stopRunning : undefined} />{/if}{/snippet}
+    {#snippet notice()}{#if live !== null && linkWords !== null}<RunnerNotice {live} words={linkWords} />{/if}{/snippet}
     {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(view.codeRows)} onStarted={(id) => void choose(id, true, draft?.sent ?? null)} />{:else if selected}<ThreadBody {store} now={view.moment} />{:else}<EmptyState title="No thread is open" line="Select a thread started by Anima on this computer, or start a new thread." />{/if}
     {#snippet composer()}{#if draft === null && selected && store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>

@@ -26,6 +26,7 @@ use crate::{
 };
 
 pub(crate) use certificate::PresentedCertificate;
+pub(crate) use model::CertificateProtocol;
 pub use model::{HostKey, ServerCertificate};
 pub(crate) use observations::{Endpoint, Observation};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
@@ -45,7 +46,7 @@ pub enum Conflict {
     KeyDiffers,
     #[error(
         "The hub has not seen a server certificate for this device in the last 15 minutes. \
-         Test the connection with RDP, then accept the certificate it shows."
+         Test the connection with this protocol, then accept the certificate it shows."
     )]
     CertificateNotSeen,
     #[error(
@@ -102,5 +103,16 @@ pub async fn server_certificates(
     db: &PgPool,
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, ServerCertificate>, Error> {
-    store::server_certificates(db, devices).await
+    store::server_certificates(db, devices, CertificateProtocol::Rdp).await
+}
+
+/// Independently accepted VNC identities; an RDP pin is never returned here.
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn vnc_server_certificates(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, ServerCertificate>, Error> {
+    store::server_certificates(db, devices, CertificateProtocol::Vnc).await
 }

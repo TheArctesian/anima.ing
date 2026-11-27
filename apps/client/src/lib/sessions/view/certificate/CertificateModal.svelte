@@ -2,10 +2,11 @@
   import { onMount } from 'svelte';
   import Modal from '$lib/forms/modal/Modal.svelte';
   import { press } from '$lib/motion/roles/press';
-  import type { SessionsApi } from '../../api';
+  import type { RemoteProtocol, SessionsApi } from '../../api';
   import { PROBLEM, READING, transition, type CertificateEvent, type CertificateStep } from './certificate';
 
   interface Props {
+    protocol?: RemoteProtocol;
     device: { readonly id: string; readonly name: string };
     api: Pick<SessionsApi, 'testConnection' | 'acceptServerCertificate'>;
     /** Close the warning; the old certificate stays accepted. */
@@ -16,7 +17,7 @@
     returnTo?: () => HTMLElement | undefined;
   }
 
-  const { device, api, onclose, onaccepted, returnTo }: Props = $props();
+  const { device, protocol = 'RDP', api, onclose, onaccepted, returnTo }: Props = $props();
   /** The longest fingerprint (32 bytes as hex pairs) and one line: each row keeps this room whatever it shows. */
   const RESERVE_FINGERPRINT = `sha256:${Array.from({ length: 32 }, () => '00').join(':')}`;
   const RESERVE_LINE = '0';
@@ -40,7 +41,7 @@
 
   async function read() {
     if (current.step !== 'reading') return;
-    const result = await api.testConnection({ deviceId: device.id, protocol: 'RDP' });
+    const result = await api.testConnection({ deviceId: device.id, protocol });
     if (!closed) apply({ event: 'readDone', result });
   }
 
@@ -52,7 +53,7 @@
     const sending = apply({ event: 'accept' });
     if (sending?.step !== 'accepting') return;
     // Exactly the fingerprint shown; the step sends it once (SEC-007).
-    const result = await api.acceptServerCertificate(device.id, sending.certificate.fingerprintSha256);
+    const result = await api.acceptServerCertificate(device.id, sending.certificate.fingerprintSha256, protocol);
     if (closed) return;
     const next = apply({ event: 'accepted', result });
     if (next?.step === 'accepted') onaccepted();
@@ -86,7 +87,7 @@
   <div class="content" bind:this={content}>
     <div id="certificate-why" class="why">
       <p>
-        {device.name} presented a different RDP server certificate from the accepted one. Not connected.
+        {device.name} presented a different {protocol} server certificate from the accepted one. Not connected.
       </p>
       <p>
         Expected after a reinstall or a renewed certificate. Otherwise another machine may be answering in its place

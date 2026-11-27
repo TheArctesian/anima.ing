@@ -29,6 +29,7 @@ impl Relay {
     pub(super) fn on_client(&mut self, i: Instruction) -> ClientStep {
         match i.opcode.as_str() {
             "" => internal(i),
+            "key" | "mouse" | "touch" | "size" if self.policy.view_only => ClientStep::Drop,
             "size" => size(&i),
             "display" if self.policy.desktop == Desktop::Vnc => match i.args.as_slice() {
                 [choice] if choice == "all" || decimal(choice, 10).is_some() => {

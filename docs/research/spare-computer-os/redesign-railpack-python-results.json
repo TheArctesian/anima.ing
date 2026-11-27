@@ -1,0 +1,32 @@
+{
+  "execution": {
+    "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+    "package": "/nix/store/lzfglhaazyp8z9blvlvkwn2yfmw4207q-anima-os-execution-0.1.0",
+    "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+    "narSha256": "28dbe8e0780eb480c6ddcb859ba4b6e59dd5df024f98bcac3b660620738b754f",
+    "bytes": 5690728
+  },
+  "retainedFixture": "/Users/stephenokita/.local/share/anima-os-prototype/redesign-20261124-railpack-02",
+  "harness": "harness-20",
+  "scope": "Synthetic Python build/export/run in retained disposable VM with isolated Docker store. Not latest ISO, original-store recovery or routed hosting acceptance.",
+  "results": [
+    {
+      "case": "candidate-boot-reconciliation",
+      "result": "Passed"
+    },
+    {
+      "case": "python-build-export-isolated-run",
+      "result": "Failed",
+      "reason": "Guest command failed: export DOCKER_HOST=unix:///run/anima-railpack-docker.sock; printf '%s\\n' '{\"operation\": \"build-reconcile\", \"attempt\": \"67279cf4-e7df-42b2-b2c8-a769857de187\"}' | /nix/store/lzfglhaazyp8z9blvlvkwn2yfmw4207q-anima-os-execution-0.1.0/bin/anima-os-execution > /run/anima-railpack-check-67279cf4-e7df-42b2-b2c8-a769857de187/verified.json || { cat /run/anima-railpack-check-67279cf4-e7df-42b2-b2c8-a769857de187/verified.json; exit 1; }; cat /run/anima-railpack-check-67279cf4-e7df-42b2-b2c8-a769857de187/verified.json; jq -e '.ok and (.value.phase == \"verified\" and .value.result.integrityVerified and (.value.result.deployed | not))' /run/anima-railpack-check-67279cf4-e7df-42b2-b2c8-a769857de187/verified.json"
+    },
+    {
+      "case": "clean-shutdown",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "qualificationNote": "Build failed during building after 57m25s, no verified artifact or runtime acceptance. Journal reported 512.9M memory peak; specific cause not yet established. Harness clean-shutdown means reached power-off; serial logged a busy temporary mount, so clean filesystem shutdown is not proved."
+}

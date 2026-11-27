@@ -38,12 +38,13 @@ export interface Hub {
   ): Promise<HubResult<TResult>>;
   /**
    * Returns the function that stops it (API-002). A refused (close 4403) or unreadable token gives the sink `error`
-   * (UNAUTHENTICATED), and the subscription is not sent again.
+   * (UNAUTHENTICATED), and the subscription is not sent again. Set retry:false for operations that must end on disconnect.
    */
   subscribe<TResult, TVariables extends Variables>(
     document: TypedDocumentNode<TResult, TVariables>,
     variables: TVariables,
     sink: Sink<TResult>,
+    options?: { retry?: boolean },
   ): () => void;
   /** `connected` on `connection_ack` or a refused token, `unreachable` on failure or no ack in time (NAV-003, NET-004). */
   readonly status: LiveStatus;
@@ -96,7 +97,7 @@ export function createHub(options: HubOptions): Hub {
       const send = () => sendRequest(http, document, variables);
       return recent === undefined ? send() : recent.answer(document, variables, send);
     },
-    subscribe: (document, variables, sink) => socket.subscribe(document, variables, sink),
+    subscribe: (document, variables, sink, options) => socket.subscribe(document, variables, sink, options),
     status: connection.status,
     close: () => socket.close(),
   };

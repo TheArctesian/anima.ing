@@ -17,7 +17,7 @@ use super::{OLLAMA, seed_standing};
 use crate::devices::{
     batching::{BATCH_WINDOW, SITES, counting_pool},
     graphql_read::add_bulk,
-    harness::{TestSchema, data, now},
+    harness::{data, now},
 };
 
 /// The batched cost of the fields below is 9 statements (the page, its count, and the reads of
@@ -35,7 +35,7 @@ const PER_CHECK_FIELDS: &str = "totalCount edges { node { name status ip uptime(
 const FIELDS: &str = "totalCount edges { node { name status ip uptime(window: DAY) \
                       week: uptime(window: WEEK) checks { name } } }";
 
-fn schema(pool: &PgPool) -> TestSchema {
+fn schema(pool: &PgPool) -> Schema<Query, Mutation, EmptySubscription> {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     Schema::build(Query, Mutation, EmptySubscription)
         .data(pool.clone())

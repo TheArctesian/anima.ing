@@ -71,7 +71,7 @@ pub async fn inventory(platform: Platform) -> Option<Inventory> {
     let os_version = os_version(os).await?;
     let search = Search::here(os).await;
     let mut found = probe_all((architecture, os, os_version), &search).await;
-    found.remote_access = remote_access().await;
+    super::remote_access::refresh(&mut found).await;
     Some(found)
 }
 
@@ -272,27 +272,4 @@ fn windows_version() -> Option<String> {
     {
         None
     }
-}
-
-async fn remote_access() -> Option<daemon_core::inventory::RemoteAccess> {
-    let bytes = read_capped(Path::new("/etc/anima/remote-access.json")).await?;
-    let mut found: daemon_core::inventory::RemoteAccess = serde_json::from_slice(&bytes).ok()?;
-    if !found.accepted() {
-        return None;
-    }
-    for (port, user) in [(22, &mut found.ssh_user), (3389, &mut found.rdp_user)] {
-        if user.is_some()
-            && !matches!(
-                tokio::time::timeout(
-                    Duration::from_secs(1),
-                    tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
-                )
-                .await,
-                Ok(Ok(_))
-            )
-        {
-            *user = None;
-        }
-    }
-    Some(found)
 }

@@ -10,7 +10,8 @@ impl Runner {
         stop: impl Future<Output = ()>,
     ) -> Result<(), RunnerError> {
         let listener = socket::bind(&self.dir)?;
-        self.serve(listener, stop).await;
+        let owner = socket::bind_owner()?;
+        self.serve(listener, owner, stop).await;
         if let Err(error) = std::fs::remove_file(self.dir.join(agent_threads::control::SOCKET)) {
             tracing::warn!(%error, "the socket of the runner was not removed");
         }
@@ -19,9 +20,14 @@ impl Runner {
     }
 
     /// The loop of the runner: the holder, the clients, and the stop.
-    async fn serve(&mut self, listener: tokio::net::UnixListener, stop: impl Future<Output = ()>) {
+    async fn serve(
+        &mut self,
+        listener: tokio::net::UnixListener,
+        owner: Option<tokio::net::UnixListener>,
+        stop: impl Future<Output = ()>,
+    ) {
         let (sender, mut incoming) = mpsc::channel(256);
-        let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
+        let mut accepting = accept_connections(&self.dir, listener, owner, sender);
         tokio::pin!(stop);
         let mut look = tokio::time::interval(Duration::from_secs(10));
         let mut asked = self.asks.receiver.take().expect("one serve loop");
@@ -43,6 +49,37 @@ impl Runner {
                 () = &mut stop => break,
             }
         }
-        accepting.abort();
+        accepting.abort_all();
     }
+}
+
+fn accept_connections(
+    dir: &std::path::Path,
+    listener: tokio::net::UnixListener,
+    owner: Option<tokio::net::UnixListener>,
+    sender: mpsc::Sender<socket::Incoming>,
+) -> tokio::task::JoinSet<()> {
+    let mut tasks = tokio::task::JoinSet::new();
+    // Managed workspaces have no local human client. Even a process outside
+    // the holder ancestry receives only agent permissions on runner.sock.
+    let local_authority = if owner.is_some() {
+        socket::Authority::WorkspaceAgent
+    } else {
+        socket::Authority::Local
+    };
+    if let Some(listener) = owner {
+        tasks.spawn(socket::accept(
+            listener,
+            sender.clone(),
+            dir.to_owned(),
+            socket::Authority::RootOwner,
+        ));
+    }
+    tasks.spawn(socket::accept(
+        listener,
+        sender,
+        dir.to_owned(),
+        local_authority,
+    ));
+    tasks
 }

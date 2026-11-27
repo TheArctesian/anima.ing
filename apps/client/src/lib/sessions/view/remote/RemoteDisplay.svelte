@@ -13,9 +13,10 @@
     mobile: boolean;
     fitKey?: DisplayChoices | undefined;
     interactive: boolean;
+    viewOnly?: boolean;
   }
 
-  const { client, pane, paneSize, remote, scale, mobile, fitKey, interactive }: Props = $props();
+  const { client, pane, paneSize, remote, scale, mobile, fitKey, interactive, viewOnly = false }: Props = $props();
   let zoom = $state(FIT_VIEWPORT);
   const viewport = $derived(boundViewport(zoom, paneSize, remote, scale));
   const renderedScale = $derived(scale * zoom.zoom);
@@ -41,11 +42,11 @@
     return touchRemote(pane, client, {
       read: () => viewport,
       show: (view) => { zoom = boundViewport(view, paneSize, remote, scale); },
-    });
+    }, viewOnly);
   });
 </script>
 
-<div class="display" style:translate={mobile ? `${String(viewport.x)}px ${String(viewport.y)}px` : undefined} data-display {@attach showDisplay(client, !mobile)}></div>
+<div class="display" style:translate={mobile ? `${String(viewport.x)}px ${String(viewport.y)}px` : undefined} data-display {@attach showDisplay(client, !mobile, !viewOnly)}></div>
 
 <style>
   .display {

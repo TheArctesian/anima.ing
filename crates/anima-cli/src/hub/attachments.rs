@@ -35,13 +35,13 @@ pub struct Downloaded {
 }
 
 impl Hub {
-    fn files_url(&self, path: &str) -> reqwest::Url {
+    pub(super) fn transfer_url(&self, path: &str) -> reqwest::Url {
         let mut url = self.origin().graphql();
         url.set_path(path);
         url
     }
 
-    fn file_request(
+    pub(super) fn transfer_request(
         &self,
         request: reqwest::RequestBuilder,
     ) -> Result<reqwest::RequestBuilder, HubError> {
@@ -64,7 +64,7 @@ impl Hub {
         media_type: &str,
     ) -> Result<serde_json::Value, HubError> {
         let query = query_text(upload)?;
-        let mut url = self.files_url("/files/v1/attachments");
+        let mut url = self.transfer_url("/files/v1/attachments");
         url.set_query(Some(&query));
         let frames = ReaderStream::new(file).map(|chunk| chunk.map(Frame::data));
         let request = self
@@ -74,7 +74,7 @@ impl Hub {
             .header(CONTENT_LENGTH, length)
             .body(reqwest::Body::wrap(StreamBody::new(frames)));
         let response = self
-            .file_request(request)?
+            .transfer_request(request)?
             .send()
             .await
             .map_err(|error| self.unreachable(&error))?;
@@ -93,9 +93,9 @@ impl Hub {
         id: &str,
         to: &mut File,
     ) -> Result<Downloaded, HubError> {
-        let url = self.files_url(&format!("/files/v1/attachments/{}", path_part(id)));
+        let url = self.transfer_url(&format!("/files/v1/attachments/{}", path_part(id)));
         let mut response = self
-            .file_request(self.http.get(url))?
+            .transfer_request(self.http.get(url))?
             .send()
             .await
             .map_err(|error| self.unreachable(&error))?;

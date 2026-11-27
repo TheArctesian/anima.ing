@@ -70,6 +70,7 @@ pub fn app(pool: &PgPool, clock: Arc<dyn Clock>) -> Router {
 }
 
 /// The hub at `start()` with the fixture operator signed in.
+#[derive(Clone)]
 pub struct Daemons {
     router: Router,
     pub clock: Arc<SetClock>,
@@ -98,6 +99,12 @@ impl Daemons {
         };
         daemons.operator = daemons.sign_in().await;
         daemons
+    }
+
+    #[cfg(unix)]
+    pub fn with_artifact_storage(mut self, store: anima_hub::work::artifacts::Store) -> Self {
+        self.router = self.router.layer(axum::Extension(store));
+        self
     }
 
     /// Sends `request` from `from`; the status and the body text.

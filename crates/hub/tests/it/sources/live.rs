@@ -4,6 +4,7 @@
 mod budget;
 mod cache;
 mod changes;
+mod checkout;
 mod leaks;
 mod pace;
 mod sync;

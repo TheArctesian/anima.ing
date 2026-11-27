@@ -78,7 +78,7 @@ fn decoded(wire: &str) -> Instruction {
 fn relay_for(desktop: Desktop, edit: impl FnOnce(&mut Device)) -> Relay {
     let mut device = device("desk.lab");
     edit(&mut device);
-    Relay::new(Policy::of(desktop, &device))
+    Relay::new(Policy::of(desktop, &device, false))
 }
 
 /// The database's defaults: no microphone and no shared drive.

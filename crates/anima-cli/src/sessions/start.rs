@@ -45,6 +45,7 @@ pub async fn start_ssh(
     let input = session_start::StartSessionInput {
         device_id,
         protocol: session_start::Protocol::SSH,
+        view_only: None,
         display: session_start::DisplayInput {
             width_px: pixels.0,
             height_px: pixels.1,

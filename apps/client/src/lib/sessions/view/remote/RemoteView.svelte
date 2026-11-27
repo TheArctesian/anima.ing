@@ -28,6 +28,8 @@
   interface Props {
     device: { readonly id: string; readonly name: string };
     protocol: RemoteProtocol;
+    viewOnly?: boolean;
+    onopenviewer?: ((button: HTMLElement) => void) | undefined;
     /** Starts a session on `device` with a new ticket; see `sessionStart(...).remote(protocol)` in `../start`. */
     start: RemoteStart;
     api: Pick<SessionsApi, 'endSession' | 'setCredential' | 'testConnection' | 'acceptServerCertificate'>;
@@ -42,7 +44,7 @@
     onclient?: (client: Client) => (() => void) | undefined;
   }
 
-  const { device, protocol, start, api, visible, focused, onback, onended, onclient }: Props = $props();
+  const { device, protocol, viewOnly = false, onopenviewer, start, api, visible, focused, onback, onended, onclient }: Props = $props();
   /** Fixed texts of the clipboard notices; never the clipboard's content (LOG-007). */
   const COPY_FAILED = 'Could not copy to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow access, or use Paste in the Keys menu.';
@@ -86,10 +88,10 @@
   const client = $derived(connection.tunnel?.client);
   const ready = $derived(connection.ready);
   const displayState = $derived(protocol === 'VNC' && stage.kind === 'open' ? stage.state : undefined);
-  const rules = $derived(stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
+  const rules = $derived(!viewOnly && stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
   const ask = $derived(gatewayAsk(protocol, stage.kind === 'open' ? stage.state.required : undefined, answered));
   /** The parent gives this pane the keyboard, unless the sign-in prompt has it; the pane then takes the focus. */
-  const wanted = $derived(visible && focused && ready && ask.kind !== 'ask');
+  const wanted = $derived(!viewOnly && visible && focused && ready && ask.kind !== 'ask');
   /** The sign-in prompt to show, at most one; a hidden tab shows none. */
   const prompts = $derived(visible && ask.kind === 'ask' && client !== undefined ? [{ ...ask, client }] : []);
   // A hidden tab's prompt or warning waits until its tab is shown, so it never covers or traps another tab (SEC-007).
@@ -108,10 +110,6 @@
   /** The ended panel, so that the certificate warning gives focus back to its button. */
   let ended: EndedPanel | undefined = $state();
 
-  function checkCertificate() {
-    dismissed = undefined;
-  }
-
   function reconnect() {
     dismissed = stage;
     notice = undefined;
@@ -126,7 +124,7 @@
 
   /** The operator's paste shortcut (Command+V, or Ctrl+V and the others the filter leaves to the browser). */
   function paste(event: ClipboardEvent) {
-    if (client === undefined || !ready) return;
+    if (viewOnly || client === undefined || !ready) return;
     event.preventDefault();
     if (!rules.paste) notice = PASTE_REFUSED;
     else pasteText(client, event.clipboardData?.getData('text/plain') ?? '', filter.held);
@@ -198,7 +196,7 @@
       if (allowed.copy && bound) copyToSystem(text);
     });
     const gone = untrack(() => onclient?.(target));
-    const sizes = protocol === 'RDP' ? pane?.sendSizes(target, startedAt) : undefined;
+    const sizes = protocol === 'RDP' && !viewOnly ? pane?.sendSizes(target, startedAt) : undefined;
     return () => {
       sizes?.();
       gone?.();
@@ -244,19 +242,20 @@
     deviceName={device.name}
     {onback}
     {ready}
-    policy={rules.notice}
+    policy={viewOnly ? 'View only' : rules.notice}
     pasteOff={rules.pasteOff}
+    {onopenviewer}
     {notice}
     fit={mobile ? () => displayView?.fit() : undefined}
     canFit={displayView?.zoomed() ?? false}
     displays={displayState?.displays}
     switching={displayState?.displayPending ?? false}
     selectDisplay={(id) => connection.tunnel?.selectDisplay?.(id)}
-    onkeys={sendKeys}
+    onkeys={viewOnly ? undefined : sendKeys}
     onpaste={pasteFromClipboard}
     ondismiss={() => (notice = undefined)}
   />
-  {#if mobile && ready && visible && client !== undefined && ask.kind !== 'ask'}<TouchText {client} />{/if}
+  {#if !viewOnly && mobile && ready && visible && client !== undefined && ask.kind !== 'ask'}<TouchText {client} />{/if}
   <div class="stage">
     <!-- The keyboard listens here only; menus, panels and modals are outside it (D-8). -->
     <!-- Focusable because the remote desktop takes the keyboard as a text field does (D-8). -->
@@ -271,7 +270,7 @@
       {@attach attachPane}
     >
       {#if ready && client !== undefined}
-        <RemoteDisplay bind:this={displayView} {client} pane={paneElement} paneSize={paneSize ?? remote} fitKey={displayState?.displays} {remote} {scale} {mobile} interactive={visible && ask.kind !== 'ask' && displayState?.displayPending !== true} />
+        <RemoteDisplay bind:this={displayView} {client} pane={paneElement} paneSize={paneSize ?? remote} fitKey={displayState?.displays} {remote} {scale} {mobile} {viewOnly} interactive={visible && ask.kind !== 'ask' && displayState?.displayPending !== true} />
       {/if}
     </div>
     {#if !ready}
@@ -287,7 +286,7 @@
             ending={stage.ending}
             settled={stage.kind === 'ended'}
             certificateChanged={changed}
-            onreconnect={changed ? checkCertificate : reconnect}
+            onreconnect={changed ? () => (dismissed = undefined) : reconnect}
           />
         {/if}
       </div>
@@ -309,7 +308,7 @@
 {/each}
 
 {#if certificateOpen}
-  <CertificateModal {device} {api} onclose={() => (dismissed = stage)} onaccepted={reconnect} returnTo={() => ended?.actionButton()} />
+  <CertificateModal {device} {protocol} {api} onclose={() => (dismissed = stage)} onaccepted={reconnect} returnTo={() => ended?.actionButton()} />
 {/if}
 
 <style>

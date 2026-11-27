@@ -107,7 +107,7 @@ it('HOST-021: the hub looks for newer images only when the operator asks, and ea
   expect(calls.updatesAsked).toBe(0);
   const cells = () => [...document.querySelectorAll('tbody tr:not(.group)')].map((row) => row.children[2]?.textContent.trim());
   // The rows: ai, tracks, its containers tracks-app-1 and tracks-worker-1, then recorder.
-  expect(cells()).toEqual(['Read only', 'Read only', '', '', 'Read only']);
+  expect(cells()).toEqual(['', '', '', '', '']);
   button('Look for newer images')?.click();
   await settle();
   expect(calls.updatesAsked).toBe(1);

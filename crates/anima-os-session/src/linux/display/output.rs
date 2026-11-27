@@ -1,4 +1,5 @@
-use super::super::{Error, Result, command::run};
+use super::super::{Error, Result};
+use super::physical::run;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 pub(super) const ROTATIONS: [&str; 4] = ["normal", "left", "right", "inverted"];

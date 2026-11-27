@@ -96,6 +96,17 @@ pub fn display(destination: &Path) -> Result<()> {
     Ok(())
 }
 
+pub fn reduced_motion(destination: &Path) -> Result<()> {
+    match fs::symlink_metadata("/run/anima-reduced-motion") {
+        Ok(metadata) if metadata.is_file() && metadata.uid() == 0 => {
+            private_write(destination, b"")
+        }
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
+    }
+}
+
 pub fn writer_lock() -> Result<File> {
     let file = OpenOptions::new()
         .read(true)

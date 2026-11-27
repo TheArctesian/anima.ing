@@ -2,6 +2,7 @@
 //! The live path never claims an account, writes no sync table and changes no schedule or health.
 
 mod budget;
+mod checkout;
 mod model;
 mod pace;
 mod read;
@@ -17,6 +18,7 @@ use sqlx::PgConnection;
 
 use self::{budget::Budget, pace::Pace, replies::Replies};
 pub use self::{
+    checkout::{mint_repository_checkout, revoke_repository_checkout},
     model::{Keep, LiveFailure, Reply, Reserve, Standing},
     read::ask,
     write::change,
@@ -27,6 +29,7 @@ use super::{
     store,
 };
 use crate::ids::SourceAccountId;
+pub(crate) use checkout::lock_checkout_account;
 
 /// Clones share the cache, the budget and the pace of every account.
 #[derive(Clone, Default)]

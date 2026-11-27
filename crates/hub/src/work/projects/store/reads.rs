@@ -197,6 +197,10 @@ pub(in crate::work::projects) async fn evidence(
 
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub(in crate::work::projects) struct ReachRow {
+    pub project_id: ProjectId,
+    /// Missing for an archived repository.
+    pub active_source_private: Option<bool>,
+    pub external_id: String,
     pub full_name: String,
     pub html_url: String,
     pub default_branch: Option<String>,
@@ -210,11 +214,70 @@ pub(in crate::work::projects) async fn reach(
     id: RepositoryId,
 ) -> Result<Option<ReachRow>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT full_name, html_url, default_branch, account_id, \
+        "SELECT project_id, CASE WHEN NOT archived THEN private END AS active_source_private, \
+         external_id, full_name, html_url, default_branch, account_id, \
          left_out_at IS NOT NULL AS left_out, gone_at IS NOT NULL AS gone \
          FROM projects.repositories WHERE id = $1",
     )
     .bind(id)
     .fetch_optional(db)
+    .await
+}
+
+pub(in crate::work::projects) async fn lock_project(
+    conn: &mut sqlx::PgConnection,
+    project: ProjectId,
+) -> Result<bool, sqlx::Error> {
+    let id: Option<ProjectId> =
+        sqlx::query_scalar("SELECT id FROM projects.projects WHERE id=$1 FOR SHARE")
+            .bind(project)
+            .fetch_optional(conn)
+            .await?;
+    Ok(id.is_some())
+}
+
+pub(in crate::work) async fn locked_checkout_matches(
+    conn: &mut sqlx::PgConnection,
+    (repository, project): (RepositoryId, ProjectId),
+    (account, external_id): (SourceAccountId, std::num::NonZeroU64),
+    name: &str,
+) -> Result<bool, sqlx::Error> {
+    let found: Option<RepositoryId> = sqlx::query_scalar(
+        "SELECT id FROM projects.repositories
+         WHERE id=$1 AND project_id=$2 AND account_id=$3 AND external_id=$4
+           AND forge='github' AND lower(full_name)=lower($5)
+           AND private AND NOT archived AND left_out_at IS NULL AND gone_at IS NULL
+         FOR SHARE",
+    )
+    .bind(repository)
+    .bind(project)
+    .bind(account)
+    .bind(external_id.to_string())
+    .bind(name)
+    .fetch_optional(conn)
+    .await?;
+    Ok(found.is_some())
+}
+
+#[derive(sqlx::FromRow)]
+pub(in crate::work) struct CheckoutIdentity {
+    pub project: ProjectId,
+    pub account: SourceAccountId,
+    pub external_id: String,
+}
+
+pub(in crate::work) async fn checkout_identity(
+    conn: &mut sqlx::PgConnection,
+    repository: RepositoryId,
+    name: &str,
+) -> Result<Option<CheckoutIdentity>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT project_id AS project,account_id AS account,external_id FROM projects.repositories
+         WHERE id=$1 AND lower(full_name)=lower($2) AND forge='github' AND private
+           AND account_id IS NOT NULL AND NOT archived AND left_out_at IS NULL AND gone_at IS NULL",
+    )
+    .bind(repository)
+    .bind(name)
+    .fetch_optional(conn)
     .await
 }

@@ -26,11 +26,17 @@ pub(super) enum Route {
     Enrol,
     Push,
     ThreadUpload,
+    ManagedCode,
+    Workspaces,
     Renew,
     KeysFetch,
     WorkClaim,
     WorkReport,
     WorkSecret,
+    #[cfg(unix)]
+    ArtifactUpload,
+    #[cfg(unix)]
+    WorkspaceHandoff,
 }
 
 impl Route {
@@ -38,11 +44,17 @@ impl Route {
         match self {
             Self::Enrol => "a daemon enrolment",
             Self::Push => "a daemon push",
+            Self::ManagedCode => "a managed Code poll",
+            Self::Workspaces => "a workspace lifecycle poll",
             Self::ThreadUpload => "a daemon thread upload",
             Self::Renew => "a daemon token renewal",
             Self::KeysFetch => "a daemon key fetch",
             Self::WorkClaim => "a claim of work",
             Self::WorkReport => "a report of work",
+            #[cfg(unix)]
+            Self::ArtifactUpload => "a private source artifact upload",
+            #[cfg(unix)]
+            Self::WorkspaceHandoff => "a private workspace checkpoint request",
             Self::WorkSecret => "a request for a secret of a job",
         }
     }

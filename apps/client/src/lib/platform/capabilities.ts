@@ -4,6 +4,8 @@ export interface Capabilities {
   readonly keyStore: boolean;
   /** Web interfaces open in native web view tabs that can pin a certificate (WEB-003, WEB-008). */
   readonly webViewTabs: boolean;
+  /** Isolated native mobile workspace preview, without app IPC. */
+  readonly workspacePreviews: boolean;
   /** A session tab can move to its own window (RA-002). */
   readonly popOut: boolean;
   /** The app checks for and installs its own updates (UPD-001, UPD-006). */

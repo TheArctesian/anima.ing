@@ -1,0 +1,8 @@
+query SourceBuildStatus($id: ID!) {
+  sourceBuild(id: $id) {
+    id
+    state
+    attempt
+    reason
+  }
+}

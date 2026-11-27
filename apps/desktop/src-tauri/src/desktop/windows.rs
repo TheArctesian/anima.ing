@@ -16,6 +16,7 @@ pub fn run() {
     app.manage(builder::Running::default())
         .manage(builder::Bundled::default())
         .manage(web_view::Tabs::default())
+        .manage(web_view::forward::Forwards::default())
         .manage(cloud::Cloud::default())
         .manage(daemon::Installing::default())
         .manage(local_hub::Changing::default())
@@ -110,6 +111,9 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         hub_listener::hub_listener_check,
         web_view::commands::web_view_pinning,
         web_view::commands::web_view_open,
+        web_view::preview::web_view_preview_handoff,
+        web_view::forward::workspace_forward_start,
+        web_view::forward::workspace_forward_stop,
         web_view::commands::web_view_place,
         web_view::commands::web_view_show,
         web_view::commands::web_view_go,

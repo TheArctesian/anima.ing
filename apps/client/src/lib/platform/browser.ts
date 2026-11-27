@@ -5,6 +5,7 @@ import type { Capabilities } from './capabilities';
 export const browserCapabilities: Capabilities = {
   keyStore: false,
   webViewTabs: false,
+  workspacePreviews: false,
   popOut: false,
   updates: false,
   processLog: false,

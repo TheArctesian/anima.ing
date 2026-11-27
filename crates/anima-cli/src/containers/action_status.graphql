@@ -1,0 +1,3 @@
+query ContainerActionStatus($id: ID!) {
+  containerAction(id: $id) { id state reason }
+}
