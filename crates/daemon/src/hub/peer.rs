@@ -7,6 +7,8 @@ mod signature;
 use std::io;
 
 pub use signature::TeamId;
+#[cfg(target_os = "macos")]
+pub(crate) use signature::daemon_requirement;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PeerError {

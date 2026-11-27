@@ -1,6 +1,6 @@
 //! Mutual TLS on the holder socket. Only the daemon role issues identities. A holder receives
-//! its leaf key through the pipe to the process the daemon starts; neither role sends a leaf
-//! private key over the named socket. The holder obtains the public enrollment root separately.
+//! its leaf over a bootstrap connection opened by the signed child role. Its stdin carries
+//! only the rendezvous address. The holder obtains the public enrollment root separately.
 
 use std::{io, path::Path, sync::Arc};
 

@@ -71,6 +71,10 @@ reqwest = { workspace = true, features = ["stream"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring.workspace = true
+core-foundation = "0.10"
+security-framework = "3"
+nix-peer = { package = "nix", version = "0.31", default-features = false, features = ["socket"] }
+sysinfo = { version = "0.40.4", default-features = false, features = ["system"] }
 # Inspect effective recovery permissions on the pinned directory descriptor.
 calcifer-macos-acl = "=0.1.0"
 

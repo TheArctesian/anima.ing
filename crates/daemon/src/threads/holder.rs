@@ -169,7 +169,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
     hold_with_channel(dir, limit, false).await
 }
 
-/// Runs the holder, optionally with its leaf key from the daemon's child-stdin pipe.
+/// Runs the holder, optionally with its leaf from the signed-child bootstrap.
 ///
 /// # Errors
 /// Returns the same folder and listener errors as [`hold`].
