@@ -82,6 +82,11 @@ fn changes() -> Vec<Action> {
             folder: PathBuf::from("/work/new"),
             name: None,
         },
+        Action::CloneProject {
+            folder: PathBuf::from("/work/clone"),
+            name: None,
+            url: "https://git.example.test/repo.git".to_owned(),
+        },
         Action::ChangeProject {
             change: ProjectChange::Remove {
                 folder: PathBuf::from("/work"),
@@ -216,10 +221,11 @@ const fn kind(action: &Action) -> usize {
         Action::Commands { .. } => 28,
         Action::Compact { .. } => 29,
         Action::CreateProject { .. } => 30,
+        Action::CloneProject { .. } => 31,
     }
 }
 
-const KINDS: usize = 31;
+const KINDS: usize = 32;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {

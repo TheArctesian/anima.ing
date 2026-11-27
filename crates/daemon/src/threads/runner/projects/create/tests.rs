@@ -6,11 +6,11 @@ async fn creates_a_repository_with_no_templates_and_refuses_to_reinitialize_it()
     let daemon = home.path().join("daemon");
     std::fs::create_dir(&daemon).unwrap();
     let requested = home.path().join("new project");
-    let real = project(requested.clone(), daemon.clone())
+    let prepared = project(requested.clone(), daemon.clone(), Preparation::Initialize)
         .await
-        .unwrap()
-        .folder()
         .unwrap();
+    assert!(!requested.exists());
+    let real = prepared.publish().unwrap().folder().unwrap();
     assert_eq!(real, std::fs::canonicalize(&requested).unwrap());
     assert_eq!(
         std::fs::read_to_string(real.join(".git/HEAD")).unwrap(),
@@ -20,7 +20,7 @@ async fn creates_a_repository_with_no_templates_and_refuses_to_reinitialize_it()
     std::fs::write(real.join("keep.txt"), "keep this").unwrap();
     std::fs::write(real.join(".git/HEAD"), "ref: refs/heads/keep\n").unwrap();
     assert!(matches!(
-        project(requested, daemon).await,
+        project(requested, daemon, Preparation::Initialize).await,
         Err(Refusal::CannotCreateProject { .. })
     ));
     assert_eq!(
@@ -50,7 +50,11 @@ async fn refuses_files_links_daemon_paths_and_missing_parents_without_changing_t
         home.path().join("../escape"),
         PathBuf::from("relative"),
     ] {
-        assert!(project(path, daemon.clone()).await.is_err());
+        assert!(
+            project(path, daemon.clone(), Preparation::Initialize)
+                .await
+                .is_err()
+        );
     }
     assert_eq!(std::fs::read_to_string(file).unwrap(), "original");
     assert!(!daemon.join(".git").exists());
@@ -97,7 +101,11 @@ async fn a_replaced_project_is_not_registered_and_replacement_files_stay_unchang
     let home = tempfile::tempdir().unwrap();
     let daemon = home.path().join("daemon");
     std::fs::create_dir(&daemon).unwrap();
-    let project = project(home.path().join("new"), daemon).await.unwrap();
+    let project = project(home.path().join("new"), daemon, Preparation::Initialize)
+        .await
+        .unwrap()
+        .publish()
+        .unwrap();
     let path = project.folder().unwrap();
     std::fs::rename(&path, home.path().join("kept")).unwrap();
     let outside = home.path().join("outside");

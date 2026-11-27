@@ -9,10 +9,10 @@
   import { noticeParts } from './notice';
   import { draftProjects, headingOf } from './project';
   import ProjectPicker from './ProjectPicker.svelte';
-  import NewProject from '../add-project/NewProject.svelte';
+  import ProjectForm from '../add-project/ProjectForm.svelte';
   import type { LocalProject } from '$lib/agent-threads/projects/projects';
   import AddProject from '../add-project/AddProject.svelte';
-  import { startFolder } from '../add-project/sources';
+  import { startFolder, type ProjectFormSource } from '../add-project/sources';
   import { folderListOf } from '../add-project/walk.svelte';
   import type { ThreadDraft } from './thread-draft.svelte';
 
@@ -31,7 +31,7 @@
   let models = $state<DraftModels>(MODELS_WAITING);
   /** A folder the person added from the picker, listed until a thread of it is. */
   let added = $state<string | null>(null);
-  let creating = $state(false);
+  let projectForm = $state<ProjectFormSource | null>(null);
   let registered = $state<readonly LocalProject[]>([]);
   let projectProblem = $state<string | null>(null);
   let projectAsk = 0;
@@ -77,7 +77,7 @@
     projectAsk += 1;
     registered = projects;
     projectProblem = null;
-    creating = false;
+    projectForm = null;
     choose(folder);
   }
 
@@ -137,8 +137,8 @@
   </div>
 </div>
 
-<AddProject bind:open={draft.adding} list={(folder) => live.call({ call: 'folders', folder }).then(folderListOf)} start={startFolder(known)} onAdd={choose} onNew={() => { creating = true; }} />
-{#if creating}<NewProject start={startFolder(known)} call={(action) => live.call(action)} onClose={() => { creating = false; }} onCreated={created} />{/if}
+<AddProject bind:open={draft.adding} list={(folder) => live.call({ call: 'folders', folder }).then(folderListOf)} start={startFolder(known)} onAdd={choose} onForm={(source) => { projectForm = source; }} />
+{#if projectForm !== null}<ProjectForm source={projectForm} start={startFolder(known)} call={(action) => live.call(action)} onClose={() => { projectForm = null; }} onCreated={created} />{/if}
 
 <style>
   /* The composer in the middle of the canvas, low when the window is short (T3: items-center, items-end under 34rem). */

@@ -3,6 +3,7 @@
 //!
 //! I/O: this is the only place of the Git stage that starts a process.
 
+mod capture;
 mod fixed;
 pub mod folder;
 pub mod hooks;
@@ -16,8 +17,6 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
-
-use tokio::io::AsyncWriteExt;
 
 pub(super) use fixed::{fixed_configuration, fixed_environment};
 use folder::FolderId;
@@ -286,84 +285,6 @@ impl Git {
         held.quiet_in(&record.folder).await
     }
 
-    /// Runs `git` and gives what it wrote to standard output.
-    ///
-    /// # Errors
-    /// A [`GitError`] when `git` did not start, did not end in time, wrote too much, or ended
-    /// with a code that is not 0.
-    pub async fn output(&self, run: Run<'_>) -> Result<Vec<u8>, GitError> {
-        let (code, out, said) = self.finished(run).await?;
-        if code == Some(0) {
-            Ok(out)
-        } else {
-            Err(GitError::Failed { code, said })
-        }
-    }
-
-    /// As [`Git::output`], as text with the last line end removed.
-    ///
-    /// # Errors
-    /// As [`Git::output`].
-    pub async fn text(&self, run: Run<'_>) -> Result<String, GitError> {
-        let out = self.output(run).await?;
-        Ok(String::from_utf8_lossy(&out).trim_end().to_owned())
-    }
-
-    /// Runs `git` for a question whose answer is its exit code: 0 is yes, 1 is no.
-    ///
-    /// # Errors
-    /// A [`GitError`] for each other code and each failure of the run.
-    pub async fn yes(&self, run: Run<'_>) -> Result<bool, GitError> {
-        match self.finished(run).await? {
-            (Some(0), ..) => Ok(true),
-            (Some(1), ..) => Ok(false),
-            (code, _, said) => Err(GitError::Failed { code, said }),
-        }
-    }
-
-    pub(super) async fn finished(
-        &self,
-        run: Run<'_>,
-    ) -> Result<(Option<i32>, Vec<u8>, String), GitError> {
-        // Directly before the run: the work folder is still the one that the runner made, not
-        // a folder or a link that an agent put in its place (P12).
-        if let Some((folder, made)) = &self.folder
-            && FolderId::of(folder) != Some(*made)
-        {
-            return Err(GitError::Replaced);
-        }
-        self.check_records(&run)?;
-        let mut child = self.command(&run).spawn().map_err(GitError::Start)?;
-        let group = child.id();
-        let input = child.stdin.take().zip(run.input);
-        let (stdout, stderr) = (child.stdout.take(), child.stderr.take());
-        let work = async {
-            let write = async {
-                if let Some((mut pipe, bytes)) = input {
-                    // A `git` that ends before it read all of the input is told by its code.
-                    let _ = pipe.write_all(&bytes).await;
-                }
-            };
-            let ((), out, said) = tokio::join!(
-                write,
-                output::held(stdout, run.output_prefix),
-                output::held(stderr, None)
-            );
-            let status = child.wait().await.map_err(GitError::Start)?;
-            Ok::<_, GitError>((status.code(), out, said))
-        };
-        let done = tokio::time::timeout(run.time, work).await;
-        let whole = matches!(&done, Ok(Ok((_, Some(_), _))));
-        if !whole {
-            // A hook or a helper that `git` started ends with it, not only `git` itself.
-            end_group(group);
-        }
-        let (code, out, said) = done.map_err(|_| GitError::TimedOut(run.time.as_secs()))??;
-        let out = out.ok_or(GitError::TooLarge)?;
-        let said = String::from_utf8_lossy(&said.unwrap_or_default()).into_owned();
-        Ok((code, out, said::without_credentials(&said)))
-    }
-
     /// The process of one run, in a process group of its own.
     fn command(&self, run: &Run<'_>) -> tokio::process::Command {
         let mut command = tokio::process::Command::new(&self.program);
@@ -390,22 +311,6 @@ impl Git {
         command
     }
 }
-
-/// Ends each process of the group of a run that did not end well by itself.
-#[cfg(unix)]
-fn end_group(group: Option<u32>) {
-    let pid = group
-        .and_then(|pid| i32::try_from(pid).ok())
-        .and_then(rustix::process::Pid::from_raw);
-    if let Some(pid) = pid {
-        // A group that ended already has nothing to end.
-        let _ = rustix::process::kill_process_group(pid, rustix::process::Signal::KILL);
-    }
-}
-
-/// On Windows `kill_on_drop` ends `git`; a process group is a thing of Unix.
-#[cfg(not(unix))]
-const fn end_group(_group: Option<u32>) {}
 
 impl Git {
     /// The names of the environment that reach `git`, for the tests.

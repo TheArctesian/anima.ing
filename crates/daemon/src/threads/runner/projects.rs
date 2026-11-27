@@ -1,39 +1,42 @@
-//! Creation of local Git projects for the person (TH60A).
+//! Preparation of local Git projects for the person (TH60A, TH60B).
 
-use std::path::PathBuf;
-
-use agent_threads::control::{Outcome, ProjectChange, Refusal, project_changed};
-use tokio::sync::mpsc;
+use agent_threads::control::{Action, Outcome, ProjectChange, Refusal, project_changed};
+use tokio::sync::SemaphorePermit;
+use tokio::task::JoinSet;
 
 use super::Runner;
 use super::socket::Caller;
 
+mod clone;
 mod create;
 
 pub(super) struct Created {
     back: Caller,
-    result: Result<(create::Project, Option<String>), Refusal>,
+    result: Result<create::Prepared, Refusal>,
+    name: Option<String>,
+    _place: SemaphorePermit<'static>,
 }
 
-pub(super) struct Creations {
-    sender: mpsc::Sender<Created>,
-    pub receiver: Option<mpsc::Receiver<Created>>,
-}
-
-impl Default for Creations {
-    fn default() -> Self {
-        let (sender, receiver) = mpsc::channel(3);
-        Self {
-            sender,
-            receiver: Some(receiver),
-        }
-    }
-}
+pub(super) type Creations = JoinSet<Created>;
 
 static CREATING: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(3);
 
 impl Runner {
-    pub(super) fn create_project(&self, folder: PathBuf, name: Option<String>, back: Caller) {
+    pub(super) fn prepare_project(&mut self, action: Action, back: Caller) {
+        let (folder, name, preparation) = match action {
+            Action::CreateProject { folder, name } => {
+                (folder, name, create::Preparation::Initialize)
+            }
+            Action::CloneProject { folder, name, url } => match clone::Source::parse(&url) {
+                Ok(source) => (folder, name, create::Preparation::Clone(source)),
+                Err(why) => return back.answer(Outcome::Refused { why }),
+            },
+            _ => {
+                return back.answer(Outcome::Refused {
+                    why: Refusal::BadValue,
+                });
+            }
+        };
         let change = ProjectChange::Add {
             folder: folder.clone(),
             name: name.clone(),
@@ -51,25 +54,38 @@ impl Runner {
             return;
         };
         let daemon = self.dir.parent().unwrap_or(&self.dir).to_owned();
-        let sender = self.project_creations.sender.clone();
-        tokio::spawn(async move {
-            let _place = place;
-            let result = create::project(folder, daemon)
-                .await
-                .map(|project| (project, name));
-            let _ = sender.send(Created { back, result }).await;
+        self.project_creations.spawn(async move {
+            let result = create::project(folder, daemon, preparation).await;
+            Created {
+                back,
+                result,
+                name,
+                _place: place,
+            }
         });
     }
 
     pub(super) fn project_created(&mut self, created: Created) {
-        let result = created.result.and_then(|(project, name)| {
-            let change = ProjectChange::Add { folder: project.folder()?, name };
+        let result = created.result.and_then(|prepared| {
+            // Only the runner commits a prepared result. A worker cancelled or discarded
+            // at shutdown owns private staging and cannot publish a project on its own.
+            let project = prepared.publish()?;
+            let change = ProjectChange::Add {
+                folder: project.folder()?,
+                name: created.name,
+            };
             let projects = project_changed(self.projects.clone(), &change, change.folder().clone())
-                .map_err(|_| refused("The folder was created, but the project list changed. Add the folder as a local project."))?;
+                .map_err(|_| {
+                    refused(
+                        "The folder was created, but the project list changed before registration.",
+                    )
+                })?;
             let before = std::mem::replace(&mut self.projects, projects);
             if !self.written() {
                 self.projects = before;
-                return Err(refused("The folder was created, but its registration could not be saved. Add the folder as a local project."));
+                return Err(refused(
+                    "The folder was created, but its registration could not be saved.",
+                ));
             }
             Ok(())
         });

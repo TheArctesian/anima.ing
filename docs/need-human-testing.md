@@ -34,6 +34,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-193 | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
+| HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
+| HT-199 | Clone a Code project from Git URL (TH60B, TC9) | Matching desktop, daemon and CLI on macOS or Linux, and a disposable anonymous HTTPS Git repository | Open |
 | HT-187 | Desktop Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and ordinary browser | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
@@ -5848,6 +5850,24 @@ State: Open. Built on `code/local-anima-sessions-only`. Synthetic tests mount th
 
 Parent-worker/device authority, TH30, remote session enablement and live SDK probes are outside this check.
 
+
+## HT-199 — Clone a Code project from Git URL
+
+State: Open. Built on `code/th60b-bounded-clone` (TH60B, TC9). The Git checkout, smart negotiation and runner refusal tests use
+synthetic loopback fixtures. The installed desktop and a
+successful HTTPS exchange with a real Git server still need a check.
+
+1. Use a test account with a matching desktop, daemon and CLI. Prepare a disposable
+   HTTPS Git repository with one known committed file, no sign-in and no redirect.
+   Open Code, start a draft and choose Add project → Git URL.
+2. Enter the test URL, a folder name and an existing parent on the daemon's
+   filesystem. Confirm the displayed destination and choose Clone project. Expect
+   a progress message, then selection of the new project in the draft. Expect
+   the known file in that folder. No thread starts when the clone completes.
+3. Repeat with a different folder through `anima agents projects clone <url> <folder>`.
+   Reopen the desktop. Expect both clones in the project picker.
+4. Repeat with an existing folder containing a file. Expect refusal and the
+   original file. In the form, expect the URL and destination fields to stay filled.
 ## HT-196: The marks of the programs in Hosting (task H53; HSE-020)
 
 Built on the branch `hosted/h53-brand-marks`: each row of Hosting > Applications and each entry of the Catalogue has a

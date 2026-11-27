@@ -66,6 +66,15 @@ enum ProjectCommand {
         #[arg(long)]
         name: Option<String>,
     },
+    /// Clone a Git repository over anonymous HTTPS and add it as a project on this computer.
+    Clone {
+        /// An HTTPS URL without credentials, query parameters or a fragment.
+        url: String,
+        /// A new folder with an existing parent.
+        folder: std::path::PathBuf,
+        #[arg(long)]
+        name: Option<String>,
+    },
     /// Add a folder of this computer as a project.
     Add {
         folder: std::path::PathBuf,
@@ -93,6 +102,11 @@ pub async fn projects(args: ProjectsArgs, invocation: &Invocation) -> Result<(),
         Some(ProjectCommand::Create { folder, name }) => Action::CreateProject {
             folder: absolute(folder),
             name,
+        },
+        Some(ProjectCommand::Clone { url, folder, name }) => Action::CloneProject {
+            folder: absolute(folder),
+            name,
+            url,
         },
         Some(ProjectCommand::Add { folder, name }) => Action::ChangeProject {
             change: ProjectChange::Add {
