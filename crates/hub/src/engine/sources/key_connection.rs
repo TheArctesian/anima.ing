@@ -44,8 +44,7 @@ pub async fn connect_with_key(
     let Acquisition::AccountKey(with_key) = declaration.acquisition else {
         return Err(Error::UnknownSource);
     };
-    let plain = s.transport.sends_plain_http();
-    let base = account_key::base(&input.base, plain).map_err(|_| Error::Base)?;
+    let base = account_key::base(&input.base).map_err(|_| Error::Base)?;
     let api_key = account_key::key(&input.api_key).map_err(|_| Error::ApiKey)?;
     let proof = Secret::new(api_key.as_bytes().to_vec());
     let answer = s
