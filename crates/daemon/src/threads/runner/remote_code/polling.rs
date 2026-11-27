@@ -48,9 +48,12 @@ impl Runner {
             Event::Claim { connection, result } => {
                 self.remote.claiming = false;
                 if connection == self.remote.connection
-                    && let Some((enrollment, claim)) = result
+                    && let Some((enrollment, stamp, claim)) = result
                     && self.remote.holder == super::Holder::Ready
                     && !self.remote.busy()
+                    && enrolled(self.remote_home()).await.is_some_and(|current| {
+                        enrollment.matches(current.config()) && current.credential_stamp() == stamp
+                    })
                 {
                     self.remote.reserving = true;
                     self.remote_send(ToHolder::Reserve { enrollment, claim })
@@ -160,9 +163,15 @@ impl Runner {
             let result = if let Some(delivery) = enrolled(home).await {
                 let advert = Advertised::new(&base, Switch::Off, switch, &targets);
                 match delivery.claim(&advert).await {
-                    Answer::Accepted(Claimed::Work(work)) => serde_json::from_value(work)
-                        .ok()
-                        .map(|claim| (Enrollment::of(delivery.config()), claim)),
+                    Answer::Accepted(Claimed::Work(work)) => {
+                        serde_json::from_value(work).ok().map(|claim| {
+                            (
+                                Enrollment::of(delivery.config()),
+                                delivery.credential_stamp(),
+                                claim,
+                            )
+                        })
+                    }
                     _ => None,
                 }
             } else {

@@ -49,7 +49,7 @@ pub(super) enum Event {
     Tick,
     Claim {
         connection: u64,
-        result: Option<(Enrollment, ClaimedLaunch)>,
+        result: Option<(Enrollment, [u8; 32], ClaimedLaunch)>,
     },
     Poll {
         connection: u64,
