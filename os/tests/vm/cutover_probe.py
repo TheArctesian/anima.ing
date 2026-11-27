@@ -126,7 +126,7 @@ def source_volume():
 def candidate():
     deadline = time.monotonic() + 45
     while time.monotonic() < deadline:
-        rows = command('docker', 'ps', '--no-trunc', '-q', '--filter',
+        rows = command('docker', 'ps', '--no-trunc', '-q',
                        '--filter', f'label=com.docker.compose.project={PROJECT}').decode().splitlines()
         if rows:
             assert len(rows) == 1, f'Expected one running migrated Docker container, found {rows}'
@@ -173,6 +173,10 @@ def migrate_to_docker():
         finally:
             podman('stop', '--time', '2', SOURCE)
         assert (reply := apply(compose)) == {'outcome': 'applied', 'health': 'healthy'}, reply
+    verify_migrated_write()
+
+
+def verify_migrated_write():
     container = candidate()
     assert command('docker', 'exec', container, '/bin/cat', '/state/marker').strip() == ORIGINAL.encode()
     command('docker', 'exec', container, '/bin/sh', '-c', f'printf "%s\n" {UPDATED} > /state/marker')
