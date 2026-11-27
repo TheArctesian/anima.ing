@@ -1,4 +1,4 @@
-use super::{Action, Command, Phase, Receipt, View};
+use super::{Action, Checkout, Command, Phase, Receipt, Source, View};
 use uuid::Uuid;
 
 #[test]
@@ -62,17 +62,9 @@ fn deletion_receipt_requires_confirmation_exact_generation_and_reclaimed_storage
     );
 }
 
-#[test]
-fn prepared_source_is_bound_to_the_exact_commit_and_cannot_run_before_checkout() {
-    use super::{Checkout, Source};
+fn prepared_checkout(source: &Source) -> Receipt {
     let workspace = Uuid::now_v7();
-    let source = Source {
-        owner: "example".into(),
-        repository: "app".into(),
-        commit: "a".repeat(40),
-        repository_id: Some(Uuid::from_u128(7)),
-    };
-    let mut receipt = Receipt {
+    Receipt {
         command: Command {
             request: Uuid::now_v7(),
             workspace,
@@ -88,15 +80,30 @@ fn prepared_source_is_bound_to_the_exact_commit_and_cannot_run_before_checkout()
             generation: 0,
             storage_bytes: 1 << 30,
             checkout: Some(Checkout {
-                source: Source {
-                    commit: "b".repeat(40),
-                    ..source.clone()
-                },
+                source: source.clone(),
                 ready: false,
             }),
         }),
         failure: None,
+    }
+}
+
+#[test]
+fn prepared_source_is_bound_to_the_exact_commit_and_cannot_run_before_checkout() {
+    let source = Source {
+        owner: "example".into(),
+        repository: "app".into(),
+        commit: "a".repeat(40),
+        repository_id: Some(Uuid::from_u128(7)),
     };
+    let mut receipt = prepared_checkout(&source);
+    receipt.result.as_mut().unwrap().checkout = Some(Checkout {
+        source: Source {
+            commit: "b".repeat(40),
+            ..source.clone()
+        },
+        ready: false,
+    });
     assert!(!receipt.fits(), "Wrong commit");
     let mut wrong_repository = source.clone();
     wrong_repository.repository_id = None;
