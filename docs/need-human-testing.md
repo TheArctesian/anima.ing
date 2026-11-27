@@ -31,6 +31,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-202 | Old desktop files are removed after a Builds publish (R9, BLD-086) | A Builds hub with signing set up and a disposable R2 bucket | Open |
+| HT-NEW-hostingoverview | Hosting overview and its actions (H52, HSE-019) | Desktop application, test hub, a Docker device and a route | Open |
 | HT-194 | The scroll wheel of the trackpad and the motion of the connection steps on an iPhone (M4-2, RA-050, 5.7.3) | The iPhone app from a build of `dev` with this change; a Mac with a long page in a browser | Open |
 | HT-193 | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
@@ -6405,5 +6406,24 @@ For the same build-lifecycle check, interrupt a confirmed artifact release after
    to name the fourth version and its files to be present. Expect the oldest version's desktop files
    and updater signature to be gone and the three newest versions to remain.
 3. Open the oldest Builds job. Expect its state to remain Published.
+
+## HT-NEW-hostingoverview: The overview at the top of Hosting (task H52; HSE-019)
+
+Above the list of Hosting > Applications, the overview shows three numbers (Machines up,
+Applications running, Routes proven) and one line with one action for each thing that needs you. Models ready needs the model copies of L1-7. The tests use a fake hub.
+
+1. In the desktop application of this build, signed in to a hub with at least one machine that has SSH on and Docker,
+   and one route, open Hosting > Applications.
+   Expected: above the list, three numbers; under each, how many need you in the warning colour, or "of" and the total.
+   While a section is read, its number is a dash with the word Reading.
+2. Stop a container of an application on that machine, then open Hosting again.
+   Expected: Applications running counts one less and says that one needs you; a line names the application and the
+   machine with its state and the button Show. Press Show: the list narrows to that machine and to Needs you, and
+   the row of the application is open if it has more than one container.
+3. Press the number Routes proven, then come back and press Applications running.
+   Expected: Routes opens with the choice Needs you; Applications shows the list with Needs you chosen.
+4. Switch off a machine that is listed (or take it off the network), then open Hosting again.
+   Expected: Machines up counts one less; a line names the machine with its status and Open device, which opens the
+   device page.
 
 Result: Open.
