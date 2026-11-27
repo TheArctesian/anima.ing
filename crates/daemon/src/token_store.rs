@@ -164,9 +164,6 @@ impl TokenStore {
         &self,
         config: Option<&crate::config::Config>,
     ) -> Result<Option<Zeroizing<[u8; 32]>>, TokenStoreError> {
-        if !keychain::release_daemon()? {
-            return Ok(None);
-        }
         let Some(bytes) = self.backend.read(self.deadline)? else {
             return Ok(None);
         };

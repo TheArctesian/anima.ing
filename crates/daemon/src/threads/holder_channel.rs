@@ -81,6 +81,9 @@ impl Issuer {
     #[cfg(target_os = "macos")]
     pub(super) fn transport(dir: &Path) -> io::Result<Option<Self>> {
         use crate::{config::home::Home, token_store::TokenStore};
+        if !crate::hub::peer::release_daemon().map_err(io::Error::other)? {
+            return Ok(None);
+        }
         let home = Home::at(dir.parent().ok_or_else(invalid)?.to_owned());
         let config = home.read_config().map_err(io::Error::other)?;
         let key = TokenStore::open(&home)
