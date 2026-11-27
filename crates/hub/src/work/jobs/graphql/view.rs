@@ -134,13 +134,15 @@ async fn work(conn: &mut PgConnection, row: Job) -> Result<WorkJob> {
     let decisions = store::decisions_of(conn, row.id).await.map_err(internal)?;
     let mut placement = reasons::line(&row, &decisions).replace(['\r', '\n'], " ");
     placement.truncate(placement.floor_char_boundary(2048));
-    let repository = &row.asked.repository;
     Ok(WorkJob {
         id: ID::from(row.id),
         work_type: row.asked.work_type.as_str().to_owned(),
         kind: store::word(&row.asked.kind).map_err(internal)?,
         project_id: row.asked.project.map(ID::from),
-        repository: Some(format!("{}/{}", repository.owner, repository.name)),
+        repository: row
+            .asked
+            .repository
+            .map(|repo| format!("{}/{}", repo.owner, repo.name)),
         state: row.state.into(),
         attempt: i32::try_from(row.attempt).map_err(internal)?,
         device_id: row.holder.or(row.last_device).map(ID::from),
