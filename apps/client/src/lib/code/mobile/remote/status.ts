@@ -59,11 +59,7 @@ export function commandMessage(receipt: CommandReceipt): string {
 
 export function writeRefused(error: HubError): boolean {
   return ['FORBIDDEN', 'UNAUTHENTICATED', 'VALIDATION', 'unserved'].includes(error.code)
-    || (error.code === 'INTERNAL' && [
-      'target_unavailable', 'LAUNCH_CONFLICT', 'COMMAND_CONFLICT', 'MALFORMED', 'COMMANDS_FULL',
-      'thread_unknown', 'THREAD_NOT_FOUND', 'WORK_OFF', 'threads_off', 'invalid_answer',
-      'request_stale', 'target_stale', 'DEVICE_NOT_FOUND',
-    ].includes(error.reason ?? ''));
+    || (error.code === 'INTERNAL' && error.reason !== undefined);
 }
 
 export function remoteError(error: HubError): string {

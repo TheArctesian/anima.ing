@@ -3,6 +3,12 @@ import { HOSTED_ADDRESS_MOVED, holdsMovedAddressHere, hubIsHosted, networkAdvice
 /** The K7 `extensions.code` values the hub sends. */
 const HUB_CODES = ['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION', 'CONFLICT', 'UNAVAILABLE', 'INTERNAL'] as const;
 
+const THREAD_REFUSALS: readonly string[] = [
+  'target_unavailable', 'LAUNCH_CONFLICT', 'COMMAND_CONFLICT', 'MALFORMED', 'COMMANDS_FULL',
+  'thread_unknown', 'THREAD_NOT_FOUND', 'WORK_OFF', 'threads_off', 'invalid_answer',
+  'request_stale', 'target_stale', 'DEVICE_NOT_FOUND',
+];
+
 export type HubCode = (typeof HUB_CODES)[number];
 
 export interface FieldError {
@@ -102,7 +108,7 @@ function parseError(value: unknown): HubError {
   return {
     code: 'INTERNAL',
     message: message === '' ? UNCODED_MESSAGE : message,
-    ...(typeof code === 'string' && { reason: code }),
+    ...(typeof code === 'string' && THREAD_REFUSALS.includes(code) && { reason: code }),
   };
 }
 
