@@ -177,7 +177,7 @@ const MOST_INNER: usize = 64;
 ///   below one folder with a name that nothing in the worktree can have, `kept`.
 ///
 /// `git` lists the files of each with the rules of that repository for what is ignored, as
-/// for the worktree itself: what is built there (`node_modules`, `target`) is not saved.
+/// for the worktree itself. The complete directory, including omitted files, stays recoverable.
 ///
 /// # Errors
 /// A [`GitError`] when a listing fails or there are more than [`MOST_INNER`] repositories.
@@ -207,7 +207,6 @@ pub(super) async fn inner_files(
                 .to_owned(),
         });
     }
-    let root = files::Root::open(dir).map_err(GitError::Files)?;
     // An index that is not there: each file of the repository is new to this listing.
     let none = worktree.record().own.join("index.none");
     let _ = std::fs::remove_file(&none);
@@ -229,17 +228,10 @@ pub(super) async fn inner_files(
             if !files::inside(&inside) {
                 continue;
             }
-            // A repository deeper down is listed as one name: its files are walked.
-            let deeper = if name.ends_with(b"/") {
-                root.files_below(&folder.join(&inside))
-                    .map_err(GitError::Files)?
-            } else {
-                vec![folder.join(&inside)]
-            };
-            for file in deeper {
-                let rest = file.strip_prefix(&folder).unwrap_or(&file).to_owned();
-                found.push((file, saved_at.join(rest)));
+            if name.ends_with(b"/") {
+                continue;
             }
+            found.push((folder.join(&inside), saved_at.join(inside)));
         }
     }
     Ok(found)
