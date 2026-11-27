@@ -90,7 +90,7 @@ The extensions change these parts of the design specification. Operator checkpoi
 | 1.4 Out of scope | Remove nothing. Multiple operators stay out of scope. |
 | 5.3 Navigation bar | Add the extension pages (Section 3.3 of this plan). |
 | 5.4 Design principles, Purpose | Each screen helps the operator find a problem, get into a device, or find a fact about their own life. |
-| 4.1 Network (SEC-008) | Add the model gateway routes of the hub. They are available on the VPN only (MGW-001). |
+| 4.1 Network (SEC-008) | Add the model gateway routes of the hub. They are available on the VPN only (MGW-001). R-465 removes these routes; OD-E33 asks what takes their place for cloud models. |
 | Marketing website (SITE-006) | The website is no longer the only public part of Anima. Add the webhook receiver (Section 2.12, OD-E15). |
 | 6.9 Integrations | Join with extension 5 (Section 4.5). Add the model use counts to the Prometheus endpoint (MGW-013). |
 | 7 Settings page | Add an Integrations section (Section 4.5). |
@@ -1080,6 +1080,55 @@ A model that the operator tuned with Unsloth is a local model. A local model ser
 - **MGW-017.** The page must show: each upstream with its state, the use by device, by model and by day, the cost for the month, and each budget with the amount that is used.
 - **MGW-018.** The model gateway needs the Secrets extension (EXT-010), because each upstream key is a global secret. Thus a key has one store and the operator rotates it in one place (SCR-014).
 
+#### The model address on each computer (RTR-001 to RTR-042)
+
+R-465 (operator, 2026-11-23) decided OD-AI1 of [ai-direction.md](../proposals/ai-direction.md): the model gateway owns the model address on each computer, the list of models and the record of use, and the compute plan owns the machines (the runtimes, the pulls and the placement). The requirements RTR-001 to RTR-042 thus moved here from Section 6 of [compute-plan.md](compute-plan.md) with their numbers and their text, as that plan said they would. The tasks that build them stay in Section 12.4 of the compute plan (L1-9 to L1-18; R-466 names L1-10 there), because they build on the machines of that plan. The contract of the model address is `contracts/compute/model-request.md` (task L1-10, R-466).
+
+R-465 also removes the hub routes of the model gateway. MGW-001 to MGW-018 above still have the text of the hub routes: OD-E33 asks how a request for a cloud model reaches its provider with no hub route, and until it is decided no task builds MGW-001, MGW-002, MGW-003, MGW-006, MGW-008 or MGW-010. RTR-002 and CMP-013 of the compute plan already say that the hub carries no model request (R-131).
+
+
+Version 0.2 of this section: a router in the hub at `https://ai.anima.ing`, with a name on Headscale DNS, a DNS-01 certificate and API keys with a list of permitted models. R-131 replaced the router in the hub. C1 replaced the keys.
+
+#### 4.15.1 Address and access
+
+- **RTR-001.** The model address must be a listener on the loopback address of each computer of the operator that runs the Anima program (R-131). The contract of task L1-10 says which program holds the listener (the desktop application or `anima`) and how the port is fixed. The daemon does not hold it, unless a ruling changes MET-020. The address has no DNS name, no DNS record and no certificate (OD-C7, R-165). Version 0.2: the router answers at `https://ai.anima.ing`, a name of Headscale DNS for the VPN address of the hub.
+- **RTR-002.** The hub must have no route that carries a model request or an answer (CMP-013). No public DNS record must point at a model address or at a compute node. Version 0.2: no public record of `ai.anima.ing` points at the hub.
+- **RTR-003.** Withdrawn (OD-C7, R-165): a loopback address needs no certificate. Version 0.2: a certificate of a public authority through the ACME DNS-01 challenge, with the DNS token as a Docker secret.
+- **RTR-004.** The model address must require the model key and must refuse a request without it. The first release has one shared key for all models and all callers. The operator can rotate the key and can revoke it. The contract of task L1-9 must define what a caller sees in the change from the old key to the new key, before the build. A key for each project, a list of permitted models and an expiry come later (Section 1.3 of [compute-plan.md](compute-plan.md)). The model key is only the key of the model address: it does not replace the daemon token, and it permits no model work. Version 0.2: each key has a name, a list of permitted models and an optional expiry.
+- **RTR-005.** The model address must accept connections only from its own computer. A compute node must accept a model request only as SEC-C-002 says. Version 0.2: the permitted-network rule of the hub (NET-001, NET-002) applies to the router.
+
+#### 4.15.2 OpenAI API
+
+- **RTR-010.** The model address must supply `/v1/models` and `/v1/chat/completions`, with a streamed answer and with image input for a model with vision (CMP-007). `/v1/completions`, `/v1/embeddings` and `/v1/responses` are planning context: each one is added when a model that needs it is validated. Version 0.2: all five from the first build.
+- **RTR-011.** `/v1/models` must list each model that has a validated copy (CMP-006) on a node with a permitting policy, and each alias. It lists a model once, not once for each copy.
+- **RTR-012.** Each entry of `/v1/models` must also give the Anima fields: the capability tags, the context length, the variants, and for each copy the node, the runtime and the state (FIT-025).
+- **RTR-013.** A request can name a model, a model with a tag, or an alias. If the request has no tag, the router can use any validated variant of the model.
+- **RTR-014.** A request can name a node with the header `Anima-Node`. The router then uses only that node. If the node cannot serve the model, the request is refused with the reason. The router never uses a different node in its place.
+- **RTR-015.** The model address can forward the Anthropic Messages API (`/v1/messages`) to a model server that supports it.
+- **RTR-016.** A refusal must give a fixed reason: the model is not known, no copy is validated, the node is off or its policy stops it, the model does not fit (FIT-026), the memory is in use, or the key is wrong. A refusal must never look like an answer of a model.
+
+#### 4.15.3 Routing
+
+- **RTR-030.** When the request names no node, the router must select from the validated copies of the model on healthy nodes with a permitting policy, by a fixed rule that Anima shows: a node with a loaded copy first, else the node with the most free memory. It uses no scores (OD-C10, R-165). Version 0.2: the router prefers a loaded copy.
+- **RTR-031.** If no copy is loaded, a load starts (FIT-020). An ordinary call in the OpenAI form or the Ollama form waits for its normal result, within a deadline. The caller can select the behaviour when the memory is in use: wait until a deadline, or fail at once. A caller that asks for it gets the status of the load before the result (RTR-039). The model address must never put loading text into the output of a model, must not make stream parts that the protocol does not have, and must not send extra HTTP answers. Version 0.2: the caller waits until the load is done or until a time limit of a setting.
+- **RTR-032.** The model address must stream responses without a buffer.
+- **RTR-033.** The router can send requests with the same conversation key to the same server, to use its prompt cache.
+- **RTR-034.** Planning context, not a requirement of the first release: score each loaded copy by the expected wait (queue depth divided by measured tokens per second) and pick the better of two random candidates. It is not part of the rule of RTR-030 (OD-C10, R-165), and it waits for more than one node with the same model.
+- **RTR-035.** If a node fails 3 requests in a row, the router must stop sending to it for 30 seconds (circuit breaker).
+- **RTR-036.** The router can retry a request on a different server only before the first byte goes to the caller, and never when the caller named the node (RTR-014).
+- **RTR-037.** The hub must keep the record of use (R-131): the time, the model, the node, the computer of the caller, the token counts and the duration of each request. The model address reports them to the hub. No prompt, no output and no image is in the record (LOG-007). R-465 decided OD-AI1 of [ai-direction.md](../proposals/ai-direction.md): one document owns this record, and it is this section, so this record and the `model_use` of MGW-012 are one record. Version 0.2: the router in the hub records each request with its key.
+- **RTR-039.** The status of a request for a caller that asks for it has stages such as queued, loading, ready, running and failed. The contract of task L1-15 gives the names and the changes between them, the timeout, the cancellation and what each one cleans up. The background mode of the OpenAI Responses API (`background=true`, retrieve, poll, cancel) is the first candidate for the form. The wait until a deadline, the fail at once and the pin are local additions of Anima, not fields of OpenAI or Ollama. A non-text job uses the contract of its family (CMP-007).
+
+The router design takes ideas from the SGLang model gateway, the LMDeploy proxy and the LocalAI SmartRouter (Section 14 of [compute-plan.md](compute-plan.md)). Anima writes its own router in Rust.
+
+#### 4.15.4 Ollama API
+
+This section is phase C2. Many tools can use an Ollama server. The model address can also speak the Ollama API, so that these tools work without a change.
+
+- **RTR-040.** The model address can supply these Ollama endpoints: `/api/tags`, `/api/ps`, `/api/show`, `/api/chat`, `/api/generate`, `/api/embed` and `/api/pull`.
+- **RTR-041.** `/api/pull` must use the hub selection of node and variant (PULL-002), unless the request names a node.
+- **RTR-042.** The Ollama endpoints must use the same model key as the OpenAI endpoints.
+
 ### 4.16 Bots (proposed, operator direction 2026-11-16)
 
 This section is a proposal and is in its own document: [bots.md](../proposals/bots.md) (BOT-001 to BOT-078; R-196 withdrew BOT-001 to BOT-018 and BOT-025 to BOT-028 and parked BOT-047 to BOT-057). It is not approved. Its proposed work package is XP-16, which is not in the tables of Section 5. Do not build from it (PLN-018).
@@ -1536,6 +1585,7 @@ crates/
 | OD-E30 | When no device of the account can approve (no phone, no application), is there a fallback? A hosted hub has no TOTP (R-129). | Decided: no fallback; any device of the account with the application running may approve, each with its local check (Face ID, Touch ID, the screen lock, or the login password through polkit on Linux). His words: "any running app can approve it" (2026-11-22). A browser tab alone cannot approve; with no application running the request expires. The cost: a lost device and no other running application means no approval. |
 | OD-E31 | OD-E26 permits plain `http` to private and VPN addresses. On a hosted hub the private ranges (10/8, 172.16/12, 192.168/16, fc00::/7) are the network of the hosting company, not of the operator. | Decided: (b), the same private and VPN ranges on each hub, a hosted hub too (operator, 2026-11-22). The cost, told to him: on a hosted hub the key can cross the network of the hosting company without TLS. |
 | OD-E32 | Does a remote command-line session approved through a browser expire or end with the approving session? | Decided by the operator, 2026-11-23: remote command-line sessions have no fixed or inactivity expiry and are independent of the approving browser session. Closing the browser or signing out of it does not revoke the remote session. Each remote session remains listed with its computer, approval date and last use, and can be explicitly revoked. One-time approval codes and claims still expire; this decision does not extend their lifetime. App-adopted local tokens remain linked as SGN-NEW-linked specifies. |
+| OD-E33 | R-465 removes the hub routes of the model gateway (MGW-001), and R-131 says that the hub carries no model request. How does a request for a cloud model (Anthropic, OpenAI, OpenRouter) or a subscription in passthrough (MGW-008) reach its provider, when the key stays on the hub (MGW-003, MGW-005)? | (a) The model address on the computer of the caller sends it to the provider, with the key that the hub gives to a signed-in computer from the key vault (E0-6), as RTR-004 does for the model key; the hub keeps the list and the record of use (RTR-037). (b) A narrow exception to R-131 for cloud models only: the hub keeps one route that sends a request to a provider and never to a node. Recommendation: (a), because it keeps R-131 with no exception; its cost is that the key of a provider is on each computer that the operator signs in, as the model key is. Until it is decided, no task builds MGW-001, MGW-002, MGW-003, MGW-006, MGW-008 or MGW-010, and CH14 waits. |
 | OD-OBS1 | Which parts of the observability suite are in scope? | Decided (R-241): "OD-OBS1: all of them, including analytics." Against the recommendation (status pages and error tracking). |
 | OD-OBS2 | Are short links (Dub) out of scope? | Decided (R-241): "OD-OBS2: no, include short links." Against the recommendation. Section 4.17.5. |
 | OD-OBS3 | In what order? | Decided (R-241): "OD-OBS3: build them all together." Against the recommendation (status pages first). |

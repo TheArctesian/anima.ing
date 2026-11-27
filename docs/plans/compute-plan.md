@@ -149,7 +149,7 @@ Facts of 2026-11-18 that this section depends on:
 
 - The link carries streams from a device to its hub. Since HM-T11 and HM-T12 (R-143) the hub can also open a TCP connection to port 22, 5900 or 3389 of a computer on its link, when the person turned that port on at the computer (HMD-048, HMD-049). No path from one device to a different device exists. R-131 says that a spike must prove that path before a requirement depends on it. Task L1-12 is that spike.
 - Thus the first parts of Level 1 use one machine only: the model address and the model server are on the same computer (tasks L1-1 to L1-11). This was also to be the first version of the fallback of [bots.md](../proposals/bots.md) (BOT-049), which R-196 parked.
-- [ai-direction.md](../proposals/ai-direction.md) OD-AI1 asks which document owns the model address, the list and the record of use: this plan or the model gateway (Section 4.15 of the extensions plan). It is open. Until it is decided, this plan defines them for the models on the machines of the operator. If the operator gives them to the model gateway, RTR-001 to RTR-042 move there with their numbers.
+- [ai-direction.md](../proposals/ai-direction.md) OD-AI1 asked which document owns the model address, the list and the record of use: this plan or the model gateway (Section 4.15 of the extensions plan). R-465 (operator, 2026-11-23) gave them to the model gateway, so RTR-001 to RTR-042 moved there with their numbers (Section 6).
 
 ## 3. Compute nodes
 
@@ -333,47 +333,7 @@ Design work that the contract of task L1-15 must settle before the build: the un
 
 ## 6. The model address
 
-Version 0.2 of this section: a router in the hub at `https://ai.anima.ing`, with a name on Headscale DNS, a DNS-01 certificate and API keys with a list of permitted models. R-131 replaced the router in the hub. C1 replaced the keys.
-
-### 6.1 Address and access
-
-- **RTR-001.** The model address must be a listener on the loopback address of each computer of the operator that runs the Anima program (R-131). The contract of task L1-10 says which program holds the listener (the desktop application or `anima`) and how the port is fixed. The daemon does not hold it, unless a ruling changes MET-020. The address has no DNS name, no DNS record and no certificate (OD-C7, R-165). Version 0.2: the router answers at `https://ai.anima.ing`, a name of Headscale DNS for the VPN address of the hub.
-- **RTR-002.** The hub must have no route that carries a model request or an answer (CMP-013). No public DNS record must point at a model address or at a compute node. Version 0.2: no public record of `ai.anima.ing` points at the hub.
-- **RTR-003.** Withdrawn (OD-C7, R-165): a loopback address needs no certificate. Version 0.2: a certificate of a public authority through the ACME DNS-01 challenge, with the DNS token as a Docker secret.
-- **RTR-004.** The model address must require the model key and must refuse a request without it. The first release has one shared key for all models and all callers. The operator can rotate the key and can revoke it. The contract of task L1-9 must define what a caller sees in the change from the old key to the new key, before the build. A key for each project, a list of permitted models and an expiry come later (Section 1.3). The model key is only the key of the model address: it does not replace the daemon token, and it permits no model work. Version 0.2: each key has a name, a list of permitted models and an optional expiry.
-- **RTR-005.** The model address must accept connections only from its own computer. A compute node must accept a model request only as SEC-C-002 says. Version 0.2: the permitted-network rule of the hub (NET-001, NET-002) applies to the router.
-
-### 6.2 OpenAI API
-
-- **RTR-010.** The model address must supply `/v1/models` and `/v1/chat/completions`, with a streamed answer and with image input for a model with vision (CMP-007). `/v1/completions`, `/v1/embeddings` and `/v1/responses` are planning context: each one is added when a model that needs it is validated. Version 0.2: all five from the first build.
-- **RTR-011.** `/v1/models` must list each model that has a validated copy (CMP-006) on a node with a permitting policy, and each alias. It lists a model once, not once for each copy.
-- **RTR-012.** Each entry of `/v1/models` must also give the Anima fields: the capability tags, the context length, the variants, and for each copy the node, the runtime and the state (FIT-025).
-- **RTR-013.** A request can name a model, a model with a tag, or an alias. If the request has no tag, the router can use any validated variant of the model.
-- **RTR-014.** A request can name a node with the header `Anima-Node`. The router then uses only that node. If the node cannot serve the model, the request is refused with the reason. The router never uses a different node in its place.
-- **RTR-015.** The model address can forward the Anthropic Messages API (`/v1/messages`) to a model server that supports it.
-- **RTR-016.** A refusal must give a fixed reason: the model is not known, no copy is validated, the node is off or its policy stops it, the model does not fit (FIT-026), the memory is in use, or the key is wrong. A refusal must never look like an answer of a model.
-
-### 6.3 Routing
-
-- **RTR-030.** When the request names no node, the router must select from the validated copies of the model on healthy nodes with a permitting policy, by a fixed rule that Anima shows: a node with a loaded copy first, else the node with the most free memory. It uses no scores (OD-C10, R-165). Version 0.2: the router prefers a loaded copy.
-- **RTR-031.** If no copy is loaded, a load starts (FIT-020). An ordinary call in the OpenAI form or the Ollama form waits for its normal result, within a deadline. The caller can select the behaviour when the memory is in use: wait until a deadline, or fail at once. A caller that asks for it gets the status of the load before the result (RTR-039). The model address must never put loading text into the output of a model, must not make stream parts that the protocol does not have, and must not send extra HTTP answers. Version 0.2: the caller waits until the load is done or until a time limit of a setting.
-- **RTR-032.** The model address must stream responses without a buffer.
-- **RTR-033.** The router can send requests with the same conversation key to the same server, to use its prompt cache.
-- **RTR-034.** Planning context, not a requirement of the first release: score each loaded copy by the expected wait (queue depth divided by measured tokens per second) and pick the better of two random candidates. It is not part of the rule of RTR-030 (OD-C10, R-165), and it waits for more than one node with the same model.
-- **RTR-035.** If a node fails 3 requests in a row, the router must stop sending to it for 30 seconds (circuit breaker).
-- **RTR-036.** The router can retry a request on a different server only before the first byte goes to the caller, and never when the caller named the node (RTR-014).
-- **RTR-037.** The hub must keep the record of use (R-131): the time, the model, the node, the computer of the caller, the token counts and the duration of each request. The model address reports them to the hub. No prompt, no output and no image is in the record (LOG-007). The owner of this record is OD-AI1 of [ai-direction.md](../proposals/ai-direction.md). Version 0.2: the router in the hub records each request with its key.
-- **RTR-039.** The status of a request for a caller that asks for it has stages such as queued, loading, ready, running and failed. The contract of task L1-15 gives the names and the changes between them, the timeout, the cancellation and what each one cleans up. The background mode of the OpenAI Responses API (`background=true`, retrieve, poll, cancel) is the first candidate for the form. The wait until a deadline, the fail at once and the pin are local additions of Anima, not fields of OpenAI or Ollama. A non-text job uses the contract of its family (CMP-007).
-
-The router design takes ideas from the SGLang model gateway, the LMDeploy proxy and the LocalAI SmartRouter (Section 14). Anima writes its own router in Rust.
-
-### 6.4 Ollama API
-
-This section is phase C2. Many tools can use an Ollama server. The model address can also speak the Ollama API, so that these tools work without a change.
-
-- **RTR-040.** The model address can supply these Ollama endpoints: `/api/tags`, `/api/ps`, `/api/show`, `/api/chat`, `/api/generate`, `/api/embed` and `/api/pull`.
-- **RTR-041.** `/api/pull` must use the hub selection of node and variant (PULL-002), unless the request names a node.
-- **RTR-042.** The Ollama endpoints must use the same model key as the OpenAI endpoints.
+R-465 (operator, 2026-11-23) decided OD-AI1 of [ai-direction.md](../proposals/ai-direction.md): the model gateway owns the model address on each computer, the list of models and the record of use. RTR-001 to RTR-042 are in Section 4.15 of [extensions-plan.md](extensions-plan.md) ("The model address on each computer"), with their numbers and their text. This plan owns the machines: the runtimes, the pulls and the placement. The tasks that build the model address stay in Section 12.4 (L1-9 to L1-18), and the contract is `contracts/compute/model-request.md` (task L1-10, R-466).
 
 ## 7. Model selection for a job
 
@@ -681,7 +641,7 @@ Version 0.2 of the rows C1 and C2: C1 named `curl https://ai.anima.ing/v1/models
 
 ### 12.4 Tasks of Level 1
 
-R-165 approves the tasks, and R-283 (operator, 2026-11-20) withdraws the condition of their start (PH-C-002). The table holds the state of each task. R-165 also decided OD-C6 to OD-C11, so a cell "Needs" that names one of them is met; OD-C1 and OD-AI1 are open. A session takes one row (PLN-022). Each row that adds a hub function builds its command and its MCP tool in the same task (CMD-030), unless the row says why not. A function that the gates cannot prove gets its entry in [need-human-testing.md](../need-human-testing.md) in the commit that builds it (PLN-014).
+R-165 approves the tasks, and R-283 (operator, 2026-11-20) withdraws the condition of their start (PH-C-002). The table holds the state of each task. R-165 also decided OD-C6 to OD-C11, so a cell "Needs" that names one of them is met; R-465 decided OD-AI1; OD-C1 is open. A session takes one row (PLN-022). Each row that adds a hub function builds its command and its MCP tool in the same task (CMD-030), unless the row says why not. A function that the gates cannot prove gets its entry in [need-human-testing.md](../need-human-testing.md) in the commit that builds it (PLN-014).
 
 L1-1, L1-2 and L1-4 need no open decision. L1-1 is the first task. It only reads, it needs no work route and no path between devices, and what it reports is the inspected hardware list that OD-C1 asks for.
 
@@ -699,7 +659,7 @@ L1-1, L1-2 and L1-4 need no open decision. L1-1 is the first task. It only reads
 | L1-7 | The pull: the hub selects or takes the variant, the daemon downloads from the source, verifies, continues after a cut, keeps the disk share; delete a copy; the progress. Commands `anima model pull` and `anima model remove`; MCP tools. | PULL-001 to PULL-011, SEC-C-009 | L1-4, L1-6; OD-C10 for the variant that the hub selects, L1-6b (the child fetch process; R-336) | Tests with a local file server: a cut pull continues, a wrong SHA-256 value is refused, a full disk gives the reason; a file in one sub-folder is flattened into `copies/<copy>/`, and two that flatten to one name are refused (R-408). | Not started. Step: when a vLLM release source pins a version, check the vLLM class list and the tokenizer list of `daemon-core` (`model_work/files/classes.rs`) again for that version (SF-376). | — |
 | L1-8 | The validation of a combination and the runtime choice: the daemon loads a copy, a fixed request gets an answer, the hub records the result for the node; the list of combinations. Command `anima model validate`; MCP tool. | CMP-006, RTC-001, RTC-007, PULL-011 | L1-7, OD-C1 | A human check: the Mac and the Linux PC each have one validated text model. The check also does step 9f of HT-119 (operator, 2026-11-22): a model with its layers on the GPU, on an NVIDIA machine and on an AMD (ROCm) machine; the log of the runtime shows the layers on the GPU. R-385 (OD-C27): the check includes tool calling, and only a model that passes it appears in the model picker of Anima Code. The file checks of a copy (`model_work/files/code.rs`, SF-298) still refuse with `remote_code` each refusal that is not remote code (a chat template over 64 KiB, a JSON file that does not parse or is not an object, a file over its size cap); a next change switches these to `file_rejected` (R-407). | Not started. The `model_load` caller must call `check_copy` of `daemon-core` and bound its reads (SF-373). | — |
 | L1-9 | The model key: the hub makes it, keeps it in the key vault, gives it to a signed-in computer; rotate and revoke, with the change from the old key to the new key defined in the contract first. Command `anima model key`. No MCP tool: a tool must not return a secret (Section 7 of the command-line plan). | RTR-004, SEC-C-003 | The key vault of E0-6 on `main` (its contract K-E5) | Tests: the old key is refused after the time of the contract; no key is in a log or an error. | Not started | — |
-| L1-10 | The contract of the model address, `contracts/compute/model-request.md`: the listener and its port, the Anima fields of `/v1/models`, the header `Anima-Node`, the reasons of a refusal, the report of use, the rule for the choice of a node. | RTR-001, RTR-002, RTR-005, RTR-010 to RTR-016, RTR-030, RTR-037, CMP-013 | OD-C10, OD-C7, and OD-AI1 of [ai-direction.md](../proposals/ai-direction.md) | A ruling permits the new contract (CON-001). | Not started | — |
+| L1-10 | The contract of the model address, `contracts/compute/model-request.md`: the listener and its port, the Anima fields of `/v1/models`, the header `Anima-Node`, the reasons of a refusal, the report of use, the rule for the choice of a node. | RTR-001, RTR-002, RTR-005, RTR-010 to RTR-016, RTR-030, RTR-037, CMP-013 | OD-C10, OD-C7, and OD-AI1 of [ai-direction.md](../proposals/ai-direction.md) | A ruling permits the new contract (CON-001). | Written, not Done: version 0.1 of [model-request.md](../../contracts/compute/model-request.md) is on branch `compute/l1-10` (R-466 permits the writing). Its Section 12 is the part of task L1-15 (the wait, the status of a request, the queue limit, the timeout and the cancellation); its Section 13 asks for one change of K11 (the server list that the daemon writes). Still missing: a ruling that accepts the text and gives its number, and the security read SEC-C-012 after it. The RTR requirements moved to Section 4.15 of the extensions plan in the same branch (R-465) | tip of `compute/l1-10` |
 | L1-11 | The model address on one computer: it lists the models from the hub, sends a request to a model server on the same computer, streams the answer, requires the model key, and reports the use to the hub. Hub API for the list, the node and the use; `anima model use`; MCP tool for the use. | RTR-001 to RTR-016, RTR-032, RTR-035 to RTR-037, CMP-013 | L1-8, L1-9, L1-10 | Tests with a scripted model server: a stream arrives with no buffer, a request with no key is refused, no prompt is in a log. A human check with `curl` on the Mac. This is also the server on the same device of BOT-049 (parked, R-196). | Not started | — |
 | L1-5b | The key permission `DEVICE_POLICY`: a list `permissions` on an API key, with the one value `DEVICE_POLICY`. Only a login or browser token grants it, on a write key. A key without it gets FORBIDDEN on `setDevicePolicy`; the audit entry of the creation of a key lists its permissions. `anima key create --permission device-policy`; the MCP tool `anima_compute_policy_set` is listed for a key that has it. | CAP-010, D-23 | R-335 (the design is approved; build it later). It changes K1 and K2. | Tests: a write key without the permission gets FORBIDDEN; a key with it sets a policy; only a login token grants it. | Not started. Until it is built, `setDevicePolicy` stays closed to each API key. | — |
 | L1-12 | The spike: a connection from one device to a different device through the link, for a model request. A record in `research/compute/` with the measured delay, the direct and the relayed case, the failure cases and what the link program must change. It adds no requirement; the owner of the link ([one-click-plan.md](one-click/one-click-plan.md)) gets the requirement after the record. | SEC-C-002, CMP-003 (it proves that they can be built) | No open decision. It needs two machines on one hub. | The record exists, with a go or a no-go. With a no-go, the operator must decide the path again (R-131 names the spike as its condition). | Not started | — |
@@ -755,7 +715,7 @@ crates/
 │   ├── library/        Models, variants, aliases, approved sources, capability tags
 │   ├── placement/      Runtime choice, fit estimate, offload ranking, ring planner (pure)
 │   ├── copies/         Copies and their states, validated combinations, pulls, model work
-│   ├── use/            The record of use (OD-AI1 decides its owner)
+│   ├── use/            The record of use (R-465: the model gateway owns it)
 │   └── rings/          Level 2: rings and conformance results
 ├── daemon/             anima-daemon: the model work at the I/O edge (runtimes, pulls)
 ├── daemon-core/        The logic of the model work with no I/O (CAG-007)
@@ -803,7 +763,7 @@ Findings:
 
 ## 15. Open decisions
 
-Each open row is one question that the operator can answer in one line. The last cell is the recommendation, or the result with its ruling (PLN-021, PLN-023). The rows are in the order of their numbers. R-165 (operator, 2026-11-18) decided OD-C6 to OD-C11. Open are OD-C1 (it blocks L1-6 and L1-8), OD-C3 and OD-C4 (Level 2, parked), and OD-C26 and OD-C27 (R-380, 2026-11-22). OD-AI1 of [ai-direction.md](../proposals/ai-direction.md) blocks task L1-10; that document owns it.
+Each open row is one question that the operator can answer in one line. The last cell is the recommendation, or the result with its ruling (PLN-021, PLN-023). The rows are in the order of their numbers. R-165 (operator, 2026-11-18) decided OD-C6 to OD-C11. Open are OD-C1 (it blocks L1-6 and L1-8), OD-C3 and OD-C4 (Level 2, parked), and OD-C26 and OD-C27 (R-380, 2026-11-22). OD-AI1 of [ai-direction.md](../proposals/ai-direction.md) blocked task L1-10; R-465 decided it.
 
 | Number | Question | Options | Blocks | Recommendation |
 | --- | --- | --- | --- | --- |
