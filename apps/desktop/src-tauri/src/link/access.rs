@@ -134,13 +134,14 @@ async fn apply<R: Runtime>(
         }
         match prepare(app, folder, port).await {
             Ok(()) => {
-                if let Err(error) = open_ports::ask(program, folder, Some((port, true))) {
-                    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+                let opened = open_ports::ask(program, folder, Some((port, true)));
+                #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+                let opened = opened.inspect_err(|_| {
                     if port == 3389 {
                         super::rdp::close();
                     }
-                    return Err(error);
-                }
+                });
+                opened?;
             }
             Err(message) => {
                 open_ports::ask(program, folder, Some((port, false)))?;

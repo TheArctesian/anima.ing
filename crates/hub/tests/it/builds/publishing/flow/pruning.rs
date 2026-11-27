@@ -34,7 +34,7 @@ async fn bld_086_a_fourth_publish_removes_only_the_oldest_build_files(pool: PgPo
         store
             .objects
             .insert(unrelated.to_owned(), Object::new("daemon"));
-        assert!(store.deletes.is_empty());
+        assert_eq!(store.deletes, [] as [String; 0]);
     });
     let (latest, files) = uploaded_linux(&publishing, "0.1.11").await;
     releases.push(objects("0.1.11", &files));
