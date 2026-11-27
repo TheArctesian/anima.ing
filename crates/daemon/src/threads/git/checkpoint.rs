@@ -5,6 +5,7 @@
 //! I/O: runs `git` with the Git folder and the index of the runner.
 
 use agent_threads::git::Checkpoint;
+use sha2::Digest;
 use uuid::Uuid;
 
 use super::place::{Worktree, own, shared};
@@ -42,13 +43,23 @@ pub fn before_revert_ref(thread: Uuid) -> String {
 /// one that a commit takes, and kept from the clean-up of git.
 #[must_use]
 pub fn reviewed_ref(thread: Uuid) -> String {
-    format!("{}/reviewed", refs_of(thread))
+    format!("{}/reviewed-text", refs_of(thread))
+}
+
+fn old_reviewed_refs(thread: Uuid) -> [String; 2] {
+    let under = refs_of(thread);
+    [
+        format!("{under}/reviewed"),
+        format!("{under}/reviewed-complete"),
+    ]
 }
 
 /// The ref of the commit of `branch` that the last push sent.
 #[must_use]
-pub fn pushed_ref(branch: &str) -> String {
-    format!("refs/anima/pushed/{branch}")
+pub fn pushed_ref(url: &str, branch: &str) -> String {
+    let destination = sha2::Sha256::digest(url.as_bytes());
+    let destination = crate::model::fetch::hex(&destination);
+    format!("refs/anima/pinned-push/{destination}/{branch}")
 }
 
 /// The ref in the repository of the person that keeps the work of a worktree that was
@@ -163,19 +174,26 @@ const GONE: [&str; 4] = ["update-index", "-z", "--force-remove", "--stdin"];
 /// A [`GitError`] when the branch cannot be read or a step of `git` fails.
 pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError> {
     let tip = own::tip(git, worktree).await?.commit;
-    snapshot_on(git, worktree, tip).await
+    let tree = tree_now(git, worktree, tip.as_deref()).await?;
+    commit_tree(git, worktree, tree, tip).await
 }
 
-/// As [`snapshot`], on `tip`; with no tip the commit holds each file and has no parent.
-///
-/// # Errors
-/// A [`GitError`] when a step of `git` fails.
-pub async fn snapshot_on(
+/// Saves the Git representation of the worktree. The original directory is kept separately.
+pub(super) async fn snapshot_on(
     git: &Git,
     worktree: &Worktree,
     tip: Option<String>,
 ) -> Result<String, GitError> {
     let tree = tree_now(git, worktree, tip.as_deref()).await?;
+    commit_tree(git, worktree, tree, tip).await
+}
+
+async fn commit_tree(
+    git: &Git,
+    worktree: &Worktree,
+    tree: String,
+    tip: Option<String>,
+) -> Result<String, GitError> {
     let mut commit = vec!["commit-tree".to_owned(), tree];
     if let Some(tip) = tip {
         commit.extend(["-p".to_owned(), tip]);
@@ -238,6 +256,25 @@ pub async fn keep(
     .map(drop)
 }
 
+/// Records a complete review. The old ref could hold a snapshot from a filtered diff.
+pub(super) async fn keep_reviewed(
+    git: &Git,
+    worktree: &Worktree,
+    shown: &str,
+) -> Result<(), GitError> {
+    for old in old_reviewed_refs(worktree.thread()) {
+        drop_ref(git, worktree, &old).await?;
+    }
+    keep(git, worktree, &reviewed_ref(worktree.thread()), shown).await
+}
+
+async fn drop_ref(git: &Git, worktree: &Worktree, name: &str) -> Result<(), GitError> {
+    let gone = ["update-ref", "--no-deref", "-d", name];
+    git.output(Run::new(worktree.folder(), gone))
+        .await
+        .map(drop)
+}
+
 /// Takes the checkpoint of `turn`: a snapshot under the ref of the turn.
 ///
 /// # Errors
@@ -298,12 +335,12 @@ pub async fn forget_before(
     // The last reviewed snapshot goes: the next look at the changes makes a new one. The
     // undo of the last revert goes only with the last checkpoint.
     let mut old = vec![reviewed_ref(worktree.thread())];
+    old.extend(old_reviewed_refs(worktree.thread()));
     if list(git, worktree).await?.is_empty() {
         old.push(before_revert_ref(worktree.thread()));
     }
     for old in old {
-        let gone = ["update-ref", "--no-deref", "-d", old.as_str()];
-        git.output(Run::new(worktree.folder(), gone)).await?;
+        drop_ref(git, worktree, &old).await?;
     }
     own::emptied(git, worktree).await?;
     list(git, worktree).await

@@ -28,6 +28,9 @@ pub enum AgentCommand {
     /// Control managed Code on an enrolled `AnimaOS` node through the hub.
     #[command(subcommand)]
     Node(managed::Command),
+    /// Read or change the Git worktree of a thread on this computer.
+    #[cfg(unix)]
+    Git(threads::git::GitArgs),
     /// Sum the sessions, prompts, tool calls and tokens of Claude Code and Codex, with an
     /// estimate of their cost.
     Usage(usage::UsageArgs),
@@ -157,6 +160,7 @@ impl AgentCommand {
     #[cfg(unix)]
     async fn run_local(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
+            Self::Git(args) => args.run(invocation).await,
             Self::Start(args) => args.run(invocation).await,
             Self::Send(args) => args.run(invocation).await,
             Self::Queue(args) => args.run(invocation).await,

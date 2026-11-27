@@ -238,7 +238,8 @@ pub enum Action {
     /// Drops a file that did not go with a prompt yet (TH111).
     Unattach { thread: Uuid, attachment: Uuid },
     /// An action on the worktree of one repository of a thread (TC7, TH116): the Git engine of
-    /// the runner does it.
+    /// the runner does it. The new tag requires retirement and complete review support.
+    #[serde(rename = "git_v2", alias = "git")]
     Git {
         thread: Uuid,
         repository: String,
