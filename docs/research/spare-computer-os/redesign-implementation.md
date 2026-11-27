@@ -3461,7 +3461,113 @@ repeat. Claude exited with status 132. The QEMU CPU expansion
 confirmed that the default model lacked SSE4.2, AVX and AVX2 and
 that the emulated `max` model exposes them. The fixture selects
 `max` for software emulation and host passthrough for KVM. The
-provider check remains on the same installed generation.
+exact packaged Claude binary returned version 2.1.223 on the
+`max` builder inside an isolated network namespace. Its Nix archive
+hash matched on both stores. The same installed generation then
+booted with QEMU's `max` model and repeated the EOF result in
+4.280 seconds. Both installed workspaces returned the packaged
+Codex and Claude versions within their sandbox limits. Each served
+its own port 3000 through the private broker, denied access from the
+wrong principal and workspace generation, then stopped serving
+after revocation. The run reached a healthy migrated Docker
+application after observing the live-Podman hold. A duplicated
+`docker ps` filter flag in the fixture prevented the persistent
+write check. The corrected fixture resumes from the applied state
+and repeats verification after reboot. The first continuation ran
+on a clone following an abrupt VM stop and could not find a healthy
+migrated container. Read-only inspection found the committed form
+and original data, with the Docker container recorded as created
+after the attempted recovery.
+
+A separate clean migration passed the Docker write, confirmation
+and stopped-source checks. The guest's warm reboot reached the
+kernel and splash before the four-minute serial deadline. The kernel's
+first journal entry was about two minutes after the reboot command.
+A cold start of that preserved disk brought the migrated Docker
+container back healthy. The write remained visible, the Podman source
+stayed stopped, and the original data and backup matched. Warm VM
+reboot timing remains open.
+
+The unsigned `eb2374930970` ISO builds the same verified generation
+used in these installed lanes. All 218 tracked OS files and eight
+generated runtime files matched the frozen source and input manifest.
+The installer target matched the installed generation, and the ISO
+contains a UEFI boot entry and its embedded Nix store. Its SHA-256 is
+`64adc7bbc0d9ae9fd3cd499595e00e490d8fd859b9832e26513ef32168e280e4`.
+
+### Hosting startup recovery, 2026-11-26
+
+The installed console reported Hosting failed after cold boot. The
+same boot journal recorded a version-probe deadline and a process
+exit after 10.800 seconds. Docker continued to serve the migrated
+application. The Hosting service now returns temporary status 75
+for that startup deadline. systemd retries the service without
+restarting Docker. Malformed version output still fails immediately
+with status 1. The unit allows five starts in a two-minute interval
+with a five-second delay.
+
+The focused Linux fixture passed both exit-code cases. All 96
+applications library tests and all 13 root-owned startup fixtures
+passed on Linux. The OS workflow runs the new case explicitly.
+The x86 Linux build passed its 96 enabled package tests and generated
+the service's retry settings. A disposable systemd fixture also
+recorded a single automatic restart after status 75. The unsigned
+`9bc4d1f89e0d` ISO binds that generation to SHA-256
+`7cf3295738a07e19395d3207121f5022dcf56701fbf565561711f0f85601b456`.
+The exact revised ISO booted in QEMU. On its installed generation,
+a controlled version probe hit the ten-second deadline and exited
+with status 75. The journal recorded one automatic restart. Docker
+and the application retained their process IDs through seven
+successful HTTP checks, and the Hosting control socket reopened.
+The installed Powerline terminal accepted a command and relocked.
+
+### Pre-move upgrade baseline, 2026-11-26
+
+The x86 Linux builder rebuilt the legacy Shiboken and PySide packages
+for the unchanged `83a01d481c9b` revision. All 140 tracked OS files and
+eight prepared runtime inputs matched the frozen source. The rebuilt
+baseline ISO has SHA-256
+`07a0ef66f24e9458629c5dfe6069950a3e4f67d6e576d0d64c00e776c224fa6e`.
+It embeds the disposable rehearsal verification key.
+
+The unsandboxed root-run emulation builder followed a symlink from
+the system profile while generating the Vim icon-theme cache. A Nix
+archive comparison confirmed that the generated 136-byte cache was
+the only difference in Vim's package. Both initial disposable fixture
+ISOs contained that cache. The unsigned `9bc4d1f89e0d` ISO contains the
+original package bytes, verified by extracting the package from the
+ISO and hashing its Nix archive. A repair from the signed binary
+cache restored the verified package hash during update assembly.
+
+The signed update archive completed with SHA-256
+`9597aa21dca67cb86fc4ba4f806533524811c993fab539e87950b2700bf1d8ff`.
+The receipt verifier matched the signature, archive and candidate ISO
+to the same fixture-key system from `9bc4d1f89e0d`. The pre-move
+system and candidate remain separate Nix generations.
+
+### Signed upgrade and rollback rehearsal, 2026-11-27
+
+The first legacy Calamares run reached `nixos-install` and stopped.
+The rehearsal rebuilt the baseline ISO with the original Vim package
+bytes and confirmed the same live derivation and installed generation.
+The rebuilt ISO has SHA-256
+`e31319df2a403efafdce02da2d5cb3fd1a3dfed3596108d3620bb8c4bbd30ae0`.
+A disposable overlay resumed the offline install on the disk prepared
+by Calamares. The baseline booted with the recorded data volume mounted.
+
+The fixture-signed archive staged over HTTPS while the old generation
+remained active. Explicit activation rebooted into `9bc4d1f89e0d`, which
+reported healthy and rendered the console lock screen. The legacy SSH
+and RDP port list survived the update. The harness now explicitly enables
+VNC through the owner command when the saved list contains SSH and RDP
+only. A continuation on a second overlay passed all three private
+protocol checks and verified identity and port settings through reboot.
+
+Owner rollback rebooted into the exact pre-move generation. The machine
+ID, hostname, persistent work marker and attached data-volume sentinel
+survived activation and rollback. Both generations mounted the root
+filesystem read-only. The VM shut down cleanly and the unselected disk
+digest matched. The verifier accepted all nine reported cases.
 
 ### Installed Railpack timing, 2026-11-26
 
@@ -3469,9 +3575,35 @@ The focused `e56205794c0e` Railpack run refused an unsupported
 project and released it. The Node attempt used 29 minutes 30 seconds
 of CPU time at its 500-millicore reservation before it exited.
 The retained worker output identifies the BuildKit stage deadline.
+The terminal status records a failed worker with main PID zero and
+an empty build result. This local attempt has no hub job lease.
+A read-only Btrfs check on a copy of the preserved disk confirmed
+that the capacity reservation and source-context lease had been
+released. The worker left a failed status record and a zero-byte
+OCI file. After cold boot the Docker catalog had no entry in the
+build artifact repository.
 The fixture now reports the worker diagnostics on failure, uses a
 four-vCPU guest, and requests 1,000 millicores through the packaged
-policy. The revised Node, Python and Rust checks remain open.
+policy. The revised fixture checks the actual quota and period in
+each supported build's cgroup.
+
+The same installed generation ran the Node retry through build,
+export and verification in 33 minutes 59 seconds of worker wall
+time. The trace records a 1,000-millicore request and an export of
+153,365,504 bytes with integrity verified and deployment unset.
+The fixture's Docker import returned success after its 180-second
+deadline. The lane ended before image execution, and the shutdown
+exceeded its fixture deadline. The software-emulated import and
+shutdown checks now allow more time. The sealed OCI archive was
+copied from the retained disk read-only and its SHA-256 matched
+the original verified receipt. A separate short Node attempt on
+the same generation used the same four-vCPU guest and 1,000-millicore
+request. Its kernel cgroup reported 100,000 microseconds of CPU per
+100,000-microsecond period. The fixture cancelled and released it after
+measurement. The recovered archive then imported on the same exact
+installed generation in 107 seconds. Docker resolved its recorded
+manifest digest and ran it with networking disabled. The container
+printed `anima-railpack-node` and exited successfully.
 
 ### Console accessibility review, 2026-11-26
 
@@ -3519,5 +3651,22 @@ a still hero.
 Linux Qt WebEngine 6.11.3 also reproduced the old unlock behavior
 and verified the revised alert, form border and heading focus at
 640 × 480 with 2× scaling. That renderer used synthetic local
-responses. Installed post-change rendering and assistive-technology
-navigation remain open.
+responses. The exact installed `eb2374930970` boot also captured the
+lock hero and screen-off control, the corrected Overview metrics
+and uptime layout, and Storage with the attached and missing
+volumes. The displayed attached volume capacity matched the
+filesystem in that run. A follow-up captured the rejected unlock
+alert, a live Docker container in Workloads, and the private-access
+dialog with SSH, RDP and VNC local checks passing. Escape closed the
+dialog. The administration terminal opened and the lock shortcut
+closed it. The enrolled monitoring fixture reported storage while
+the workspace broker was held at startup. Assistive-technology navigation remains open.
+
+The revised installed `9bc4d1f89e0d` generation passed authenticated SSH
+and VNC using synthetic private peers. FreeRDP authenticated over
+pinned TLS and rendered the same locked desktop. The guest rebooted
+with the same three identities and saved disabled-port settings.
+Both protocols re-enabled and the sentinel disk stayed unchanged.
+The fixture needed longer offline-tool import and frame checks under
+software emulation. The original generation's manual Hosting recovery
+command also restored its control socket after the startup timeout.

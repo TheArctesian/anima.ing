@@ -99,8 +99,9 @@ def run(args):
         screenshot(output, 'updated-console-locked')
         results.append({'case':'updated-graphical-console','result':'Passed'})
         if args.remote:
-            from remote_checks import check
+            from remote_checks import check, prepare_upgrade_ports
             update_fixture.mount(machine)
+            prepare_upgrade_ports(machine)
             check(machine,password,package)
             results.append({'case':'private-ssh-rdp-vnc-desktop-reboot-owner-choice','result':'Passed'})
         machine.send('anima-os-update rollback')
