@@ -40,94 +40,119 @@ function storeId(key: string, id: string | null): boolean {
   }
 }
 
-export function followReceipt<T>(read: (id: string) => Promise<HubResult<T>>, policy: Policy<T>, { scope, key }: Slot) {
-  const previous = savedId(key);
-  let request = $state.raw<Request<T> | null>(previous.ok && previous.value !== null ? { id: previous.value } : null);
-  let receipt = $state.raw<T | null>(null);
-  let busy = $state(false);
-  let error = $state.raw<HubError | null>(previous.ok ? null : previous.error);
-  // A later rejection says nothing about a write whose response was lost.
-  let mayHaveSubmitted = previous.ok && previous.value !== null;
-  let storageFailed = $state(!previous.ok);
-  const completed = $derived(receipt !== null && !policy.waiting(receipt) && policy.acknowledge?.(receipt) === true);
-  const pending = $derived(request !== null && !completed);
+class Receipt<T> {
+  #request = $state.raw<Request<T> | null>(null);
+  #receipt = $state.raw<T | null>(null);
+  #busy = $state(false);
+  #error = $state.raw<HubError | null>(null);
+  #storageFailed = $state(false);
+  #mayHaveSubmitted = false;
 
-  function release(id: string): boolean {
-    const prior = savedId(key);
-    if (!prior.ok || (prior.value === id && !storeId(key, null))) {
-      storageFailed = true;
-      error = STORAGE_FAILURE;
+  constructor(
+    private readonly read: (id: string) => Promise<HubResult<T>>,
+    private readonly policy: Policy<T>,
+    private readonly slot: Slot,
+  ) {
+    const previous = savedId(slot.key);
+    if (!previous.ok) this.#failStorage();
+    else if (previous.value !== null) this.#restore(previous.value);
+  }
+
+  get busy(): boolean { return this.#busy; }
+  get receipt(): T | null { return this.#receipt; }
+  get error(): HubError | null { return this.#error; }
+  get blocked(): boolean { return this.#storageFailed || this.#request !== null; }
+  get pending(): boolean { return this.#request !== null && !this.completed; }
+
+  get completed(): boolean {
+    return this.#receipt !== null && !this.policy.waiting(this.#receipt) && this.policy.acknowledge?.(this.#receipt) === true;
+  }
+
+  get canRetry(): boolean {
+    return this.pending && this.#request?.submit !== undefined && this.#receipt === null && this.#error !== null && !this.#busy;
+  }
+
+  #restore(id: string): void {
+    this.#request = { id };
+    this.#mayHaveSubmitted = true;
+  }
+
+  #failStorage(): void {
+    this.#storageFailed = true;
+    this.#error = STORAGE_FAILURE;
+  }
+
+  #release(id: string): boolean {
+    const prior = savedId(this.slot.key);
+    if (!prior.ok || (prior.value === id && !storeId(this.slot.key, null))) {
+      this.#failStorage();
       return false;
     }
-    request = null;
+    this.#request = null;
     return true;
   }
 
-  async function run(submit: boolean): Promise<void> {
-    if (request === null || busy || completed) return;
-    const current = request;
-    if (submit && current.submit === undefined) return;
-    busy = true;
-    const authorized = await scope.authorize();
-    if (!authorized.ok) {
-      busy = false;
-      error = authorized.error;
-      if (!mayHaveSubmitted) release(current.id);
-      return;
-    }
-    const result = await (submit && current.submit !== undefined ? current.submit() : read(current.id));
-    busy = false;
+  #finished(id: string, result: HubResult<T>, submit: boolean): void {
     if (!result.ok) {
-      error = result.error;
-      if (submit && !mayHaveSubmitted && writeRefused(result.error)) release(current.id);
-      else if (submit) mayHaveSubmitted = true;
+      this.#error = result.error;
+      // A later rejection says nothing about a write whose response was lost.
+      if (submit && !this.#mayHaveSubmitted && writeRefused(result.error)) this.#release(id);
+      else if (submit) this.#mayHaveSubmitted = true;
       return;
     }
-    error = null;
-    receipt = result.value;
-    mayHaveSubmitted = true;
-    if (!policy.waiting(result.value) && policy.acknowledge?.(result.value) !== true) release(current.id);
+    this.#error = null;
+    this.#receipt = result.value;
+    this.#mayHaveSubmitted = true;
+    if (!this.policy.waiting(result.value) && this.policy.acknowledge?.(result.value) !== true) this.#release(id);
   }
 
-  return {
-    get busy() { return busy; },
-    get receipt() { return receipt; },
-    get error() { return error; },
-    get blocked() { return storageFailed || request !== null; },
-    get pending() { return pending; },
-    get completed() { return completed; },
-    get canRetry() { return pending && request?.submit !== undefined && receipt === null && error !== null && !busy; },
-    start(next: Required<Request<T>>) {
-      if (request !== null || storageFailed) return;
-      const prior = savedId(key);
-      if (!prior.ok) {
-        storageFailed = true;
-        error = STORAGE_FAILURE;
-        return;
-      }
-      receipt = null;
-      error = null;
-      if (prior.value !== null) {
-        mayHaveSubmitted = true;
-        request = { id: prior.value };
-        return run(false);
-      }
-      if (!storeId(key, next.id)) {
-        storageFailed = true;
-        error = STORAGE_FAILURE;
-        return;
-      }
-      mayHaveSubmitted = false;
-      request = next;
-      return run(true);
-    },
-    acknowledge() {
-      if (!completed || request === null || !release(request.id)) return;
-      receipt = null;
-    },
-    retry: () => run(true),
-    refresh: () => run(false),
-  };
+  async #run(submit: boolean): Promise<void> {
+    const request = this.#request;
+    if (request === null || this.#busy || this.completed) return;
+    const operation = submit ? request.submit : () => this.read(request.id);
+    if (operation === undefined) return;
+    this.#busy = true;
+    const authorized = await this.slot.scope.authorize();
+    if (authorized.ok) this.#finished(request.id, await operation(), submit);
+    else {
+      this.#error = authorized.error;
+      if (!this.#mayHaveSubmitted) this.#release(request.id);
+    }
+    this.#busy = false;
+  }
+
+  start(next: Required<Request<T>>): Promise<void> | undefined {
+    if (this.blocked) return;
+    const prior = savedId(this.slot.key);
+    if (!prior.ok) {
+      this.#failStorage();
+      return;
+    }
+    this.#receipt = null;
+    this.#error = null;
+    if (prior.value !== null) {
+      this.#restore(prior.value);
+      return this.#run(false);
+    }
+    if (!storeId(this.slot.key, next.id)) {
+      this.#failStorage();
+      return;
+    }
+    this.#mayHaveSubmitted = false;
+    this.#request = next;
+    return this.#run(true);
+  }
+
+  acknowledge(): void {
+    if (this.completed && this.#request !== null && this.#release(this.#request.id)) this.#receipt = null;
+  }
+
+  retry(): Promise<void> { return this.#run(true); }
+  refresh(): Promise<void> { return this.#run(false); }
+}
+
+export function followReceipt<T>(read: (id: string) => Promise<HubResult<T>>, policy: Policy<T>, slot: Slot) {
+  return new Receipt(read, policy, slot);
 }
 
 const REFRESH_MS = 5_000;
