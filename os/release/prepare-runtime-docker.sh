@@ -14,7 +14,7 @@ builder="anima-os-runtime-builder:rust${rust_version}-go${go_version}"
 docker build --platform linux/amd64 \
   --build-arg RUST_VERSION="$rust_version" --build-arg GO_VERSION="$go_version" \
   -t "$builder" - < os/release/runtime-builder.Dockerfile
-mkdir -p os/payload
+mkdir -p os/payload target
 docker run --rm --init --platform linux/amd64 \
   --mount "type=bind,source=$root,target=/src,readonly" \
   --mount "type=bind,source=$common,target=$common,readonly" \

@@ -103,6 +103,8 @@ jobs:
                 -- --ignored --test-threads=1
               cargo test --locked -j 2 -p anima-applications --test startup terminal:: \
                 -- --ignored --test-threads=1
+              cargo test --locked -j 2 -p anima-applications --test startup \
+                serve_reports_a_temporary_error_for_a_startup_probe_timeout -- --ignored --exact
               useradd --system --no-create-home anima-daemon
               cargo test --locked -j 2 -p anima-applications --test hosting_setup \
                 -- --ignored --test-threads=1

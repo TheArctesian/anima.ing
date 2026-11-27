@@ -15,6 +15,7 @@ from gui_actions import tap
 from storage_checks import check_data_volume
 from vm import Machine, digest
 import update_fixture
+import vm_host
 
 
 def root(machine,password):
@@ -23,7 +24,8 @@ def root(machine,password):
 
 
 def login(machine,password):
-    machine.expect('anima(?:-node-[a-z0-9]{4})? login:',timeout=240);machine.send('admin')
+    boot_timeout = 420 if vm_host.accelerator() == 'tcg' else 240
+    machine.expect('anima(?:-node-[a-z0-9]{4})? login:',timeout=boot_timeout);machine.send('admin')
     machine.expect('Password:');machine.send(password)
     machine.shell('admin');machine.send('stty -echo')
     root(machine,password)
