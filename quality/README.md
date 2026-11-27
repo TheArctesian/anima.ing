@@ -182,13 +182,16 @@ each train with its state and the branches of the next one.
   conductor writes the same lines into the summary of its run, apart from branches that never had a run.
 - **A failure.** The next train holds the first half of the failed one, in the same order. A branch that
   fails alone is refused: a note on its tip (`refs/notes/train`) keeps it out until the branch moves or its
-  own gates pass again (`gh run rerun`). A cancelled run is no verdict: the train is built again.
+  own gates pass again (`gh run rerun`). The conductor saves that note before it removes the train; if origin
+  does not take the note, the train stays and the next step tries again. A cancelled run is no verdict: the
+  train is built again.
 - **What no longer happens.** A branch does not run again because `dev` moved. With n branches that passed,
   the old workflow needed about n runs after each merge, n squared in all; the train needs one run for the
   batch, and about log2(n) more when one branch of it fails.
 
 A push of a commit to a branch stops the older run of that branch (`concurrency` in `gates.yml`). The pure
-rules are `src/merge/train.ts`, the git work is `src/merge/stack.ts`, the end of one merge is
+rules are `src/merge/train.ts`, the git work is `src/merge/stack.ts`, the notes on origin are
+`src/merge/notes.ts` (the checkout fetches no notes, so each note is added on the notes of origin), the end of one merge is
 `src/merge/finish.ts` and `src/merge/commit.ts`: the merge commit comes first and the document gates run on
 it, because the mockup check counts the layout files of a branch as changed while its merge is not committed.
 
