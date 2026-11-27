@@ -1,12 +1,14 @@
 import type { HubError, HubResult } from '$lib/hub/hub';
 import { onReturn } from '../live.svelte';
 import type { RecoveryScope } from './recovery';
-import { writeRefused } from './status';
+import { receiptUnknown, writeRefused } from './status';
 
 interface Request<T> {
   id: string;
   submit?: () => Promise<HubResult<T>>;
 }
+
+type Submit<T> = (id: string, reentry: boolean) => Promise<HubResult<T>>;
 
 interface Policy<T> {
   waiting: (receipt: T) => boolean;
@@ -47,6 +49,7 @@ class Receipt<T> {
   #error = $state.raw<HubError | null>(null);
   #storageFailed = $state(false);
   #mayHaveSubmitted = false;
+  #unknown = $state(false);
 
   constructor(
     private readonly read: (id: string) => Promise<HubResult<T>>,
@@ -61,7 +64,12 @@ class Receipt<T> {
   get busy(): boolean { return this.#busy; }
   get receipt(): T | null { return this.#receipt; }
   get error(): HubError | null { return this.#error; }
-  get blocked(): boolean { return this.#storageFailed || this.#request !== null; }
+  get blocked(): boolean {
+    return this.#storageFailed || (this.#request !== null && (!this.canReenter || this.#busy));
+  }
+  get canReenter(): boolean {
+    return this.#unknown && this.#receipt === null && this.#request !== null && this.#request.submit === undefined;
+  }
   get pending(): boolean { return this.#request !== null && !this.completed; }
 
   get completed(): boolean {
@@ -74,6 +82,7 @@ class Receipt<T> {
 
   #restore(id: string): void {
     this.#request = { id };
+    this.#unknown = false;
     this.#mayHaveSubmitted = true;
   }
 
@@ -93,6 +102,7 @@ class Receipt<T> {
   }
 
   #finished(id: string, result: HubResult<T>, submit: boolean): void {
+    this.#unknown = !submit && !result.ok && receiptUnknown(result.error);
     if (!result.ok) {
       this.#error = result.error;
       // A later rejection says nothing about a write whose response was lost.
@@ -115,14 +125,48 @@ class Receipt<T> {
     const authorized = await this.slot.scope.authorize();
     if (authorized.ok) this.#finished(request.id, await operation(), submit);
     else {
+      this.#unknown = false;
       this.#error = authorized.error;
       if (!this.#mayHaveSubmitted) this.#release(request.id);
     }
     this.#busy = false;
   }
 
-  start(next: Required<Request<T>>): Promise<void> | undefined {
+  async #reenter(id: string, submit: Submit<T>): Promise<void> {
+    this.#busy = true;
+    await this.#submitIfUnknown(id, submit);
+    this.#busy = false;
+  }
+
+  async #submitIfUnknown(id: string, submit: Submit<T>): Promise<void> {
+    const authorized = await this.slot.scope.authorize();
+    if (!authorized.ok) {
+      this.#unknown = false;
+      this.#error = authorized.error;
+      return;
+    }
+    const latest = await this.read(id);
+    if (latest.ok || !receiptUnknown(latest.error)) {
+      this.#finished(id, latest, false);
+      return;
+    }
+    const prior = savedId(this.slot.key);
+    if (!prior.ok || prior.value !== id) {
+      this.#failStorage();
+      return;
+    }
+    const scope = await this.slot.scope.authorize();
+    if (!scope.ok) {
+      this.#unknown = false;
+      this.#error = scope.error;
+      return;
+    }
+    this.#finished(id, await submit(id, true), true);
+  }
+
+  start(submit: Submit<T>): Promise<void> | undefined {
     if (this.blocked) return;
+    if (this.#request !== null) return this.#reenter(this.#request.id, submit);
     const prior = savedId(this.slot.key);
     if (!prior.ok) {
       this.#failStorage();
@@ -134,12 +178,13 @@ class Receipt<T> {
       this.#restore(prior.value);
       return this.#run(false);
     }
-    if (!storeId(this.slot.key, next.id)) {
+    const id = crypto.randomUUID();
+    if (!storeId(this.slot.key, id)) {
       this.#failStorage();
       return;
     }
     this.#mayHaveSubmitted = false;
-    this.#request = next;
+    this.#request = { id, submit: () => submit(id, false) };
     return this.#run(true);
   }
 

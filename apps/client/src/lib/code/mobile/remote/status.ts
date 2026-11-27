@@ -61,14 +61,20 @@ export function commandMessage(receipt: CommandReceipt): string {
   }
 }
 
+export function receiptUnknown(error: HubError): boolean {
+  return error.code === 'INTERNAL' && (error.reason === 'LAUNCH_UNKNOWN' || error.reason === 'COMMAND_UNKNOWN');
+}
+
 export function writeRefused(error: HubError): boolean {
   return ['FORBIDDEN', 'UNAUTHENTICATED', 'VALIDATION', 'unserved'].includes(error.code)
-    || (error.code === 'INTERNAL' && error.reason !== undefined);
+    || (error.code === 'INTERNAL' && error.reason !== undefined && !receiptUnknown(error));
 }
 
 export function remoteError(error: HubError): string {
   if (error.code !== 'INTERNAL') return error.message;
   switch (error.reason) {
+    case 'LAUNCH_UNKNOWN':
+    case 'COMMAND_UNKNOWN': return 'The hub has no receipt for this action yet.';
     case 'target_unavailable': return 'This target is no longer available. Refresh the targets and choose again.';
     case 'COMMANDS_FULL': return 'The computer has too many pending actions. Wait for an earlier action to finish.';
     case 'WORK_OFF':

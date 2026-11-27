@@ -45,10 +45,10 @@ describe('parseResponse', () => {
     expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message: 'Odd.' } });
   });
 
-  it('preserves a definitive remote thread refusal for the action retry policy', () => {
+  it.each(['target_unavailable', 'LAUNCH_UNKNOWN', 'COMMAND_UNKNOWN'])('preserves the remote thread reason %s', (reason) => {
     const message = 'Remote thread request refused.';
-    const body = failure({ message, extensions: { code: 'target_unavailable' } });
-    expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message, reason: 'target_unavailable' } });
+    const body = failure({ message, extensions: { code: reason } });
+    expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message, reason } });
   });
 
   it('errors win over partial data', () => {

@@ -3,8 +3,8 @@
   import { SvelteSet } from 'svelte/reactivity';
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { AgentThreadAnswerPayload } from '$lib/hub/generated/graphql';
-  import type { Connection } from '$lib/hub/hub';
-  import type { ControlOffer, RemoteCodeApi } from '../api';
+  import type { Connection, HubResult } from '$lib/hub/hub';
+  import type { CommandReceipt, ControlOffer, RemoteCodeApi } from '../api';
   import CommandStatus from './CommandStatus.svelte';
   import QuestionAnswer from './QuestionAnswer.svelte';
   import type { RecoveryScope } from './recovery';
@@ -82,11 +82,27 @@
     if (stop.receipt?.state === 'recorded') stopped.add(offeredStop);
   });
 
+  async function submitCommand(
+    reentry: boolean,
+    offered: (offer: ControlOffer) => boolean,
+    send: () => Promise<HubResult<CommandReceipt>>,
+  ): Promise<HubResult<CommandReceipt>> {
+    if (!reentry) return send();
+    const result = await api.control(thread);
+    if (!result.ok) return result;
+    if (!connected || result.value === null || !offered(result.value)) {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'The computer no longer offers this action.' } };
+    }
+    return send();
+  }
+
   function sendPrompt(event: SubmitEvent): void {
     event.preventDefault();
     if (!canPrompt || prompt.blocked || draft.trim() === '') return;
-    const input = { thread, command: crypto.randomUUID(), prompt: draft };
-    void prompt.start({ id: input.command, submit: () => api.prompt(input) });
+    const input = { thread, prompt: draft };
+    void prompt.start((command, reentry) => submitCommand(
+      reentry, (current) => current.actions.includes('prompt'), () => api.prompt({ ...input, command }),
+    ));
   }
 
   function answerKey(process: string, request: string): string {
@@ -100,8 +116,13 @@
   function sendAnswer(current: ControlOffer, request: string, payload: AgentThreadAnswerPayload): void {
     if (live !== current || answerDisabled(current.process, request)) return;
     offeredAnswer = answerKey(current.process, request);
-    const input = { thread, command: crypto.randomUUID(), process: current.process, revision: current.revision, request, answer: payload };
-    void answer.start({ id: input.command, submit: () => api.answer(input) });
+    const input = { thread, process: current.process, revision: current.revision, request, answer: payload };
+    void answer.start((command, reentry) => submitCommand(
+      reentry,
+      (next) => next.process === input.process && next.revision === input.revision
+        && next.actions.includes('answer') && next.requests.some(({ id }) => id === request),
+      () => api.answer({ ...input, command }),
+    ));
   }
 
   function stopKey({ kind, process, turn }: StopTarget): string {
@@ -116,8 +137,12 @@
     if (stopDisabled(target) || !stopTargets.some((current) => stopKey(current) === stopKey(target))) return;
     offeredStop = stopKey(target);
     ending = null;
-    const input = { thread, command: crypto.randomUUID(), target };
-    void stop.start({ id: input.command, submit: () => api.stop(input) });
+    const input = { thread, target };
+    void stop.start((command, reentry) => submitCommand(
+      reentry,
+      (next) => next.actions.includes('stop') && next.stopTargets.some((candidate) => stopKey(candidate) === stopKey(target)),
+      () => api.stop({ ...input, command }),
+    ));
   }
 </script>
 
@@ -190,8 +215,8 @@
         {/each}
       </div>
     {/if}
-    <CommandStatus action={prompt} label="Follow-up" />
-    <CommandStatus action={answer} label="Answer" />
-    <CommandStatus action={stop} label="Stop" />
+    <CommandStatus action={prompt} label="Follow-up" offered={canPrompt} />
+    <CommandStatus action={answer} label="Answer" offered={answers.length > 0} />
+    <CommandStatus action={stop} label="Stop" offered={stopTargets.length > 0} />
   </section>
 {/if}

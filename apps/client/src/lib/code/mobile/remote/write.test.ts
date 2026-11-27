@@ -254,3 +254,78 @@ it('looks up an ambiguous command by its original ID when the thread reopens', a
   expect(button('Send follow-up').disabled).toBe(true);
   expect(document.querySelector('textarea')?.value).toBe('');
 });
+
+
+it('resubmits an unknown start only after re-entry and uses its saved ID', async () => {
+  const answers: Record<string, unknown> = {
+    MobileThreadInbox: { agentThreads: { nodes: [], pageInfo: { hasNextPage: false } } },
+    MobileRemoteTargets: { agentThreadStartTargets: [TARGET] },
+    MobileRemoteStart: { code: 'unreachable', message: 'The response was lost.' },
+  };
+  const original = open(answers);
+  await vi.waitFor(() => { button('New thread'); });
+  button('New thread').click();
+  await vi.waitFor(() => { expect(document.querySelector('select')?.textContent).toContain(TARGET.folder); });
+  select(0, 1);
+  select(1, 1);
+  fill('Rebuild the fixtures');
+  await vi.waitFor(() => { expect(button('Start thread').disabled).toBe(false); });
+  button('Start thread').click();
+  await vi.waitFor(() => { button('Retry same start'); });
+  const [first] = inputs(original, 'MobileRemoteStart');
+  const { launch } = first as { launch: string };
+  await leave();
+
+  answers['MobileRemoteLaunch'] = { code: 'INTERNAL', reason: 'LAUNCH_UNKNOWN', message: 'Unknown.' };
+  answers['MobileRemoteStart'] = { startAgentThread: { ...STARTED, launch } };
+  const restored = open(answers);
+  await vi.waitFor(() => { button('Check previous start'); });
+  button('Check previous start').click();
+  await vi.waitFor(() => { expect(document.querySelector('select')?.textContent).toContain(TARGET.folder); });
+  expect(restored).toContainEqual({ operation: 'MobileRemoteLaunch', variables: { launch } });
+  expect(inputs(restored, 'MobileRemoteStart')).toEqual([]);
+  expect(button('Resubmit start').disabled).toBe(true);
+  expect(document.querySelector('textarea')?.value).toBe('');
+  select(0, 1);
+  select(1, 1);
+  fill('Rebuild the fixtures');
+  await vi.waitFor(() => { expect(button('Resubmit start').disabled).toBe(false); });
+  button('Resubmit start').click();
+  await vi.waitFor(() => { expect(inputs(restored, 'MobileRemoteStart')).toEqual([first]); });
+});
+
+it('rechecks the holder offer before resubmitting an unknown follow-up under the original ID', async () => {
+  const offer = { process: PROCESS, revision: 5, actions: ['prompt'], requests: [], stopTargets: [] };
+  const answers: Record<string, unknown> = {
+    ...conversation(offer),
+    MobileRemotePrompt: { code: 'unreachable', message: 'The command response was lost.' },
+  };
+  const original = open(answers, `?thread=${THREAD}`);
+  await vi.waitFor(() => { expect(document.querySelector('textarea')).not.toBeNull(); });
+  fill('Compare fixture counts');
+  await vi.waitFor(() => { expect(button('Send follow-up').disabled).toBe(false); });
+  button('Send follow-up').click();
+  await vi.waitFor(() => { button('Retry same follow-up'); });
+  const [first] = inputs(original, 'MobileRemotePrompt');
+  const { command } = first as { command: string };
+  await leave();
+
+  answers['MobileRemoteCommand'] = { code: 'INTERNAL', reason: 'COMMAND_UNKNOWN', message: 'Unknown.' };
+  answers['MobileRemotePrompt'] = { sendAgentThreadPrompt: { command, state: 'waiting', cause: null } };
+  const restored = open(answers, `?thread=${THREAD}`);
+  await vi.waitFor(() => { expect(document.body.textContent).toContain('use its original request ID'); });
+  expect(inputs(restored, 'MobileRemotePrompt')).toEqual([]);
+  fill('Compare fixture counts');
+  await vi.waitFor(() => { expect(button('Send follow-up').disabled).toBe(false); });
+  answers['MobileRemoteControl'] = { agentThreadControl: { thread: THREAD, offer: null } };
+  button('Send follow-up').click();
+  await vi.waitFor(() => { expect(document.body.textContent).toContain('no longer offers this action'); });
+  expect(inputs(restored, 'MobileRemotePrompt')).toEqual([]);
+  expect(Object.values(localStorage)).toEqual([command]);
+
+  answers['MobileRemoteControl'] = { agentThreadControl: { thread: THREAD, offer } };
+  button('Check follow-up status').click();
+  await vi.waitFor(() => { expect(button('Send follow-up').disabled).toBe(false); });
+  button('Send follow-up').click();
+  await vi.waitFor(() => { expect(inputs(restored, 'MobileRemotePrompt')).toEqual([first]); });
+});

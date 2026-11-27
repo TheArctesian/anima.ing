@@ -7,9 +7,10 @@
   interface Props {
     action: ReturnType<typeof followReceipt<CommandReceipt>>;
     label: string;
+    offered: boolean;
   }
 
-  const { action, label }: Props = $props();
+  const { action, label, offered }: Props = $props();
 </script>
 
 {#if action.receipt !== null}
@@ -26,4 +27,8 @@
 
 {#if action.pending}
   <FormButton size="lg" disabled={action.busy} onclick={() => { void action.refresh(); }}>Check {label.toLowerCase()} status</FormButton>
+{/if}
+
+{#if action.canReenter && offered}
+  <p class="remote-note">Submit the {label.toLowerCase()} again to use its original request ID.</p>
 {/if}

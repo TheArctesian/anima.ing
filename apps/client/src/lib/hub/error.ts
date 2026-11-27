@@ -6,7 +6,7 @@ const HUB_CODES = ['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION', 'C
 const THREAD_REFUSALS: readonly string[] = [
   'target_unavailable', 'LAUNCH_CONFLICT', 'COMMAND_CONFLICT', 'MALFORMED', 'COMMANDS_FULL',
   'thread_unknown', 'THREAD_NOT_FOUND', 'WORK_OFF', 'threads_off', 'invalid_answer',
-  'request_stale', 'target_stale', 'DEVICE_NOT_FOUND',
+  'request_stale', 'target_stale', 'DEVICE_NOT_FOUND', 'LAUNCH_UNKNOWN', 'COMMAND_UNKNOWN',
 ];
 
 export type HubCode = (typeof HUB_CODES)[number];

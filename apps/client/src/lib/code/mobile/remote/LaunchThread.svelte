@@ -70,8 +70,8 @@
       });
       return;
     }
-    const input = { launch: crypto.randomUUID(), device, project, folder, program, access, prompt };
-    void launch.start({ id: input.launch, submit: () => api.start(input) });
+    const input = { device, project, folder, program, access, prompt };
+    void launch.start((id) => api.start({ ...input, launch: id }));
   }
 
   function differentThread(): void {
@@ -83,10 +83,11 @@
   }
 
   $effect(() => {
-    untrack(() => {
-      void loadTargets();
-      void launch.refresh();
-    });
+    if (!locked && !loaded) untrack(() => { void loadTargets(); });
+  });
+
+  $effect(() => {
+    untrack(() => { void launch.refresh(); });
     return watchRemote(() => { void launch.refresh(); });
   });
 
@@ -160,7 +161,7 @@
       {/if}
       <label>First prompt <textarea rows="3" bind:value={prompt} disabled={locked}></textarea></label>
       <div class="remote-actions">
-        <FormButton size="lg" type="submit" tone="primary" disabled={!ready}>Start thread</FormButton>
+        <FormButton size="lg" type="submit" tone="primary" disabled={!ready}>{launch.canReenter ? 'Resubmit start' : 'Start thread'}</FormButton>
         <FormButton size="lg" tone="ghost" disabled={locked || fetching} onclick={() => { void loadTargets(); }}>Refresh targets</FormButton>
       </div>
     </form>
@@ -184,7 +185,11 @@
       <p role="status">{remoteError(launch.error)}</p>
     {/if}
     {#if launch.pending}
-      <p class="remote-note">You can close this form and check the same start again from Code.</p>
+      {#if launch.canReenter}
+        <p class="remote-note">Re-enter the target, access and prompt to submit using the original start ID.</p>
+      {:else}
+        <p class="remote-note">You can close this form and check the same start again from Code.</p>
+      {/if}
       <FormButton size="lg" disabled={launch.busy} onclick={() => { void launch.refresh(); }}>Check start status</FormButton>
       {#if launch.canRetry}
         <FormButton size="lg" onclick={() => { void launch.retry(); }}>Retry same start</FormButton>
