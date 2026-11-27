@@ -171,7 +171,9 @@ builds.jobs               id uuid pk, release_id uuid fk cascade, target text ch
                           publish_attempts int 0..3; 0963 (R-108, D-28):
                           upload_urls_expire_at null, the latest end of the job's upload URLs;
                           0964 (R-108, D-25): feed_sent_at null, set before the first feed
-                          write, after which the job's objects are never deleted
+                          write, after which failure cleanup keeps the job's objects;
+                          0966 (R-471, BLD-086): objects_removed_at null, set after the
+                          hub prunes the files of an old published job
 builds.job_files          job_id uuid fk cascade, name text, sha256 text, size_bytes bigint,
                           pk (job_id, name); the grant of the upload URLs (D-26)
 builds.feeds              job_id uuid pk fk cascade, feed text (at most 64 KiB), reported_at;

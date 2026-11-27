@@ -5,9 +5,8 @@ use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 
 use super::{
-    feed,
+    pruning,
     run::{Outcome, Reach, Tried, Work},
-    transfer,
 };
 use crate::fleet::{
     builds::{BuildJob, BuildQueue, Error, JobState, JobUpdate, Missing, jobs, queue, store},
@@ -135,7 +134,10 @@ pub(super) async fn finish(
     });
     // A feed that was sent may name the files, so they stay (D-25).
     if next.state == JobState::Failed && !feed_sent {
-        remove_objects(build_queue.db, reach, &next).await?;
+        pruning::remove_failed(build_queue.db, reach, &next).await?;
+    }
+    if next.state == JobState::Published {
+        pruning::prune(build_queue.db, reach, next.target).await;
     }
     Ok(())
 }
@@ -176,34 +178,6 @@ async fn record(
     };
     tx.commit().await?;
     Ok(Some(next))
-}
-
-/// A failed build is never in the bucket for people (BLD-070).
-async fn remove_objects(db: &PgPool, reach: Reach<'_>, job: &BuildJob) -> Result<(), Error> {
-    let version = job.version.to_string();
-    // A version is built once (D-27); this check still keeps a published file safe.
-    if store::is_published(db, job.target, &version).await? {
-        return Ok(());
-    }
-    let files = store::files_of(db, job.id).await?;
-    // The hub's own `.sig` of the updater file goes too (R-117).
-    let signature = feed::updater_name(job.target, &files).map(feed::signature_name);
-    let names = files.iter().map(|file| file.name.clone()).chain(signature);
-    for name in names {
-        let object = format!("{}/{version}/{name}", job.target);
-        let delete = reach.bucket.delete(&object, reach.clock.now());
-        if transfer::send(reach.http, delete, Vec::new(), &name)
-            .await
-            .is_err()
-        {
-            tracing::warn!(
-                domain = "builds",
-                fault = "bucket delete",
-                "publishing could not remove a file of a failed job"
-            );
-        }
-    }
-    Ok(())
 }
 
 /// BLD-082.

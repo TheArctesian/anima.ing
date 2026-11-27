@@ -701,3 +701,12 @@ Operator, 2026-11-23, firsthand in the same exchange: asked whether L1-10 may wr
 On 2026-11-23 the operator delegated the design decision, saying “for w2 design use your best judgment.” The session accepted Section 4 of the [W2 prototype record](research/work-isolation/w2-isolation.md) with conditions after two separate reviews. One reviewed the isolation security against the scripts and logs. The other checked the design against the plan and contracts.
 
 PRO-064 to PRO-070 of the [projects and builds plan](plans/projects-and-builds-plan.md) specify the conditions. Section 5 of the prototype record lists measurements for W4 and S. This ruling leaves OD-W36 open, changes no contract, and gives no permission to enable a runner for `TheArctesian/anima.ing` before task S and PRO-044. A per-job virtual machine or Docker service needs its own ruling. The prototype measurements and HT-065 do not cover the final implementation.
+## R-471 — Keep three desktop releases from Builds
+
+Operator, 2026-11-12: "maybe we only keep like 3 versions on there" (recorded on
+`builds/keep-three-versions` as R-118, renumbered here because that number is in use).
+After publishing to the R2 bucket `anima-releases`, the Builds publisher keeps the files and
+signatures of the 3 newest published versions of the target and any version a live feed names.
+Migration 0966 records the removal while the job stays published (BLD-086, D-27).
+A manual rollback needs the retained version's files. This is task R9 of
+[projects-and-builds-plan.md](plans/projects-and-builds-plan.md).
