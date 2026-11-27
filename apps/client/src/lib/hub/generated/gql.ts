@@ -69,6 +69,16 @@ type Documents = {
     "\n  query MobileThreadSnapshot($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      entries { sequence content }\n      lastSequence\n    }\n  }\n": typeof types.MobileThreadSnapshotDocument,
     "\n  query MobileThreadSummaryRefresh($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      lastSequence\n    }\n  }\n": typeof types.MobileThreadSummaryRefreshDocument,
     "\n  subscription MobileThreadEntries($id: ID!, $afterSequence: String!) {\n    agentThreadEntries(id: $id, afterSequence: $afterSequence) {\n      sequence\n      content\n    }\n  }\n": typeof types.MobileThreadEntriesDocument,
+    "\n  fragment MobileLaunchReceipt on AgentThreadLaunchReceipt {\n    launch state cause thread binding firstCommand\n  }\n": typeof types.MobileLaunchReceiptFragmentDoc,
+    "\n  fragment MobileCommandReceipt on AgentThreadCommandReceipt {\n    command state cause\n  }\n": typeof types.MobileCommandReceiptFragmentDoc,
+    "\n  query MobileRemoteTargets {\n    agentThreadStartTargets { device project folder program expiresAt }\n  }\n": typeof types.MobileRemoteTargetsDocument,
+    "\n  query MobileRemoteLaunch($launch: ID!) {\n    agentThreadLaunch(launch: $launch) { ...MobileLaunchReceipt }\n  }\n": typeof types.MobileRemoteLaunchDocument,
+    "\n  query MobileRemoteCommand($command: ID!) {\n    agentThreadCommand(command: $command) { ...MobileCommandReceipt }\n  }\n": typeof types.MobileRemoteCommandDocument,
+    "\n  query MobileRemoteControl($thread: ID!) {\n    agentThreadControl(thread: $thread) {\n      thread\n      offer {\n        process revision actions\n        stopTargets { kind process turn }\n        requests {\n          kind id subject details decisions rules { selector label }\n          questions { key text choices { id label } many freeText }\n        }\n      }\n    }\n  }\n": typeof types.MobileRemoteControlDocument,
+    "\n  mutation MobileRemoteStart($input: AgentThreadStartInput!) {\n    startAgentThread(input: $input) { ...MobileLaunchReceipt }\n  }\n": typeof types.MobileRemoteStartDocument,
+    "\n  mutation MobileRemotePrompt($input: AgentThreadPromptInput!) {\n    sendAgentThreadPrompt(input: $input) { ...MobileCommandReceipt }\n  }\n": typeof types.MobileRemotePromptDocument,
+    "\n  mutation MobileRemoteAnswer($input: AgentThreadAnswerInput!) {\n    answerAgentThreadRequest(input: $input) { ...MobileCommandReceipt }\n  }\n": typeof types.MobileRemoteAnswerDocument,
+    "\n  mutation MobileRemoteStop($input: AgentThreadStopInput!) {\n    stopAgentThread(input: $input) { ...MobileCommandReceipt }\n  }\n": typeof types.MobileRemoteStopDocument,
     "\n  query CodeNodeWorkspaces($device: ID!) { managedCodeWorkspaces(device: $device) }\n": typeof types.CodeNodeWorkspacesDocument,
     "\n  mutation CodeNodeEnable($device: ID!, $workspace: ID!, $enabled: Boolean!) {\n    setManagedCodeWorkspaceEnabled(device: $device, input: { workspace: $workspace, enabled: $enabled })\n  }\n": typeof types.CodeNodeEnableDocument,
     "\n  mutation CodeNodeSubmit($device: ID!, $input: ManagedCodeInput!) {\n    queueManagedCodeCommand(device: $device, input: $input)\n  }\n": typeof types.CodeNodeSubmitDocument,
@@ -293,6 +303,16 @@ const documents: Documents = {
     "\n  query MobileThreadSnapshot($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      entries { sequence content }\n      lastSequence\n    }\n  }\n": types.MobileThreadSnapshotDocument,
     "\n  query MobileThreadSummaryRefresh($id: ID!) {\n    agentThread(id: $id) {\n      summary { ...MobileThreadSummary }\n      lastSequence\n    }\n  }\n": types.MobileThreadSummaryRefreshDocument,
     "\n  subscription MobileThreadEntries($id: ID!, $afterSequence: String!) {\n    agentThreadEntries(id: $id, afterSequence: $afterSequence) {\n      sequence\n      content\n    }\n  }\n": types.MobileThreadEntriesDocument,
+    "\n  fragment MobileLaunchReceipt on AgentThreadLaunchReceipt {\n    launch state cause thread binding firstCommand\n  }\n": types.MobileLaunchReceiptFragmentDoc,
+    "\n  fragment MobileCommandReceipt on AgentThreadCommandReceipt {\n    command state cause\n  }\n": types.MobileCommandReceiptFragmentDoc,
+    "\n  query MobileRemoteTargets {\n    agentThreadStartTargets { device project folder program expiresAt }\n  }\n": types.MobileRemoteTargetsDocument,
+    "\n  query MobileRemoteLaunch($launch: ID!) {\n    agentThreadLaunch(launch: $launch) { ...MobileLaunchReceipt }\n  }\n": types.MobileRemoteLaunchDocument,
+    "\n  query MobileRemoteCommand($command: ID!) {\n    agentThreadCommand(command: $command) { ...MobileCommandReceipt }\n  }\n": types.MobileRemoteCommandDocument,
+    "\n  query MobileRemoteControl($thread: ID!) {\n    agentThreadControl(thread: $thread) {\n      thread\n      offer {\n        process revision actions\n        stopTargets { kind process turn }\n        requests {\n          kind id subject details decisions rules { selector label }\n          questions { key text choices { id label } many freeText }\n        }\n      }\n    }\n  }\n": types.MobileRemoteControlDocument,
+    "\n  mutation MobileRemoteStart($input: AgentThreadStartInput!) {\n    startAgentThread(input: $input) { ...MobileLaunchReceipt }\n  }\n": types.MobileRemoteStartDocument,
+    "\n  mutation MobileRemotePrompt($input: AgentThreadPromptInput!) {\n    sendAgentThreadPrompt(input: $input) { ...MobileCommandReceipt }\n  }\n": types.MobileRemotePromptDocument,
+    "\n  mutation MobileRemoteAnswer($input: AgentThreadAnswerInput!) {\n    answerAgentThreadRequest(input: $input) { ...MobileCommandReceipt }\n  }\n": types.MobileRemoteAnswerDocument,
+    "\n  mutation MobileRemoteStop($input: AgentThreadStopInput!) {\n    stopAgentThread(input: $input) { ...MobileCommandReceipt }\n  }\n": types.MobileRemoteStopDocument,
     "\n  query CodeNodeWorkspaces($device: ID!) { managedCodeWorkspaces(device: $device) }\n": types.CodeNodeWorkspacesDocument,
     "\n  mutation CodeNodeEnable($device: ID!, $workspace: ID!, $enabled: Boolean!) {\n    setManagedCodeWorkspaceEnabled(device: $device, input: { workspace: $workspace, enabled: $enabled })\n  }\n": types.CodeNodeEnableDocument,
     "\n  mutation CodeNodeSubmit($device: ID!, $input: ManagedCodeInput!) {\n    queueManagedCodeCommand(device: $device, input: $input)\n  }\n": types.CodeNodeSubmitDocument,
@@ -696,6 +716,46 @@ export function graphql(source: "\n  query MobileThreadSummaryRefresh($id: ID!) 
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  subscription MobileThreadEntries($id: ID!, $afterSequence: String!) {\n    agentThreadEntries(id: $id, afterSequence: $afterSequence) {\n      sequence\n      content\n    }\n  }\n"): (typeof documents)["\n  subscription MobileThreadEntries($id: ID!, $afterSequence: String!) {\n    agentThreadEntries(id: $id, afterSequence: $afterSequence) {\n      sequence\n      content\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment MobileLaunchReceipt on AgentThreadLaunchReceipt {\n    launch state cause thread binding firstCommand\n  }\n"): (typeof documents)["\n  fragment MobileLaunchReceipt on AgentThreadLaunchReceipt {\n    launch state cause thread binding firstCommand\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment MobileCommandReceipt on AgentThreadCommandReceipt {\n    command state cause\n  }\n"): (typeof documents)["\n  fragment MobileCommandReceipt on AgentThreadCommandReceipt {\n    command state cause\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MobileRemoteTargets {\n    agentThreadStartTargets { device project folder program expiresAt }\n  }\n"): (typeof documents)["\n  query MobileRemoteTargets {\n    agentThreadStartTargets { device project folder program expiresAt }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MobileRemoteLaunch($launch: ID!) {\n    agentThreadLaunch(launch: $launch) { ...MobileLaunchReceipt }\n  }\n"): (typeof documents)["\n  query MobileRemoteLaunch($launch: ID!) {\n    agentThreadLaunch(launch: $launch) { ...MobileLaunchReceipt }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MobileRemoteCommand($command: ID!) {\n    agentThreadCommand(command: $command) { ...MobileCommandReceipt }\n  }\n"): (typeof documents)["\n  query MobileRemoteCommand($command: ID!) {\n    agentThreadCommand(command: $command) { ...MobileCommandReceipt }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MobileRemoteControl($thread: ID!) {\n    agentThreadControl(thread: $thread) {\n      thread\n      offer {\n        process revision actions\n        stopTargets { kind process turn }\n        requests {\n          kind id subject details decisions rules { selector label }\n          questions { key text choices { id label } many freeText }\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query MobileRemoteControl($thread: ID!) {\n    agentThreadControl(thread: $thread) {\n      thread\n      offer {\n        process revision actions\n        stopTargets { kind process turn }\n        requests {\n          kind id subject details decisions rules { selector label }\n          questions { key text choices { id label } many freeText }\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation MobileRemoteStart($input: AgentThreadStartInput!) {\n    startAgentThread(input: $input) { ...MobileLaunchReceipt }\n  }\n"): (typeof documents)["\n  mutation MobileRemoteStart($input: AgentThreadStartInput!) {\n    startAgentThread(input: $input) { ...MobileLaunchReceipt }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation MobileRemotePrompt($input: AgentThreadPromptInput!) {\n    sendAgentThreadPrompt(input: $input) { ...MobileCommandReceipt }\n  }\n"): (typeof documents)["\n  mutation MobileRemotePrompt($input: AgentThreadPromptInput!) {\n    sendAgentThreadPrompt(input: $input) { ...MobileCommandReceipt }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation MobileRemoteAnswer($input: AgentThreadAnswerInput!) {\n    answerAgentThreadRequest(input: $input) { ...MobileCommandReceipt }\n  }\n"): (typeof documents)["\n  mutation MobileRemoteAnswer($input: AgentThreadAnswerInput!) {\n    answerAgentThreadRequest(input: $input) { ...MobileCommandReceipt }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation MobileRemoteStop($input: AgentThreadStopInput!) {\n    stopAgentThread(input: $input) { ...MobileCommandReceipt }\n  }\n"): (typeof documents)["\n  mutation MobileRemoteStop($input: AgentThreadStopInput!) {\n    stopAgentThread(input: $input) { ...MobileCommandReceipt }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

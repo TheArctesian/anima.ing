@@ -15,7 +15,8 @@ export interface FieldError {
  * `message` is a plain sentence for the operator and never holds the token (LOG-007).
  */
 export type HubError =
-  | { readonly code: Exclude<HubCode, 'VALIDATION'>; readonly message: string }
+  | { readonly code: Exclude<HubCode, 'VALIDATION' | 'INTERNAL'>; readonly message: string }
+  | { readonly code: 'INTERNAL'; readonly message: string; readonly reason?: string }
   | { readonly code: 'VALIDATION'; readonly message: string; readonly fields: readonly FieldError[] }
   | { readonly code: 'unreachable' | 'malformed'; readonly message: string }
   | { readonly code: 'unserved'; readonly message: string };
@@ -98,7 +99,11 @@ function parseError(value: unknown): HubError {
   }
   if (isHubCode(code) && code !== 'VALIDATION') return { code, message };
   if (UNKNOWN_FIELD.test(message) || UNKNOWN_INPUT_FIELD.test(message) || UNKNOWN_GROUP_IMPORT.test(message)) return UNSERVED;
-  return { code: 'INTERNAL', message: message === '' ? UNCODED_MESSAGE : message };
+  return {
+    code: 'INTERNAL',
+    message: message === '' ? UNCODED_MESSAGE : message,
+    ...(typeof code === 'string' && { reason: code }),
+  };
 }
 
 export function parseErrors(value: unknown): HubError {

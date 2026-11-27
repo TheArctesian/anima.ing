@@ -312,7 +312,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (131)
+## 4. Checks that only the operator can do (132)
 
 | Check | What |
 | --- | --- |
@@ -322,6 +322,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-194 | the scroll wheel of the trackpad and the motion of the connection steps on an iPhone |
 | HT-195 | the haptics of the trackpad wheel and of a session start on an iPhone |
 | HT-192 | a remote desktop on an iPhone fills the screen and shows the pointer |
+| HT-201 | remote Code writes on iOS and Android (TH52) |
 | HT-149 | reporting after an iPad update and the phone Code tab |
 | HT-183 | Device Overview and tabs on iPad |
 | HT-148 | phone Devices, offline notice and Integrations (M2-5) |

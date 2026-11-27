@@ -7,13 +7,15 @@
   import Markdown from '$lib/agent-threads/view/Markdown.svelte';
   import type { Connection } from '$lib/hub/hub';
   import EmptyState from '$lib/states/EmptyState.svelte';
-  import type { MobileCodeApi } from './api';
+  import type { MobileCodeApi, RemoteCodeApi } from './api';
   import { followThread, watchSummary } from './live.svelte';
   import ThreadState from './ThreadState.svelte';
+  import ThreadControls from './remote/ThreadControls.svelte';
   import { createConversation, threadTitle } from './transcript.svelte';
 
   interface Props {
     api: MobileCodeApi;
+    remote?: RemoteCodeApi;
     id: string;
     machines: ReadonlyMap<string, string>;
     connection: Connection;
@@ -21,7 +23,7 @@
     respond?: Snippet<[PendingRequest]>;
   }
 
-  const { api, id, machines, connection, embedded = false, respond }: Props = $props();
+  const { api, remote, id, machines, connection, embedded = false, respond }: Props = $props();
   let read = $state(() => api.snapshot(id));
   let failure = $state('');
   let staleSummary = $state(false);
@@ -59,8 +61,8 @@
         refreshing = false;
         if (!active) return;
         staleSummary = !result.ok;
-        if (!result.ok) return;
-        if (result.value === null) {
+        if (!result.ok && !['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND'].includes(result.error.code)) return;
+        if (!result.ok || result.value === null) {
           stopFollowing();
           live = null;
           conversation = createConversation();
@@ -133,21 +135,30 @@
       <p class="notice" role="status">Reconnecting to the hub…</p>
     {/if}
 
-    {#if conversation.pending.length > 0 || displayedState === 'needs_you'}
-      <section class="pending" aria-labelledby="mobile-pending-title">
-        <h2 id="mobile-pending-title"><CodeIcon name="shield-question" /> Needs you</h2>
-        {#each conversation.pending as request (request.id)}
-          <div class="request">
-            <h3>{request.title}</h3>
-            {#if request.subject !== ''}<pre>{request.subject}</pre>{/if}
-            {#if request.diff !== ''}
-              <details><summary>View changes</summary><pre>{request.diff}</pre></details>
-            {/if}
-            {#if respond}{@render respond(request)}{/if}
-          </div>
-        {/each}
-        {#if !respond}<p>Open the thread on its computer to respond.</p>{/if}
-      </section>
+    {#snippet attention()}
+      {#if conversation.pending.length > 0 || displayedState === 'needs_you'}
+        <section class="pending" aria-labelledby="mobile-pending-title">
+          <h2 id="mobile-pending-title"><CodeIcon name="shield-question" /> Needs you</h2>
+          {#each conversation.pending as request (request.id)}
+            <div class="request">
+              <h3>{request.title}</h3>
+              {#if request.subject !== ''}<pre>{request.subject}</pre>{/if}
+              {#if request.diff !== ''}
+                <details><summary>View changes</summary><pre>{request.diff}</pre></details>
+              {/if}
+              {#if respond}{@render respond(request)}{/if}
+            </div>
+          {/each}
+          {#if !respond}<p>Open the thread on its computer to respond.</p>{/if}
+        </section>
+      {/if}
+    {/snippet}
+    {#if remote}
+      <ThreadControls api={remote} thread={id} {connection}>
+        {@render attention()}
+      </ThreadControls>
+    {:else}
+      {@render attention()}
     {/if}
 
     {#if conversation.messages.length === 0}
