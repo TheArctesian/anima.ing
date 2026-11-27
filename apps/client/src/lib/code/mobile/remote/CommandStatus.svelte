@@ -23,3 +23,7 @@
 {#if action.canRetry}
   <FormButton size="lg" onclick={() => { void action.retry(); }}>Retry same {label.toLowerCase()}</FormButton>
 {/if}
+
+{#if action.pending}
+  <FormButton size="lg" disabled={action.busy} onclick={() => { void action.refresh(); }}>Check {label.toLowerCase()} status</FormButton>
+{/if}

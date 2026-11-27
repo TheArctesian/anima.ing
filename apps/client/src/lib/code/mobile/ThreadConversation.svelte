@@ -11,11 +11,13 @@
   import { followThread, watchSummary } from './live.svelte';
   import ThreadState from './ThreadState.svelte';
   import ThreadControls from './remote/ThreadControls.svelte';
+  import type { RecoveryScope } from './remote/recovery';
   import { createConversation, threadTitle } from './transcript.svelte';
 
   interface Props {
     api: MobileCodeApi;
     remote?: RemoteCodeApi;
+    scope?: RecoveryScope | null;
     id: string;
     machines: ReadonlyMap<string, string>;
     connection: Connection;
@@ -23,7 +25,7 @@
     respond?: Snippet<[PendingRequest]>;
   }
 
-  const { api, remote, id, machines, connection, embedded = false, respond }: Props = $props();
+  const { api, remote, scope, id, machines, connection, embedded = false, respond }: Props = $props();
   let read = $state(() => api.snapshot(id));
   let failure = $state('');
   let staleSummary = $state(false);
@@ -153,10 +155,12 @@
         </section>
       {/if}
     {/snippet}
-    {#if remote}
-      <ThreadControls api={remote} thread={id} {connection}>
-        {@render attention()}
-      </ThreadControls>
+    {#if remote && scope}
+      {#key scope}
+        <ThreadControls api={remote} {scope} thread={id} {connection}>
+          {@render attention()}
+        </ThreadControls>
+      {/key}
     {:else}
       {@render attention()}
     {/if}

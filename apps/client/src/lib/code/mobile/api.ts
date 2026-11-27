@@ -99,6 +99,12 @@ graphql(`
   }
 `);
 
+const Operator = graphql(`
+  query MobileRemoteOperator {
+    me { id }
+  }
+`);
+
 const Targets = graphql(`
   query MobileRemoteTargets {
     agentThreadStartTargets { device project folder program expiresAt }
@@ -168,6 +174,9 @@ export type CommandReceipt = MobileCommandReceiptFragment;
 
 export function remoteCodeApi(hub: Hub) {
   return {
+    async operator() {
+      return select(await hub.request(Operator, {}), 'me');
+    },
     async targets() {
       return select(await hub.request(Targets, {}), 'agentThreadStartTargets');
     },
