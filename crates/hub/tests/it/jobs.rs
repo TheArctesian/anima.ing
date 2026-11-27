@@ -86,7 +86,7 @@ impl Work {
         .unwrap();
         sqlx::query(
             "INSERT INTO jobs.project_devices (project_id, device_id)
-                    VALUES ($1::uuid, $2::uuid), ($1::uuid, $3::uuid)",
+             SELECT $1::uuid, id FROM devices.devices WHERE id IN ($2::uuid, $3::uuid)",
         )
         .bind(TEST_PROJECT)
         .bind(PVE_01)
