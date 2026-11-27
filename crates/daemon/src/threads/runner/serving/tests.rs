@@ -65,7 +65,12 @@ fn has_stage(daemon: &Path) -> bool {
 async fn stage(runner: &mut Runner, action: Action) {
     let (sender, mut incoming) = mpsc::channel(1);
     let listener = socket::bind(&runner.dir).unwrap();
-    let accepting = tokio::spawn(socket::accept(listener, sender, runner.dir.clone()));
+    let accepting = tokio::spawn(socket::accept(
+        listener,
+        sender,
+        runner.dir.clone(),
+        socket::Authority::Local,
+    ));
     let mut client = UnixStream::connect(runner.dir.join(agent_threads::control::SOCKET))
         .await
         .unwrap();
