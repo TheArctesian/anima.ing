@@ -21,10 +21,15 @@ members = [
     "crates/remote-login",
     "crates/catalogue",
     "crates/anima-applications",
+    "crates/anima-applications-wire",
     "crates/anima-osd",
+    "crates/anima-os-maintenance",
+    "crates/anima-os-execution",
+    "crates/oci-artifact",
     "crates/anima-os-session",
     "crates/anima-os-update",
     "crates/anima-os-install",
+    "crates/anima-os-storage",
     "crates/anima-cli",
     "crates/anima-database",
     "crates/anima-local-hub",
@@ -32,7 +37,9 @@ members = [
     "apps/desktop/src-tauri",
     "apps/desktop/keyboard",
     "apps/desktop/account-session",
+    "apps/desktop/haptics",
     "apps/desktop/runner",
+    "apps/desktop/workspace-preview",
 ]
 
 [workspace.package]

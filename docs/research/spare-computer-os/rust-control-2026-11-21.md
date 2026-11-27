@@ -4,7 +4,7 @@ Task: OS3-R1 of the [OS proposal](../../proposals/spare-computer-os.md). This is
 
 ## Built
 
-`anima-osd` is a Linux-only Rust binary with a versioned, private Unix-socket endpoint and structured diagnostic client. Version 1 reads local kernel facts and fixed monitoring/link process states. It has no TCP endpoint, host mutations, TUI or scheduling/permission store. The [contract](../../../experiments/anima-os/control-contract.md) owns details and reproducible commands.
+`anima-osd` is a Linux-only Rust binary with a versioned, private Unix-socket endpoint and structured diagnostic client. Version 1 reads local kernel facts and fixed monitoring/link process states. It has no TCP endpoint, host mutations, TUI or scheduling/permission store. The [contract](../../../os/control-contract.md) owns details and reproducible commands.
 
 The NixOS module runs a dedicated unprivileged account with a private runtime directory and restricted service. It is disabled by default. When explicitly enabled, the existing authenticated graphical Diagnostics action invokes the Rust diagnostic client; network/root/Wi-Fi readings and the rest of the console remain on the existing path.
 

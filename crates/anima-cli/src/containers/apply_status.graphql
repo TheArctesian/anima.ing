@@ -1,0 +1,3 @@
+query ApplicationApplyStatus($id: ID!) {
+  applicationApply(id: $id) { id applicationId deviceId state reason health }
+}

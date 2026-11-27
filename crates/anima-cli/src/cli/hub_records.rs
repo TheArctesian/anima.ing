@@ -1,8 +1,8 @@
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{
-    builders, events, extensions, forge, keys, notifications, projects, releases, retention,
-    sources, vpn,
+    builders, events, extensions, forge, keys, notifications, operational_keys, projects, releases,
+    retention, sources, vpn,
 };
 
 #[derive(Debug, clap::Subcommand)]
@@ -31,6 +31,12 @@ pub enum HubRecordCommand {
     Key {
         #[command(subcommand)]
         command: keys::KeyCommand,
+    },
+    /// Operational keys of your servers (list, show, add, set, rotate, revoke, remove, grant,
+    /// ungrant). A value goes in and never comes out.
+    Secret {
+        #[command(subcommand)]
+        command: operational_keys::SecretCommand,
     },
     /// Releases of the desktop application (list, next-version, publishing, create, cancel, log).
     Release {
@@ -74,6 +80,7 @@ impl HubRecordCommand {
             Self::Notify { command } => command.run(invocation).await,
             Self::Retention { command } => command.run(invocation).await,
             Self::Key { command } => command.run(invocation).await,
+            Self::Secret { command } => command.run(invocation).await,
             Self::Release { command } => command.run(invocation).await,
             Self::Builder { command } => command.run(invocation).await,
             Self::Extension { command } => command.run(invocation).await,

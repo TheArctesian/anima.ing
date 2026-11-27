@@ -1,7 +1,10 @@
 //! Thread summaries from enrolled devices (TH21).
 
 pub mod graphql;
+pub(crate) mod handoffs;
+pub mod managed;
 mod model;
+pub mod provisioning;
 mod store;
 mod upload;
 

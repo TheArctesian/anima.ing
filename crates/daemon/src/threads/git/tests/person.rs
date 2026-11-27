@@ -1,6 +1,8 @@
 //! The actions of the person (commit, push, pull request) and each refusal: an agent, a thread
 //! with no worktree, a path that leaves the worktree, a push that was not allowed.
 
+mod destination;
+
 use agent_threads::git::{GitAction, GitOutcome, GitRefusal, Scope};
 
 use super::{Bench, PERSON, THREAD, refused};

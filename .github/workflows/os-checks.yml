@@ -1,0 +1,259 @@
+name: OS source and controller checks
+
+on:
+  pull_request:
+    paths:
+      - 'os/**'
+      - 'link/**'
+      - 'crates/anima-os*/**'
+      - 'crates/anima-applications/**'
+      - 'crates/anima-applications-wire/**'
+      - 'crates/compose-rules/**'
+      - 'crates/oci-artifact/**'
+      - 'crates/daemon/**'
+      - 'crates/daemon-core/**'
+      - 'crates/model-relay/**'
+      - 'crates/power/**'
+      - 'crates/redaction/**'
+      - 'crates/agent-threads/**'
+      - 'crates/remote-login/**'
+      - 'contracts/daemon-push.md'
+      - 'contracts/work-route.md'
+      - 'rust-toolchain.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.cargo/**'
+      - 'quality/bin/rustc-cache.sh'
+      - '.github/workflows/os-checks.yml'
+      - '.github/workflows/os-release.yml'
+  workflow_dispatch:
+    inputs:
+      fresh_install:
+        description: Qualify the fresh graphical install and private access on an unsigned ISO
+        type: boolean
+        default: false
+      railpack:
+        description: Build an unsigned ISO and qualify Node, Python and Rust
+        type: boolean
+        default: false
+      pre_move_revision:
+        description: Pre-move Git revision for a disposable signed upgrade and rollback rehearsal
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@d698718aa798980d17dd749f03beae0b51183399
+      - run: python3 -m pip install boto3==1.42.6
+      - run: python3 os/check.py
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.3.14"
+          no-cache: true
+      - name: Exercise the installed-console presentation
+        run: |
+          set -euo pipefail
+          ANIMA_TEST_CHROMIUM=$(command -v google-chrome)
+          export ANIMA_TEST_CHROMIUM
+          "$ANIMA_TEST_CHROMIUM" --version
+          plex=$(nix --extra-experimental-features 'nix-command flakes' build \
+            --inputs-from path:./os --no-link --print-out-paths nixpkgs#ibm-plex)
+          export ANIMA_TEST_FONT_DIRECTORY="$plex/share/fonts/truetype"
+          bun os/tests/console/run.mjs "$RUNNER_TEMP/os-console"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: os-console-presentation
+          retention-days: 14
+          if-no-files-found: ignore
+          path: ${{ runner.temp }}/os-console/
+  hosting-coordination:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Exercise source admission, daemon handoff, private access and Hosting
+        run: |
+          set -euo pipefail
+          toolchain="$(sed -n 's/^channel *= *"\([^"]*\)"/\1/p' rust-toolchain.toml)"
+          fixture_bin="$RUNNER_TEMP/anima-execution-fixture"
+          mkdir -p "$fixture_bin"
+          docker run --rm --init \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/src,readonly" \
+            --mount "type=bind,source=$fixture_bin,target=/fixture" \
+            --env CARGO_TARGET_DIR=/target --env CARGO_PROFILE_TEST_DEBUG=0 \
+            --workdir /src "rust:${toolchain:?}-bookworm" \
+            bash -ceu '
+              cargo test --locked -j 2 -p anima-os-maintenance --lib source_pipeline::tests:: \
+                -- --ignored --test-threads=1
+              cargo test --locked -j 2 -p anima-daemon --lib runtime::source_work::hosting::tests:: \
+                -- --ignored --test-threads=1
+              cargo test --locked -j 2 -p anima-daemon --lib runtime::sampling::tests::remote_access:: \
+                -- --ignored --test-threads=1
+              cargo test --locked -j 2 -p anima-applications --test startup terminal:: \
+                -- --ignored --test-threads=1
+              cargo test --locked -j 2 -p anima-applications --test startup \
+                serve_reports_a_temporary_error_for_a_startup_probe_timeout -- --ignored --exact
+              useradd --system --no-create-home anima-daemon
+              cargo test --locked -j 2 -p anima-applications --test hosting_setup \
+                -- --ignored --test-threads=1
+              cargo test --locked -j 2 -p anima-applications --test console_applications \
+                -- --ignored --test-threads=1
+              cargo build --locked -j 2 -p anima-applications
+              python3 os/tests/session/terminal-watch.py "$CARGO_TARGET_DIR/debug/anima-applications"
+              cargo test --locked -j 2 -p anima-applications --test migration \
+                -- --ignored --test-threads=1
+              cargo test --locked -j 2 -p anima-applications --test startup control::compose::cutover:: \
+                -- --ignored --test-threads=1
+              cargo build --locked -j 2 -p anima-os-execution -p anima-os-session
+              install -m 0755 "$CARGO_TARGET_DIR/debug/anima-os-execution" \
+                "$CARGO_TARGET_DIR/debug/anima-os-session" /fixture/
+            '
+          for probe in artifact-reconciliation source-capture; do
+            docker run --rm --init --network=none \
+              --tmpfs /persist:size=54g,mode=0700 \
+              --mount "type=bind,source=$GITHUB_WORKSPACE,target=/src,readonly" \
+              --mount "type=bind,source=$fixture_bin,target=/fixture,readonly" \
+              --workdir /src "rust:${toolchain:?}-bookworm" \
+              python3 "os/tests/execution/$probe.py" /fixture/anima-os-execution
+          done
+  controllers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [vm, session, sessionAccount, install, update, boot, execution, maintenance, applications, storage]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@d698718aa798980d17dd749f03beae0b51183399
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            max-jobs = 2
+            cores = 2
+      - name: Check virtualization
+        if: ${{ matrix.check != 'execution' && matrix.check != 'maintenance' && matrix.check != 'applications' && matrix.check != 'storage' }}
+        run: test -r /dev/kvm && test -w /dev/kvm
+      - name: Exercise isolated controllers
+        env:
+          CHECK: ${{ matrix.check }}
+        run: nix build --impure --file os/checks.nix "$CHECK" --no-link -L
+  candidate-build:
+    if: github.event_name == 'workflow_dispatch' && (inputs.fresh_install || inputs.railpack || inputs.pre_move_revision != '')
+    runs-on: ${{ vars.ANIMA_OS_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 350
+    outputs:
+      lanes: ${{ steps.candidate.outputs.lanes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: bash os/release/hosted.sh
+      - uses: cachix/install-nix-action@d698718aa798980d17dd749f03beae0b51183399
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            max-jobs = 2
+            cores = 2
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5
+        with:
+          go-version-file: link/go.mod
+          cache: false
+      - id: candidate
+        name: Freeze the candidate and optional upgrade baseline
+        env:
+          FRESH_INSTALL: ${{ inputs.fresh_install }}
+          RAILPACK: ${{ inputs.railpack }}
+          PRE_MOVE_REVISION: ${{ inputs.pre_move_revision }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/candidate"
+          if [[ -n "$PRE_MOVE_REVISION" ]]; then
+            bash os/release/build.sh --rehearse-upgrade "$PRE_MOVE_REVISION" "$out"
+          else
+            flags=(--unsigned)
+            if [[ "$FRESH_INSTALL" == true ]]; then flags+=(--test-tools); fi
+            bash os/release/build.sh "${flags[@]}" "$out/candidate"
+          fi
+          python3 - "$out/lanes.json" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          options = [('fresh-install', os.environ['FRESH_INSTALL'] == 'true'),
+                     ('railpack', os.environ['RAILPACK'] == 'true'),
+                     ('upgrade', bool(os.environ['PRE_MOVE_REVISION']))]
+          lanes = json.dumps([lane for lane, selected in options if selected])
+          Path(sys.argv[1]).write_text(lanes + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              print(f'lanes={lanes}', file=out)
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: os-unsigned-candidate
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/candidate/lanes.json
+            ${{ runner.temp }}/candidate/fixture-public.pem
+            ${{ runner.temp }}/candidate/*/anima-os-x86_64.iso
+            ${{ runner.temp }}/candidate/*/candidate.json
+            ${{ runner.temp }}/candidate/*/build-inputs.json
+            ${{ runner.temp }}/candidate/candidate/package
+
+  candidate-qualification:
+    needs: candidate-build
+    if: needs.candidate-build.result == 'success'
+    runs-on: ${{ vars.ANIMA_OS_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: ${{ matrix.check == 'railpack' && 240 || 120 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        check: ${{ fromJSON(needs.candidate-build.outputs.lanes || '[]') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: bash os/release/hosted.sh
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: os-unsigned-candidate
+          path: ${{ runner.temp }}/candidate
+      - name: Qualify the frozen installed image
+        env:
+          CHECK: ${{ matrix.check }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/candidate"
+          if [[ "$CHECK" == upgrade ]]; then
+            python3 os/release/rehearsal.py "$out" --output "$RUNNER_TEMP/acceptance"
+          else
+            python3 os/release/qualification.py --unsigned "$out/candidate" \
+              --lane "$CHECK" --output "$RUNNER_TEMP/acceptance"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: os-candidate-${{ matrix.check }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/candidate/*/candidate.json
+            ${{ runner.temp }}/candidate/*/build-inputs.json
+            ${{ runner.temp }}/acceptance/results.json
+            ${{ runner.temp }}/acceptance/*.ppm

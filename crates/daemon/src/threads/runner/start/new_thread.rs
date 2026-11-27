@@ -14,6 +14,7 @@ use agent_threads::control::Refusal;
 
 /// A new thread as the client named it.
 pub(in crate::threads::runner) struct NewThread {
+    pub managed_id: Option<Uuid>,
     pub program: Program,
     pub provider_address: Option<agent_threads::control::ProviderAddress>,
     pub folder: PathBuf,
@@ -43,6 +44,21 @@ impl NewThread {
     /// The new thread of a start call; `None` for a different call, and for a start that asks
     /// Codex to plan first, which Codex cannot do (TH105).
     pub(in crate::threads::runner) fn of(action: agent_threads::control::Action) -> Option<Self> {
+        let (action, managed_id) = match action {
+            agent_threads::control::Action::StartManaged { thread, start }
+                if !thread.is_nil()
+                    && matches!(
+                        &*start,
+                        agent_threads::control::Action::Start {
+                            worktree: false,
+                            ..
+                        }
+                    ) =>
+            {
+                (*start, Some(thread))
+            }
+            action => (action, None),
+        };
         match action {
             agent_threads::control::Action::Start {
                 program,
@@ -59,6 +75,7 @@ impl NewThread {
                 worktree,
                 base,
             } if !(program == Program::Codex && mode == Mode::Plan) => Some(Self {
+                managed_id,
                 program,
                 provider_address,
                 folder,

@@ -223,3 +223,57 @@ async fn sf_011_an_attempt_that_reports_with_no_end_is_ended_at_its_limit(pool: 
         (State::Stopped, Some("expired"))
     );
 }
+
+#[cfg(unix)]
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn source_build_placement_requires_an_explicit_recipe_capability(pool: PgPool) {
+    let work = Work::new(&pool).await;
+    let legacy = work.daemons.token_for(PVE_01).await;
+    let capable = work.daemons.token_for(DOCKER_HOST).await;
+    let mut source = build();
+    source.parameters["recipe"] = json!("source_image_v1");
+    source.parameters["target"] = json!("linux-aarch64");
+    source.parameters.as_object_mut().unwrap().remove("version");
+    source.parameters["strategy"] = json!("auto");
+    source.os = None;
+    source.architecture = None;
+    let queued = work.enqueue(source).await;
+    let mut old_claim = claim_of(PVE_01, &json!([]));
+    old_claim["free"]["memoryBytes"] = json!(16_u64 << 30);
+    assert_eq!(
+        work.claim(&legacy, &old_claim).await.0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(work.job(queued.id).await.0.state, State::Queued);
+    let mut claim = claim_of(DOCKER_HOST, &json!([]));
+    claim["buildRecipes"] = json!(["source_image_v1", "source_image_v1"]);
+    assert_eq!(
+        work.claim(&capable, &claim).await.0,
+        StatusCode::BAD_REQUEST
+    );
+    claim["buildRecipes"] = json!([]);
+    assert_eq!(work.claim(&capable, &claim).await.0, StatusCode::NO_CONTENT);
+    claim["buildRecipes"] = json!(["source_image_v1"]);
+    assert_eq!(
+        work.claim(&capable, &claim).await.0,
+        StatusCode::SERVICE_UNAVAILABLE
+    );
+    assert_eq!(work.job(queued.id).await.0.state, State::Queued);
+    let mut work = work;
+    let directory = tempfile::tempdir().unwrap();
+    let store =
+        anima_hub::work::artifacts::Store::open(&directory.path().join("artifacts"), 6, 1).unwrap();
+    work.daemons = work.daemons.with_artifact_storage(store);
+    assert_eq!(work.claim(&capable, &claim).await.0, StatusCode::NO_CONTENT);
+    claim["architecture"] = json!("aarch64");
+    let (status, assigned) = work.claim(&capable, &claim).await;
+    assert_eq!(status, StatusCode::OK, "{assigned}");
+    assert_eq!(id_of(&assigned), queued.id);
+    assert_eq!(
+        work.job(queued.id).await.0.holder,
+        Some(DOCKER_HOST.parse().unwrap())
+    );
+}

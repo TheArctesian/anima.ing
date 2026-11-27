@@ -5,7 +5,7 @@ import type { Container, ContainerCalls, ContainerDetail, ContainerLog, Containe
 export const APP_ID = `4f5c1d2e3a4b${'0'.repeat(52)}`;
 
 export function container(change: Partial<Container>): Container {
-  return { id: APP_ID, name: 'tracks-app-1', image: 'example/tracks:0.36', state: 'RUNNING', status: 'Up 3 hours (healthy)', health: 'HEALTHY', ports: ['0.0.0.0:3000->3000/tcp'], createdAt: '2026-11-18T08:00:00Z', composeProject: 'tracks', composeService: 'app', composeWorkingDir: null, composeFiles: [], composeProjectState: 'PARTLY_RUNNING', ...change };
+  return { id: APP_ID, actionsAvailable: false, managedApplicationId: null, name: 'tracks-app-1', image: 'example/tracks:0.36', state: 'RUNNING', status: 'Up 3 hours (healthy)', health: 'HEALTHY', ports: ['0.0.0.0:3000->3000/tcp'], createdAt: '2026-11-18T08:00:00Z', composeProject: 'tracks', composeService: 'app', composeWorkingDir: null, composeFiles: [], composeProjectState: 'PARTLY_RUNNING', ...change };
 }
 
 export const CONTAINERS: readonly Container[] = [

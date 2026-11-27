@@ -46,8 +46,16 @@ machine has the data. Spec Section 1.1 says that a later version may run contain
 
 ## Requirements
 
-A hosted application is a container that runs all the time on one machine. Anima installs
-published applications. Anima is not a build platform.
+A hosted application is a container that runs all the time on one machine. This hosting domain installs
+published images; source builds belong to the projects/builds domain, not to application lifecycle control.
+
+### AnimaOS integration direction (2026-11-23)
+
+The operator selected Docker for AnimaOS, matching HOST-010, and requires hosted applications to take priority over ordinary agent work and builds. [OS Sections 17.6 and 17.11](../proposals/spare-computer-os.md#176-sequenced-work-and-acceptance) own the appliance migration and resource integration. Applications remain on their assigned host; agent placement must not move, evict or restart them to create capacity. This is a hosting-first admission constraint, not a claim that shared hardware guarantees zero interruptions.
+
+Existing Podman workloads require an explicit migration with authoritative runtime/data state and rollback compatibility; an OS rollback must not restart stale Podman copies after Docker has received new writes. Application-consistent transfer and validation belong with the workload owner. Retaining old data is not permission to run both copies. The installed console reads the same hosting capabilities and permissions as other clients; it receives no Docker socket or alternate lifecycle authority.
+
+Railpack builds are owned by [projects-and-builds-plan.md](projects-and-builds-plan.md#railpack-for-animaos-source-builds-selected-direction-2026-11-23). Hosting accepts the exact resulting image only through a separate authorized deploy action. These are planning directions; they do not change existing actor restrictions, approve new work types or establish that the OS migration is implemented.
 
 ### Stage 1: see (approved, R-149; it can be built now)
 
@@ -443,9 +451,9 @@ The order is hub API, `anima` command, MCP tool, client (CMD-030). A task is bui
 | H50 | The load and the room of each machine in the section Machines (HSE-017 of [hosting-section.md](../proposals/hosting-section.md), R-453): processor, memory, disk and VRAM as the meters of the Devices list, the numbers of applications, models and volumes, and the time of the last read. Read only, from the device metrics that the hub has. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019); no new hub API, command or MCP tool unless the task says so. | H49 | Not started | |
 | H51 | The Hosting page of one machine (HSE-018 of [hosting-section.md](../proposals/hosting-section.md), R-453): tiles with the last hour and its peak, then the applications, models, volumes and routes of the machine, Install here and Pull a model here, and a link to the device page. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019); no new hub API, command or MCP tool unless the task says so. | H50; H55 for Install here; task L1-7 of [compute-plan.md](compute-plan.md) for Pull a model here | Not started | |
 | H52 | The overview at the top of Hosting (HSE-019 of [hosting-section.md](../proposals/hosting-section.md), R-453): four numbers and the list of what needs the operator, each with one action, from the reads of the sections. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019); no new hub API, command or MCP tool unless the task says so. | H42, H47 | Not started | |
-| H53 | The logos of the Catalogue and of the applications (HSE-020 of [hosting-section.md](../proposals/hosting-section.md), R-453): the brand marks of Simple Icons (CC0), matched on the entry and on the name of the image, in the accent colour, with the first letter when no mark exists; the same rule as the Library of the models. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019); no new hub API, command or MCP tool unless the task says so. | H42, H36 | Not started | |
+| H53 | The logos of the Catalogue and of the applications (HSE-020 of [hosting-section.md](../proposals/hosting-section.md), R-453): the brand marks of Simple Icons (CC0), matched on the entry and on the name of the image, in the accent colour, with the first letter when no mark exists; the same rule as the Library of the models. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019); no new hub API, command or MCP tool unless the task says so. | H42, H36 | Built (2026-11-24): `15dfe6ce0` on the branch `hosted/h53-brand-marks`; it waits for the check HT-196 (PLN-014). | Client only: `$lib/brands` matches 58 names of programs on their name and image names; a program with no mark keeps its first letter. |
 | H54 | One toolbar for each list of Hosting (HSE-021 of [hosting-section.md](../proposals/hosting-section.md), R-453): pills with counts, `/` for the search, Machine, a sort that stays, the main action, and the time of the last read with Refresh. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019); no new hub API, command or MCP tool unless the task says so. | H42, H48, H49 | Not started | |
-| H55 | The Catalogue as a list and a picker (HSE-022 of [hosting-section.md](../proposals/hosting-section.md), R-453): rows as the Library of the models, and the same list as a picker from Install here with its machine chosen and the arrow keys. Install stays off with its reason until task H6. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019); no new hub API, command or MCP tool unless the task says so. | H47, H53 | Not started | |
+| H55 | The Catalogue as a list and a picker (HSE-022 of [hosting-section.md](../proposals/hosting-section.md), R-453): rows as the Library of the models, and the same list as a picker from Install here with its machine chosen and the arrow keys. Install stays off with its reason until task H6. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019); no new hub API, command or MCP tool unless the task says so. | H47, H53 | Built (2026-11-24): `60ba3dcf8` on the branch `hosted/h55-catalogue-list`; it waits for the check HT-198 (PLN-014). | Client only. Runs on reads the images of the containers that the hub has read; the picker opens from Install from the catalogue on an empty machine; Install here on the page of one machine comes with task H51. |
 | H56 | The fit of a catalogue entry on each machine (HSE-023 of [hosting-section.md](../proposals/hosting-section.md), R-453): for each machine, whether the entry can run and the reason in words (no engine, a port in use, memory or disk, processor type), from the containers and ports of stage 1 and the device metrics; Install chooses the machine with the best fit. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019). | H55; H6 for Install | Not started | |
 | H57 | The use of each application and container in Applications (HSE-024 of [hosting-section.md](../proposals/hosting-section.md), R-453): processor, memory, uptime with restarts and ports, with sums on a row of several containers and the meters of H50. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019). | H10 (the use of each container, HOST-018), H42, H50 | Not started | |
 | H58 | An install that runs as a row of its machine group (HSE-025 of [hosting-section.md](../proposals/hosting-section.md), R-453): Waiting, Pulling, Starting, or Failed with its reason and its log, until the machine reports the application. Each task first draws its frame in [hosting/index.html](../mockup/hosting/index.html) (PLN-019). | H6, H42 | Not started | |
@@ -683,3 +691,68 @@ R-152 names the preparation below. It changes no approved requirement or contrac
 | Task | Work and acceptance | Depends on | State |
 | --- | --- | --- | --- |
 | H-C1 | Reconcile H4 with two cases: known-running Docker on the correct host reached through the hosted route, and that same host with the route denied. Distinguish unreachable host from stopped container. Give H4's owner the acceptance gap, or record that the governing acceptance text is missing. For a proposed Compose provenance display, include equal project names on different hosts and unknown provenance. A path on screen does not authorize adopting or updating a deployment. | H1 to H4 owner; hosted TCP/SSH route; operator target for a live check; separate adoption decision before writes to existing external projects | Not started. Preparation only; no new H1 build or live check |
+
+### Linux plan execution for AnimaOS, 2026-11-25
+
+H31 now has a Linux executor for plans produced by the applications owner. It holds an exclusive lock on the private application store, checks the locally owned Docker socket before starting a plan and before each Docker or Compose command, and runs only the resolved program with its explicit environment. The command deadline covers the plan. On expiry the executor terminates the child process group and reaps its leader. It preserves the first failure, records optional command failures and runs the cleanup steps that apply in each case.
+
+Filesystem operations use a directory descriptor rooted at the private store. Linux path resolution rejects symlink and mount crossings. Private writes sync a new file before replacing the old entry. Deletion traverses directories without following links. The executor consumes in-process plans and returns fixed results. The service entry point still needs startup facts, an authenticated daemon socket, inventory, health and follow output, and the explicit authorization to hand a retained source artifact to Docker. Real Docker and installed AnimaOS acceptance remain deferred.
+
+### Loading Linux startup facts, 2026-11-25
+
+The applications executable now runs the Linux startup policy through `anima-applications check <settings> <docker-config-directory> <application-root>`. It reads the administrator-owned settings, resolves the executable and socket paths, checks the daemon account's access to the system Docker socket, and validates Docker configuration before calling either version probe. The probes share a monotonic deadline and return bounded output. The Linux path reader requires root or runtime ownership on each entry and fails closed on group writes or extended ACLs along privileged paths. Exact ACL writer resolution remains a portability follow-up.
+
+The AnimaOS runtime payload includes the executable and its Compose validator. The package is in the non-publishing OS checks matrix. Daemon socket dispatch and the hosting image handoff remain open.
+
+
+### Local Linux applications service, 2026-11-25
+
+`anima-applications serve` opens a group-accessible Unix socket in an owner-writable directory and checks the connecting UID through the kernel. Requests are size- and time-bounded. The service records the first hub and device pair atomically in its private state and keeps a mismatch across restarts. A new administrator enablement generation permits a new pair. Requests are refused when the settings no longer match the startup check.
+
+The pairing probe and the strict `container_action` reader are wired to the listener. The applications owner reads the exact Docker container ID, its project label, state and restart policy, checks the locally installed record and applies the existing protection and ownership rules. A stop can proceed while another mutating item holds the store lock. The executor returns a fixed result and the service logs validated item and container IDs, the action and its outcome. Docker output stays private. AnimaOS packages a systemd unit conditioned on the local settings file. The daemon claim advertisement, remaining work types, lease and result integration, and verified-image deployment handoff are still open.
+
+### Lease-gated local execution, 2026-11-25
+
+An exact-ID action now uses two exchanges on one authenticated connection. The applications owner checks the request and returns readiness while holding the relevant execution lock. The daemon verifies the socket peer is root. After the preparing report, the daemon's hub client reports running for that same item and waits for an accepted, current lease without a stop order before sending start. Closing a prepared connection leaves Docker unchanged. At start the owner rechecks pairing, settings and current Docker state before it runs the command. A connection error after sending start leaves the outcome uncertain and the item must never be replayed.
+
+The daemon and applications owner both use the same bounded frame definitions. The daemon's transport supports HTTPS enrollment with the explicit K10 port. Hosted Unix enrollment still depends on OD-HOST-34. The hub queue must publish and dispatch container work and the daemon must integrate the handoff with the shared claim, lease renewal and terminal report loop. The local transport alone does not advertise hosting.
+
+### Hub queue for exact-ID container actions, 2026-11-25
+
+The work route now accepts an opt-in applications capability separately from the build switch. The queue binds each start, stop or restart to a named machine and returns a host item without a repository. A stop can be dispatched with another Docker mutation or build held. Other actions use one mutation slot and take priority over an available build slot. Login requests precede keys within an action class. Submission checks the actor, rejects duplicate waiting commands and limits each key's queue on the target machine.
+
+A host refusal is final and consumes no build fault budget. A lease gap keeps the action on its original machine. A missing hold, an attempt over its limit plus five minutes or an unclaimed action after ten minutes ends as an orphan. The holder can repeat an identical final report if its acknowledgement was lost. The typed enqueue operation is available to a hub caller after write authorization. The operator-facing submission route and the daemon's work polling and reporting integration are still open.
+
+Daemon recovery acceptance must exercise an ambiguous start on the work route. Execute a synthetic Docker action, interrupt the daemon or its socket before the hub commits the terminal report, then reconcile the same held attempt. Verify one Docker invocation and a final recorded outcome or an explicit orphan after the hub's grace period. A single database attempt row does not prove single execution.
+
+### Daemon host claims and recovery, 2026-11-25
+
+The enrolled Linux daemon now probes the root applications service before advertising `container_action`. It includes host and source attempts in one claim while their execution and report delivery run independently. A host action reports preparing, durably records the decision to request start, and obtains the running acknowledgement before sending start. Running commands renew their leases. A stop order lets the active command end and prevents further execution.
+
+Host results are written locally before delivery. The daemon can repeat a terminal report after a lost acknowledgement. When it restarts after recording a start decision but before saving an outcome, it retains the same attempt in its claim and reports `failed` with cause `orphan`. It never sends start again for that attempt. The disposable Linux regression interrupted the coordinator after a simulated Docker command and before any terminal report. The hub HTTP fixture reissued the same attempt, observed the orphan report, and the local fixture counted one command invocation. Production Docker and installed-node qualification remain deferred.
+
+### Operator entry points for container actions, 2026-11-25
+
+Hosting and the device's Containers panel now expose Start, Stop and Restart for devices with a current action advertisement and a full Docker container ID. The dialog shows the target, asks the operator to choose an action, and follows the returned action ID to its result. It refreshes the selected machine after success. The hub queue mutation requires write scope and the status query exposes only the matching container action's ID, state and reason.
+
+The CLI exposes `anima containers start`, `stop`, `restart` and `action-status`. The MCP tools use the same two hub operations. A name or unique identifier prefix is resolved against the device before the full identifier is sent. The installed-device check is HT-190.
+
+### Managed Compose apply in the applications service, 2026-11-25
+
+The Linux owner now runs the local part of `application_apply`, including the project collision check, hash-checked file staging, digest verification, and observations after releasing the mutation lock. [The AnimaOS implementation record](../research/spare-computer-os/redesign-implementation.md#managed-compose-apply-on-linux-2026-11-25) records the source checks and the remaining installed qualification. The hub queue and the daemon still need the file delivery and apply lifecycle before Hosting can offer this operation.
+
+### Hub-managed Compose requests, 2026-11-25
+
+The work route now has encrypted, one-use delivery for a managed application's Compose and environment files and queues applies only for the application's assigned machine. The [AnimaOS implementation record](../research/spare-computer-os/redesign-implementation.md#compose-apply-scheduling-and-file-delivery-2026-11-25) records the route checks. The daemon must connect released files to the local owner and report the health phase before the operator can submit an apply from Hosting.
+
+### Daemon-managed apply lifecycle, 2026-11-25
+
+The daemon now delivers both verified files to the local owner, fences the start and reports health. [The AnimaOS implementation record](../research/spare-computer-os/redesign-implementation.md#daemon-compose-handoff-2026-11-25) records the lost-response regression and the remaining qualification. Hosting still needs the operator submission and result views.
+
+### Operator Compose submission and status, 2026-11-25
+
+Hosting and the CLI submit operator-authored Compose files through the login-protected queue mutation. Both show the apply ID, state and health. The operator can supply an existing application ID to update it and can reuse its recorded image digests. MCP provides status and eligible target reads. The [AnimaOS implementation record](../research/spare-computer-os/redesign-implementation.md#operator-compose-submission-and-status-2026-11-25) records the source checks. Installed qualification is [HT-191](../need-human-testing.md#ht-191--deploy-compose-from-animaos-hosting).
+
+### Compose version recovery, 2026-11-25
+
+The applications owner records the start and confirmation of a Compose version in the private application store. When it next receives an apply for that application, it restores the previous recorded configuration if Compose was unconfirmed, or finishes the confirmed version's current and kept records if recording stopped partway through. The owner reports an indeterminate outcome when it cannot finish the records after Compose succeeds. The [AnimaOS implementation record](../research/spare-computer-os/redesign-implementation.md#interrupted-compose-version-recording-2026-11-25) records the Linux failure and restart checks.

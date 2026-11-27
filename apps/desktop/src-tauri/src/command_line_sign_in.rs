@@ -2,7 +2,8 @@
 //! sign-in, the shell runs `anima auth adopt --hub <origin> -` with the command-line token on
 //! standard input; at the app's sign-out, `anima auth logout --hub <origin>`. The token is never
 //! in an argument, an environment variable, a log line or an error (CMD-014, LOG-007): the
-//! output of `anima` is not read.
+//! output of `anima` is not read. The log gives only its exit status (CMD-021), so that a
+//! refusal says why.
 //!
 //! Only the main web view may ask (WEB-007).
 
@@ -28,8 +29,9 @@ pub enum SignInError {
     Caller,
     #[error("this build of the app carries no command line program")]
     NotCarried,
+    /// `status` is the exit status of `anima` (CMD-021); none when a signal ended it.
     #[error("the command line program did not take the sign-in")]
-    Refused,
+    Refused { status: Option<i32> },
     #[error("the command line program did not run")]
     Failed,
     #[error("a newer app sign-in replaced this request")]
@@ -42,9 +44,20 @@ impl SignInError {
         match self {
             Self::Caller => "caller",
             Self::NotCarried => "not-carried",
-            Self::Refused => "refused",
+            Self::Refused { .. } => "refused",
             Self::Failed => "failed",
             Self::Superseded => "superseded",
+        }
+    }
+
+    /// What the log says: the code, and for a refusal the exit status of `anima`. The web
+    /// view gets only the code.
+    fn logged(self) -> String {
+        match self {
+            Self::Refused {
+                status: Some(status),
+            } => format!("refused (exit status {status}, CMD-021)"),
+            other => other.code().to_owned(),
         }
     }
 }
@@ -125,7 +138,9 @@ fn run(args: &[&str], input: Option<&[u8]>) -> Result<(), SignInError> {
     if status.success() {
         Ok(())
     } else {
-        Err(SignInError::Refused)
+        Err(SignInError::Refused {
+            status: status.code(),
+        })
     }
 }
 
@@ -193,7 +208,7 @@ pub async fn command_line_adopt<R: Runtime>(
     .await;
     match result {
         Ok(()) => log::info!("the command line was signed in"),
-        Err(error) => log::warn!("the command line was not signed in: {}", error.code()),
+        Err(error) => log::warn!("the command line was not signed in: {}", error.logged()),
     }
     result
 }
@@ -208,7 +223,7 @@ pub async fn command_line_sign_out<R: Runtime>(
     let result = blocking(hub.clone(), false, move || run(&logout_args(&hub), None)).await;
     match result {
         Ok(()) => log::info!("the command line was signed out"),
-        Err(error) => log::warn!("the command line was not signed out: {}", error.code()),
+        Err(error) => log::warn!("the command line was not signed out: {}", error.logged()),
     }
     result
 }
@@ -237,10 +252,19 @@ mod tests {
 
     #[test]
     fn sgn_adopt_errors_have_stable_codes_and_no_detail() {
-        let text = serde_json::to_string(&SignInError::Refused).unwrap();
+        let refused = SignInError::Refused { status: Some(4) };
+        let text = serde_json::to_string(&refused).unwrap();
         assert_eq!(
             text,
             r#"{"code":"refused","message":"the command line program did not take the sign-in"}"#
         );
+    }
+
+    #[test]
+    fn sgn_adopt_the_log_gives_the_exit_status_of_a_refusal() {
+        let refused = SignInError::Refused { status: Some(4) };
+        assert_eq!(refused.logged(), "refused (exit status 4, CMD-021)");
+        assert_eq!(SignInError::Refused { status: None }.logged(), "refused");
+        assert_eq!(SignInError::Failed.logged(), "failed");
     }
 }

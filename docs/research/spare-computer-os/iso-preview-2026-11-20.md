@@ -1,6 +1,6 @@
 # Anima OS experimental ISO — 2026-11-20
 
-Authorized by R-274. This is an installable experimental x86-64 UEFI image, not the supported first release or completion of the 28 product decisions. [Build/use instructions](../../../experiments/anima-os/ISO.md) and the [stage-by-stage code reviews](overnight-reviews-2026-11-20.md) accompany it. Reviews were performed directly by the implementing agent; no independent council re-review is claimed.
+Authorized by R-274. This is an installable experimental x86-64 UEFI image, not the supported first release or completion of the 28 product decisions. [Build/use instructions](../../../os/ISO.md) and the [stage-by-stage code reviews](overnight-reviews-2026-11-20.md) accompany it. Reviews were performed directly by the implementing agent; no independent council re-review is claimed.
 
 ## What is built
 

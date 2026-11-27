@@ -8,7 +8,7 @@ use async_graphql::Enum;
 
 use crate::{
     engine::sources::Standing,
-    ids::{RepositoryId, SourceAccountId},
+    ids::{ProjectId, RepositoryId, SourceAccountId},
 };
 
 /// Whether the hub can read and change a repository on GitHub now.
@@ -63,6 +63,9 @@ pub const fn refusal(access: RepositoryAccess) -> &'static str {
 /// last sync read them.
 #[derive(Clone, Debug)]
 pub struct Target {
+    pub project: ProjectId,
+    pub build_visibility: BuildVisibility,
+    pub external_id: String,
     pub repository: RepositoryId,
     pub account: SourceAccountId,
     pub name: String,
@@ -70,4 +73,11 @@ pub struct Target {
     pub home: String,
     /// `None` for an empty repository.
     pub default_branch: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BuildVisibility {
+    Public,
+    Private,
+    Archived,
 }

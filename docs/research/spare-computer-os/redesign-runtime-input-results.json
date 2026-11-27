@@ -1,0 +1,16 @@
+{
+  "scope": "Nix derivation dependency evaluation with synthetic payloads; runtime binary builds are separate",
+  "runtime_stable_after_unrelated_source_and_provenance_changes": true,
+  "provenance_tracks_source_change": true,
+  "restored_whole_payload_dependency_changes_both_runtime_paths": true,
+  "before": {
+    "daemon": "/nix/store/sjkyva5pwdin9i844y6nnmbb8d2kiq6h-anima-daemon-preview-0.1.0",
+    "link": "/nix/store/d9i0a14fri5jrw5zxwm06mzy37c7rni8-anima-link-preview-0.1.0",
+    "provenance": "/nix/store/1hh0g01lrrwn0d0ic91f66gix5rm1n2a-anima-os-source-provenance"
+  },
+  "after": {
+    "daemon": "/nix/store/sjkyva5pwdin9i844y6nnmbb8d2kiq6h-anima-daemon-preview-0.1.0",
+    "link": "/nix/store/d9i0a14fri5jrw5zxwm06mzy37c7rni8-anima-link-preview-0.1.0",
+    "provenance": "/nix/store/0ds1mnrvj2kg37g762miw1fgdrvj6acn-anima-os-source-provenance"
+  }
+}

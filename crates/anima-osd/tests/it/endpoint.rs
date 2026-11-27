@@ -17,17 +17,31 @@ pub struct Endpoint {
 
 impl Endpoint {
     pub fn start() -> Self {
+        Self::spawn(false)
+    }
+
+    pub fn start_with_observation() -> Self {
+        Self::spawn(true)
+    }
+
+    fn spawn(observe: bool) -> Self {
         let directory = tempfile::tempdir().expect("create private test runtime");
         fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700)).unwrap();
         let socket = directory.path().join("control.sock");
-        let mut child = Command::new(env!("CARGO_BIN_EXE_anima-osd"))
-            .args([
-                "--socket",
-                socket.to_str().unwrap(),
-                "serve",
-                "--systemctl",
-                "/no-such-anima-test-systemctl",
-            ])
+        let mut program = Command::new(env!("CARGO_BIN_EXE_anima-osd"));
+        program.args([
+            "--socket",
+            socket.to_str().unwrap(),
+            "serve",
+            "--systemctl",
+            "/no-such-anima-test-systemctl",
+        ]);
+        if observe {
+            program
+                .arg("--console-snapshot")
+                .arg(directory.path().join("console.json"));
+        }
+        let mut child = program
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()

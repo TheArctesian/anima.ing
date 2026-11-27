@@ -1,0 +1,21 @@
+{
+  "scope": "Root CLI durable registration and enrollment-filtered recovery inventory in disposable Linux container, synthetic public job metadata only. Registration launches no work and does not qualify daemon claims, runtime cancellation or installed OS.",
+  "results": [
+    {
+      "case": "durable-idempotent-registration-without-resource-creation",
+      "result": "Passed"
+    },
+    {
+      "case": "enrollment-filtered-inventory-with-terminal-and-expired-executions",
+      "result": "Passed"
+    },
+    {
+      "case": "attempt-bound-renewal-and-terminal-registration",
+      "result": "Passed"
+    },
+    {
+      "case": "local-switch-refusal-before-registration",
+      "result": "Passed"
+    }
+  ]
+}

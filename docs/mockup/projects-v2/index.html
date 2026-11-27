@@ -573,5 +573,24 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 
 <figcaption>Frame 3, dark, 1280 px: groups of cards (PRO-059 to PRO-063), shared automatically with the users of this hub. This frame shows an older hub that supports shared groups but not import: a quiet notice replaces the import error and Retry. Earlier device groups stay on the device until the hub is updated and Projects is reopened; existing shared assignments stay. "Show by" Group, in select mode with two cards selected. Each head opens and closes its group and has Rename and Delete; "Sites" is closed; "Ungrouped" comes last. The application keeps its cards as tiles: a tile has the check mark at its start.</figcaption>
 </figure>
+<figure>
+  <main class="page">
+    <h2>Source builds</h2>
+    <p class="sec">Build from an exact commit in a connected repository.</p>
+    <div class="toolbar">
+      <label>Build node <select><option>Automatic placement</option><option>Studio · Linux x86-64 · Private checkout</option></select></label>
+      <button class="btn sm" type="button" disabled>Save pin</button>
+    </div>
+    <div class="toolbar">
+      <label>Repository <select><option>acme/hub-dashboard</option></select></label>
+      <label>Git commit <input class="mono" placeholder="Full 40-character commit SHA"></label>
+      <label>Build method <select><option>Automatic</option><option>Railpack</option><option>Dockerfile</option></select></label>
+      <label>Target <select><option>Linux x86-64</option></select></label>
+      <label>Build memory (MiB) <input type="number" min="512" max="2048" value="2048"></label>
+      <button class="btn sm" type="button" disabled>Queue build</button>
+    </div>
+  </main>
+  <figcaption>The Source builds panel on a project with an eligible repository. Pinning a node fixes the target when the node reports one. Recent requests appear below the form.</figcaption>
+</figure>
 </body>
 </html>

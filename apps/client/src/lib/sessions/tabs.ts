@@ -22,6 +22,7 @@ export interface ProtocolTab {
   /** The Linux distribution's os-release ID, for its logo on the tab (DEV-016); absent when not known. */
   readonly distribution?: string;
   readonly protocol: SessionProtocol;
+  readonly viewOnly?: true;
   readonly origin: Origin | null;
   readonly sessionId: string | null;
   /** The window title the remote shell set, already cleaned (K4 §8.7); absent until it sets one. */

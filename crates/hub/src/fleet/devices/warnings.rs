@@ -16,7 +16,7 @@ pub(in crate::fleet::devices) enum AccessWarning {
     IgnoredCertificate,
     /// RDP is on with the legacy RDP security layer.
     RdpSecurity,
-    /// VNC is on; VNC in Phase 2 has no TLS option, so it is never encrypted.
+    /// VNC is on without an accepted certificate requiring pinned TLS.
     UnencryptedVnc,
 }
 
@@ -25,6 +25,7 @@ pub(in crate::fleet::devices) enum AccessWarning {
 pub(in crate::fleet::devices) fn access_warnings(
     rdp: &RdpSettings,
     vnc: &VncSettings,
+    vnc_pinned: bool,
 ) -> Vec<AccessWarning> {
     [
         (
@@ -35,7 +36,7 @@ pub(in crate::fleet::devices) fn access_warnings(
             rdp.enabled && rdp.security == RdpSecurity::Rdp,
             AccessWarning::RdpSecurity,
         ),
-        (vnc.enabled, AccessWarning::UnencryptedVnc),
+        (vnc.enabled && !vnc_pinned, AccessWarning::UnencryptedVnc),
     ]
     .into_iter()
     .filter_map(|(earned, warning)| earned.then_some(warning))

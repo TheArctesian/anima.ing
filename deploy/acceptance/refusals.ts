@@ -1,7 +1,7 @@
 // Verdicts on hub refusals (SEC-002, API-003, D-3, D-4, D-23, D-24, R-100): `undefined` when refused as it should.
 // A reason names a status or a K7 error code, never a value or body the hub sent (A-2).
 
-/** A copy of `CLIENT_ORIGINS` in `crates/hub/src/lib.rs`. */
+/** A copy of `CLIENT_ORIGINS` in `crates/hub/src/fleet/access/origin.rs`. */
 export const CLIENT_ORIGINS: readonly string[] = ["tauri://localhost", "http://tauri.localhost"];
 
 export const FOREIGN_ORIGIN = "https://evil.example";
@@ -29,6 +29,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "revokeDaemonToken",
   "acceptHostKey",
   "acceptServerCertificate",
+  "acceptVncServerCertificate",
   "acceptWebCertificate",
   "updateDevice",
   "deleteDevice",
@@ -54,6 +55,10 @@ export const REFUSED_ROOTS: readonly string[] = [
   "cancelWorkflowRun",
   "dispatchWorkflow",
   "setCommitStatus",
+  "queueSourceBuild",
+  "sourceBuild",
+  "projectBuildPlacement",
+  "setProjectBuildPin",
   "mergePullRequest",
   "mergePullRequests",
   "createLinkInvite",
@@ -68,6 +73,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "ungrantOperationalKey",
   "containerLog",
   "containerDetail",
+  "queueApplicationApply",
   "createLocationIngestToken",
   "connectDawarich",
   "addApplicationRoute",
@@ -79,7 +85,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "setDaemonNeed",
 ];
 
-export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile", "containerLog", "containerDetail"];
+export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile", "sourceBuild", "projectBuildPlacement", "containerLog", "containerDetail"];
 
 /** No field has this argument, so the document never reaches a resolver; the guard refuses by root name first. */
 const NO_SUCH_ARGUMENT = "animaProbeOnly: true";

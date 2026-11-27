@@ -14,6 +14,68 @@ use super::{Layout, ProjectError};
 /// The folder of the entries of the worktrees in a shared Git folder.
 const ENTRIES: &str = "worktrees";
 
+/// Keeps the linked Git index and per-worktree refs from Git's automatic pruning.
+pub(in crate::threads::git) fn protect(layout: &Layout) -> Result<(), ProjectError> {
+    if let Some(dir) = registered(layout)? {
+        let lock = walk::name("locked");
+        match dir.new_file(lock, false) {
+            Ok(mut file) => {
+                file.write_all(b"Anima retained this worktree for recovery\n")?;
+                file.sync_all()?;
+            }
+            Err(error)
+                if error.kind() == std::io::ErrorKind::AlreadyExists
+                    && dir.file(lock)?.is_some() =>
+            {
+                dir.file(lock)?
+                    .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?
+                    .sync_all()?;
+            }
+            Err(error) => return Err(error.into()),
+        }
+        dir.sync()?;
+    }
+    Ok(())
+}
+
+/// Points the retained Git entry at the recovery directory without changing its index.
+pub(in crate::threads::git) fn point_at_recovery(
+    layout: &Layout,
+    recovery: &Path,
+) -> Result<(), ProjectError> {
+    let Some(dir) = registered(layout)? else {
+        return Ok(());
+    };
+    let fresh = format!("anima-gitdir-{}", uuid::Uuid::now_v7().as_simple());
+    let fresh = walk::name(&fresh);
+    let mut file = dir.new_file(fresh, false)?;
+    let text = format!("{}\n", recovery.join(".git").display());
+    let result = file
+        .write_all(text.as_bytes())
+        .and_then(|()| file.sync_all());
+    drop(file);
+    if let Err(error) = result
+        .and_then(|()| dir.rename(fresh, walk::name("gitdir")))
+        .and_then(|()| dir.sync())
+    {
+        let _ = dir.remove(fresh, false);
+        return Err(error.into());
+    }
+    Ok(())
+}
+
+fn registered(layout: &Layout) -> Result<Option<Dir>, ProjectError> {
+    let name = layout.git_dir.file_name().ok_or(ProjectError::Escapes)?;
+    if layout.git_dir.parent() != Some(layout.common_dir.join(ENTRIES).as_path()) {
+        return Err(ProjectError::Escapes);
+    }
+    let path = Path::new(ENTRIES).join(name);
+    match Dir::open(&layout.common_dir)?.below(&path, Make::Existing) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        found => Ok(found?),
+    }
+}
+
 /// Makes the entry `name` of a worktree at `folder` on `branch`, and `folder` itself with its
 /// `.git` file. Nothing is checked out. Gives the Git folders of the new worktree.
 ///
@@ -35,8 +97,8 @@ pub fn add(common: &Path, name: &str, folder: &Path, branch: &str) -> Result<Lay
         })?;
     let made = (|| {
         let inside = entries
-            .below(Path::new(name), Make::No)?
-            .ok_or(std::io::ErrorKind::NotFound)?;
+            .below(Path::new(name), Make::Existing)?
+            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?;
         // The folder of the worktree is made in its open folder, and its `.git` file in it.
         let (above, last) = (folder.parent(), folder.file_name());
         let (Some(above), Some(last)) = (above, last) else {
@@ -45,8 +107,8 @@ pub fn add(common: &Path, name: &str, folder: &Path, branch: &str) -> Result<Lay
         let above = Dir::open(above)?;
         above.new_folder(last)?;
         let made = above
-            .below(Path::new(last), Make::No)?
-            .ok_or(std::io::ErrorKind::NotFound)?;
+            .below(Path::new(last), Make::Existing)?
+            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?;
         let dot_git = folder.join(".git");
         let texts = [
             ("HEAD", format!("ref: refs/heads/{branch}\n")),

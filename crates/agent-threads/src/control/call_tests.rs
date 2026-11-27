@@ -14,7 +14,7 @@ fn reads() -> Vec<Action> {
     let thread = Uuid::from_u128(7);
     let other = Uuid::from_u128(8);
     let text = || "words".to_owned();
-    vec![
+    let mut calls = vec![
         Action::List,
         Action::Watch,
         Action::Start {
@@ -59,7 +59,18 @@ fn reads() -> Vec<Action> {
             hidden: true,
         },
         Action::Listings,
-    ]
+        Action::ManagedAttention,
+    ];
+    let mut start = calls[2].clone();
+    if let Action::Start { worktree, base, .. } = &mut start {
+        *worktree = false;
+        *base = None;
+    }
+    calls.push(Action::StartManaged {
+        thread,
+        start: Box::new(start),
+    });
+    calls
 }
 
 /// One of each call that changes a thread or how it is listed.
@@ -77,6 +88,7 @@ fn changes() -> Vec<Action> {
             before: 9,
             most: 3,
         },
+        Action::ManagedTranscript { thread, after: 9 },
         Action::Projects,
         Action::CreateProject {
             folder: PathBuf::from("/work/new"),
@@ -216,10 +228,13 @@ const fn kind(action: &Action) -> usize {
         Action::Commands { .. } => 28,
         Action::Compact { .. } => 29,
         Action::CreateProject { .. } => 30,
+        Action::StartManaged { .. } => 31,
+        Action::ManagedTranscript { .. } => 32,
+        Action::ManagedAttention => 33,
     }
 }
 
-const KINDS: usize = 31;
+const KINDS: usize = 34;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {
@@ -261,4 +276,27 @@ fn th116_a_git_answer_reads_back_from_its_frame() {
     let read: Reply =
         serde_json::from_str(&frame).unwrap_or_else(|error| panic!("{frame}: {error}"));
     assert_eq!(read, done, "{frame}");
+}
+
+#[test]
+fn tc7_git_legacy_removal_frames_are_accepted_but_never_sent_to_older_runners() {
+    let old_frame = serde_json::json!({
+        "id": 4,
+        "call": "git",
+        "thread": "c30b92dd-5d0d-40e2-978e-3f26d0cf9af1",
+        "repository": "fixture",
+        "git": "remove"
+    });
+    let read: Call = serde_json::from_value(old_frame).expect("legacy request");
+    assert!(matches!(
+        read.action,
+        Action::Git {
+            action: GitAction::Remove,
+            ..
+        }
+    ));
+    assert_eq!(
+        serde_json::to_value(read).expect("new request")["call"],
+        "git_v2"
+    );
 }

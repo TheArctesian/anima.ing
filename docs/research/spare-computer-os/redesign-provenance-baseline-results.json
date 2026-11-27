@@ -1,0 +1,18 @@
+{
+  "iso_sha256": "ba0a11ef7857c3d45c40da9d3c66e8d128b87016db46c9bef3dccd38c59dc631",
+  "execution_package": "/nix/store/nss1wkz5hhax3pj23vbxv6a7hav13agk-anima-os-execution-0.1.0",
+  "sandbox_config": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+  "results": [
+    {
+      "case": "build-probe",
+      "result": "Failed",
+      "reason": "Guest command failed: digest=$(jq -er '.value.result.manifestDigest' /run/anima-build-check-e4a869e7-6cc4-46ca-bcf3-4fc0174ebeec/verified.json); tar -xOf /run/anima-build-check-e4a869e7-6cc4-46ca-bcf3-4fc0174ebeec/image.oci \"blobs/sha256/${digest#sha256:}\" > /run/anima-build-check-e4a869e7-6cc4-46ca-bcf3-4fc0174ebeec/index.json; jq -er '.manifests[] | select(.annotations[\"vnd.docker.reference.type\"] == \"attestation-manifest\") | [.digest, .annotations[\"vnd.docker.reference.digest\"]] | @tsv' /run/anima-build-check-e4a869e7-6cc4-46ca-bcf3-4fc0174ebeec/index.json > /run/anima-build-check-e4a869e7-6cc4-46ca-bcf3-4fc0174ebeec/attestations.tsv; test -s /run/anima-build-check-e4a869e7-6cc4-46ca-bcf3-4fc0174ebeec/attestations.tsv"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "limitation": "Candidate package via the frozen shared harness; explicit Dockerfile, strategy conflict, write-open isolation and exact archive export; cached image from probe13; no Railpack detection, provider, secrets, network or deployment",
+  "classification": "Expected negative baseline: no provenance in the nss1 worker artifact; explicit strategy, conflict refusal, isolated RUN, integrity reconciliation and exact-byte export completed before this assertion. Not overall acceptance."
+}

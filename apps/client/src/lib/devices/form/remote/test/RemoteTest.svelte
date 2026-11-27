@@ -23,7 +23,7 @@
     deviceId: string | null;
     /** Checks the form first; false means the test must not run. */
     canTest: () => boolean;
-    /** The saved device's accepted certificate fingerprint (RDP): seeing it again is not news. */
+    /** The saved device's accepted certificate fingerprint for this protocol: seeing it again is not news. */
     acceptedFingerprint?: string | null;
     onTest: (input: RemoteTestInput) => Promise<HubResult<RemoteTestResult>>;
     /** Only for a saved device. Without it the Accept button is hidden (D-4). */

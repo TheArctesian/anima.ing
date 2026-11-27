@@ -20,6 +20,8 @@ import (
 	"github.com/TheArctesian/anima/link/presence"
 	"github.com/TheArctesian/anima/link/statedir"
 	"github.com/TheArctesian/anima/link/tunnel"
+	"github.com/TheArctesian/anima/link/workspaceauth"
+	"github.com/TheArctesian/anima/link/workspacepreview"
 )
 
 const (
@@ -273,4 +275,14 @@ func dialFault(err error) string {
 		return "the hub's socket is not there; the hub makes it when it starts"
 	}
 	return "no answer"
+}
+
+// OpenPreview asks the enrolled node to connect a leased workspace endpoint.
+func (l *Link) OpenPreview(ctx context.Context, device netip.Addr, preview workspacepreview.Open) (net.Conn, func(), error) {
+	return l.asked.OpenPreview(ctx, device, preview, func(line string) error { return l.present.Write(device, line) })
+}
+
+// OpenProvider asks the enrolled node to open a transient workspace sign-in stream.
+func (l *Link) OpenProvider(ctx context.Context, device netip.Addr, login workspaceauth.Login) (net.Conn, func(), error) {
+	return l.asked.OpenProvider(ctx, device, login, func(line string) error { return l.present.Write(device, line) })
 }

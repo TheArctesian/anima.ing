@@ -19,7 +19,7 @@ use anima_hub::{
         vpn,
     },
     schema::Dependencies,
-    work::jobs,
+    work::{checkout, jobs},
 };
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -114,6 +114,11 @@ pub fn spawn(dependencies: &Dependencies, hosted: Hosted) -> Vec<tokio::task::Jo
 /// Starts the loops that watch the devices and send (R-072, SRC-021, VPN-008).
 fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
     let (pool, bus, clock) = (&dependencies.pool, &dependencies.bus, &dependencies.clock);
+    let source_schedule = sources::Scheduling::new(
+        (pool.clone(), bus.clone(), clock.clone()),
+        dependencies.vault.clone(),
+        dependencies.sources.clone(),
+    );
     let (probing, collecting, sending) = reaching(
         &dependencies.vault,
         &dependencies.policy,
@@ -144,11 +149,8 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
             clock.clone(),
         ),
         metrics::spawn_stale_watch(pool.clone(), bus.clone(), clock.clone()),
-        sources::spawn_scheduler(sources::Scheduling::new(
-            (pool.clone(), bus.clone(), clock.clone()),
-            dependencies.vault.clone(),
-            dependencies.sources.clone(),
-        )),
+        sources::spawn_scheduler(source_schedule.clone()),
+        checkout::spawn(source_schedule),
     ];
     let reading = vpn::Reading {
         pool: pool.clone(),

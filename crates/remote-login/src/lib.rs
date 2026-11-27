@@ -1,9 +1,12 @@
-//! Owner-initiated SSH setup on this computer; never a hub-controlled operation.
+//! Owner-initiated SSH setup and credential-free remote protocol negotiation.
 
 pub mod desktop;
 mod elevation;
 mod probe;
 mod vnc;
+pub mod x224;
+
+pub use probe::{LocalProtocol, Observation, observe};
 
 use std::time::Duration;
 

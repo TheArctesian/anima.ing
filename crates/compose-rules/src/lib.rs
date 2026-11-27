@@ -12,6 +12,7 @@ mod yaml;
 #[cfg(test)]
 mod tests;
 
+pub use variables::Variables;
 pub use yaml::Node;
 
 /// The most bytes of a Compose file.
@@ -115,12 +116,35 @@ impl std::fmt::Debug for Checked {
 /// # Errors
 /// The [`Refusal`] of the first rule that the file breaks.
 pub fn check(file: &str, environment: &str, settings: &Settings) -> Result<Checked, Refusal> {
-    if file.len() > LARGEST_FILE || environment.len() > LARGEST_ENVIRONMENT {
+    checked(file, environment, Some(settings))
+}
+
+/// Verify files without assuming the local network and label settings of the target machine.
+///
+/// # Errors
+/// A file violates a rule that applies on every machine.
+pub fn check_portable(file: &str, environment: &str) -> Result<(), Refusal> {
+    checked(file, environment, None).map(drop)
+}
+
+/// Read a bounded Compose document before applying the Hosting rules.
+///
+/// # Errors
+/// The document exceeds the file limit or uses unsupported YAML syntax.
+pub fn read_document(file: &str) -> Result<Node, Refusal> {
+    if file.len() > LARGEST_FILE {
         return Err(Refusal::top(Rule::TooLarge));
     }
-    let document = yaml::read(file)?;
+    yaml::read(file)
+}
+
+fn checked(file: &str, environment: &str, settings: Option<&Settings>) -> Result<Checked, Refusal> {
+    if environment.len() > LARGEST_ENVIRONMENT {
+        return Err(Refusal::top(Rule::TooLarge));
+    }
+    let document = read_document(file)?;
     keys::permitted(&document)?;
-    let values = variables::environment(environment)?;
+    let values = Variables::parse(environment)?;
     let unfilled = document.clone();
     let document = variables::filled(document, &values)?;
     keys::permitted(&document)?;

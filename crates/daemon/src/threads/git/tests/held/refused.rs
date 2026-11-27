@@ -127,7 +127,7 @@ async fn a_branch_that_was_there_before_stays_when_a_new_worktree_goes_again() {
     bench.worktree().await;
     let outcome = bench.call(PERSON, GitAction::Remove).await;
     assert!(
-        matches!(outcome, GitOutcome::Removed { kept: Some(_) }),
+        matches!(outcome, GitOutcome::Removed { kept: Some(_), .. }),
         "{outcome:?}"
     );
     let plan = Plan {

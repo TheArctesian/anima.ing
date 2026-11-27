@@ -48,3 +48,18 @@ export function wakeLine(progress: Progress, deviceName: string): WakeLine | und
   const mark: StepMark = progress.opened ? 'done' : progress.stopped ? 'failed' : 'active';
   return { label: `Waking ${deviceName}`, mark };
 }
+
+const RUNNING: Readonly<Record<StepName, (deviceName: string) => string>> = {
+  request: () => 'Asking the hub for a session',
+  gateway: (deviceName) => `Opening the gateway to ${deviceName}`,
+  device: (deviceName) => `Waiting for ${deviceName}`,
+  ready: () => 'Showing the session',
+};
+
+/** The line under the steps: what runs now, or the step at which the start stopped. */
+export function stepsLine(steps: readonly Step[], deviceName: string): string {
+  const stopped = steps.find((step) => step.mark === 'failed');
+  if (stopped !== undefined) return `Stopped at ${stopped.label}`;
+  const running = steps.find((step) => step.mark === 'active');
+  return running === undefined ? 'Connected' : RUNNING[running.name](deviceName);
+}

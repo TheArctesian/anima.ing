@@ -3,6 +3,8 @@
 //! files of this user only; it sends nothing to the hub and starts no program.
 
 pub mod files;
+#[cfg(unix)]
+pub mod git;
 pub mod shown;
 #[cfg(test)]
 mod tests;

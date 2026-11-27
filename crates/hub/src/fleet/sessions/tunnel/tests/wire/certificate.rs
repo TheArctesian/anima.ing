@@ -233,6 +233,7 @@ async fn sec_007_an_unreachable_rdp_port_is_503_gateway_error(pool: PgPool) {
     let port = closed.local_addr().unwrap().port();
     drop(closed);
     let change = format!("update devices.rdp_settings set port = {port} where device_id = $1");
-    let message = "The hub could not reach the device's RDP port to check its server certificate.";
+    let message =
+        "The hub could not reach the device's session port to check its server certificate.";
     unread(&pool, Setup::default(), &[&change], message).await;
 }

@@ -1,6 +1,8 @@
 //! The calls of the runner to one `codex app-server` (THR-021, TH10 Section 3): the start of the
 //! server and of its thread, then a turn for each prompt. Pure: it gives the lines to write.
 
+mod row;
+
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 

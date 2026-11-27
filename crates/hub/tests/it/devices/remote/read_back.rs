@@ -66,6 +66,15 @@ fn warnings(device: &Value) -> Vec<&str> {
 }
 
 fixture_test! {
+    async fn pinned_vnc_removes_only_the_unencrypted_warning(pool: PgPool) {
+        accept_certificate(&pool).await;
+        update(&pool, PVE_01, json!({"rdp": full_rdp(), "vnc": {"enabled": true}})).await;
+        assert_eq!(warnings(&read(&pool, PVE_01).await), ["IGNORED_CERTIFICATE", "UNENCRYPTED_VNC"]);
+        sqlx::query("insert into trust.vnc_server_certificates (device_id, fingerprint_sha256, first_seen_at, accepted_by) select device_id, fingerprint_sha256, first_seen_at, accepted_by from trust.server_certificates where device_id = $1::text::uuid")
+            .bind(PVE_01).execute(&pool).await.unwrap();
+        assert_eq!(warnings(&read(&pool, PVE_01).await), ["IGNORED_CERTIFICATE"]);
+    }
+
     async fn ra_030_a_new_device_reads_back_the_k1_defaults(pool: PgPool) {
         let query = CREATE.replace("{ id }", &format!("{{ id {FIELDS} }}"));
         let input = json!({ "siteId": HOME, "name": "win-01", "host": "10.10.0.60" });

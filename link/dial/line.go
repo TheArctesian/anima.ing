@@ -9,6 +9,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"github.com/TheArctesian/anima/link/workspaceauth"
+	"github.com/TheArctesian/anima/link/workspacepreview"
 	"io"
 	"net/netip"
 	"strconv"
@@ -34,7 +36,7 @@ var (
 	ErrBadRequest   = errors.New("dial: the request is not valid")
 )
 
-const maxLine = 128
+const maxLine = 1024
 
 const idBytes = 16
 
@@ -66,13 +68,23 @@ func openLine(port uint16, id string) string {
 
 // Request is one request of the hub for a local port of the device.
 type Request struct {
-	Port uint16
-	id   string
+	Provider *workspaceauth.Login
+	Preview  *workspacepreview.Open
+	Port     uint16
+	id       string
 }
 
 // ParseRequest reads a line of the hub on the reverse port, without its newline.
 func ParseRequest(line string) (Request, bool) {
 	fields := strings.Split(line, " ")
+	if len(line) <= maxLine && len(fields) == 3 && fields[0] == "provider" && validID(fields[1]) {
+		login, err := workspaceauth.Decode(fields[2])
+		return Request{Provider: &login, id: fields[1]}, err == nil
+	}
+	if len(line) <= maxLine && len(fields) == 3 && fields[0] == "preview" && validID(fields[1]) {
+		preview, err := workspacepreview.Decode(fields[2])
+		return Request{Preview: &preview, id: fields[1]}, err == nil
+	}
 	if len(fields) != 3 || fields[0] != "open" || !validID(fields[2]) {
 		return Request{}, false
 	}

@@ -52,11 +52,15 @@ describe('shellCapabilities (WP-42 D-4)', () => {
   it('MOB-004, MOB-031, M3-4: the mobile app keeps the access token, runs the device link and signs in to the account, and has no desktop-only feature, on an iPhone and on Android', () => {
     expect(shellCapabilities(touch(IPHONE))).toEqual(MOBILE_APPLE);
     expect(shellCapabilities(touch(ANDROID))).toEqual(MOBILE);
-    expect(Object.entries(MOBILE).filter(([, answer]) => answer)).toEqual([['keyStore', true], ['deviceLink', true], ['cloudAccount', true], ['runnerReport', true]]);
+    expect(Object.entries(MOBILE).filter(([, answer]) => answer)).toEqual([['keyStore', true], ['workspacePreviews', true], ['deviceLink', true], ['cloudAccount', true], ['runnerReport', true]]);
   });
 
   it('MOB-004: an iPad that asks for the desktop site still gets the mobile answers', () => {
     expect(shellCapabilities(touch(MAC))).toEqual(MOBILE_APPLE);
+  });
+
+  it('M4-4, MOT-050: only the app on an iPhone or an iPad plays haptics, not the Android app or a desktop app', () => {
+    expect([touch(IPHONE), touch(ANDROID), computer(MAC), computer(LINUX)].map((agent) => shellCapabilities(agent)?.haptics)).toEqual([true, false, false, false]);
   });
 });
 

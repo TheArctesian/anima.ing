@@ -10,6 +10,7 @@ publish.workspace = true
 workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
+anima-os-maintenance = { path = "../anima-os-maintenance" }
 base64.workspace = true
 reqwest.workspace = true
 serde.workspace = true
@@ -18,4 +19,5 @@ sha2.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["process", "fs", "signal"] }
+uuid.workspace = true
 nix = { version = "0.31", default-features = false, features = ["fs", "user"] }

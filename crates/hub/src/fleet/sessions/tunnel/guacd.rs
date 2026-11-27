@@ -56,6 +56,11 @@ async fn handshake(
     protocol: &'static str,
     params: ConnectParams,
 ) -> Result<Connected, NotOpened> {
+    let pinned_vnc = protocol == "vnc"
+        && params
+            .values
+            .get("cert-fingerprints")
+            .is_some_and(|pin| !pin.is_empty());
     let (mut handshake, select) = Handshake::new(protocol, params);
     send(&mut stream, vec![select]).await?;
     let mut decoder = Decoder::new();
@@ -73,6 +78,15 @@ async fn handshake(
             .map_err(NotOpened::Garbled)?
             .into_iter();
         while let Some(instruction) = instructions.next() {
+            if pinned_vnc
+                && instruction.opcode == "args"
+                && !instruction
+                    .args
+                    .iter()
+                    .any(|name| name == "cert-fingerprints")
+            {
+                return Err(NotOpened::Broken);
+            }
             match handshake
                 .on_instruction(instruction)
                 .map_err(|error| refusal(&error))?
