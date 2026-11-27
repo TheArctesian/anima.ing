@@ -1,6 +1,7 @@
 //! The `projects` tool set (PRJ-002, PRJ-016, PRO-004; groups PRO-059 to PRO-063).
 
 mod groups;
+pub mod jobs;
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
