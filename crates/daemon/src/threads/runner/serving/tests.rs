@@ -76,8 +76,8 @@ async fn stage(runner: &mut Runner, action: Action) {
         .unwrap();
     let socket::Incoming { call, client, .. } = incoming.recv().await.unwrap();
     accepting.abort();
-    // This regression starts after access checks. The socket peer is the unit test
-    // process itself, whose identity the macOS CI runner can refuse to disclose.
+    // This regression starts after access checks. Peer classification is outside
+    // the stop-precedence behavior exercised here.
     runner.prepare_project(
         call.action,
         socket::Caller {
