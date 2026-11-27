@@ -1,0 +1,16 @@
+{
+  "iso_sha256": "ba0a11ef7857c3d45c40da9d3c66e8d128b87016db46c9bef3dccd38c59dc631",
+  "fixture_sha256": "bab7a300e01a59f49818830aea0b1d0a85f2720fde601dedc51c367f00b333c5",
+  "scope": "Installed remote access only; no update, rollback or publication",
+  "results": [
+    {
+      "case": "private-ssh-rdp-shared-console-owner-choice",
+      "result": "Passed",
+      "limitation": "Synthetic private-link peers; VNC negotiation only, not VNC login or revocation"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ]
+}

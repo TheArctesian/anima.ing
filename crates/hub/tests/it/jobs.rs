@@ -1,9 +1,14 @@
 //! The work route through the hub's routes (K10, `contracts/work-route.md`; task W3): a daemon
 //! claims a job with its token, reports it, and the hub ends what a machine lost.
 
+mod application_apply;
+#[cfg(unix)]
+mod artifacts;
 mod flow;
+mod hosting;
 mod placement;
 mod refusals;
+mod source;
 
 use anima_hub::{
     clock::Clock as _,
@@ -35,11 +40,11 @@ fn build() -> NewJob {
         os: Some(WorkOs::Linux),
         architecture: Some(WorkArchitecture::X86_64),
         project: None,
-        repository: WorkRepository {
+        repository: Some(WorkRepository {
             forge: "github".to_owned(),
             owner: "example".to_owned(),
             name: "app".to_owned(),
-        },
+        }),
         parameters: json!({
             "recipe": "desktop_release", "commit": "0123456789abcdef0123456789abcdef01234567",
             "target": "linux-x86_64", "version": "0.3.0", "trigger": "operator", "origin": "default_branch"

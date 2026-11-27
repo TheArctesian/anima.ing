@@ -222,8 +222,8 @@ function end(state: TouchState, event: PointerEvent): void {
   state.wheeling = false;
 }
 
-export function touchRemote(pane: HTMLElement, client: Client, viewport: TouchHooks): () => void {
-  const send = cursorSender(client, (at) => { viewport.pointer(at); });
+export function touchRemote(pane: HTMLElement, client: Client, viewport: TouchHooks, viewOnly = false): () => void {
+  const send = viewOnly ? () => undefined : cursorSender(client, (at) => { viewport.pointer(at); });
   const roll = wheelRoll({
     notch: (direction, held) => {
       send(STILL, direction);

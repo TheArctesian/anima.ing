@@ -45,7 +45,7 @@ export function device(change: Partial<DeviceDetail> = {}, ssh: Partial<DeviceDe
       credentialStored: false,
       serverCertificate: null,
     },
-    vnc: { enabled: false, port: 5900, username: null, credentialStored: false },
+    vnc: { serverCertificate: null, enabled: false, port: 5900, username: null, credentialStored: false },
     transfer: { upload: true, download: true, copy: true, paste: true },
     day: 0.9995,
     week: 0.99,

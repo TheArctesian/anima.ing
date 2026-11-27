@@ -242,3 +242,45 @@ async fn rou_006_each_job_of_a_project_goes_only_to_the_machine_that_is_pinned_f
     let (status, job) = work.claim(&pve, &claim_with(PVE_01, 64)).await;
     assert_eq!((status, &job["id"]), (StatusCode::OK, &json!(next.id)));
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn source_build_conflicting_targets_are_refused_before_queueing(pool: PgPool) {
+    use daemon_core::wire::{WorkArchitecture, WorkKind, WorkOs};
+    let work = Work::new(&pool).await;
+    for (os, architecture, kind, target) in [
+        (
+            None,
+            Some(WorkArchitecture::X86_64),
+            WorkKind::Container,
+            "linux-aarch64",
+        ),
+        (
+            Some(WorkOs::Macos),
+            None,
+            WorkKind::Container,
+            "linux-aarch64",
+        ),
+        (None, None, WorkKind::Native, "linux-aarch64"),
+        (None, None, WorkKind::Container, "macos-aarch64"),
+    ] {
+        let mut wanted = build();
+        wanted.os = os;
+        wanted.architecture = architecture;
+        wanted.kind = kind;
+        wanted.parameters = json!({
+            "recipe":"source_image_v1", "target":target, "strategy":"auto",
+            "commit":"0123456789abcdef0123456789abcdef01234567",
+            "trigger":"operator", "origin":"default_branch"
+        });
+        let result = jobs::enqueue(work.queue(), wanted, asker(), work.now()).await;
+        assert!(matches!(result, Err(Error::Invalid(_))), "{result:?}");
+    }
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs.jobs")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0, "invalid source targets must not enter the queue");
+}

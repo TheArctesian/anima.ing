@@ -4,8 +4,13 @@
 //! credential, and the checks run in the order of a renewal. The rules of a job are in
 //! `work::jobs`; this file only reads a request and writes an answer.
 //!
-//! `/work/v1/secret` answers `SECRET_REFUSED` to each request that passes the credential and
-//! the form: no purpose of K10 Section 8 has a source in the hub yet (tasks B2 and A2).
+//! Managed Compose files and private source checkout are the supported purposes of K10 Section 8.
+
+#[cfg(unix)]
+mod artifact_upload;
+mod secret_response;
+mod secret_route;
+mod workspace_secret;
 
 use std::net::IpAddr;
 
@@ -18,9 +23,11 @@ use axum::{
     routing::post,
 };
 use chrono::{DateTime, Utc};
-use daemon_core::wire::{Claim, RefusalCode, SecretRequest, WorkReport};
+use daemon_core::wire::{Claim, RefusalCode, WorkReport};
 use serde::de::DeserializeOwned;
 
+use self::secret_route::serve as secret;
+use self::workspace_secret::serve as workspace_credential;
 use super::{
     Error,
     admission::{Admitted, Stop, admit},
@@ -34,6 +41,11 @@ use crate::{
     ids::DeviceId,
     work::jobs::{self, Claimed, Queue, Reporting},
 };
+
+#[cfg(unix)]
+type ArtifactStore = crate::work::artifacts::Store;
+#[cfg(not(unix))]
+type ArtifactStore = ();
 
 /// The body limits of K10 Section 2.
 const CLAIM_LIMIT: usize = 8 * 1024;
@@ -75,7 +87,7 @@ async fn asked<T: DeserializeOwned>(
 
 /// What each of the three routes does before its own work, and how it answers a stop.
 macro_rules! served {
-    ($state:ident, $request:ident, $route:expr, $answer:ident) => {{
+    ($state:ident, $request:ident, $route:expr, $answer:ident $(, $extra:expr)?) => {{
         let Some(client) = client_of(&$request) else {
             return unmounted();
         };
@@ -84,7 +96,7 @@ macro_rules! served {
             return busy();
         };
         let (parts, body) = $request.into_parts();
-        match $answer(&$state, (&parts.headers, body), (address, client), now).await {
+        match $answer(&$state, (&parts.headers, body), (address, client $(, $extra)?), now).await {
             Ok(response) => response,
             Err(stop) => $state.stopped(stop, ($route, client), now).await,
         }
@@ -93,35 +105,69 @@ macro_rules! served {
 
 /// The three routes of K10, each answering within the deadline of a daemon route.
 pub(super) fn routes() -> Router<DaemonState> {
-    Router::new()
+    let routes = Router::new()
         .route("/work/v1/claim", post(claim))
         .route("/work/v1/report", post(report))
         .route("/work/v1/secret", post(secret_of_job))
+        .route("/daemon/v3/workspaces/checkout", post(secret_of_workspace));
+    #[cfg(unix)]
+    let routes = routes.route(daemon_core::artifact::ROUTE, post(artifact_upload::serve));
+    routes
 }
 
 /// Answers a claim: `200` with a job, `204` with none, or the first refusal.
 async fn claim(State(state): State<DaemonState>, request: Request) -> Response {
+    #[cfg(unix)]
+    let private_output = request
+        .extensions()
+        .get::<crate::work::artifacts::Store>()
+        .is_some();
+    #[cfg(not(unix))]
+    let private_output = false;
     let limit = state.deadlines.answer;
     within(limit, async move {
-        served!(state, request, Route::WorkClaim, claimed)
+        served!(state, request, Route::WorkClaim, claimed, private_output)
     })
     .await
 }
 
 /// Answers a report: `200` with the new lease, or the first refusal.
 async fn report(State(state): State<DaemonState>, request: Request) -> Response {
+    let artifacts = request.extensions().get::<ArtifactStore>().cloned();
     let limit = state.deadlines.answer;
     within(limit, async move {
-        served!(state, request, Route::WorkReport, reported)
+        served!(state, request, Route::WorkReport, reported, artifacts)
     })
     .await
 }
 
-/// Answers a request for a secret of a job: a refusal (see the head of this file).
+/// Releases a one-use checkout credential or managed application file.
 async fn secret_of_job(State(state): State<DaemonState>, request: Request) -> Response {
+    let sources = request
+        .extensions()
+        .get::<crate::work::checkout::Issuer>()
+        .cloned();
     let limit = state.deadlines.answer;
     within(limit, async move {
-        served!(state, request, Route::WorkSecret, secret)
+        served!(state, request, Route::WorkSecret, secret, sources)
+    })
+    .await
+}
+
+async fn secret_of_workspace(State(state): State<DaemonState>, request: Request) -> Response {
+    let issuer = request
+        .extensions()
+        .get::<crate::work::checkout::Issuer>()
+        .cloned();
+    let limit = state.deadlines.answer;
+    within(limit, async move {
+        served!(
+            state,
+            request,
+            Route::Workspaces,
+            workspace_credential,
+            issuer
+        )
     })
     .await
 }
@@ -133,13 +179,26 @@ fn failed(error: jobs::Error) -> Stop {
 async fn claimed(
     state: &DaemonState,
     request: (&HeaderMap, Body),
-    (address, client): (Turn<IpAddr>, ClientAddr),
+    (address, client, private_output): (Turn<IpAddr>, ClientAddr, bool),
     now: DateTime<Utc>,
 ) -> Result<Response, Stop> {
-    let asked: Asked<Claim> = asked(state, request, address, (CLAIM_LIMIT, now)).await?;
+    let mut asked: Asked<Claim> = asked(state, request, address, (CLAIM_LIMIT, now)).await?;
     let device = asked.device;
     if DeviceId::from(asked.body.device) != device {
         return Err(Stop::Refused(RefusalCode::WrongDevice, Some(device)));
+    }
+    if !private_output
+        && asked
+            .body
+            .build_recipes
+            .as_ref()
+            .is_some_and(|recipes| recipes.supports("source_image_v1"))
+    {
+        if asked.body.applications.is_off() {
+            return Err(Stop::Busy);
+        }
+        asked.body.build_recipes = None;
+        asked.body.free.slots = 0;
     }
     let _request = state.turns.request().await.ok_or(Stop::Busy)?;
     let queue = Queue {
@@ -153,13 +212,14 @@ async fn claimed(
         Claimed::Nothing => Ok(StatusCode::NO_CONTENT.into_response()),
         Claimed::Off => Err(Stop::Refused(RefusalCode::WorkOff, Some(device))),
         Claimed::Job(job) => Ok(refusals::json(StatusCode::OK, &*job)),
+        Claimed::Host(item) => Ok(refusals::json(StatusCode::OK, &*item)),
     }
 }
 
 async fn reported(
     state: &DaemonState,
     request: (&HeaderMap, Body),
-    (address, client): (Turn<IpAddr>, ClientAddr),
+    (address, client, artifacts): (Turn<IpAddr>, ClientAddr, Option<ArtifactStore>),
     now: DateTime<Utc>,
 ) -> Result<Response, Stop> {
     let asked: Asked<WorkReport> = asked(state, request, address, (REPORT_LIMIT, now)).await?;
@@ -170,9 +230,21 @@ async fn reported(
         db: &state.db,
         bus: &state.bus,
     };
-    match jobs::report(queue, device, &asked.body, (client, now))
-        .await
-        .map_err(failed)?
+    #[cfg(unix)]
+    let retained = artifact_retained(artifacts.as_ref(), device, &asked.body).await;
+    #[cfg(not(unix))]
+    let retained = {
+        let _ = artifacts;
+        false
+    };
+    match jobs::report(
+        queue,
+        device,
+        (&asked.body, retained),
+        (client, state.clock.now()),
+    )
+    .await
+    .map_err(failed)?
     {
         Reporting::Reported(answer) => Ok(refusals::json(StatusCode::OK, &answer)),
         Reporting::NotHolder => Err(refused(RefusalCode::NotHolder)),
@@ -181,15 +253,18 @@ async fn reported(
     }
 }
 
-async fn secret(
-    state: &DaemonState,
-    request: (&HeaderMap, Body),
-    (address, _client): (Turn<IpAddr>, ClientAddr),
-    now: DateTime<Utc>,
-) -> Result<Response, Stop> {
-    let asked: Asked<SecretRequest> = asked(state, request, address, (SECRET_LIMIT, now)).await?;
-    Err(Stop::Refused(
-        RefusalCode::SecretRefused,
-        Some(asked.device),
-    ))
+#[cfg(unix)]
+async fn artifact_retained(
+    store: Option<&ArtifactStore>,
+    device: DeviceId,
+    report: &WorkReport,
+) -> bool {
+    if report.state == daemon_core::wire::WorkState::Done
+        && let Some(store) = store
+    {
+        return store
+            .confirms_retention(device.into(), report.id, report.attempt)
+            .await;
+    }
+    false
 }

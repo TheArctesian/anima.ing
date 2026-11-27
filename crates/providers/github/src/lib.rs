@@ -18,6 +18,7 @@ use source_exchange::{Acquisition, AppKey, Declaration, Minting, Normalised, Req
 
 use crate::state::{Phase, Slice};
 
+pub use app_token::checkout::{CheckoutScope, CheckoutTokenReply};
 pub use record::{Origin, Record, Repository, Sign, SignKind};
 
 pub const DECLARATION: Declaration = Declaration {

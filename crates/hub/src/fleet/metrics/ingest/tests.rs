@@ -2,6 +2,7 @@ mod answering;
 mod automatic_access;
 mod credential;
 mod enrolment;
+mod managed_polls;
 mod refusals;
 mod renewal;
 mod stale;

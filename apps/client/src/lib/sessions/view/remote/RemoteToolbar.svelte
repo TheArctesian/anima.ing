@@ -26,19 +26,25 @@
     displays?: DisplayChoices | undefined;
     switching?: boolean;
     selectDisplay: (id: string) => void;
-    onkeys: (combination: KeyCombination) => void;
+    onkeys: ((combination: KeyCombination) => void) | undefined;
+    onopenviewer?: ((button: HTMLElement) => void) | undefined;
     onpaste: () => void;
     ondismiss: () => void;
   }
 
-  const { deviceName, onback, docked = false, typing, ready, policy, pasteOff, notice, fit, canFit = false, displays, switching = false, selectDisplay, onkeys, onpaste, ondismiss }: Props = $props();
+  const { deviceName, onback, docked = false, typing, ready, policy, pasteOff, notice, fit, canFit = false, displays, switching = false, selectDisplay, onkeys, onopenviewer, onpaste, ondismiss }: Props = $props();
 </script>
 
 <div class="toolbar" class:docked>
   {#if onback !== undefined}
     <button type="button" aria-label="Back to app" onclick={onback}><Icon name="carbon:chevron-left" /></button>
   {/if}
-  <KeysMenu disabled={!ready} entries={KEY_COMBINATIONS} {onkeys} {onpaste} {pasteOff} />
+  {#if onkeys !== undefined}<KeysMenu disabled={!ready} entries={KEY_COMBINATIONS} {onkeys} {onpaste} {pasteOff} />{/if}
+  {#if onopenviewer !== undefined}
+    <button type="button" aria-label="Open view-only session" title="Open view-only session" onclick={(event) => onopenviewer?.(event.currentTarget)}>
+      <Icon name="carbon:screen" />
+    </button>
+  {/if}
   {#if ready && fit !== undefined}<button type="button" onclick={fit} disabled={!canFit}>Fit</button>{/if}
   {#if ready && displays !== undefined && displays.monitors.length > 1}
     <select aria-label="Displays" value={displays.active} disabled={switching} onchange={(event) => selectDisplay(event.currentTarget.value)}>

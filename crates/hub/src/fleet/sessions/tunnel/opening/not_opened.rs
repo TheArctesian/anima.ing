@@ -23,7 +23,7 @@ pub(in crate::fleet::sessions::tunnel) enum NotOpened {
     RefusedTarget,
     #[error("the device did not answer in time after the Wake-on-LAN packet")]
     NotAwake,
-    #[error("the device's RDP server certificate could not be read")]
+    #[error("the device's server certificate could not be read")]
     CertificateUnread(#[source] ReadError),
     #[error("the device offers only standard RDP security, so it has no certificate")]
     StandardOnly,
@@ -120,13 +120,13 @@ impl NotOpened {
 const fn unread_message(error: ReadError) -> &'static str {
     match error {
         ReadError::Unexpected => {
-            "The device did not answer as an RDP server when the hub checked its server \
+            "The device did not provide the expected protocol response when the hub checked its server \
              certificate."
         }
         ReadError::Tls => {
             "The device did not complete a TLS handshake when the hub checked its server \
              certificate."
         }
-        _ => "The hub could not reach the device's RDP port to check its server certificate.",
+        _ => "The hub could not reach the device's session port to check its server certificate.",
     }
 }

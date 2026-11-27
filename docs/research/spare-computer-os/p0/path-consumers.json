@@ -1,0 +1,401 @@
+{
+  "baseRevision": "83a01d481c9b21e7fb8ac186201fb7b168fe4321",
+  "search": "tracked source/build/document text containing experiments/anima-os; line locations only, not embedded contents",
+  "references": [
+    {
+      "path": ".github/workflows/merge-to-dev.sh",
+      "line": 26,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/merge-to-dev.sh",
+      "line": 27,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/os-release.yml",
+      "line": 28,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/os-release.yml",
+      "line": 30,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/os-release.yml",
+      "line": 44,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/os-release.yml",
+      "line": 67,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/os-release.yml",
+      "line": 93,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/os-release.yml",
+      "line": 106,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/os-release.yml",
+      "line": 108,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/os-release.yml",
+      "line": 109,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": ".github/workflows/os-release.yml",
+      "line": 155,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "crates/anima-os-update/src/feed.rs",
+      "line": 146,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "docs/mockup/README.md",
+      "line": 40,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/mockup/README.md",
+      "line": 41,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/mockup/README.md",
+      "line": 43,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/mockup/records/anima-os-console.md",
+      "line": 7,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/mockup/records/anima-os-console.md",
+      "line": 10,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/mockup/records/anima-os-installer.md",
+      "line": 7,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/mockup/records/anima-os-signin.md",
+      "line": 5,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/need-human-testing.md",
+      "line": 341,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/need-human-testing.md",
+      "line": 4927,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/need-human-testing.md",
+      "line": 4929,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/plans/compute-plan.md",
+      "line": 167,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/proposals/spare-computer-os.md",
+      "line": 148,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/proposals/spare-computer-os.md",
+      "line": 158,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/proposals/spare-computer-os.md",
+      "line": 439,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/proposals/spare-computer-os.md",
+      "line": 443,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/proposals/spare-computer-os.md",
+      "line": 525,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/proposals/spare-computer-os.md",
+      "line": 835,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/research/spare-computer-os/iso-preview-2026-11-20.md",
+      "line": 3,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/research/spare-computer-os/native-continuation-2026-11-21.md",
+      "line": 35,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/research/spare-computer-os/os1-prototype-2026-11-20.md",
+      "line": 3,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/research/spare-computer-os/runtime-packaging-2026-11-21.md",
+      "line": 38,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/research/spare-computer-os/rust-control-2026-11-21.md",
+      "line": 7,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "docs/rulings.md",
+      "line": 340,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 10,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 12,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 25,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 27,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 40,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 63,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 67,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 77,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 108,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 110,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 130,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "line": 138,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/README.md",
+      "line": 18,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/README.md",
+      "line": 19,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/README.md",
+      "line": 120,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/branding/README.md",
+      "line": 14,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/branding/README.md",
+      "line": 15,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/control-contract.md",
+      "line": 42,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/control-contract.md",
+      "line": 44,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/performance/README.md",
+      "line": 6,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 7,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 8,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 9,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 10,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 11,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 12,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 14,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 15,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 16,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 18,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "line": 30,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/release/build.sh",
+      "line": 5,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/release/build.sh",
+      "line": 8,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/release/build.sh",
+      "line": 9,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/release/build.sh",
+      "line": 11,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/release/build.sh",
+      "line": 13,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/release/build.sh",
+      "line": 21,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/release/receipt.py",
+      "line": 13,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/session-test/README.md",
+      "line": 6,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ui-test/README.md",
+      "line": 6,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ui-test/README.md",
+      "line": 20,
+      "classification": "documentation-review"
+    },
+    {
+      "path": "experiments/anima-os/ui-test/mockup.py",
+      "line": 6,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/update-package.nix",
+      "line": 7,
+      "classification": "executable-or-build-consumer"
+    },
+    {
+      "path": "experiments/anima-os/update-package.nix",
+      "line": 8,
+      "classification": "executable-or-build-consumer"
+    }
+  ]
+}

@@ -31,6 +31,7 @@ test-person = []
 # The protocols of the agent programs and the frames of the local socket of the runner.
 agent-threads = { path = "../agent-threads" }
 daemon-core = { path = "../daemon-core" }
+remote-login = { path = "../remote-login" }
 # The account salt of the hub arrives in base64 (K8 Section 8.2).
 base64.workspace = true
 bytes.workspace = true
@@ -56,13 +57,18 @@ zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 tempfile.workspace = true
 thiserror.workspace = true
 # `process` runs the fixed read-only commands, `signal` ends the daemon on SIGTERM, `fs` reads /proc.
-tokio = { workspace = true, features = ["process", "signal", "fs"] }
+tokio = { workspace = true, features = ["process", "signal", "fs", "io-std"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
 zeroize.workspace = true
 
 # The macOS Keychain holds the daemon token (MET-013). Linux uses a 0600 file and never builds this.
+[target.'cfg(target_os = "linux")'.dependencies]
+anima-applications-wire = { path = "../anima-applications-wire" }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+reqwest = { workspace = true, features = ["stream"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring.workspace = true
 

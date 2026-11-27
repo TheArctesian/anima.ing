@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
-use daemon_core::wire::{Claim, Lease, Switch, WorkJob};
+use daemon_core::wire::{Claim, Lease, Switch, WorkJob, WorkKind};
 use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::{
-    Claimed, Error, Queue, ended, lifecycle,
+    Claimed, Error, Queue, ended, hosting, lifecycle,
     model::{Job, Machine},
     placement::{self, Around, Offer},
     store, trail,
@@ -53,29 +53,59 @@ async fn claim_in(
     if first_on {
         trail::first_claim(conn, bus, (device, name), now).await?;
     }
-    if placement::is_off(&machine, now) {
+    let work_off = placement::is_off(&machine, now);
+    let slots = reconcile(conn, (device, claim, !work_off), (client, now)).await?;
+    if hosting::can_take(claim)
+        && let Some(host) =
+            hosting::claim_next(conn, (&machine, slots.mutation, claim), (client, now)).await?
+    {
+        return Ok(host);
+    }
+    if work_off && claim.applications == Switch::Off && claim.switch == Switch::On {
         return Ok(Claimed::Off);
     }
-    let mut holds_one = false;
-    for held in store::held_by(conn, device).await? {
-        let named = claim
-            .holds
-            .iter()
-            .any(|each| JobId::from(each.id) == held.id && each.attempt == held.attempt);
-        if named {
-            holds_one = true;
-        } else {
-            // The answer to the claim of this attempt was lost (SF-011).
-            let back = lifecycle::answer_lost(&held, now);
-            store::save(conn, &back).await?;
-            trail::attempt_ended(conn, &back, (device, "answer_lost"), (client, now)).await?;
-        }
-    }
-    if holds_one || !placement::can_take(claim) {
+    if work_off || slots.job || !placement::can_take(claim) {
         return Ok(Claimed::Nothing);
     }
     let offer = Offer::of(claim, &machine);
     place(conn, (&offer, name), (client, now)).await
+}
+
+#[derive(Default)]
+struct Slots {
+    job: bool,
+    mutation: bool,
+}
+
+async fn reconcile(
+    conn: &mut PgConnection,
+    (device, claim, jobs_on): (DeviceId, &Claim, bool),
+    (client, now): (ClientAddr, DateTime<Utc>),
+) -> Result<Slots, Error> {
+    let mut slots = Slots::default();
+    for held in store::held_by(conn, device).await? {
+        let host = held.asked.kind == WorkKind::Host;
+        if !host && !jobs_on {
+            continue;
+        }
+        if claim
+            .holds
+            .iter()
+            .any(|each| JobId::from(each.id) == held.id && each.attempt == held.attempt)
+        {
+            if host {
+                slots.mutation |= hosting::occupies_mutation(&held);
+            } else {
+                slots.job = true;
+            }
+            continue;
+        }
+        let next = lifecycle::answer_lost(&held, now);
+        store::save(conn, &next).await?;
+        let reason = if host { "orphan" } else { "answer_lost" };
+        trail::attempt_ended(conn, &next, (device, reason), (client, now)).await?;
+    }
+    Ok(slots)
 }
 
 async fn place(
@@ -109,11 +139,11 @@ async fn place(
     store::save(conn, &job).await?;
     let decisions = store::decisions_of(conn, job.id).await?;
     trail::attempt_started(conn, &job, (offer.device, &decisions), (client, now)).await?;
-    Ok(Claimed::Job(Box::new(wire_job(&job))))
+    Ok(Claimed::Job(Box::new(wire_job(&job)?)))
 }
 
-fn wire_job(job: &Job) -> WorkJob {
-    WorkJob {
+fn wire_job(job: &Job) -> Result<WorkJob, Error> {
+    Ok(WorkJob {
         id: job.id.into(),
         work_type: job.asked.work_type,
         kind: job.asked.kind,
@@ -123,8 +153,9 @@ fn wire_job(job: &Job) -> WorkJob {
         },
         limits: job.asked.limits,
         project: job.asked.project.map(Uuid::from),
-        repository: job.asked.repository.clone(),
+        repository: job.asked.repository.clone().ok_or(Error::Unreadable)?,
         secrets: job.asked.secrets.clone(),
         parameters: job.asked.parameters.clone(),
-    }
+    })
 }
+pub(in crate::work) mod checkout;

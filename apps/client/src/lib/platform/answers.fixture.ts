@@ -6,6 +6,7 @@ import type { Capabilities } from './capabilities';
 export const DESKTOP_MAC: Capabilities = {
   keyStore: true,
   webViewTabs: true,
+  workspacePreviews: false,
   popOut: false,
   updates: true,
   processLog: true,
@@ -30,7 +31,7 @@ export const DESKTOP_MAC: Capabilities = {
 export const BROWSER: Capabilities = browserCapabilities;
 
 /** The mobile app on Android: the key store, the device link, the account sign-in and no desktop-only feature (MOB-004). */
-export const MOBILE: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true, cloudAccount: true, runnerReport: true };
+export const MOBILE: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true, cloudAccount: true, runnerReport: true, workspacePreviews: true };
 
 /** The mobile app on an iPhone or an iPad: it also signs in inside the app (mobile plan M3-5) and plays haptics (M4-4). */
 export const MOBILE_APPLE: Capabilities = { ...MOBILE, accountSession: true, haptics: true };

@@ -5,7 +5,7 @@ use serde_json::json;
 use sqlx::PgPool;
 
 use super::{
-    Conflict, Error, find_device,
+    CertificateProtocol, Conflict, Error, find_device,
     model::{Actor, ServerCertificate},
     observations::Endpoint,
     sightings::Sightings,
@@ -20,6 +20,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::trust) struct CertificateAcceptance {
     pub(in crate::fleet::trust) device: DeviceId,
+    pub(in crate::fleet::trust) protocol: CertificateProtocol,
     pub(in crate::fleet::trust) fingerprint: CertificateFingerprint,
 }
 
@@ -31,15 +32,22 @@ pub(in crate::fleet::trust) async fn accept_server_certificate(
     acceptance: CertificateAcceptance,
 ) -> Result<ServerCertificate, Error> {
     let device = find_device(db, acceptance.device).await?;
+    let port = match acceptance.protocol {
+        CertificateProtocol::Rdp => device.rdp.port,
+        CertificateProtocol::Vnc => device.vnc.port,
+    };
     let seen = sightings
-        .observed_certificate(&Endpoint::new(&device.host, device.rdp.port), by.at)
+        .observed_certificate(
+            (&Endpoint::new(&device.host, port), acceptance.protocol),
+            by.at,
+        )
         .ok_or(Error::Conflict(Conflict::CertificateNotSeen))?;
     if seen.presented.fingerprint != acceptance.fingerprint {
         return Err(Error::Conflict(Conflict::CertificateDiffers));
     }
     let mut tx = db.begin().await?;
     store::lock_server_certificate(&mut tx, device.id).await?;
-    let old = store::server_certificates(&mut *tx, &[device.id])
+    let old = store::server_certificates(&mut *tx, &[device.id], acceptance.protocol)
         .await?
         .remove(&device.id);
     let certificate = ServerCertificate::from(seen);
@@ -52,13 +60,18 @@ pub(in crate::fleet::trust) async fn accept_server_certificate(
     }
     let accepted = AcceptedCertificate {
         device: device.id,
+        protocol: acceptance.protocol,
         certificate: &certificate,
         by: by.operator.id,
     };
     store::put_server_certificate(&mut tx, &accepted).await?;
+    let certificate_key = match acceptance.protocol {
+        CertificateProtocol::Rdp => "serverCertificate",
+        CertificateProtocol::Vnc => "vncServerCertificate",
+    };
     let change = json!({
         "deviceName": device.name,
-        "serverCertificate": {
+        (certificate_key): {
             "oldFingerprint": old.map(|old| old.fingerprint_sha256),
             "newFingerprint": certificate.fingerprint_sha256,
         },

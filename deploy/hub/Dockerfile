@@ -27,6 +27,7 @@ COPY apps/desktop/keyboard ./apps/desktop/keyboard
 COPY apps/desktop/account-session ./apps/desktop/account-session
 COPY apps/desktop/runner ./apps/desktop/runner
 COPY apps/desktop/haptics ./apps/desktop/haptics
+COPY apps/desktop/workspace-preview ./apps/desktop/workspace-preview
 RUN cargo build --release --locked --bin anima-hub
 
 FROM debian:bookworm-20261027-slim

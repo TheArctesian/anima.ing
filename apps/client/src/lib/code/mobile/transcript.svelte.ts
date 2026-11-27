@@ -3,11 +3,13 @@ import type { ThreadEntry, ThreadSummary } from './api';
 
 export interface Message {
   readonly sequence: string;
-  readonly role: 'you' | 'agent';
+  readonly role: 'you' | 'agent' | 'notice';
   readonly text: string;
 }
 
-interface PendingRequest {
+export interface PendingRequest {
+  readonly kind: string;
+  readonly questions: readonly { key: string; text: string; choices: string[]; many: boolean }[];
   readonly id: string;
   readonly sequence: number;
   readonly title: string;
@@ -41,6 +43,11 @@ function pendingRequest(id: string, sequence: number, value: unknown): PendingRe
   return {
     id,
     sequence,
+    kind: text(detail['kind']),
+    questions: questions.map((value: unknown) => {
+      const q = record(value);
+      return { key: text(q['key']), text: text(q['text']), choices: Array.isArray(q['choices']) ? q['choices'].filter((v): v is string => typeof v === 'string') : [], many: q['many'] === true };
+    }).filter((q) => q.key !== ''),
     title: requestTitle(detail['kind']),
     subject: questions.map((question: unknown) => text(record(question)['text'])).filter(Boolean).join('\n')
       || text(detail['subject']),
@@ -69,6 +76,23 @@ function attentionCleared(state: string): boolean {
   return state === 'idle' || state === 'starting' || state === 'working' || state === 'stopped';
 }
 
+function operatorMessage(sequence: string, change: Record<string, unknown>): Message {
+  if (change['change'] === 'prompt') {
+    return { sequence, role: 'you', text: text(change['text']) || 'Prompt with attachments' };
+  }
+  const textForReason = change['reason'] === 'runner_history_gap'
+    ? 'Some earlier activity is no longer available on this node.'
+    : 'An entry exceeded the sharing limit and was omitted.';
+  return { sequence, role: 'notice', text: textForReason };
+}
+
+function reconcileOpenRequests(pending: SvelteMap<string, PendingRequest>, value: unknown): void {
+  const open = Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+  for (const id of pending.keys()) {
+    if (!open.includes(id)) pending.delete(id);
+  }
+}
+
 export function createConversation() {
   const messages = $state<Message[]>([]);
   const pending = new SvelteMap<string, PendingRequest>();
@@ -93,10 +117,11 @@ export function createConversation() {
   function append({ sequence, content }: ThreadEntry): void {
     const change = record(content);
     switch (change['change']) {
+      case 'omitted':
       case 'prompt':
         if (draft !== null) messages.push(draft);
         draft = null;
-        messages.push({ sequence, role: 'you', text: text(change['text']) || 'Prompt with attachments' });
+        messages.push(operatorMessage(sequence, change));
         break;
       case 'said':
         draft = appendReply(record(change['event']), sequence, messages, draft);
@@ -113,6 +138,9 @@ export function createConversation() {
         if (id !== '' && position > requestsClearedThrough) pending.set(id, pendingRequest(id, position, change['detail']));
         break;
       }
+      case 'open_requests':
+        reconcileOpenRequests(pending, change['requests']);
+        break;
       case 'closed':
         pending.delete(text(change['request']));
         break;

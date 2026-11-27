@@ -1,6 +1,6 @@
 //! The K1 object types of the containers of a device: each field of what Docker says.
 
-use async_graphql::Object;
+use async_graphql::{ID, Object};
 use chrono::{DateTime, Utc};
 
 use crate::work::containers::{
@@ -12,6 +12,16 @@ use crate::work::containers::{
 impl Container {
     async fn id(&self) -> &str {
         &self.id
+    }
+
+    /// The daemon recently advertised container actions on this device.
+    async fn actions_available(&self) -> bool {
+        self.actions_available
+    }
+
+    /// A completed apply on the device matches the project and its Docker-reported Compose paths.
+    async fn managed_application_id(&self) -> Option<ID> {
+        self.managed_application_id.map(|id| ID(id.to_string()))
     }
 
     async fn name(&self) -> &str {

@@ -25,9 +25,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - run: python3 -m pip install boto3==1.42.6
-      - run: python3 -m unittest discover -s experiments/anima-os/release -p 'test_*.py'
+      - run: python3 -m unittest discover -s os/release -p 'test_*.py'
       - id: select
-        run: python3 experiments/anima-os/release/candidate.py
+        run: python3 os/release/candidate.py
 
   build:
     needs: select
@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: bash experiments/anima-os/release/hosted.sh
+      - run: bash os/release/hosted.sh
       - uses: cachix/install-nix-action@d698718aa798980d17dd749f03beae0b51183399 # v31
         with:
           extra_nix_config: |
@@ -64,7 +64,7 @@ jobs:
           printf '%s\n' "$SIGNING_KEY" > "$OS_SIGNING_KEY"
           unset SIGNING_KEY
           mkdir -p "$RUNNER_TEMP/release"
-          bash experiments/anima-os/release/build.sh "$RUNNER_TEMP/release"
+          bash os/release/build.sh "$RUNNER_TEMP/release"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: os-candidate
@@ -74,23 +74,24 @@ jobs:
           path: |
             ${{ runner.temp }}/release/anima-os-x86_64.iso
             ${{ runner.temp }}/release/release.json
+            ${{ runner.temp }}/release/build-inputs.json
             ${{ runner.temp }}/release/package
 
   qualify:
     needs: build
     runs-on: ${{ vars.ANIMA_OS_RUNNER || 'ubuntu-24.04' }}
-    timeout-minutes: 120
+    timeout-minutes: ${{ matrix.check == 'railpack' && 240 || 120 }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        check: [fresh-install, upgrade]
+        check: [fresh-install, upgrade, railpack]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: bash experiments/anima-os/release/hosted.sh
+      - run: bash os/release/hosted.sh
       - run: python3 -m pip install boto3==1.42.6
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -102,12 +103,28 @@ jobs:
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/release"
+          system=$(python3 os/release/qualification.py --test-tools "$out")
+          proof="$RUNNER_TEMP/qualification"
+          mkdir -p "$proof"
           if [[ "$CHECK" == fresh-install ]]; then
-            python3 experiments/anima-os/gui_test.py "$out/anima-os-x86_64.iso" "$RUNNER_TEMP/acceptance"
+            python3 os/tests/vm/gui_test.py "$out/anima-os-x86_64.iso" "$RUNNER_TEMP/acceptance" \
+              --private-access-tools "$out/package" --expected-system "$system"
+          elif [[ "$CHECK" == railpack ]]; then
+            python3 os/tests/vm/railpack_test.py "$out/anima-os-x86_64.iso" "$RUNNER_TEMP/acceptance" \
+              --expected-system "$system"
           else
-            python3 experiments/anima-os/release/channel.py baseline "$out"
-            python3 experiments/anima-os/update_test.py "$out/baseline.iso" "$out/package" "$RUNNER_TEMP/acceptance" --remote
+            python3 os/release/channel.py baseline "$out"
+            python3 os/tests/vm/update_test.py "$out/baseline.iso" "$out/package" "$RUNNER_TEMP/acceptance" \
+              --baseline-manifest "$out/baseline.json" --remote
+            cp "$out/baseline.json" "$proof/"
           fi
+          cp "$RUNNER_TEMP/acceptance/results.json" "$proof/"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: os-qualified-${{ matrix.check }}
+          retention-days: 14
+          if-no-files-found: error
+          path: ${{ runner.temp }}/qualification/
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -138,8 +155,16 @@ jobs:
           path: ${{ runner.temp }}/release
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: os-proof-upgrade
-          path: ${{ runner.temp }}/proof
+          name: os-qualified-fresh-install
+          path: ${{ runner.temp }}/proof/fresh-install
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: os-qualified-upgrade
+          path: ${{ runner.temp }}/proof/upgrade
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: os-qualified-railpack
+          path: ${{ runner.temp }}/proof/railpack
       - name: Verify public artifacts and promote the two feeds
         env:
           OS_RELEASE_CREDENTIALS: ${{ secrets.OS_RELEASE_CREDENTIALS }}
@@ -151,5 +176,10 @@ jobs:
           test -n "$OS_RELEASE_CREDENTIALS"
           printf '%s\n' "$OS_RELEASE_CREDENTIALS" > "$credentials"
           unset OS_RELEASE_CREDENTIALS
-          cp "$RUNNER_TEMP/proof/release/baseline.json" "$RUNNER_TEMP/release/baseline.json"
-          python3 experiments/anima-os/release/channel.py publish "$RUNNER_TEMP/release" --credentials "$credentials"
+          out="$RUNNER_TEMP/release"
+          mkdir -p "$out/qualification"
+          cp "$RUNNER_TEMP/proof/fresh-install/results.json" "$out/qualification/fresh-install.json"
+          cp "$RUNNER_TEMP/proof/upgrade/results.json" "$out/qualification/upgrade.json"
+          cp "$RUNNER_TEMP/proof/railpack/results.json" "$out/qualification/railpack.json"
+          cp "$RUNNER_TEMP/proof/upgrade/baseline.json" "$out/baseline.json"
+          python3 os/release/channel.py publish "$out" --credentials "$credentials"

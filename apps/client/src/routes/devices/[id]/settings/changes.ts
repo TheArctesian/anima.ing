@@ -1,5 +1,5 @@
 import type { DeviceDetail } from '$lib/devices/api';
-import type { ServerCertificate } from '$lib/sessions/api';
+import type { RemoteProtocol, ServerCertificate } from '$lib/sessions/api';
 import type { WebInterface } from '$lib/web-interfaces/api';
 
 /** DEV-011. */
@@ -13,7 +13,11 @@ export function withVncStored(device: DeviceDetail, credentialStored: boolean): 
 }
 
 /** SEC-007. */
-export function withServerCertificate(device: DeviceDetail, serverCertificate: ServerCertificate): DeviceDetail {
+export function withServerCertificate(device: DeviceDetail, serverCertificate: ServerCertificate, protocol: RemoteProtocol = 'RDP'): DeviceDetail {
+  if (protocol === 'VNC') return {
+    ...device, vnc: { ...device.vnc, serverCertificate },
+    accessWarnings: device.accessWarnings.filter((warning) => warning !== 'UNENCRYPTED_VNC'),
+  };
   return { ...device, rdp: { ...device.rdp, serverCertificate } };
 }
 

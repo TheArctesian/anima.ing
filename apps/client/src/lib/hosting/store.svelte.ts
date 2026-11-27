@@ -1,3 +1,4 @@
+import type { ContainerActionCalls } from '$lib/containers/action/api';
 import { ContainersStore } from '$lib/containers/store.svelte';
 import type { HostingCalls, Machine } from './api';
 import type { Place, Show, View } from './list';
@@ -30,6 +31,22 @@ export class HostingStore {
   #generation = 0;
 
   constructor(private readonly calls: HostingCalls) {}
+
+  get actions(): ContainerActionCalls {
+    return this.calls.actions;
+  }
+
+  get apply(): HostingCalls['apply'] {
+    return this.calls.apply;
+  }
+
+  applied(id: string): void {
+    if (this.places.some((place) => place.id === id)) void this.refreshMachine(id);
+  }
+
+  async refreshMachine(id: string): Promise<void> {
+    await this.#readContainers(id, this.#generation);
+  }
 
   /** Reads the machines, then the containers of each at the same time. An answer to an earlier read is dropped. */
   async load(): Promise<void> {

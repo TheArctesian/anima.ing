@@ -164,6 +164,12 @@ void graphql(`
       port
       username
       credentialStored
+      serverCertificate {
+        fingerprintSha256
+        subject
+        notAfter
+        firstSeenAt
+      }
     }
     transfer {
       upload

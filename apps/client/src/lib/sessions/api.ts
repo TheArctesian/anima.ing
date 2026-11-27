@@ -102,6 +102,17 @@ const AcceptServerCertificate = graphql(`
   }
 `);
 
+const AcceptVncServerCertificate = graphql(`
+  mutation AcceptVncServerCertificate($deviceId: ID!, $fingerprintSha256: String!) {
+    acceptVncServerCertificate(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {
+      fingerprintSha256
+      subject
+      notAfter
+      firstSeenAt
+    }
+  }
+`);
+
 const DeviceTransfer = graphql(`
   query DeviceTransfer($id: ID!) {
     device(id: $id) {
@@ -191,15 +202,15 @@ export interface SessionsApi {
    * `CONFLICT` with no accepted host key (SSH, K4 §6) or RDP certificate (K4 §1), at the session limit (RA-036), or
    * when the address changed after the stored credential was entered (SEC-011).
    */
-  startSession(deviceId: string, protocol: Protocol, display: SessionDisplay): Promise<HubResult<SessionTicket>>;
+  startSession(deviceId: string, protocol: Protocol, display: SessionDisplay, viewOnly?: boolean): Promise<HubResult<SessionTicket>>;
   /** End the session, or return an ended one unchanged with its recorded `endReason` (D-4). */
   endSession(id: string): Promise<HubResult<EndedSession>>;
   /** Test a saved device (`{ deviceId }`) or unsaved form values (DEV-013); the hub refuses both at once. */
   testConnection(input: ConnectionTestInput): Promise<HubResult<ConnectionTest>>;
   /** Accept exactly `fingerprintSha256`; `CONFLICT` when it is not the key the hub saw. */
   acceptHostKey(deviceId: string, fingerprintSha256: string): Promise<HubResult<AcceptedHostKey>>;
-  /** Accept exactly this RDP certificate fingerprint; `CONFLICT` when it is not the one the hub saw (K4 §3). */
-  acceptServerCertificate(deviceId: string, fingerprintSha256: string): Promise<HubResult<ServerCertificate>>;
+  /** Accept exactly this protocol’s certificate fingerprint; `CONFLICT` when it is not the one the hub saw (K4 §3). */
+  acceptServerCertificate(deviceId: string, fingerprintSha256: string, protocol?: RemoteProtocol): Promise<HubResult<ServerCertificate>>;
   /** The device's copy and paste flags (RA-033); `NOT_FOUND` when the device is gone. */
   transferPolicy(deviceId: string): Promise<HubResult<SessionTransfer>>;
   /** GW-015: a failure keeps the hub's code with fixed text, so the password never reaches the screen or a log (LOG-007). */
@@ -240,8 +251,9 @@ function namesK1(input: ConnectionTestInput): boolean {
 
 export function sessionsApi(hub: Hub): SessionsApi {
   return {
-    startSession: async (deviceId, protocol, display) => {
-      const result = await hub.request(StartSession, { input: { deviceId, protocol, display } });
+    startSession: async (deviceId, protocol, display, viewOnly) => {
+      const input = { deviceId, protocol, display, ...(viewOnly === true ? { viewOnly } : {}) };
+      const result = await hub.request(StartSession, { input });
       return result.ok ? { ok: true, value: result.value.startSession } : result;
     },
     endSession: async (id) => {
@@ -259,7 +271,11 @@ export function sessionsApi(hub: Hub): SessionsApi {
       const result = await hub.request(AcceptHostKey, { deviceId, fingerprintSha256 });
       return result.ok ? { ok: true, value: result.value.acceptHostKey } : result;
     },
-    acceptServerCertificate: async (deviceId, fingerprintSha256) => {
+    acceptServerCertificate: async (deviceId, fingerprintSha256, protocol = 'RDP') => {
+      if (protocol === 'VNC') {
+        const result = await hub.request(AcceptVncServerCertificate, { deviceId, fingerprintSha256 });
+        return result.ok ? { ok: true, value: result.value.acceptVncServerCertificate } : result;
+      }
       const result = await hub.request(AcceptServerCertificate, { deviceId, fingerprintSha256 });
       return result.ok ? { ok: true, value: result.value.acceptServerCertificate } : result;
     },

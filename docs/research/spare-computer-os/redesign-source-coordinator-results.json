@@ -1,0 +1,129 @@
+{
+  "scope": "Linux daemon source-work durable journal and report outbox. Production storage exercised in temporary private directories. No hub claim polling, real broker dispatch, artifact acknowledgement or installed VM qualification.",
+  "sources": {
+    "crates/daemon/src/source_work.rs": "8967d73f74e0e217e239241b8dc122fe6935cc2d87f7d422f333a3e23c9dcb5f",
+    "crates/daemon/src/source_work/journal.rs": "d5c848a308410dc5a7c88a596df86e99789da5e27c1c1d36a720c92e7066516f",
+    "crates/daemon/src/source_work/tests.rs": "91a29c861a8fd70d20dab459b9f6cb1d8726e9e27138c9d15dcd1e872c1bfdc0"
+  },
+  "results": [
+    {
+      "case": "restart-retains-dispatch-identity-and-enrollment-ownership",
+      "result": "Passed"
+    },
+    {
+      "case": "report-replay-exact-acknowledgement-and-terminal-tombstone",
+      "result": "Passed"
+    },
+    {
+      "case": "corrupt-and-symlink-journal-refusal",
+      "result": "Passed"
+    },
+    {
+      "case": "linux-daemon-strict-clippy-all-targets",
+      "result": "Passed"
+    },
+    {
+      "case": "descriptor-inheritance-lock-regression",
+      "result": "Passed",
+      "baseline": "With explicit unlock disabled, the new regression failed with Busy while reopening. Restoring unlock passed."
+    },
+    {
+      "case": "linux-daemon-library-unprivileged-with-init",
+      "result": "Passed",
+      "passed": 520,
+      "failed": 0,
+      "ignored": 3
+    },
+    {
+      "case": "changed-source-repository-limits",
+      "result": "Passed"
+    }
+  ],
+  "earlierFullSuite": {
+    "passed": 518,
+    "failed": 1,
+    "ignored": 3,
+    "failure": "Report replay test reopened the journal while a descriptor inherited by a concurrently spawned process retained the lock. Repaired with explicit unlock, and guarded by deterministic duplicated-descriptor regression."
+  },
+  "lifecycle": {
+    "scope": "Durable lifecycle replay and production Unix-socket client with a controlled root server in a disposable Linux container. Does not qualify the real installed broker, hub polling, artifact delivery or cleanup acknowledgement.",
+    "sources": {
+      "crates/daemon/src/source_work.rs": "d6dd990756d83e47f2ad0f64f7066bef1a2a3243ca485eef9b17f128935f2d36",
+      "crates/daemon/src/source_work/journal.rs": "9aa90523796a5cdd1e07fc954ab8916577789e1614b6d584e5afb3de50323c87",
+      "crates/daemon/src/source_work/lifecycle.rs": "b63c63bd205e4b995b1d5c191d6d2a4b73f80e9c2546c75002a23aa59a046fdc",
+      "crates/daemon/src/source_work/socket_tests.rs": "d825104b09700400ae7a3c11ffc1f6fe59b6244cf8c931f145020bd4340e6c94",
+      "crates/daemon/src/source_work/tests.rs": "581359e25368d9414dcd4dd1db792caf105c0c8175f29600b828c91553c71a90"
+    },
+    "results": [
+      {
+        "case": "source-work-suite-including-container-only-socket-test",
+        "result": "Passed",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "case": "linux-daemon-strict-clippy-all-targets",
+        "result": "Passed"
+      }
+    ]
+  },
+  "reportAcknowledgement": {
+    "scope": "Atomic local persistence of a hub Reported decision with exact report acknowledgement. No live hub or scheduler qualification.",
+    "sources": {
+      "crates/daemon/src/source_work.rs": "9303de45fbd8e43b09ec86cfa13983fe2d33b1ae739ea4c6989766d29895732b",
+      "crates/daemon/src/source_work/reporting.rs": "ba223869098de89bbe979636817d1860b3ac0eb21de70147f649e13a51774352",
+      "crates/daemon/src/source_work/tests.rs": "d3bd49f9cdcdbf523b6f5ceacfc69c51282c37fa951c0d22ddea47ad6c17c079"
+    },
+    "results": [
+      {
+        "case": "source-work-suite-including-disposable-root-socket-check",
+        "result": "Passed",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "case": "decision-loss-mutation",
+        "result": "Detected",
+        "detail": "Disabling persistence of the hub decision made the new restart test fail because the saved renewal was absent; restored production source passes."
+      }
+    ]
+  },
+  "runtimeReporting": {
+    "scope": "Recovery/reporting task is wired into the Linux managed runtime. Local HTTP fixture checks retry and durable stop response; controlled root-socket test checks lifecycle transport. No live hub, installed-image acceptance, new source claiming or artifact handoff qualification.",
+    "sources": {
+      "crates/daemon/src/runtime.rs": "c4d14e8b35eb4775acaa1d137f05ae855533b2d3742aeceafd47ea6c0729ced6",
+      "crates/daemon/src/runtime/source_work.rs": "230c590fcd6025b29a415e728a345bb570bee5cd460c1e5fc1da031410188fba",
+      "crates/daemon/src/runtime/source_work/tests.rs": "c09016b0b7fd3b728cba93fb5a00b47ccb7fd13e3c60048a6efd776b66083693",
+      "crates/daemon/src/runtime/sampling.rs": "7f528c279e1e48b0fa4bbaf9f8167138b0a6e03c0f45fe2f2df0250d5e990e8c",
+      "crates/daemon/src/runtime/sampling/tests.rs": "419e93630ace079783b5674ee5253e6a5c880dd55942ef4dc29d149a23ac0433",
+      "crates/daemon/src/source_work/reporting.rs": "e3ba6f790509aba65a4fa340f775d999e0e22b39b34d3d3a2d956a009f04ec47",
+      "crates/daemon/src/source_work/journal.rs": "a536fbc856c50685f69b1b5d46a5c79e74d5eb85e2e7d26bf45206612ee2820d"
+    },
+    "results": [
+      {
+        "case": "focused-source-work-and-runtime-container-tests",
+        "result": "Passed",
+        "passed": 9,
+        "ignored": 0
+      },
+      {
+        "case": "full-linux-daemon-library-unprivileged-with-init",
+        "result": "Passed",
+        "passed": 523,
+        "failed": 0,
+        "ignored": 5
+      },
+      {
+        "case": "strict-linux-clippy-all-targets",
+        "result": "Passed"
+      },
+      {
+        "case": "changed-file-repository-limits",
+        "result": "Passed"
+      }
+    ],
+    "earlierFailure": "The first HTTP fixture used fractional timestamps rejected by the K8 time contract; corrected to protocol second precision. Runtime size exceeded 300 code lines; sampling and its existing tests were moved to their own owner without raising the baseline."
+  }
+}

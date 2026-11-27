@@ -8,3 +8,8 @@ pub mod model_work;
 pub mod points;
 pub mod readings;
 pub mod wire;
+pub mod work;
+pub mod work_repositories;
+
+pub mod artifact;
+pub mod source_jobs;

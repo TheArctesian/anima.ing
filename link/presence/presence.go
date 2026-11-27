@@ -18,7 +18,7 @@ const (
 	// Here is the line that a device writes.
 	Here = "here\n"
 	// MaxLine is the longest line of either side, without its newline; a longer line ends the stream.
-	MaxLine = 256
+	MaxLine = 1024
 	// Silence is how long a stream can be silent before the hub link closes it: three missed lines.
 	Silence    = 45 * time.Second
 	writeLimit = 5 * time.Second

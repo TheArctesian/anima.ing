@@ -41,7 +41,7 @@ func listen(t *testing.T, serve func(net.Conn)) *net.TCPAddr {
 // bench is a hub desk and one device, with a loopback listener in place of the tunnel.
 type bench struct {
 	desk      dial.Desk
-	isOpen    func(uint16) bool
+	permit    func(uint16) context.Context
 	from      netip.Addr
 	asked     chan string
 	delivered atomic.Int32
@@ -56,7 +56,15 @@ func newBench(t *testing.T, isOpen func(uint16) bool) *bench {
 // newBenchFrom is a bench whose device answers under another link address than the one asked.
 func newBenchFrom(t *testing.T, from netip.Addr, isOpen func(uint16) bool) *bench {
 	t.Helper()
-	b := &bench{isOpen: isOpen, from: from, asked: make(chan string, 4)}
+	b := &bench{from: from, asked: make(chan string, 4)}
+	if isOpen != nil {
+		b.permit = func(port uint16) context.Context {
+			if isOpen(port) {
+				return context.Background()
+			}
+			return nil
+		}
+	}
 	b.openPort = listen(t, func(stream net.Conn) {
 		b.desk.Deliver(b.from, stream)
 		stream.Close()
@@ -71,7 +79,7 @@ func (b *bench) ask(line string) error {
 	if !valid {
 		return nil
 	}
-	local := dial.Local{IsOpen: b.isOpen, Hub: func(ctx context.Context) (net.Conn, error) {
+	local := dial.Local{Permit: b.permit, Hub: func(ctx context.Context) (net.Conn, error) {
 		var dialer net.Dialer
 		return dialer.DialContext(ctx, "tcp", b.openPort.String())
 	}}

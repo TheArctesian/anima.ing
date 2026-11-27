@@ -10,6 +10,7 @@ pub(crate) mod account_session;
 #[cfg(target_os = "ios")]
 mod haptics;
 mod metrics;
+mod preview;
 mod runner;
 pub(crate) mod tokens;
 
@@ -17,6 +18,7 @@ pub(crate) mod tokens;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_runner::init())
+        .plugin(tauri_plugin_workspace_preview::init())
         .plugin(tauri_plugin_keyboard::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_account_session::init())
@@ -50,6 +52,8 @@ pub fn run() {
             runner::runner_capabilities_read,
             #[cfg(target_os = "ios")]
             haptics::haptic_play,
+            preview::mobile_preview_open,
+            preview::mobile_preview_close,
         ])
         .build(tauri::generate_context!())
         .expect("the Tauri application failed to start")

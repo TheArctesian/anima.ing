@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { RemoteProtocol } from '$lib/sessions/api';
   import RemoteLoginButton from '$lib/devices/form/form/RemoteLoginButton.svelte';
   import { tick, untrack } from 'svelte';
   import type { FieldError, HubResult } from '$lib/hub/hub';
@@ -13,6 +14,7 @@
   import { validateDevice } from '../validate';
   import { formValues, type DeviceFields, type DeviceFormValues, type SiteOption } from '../values';
   import type { EditedValues } from './editing';
+  import { focusSection, type DeviceFormSection } from './navigation/focus';
   import { firstInvalidField, formErrors, inputId, replaceField, sectionOf } from './errors';
   import GeneralSection from './GeneralSection.svelte';
   import { emptyRemoteSecrets } from '../remote/values';
@@ -46,7 +48,7 @@
      * The section to open and bring into view (DEV-022), whenever it changes; `test` is the SSH section's
      * Test connection button (D-8: SSH on without an accepted host key).
      */
-    section?: 'general' | 'ssh' | 'rdp' | 'vnc' | 'test';
+    section?: DeviceFormSection;
     /** `site` is null when editing. The values are a snapshot with secrets in it: the owner must not keep it. */
     onSave: (values: DeviceFormValues, site: SitePlacement | null) => Promise<HubResult<unknown>>;
     onTest: (
@@ -55,7 +57,7 @@
     /** Only for a saved device. */
     onAcceptHostKey: (fingerprint: string) => Promise<HubResult<unknown>>;
     /** K1 `acceptServerCertificate`, only for a saved device. Without it the Accept certificate button is hidden (D-4). */
-    onAcceptServerCertificate?: (fingerprint: string) => Promise<HubResult<unknown>>;
+    onAcceptServerCertificate?: (fingerprint: string, protocol?: RemoteProtocol) => Promise<HubResult<unknown>>;
     onClearCredential: () => Promise<HubResult<unknown>>;
     /** Without these the RDP and VNC Remove buttons are hidden (D-4). */
     onClearRdpCredential?: () => Promise<HubResult<unknown>>;
@@ -114,15 +116,6 @@
 
   const creating = $derived(device === null);
 
-  /** The control a `section` names: the section's disclosure button, or Test connection. */
-  const SECTION_TARGETS = {
-    general: '[data-section="general"] button',
-    ssh: '[data-section="ssh"] button',
-    rdp: '[data-section="rdp"] button',
-    vnc: '[data-section="vnc"] button',
-    test: '[data-section="ssh"] [data-connection-test]',
-  } as const;
-
   /** Each new `section` opens its disclosure, then focuses and scrolls to its control (DEV-022, D-8). */
   $effect(() => {
     const wanted = section;
@@ -133,15 +126,7 @@
       else if (wanted === 'vnc') vnc = true;
       else ssh = true;
     });
-    const reach = () => {
-      const target = root?.querySelector<HTMLElement>(SECTION_TARGETS[wanted]) ?? null;
-      if (target === null) return;
-      target.focus();
-      if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'nearest' });
-    };
-    // At once for a control already shown; again once a section that was closed has opened.
-    reach();
-    void tick().then(reach);
+    focusSection(() => root, wanted);
   });
 
   async function show(found: readonly FieldError[]): Promise<void> {
@@ -295,7 +280,9 @@
         />
         {#if values.vnc.enabled}
           {#key saves}
-            <RemoteTest protocol="VNC" {initial} {values} {deviceId} {canTest} {onTest} />
+            <RemoteTest protocol="VNC" {initial} {values} {deviceId} {canTest} {onTest}
+              acceptedFingerprint={device?.vnc?.serverCertificate?.fingerprintSha256}
+              onAcceptServerCertificate={onAcceptServerCertificate && ((fingerprint) => onAcceptServerCertificate(fingerprint, 'VNC'))} />
           {/key}
         {/if}
       </Disclosure>

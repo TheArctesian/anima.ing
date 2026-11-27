@@ -76,6 +76,18 @@ fn host_028_a_name_with_no_value_and_each_other_form_of_a_dollar_are_refused() {
 }
 
 #[test]
+fn repeated_substitution_cannot_exceed_the_expanded_file_limit() {
+    let environment = format!("DB_PASSWORD={}\n", "x".repeat(32 * 1024));
+    let many = format!("RAILS_ENV: {}", "${DB_PASSWORD}".repeat(130));
+    let file = with("RAILS_ENV: production", &many);
+    assert_eq!(
+        crate::check_portable(&file, &environment),
+        Err(top(Rule::TooLarge))
+    );
+    assert!(crate::check_portable(SOUND, &environment).is_ok());
+}
+
+#[test]
 fn host_028_a_variable_cannot_bring_a_key_or_a_structure_into_the_file() {
     let environment = "DB_PASSWORD=x\nTAG=1\\n    privileged: true\n";
     let filled = check(SOUND, environment, &Settings::default());

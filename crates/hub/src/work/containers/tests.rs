@@ -17,11 +17,11 @@ use sqlx::PgPool;
 use super::Reach;
 use crate::fleet::ssh::tests::{Answer, Bench, Heard, bench, reaching};
 
-const ID: &str = "4f5c1d2e3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a";
+pub(super) const ID: &str = "4f5c1d2e3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a";
 /// Nothing the hub writes besides the answer may hold this text of a container's log.
 const SECRET: &str = "API_TOKEN=hunter2";
 
-const LISTED: &str = concat!(
+pub(super) const LISTED: &str = concat!(
     r#"{"id":"4f5c1d2e3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a","#,
     r#""names":"dawarich_app","image":"freikin/dawarich:latest","state":"running","#,
     r#""status":"Up 3 hours (healthy)","ports":"0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp","#,
@@ -35,7 +35,7 @@ const LISTED: &str = concat!(
     "\n",
 );
 
-fn exiting(stdout: &str, status: u32) -> Answer {
+pub(super) fn exiting(stdout: &str, status: u32) -> Answer {
     Answer::Exit {
         stdout: stdout.as_bytes().to_vec(),
         stderr: SECRET.as_bytes().to_vec(),
@@ -43,7 +43,7 @@ fn exiting(stdout: &str, status: u32) -> Answer {
     }
 }
 
-async fn device(pool: &PgPool, answer: Answer) -> Bench {
+pub(super) async fn device(pool: &PgPool, answer: Answer) -> Bench {
     bench(pool, answer).await
 }
 
@@ -67,6 +67,6 @@ fn execs(bench: &Bench) -> Vec<String> {
         .collect()
 }
 
-fn policy() -> crate::fleet::targets::AddressPolicy {
+pub(super) fn policy() -> crate::fleet::targets::AddressPolicy {
     reaching()
 }

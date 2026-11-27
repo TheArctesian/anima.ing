@@ -60,7 +60,8 @@ pub struct Inventory {
 }
 
 /// The digest by which the program pulled the image of one service.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Pulled {
     pub service: String,
     /// The image as the file named it.

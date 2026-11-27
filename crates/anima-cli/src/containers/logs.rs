@@ -62,7 +62,7 @@ impl LogsArgs {
 }
 
 /// True for what the hub accepts as a container identifier: 12 to 64 lower-case hex digits.
-fn is_identifier(text: &str) -> bool {
+pub(super) fn is_identifier(text: &str) -> bool {
     (12..=64).contains(&text.len())
         && text
             .bytes()

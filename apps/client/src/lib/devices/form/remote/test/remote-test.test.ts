@@ -13,7 +13,7 @@ const K1: RemoteDeviceFields = {
     resizeMethod: 'DISPLAY_UPDATE', audioOut: true, microphone: false, sharedDrive: false, credentialStored: true,
     serverCertificate: null,
   },
-  vnc: { enabled: true, port: 5900, username: null, credentialStored: true },
+  vnc: { serverCertificate: null, enabled: true, port: 5900, username: null, credentialStored: true },
   macAddress: null,
   metricsSource: 'NONE',
   transfer: { upload: true, download: true, copy: true, paste: true },
@@ -122,7 +122,7 @@ describe('DEV-013, SEC-007: remoteOutcome', () => {
     expect(remoteOutcomeText(without)).toContain('certificate changed');
   });
 
-  it('ignores certificate fields for VNC', () => {
-    expect(remoteOutcome('VNC', answer({ serverCertificate: CERTIFICATE, certificateChanged: true }))).toEqual({ kind: 'reachable', message: '' });
+  it('shows changed VNC certificates as a warning', () => {
+    expect(remoteOutcome('VNC', answer({ serverCertificate: CERTIFICATE, certificateChanged: true }))).toEqual({ kind: 'certificateChanged', certificate: CERTIFICATE });
   });
 });

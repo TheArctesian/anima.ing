@@ -59,6 +59,7 @@ pub async fn call(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
                 device_id,
                 action,
                 confirmed: false,
+                review_revision: None,
             })
             .await?;
         json!({"requested":answer.request_device_os_update})

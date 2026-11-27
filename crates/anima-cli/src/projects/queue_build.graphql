@@ -1,0 +1,8 @@
+mutation SourceBuildQueue($input: SourceBuildInput!) {
+  queueSourceBuild(input: $input) {
+    id
+    state
+    attempt
+    reason
+  }
+}

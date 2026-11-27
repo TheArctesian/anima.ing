@@ -1,0 +1,6 @@
+query ProjectBuildPlacementGet($project: ID!) {
+  projectBuildPlacement(project: $project) {
+    pinned { id name target privateCheckout }
+    candidates { id name target privateCheckout }
+  }
+}

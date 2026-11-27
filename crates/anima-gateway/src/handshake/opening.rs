@@ -51,6 +51,8 @@ pub struct Opening {
     pub view: (usize, usize),
     pub formats: Formats,
     pub desktop: Desktop,
+    /// A VNC-specific accepted leaf; when present, plaintext methods are forbidden.
+    pub vnc_certificate: Option<[u8; 32]>,
 }
 
 impl Opening {
@@ -68,10 +70,19 @@ impl Opening {
         else {
             return Err(bad("connect"));
         };
+        let vnc_certificate = if rdp {
+            None
+        } else {
+            match more {
+                [] => None,
+                [pin] if pin.is_empty() => None,
+                [pin] => Some(super::rdp::fingerprint(pin).ok_or(bad("cert-fingerprints"))?),
+                _ => return Err(bad("connect")),
+            }
+        };
         let desktop = match (rdp, more) {
             (true, more) => Desktop::Rdp(Rdp::from_values(more)?),
-            (false, []) => Desktop::Vnc,
-            (false, _) => return Err(bad("connect")),
+            (false, _) => Desktop::Vnc,
         };
         let address: IpAddr = hostname.parse().map_err(|_| bad("hostname"))?;
         if !may_be_a_device(address) {
@@ -91,6 +102,7 @@ impl Opening {
             view,
             formats,
             desktop,
+            vnc_certificate,
         })
     }
 }

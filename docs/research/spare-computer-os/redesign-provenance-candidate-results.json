@@ -1,0 +1,18 @@
+{
+  "iso_sha256": "ba0a11ef7857c3d45c40da9d3c66e8d128b87016db46c9bef3dccd38c59dc631",
+  "execution_package": "/nix/store/mv0swijj5i9q442n1kpck0jnj56lq3yl-anima-os-execution-0.1.0",
+  "sandbox_config": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+  "results": [
+    {
+      "case": "build-probe",
+      "result": "Failed",
+      "reason": "Guest command failed: digest=$(jq -er '.value.result.manifestDigest' /run/anima-build-check-af1c4822-f8e1-499a-85b2-2502b6d07d48/verified.json); tar -xOf /run/anima-build-check-af1c4822-f8e1-499a-85b2-2502b6d07d48/image.oci \"blobs/sha256/${digest#sha256:}\" > /run/anima-build-check-af1c4822-f8e1-499a-85b2-2502b6d07d48/index.json; jq -er '.manifests[] | select(.annotations[\"vnd.docker.reference.type\"] == \"attestation-manifest\") | [.digest, .annotations[\"vnd.docker.reference.digest\"]] | @tsv' /run/anima-build-check-af1c4822-f8e1-499a-85b2-2502b6d07d48/index.json > /run/anima-build-check-af1c4822-f8e1-499a-85b2-2502b6d07d48/attestations.tsv; test -s /run/anima-build-check-af1c4822-f8e1-499a-85b2-2502b6d07d48/attestations.tsv"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "limitation": "Candidate package via the frozen shared harness; explicit Dockerfile, strategy conflict, write-open isolation and exact archive export; cached image from probe13; no Railpack detection, provider, secrets, network or deployment",
+  "classification": "Unexpected candidate failure: inline-only provenance was omitted by OCI exporter. Build/exact artifact export succeeded but provenance acceptance failed. Worktree removes inline-only; corrected package pending."
+}

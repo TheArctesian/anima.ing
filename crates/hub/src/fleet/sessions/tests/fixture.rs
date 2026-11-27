@@ -104,6 +104,7 @@ pub(in crate::fleet::sessions) fn request() -> StartRequest {
             dpi: 96,
             timezone: Some("Europe/Berlin".to_owned()),
         },
+        view_only: false,
         wake: None,
     }
 }

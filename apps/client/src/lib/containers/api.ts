@@ -6,6 +6,8 @@ const CONTAINERS = graphql(`
   query Containers($deviceId: ID!) {
     containers(deviceId: $deviceId) {
       id
+      actionsAvailable
+      managedApplicationId
       name
       image
       state

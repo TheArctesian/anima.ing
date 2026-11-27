@@ -18,7 +18,7 @@
     {#if opens}
       <button type="button" class="open" aria-expanded={open} onclick={ontoggle}><span aria-hidden="true">{open ? '▾' : '▸'}</span> {row.name}</button>
     {:else}<span class="lone">{row.name}</span>{/if}
-    {#if !row.managed} <span class="mark">Not managed</span>{/if} <span class="sub">{what}</span>
+    <span class="mark">{row.managedApplicationId === null ? 'Not managed' : 'Managed'}</span> <span class="sub">{what}</span>
   </span>
 </span>
 

@@ -4,6 +4,8 @@
 //! Every field is `CONFLICT` while Projects is off (EXT-002). Each mutation that changes
 //! something writes its change, one audit entry and one event in one transaction.
 
+mod builds;
+mod placement;
 mod trail;
 mod views;
 
@@ -41,6 +43,8 @@ pub struct Query(
     workflows::Query,
     history::Query,
     code::Query,
+    builds::Query,
+    placement::Query,
 );
 
 /// K1's default for `first`.
@@ -229,6 +233,8 @@ pub struct Mutation(
     pull_requests::Mutation,
     workflows::Mutation,
     history::Mutation,
+    builds::Mutation,
+    placement::Mutation,
 );
 
 #[derive(Default)]

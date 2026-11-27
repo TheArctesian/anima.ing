@@ -8,3 +8,5 @@ pub mod screen;
 pub mod session;
 pub mod view;
 pub mod vnc;
+
+mod tls;

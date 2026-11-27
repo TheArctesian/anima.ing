@@ -1,0 +1,230 @@
+{
+  "scope": "Private artifact filesystem owner on macOS; no HTTP authorization, OCI graph inspection, daemon handoff, or installed-OS qualification",
+  "tests": {
+    "command": "cargo test --locked -p anima-hub --lib work::artifacts::",
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0
+  },
+  "corrections": [
+    "Pinned SHA digest output needs explicit hexadecimal encoding",
+    "Temporary directory default permissions failed restart and quota tests; staging now explicitly uses mode 0700",
+    "Clippy requested heap buffers and Duration::from_mins"
+  ],
+  "sources": {
+    "crates/hub/src/work/artifacts.rs": "b971af6f411a2dfd2b02f40061a7d66b2899937014bc98441aa0e628472b36a0",
+    "crates/hub/src/work/artifacts/disk.rs": "72d4f71879bbe85f0e75d12a17e8c52a02b390a0c386c697eccb3dd96182dc5d",
+    "crates/hub/src/work/artifacts/tests.rs": "a7b500ee71a05add0d8e22a72e5ab4c762841e8b5d87cdbe26d98f8cb3a184b2",
+    "crates/hub/src/work/artifacts/transfer.rs": "5ffe98cfef666698f8d06d09185e65a8a9b9c1829c71e2d913a380a82df52adc",
+    "crates/hub/src/work/artifacts/model.rs": "65de3c67a10ebc01a98d0d2da4e8a945705c71da67310a8f80770789fbc5b312"
+  },
+  "linuxClippy": {
+    "command": "cargo clippy --locked -j 1 -p anima-hub --all-targets -- -D warnings",
+    "result": "Passed before the subsequent recovery preflight amendment"
+  },
+  "recoveryPreflight": {
+    "change": "Validate the complete store layout before deleting any staging directory; extend recovery test to preserve staging beside unmanaged contents",
+    "linuxTests": "Environment failure: cargo test --locked -j 1 -p anima-hub --lib work::artifacts:: exited 101 before tests; rustc SIGKILL and Docker oom event confirmed. Container memory was 7.461 GiB / 7.746 GiB during preflight. Do not treat this as a test failure or pass.",
+    "sources": {
+      "crates/hub/src/work/artifacts/disk.rs": "74dadfbc3ceaaa30f4a942ce35e34bf04889fe8160d7006d797239c8b81dd954",
+      "crates/hub/src/work/artifacts/tests.rs": "350dc140d3ab15cfd0fc6f929bba6a8954543cb8d369ee39ddf5da8533d3f16c"
+    }
+  },
+  "jobAuthorization": {
+    "scope": "Real PostgreSQL job owner plus private filesystem delivery on macOS. Lease-report requests use the existing HTTP route; artifact intake calls the delivery domain directly, not an HTTP upload endpoint.",
+    "focusedTests": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0
+    },
+    "affectedJobSuite": {
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0
+    },
+    "cases": [
+      "Report remains available while upload waits for bytes",
+      "Lease expiry during upload refuses retention",
+      "Operator stop during upload refuses retention",
+      "Exact receipt replay requires live current holder"
+    ],
+    "sources": {
+      "crates/hub/src/work/jobs/artifacts.rs": "be4749513027faae61b551886e929a3c10b5c7d99003afa32a39efd013b65ac9",
+      "crates/hub/src/work/artifacts/delivery.rs": "d1872a99c998d8fb4102f2ba9dae833e169d59500cb222471554a99331928108",
+      "crates/hub/tests/it/jobs/artifacts.rs": "5799bdea2c8aeff388875bda7101e5d32dcf9c0b7639691d2a8fbf7c8e2d6dde"
+    },
+    "gates": {
+      "macosClippy": "cargo clippy --locked -p anima-hub --all-targets -- -D warnings: passed",
+      "changedFileLimits": "passed",
+      "whitespace": "passed",
+      "documents": "passed"
+    }
+  },
+  "authenticatedHttp": {
+    "scope": "Authenticated daemon HTTP upload with real PostgreSQL job state and private filesystem storage on macOS. No node upload, installed VM hub or production activation.",
+    "jobIntegration": {
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0
+    },
+    "cases": [
+      "No configured store returns unavailable",
+      "Invalid daemon token returns unauthorized",
+      "Valid archive returns a stable receipt",
+      "Exact empty-body replay returns the same receipt",
+      "Reports complete during a stalled HTTP body",
+      "Expiry or stop during transfer refuses retention"
+    ],
+    "gates": {
+      "strictMacosClippy": "passed",
+      "changedFileLimits": "passed",
+      "documents": "passed",
+      "whitespace": "passed"
+    },
+    "sources": {
+      "crates/hub/src/config/artifacts.rs": "bcc3e42e6825b340bf5c989a7d01e78fe0df593514bb1a59cf9b39ef0844b310",
+      "crates/hub/src/fleet/metrics/ingest/artifact_upload.rs": "3e5fde1afbfdcbdacb01d1563f374b151f9fda0d6b4e4febc85f4963d96a3558",
+      "crates/hub/src/work/artifacts/delivery.rs": "f1a91d420cd759bd857d585690b9cd2673ddb2de74796b31cfff29c77b669eb1",
+      "crates/hub/src/work/jobs/artifacts.rs": "28e812fdbdc262ef9f819c2c3eb180a4b493f4bbfc6434711591b3c7542239db",
+      "crates/hub/src/routing.rs": "868f13f60a67006f0a923494c4907a5b8694f9e5b1b5f30aba614d0f790a7440",
+      "crates/hub/tests/it/jobs/artifacts.rs": "74e8a2ad30735b30534b45514488d26ce89ddd9aeac6c8af1b2c47684126de50"
+    }
+  },
+  "daemonDelivery": {
+    "scope": "Shared upload protocol, verified Linux source stream and durable coordinator receipt. Installed VM daemon-to-hub transport and privileged cleanup are deferred.",
+    "linuxDaemon": {
+      "focusedPassed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "strictAllTargetClippy": "passed"
+    },
+    "macosBuild": {
+      "daemonLibrary": "passed",
+      "hubLibrary": "passed"
+    },
+    "cases": [
+      "Wrong attempt receipt is refused",
+      "Receipt survives reopening the private journal",
+      "Retained receipt suppresses a duplicate transfer",
+      "Corrupt, truncated and trailing root output cannot emit a complete archive"
+    ],
+    "sources": {
+      "crates/daemon-core/src/artifact.rs": "40c21b755e87b0adee433005f86581e86ec0ecce84662b6ec6d5ebdbbd2c026f",
+      "crates/daemon/src/hub/artifact.rs": "b9353ff31b725b11392d3ca1ad702b87400310ad8eaaafd9f8d1cae0f1f1e5a5",
+      "crates/daemon/src/runtime/source_work.rs": "72598d8f2d385a2ec462662c3626ceabbb322c5f65bdf51069ce12a5d7d01b03",
+      "crates/daemon/src/source_artifact.rs": "b3d814eca3a06d14a100d888a4b575ea23a15a5f7431c24c4579ba6617d1c9fa",
+      "crates/daemon/src/source_work/artifacts.rs": "50fff24c61c36a85330551d392b43d7ab495292e4d3a350d2ab2d44491f30a58",
+      "crates/daemon/src/source_work/journal.rs": "dbb639d3f80f6ac73048e941f79b9a97bc3d80e6b919f21757e9409a5879f590"
+    }
+  },
+  "finalReportReplay": {
+    "scope": "PostgreSQL-backed hub job route. The accepted terminal result is replayable after the lease ends. Changed attempts, state and results are refused.",
+    "jobIntegration": {
+      "passed": 23,
+      "failed": 0,
+      "ignored": 0
+    },
+    "sources": {
+      "crates/hub/src/work/jobs/reporting.rs": "fe6f672742464e33a960f129d44b9fa73204c8085314dbf1528e4a1e45e74f3b",
+      "crates/hub/tests/it/jobs/artifacts.rs": "c10adb9732d76d1da0209d27155c9697543388e8345193c2f1bc0a14bf7bf5b1"
+    }
+  },
+  "rootCleanup": {
+    "scope": "Linux broker release authorization, daemon final-result projection and service syntax. Installed worker execution and full hub-to-node lifecycle are deferred.",
+    "linuxTests": {
+      "daemonSourcePassed": 12,
+      "executionPassed": 13,
+      "failed": 0,
+      "strictClippy": "passed"
+    },
+    "nixSourceParse": "passed",
+    "sources": {
+      "crates/anima-os-execution/src/linux/source_jobs/cleanup.rs": "896b15d99dd8af0e73e8d7e02a3c9616241251aed18f5ecbc82b10e3614c8a87",
+      "crates/anima-os-execution/src/linux/source_jobs/capacity.rs": "32f588095a3cd7e3f9abefd5e52c263b986dff7ff4af9da9aebbcf5316ce8ad5",
+      "crates/daemon/src/source_work/terminal.rs": "b93759392cf4a7c6ee851dddac4f72d134d0c16d8de12bcaaf190d32137466cb",
+      "crates/daemon/src/source_work/reporting.rs": "40a8e06432cb818bd078d0130f1dc5d61d3313e276265496b5aced9be20a748f",
+      "os/source-jobs.nix": "d6fb8895f5fd152a4675c151b2d8c7f5e542dcfa9c699ab48330194530ad70dc"
+    }
+  },
+  "coordinatedClaims": {
+    "scope": "Source build claim gating, node capability selection, durable adoption and lost attempt handling. Existing job tests enqueue synthetic builds directly. Installed acceptance and operator submission are still open.",
+    "linuxDaemon": {
+      "focusedPassed": 14,
+      "failed": 0,
+      "strictClippy": "passed"
+    },
+    "hubPostgresJobs": {
+      "passed": 23,
+      "failed": 0
+    },
+    "sources": {
+      "crates/daemon/src/source_work/claims.rs": "eeeff4d266f3ae285896afd9aa50268e5c0ae33aeb16cf6ba298069fbbd6bb26",
+      "crates/daemon/src/source_work/retirement.rs": "b380dd0351e02aebfd92e70b93219ae52e9d51e5dedd31c9f5b4b1eac50f2d89",
+      "crates/daemon/src/runtime/source_work.rs": "00d17656979eb19fae1bac3449612024f3949a4e6cc9a7415a8a77177ca6eb91",
+      "crates/daemon/src/runtime/source_work/claiming.rs": "bff0a0b22210c30aae9d2a7224407bd48d7f9b3d639d7e5f5d7c91ff1d95b16a",
+      "crates/hub/src/fleet/metrics/ingest/work.rs": "f770689a12947590168a8753c268c1f793ad784b676252a8d401cd2c4aaeccd1",
+      "crates/anima-os-execution/src/linux/source_jobs/capacity.rs": "bea0fee26e357f50b02403c55a688c7f41e9911779198c7a56c02fcc190010dd"
+    }
+  },
+  "projectSubmission": {
+    "scope": "Signed-in project GraphQL submission and status, the K1 schema and the matching CLI documents.",
+    "postgresProjectsPassed": 1,
+    "schemaContractPassed": 1,
+    "cliCoveragePassed": 4,
+    "clientSchemaCheck": "passed",
+    "installedAcceptance": "deferred",
+    "sources": {
+      "crates/hub/src/work/projects/builds.rs": "e27d8d7693f5f4094d7ea0713b327cf7c77c9310e098b4b5f9ac58e4e05e30bf",
+      "crates/hub/src/work/projects/store/reads.rs": "8006cbd5cc0a594e53767411e6910688f051fef653ef8c51d33d74308a403e3a",
+      "crates/hub/tests/it/projects/builds.rs": "be24c0aa4502a7eac17627ebda8052ddb814ad174107c177059742d8fa7cef74",
+      "crates/anima-cli/src/projects/builds.rs": "5c2f07c11b506231b5255d0d93639fc8e51f0b9c0da8015ddcdf7942aa1b81f0",
+      "contracts/schema.graphql": "f848fb3413b7f8fd85f3a8316e6effe005ef4990607dc8132c021add42e88afd"
+    },
+    "apiKeyContractPassed": 3
+  },
+  "nodeJournalRetirement": {
+    "scope": "Linux container checks of the durable daemon journal and root metadata owner. VM installation and integrated retirement remain deferred.",
+    "daemonSourcePassed": 11,
+    "executionPassed": 13,
+    "explicitDisposableChecksPassed": 2,
+    "strictLinuxClippy": "passed",
+    "sources": {
+      "crates/daemon-core/src/source_jobs.rs": "a84846ac0c9b4cc9b804afb8208f7a216afc13040a590d2299d99b85f84e8ac4",
+      "crates/daemon/src/source_work/retirement.rs": "b7d38a88095c5e103bc8abb6c6395277b683cc93da70590d5adb71d6ce4c875c",
+      "crates/daemon/src/source_work/journal.rs": "668358732ccc537b0711d70933bfe4c8501893a400b4cb9ac7b8fd1e2ce4a73f",
+      "crates/anima-os-execution/src/linux/source_jobs/retirement.rs": "7d8edf28e386ccc1d99045e752bec5a67c488deb56c392ba8045d77fa6a1414d",
+      "crates/anima-os-execution/src/linux/source_jobs/store.rs": "1b476f9aa0e728a500f439e0b2234b08466a073261b7e81a35c34bf737446340"
+    }
+  },
+  "successfulReportRetention": {
+    "scope": "HTTP and PostgreSQL: source success needs the same attempt's retained receipt and completed cleanup. Exact terminal acknowledgement replays. Desktop and runner job reports still follow the existing contract.",
+    "hubPostgresJobsPassed": 24,
+    "schemaContractPassed": 1,
+    "strictMacClippy": "passed",
+    "installedAcceptance": "deferred",
+    "sources": {
+      "crates/hub/src/work/artifacts.rs": "1c2913d5ad1a5275a421262ca4b2c52f3a01e25bc07a301bc50cf83adee34cf4",
+      "crates/hub/src/work/jobs/reporting.rs": "b2daeae91060aa0a015011bdc9132ee9190e3aea7bca2b6b92eb46ebdb246a96",
+      "crates/hub/src/fleet/metrics/ingest/work.rs": "46c268f675b4a2b3e3770af5b9ef9ef25583e559ebe24bf5d67f29a9db196dd1",
+      "crates/hub/tests/it/jobs/artifacts.rs": "71b7d524648f01b463daaa8bbf9396b47d921fee30b5812ac59b0e7f46052895"
+    }
+  },
+  "operatorDownload": {
+    "scope": "Signed-in retrieval of a completed private source artifact and verified CLI output. The production route rejects a valid operator from outside permitted networks without an archive or an accepted download audit.",
+    "postgresJobsPassed": 25,
+    "finalPostgresArtifactChecksPassed": 5,
+    "cliProjectChecksPassed": 10,
+    "strictClippy": "passed",
+    "installedAcceptance": "deferred",
+    "sources": {
+      "crates/hub/src/routing.rs": "3ed68b204da2ba41c086c4c3e452e5b1717ba84db28632810e06f99525f796e3",
+      "crates/hub/src/work/artifacts/download.rs": "dd806c01f7107884e5cfd116eb491ed2b8a8aafd0b38f95a34b9cfb19e2d7654",
+      "crates/hub/src/work/artifacts/read.rs": "c766b51908e05f5f750709c10f698a327674282a71c3d78c7d6684237c9bbf00",
+      "crates/hub/src/work/artifacts/disk.rs": "ca5a3c65068042d48e1ada0c34154c2dcdb8ee5f1966b057b3986527f739b400",
+      "crates/hub/tests/it/jobs/artifacts/downloads.rs": "f65ec782fea96b078c9ccdc963bbb2ffe69eedf5ae813c611b35a203765aba5b",
+      "crates/anima-cli/src/hub/source_artifacts.rs": "bbcdfc327c96b90fb517f5e1954502fba6d31a10b7a96dbdb0950e01c9444cae",
+      "crates/anima-cli/src/projects/builds/download.rs": "b20edbec8c9ea54ab298766f9a502e10ea76907743eab533c1c4ab78ede48508",
+      "crates/anima-cli/tests/it/hub_records/projects/builds.rs": "dfc7234fc9b5b6698febcb86276544b7fa74803ef5704db27a91a74852b3fd04"
+    }
+  }
+}

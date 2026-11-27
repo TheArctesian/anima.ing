@@ -1,0 +1,18 @@
+{
+  "iso_sha256": "ba0a11ef7857c3d45c40da9d3c66e8d128b87016db46c9bef3dccd38c59dc631",
+  "memory_mib": 6144,
+  "execution_package": "/nix/store/a3hhz90wrxld3m0bcxjr94yfm1w2n2ay-anima-os-execution-0.1.0",
+  "sandbox_config": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+  "results": [
+    {
+      "case": "railpack-candidate",
+      "result": "Failed",
+      "reason": "Guest command failed: manifest=$(jq -er '[.manifests[] | select(.platform.os == \"linux\" and .platform.architecture == \"amd64\") | select(.annotations[\"vnd.docker.reference.type\"] != \"attestation-manifest\")] | if length == 1 then .[0].digest else error(\"Expected one runnable image\") end' /run/anima-railpack-check-384c3bef-0f57-48c2-9eae-7901b523a500/index.json) || exit 1; tar -xOf /run/anima-railpack-check-384c3bef-0f57-48c2-9eae-7901b523a500/image.oci \"blobs/sha256/${manifest#sha256:}\" > /run/anima-railpack-check-384c3bef-0f57-48c2-9eae-7901b523a500/runnable.json; image=$(jq -er '.config.digest' /run/anima-railpack-check-384c3bef-0f57-48c2-9eae-7901b523a500/runnable.json) || exit 1; docker run --rm --network none --read-only --memory 256m --cpus 1 --cap-drop ALL --security-opt no-new-privileges \"$image\" > /run/anima-railpack-check-384c3bef-0f57-48c2-9eae-7901b523a500/run.log; grep -qx anima-railpack-node /run/anima-railpack-check-384c3bef-0f57-48c2-9eae-7901b523a500/run.log"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "limitation": "Candidate package with frozen harness-17; synthetic Node/Python/Rust Railpack projects with outbound user networking and explicit test-only Docker import/run; no routed hosting, provider or secrets acceptance"
+}

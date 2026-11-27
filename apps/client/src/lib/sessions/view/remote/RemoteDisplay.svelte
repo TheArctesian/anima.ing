@@ -17,15 +17,16 @@
     mobile: boolean;
     fitKey?: DisplayChoices | undefined;
     interactive: boolean;
+    viewOnly?: boolean;
   }
 
-  const { client, pane, paneSize, remote, scale, mobile, fitKey, interactive }: Props = $props();
+  const { client, pane, paneSize, remote, scale, mobile, fitKey, interactive, viewOnly = false }: Props = $props();
   /** Unset until a pinch or the pointer moves the view; the view then rests on the middle of the remote. */
   let zoom: TouchViewport | undefined = $state();
   /** The remote pointer, in remote pixels, as the touch input last sent it. */
   let pointer: Point | undefined = $state();
   /** On a touch screen the display grows into the pane and the room it leaves is the trackpad. */
-  const layout = $derived(mobile ? trackpadLayout(paneSize, remote, scale) : { screen: paneSize, pad: undefined, scale });
+  const layout = $derived(mobile && !viewOnly ? trackpadLayout(paneSize, remote, scale) : { screen: paneSize, pad: undefined, scale });
   const viewport = $derived(boundViewport(zoom ?? middleViewport(layout.screen, remote, layout.scale), layout.screen, remote, layout.scale));
   const renderedScale = $derived(layout.scale * viewport.zoom);
   const pointerAt = $derived(pointerInPane(pointer, remote, viewport, layout.scale));
@@ -67,21 +68,21 @@
         rolling = held;
       },
       ticked: () => { playHaptic('selection'); },
-    });
+    }, viewOnly);
   });
 </script>
 
 <!-- A zoomed display is cut at the screen's edge, so it never covers the trackpad. -->
 <div class="screen" class:split={layout.pad !== undefined} style:inline-size={layout.pad ? `${String(layout.screen.width)}px` : undefined} style:block-size={layout.pad ? `${String(layout.screen.height)}px` : undefined}>
-  <div class="display" style:translate={mobile ? `${String(viewport.x)}px ${String(viewport.y)}px` : undefined} data-display {@attach showDisplay(client, !mobile)}></div>
-  {#if mobile}
+  <div class="display" style:translate={mobile ? `${String(viewport.x)}px ${String(viewport.y)}px` : undefined} data-display {@attach showDisplay(client, !mobile, !viewOnly)}></div>
+  {#if mobile && !viewOnly}
     <!-- The tip of the arrow is the point a tap clicks; its size does not follow the display's scale, so it stays visible. -->
     <svg class="pointer" viewBox="0 0 12 18" preserveAspectRatio="xMinYMin meet" aria-hidden="true" data-pointer style:translate={`${String(pointerAt.x)}px ${String(pointerAt.y)}px`}>
       <path d="M0 0V15.5L3.9 11.8L6.6 17.9L8.9 16.9L6.3 10.9H11.6Z" />
     </svg>
   {/if}
 </div>
-{#if layout.pad && wheel}<Trackpad region={layout.pad} {wheel} {roll} held={rolling} />{/if}
+{#if !viewOnly && layout.pad && wheel}<Trackpad region={layout.pad} {wheel} {roll} held={rolling} />{/if}
 
 <style>
   .screen {
