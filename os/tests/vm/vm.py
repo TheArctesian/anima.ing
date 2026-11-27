@@ -50,7 +50,7 @@ def run_guest_python(machine, sources, timeout, *, arguments=()):
 
 
 class Machine:
-    def __init__(self, directory, image, boot_iso=None, network=False, memory_mib=4096):
+    def __init__(self, directory, image, boot_iso=None, network=False, memory_mib=4096, vcpus=2):
         paths = [directory, image] + ([] if boot_iso is None else [boot_iso])
         if any(',' in str(path) or '\n' in str(path) for path in paths):
             raise ValueError('VM disk paths cannot contain commas or newlines')
@@ -64,7 +64,7 @@ class Machine:
         self.master, slave = pty.openpty()
         args = [
             'qemu-system-x86_64', '-accel', vm_host.accelerator(), '-machine', 'q35',
-            '-m', str(memory_mib), '-smp', '2', '-display', 'none', '-monitor', 'none',
+            '-m', str(memory_mib), '-smp', str(vcpus), '-display', 'none', '-monitor', 'none',
             '-qmp', f'unix:{directory / "qmp.sock"},server=on,wait=off',
             '-serial', 'stdio', '-device', 'i6300esb', '-watchdog-action', 'reset',
             '-drive', f'if=pflash,format=raw,readonly=on,file={code}',

@@ -10,10 +10,11 @@ from remote_test import clone
 from update_test import login
 from vm import Machine, digest
 import vm_host
-from railpack_checks import BUILD_MEMORY_MIB, PROJECTS, installed_railpack, installed_unsupported_railpack
+from railpack_checks import BUILD_CPU_MILLIS, BUILD_MEMORY_MIB, PROJECTS, installed_railpack, installed_unsupported_railpack
 
 
 GUEST_MEMORY_MIB = 10_240
+GUEST_VCPUS = 4
 
 
 def prepare_clone(installed, output):
@@ -49,7 +50,8 @@ def failure(results, case, error, password):
 
 
 def build_online(output, password, expected_system, results):
-    machine = Machine(output, output / 'installed.qcow2', network=True, memory_mib=GUEST_MEMORY_MIB)
+    machine = Machine(output, output / 'installed.qcow2', network=True,
+                      memory_mib=GUEST_MEMORY_MIB, vcpus=GUEST_VCPUS)
     language = 'readiness'
     authenticated = False
     installed_system = None
@@ -68,8 +70,10 @@ def build_online(output, password, expected_system, results):
         installed_unsupported_railpack(machine)
         results.append({'case': 'railpack-unsupported-source-refusal', 'result': 'Passed'})
         for language in PROJECTS:
+            print(f'Running the {language} Railpack build and image', flush=True)
             installed_railpack(machine, language)
             results.append({'case': 'railpack-' + language + '-build-export-run', 'result': 'Passed'})
+            print(f'{language} Railpack build and image passed', flush=True)
     except Exception as error:
         failure(results, 'railpack-' + language, error, password)
     finally:
@@ -106,6 +110,7 @@ def run(source, output, *, expected_system=None):
     (output / 'results.json').write_text(json.dumps({
         'iso_sha256': iso_sha256, 'installed_system': installed_system,
         'memory_mib': GUEST_MEMORY_MIB, 'build_memory_mib': BUILD_MEMORY_MIB,
+        'vcpus': GUEST_VCPUS, 'build_cpu_millis': BUILD_CPU_MILLIS,
         'scope': 'Synthetic public dependency builds and test-only Docker import and run in a disposable guest.',
         'results': results,
     }, indent=2) + '\n')

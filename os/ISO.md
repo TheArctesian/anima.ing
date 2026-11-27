@@ -433,9 +433,9 @@ Rust projects through the shipped rootless Railpack worker, verifies each
 archive and its provenance, and imports and runs each image by digest
 with networking disabled. It also checks that an unsupported Railpack
 project leaves its detection reason in the authenticated console logs,
-releases its reservation and exposes no artifact bytes. The fixture
-uses a 10 GiB guest and reserves
-2 GiB for Rust and 512 MiB each for Node and Python. It needs 64 GiB free
+releases its reservation and exposes no artifact bytes. The build
+guest has four vCPUs and 10 GiB of memory. Each build requests one CPU
+and reserves 2 GiB for Rust or 512 MiB for Node and Python. It needs 64 GiB free
 host storage and public registry and dependency access. Use the existing
 `ANIMA_OS_RUNNER` setting when the default runner lacks capacity. A
 completed disposable serial installation directory can also be used in

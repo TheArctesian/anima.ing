@@ -23,6 +23,7 @@ PROJECTS = {
 
 
 BUILD_MEMORY_MIB = {"node": 512, "python": 512, "rust": 2048}
+BUILD_CPU_MILLIS = 1000
 
 
 class BuildFixture:
@@ -48,7 +49,7 @@ class BuildFixture:
         self.request('launch', 'build', '.value.phase == "running" and .value.strategy == "railpack"',
                      attempt=self.attempt, workspace=self.workspace, generation=0, context=self.context,
                      strategy='railpack',
-                     resources={'memory_bytes': memory_mib*1024**2, 'cpu_millis': 500, 'tasks': 128})
+                     resources={'memory_bytes': memory_mib*1024**2, 'cpu_millis': BUILD_CPU_MILLIS, 'tasks': 128})
 
     def wait(self, seconds):
         self.machine.command(

@@ -3458,6 +3458,16 @@ the 30-second fixture deadline inside the constrained workspace.
 The version checks now record each command's duration and wait up to
 120 seconds. The repeat remains on the same installed generation.
 
+### Installed Railpack timing, 2026-11-26
+
+The focused `e56205794c0e` Railpack run refused an unsupported
+project and released it. The Node attempt used 29 minutes 30 seconds
+of CPU time at its 500-millicore reservation before it exited.
+The retained worker output identifies the BuildKit stage deadline.
+The fixture now reports the worker diagnostics on failure, uses a
+four-vCPU guest, and requests 1,000 millicores through the packaged
+policy. The revised Node, Python and Rust checks remain open.
+
 ### Console accessibility review, 2026-11-26
 
 The installed Qt WebEngine console is a local operator surface. The
