@@ -2,6 +2,8 @@
 
 pub mod graphql;
 mod model;
+pub(in crate::fleet) mod remote;
+pub(crate) use remote::MutationPace;
 mod store;
 mod upload;
 
@@ -30,4 +32,15 @@ pub(in crate::fleet) async fn record_announced(
         count_revision,
         summaries,
     }))
+}
+
+/// Expires pending remote work and resolves publication deadlines.
+///
+/// # Errors
+/// Returns a store error if the sweep cannot complete.
+pub async fn sweep_remote(db: &sqlx::PgPool) -> Result<(), sqlx::Error> {
+    remote::sweep(db).await.map_err(|error| match error {
+        remote::Error::Database(error) => error,
+        _ => sqlx::Error::Protocol("remote thread sweep failed".to_owned()),
+    })
 }

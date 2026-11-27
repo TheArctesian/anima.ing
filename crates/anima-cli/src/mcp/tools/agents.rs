@@ -1,3 +1,6 @@
+//! K10 6.5 excludes remote targets and control (private offers), launch and command receipts
+//! (private action lookups), start, prompt and stop (session control), and answer (trust decisions
+//! and provider input) from MCP.
 //! The `agents` tool set: the sessions of Claude Code and Codex on the computer where
 //! `anima mcp` runs, read from their files as threads (THR-018). It has one tool, a read, and
 //! it can read summaries from a specified connected device.

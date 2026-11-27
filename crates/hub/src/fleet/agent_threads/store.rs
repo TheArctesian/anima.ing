@@ -39,9 +39,9 @@ pub(super) async fn record_summary(
         "WITH written AS (
             INSERT INTO agent_threads.summaries AS old (
                 id, device_id, runner_id, program, state, title, started_at, activity_at,
-                repository, revision
+                repository, revision, first_published_at
             )
-            VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, clock_timestamp())
             ON CONFLICT (device_id, runner_id) DO UPDATE SET
                 program = EXCLUDED.program, state = EXCLUDED.state, title = EXCLUDED.title,
                 started_at = EXCLUDED.started_at, activity_at = EXCLUDED.activity_at,
@@ -63,8 +63,9 @@ pub(super) async fn record_summary(
     .bind(row.activity_at)
     .bind(row.repository.as_deref())
     .bind(row.revision)
-    .fetch_one(tx)
+    .fetch_one(&mut *tx)
     .await?;
+    super::remote::published(tx, device.into(), row.runner_id).await?;
     Ok(ThreadSummaryReceipt {
         runner_id: row.runner_id,
         id,

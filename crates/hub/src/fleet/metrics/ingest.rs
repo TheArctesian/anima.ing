@@ -8,6 +8,7 @@ mod enrolment;
 mod keys;
 mod push;
 mod refusals;
+mod remote_threads;
 mod renewal;
 mod routes;
 mod stale;

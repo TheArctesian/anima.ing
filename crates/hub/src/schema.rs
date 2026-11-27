@@ -25,7 +25,7 @@ use crate::{
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
     },
-    work::{catalogue, containers, projects, routes},
+    work::{catalogue, containers, jobs, projects, routes},
 };
 
 #[derive(MergedObject, Default)]
@@ -33,6 +33,7 @@ pub struct Query(
     os_updates::graphql::Query,
     access::graphql::Query,
     agent_threads::graphql::Query,
+    agent_threads::graphql::RemoteQuery,
     agent_usage::graphql::Query,
     agent_usage::graphql::SessionsQuery,
     builds::graphql::Query,
@@ -52,6 +53,7 @@ pub struct Query(
     notifications::graphql::Query,
     places::graphql::Query,
     projects::graphql::Query,
+    jobs::graphql::Query,
     routes::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
@@ -70,6 +72,7 @@ pub struct Query(
 pub struct Mutation(
     os_updates::graphql::Mutation,
     access::graphql::Mutation,
+    agent_threads::graphql::RemoteMutation,
     builds::graphql::Mutation,
     builds::graphql::BuilderMutation,
     catalogue::graphql::Mutation,
@@ -88,6 +91,7 @@ pub struct Mutation(
     notifications::graphql::Mutation,
     places::graphql::Mutation,
     projects::graphql::Mutation,
+    jobs::graphql::Mutation,
     routes::graphql::Mutation,
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
@@ -207,7 +211,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(link::Claims::default())
     .data(link::ComputerClaims::default())
     .data(link::CommandLineClaims::default())
-    .data(access::BrowserTickets::default());
+    .data(access::BrowserTickets::default())
+    .data(agent_threads::MutationPace::default());
     let builder = with_devices_loaders(builder, &pool, &clock)
         .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
