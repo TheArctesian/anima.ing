@@ -74,9 +74,23 @@ async fn stage(runner: &mut Runner, action: Action) {
         .write_all(format!("{frame}\n").as_bytes())
         .await
         .unwrap();
-    runner.call(incoming.recv().await.unwrap()).await;
+    let socket::Incoming { call, client, .. } = incoming.recv().await.unwrap();
     accepting.abort();
-    let prepared = runner.project_creations.join_next().await.unwrap().unwrap();
+    // This regression starts after access checks. The socket peer is the unit test
+    // process itself, whose identity the macOS CI runner can refuse to disclose.
+    runner.prepare_project(
+        call.action,
+        socket::Caller {
+            call: call.id,
+            client,
+        },
+    );
+    let prepared = runner
+        .project_creations
+        .join_next()
+        .await
+        .expect("a project preparation was scheduled")
+        .unwrap();
     // Stage a known-complete result at the same owner boundary listen() polls.
     let finished = runner.project_creations.spawn(async move { prepared });
     while !finished.is_finished() {
