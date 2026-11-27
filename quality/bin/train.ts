@@ -9,7 +9,7 @@ import { isDocument } from "../src/gates/tier.ts";
 import { readNotes, saveNote } from "../src/merge/notes.ts";
 import { conflictsForAHand, parseMergeRule } from "../src/merge/rules.ts";
 import { members, stack, type LeftOut } from "../src/merge/stack.ts";
-import { batch, firstHalf, leftOutSaid, oneLine, standing, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
+import { batch, firstHalf, leftOutSaid, oneLine, queue, standing, TRAIN, trainName, verdict, type Batch, type GatesRun, type Tip } from "../src/merge/train.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
 const INTO = "dev";
@@ -147,15 +147,18 @@ function conflictWithDev(tip: Tip): string[] {
   return tried.ok ? [] : conflictsForAHand(tried.out.split("\n").slice(1).filter((path) => path !== ""));
 }
 
-function build(wanted: Tip[], now: Date): void {
-  if (wanted.length === 0) return say("no branch is ready: each is in dev, or has a reason above");
+function leaveOut(each: LeftOut, sha: string | undefined, now: Date): void {
+  say(`${each.branch} is left out: ${oneLine(each.reason)}. Merge origin/${INTO} into the branch and solve it there.`);
+  if (sha !== undefined) noteLeftOut(each, sha, now);
+}
+
+function build(chosen: Batch, now: Date): void {
+  for (const { tip, paths } of chosen.conflicts) leaveOut({ branch: tip.branch, reason: `a conflict in ${paths.join(", ")}` }, tip.sha, now);
+  const wanted = chosen.taken;
+  if (wanted.length === 0) return say(chosen.conflicts.length === 0 ? "no branch is ready: each is in dev, or has a reason above" : "no branch of the batch merges with dev: no train");
   const base = must(["git", "rev-parse", "HEAD"]);
   const made = stack(REPO_ROOT, wanted, finish);
-  for (const each of made.leftOut) {
-    say(`${each.branch} is left out: ${oneLine(each.reason)}. Merge origin/${INTO} into the branch and solve it there.`);
-    const sha = wanted.find((tip) => tip.branch === each.branch)?.sha;
-    if (sha !== undefined) noteLeftOut(each, sha, now);
-  }
+  for (const each of made.leftOut) leaveOut(each, wanted.find((tip) => tip.branch === each.branch)?.sha, now);
   if (made.merged.length === 0) return say("no branch of the batch merges with dev: no train");
   const name = trainName(base, now);
   must(["git", "push", "--quiet", "origin", `HEAD:refs/heads/${name}`]);
@@ -170,10 +173,9 @@ if (process.argv.includes("--plan")) {
   const listed = gatesRuns();
   for (const train of tips().filter((tip) => tip.branch.startsWith(TRAIN))) say(`${train.branch}: ${verdict(train.sha, listed)}`);
   sayWhoWaits(listed, "each");
-  for (const tip of batch(tips(), listed, refused(), inDev)) {
-    const conflict = conflictWithDev(tip);
-    say(conflict.length === 0 ? `${tip.branch} is ready for the next train` : `${tip.branch} would be left out: a conflict with ${INTO} in ${conflict.join(", ")}`);
-  }
+  const chosen = batch(queue(tips(), listed, refused(), inDev), conflictWithDev);
+  for (const { tip, paths } of chosen.conflicts) say(`${tip.branch} would be left out: a conflict with ${INTO} in ${paths.join(", ")}`);
+  for (const tip of chosen.taken) say(`${tip.branch} is ready for the next train`);
   process.exit(0);
 }
 if (must(["git", "rev-parse", "--abbrev-ref", "HEAD"]) !== INTO) must(["git", "switch", "--quiet", INTO]);
@@ -196,4 +198,5 @@ for (const train of tips().filter((tip) => tip.branch.startsWith(TRAIN))) {
 const current = new Map(tips().map((tip) => [tip.branch, tip.sha]));
 sayWhoWaits(runs, "with-a-run");
 const still = next?.filter((tip) => current.get(tip.branch) === tip.sha && !inDev(tip.sha));
-build(still !== undefined && still.length > 0 ? still : batch(tips(), runs, refused(), inDev), now);
+// The half of a failed train goes again as it is; a new batch takes no branch that conflicts with `dev`.
+build(still !== undefined && still.length > 0 ? { taken: still, conflicts: [] } : batch(queue(tips(), runs, refused(), inDev), conflictWithDev), now);

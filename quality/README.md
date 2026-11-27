@@ -157,7 +157,10 @@ step of it at each start, and `bun quality/bin/train.ts --plan` prints, in any w
 each train with its state and the branches of the next one.
 
 - **The batch.** Each branch on origin whose tip passed its own run of `gates` (a push, tested as merged with
-  the `dev` of that moment) and that is not in `dev`; the oldest pass first, then the name; at most 12.
+  the `dev` of that moment) and that is not in `dev`; the oldest pass first, then the name; at most 12 that
+  merge with `dev`. The conductor tries each branch on `dev` with `git merge-tree` before it takes it: a branch
+  with a conflict that a hand must solve takes no place, the next branch takes it, and the branch is left out
+  with its line (below) until it or `dev` moves.
 - **The train.** The conductor merges the batch in that order on the `dev` of the moment, each branch with
   the steps of `bin/merge.ts` (the generated files written again, the numbers, the merge commit, the document
   gates on the commit). A branch with a conflict, or whose document gates fail, is left out with one line
