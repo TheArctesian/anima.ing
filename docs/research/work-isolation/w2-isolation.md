@@ -1,7 +1,7 @@
 # Record: the isolation of a job, with a prototype on one Mac and one Linux computer (task W2)
 
 Version: 2. Date: 2026-11-23. Version 1 (2026-11-18) measured the Mac; version 2 adds the Linux computer `pop-os` (Section 3.5).
-Status: Partly measured. One Mac and the Linux computer `pop-os` are measured. No second user of macOS was made, no network rule for a job was tried and no virtual machine for each job was measured: Section 5 says what each needs. The design in Section 4 is a proposal. The security reviewer and the operator did not accept it.
+Status: Partly measured. One Mac and the Linux computer `pop-os` are measured. No second user of macOS was made, no network rule for a job was tried and no virtual machine for each job was measured: Section 5 says what each needs. Two separate reviewers accepted the design in Section 4 with conditions, and the operator delegated the decision to the session (R-NEW-w2isolation). Section 5 gives the remaining measurements for W4 and S.
 
 This document is a record (work plan, Section 9; PLN-010). It adds no requirement. Its Section 4 is the input for the owner of the requirements, [projects-and-builds-plan.md](../../plans/projects-and-builds-plan.md) (PRO-022 to PRO-024, PRO-029), and for the contract [work-route.md](../../../contracts/work-route.md).
 
@@ -162,7 +162,7 @@ Two different needs have two different answers.
 - The release of Anima. No job gets the Developer ID identity. A warm runner takes the next job that names its labels, and the hub does not select that job (contract K10, Section 6.2), so an identity inside a runner job could reach a job of a fork. The proposal: the job builds a bundle with no signature and gives it to the hub that checks it (OD-W31, choice A). The signature of the Mac is then a step of its own, outside each job: a fixed recipe of the daemon on the Mac that has the identity in its keychain (R-116, BLD-083 to BLD-085). It signs, notarizes and staples the bytes whose SHA-256 the hub gives, and it runs no code of the repository. R-116 does not change: the identity stays in the keychain of that Mac. A second way, for a later decision: the hub that signs also signs the Mac bundle. That moves the identity to a server and changes R-116.
 - The project of a different repository, whose workflow signs by itself. The owner of that repository gives the identity as a secret of GitHub, and the workflow imports it. The keychain of Section 3.2 is the form that the machine supports: a file in the job folder, never in the search list, deleted with the job. Anima gives such a job no identity (PRO-030).
 
-The contract K10 thus has no purpose `signing_identity` in its version 0.2. If the security reviewer and the operator accept this section, it needs none.
+K10 version 0.3 (R-209) and later have no secret purpose `signing_identity`. The accepted design does not add one.
 
 ## 5. What is not shown, and what it needs
 
@@ -180,7 +180,7 @@ The contract K10 thus has no purpose `signing_identity` in its version 0.2. If t
 
 ## 6. For the acceptance
 
-The security reviewer and the operator accept the design, not this record. The sentence of the operator:
+The original proposed acceptance sentence is below. R-NEW-w2isolation records the actual decision and its limits.
 
 > I accept the isolation design of task W2 as Section 4 of `docs/research/work-isolation/w2-isolation.md` proposes it, with the measurements of Section 5 still to do on my Linux computer and with an administrator on my Mac.
 
