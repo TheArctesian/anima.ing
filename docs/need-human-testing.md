@@ -5828,3 +5828,22 @@ State: Open. Built on `code/local-anima-sessions-only`. Synthetic tests mount th
    Expected: records remain available for future use; this UI change deletes no sessions and does not stop the watcher.
 
 Parent-worker/device authority, TH30, remote session enablement and live SDK probes are outside this check.
+
+## HT-196: The marks of the programs in Hosting (task H53; HSE-020)
+
+Built on the branch `hosted/h53-brand-marks`: each row of Hosting > Applications and each entry of the Catalogue has a
+tile before its name with the brand mark of its program from Simple Icons, in the accent colour, else the first letter
+of its name. The tests check which mark each name and image gets; nobody has seen the marks drawn in the application.
+
+1. In the desktop application of this build, signed in to a hub with a machine that has SSH on and Docker with a Compose
+   project of a known program (for example Immich, Jellyfin or Nextcloud), open Hosting > Applications.
+   Expected: the row of that program has its brand mark in a small tile before its name, in the accent colour; a
+   program that Simple Icons has no mark for has the first letter of its name in the same tile. The tile is the same
+   size on each row, and the name and the line below it are not moved.
+2. Change the appearance from dark to light.
+   Expected: each mark stays clear on its tile in both appearances.
+3. Open the Catalogue below Applications.
+   Expected: each entry has the mark of its program before its name (for example the elephant of PostgreSQL, the
+   shield of Vaultwarden), or its first letter.
+
+Result: Open.

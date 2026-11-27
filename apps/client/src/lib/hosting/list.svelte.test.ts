@@ -34,7 +34,7 @@ it('HSE-002: reads the containers of each machine and shows one group for each w
   await open();
   expect(calls.containersAsked.toSorted()).toEqual(['m-mini', 'm-nas', 'm-pop']);
   expect(text('tr.group th')).toEqual(['mini · Nothing installed Down Install from the catalogue', 'nas · 1 item Up 0 of 1 running', 'pop-os · 2 items Up 3 of 3 running']);
-  expect(text('tbody th[scope="row"]')).toEqual(['samba Not managed example/samba', '▸ immich Not managed Compose project · 2 containers', 'watchtower Not managed containrrr/watchtower']);
+  expect(text('tbody th[scope="row"]')).toEqual(['S samba Not managed example/samba', '▸ immich Not managed Compose project · 2 containers', 'watchtower Not managed containrrr/watchtower']);
 });
 
 it('HSE-002: an application opens to its containers', async () => {

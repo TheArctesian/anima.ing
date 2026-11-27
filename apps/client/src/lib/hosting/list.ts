@@ -1,5 +1,6 @@
 import type { Container, ImageUpdate } from '$lib/containers/api';
 import { NO_PROJECT, projectGroups, type ContainerRow, type Tone } from '$lib/containers/rows';
+import { brandMark, type BrandMark } from '$lib/brands/mark';
 import { statusLabel } from '$lib/devices/card/card';
 import type { Machine } from './api';
 
@@ -33,6 +34,8 @@ export interface ApplicationRow {
   /** Unique in the list: the machine and the project or the container. */
   readonly key: string;
   readonly name: string;
+  /** HSE-020: the brand mark of its program, found by its name and its images, else its first letter. */
+  readonly mark: BrandMark;
   /** What it is: "Compose project" or the image of the one container. */
   readonly what: string;
   readonly state: string;
@@ -112,6 +115,7 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
         {
           key: `${place.id}/project/${group.project}`,
           name: group.project,
+          mark: brandMark([group.project], members.map((container) => container.image)),
           what: 'Compose project',
           state: group.state,
           tone: group.tone,
@@ -127,6 +131,7 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
     return group.rows.map((row) => ({
       key: `${place.id}/container/${row.id}`,
       name: row.name,
+      mark: brandMark([row.name], [row.image]),
       what: group.project === NO_PROJECT ? row.image : `${row.image} · Container of ${group.project}`,
       state: row.state,
       tone: row.tone,

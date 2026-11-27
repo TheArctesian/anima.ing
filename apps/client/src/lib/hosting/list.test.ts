@@ -80,3 +80,14 @@ it.each([false, true])('keeps project paths when folder and file labels are on d
   const project = placeGroups(split, every).flatMap((group) => group.rows).find((row) => row.name === 'immich');
   expect(project).toMatchObject({ folder: '/srv/immich', files: ['/srv/immich/compose.yaml'] });
 });
+
+describe('the mark of a row (HSE-020)', () => {
+  it('draws each row with the brand mark of its program, else its first letter', () => {
+    const marks = placeGroups(places, every).flatMap((group) => group.rows.map((row) => [row.name, row.mark]));
+    expect(marks).toEqual([
+      ['samba', { letter: 'S' }],
+      ['immich', { icon: 'simple-icons:immich' }],
+      ['watchtower', { icon: 'simple-icons:watchtower' }],
+    ]);
+  });
+});
