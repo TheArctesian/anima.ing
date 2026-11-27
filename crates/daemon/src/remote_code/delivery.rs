@@ -62,7 +62,7 @@ impl Delivery {
     pub fn enrolled(home: &Home) -> Result<Self, EnrolledError> {
         let config = home.read_config()?.ok_or(EnrolledError::Enrollment)?;
         let credential = TokenStore::open(home)
-            .load()?
+            .remote_credential(&config)?
             .ok_or(EnrolledError::Enrollment)?;
         if !matches_enrollment(&config, &credential) || refused(&credential) {
             return Err(EnrolledError::Enrollment);
@@ -160,7 +160,12 @@ impl Delivery {
         );
         tokio::task::spawn_blocking(move || {
             let config = home.read_config().ok().flatten();
-            let credential = TokenStore::open(&home).load().ok().flatten();
+            let credential = config.as_ref().and_then(|config| {
+                TokenStore::open(&home)
+                    .remote_credential(config)
+                    .ok()
+                    .flatten()
+            });
             config.is_some_and(|config| config.device == scope.0 && config.hub == scope.1)
                 && credential.is_some_and(|credential| {
                     credential.hub == scope.1

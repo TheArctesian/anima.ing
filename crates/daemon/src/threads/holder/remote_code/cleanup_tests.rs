@@ -38,7 +38,7 @@ async fn th32_holder_restart_recovers_cleanup_after_shutdown_cannot_inspect_a_de
         since: Instant::now(),
         ending: false,
     });
-    let listener = bind(&dir).unwrap();
+    let listener = channel::Listener::open(&dir, false).await.unwrap();
     let first = tokio::spawn(serve_here(dir.clone(), listener, shared));
     let descendant = descendant(fixture.path()).await;
     assert!(
@@ -90,8 +90,8 @@ fn restart(program: &Path, dir: &Path) -> tokio::process::Child {
         .unwrap()
 }
 
-async fn serve_here(dir: PathBuf, listener: UnixListener, shared: Arc<Mutex<Shared>>) {
-    serve_holder(&dir, listener, shared).await.unwrap();
+async fn serve_here(dir: PathBuf, listener: channel::Listener, shared: Arc<Mutex<Shared>>) {
+    serve_holder(&dir, &listener, shared).await.unwrap();
 }
 
 #[tokio::test]

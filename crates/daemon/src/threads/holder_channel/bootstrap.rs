@@ -23,8 +23,13 @@ pub fn write_public_root(dir: &Path) -> io::Result<()> {
 }
 
 pub(in crate::threads) fn start(command: &mut Command, dir: &Path) -> io::Result<Child> {
-    let identity =
-        Issuer::at(dir).and_then(|issuer| issuer.leaf(ExtendedKeyUsagePurpose::ServerAuth));
+    let identity = Issuer::transport(dir)?
+        .map(|issuer| {
+            issuer
+                .leaf(ExtendedKeyUsagePurpose::ServerAuth)
+                .ok_or_else(invalid)
+        })
+        .transpose()?;
     let Some(identity) = identity else {
         return command.stdin(Stdio::null()).spawn();
     };

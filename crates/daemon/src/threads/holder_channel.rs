@@ -74,18 +74,30 @@ impl Issuer {
         Some(Self(CertifiedIssuer::self_signed(params, issuer_key).ok()?))
     }
 
-    #[cfg(target_os = "macos")]
     pub(super) fn at(dir: &Path) -> Option<Self> {
+        Self::transport(dir).ok().flatten()
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(super) fn transport(dir: &Path) -> io::Result<Option<Self>> {
         use crate::{config::home::Home, token_store::TokenStore};
-        let home = Home::at(dir.parent()?.to_owned());
-        let config = home.read_config().ok()??;
-        let key = TokenStore::open(&home).holder_authority(&config.hub)?;
-        Self::for_device(&key, &config, home.dir())
+        let home = Home::at(dir.parent().ok_or_else(invalid)?.to_owned());
+        let config = home.read_config().map_err(io::Error::other)?;
+        let key = TokenStore::open(&home)
+            .holder_authority(config.as_ref())
+            .map_err(io::Error::other)?;
+        let Some(key) = key else {
+            return Ok(None);
+        };
+        Self::for_device(&key, &config.ok_or_else(invalid)?, home.dir())
+            .map(Some)
+            .ok_or_else(invalid)
     }
 
     #[cfg(not(target_os = "macos"))]
-    pub(super) fn at(_: &Path) -> Option<Self> {
-        None
+    #[expect(clippy::unnecessary_wraps, reason = "the macOS Keychain can fail")]
+    pub(super) fn transport(_: &Path) -> io::Result<Option<Self>> {
+        Ok(None)
     }
 
     fn leaf(&self, role: ExtendedKeyUsagePurpose) -> Option<Leaf> {

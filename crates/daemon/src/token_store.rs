@@ -160,9 +160,41 @@ impl TokenStore {
     }
 
     #[cfg(target_os = "macos")]
-    pub(crate) fn holder_authority(&self, hub: &Origin) -> Option<Zeroizing<[u8; 32]>> {
-        let bytes = self.backend.read(self.deadline).ok()??;
-        holder_authority::at(&bytes, &hub.as_text())
+    pub(crate) fn holder_authority(
+        &self,
+        config: Option<&crate::config::Config>,
+    ) -> Result<Option<Zeroizing<[u8; 32]>>, TokenStoreError> {
+        let Some(bytes) = self.backend.read(self.deadline)? else {
+            return Ok(None);
+        };
+        if !holder_authority::bound(&bytes).ok_or(TokenStoreError::Corrupt)? {
+            return Ok(None);
+        }
+        let config = config.ok_or(TokenStoreError::Corrupt)?;
+        holder_authority::at(&bytes, config, &self.backend.folder()?)
+            .map(Some)
+            .ok_or(TokenStoreError::Corrupt)
+    }
+
+    pub(crate) fn remote_credential(
+        &self,
+        config: &crate::config::Config,
+    ) -> Result<Option<Credential>, TokenStoreError> {
+        #[cfg(target_os = "macos")]
+        {
+            let Some(bytes) = self.backend.read(self.deadline)? else {
+                return Ok(None);
+            };
+            if holder_authority::at(&bytes, config, &self.backend.folder()?).is_none() {
+                return Ok(None);
+            }
+            Credential::from_record(&bytes).map(Some)
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = config;
+            self.load()
+        }
     }
 
     /// The old credential stays when this fails (K8 Section 5).
@@ -170,15 +202,19 @@ impl TokenStore {
     /// # Errors
     /// [`TokenStoreError`] when it cannot be written.
     pub fn save(&self, credential: &Credential) -> Result<(), TokenStoreError> {
-        self.write(credential, false)
+        self.write(credential, None)
     }
 
     /// The Keychain item is made afresh.
     ///
     /// # Errors
     /// [`TokenStoreError`] when it cannot be written.
-    pub fn save_new(&self, credential: &Credential) -> Result<(), TokenStoreError> {
-        self.write(credential, true)
+    pub fn save_new(
+        &self,
+        credential: &Credential,
+        device: uuid::Uuid,
+    ) -> Result<(), TokenStoreError> {
+        self.write(credential, Some(device))
     }
 
     /// A store that holds none is not an error, so a second call ends the same as the first
@@ -190,7 +226,11 @@ impl TokenStore {
         self.backend.delete(self.deadline)
     }
 
-    fn write(&self, credential: &Credential, fresh: bool) -> Result<(), TokenStoreError> {
+    fn write(
+        &self,
+        credential: &Credential,
+        device: Option<uuid::Uuid>,
+    ) -> Result<(), TokenStoreError> {
         let token =
             DaemonToken::parse(credential.token.expose()).ok_or(TokenStoreError::Corrupt)?;
         let copy = Credential {
@@ -198,7 +238,7 @@ impl TokenStore {
             expires_at: credential.expires_at,
             hub: credential.hub.clone(),
         };
-        self.backend.write(&copy.render(), fresh, self.deadline)
+        self.backend.write(&copy.render(), device, self.deadline)
     }
 }
 

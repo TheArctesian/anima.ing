@@ -239,19 +239,17 @@ pub fn start_holder(program: &Path, dir: &Path) -> io::Result<()> {
 }
 
 async fn connect_runner(dir: &Path) -> Result<HolderLink, LinkError> {
-    if dir.join(super::holder_channel::SOCKET).exists() {
-        let at = dir.to_owned();
-        if let Ok(Some(client)) = tokio::task::spawn_blocking(move || {
-            let issuer = super::holder_channel::Issuer::at(&at)?;
-            Some((issuer.client()?, issuer.root()))
-        })
-        .await
-            && let Ok(link) = HolderLink::connect_with(dir, Some(client)).await
-        {
-            return Ok(link);
-        }
-    }
-    HolderLink::connect(dir).await
+    let at = dir.to_owned();
+    let client = tokio::task::spawn_blocking(move || {
+        let Some(issuer) = super::holder_channel::Issuer::transport(&at)? else {
+            return Ok(None);
+        };
+        let client = issuer.client().ok_or(LinkError::NotOurs)?;
+        Ok::<_, LinkError>(Some((client, issuer.root())))
+    })
+    .await
+    .map_err(io::Error::other)??;
+    HolderLink::connect_with(dir, client).await
 }
 
 /// Connects to the holder of `dir`, and starts one first when none answers.

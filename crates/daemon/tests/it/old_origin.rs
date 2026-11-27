@@ -32,7 +32,9 @@ fn enrolled_before_the_socket() -> (tempfile::TempDir, Home, TokenStore, Enrolle
         expires_at: DateTime::UNIX_EPOCH,
         hub: old(),
     };
-    store.save_new(&credential).expect("a token record");
+    store
+        .save_new(&credential, config.device)
+        .expect("a token record");
     let credential = store.load().expect("a record").expect("a credential");
     (dir, home, store, Enrolled { config, credential })
 }

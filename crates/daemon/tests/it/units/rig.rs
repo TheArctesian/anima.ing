@@ -53,7 +53,7 @@ pub fn enrol(home: &Home, expires_in: TimeDelta) {
         hub: kit::origin(),
     };
     TokenStore::open(home)
-        .save_new(&credential)
+        .save_new(&credential, uuid::Uuid::from_u128(1))
         .expect("stored");
 }
 

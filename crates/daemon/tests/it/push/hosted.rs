@@ -33,7 +33,7 @@ fn enrolled_beside(socket: &std::path::Path, dir: &std::path::Path) -> (Home, st
         hub,
     };
     TokenStore::open(&home)
-        .save_new(&credential)
+        .save_new(&credential, config.device)
         .expect("token");
     let data = dir.join("data");
     std::fs::create_dir_all(&data).expect("a data folder");

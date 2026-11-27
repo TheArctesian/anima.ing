@@ -181,9 +181,8 @@ pub async fn hold_with_channel(dir: &Path, limit: usize, channel: bool) -> Resul
     let inherited = record::end_left_over(dir).await;
     let shared = holder_state(dir, limit, inherited);
     remote_code::recover_stale(&shared).await;
-    let remote = channel::Listener::open(dir, channel).await?;
-    let listener = bind(dir, SOCKET)?;
-    serve_holder(dir, (listener, remote), shared).await
+    let listener = channel::Listener::open(dir, channel).await?;
+    serve_holder(dir, &listener, shared).await
 }
 
 fn holder_state(dir: &Path, limit: usize, inherited: Vec<record::Entry>) -> Arc<Mutex<Shared>> {
@@ -206,14 +205,14 @@ fn holder_state(dir: &Path, limit: usize, inherited: Vec<record::Entry>) -> Arc<
 
 async fn serve_holder(
     dir: &Path,
-    (listener, remote): (UnixListener, Option<channel::Listener>),
+    listener: &channel::Listener,
     shared: Arc<Mutex<Shared>>,
 ) -> Result<(), HolderError> {
     // One command at a time, from any connection: the check that a command was done and the
     // command itself are one step, so a command sent again on a new connection while the first
     // runs is still done one time (H10).
     let turn = Arc::new(tokio::sync::Mutex::new(()));
-    accept((&listener, remote.as_ref()), &shared, &turn).await?;
+    accept(listener, &shared, &turn).await?;
     let _only = turn.lock().await;
     if let Ok(mut state) = shared.lock() {
         state.closing = true;
@@ -221,10 +220,7 @@ async fn serve_holder(
     }
     remote_code::end_pending(&shared).await;
     super::stop::end_all(&shared).await;
-    if remote.is_some() {
-        let _ = std::fs::remove_file(dir.join(super::holder_channel::SOCKET));
-    }
-    let _ = std::fs::remove_file(dir.join(SOCKET));
+    let _ = std::fs::remove_file(dir.join(listener.socket_name()));
     Ok(())
 }
 
@@ -232,7 +228,7 @@ async fn serve_holder(
 /// order of the accepts, so the newest connection is the one accepted last, not the one whose
 /// task ran last (H10).
 async fn accept(
-    (listener, remote): (&UnixListener, Option<&channel::Listener>),
+    listener: &channel::Listener,
     shared: &Arc<Mutex<Shared>>,
     turn: &Arc<tokio::sync::Mutex<()>>,
 ) -> io::Result<()> {
@@ -243,7 +239,7 @@ async fn accept(
     pending.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tokio::select! {
-            accepted = channel::next(listener, remote) => match accepted {
+            accepted = listener.next() => match accepted {
                 Ok((stream, secure)) => {
                     count += 1;
                     let connection = Connection {
