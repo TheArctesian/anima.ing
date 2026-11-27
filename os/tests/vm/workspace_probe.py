@@ -106,7 +106,7 @@ def start(identity, marker):
     for provider in ('codex', 'claude'):
         start = time.monotonic()
         version = docker_exec(container, f'/bin/{provider}', '--version', timeout=120)
-        version.check_returncode()
+        assert version.returncode == 0, (provider, version.returncode, version.stderr.decode(errors='replace')[-2048:])
         assert version.stdout.strip(), provider
         print(f'{provider} version returned in {time.monotonic() - start:.1f}s', flush=True)
     docker_exec(container, '/bin/bash', '-c', 'printf "%s" "$1" > anima-fixture',

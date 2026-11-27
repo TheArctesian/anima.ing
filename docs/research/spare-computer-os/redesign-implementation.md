@@ -3456,7 +3456,12 @@ The wider installed check then passed the runner request and reached
 the packaged provider version checks. Its Claude command exceeded
 the 30-second fixture deadline inside the constrained workspace.
 The version checks now record each command's duration and wait up to
-120 seconds. The repeat remains on the same installed generation.
+120 seconds. Codex returned its version in 4.9 seconds during the
+repeat. Claude exited with status 132. The QEMU CPU expansion
+confirmed that the default model lacked SSE4.2, AVX and AVX2 and
+that the emulated `max` model exposes them. The fixture selects
+`max` for software emulation and host passthrough for KVM. The
+provider check remains on the same installed generation.
 
 ### Installed Railpack timing, 2026-11-26
 

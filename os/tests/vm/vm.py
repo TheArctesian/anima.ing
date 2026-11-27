@@ -62,8 +62,9 @@ class Machine:
         self.offset = 0
         self.log = (directory / 'serial.log').open('a')
         self.master, slave = pty.openpty()
+        accelerator = vm_host.accelerator()
         args = [
-            'qemu-system-x86_64', '-accel', vm_host.accelerator(), '-machine', 'q35',
+            'qemu-system-x86_64', '-accel', accelerator, '-machine', 'q35',
             '-m', str(memory_mib), '-smp', str(vcpus), '-display', 'none', '-monitor', 'none',
             '-qmp', f'unix:{directory / "qmp.sock"},server=on,wait=off',
             '-serial', 'stdio', '-device', 'i6300esb', '-watchdog-action', 'reset',
@@ -74,6 +75,10 @@ class Machine:
             '-drive', f'file={directory / "sentinel.raw"},format=raw,if=virtio',
             '-nic', 'user,model=virtio-net-pci,ipv6=off' if network else 'none',
         ]
+        if accelerator == 'tcg':
+            args.extend(['-cpu', 'max'])
+        elif accelerator == 'kvm':
+            args.extend(['-cpu', 'host'])
         if (directory / 'data.raw').exists():
             args.extend(['-drive', f'file={directory / "data.raw"},format=raw,if=virtio'])
         fixture = directory / 'update-origin.raw'
