@@ -163,6 +163,12 @@ async fn place(
     let Some(chosen) = chosen else {
         return Ok(Claimed::Nothing);
     };
+    if placement::needs_private_checkout(&chosen.asked) {
+        let project = chosen.asked.project.ok_or(Error::Unreadable)?;
+        if store::checkout::locked_pin(conn, project).await? != Some(offer.device) {
+            return Ok(Claimed::Nothing);
+        }
+    }
     let job = lifecycle::claimed(chosen, offer.device, now);
     store::save(conn, &job).await?;
     let decisions = store::decisions_of(conn, job.id).await?;
