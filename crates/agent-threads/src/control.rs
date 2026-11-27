@@ -229,6 +229,8 @@ pub enum Action {
     },
     /// Drops a file that did not go with a prompt yet (TH111).
     Unattach { thread: Uuid, attachment: Uuid },
+    /// Read a summary from the worktree of the socket peer's own live thread.
+    GitRead(crate::git::read::Request),
     /// An action on the worktree of one repository of a thread (TC7, TH116): the Git engine of
     /// the runner does it. The new tag requires retirement and complete review support.
     #[serde(rename = "git_v2", alias = "git")]
@@ -325,6 +327,10 @@ pub enum Outcome {
         folders: Vec<String>,
         #[serde(default)]
         more: bool,
+    },
+    /// A peer-bound summary or a fixed refusal.
+    GitRead {
+        result: crate::git::read::Outcome,
     },
     /// The answer of the Git engine to [`Action::Git`].
     Git {

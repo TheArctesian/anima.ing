@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
+pub(super) mod remote_code;
+
 /// The version of the protocol. A holder and a daemon of different versions say so and do not
 /// guess: the holder then takes no new start (THR-113).
 pub const VERSION: u32 = 3;
@@ -48,7 +50,11 @@ pub struct Command {
 pub enum Action {
     /// The first frame of a connection; the holder answers with [`Event::Hello`] and gives again
     /// each line that the daemon did not confirm.
-    Hello { version: u32 },
+    Hello {
+        version: u32,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        git_reads: bool,
+    },
     /// Start a program for a thread: an absolute path, no shell, this environment and folder.
     Start {
         /// Holder-owned relay: no address or secret crosses this wire.
@@ -60,22 +66,41 @@ pub enum Action {
         env: Vec<(String, String)>,
         folder: String,
     },
+    RemoteCode {
+        frame: String,
+    },
     /// Write a line to the standard input of the program of the thread.
-    Write { thread: ThreadKey, line: String },
+    Write {
+        thread: ThreadKey,
+        line: String,
+    },
     /// Close the standard input of the program.
-    CloseInput { thread: ThreadKey },
+    CloseInput {
+        thread: ThreadKey,
+    },
     /// The daemon read each line of the thread up to and with `seq`; the holder drops them.
-    Ack { thread: ThreadKey, seq: u64 },
+    Ack {
+        thread: ThreadKey,
+        seq: u64,
+    },
     /// Keep the processes below the program now as spared: the servers a program keeps for its
     /// whole session (the MCP servers of Codex), which an end of the children leaves alive.
-    Mark { thread: ThreadKey },
+    Mark {
+        thread: ThreadKey,
+    },
     /// End each process below the program that is not spared, not the program (the interrupt
     /// of a Codex turn, THR-049).
-    EndChildren { thread: ThreadKey },
+    EndChildren {
+        thread: ThreadKey,
+    },
     /// End the program and each process below it (THR-049).
-    Stop { thread: ThreadKey },
+    Stop {
+        thread: ThreadKey,
+    },
     /// The daemon knows that the thread ended; the holder forgets it.
-    Forget { thread: ThreadKey },
+    Forget {
+        thread: ThreadKey,
+    },
     /// End the holder; refused while a program of a thread runs.
     Quit,
 }
@@ -90,6 +115,16 @@ pub enum Event {
         /// The build of the holder ([`this_build`]); a holder from before this member says none.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         build: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        git_read_roots: Option<Vec<GitReadRoot>>,
+    },
+    RemoteCode {
+        frame: String,
+    },
+    /// Changes to the live roots, only on a connection that requested Git reads.
+    GitReadRoot {
+        root: GitReadRoot,
+        enrolled: bool,
     },
     /// The answer to the command `id`.
     Done {
@@ -111,6 +146,14 @@ pub enum Event {
         thread: ThreadKey,
         exit: Exit,
     },
+}
+
+/// A live child identity derived by the holder before it can reap the child.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GitReadRoot {
+    pub thread: ThreadKey,
+    pub process: super::tree::identity::Identity,
+    pub generation: u64,
 }
 
 /// A thread that the holder holds.

@@ -15,7 +15,13 @@ use tokio::net::unix::OwnedWriteHalf;
 use tokio::sync::mpsc;
 
 use super::holder::SOCKET;
+use super::tree::identity::Process;
+use super::wire::GitReadRoot;
+
+mod git_reads;
 use super::wire::{self, Action, Command, Event, MAX_FRAME};
+use git_reads::GitReads;
+pub(super) use git_reads::LiveRoots;
 
 #[derive(Debug, thiserror::Error)]
 pub enum LinkError {
@@ -31,6 +37,8 @@ pub enum LinkError {
 pub struct HolderLink {
     writer: OwnedWriteHalf,
     next: u64,
+    git_reads: GitReads,
+    remote_peer: Option<super::holder::remote_peer::Peer>,
     /// The events of the holder, in the order it sent them.
     pub events: mpsc::Receiver<Event>,
 }
@@ -53,31 +61,17 @@ impl HolderLink {
             return Err(LinkError::NotOurs);
         }
         let stream = UnixStream::connect(&socket).await?;
+        let holder = stream
+            .peer_cred()
+            .ok()
+            .filter(|peer| peer.uid() == rustix::process::getuid().as_raw())
+            .and_then(|peer| Process::peer(&stream, peer.pid()));
+        let remote_peer = super::holder::remote_peer::Peer::of(&stream);
+        let git_reads = GitReads::new(holder);
+        let observed = git_reads.clone();
         let (reading, writer) = stream.into_split();
         let (sender, events) = mpsc::channel(1024);
-        tokio::spawn(async move {
-            // The reader holds at most one frame and its line end in memory (H8).
-            let limit = u64::try_from(MAX_FRAME)
-                .unwrap_or(u64::MAX)
-                .saturating_add(1);
-            let mut lines = BufReader::new(reading).take(limit);
-            let mut line = Vec::new();
-            loop {
-                line.clear();
-                lines.set_limit(limit);
-                match lines.read_until(b'\n', &mut line).await {
-                    Ok(0) | Err(_) => break,
-                    Ok(_) if !line.ends_with(b"\n") => break,
-                    Ok(_) => {}
-                }
-                let Some(event) = wire::parse::<Event>(line.trim_ascii_end()) else {
-                    break;
-                };
-                if sender.send(event).await.is_err() {
-                    break;
-                }
-            }
-        });
+        tokio::spawn(observe(reading, sender, observed));
         let first = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(1, |since| {
@@ -87,12 +81,39 @@ impl HolderLink {
             writer,
             next: first,
             events,
+            git_reads,
+            remote_peer,
         };
         link.send(Action::Hello {
             version: wire::VERSION,
+            git_reads: link.git_reads.negotiated(),
         })
         .await?;
         Ok(link)
+    }
+
+    pub(super) async fn accepts_remote_peer(&self) -> bool {
+        match &self.remote_peer {
+            Some(peer) => peer.is_daemon().await,
+            None => false,
+        }
+    }
+
+    pub(super) fn suppress_git_root(&self, thread: &str) {
+        self.git_reads.suppress(thread);
+    }
+
+    pub(super) fn git_roots(&self) -> Option<LiveRoots> {
+        LiveRoots::of(&self.git_reads)
+    }
+
+    pub(super) fn with_git_root<T>(
+        &self,
+        from: &LiveRoots,
+        root: &GitReadRoot,
+        run: impl FnOnce() -> T,
+    ) -> Option<T> {
+        from.with_current(&self.git_reads, root, run)
     }
 
     /// Sends one command and gives its ID.
@@ -131,6 +152,35 @@ impl HolderLink {
     pub async fn resend(&mut self, command: &Command) -> io::Result<()> {
         self.writer.write_all(wire::frame(command).as_bytes()).await
     }
+}
+
+async fn observe(
+    reading: tokio::net::unix::OwnedReadHalf,
+    sender: mpsc::Sender<Event>,
+    git_reads: GitReads,
+) {
+    let limit = u64::try_from(MAX_FRAME)
+        .unwrap_or(u64::MAX)
+        .saturating_add(1);
+    let mut lines = BufReader::new(reading).take(limit);
+    let mut line = Vec::new();
+    loop {
+        line.clear();
+        lines.set_limit(limit);
+        match lines.read_until(b'\n', &mut line).await {
+            Ok(0) | Err(_) => break,
+            Ok(_) if !line.ends_with(b"\n") => break,
+            Ok(_) => {}
+        }
+        let Some(event) = wire::parse::<Event>(line.trim_ascii_end()) else {
+            break;
+        };
+        git_reads.observe(&event);
+        if sender.send(event).await.is_err() {
+            break;
+        }
+    }
+    git_reads.disconnect();
 }
 
 /// Starts `program holder <dir>` with an empty environment, no open input or output, and a

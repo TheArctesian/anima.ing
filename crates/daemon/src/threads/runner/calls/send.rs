@@ -18,7 +18,7 @@ const MOST_LINE_BYTES: usize = 24 * 1024 * 1024;
 
 /// Who sends a prompt.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Sender {
+pub(in crate::threads::runner) enum Sender {
     /// The person, from a client.
     Person,
     /// A process of an agent: its prompt does not start a stopped queue (TH109), and it cannot
@@ -63,7 +63,7 @@ impl SentPrompt {
 
 impl Runner {
     /// A prompt. The client gets its answer when the holder took the line.
-    pub(super) async fn send(
+    pub(in crate::threads::runner) async fn send(
         &mut self,
         action: Action,
         back: Caller,

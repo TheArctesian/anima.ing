@@ -71,7 +71,7 @@ async fn send_thread(
         return;
     };
     if journal.pending.len() < MAX_PENDING {
-        let updates = earlier(row.runner_id, journal.observed).await;
+        let updates = earlier(home, row.runner_id, journal.observed).await;
         if !authorized(home, policy) {
             return;
         }
@@ -103,8 +103,12 @@ async fn send_thread(
     }
 }
 
-async fn earlier(thread: Uuid, observed: u64) -> Vec<Update> {
-    let env = |name: &str| std::env::var(name).ok();
+async fn earlier(home: &Home, thread: Uuid, observed: u64) -> Vec<Update> {
+    let env = |name: &str| {
+        (name == "ANIMA_DAEMON_HOME")
+            .then(|| home.dir().to_str().map(str::to_owned))
+            .flatten()
+    };
     let mut before = u64::MAX;
     let mut pages = Vec::new();
     while let Some(Outcome::Earlier { updates }) = runner::call(
@@ -186,7 +190,7 @@ fn redact(value: &mut Value) {
     }
 }
 
-fn enabled(home: &Home) -> bool {
+pub(crate) fn enabled(home: &Home) -> bool {
     private_file::read(&home.dir().join(SETTINGS))
         .ok()
         .flatten()

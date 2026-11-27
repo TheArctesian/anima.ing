@@ -13,6 +13,7 @@ mod calls;
 pub mod codex;
 mod completed;
 mod git;
+mod git_reads;
 mod grok;
 mod holder_events;
 pub mod launcher;
@@ -23,6 +24,7 @@ mod models;
 pub mod peer;
 mod projects;
 pub mod record;
+mod remote_code;
 mod serving;
 mod silence;
 pub mod socket;
@@ -146,6 +148,8 @@ pub struct Runner {
     rights: launcher::SharedRights,
     /// The Git engine of the threads (TH116).
     git: git::Gits,
+    git_reads: git_reads::Reads,
+    remote: remote_code::Remote,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -220,6 +224,8 @@ pub async fn run(
         attached: attachments::Attachments::at(&dir),
         rights,
         git: gits,
+        git_reads: git_reads::Reads::default(),
+        remote: remote_code::Remote::default(),
     };
     runner.restore(saved.threads);
     runner.listen(&mut stop).await
@@ -331,6 +337,9 @@ impl Runner {
     /// A command that changes a program is kept until the holder answers it, and goes again on
     /// the new link; any other is lost with the link (`None`).
     async fn command(&mut self, action: Action) -> Option<u64> {
+        if let Action::Stop { thread } = &action {
+            self.link.suppress_git_root(thread);
+        }
         let kept = matches!(
             action,
             Action::Write { .. }

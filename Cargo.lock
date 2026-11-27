@@ -271,6 +271,7 @@ dependencies = [
  "daemon-core",
  "flate2",
  "getrandom 0.4.3",
+ "hmac 0.13.0",
  "http-body-util",
  "hyper",
  "hyper-util",
@@ -278,6 +279,7 @@ dependencies = [
  "keyring",
  "model-relay",
  "nix 0.29.0",
+ "nix 0.31.3",
  "plist",
  "redaction",
  "reqwest 0.12.28",
@@ -5020,6 +5022,7 @@ dependencies = [
  "cfg-if",
  "cfg_aliases 0.2.2",
  "libc",
+ "memoffset",
 ]
 
 [[package]]

@@ -84,16 +84,21 @@ hyper-util.workspace = true
 http-body-util.workspace = true
 
 [target.'cfg(unix)'.dependencies]
+hmac.workspace = true
 model-relay = { path = "../model-relay" }
 redaction = { path = "../redaction" }
 rustix = { version = "1.1", features = ["fs", "process", "thread"] }
 # The holder marks each descriptor it inherited close-on-exec (THR-040): `fcntl` on a raw
 # descriptor number, which rustix takes only through `unsafe`. Already in Cargo.lock.
-nix = { version = "0.29", default-features = false, features = ["fs"] }
+nix = { version = "0.29", default-features = false, features = ["fs", "time"] }
 # HTTP on the socket of the link, on a connection whose peer the daemon checked first (K8 Section 1).
 hyper = { version = "1", features = ["client", "http1"] }
 hyper-util.workspace = true
 http-body-util.workspace = true
+
+[target.'cfg(all(target_os = "linux", target_pointer_width = "64"))'.dependencies]
+nix-peer = { package = "nix", version = "0.31", default-features = false, features = ["socket"] }
+rustix = { version = "1.1", features = ["event"] }
 
 [target.'cfg(windows)'.dev-dependencies]
 uds_windows = "1.2"

@@ -10,20 +10,28 @@
 //! A new connection takes the place of the one before it, so that a daemon that starts again
 //! is never locked out by the one that died.
 
+mod connection;
+mod records;
+mod remote_code;
+pub(super) mod remote_peer;
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader};
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 
 use super::outbox::{LIMIT, Outbox};
 use super::program::Input;
-use super::record::{self, Record};
+use super::record;
 use super::tree;
-use super::wire::{self, Action, Command, Event, Exit, Held, MAX_FRAME, Outcome, ThreadKey};
+use super::wire::{self, Event, Exit, Held, Outcome, ThreadKey};
+
+mod git_reads;
+use git_reads::GitReads;
 
 /// The name of the socket file in the folder of the holder.
 pub const SOCKET: &str = "holder.sock";
@@ -44,6 +52,7 @@ pub enum HolderError {
 
 /// One thread in the holder.
 pub struct Slot {
+    pub(super) remote_process: Option<crate::remote_code::launch::ProcessIdentity>,
     pub(crate) relay: Option<super::program::relay::Lease>,
     pub pid: u32,
     pub started: Option<String>,
@@ -59,6 +68,7 @@ pub struct Slot {
     pub left_behind: bool,
     /// The program ended and was reaped: its ID may belong to a different process now.
     pub reaped: bool,
+    git_root: Option<git_reads::Root>,
     pub exit: Option<Exit>,
 }
 
@@ -72,6 +82,7 @@ pub fn locked(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
 
 /// What the tasks of the holder share.
 pub struct Shared {
+    remote_child: Option<remote_code::PendingChild>,
     pub(crate) relays: Arc<super::program::relay::Relays>,
     pub threads: BTreeMap<ThreadKey, Slot>,
     pub dir: PathBuf,
@@ -82,6 +93,7 @@ pub struct Shared {
     pub draining: bool,
     /// The holder ends: no new start, so that no program outlives it (THR-049).
     pub closing: bool,
+    git_reads: GitReads,
     pub limit: usize,
     /// What an older holder left that this one could not prove ended: kept in the record.
     pub inherited: Vec<record::Entry>,
@@ -102,30 +114,6 @@ impl Shared {
     /// Whether the connection `me` is the one that the holder serves now.
     fn serves(&self, me: u64) -> bool {
         self.connection.as_ref().is_some_and(|(id, _)| *id == me)
-    }
-
-    /// Writes the record of the programs, so that a new holder ends what an old one left (H9).
-    pub fn write_record(&self) {
-        let running = self
-            .threads
-            .iter()
-            .filter(|(_, slot)| slot.exit.is_none() || slot.left_behind)
-            .map(|(thread, slot)| record::Entry {
-                thread: thread.clone(),
-                pid: slot.pid,
-                started: slot.started.clone(),
-                left: (slot.exit.is_some() && slot.left_behind).then(|| slot.seen.clone()),
-            });
-        let written = record::write(
-            &self.dir,
-            &Record {
-                version: wire::VERSION,
-                threads: running.chain(self.inherited.iter().cloned()).collect(),
-            },
-        );
-        if let Err(error) = written {
-            tracing::warn!(%error, "the record of the holder was not written");
-        }
     }
 
     pub fn remember(&mut self, id: u64, outcome: Outcome) {
@@ -153,6 +141,7 @@ impl Shared {
     #[must_use]
     pub fn new_slot(&self, pid: u32, started: Option<String>, input: Input) -> Slot {
         Slot {
+            remote_process: None,
             relay: None,
             pid,
             started,
@@ -163,6 +152,7 @@ impl Shared {
             seen: tree::Known::new(),
             left_behind: false,
             reaped: false,
+            git_root: None,
             exit: None,
         }
     }
@@ -180,9 +170,16 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
     let _ = wire::this_build();
     let _lock = lock(dir)?;
     let inherited = record::end_left_over(dir).await;
+    let shared = holder_state(dir, limit, inherited);
+    remote_code::recover_stale(&shared).await;
     let listener = bind(dir)?;
-    let shared = Arc::new(Mutex::new(Shared {
+    serve_holder(dir, listener, shared).await
+}
+
+fn holder_state(dir: &Path, limit: usize, inherited: Vec<record::Entry>) -> Arc<Mutex<Shared>> {
+    Arc::new(Mutex::new(Shared {
         relays: Arc::default(),
+        remote_child: None,
         threads: BTreeMap::new(),
         dir: dir.to_owned(),
         connection: None,
@@ -190,10 +187,18 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         done_order: VecDeque::new(),
         draining: false,
         closing: false,
+        git_reads: GitReads::default(),
         limit: if limit == 0 { LIMIT } else { limit },
         inherited,
         acting: BTreeSet::new(),
-    }));
+    }))
+}
+
+async fn serve_holder(
+    dir: &Path,
+    listener: UnixListener,
+    shared: Arc<Mutex<Shared>>,
+) -> Result<(), HolderError> {
     // One command at a time, from any connection: the check that a command was done and the
     // command itself are one step, so a command sent again on a new connection while the first
     // runs is still done one time (H10).
@@ -204,6 +209,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         state.closing = true;
         state.connection = None;
     }
+    remote_code::end_pending(&shared).await;
     super::stop::end_all(&shared).await;
     let _ = std::fs::remove_file(dir.join(SOCKET));
     Ok(())
@@ -220,6 +226,8 @@ async fn accept(
     let (quit, mut quitting) = mpsc::channel::<()>(1);
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut count: u64 = 0;
+    let mut pending = tokio::time::interval(std::time::Duration::from_secs(2));
+    pending.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tokio::select! {
             accepted = listener.accept() => match accepted {
@@ -238,6 +246,7 @@ async fn accept(
                     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                 }
             },
+            _ = pending.tick() => remote_code::reap_pending(shared, turn).await,
             _ = terminate.recv() => return Ok(()),
             _ = quitting.recv() => return Ok(()),
         }
@@ -287,6 +296,7 @@ fn take_place(shared: &Mutex<Shared>, me: u64, sender: mpsc::UnboundedSender<Str
     if state.closing || state.connection.as_ref().is_some_and(|(id, _)| *id > me) {
         return false;
     }
+    state.git_reads.negotiated = false;
     if let Some((older, _)) = state.connection.replace((me, sender)) {
         tracing::warn!(
             older,
@@ -317,6 +327,7 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
     if !same_user {
         return;
     }
+    let remote_peer = remote_peer::Peer::of(&stream);
     let (reading, mut writing) = stream.into_split();
     let (sender, mut outgoing) = mpsc::unbounded_channel::<String>();
     {
@@ -332,31 +343,7 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
             }
         }
     });
-    let mut reader = BufReader::new(reading).take(u64::MAX);
-    let mut line = Vec::new();
-    let mut quitting = false;
-    loop {
-        line.clear();
-        reader.set_limit(u64::try_from(MAX_FRAME).unwrap_or(u64::MAX) + 1);
-        match reader.read_until(b'\n', &mut line).await {
-            Ok(0) | Err(_) => break,
-            Ok(_) => {}
-        }
-        let Some(command) = wire::parse::<Command>(line.trim_ascii_end()) else {
-            break;
-        };
-        let ends = matches!(command.action, Action::Quit);
-        let one = Arc::clone(&turn).lock_owned().await;
-        if !shared.lock().is_ok_and(|state| state.serves(me)) {
-            break;
-        }
-        let outcome = super::commands::run(&shared, command, one).await;
-        if ends && outcome == Outcome::Ok {
-            // A command after the Quit would start a program in a holder that ends.
-            quitting = true;
-            break;
-        }
-    }
+    let quitting = connection::serve_commands(&shared, reading, (me, &turn), remote_peer).await;
     if let Ok(mut state) = shared.lock()
         && state.serves(me)
     {

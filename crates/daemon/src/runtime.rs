@@ -115,11 +115,9 @@ pub async fn run(
         Source::HostedHub(Container::new(PathBuf::from("/"), data, processors))
     });
     #[cfg(unix)]
-    let publishing = tokio::spawn(thread_sync::publish(
-        home.clone(),
-        sender.clone(),
-        pusher.thread_sync_target(),
-    ));
+    let publishing = pusher.publish_threads(home.clone(), sender.clone(), |name| {
+        std::env::var(name).ok()
+    });
     let mut sampling = tokio::spawn(sample(source, sender));
     report::running(device);
     let outcome = tokio::select! {

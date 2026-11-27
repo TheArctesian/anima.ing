@@ -20,6 +20,7 @@ mod events;
 mod kept;
 mod queue;
 mod record;
+mod remote_code;
 mod settings;
 mod step;
 

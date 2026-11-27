@@ -1,6 +1,8 @@
 mod transcript;
 
-use std::{path::Path, sync::Arc, time::Duration};
+pub(crate) use transcript::enabled as transcripts_enabled;
+
+use std::{collections::BTreeMap, path::Path, sync::Arc, time::Duration};
 
 use agent_threads::control::{Action, Outcome, RunState, ThreadRow};
 use agent_threads::drive::Program;
@@ -16,6 +18,7 @@ use crate::{
     hub::HubClient,
     push::Event,
     readers::agent_sessions::{shared_repository, user_home},
+    remote_code::Store,
     token_store::TokenStore,
 };
 
@@ -28,9 +31,12 @@ pub(crate) struct Target {
     pub(crate) tokens: TokenStore,
 }
 
-pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Target) {
-    let env = |name: &str| std::env::var(name).ok();
-    let Some(user) = user_home(env) else { return };
+pub(in crate::runtime) async fn publish(
+    home: Home,
+    events: mpsc::Sender<Event>,
+    target: Target,
+    user: std::path::PathBuf,
+) {
     let mut ticks = tokio::time::interval(Duration::from_secs(5));
     ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
     let mut last: Option<Vec<ThreadSummary>> = None;
@@ -57,7 +63,7 @@ pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Tar
             last = None;
             previous_policy = Some(settings.clone());
         }
-        let Some(Outcome::Threads { threads, .. }) = runner::call(env, Action::List).await else {
+        let Some(Outcome::Threads { threads, .. }) = list(&home).await else {
             continue;
         };
         let mut rows: Vec<_> = threads
@@ -67,13 +73,12 @@ pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Tar
         rows.sort_unstable_by_key(|row| row.runner_id);
         let permitted: Vec<_> = rows.iter().map(|row| row.runner_id).collect();
         transcript::discard_unshared(&home, target.device, &permitted);
-        if let Some(batch) = revised(&home, rows, last.as_deref()) {
+        let priority = Store::at(&home)
+            .publication_requests(target.device, &target.origin)
+            .unwrap_or_default();
+        if let Some(batch) = revised(&home, rows, last.as_deref(), &priority) {
             last = Some(batch.summaries.clone());
-            if events
-                .send(Event::ThreadSummaries(Some((batch, settings.clone()))))
-                .await
-                .is_err()
-            {
+            if !offer(&events, batch, &settings, priority).await {
                 return;
             }
         }
@@ -81,6 +86,47 @@ pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Tar
             transcript::publish(&home, &target, rows, (&settings, &permitted)).await;
         }
     }
+}
+
+async fn list(home: &Home) -> Option<Outcome> {
+    let home = home.dir().to_str()?;
+    let env = |name: &str| (name == "ANIMA_DAEMON_HOME").then(|| home.to_owned());
+    runner::call(env, Action::List).await
+}
+
+impl crate::push::Pusher {
+    /// Starts thread publications for this pusher and the runner at its enrolled home.
+    #[must_use]
+    pub fn publish_threads(
+        &self,
+        home: Home,
+        events: mpsc::Sender<Event>,
+        env: impl Fn(&str) -> Option<String>,
+    ) -> tokio::task::JoinHandle<()> {
+        let target = self.thread_sync_target();
+        let user = user_home(env);
+        tokio::spawn(async move {
+            if let Some(user) = user {
+                publish(home, events, target, user).await;
+            }
+        })
+    }
+}
+
+async fn offer(
+    events: &mpsc::Sender<Event>,
+    batch: ThreadSummaries,
+    settings: &UsageSettings,
+    priority: BTreeMap<Uuid, i64>,
+) -> bool {
+    events
+        .send(Event::ThreadSummaries(Some((
+            batch,
+            settings.clone(),
+            priority.into_keys().collect(),
+        ))))
+        .await
+        .is_ok()
 }
 
 fn summary(row: &ThreadRow, user: &Path, settings: &UsageSettings) -> Option<ThreadSummary> {
@@ -119,11 +165,15 @@ fn revised(
     home: &Home,
     rows: Vec<ThreadSummary>,
     last: Option<&[ThreadSummary]>,
+    priority: &BTreeMap<Uuid, i64>,
 ) -> Option<ThreadSummaries> {
     let old = last.unwrap_or_default();
     if last.is_some()
         && rows.len() == old.len()
-        && rows.iter().zip(old).all(|(row, old)| same(row, old))
+        && rows
+            .iter()
+            .zip(old)
+            .all(|(row, old)| already_current(row, old, priority))
     {
         return None;
     }
@@ -139,7 +189,7 @@ fn revised(
             old.binary_search_by_key(&row.runner_id, |old| old.runner_id)
                 .ok()
                 .map(|at| &old[at])
-                .filter(|old| same(&row, old))
+                .filter(|old| already_current(&row, old, priority))
                 .cloned()
                 .unwrap_or_else(|| ThreadSummary {
                     revision,
@@ -155,6 +205,17 @@ fn revised(
     })
 }
 
+fn already_current(
+    row: &ThreadSummary,
+    old: &ThreadSummary,
+    priority: &BTreeMap<Uuid, i64>,
+) -> bool {
+    priority
+        .get(&row.runner_id)
+        .is_none_or(|minimum| old.revision >= *minimum)
+        && same(row, old)
+}
+
 fn same(row: &ThreadSummary, old: &ThreadSummary) -> bool {
     row.runner_id == old.runner_id
         && row.state == old.state
@@ -164,7 +225,16 @@ fn same(row: &ThreadSummary, old: &ThreadSummary) -> bool {
         && row.started_at == old.started_at
 }
 
-fn revision(home: &Home) -> Option<i64> {
+pub(crate) fn revision(home: &Home) -> Option<i64> {
+    use rustix::fs::{FlockOperation, Mode, OFlags, flock, open};
+    let writing = open(
+        home.dir().join("thread-summary-revision.lock"),
+        OFlags::CREATE | OFlags::WRONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        Mode::RUSR | Mode::WUSR,
+    )
+    .ok()?;
+    flock(&writing, FlockOperation::NonBlockingLockExclusive).ok()?;
+
     let stored = private_file::read(&home.dir().join(REVISION)).ok()?;
     let previous = stored.as_ref().map_or(Some(0_i64), |bytes| {
         std::str::from_utf8(bytes).ok()?.parse().ok()
@@ -175,4 +245,14 @@ fn revision(home: &Home) -> Option<i64> {
     }
     private_file::write(home.dir(), REVISION, revision.to_string().as_bytes()).ok()?;
     Some(revision)
+}
+
+pub(crate) fn remote_publishable(home: &Home, row: &ThreadRow) -> bool {
+    let Some(user) = user_home(|name| std::env::var(name).ok()) else {
+        return false;
+    };
+    let Ok(settings) = UsageSettings::read(home) else {
+        return false;
+    };
+    transcripts_enabled(home) && summary(row, &user, &settings).is_some()
 }

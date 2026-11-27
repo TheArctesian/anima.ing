@@ -10,6 +10,8 @@ pub mod keys;
 pub mod model;
 pub mod push;
 pub mod readers;
+#[cfg(unix)]
+pub mod remote_code;
 pub mod report;
 pub mod runtime;
 pub mod sampling;
