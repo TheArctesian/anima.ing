@@ -52,8 +52,9 @@ impl Backend {
         let text = std::str::from_utf8(bytes).map_err(|_| TokenStoreError::Corrupt)?;
         let text = Zeroizing::new(text.to_owned());
         let folder = self.folder()?;
+        let signed = device.is_some() && release_daemon().unwrap_or(false);
         CALLS
-            .write(deadline, move || write_now(&text, device, folder))
+            .write(deadline, move || write_now(&text, device, signed, folder))
             .map_err(unanswered)?
             .map_err(TokenStoreError::Keychain)
     }
@@ -88,6 +89,7 @@ fn read_now() -> Read {
 fn write_now(
     text: &str,
     device: Option<uuid::Uuid>,
+    signed: bool,
     home: super::holder_authority::Folder,
 ) -> Written {
     let fresh = device.is_some();
@@ -95,7 +97,7 @@ fn write_now(
     let text = super::holder_authority::record(
         text,
         home,
-        device,
+        device.filter(|_| signed),
         previous.as_deref().map(Vec::as_slice),
     )?;
     if fresh {
@@ -104,6 +106,10 @@ fn write_now(
     entry()?
         .set_password(&text)
         .map_err(|error| error.to_string())
+}
+
+pub(super) fn release_daemon() -> Result<bool, TokenStoreError> {
+    crate::hub::peer::release_daemon().map_err(|error| TokenStoreError::Keychain(error.to_string()))
 }
 
 fn delete_now() -> Written {

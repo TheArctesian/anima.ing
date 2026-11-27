@@ -21,6 +21,8 @@ mod listings;
 pub mod log;
 pub mod login;
 mod models;
+mod outstanding;
+use outstanding::Outstanding;
 pub mod peer;
 mod projects;
 pub mod record;
@@ -116,10 +118,10 @@ pub struct Runner {
     /// The projects of this computer, in the order the person added them (TH107).
     projects: Vec<agent_threads::control::Project>,
     watchers: Vec<Client>,
-    waits: BTreeMap<u64, Waits>,
+    waits: Outstanding<Waits>,
     /// The commands that change a program and that the holder did not answer yet: a new link
     /// sends them again with their own IDs, and the holder does each one time (H10).
-    unanswered: BTreeMap<u64, (Command, bool)>,
+    unanswered: Outstanding<Command>,
     /// The last line of each thread that the runner read, so that a line the holder gives
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
@@ -208,8 +210,8 @@ pub async fn run(
             .collect(),
         projects: saved.projects,
         watchers: Vec::new(),
-        waits: BTreeMap::new(),
-        unanswered: BTreeMap::new(),
+        waits: Outstanding::new(),
+        unanswered: Outstanding::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
         refusal_lines: calls::RefusalLines::default(),
@@ -233,13 +235,6 @@ pub async fn run(
 
 impl Runner {
     /// An event of the holder, or a new link when the old one closed.
-    async fn heard_holder(&mut self, event: Option<crate::threads::wire::Event>) {
-        match event {
-            Some(event) => self.holder_event(event).await,
-            None => self.reconnect().await,
-        }
-    }
-
     /// What the runner looks at every ten seconds: the silent starts, the old files of prompts,
     /// an older holder, and the records of the Git engine.
     async fn look_around(&mut self) {
@@ -351,8 +346,7 @@ impl Runner {
         let id = command.id;
         let sent = self.link.resend(&command).await;
         if kept {
-            self.unanswered
-                .insert(id, (command, self.link.accepts_remote_peer()));
+            self.unanswered.insert(id, self.link.origin(), command);
         }
         match sent {
             Ok(()) => Some(id),

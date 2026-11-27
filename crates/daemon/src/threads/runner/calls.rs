@@ -276,7 +276,8 @@ impl Runner {
             .await
             .ok_or(Refusal::Holder)?;
         self.note(Kind::Stop, Some(id), "program stopped");
-        self.waits.insert(command, Waits::Stop { back });
+        self.waits
+            .insert(command, self.link.origin(), Waits::Stop { back });
         Ok(())
     }
 }

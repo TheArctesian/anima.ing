@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use anima_daemon::threads::link::HolderLink;
+use rustix::process::{Pid, PidfdFlags, Signal, pidfd_open, pidfd_send_signal};
 use tokio::sync::Notify;
 
 use super::*;
@@ -65,8 +65,15 @@ async fn th32_holder_reconnect_keeps_the_existing_command_poll_slot() {
         .expect("the first eligible poll should enter the hub");
     wait_for(&hub, |state| ready_claims(state) > 0).await;
     let before = ready_claims(&hub.0.lock().unwrap());
-    let replacement = HolderLink::connect(&kit.threads()).await.unwrap();
-    drop(replacement);
+    let dir = kit.threads();
+    let holders = super::super::runner::holders_of(&dir);
+    let [holder] = holders.as_slice() else {
+        panic!("expected one fixture holder");
+    };
+    let pid = Pid::from_raw(i32::try_from(*holder).unwrap()).unwrap();
+    let original = pidfd_open(pid, PidfdFlags::empty()).unwrap();
+    assert_eq!(super::super::runner::holders_of(&dir), holders);
+    pidfd_send_signal(&original, Signal::TERM).unwrap();
     tokio::time::timeout(Duration::from_secs(24), async {
         loop {
             if ready_claims(&hub.0.lock().unwrap()) > before {

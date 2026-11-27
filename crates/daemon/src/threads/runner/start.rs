@@ -288,6 +288,7 @@ impl Runner {
         let prompt = new.prompt;
         self.waits.insert(
             command,
+            self.link.origin(),
             Waits::Start {
                 thread: id,
                 back,

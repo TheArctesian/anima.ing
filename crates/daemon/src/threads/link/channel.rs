@@ -1,10 +1,22 @@
 use super::LinkError;
+use rustls::pki_types::CertificateDer;
+use sha2::{Digest as _, Sha256};
+
 use crate::threads::holder_channel;
 use std::{pin::Pin, sync::Arc, time::Duration};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     net::UnixStream,
 };
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(in crate::threads) struct Origin(Option<[u8; 32]>);
+
+impl Origin {
+    pub(in crate::threads) fn of(root: Option<&CertificateDer<'_>>) -> Self {
+        Self(root.map(|root| Sha256::digest(root.as_ref()).into()))
+    }
+}
 
 type Reading = Pin<Box<dyn AsyncRead + Send>>;
 type Writing = Pin<Box<dyn AsyncWrite + Send + Sync>>;

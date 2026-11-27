@@ -155,7 +155,7 @@ impl Runner {
             && self.threads.get(&thread).is_some_and(|thread| {
                 thread.row.state != agent_threads::control::RunState::Stopped
             })
-            && !self.unanswered.values().any(|(command, _)| {
+            && !self.unanswered.for_holder(self.link.origin()).any(|(_, command)| {
                 matches!(&command.action, Action::Stop { thread } if thread == &root.thread)
             })
     }

@@ -13,7 +13,7 @@ use super::{Runner, RunnerError, completed, models, silence, socket, start};
 use crate::threads::wire;
 
 enum Ready {
-    Holder(Option<wire::Event>),
+    Holder(wire::Event),
     Call(socket::Incoming),
     Answers(u64, silence::Answers),
     Completed(completed::Completed),
@@ -36,14 +36,19 @@ struct Sources {
 
 impl Sources {
     async fn next(&mut self, runner: &mut Runner) -> Ready {
-        tokio::select! {
-            event = runner.link.events.recv() => Ready::Holder(event),
-            Some(call) = self.incoming.recv() => Ready::Call(call),
-            Some((id, answers)) = self.asked.recv() => Ready::Answers(id, answers),
-            result = completed::next(&mut self.listed, &mut runner.project_creations, &mut self.git_reads) => Ready::Completed(result),
-            Some(worktree) = self.made.recv() => Ready::Worktree(Box::new(worktree)),
-            _ = self.look.tick() => Ready::Look,
-            Some(event) = super::remote_code::next(&mut self.remote, &mut self.tick), if self.person => Ready::Remote(Box::new(event)),
+        loop {
+            tokio::select! {
+                event = runner.link.events.recv() => match event {
+                    Some(event) => return Ready::Holder(event),
+                    None => runner.reconnect().await,
+                },
+                Some(call) = self.incoming.recv() => return Ready::Call(call),
+                Some((id, answers)) = self.asked.recv() => return Ready::Answers(id, answers),
+                result = completed::next(&mut self.listed, &mut runner.project_creations, &mut self.git_reads) => return Ready::Completed(result),
+                Some(worktree) = self.made.recv() => return Ready::Worktree(Box::new(worktree)),
+                _ = self.look.tick() => return Ready::Look,
+                Some(event) = super::remote_code::next(&mut self.remote, &mut self.tick), if self.person => return Ready::Remote(Box::new(event)),
+            }
         }
     }
 }
@@ -96,7 +101,7 @@ impl Runner {
             };
             // Stop is checked before taking another event. Once taken, a handler finishes.
             match ready {
-                Ready::Holder(event) => self.heard_holder(event).await,
+                Ready::Holder(event) => self.holder_event(event).await,
                 Ready::Call(call) => self.incoming(call).await,
                 Ready::Answers(id, answers) => self.asked(id, answers).await,
                 Ready::Completed(result) => self.completed(result),

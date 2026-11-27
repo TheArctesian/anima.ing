@@ -21,6 +21,7 @@ use super::tree::identity::Process;
 use super::wire::GitReadRoot;
 
 mod channel;
+pub(super) use channel::Origin;
 mod git_reads;
 use super::wire::{self, Action, Command, Event, MAX_FRAME};
 use git_reads::GitReads;
@@ -111,8 +112,8 @@ impl HolderLink {
         Ok(link)
     }
 
-    pub(super) const fn accepts_remote_peer(&self) -> bool {
-        self.remote_root.is_some()
+    pub(super) fn origin(&self) -> Origin {
+        Origin::of(self.remote_root.as_ref().map(|(_, root)| root))
     }
 
     pub(super) async fn current_remote_peer(&self) -> bool {
@@ -260,7 +261,11 @@ pub async fn reach(program: &Path, dir: &Path) -> Result<HolderLink, LinkError> 
     if let Ok(link) = connect_runner(dir).await {
         return Ok(link);
     }
-    start_holder(program, dir)?;
+    let program = program.to_owned();
+    let folder = dir.to_owned();
+    tokio::task::spawn_blocking(move || start_holder(&program, &folder))
+        .await
+        .map_err(io::Error::other)??;
     for _ in 0..100 {
         tokio::time::sleep(Duration::from_millis(50)).await;
         if let Ok(link) = connect_runner(dir).await {

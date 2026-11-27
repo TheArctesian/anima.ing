@@ -108,6 +108,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_pre_dispatch_cleanup_intent_can_be_retired_but_a_created_child_stays_unresolved() {
+        use crate::{
+            config::origin::Origin,
+            remote_code::{
+                launch::{launch_fixture, started_fixture},
+                wire::NotCreated,
+            },
+        };
+        let (_tmp, home, claim, device) = launch_fixture();
+        let dir = home.dir().join("threads");
+        std::fs::create_dir(&dir).unwrap();
+        let store = Store::at(&home);
+        let original = store
+            .reserve((device, &Origin::default_hub()), &claim)
+            .unwrap();
+        assert!(save(&dir, Some(&Record::new(*original.request()))));
+        let pending = read(&dir).unwrap().unwrap();
+        assert!(pending.ended(&dir));
+        store
+            .close(original.request(), NotCreated::Refused)
+            .unwrap();
+        assert!(pending.ended(&dir));
+        let (_tmp, home, created, _) = started_fixture();
+        let unresolved = Record::new(*created.request());
+        assert!(!unresolved.ended(&home.dir().join("threads")));
+    }
+
+    #[test]
     fn recovery_requires_a_positive_boot_change_and_preserves_legacy_intent() {
         let a = Uuid::from_u128(1);
         let b = Uuid::from_u128(2);

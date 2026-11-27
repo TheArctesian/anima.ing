@@ -25,9 +25,8 @@ impl Runner {
     async fn send_again(&mut self) {
         let again: Vec<Command> = self
             .unanswered
-            .values()
-            .filter(|(_, private)| !private || self.link.accepts_remote_peer())
-            .map(|(command, _)| command.clone())
+            .for_holder(self.link.origin())
+            .map(|(_, command)| command.clone())
             .collect();
         for command in again {
             if let Err(error) = self.link.resend(&command).await {

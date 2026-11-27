@@ -24,7 +24,7 @@ pub(in crate::threads::runner) struct Standing {
     /// When the runner last asked the older holder to end.
     pub quit: Option<std::time::Instant>,
     /// The command of the Quit that waits for its answer.
-    pub quit_command: Option<u64>,
+    pub quit_command: Option<(u64, crate::threads::link::Origin)>,
 }
 
 impl Runner {
@@ -46,7 +46,10 @@ impl Runner {
         if !asked && self.running() == 0 {
             self.holder.quit = Some(std::time::Instant::now());
             self.holder.quitting = true;
-            self.holder.quit_command = self.command(Action::Quit).await;
+            self.holder.quit_command = self
+                .command(Action::Quit)
+                .await
+                .map(|id| (id, self.link.origin()));
             // A Quit that did not reach the holder ends nothing: starts go on.
             self.holder.quitting = self.holder.quit_command.is_some();
         }
@@ -59,7 +62,7 @@ impl Runner {
         command: u64,
         outcome: &crate::threads::wire::Outcome,
     ) -> bool {
-        if self.holder.quit_command != Some(command) {
+        if self.holder.quit_command != Some((command, self.link.origin())) {
             return false;
         }
         self.holder.quit_command = None;

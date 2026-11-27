@@ -45,7 +45,8 @@ impl Runner {
             word: answer_word(answer),
             back,
         };
-        self.waits.insert(command, Waits::Answer(pending));
+        self.waits
+            .insert(command, self.link.origin(), Waits::Answer(pending));
         Ok(())
     }
 }

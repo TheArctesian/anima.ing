@@ -115,7 +115,7 @@ impl Runner {
                     },
                     counted,
                 });
-                self.waits.insert(command, waits);
+                self.waits.insert(command, self.link.origin(), waits);
                 Ok(())
             }
             // A Codex prompt that waits in the thread for its ID: it is the thread's now.

@@ -52,6 +52,38 @@ async fn ready_stop_discards_a_ready_project_before_publication() {
     }
 }
 
+#[tokio::test]
+async fn stopping_while_the_old_holder_is_unavailable_interrupts_reconnection() {
+    let temp = tempfile::tempdir_in("/tmp").unwrap();
+    let home = temp.path().canonicalize().unwrap();
+    std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let dir = link::folder(&home);
+    std::fs::create_dir(&dir).unwrap();
+    let address = dir.join(holder::SOCKET);
+    let listener = UnixListener::bind(&address).unwrap();
+    std::fs::set_permissions(&address, std::fs::Permissions::from_mode(0o600)).unwrap();
+    let link = link::HolderLink::connect(&dir).await.unwrap();
+    let (peer, _) = listener.accept().await.unwrap();
+    let mut runner = fixture(&dir, link);
+    // Produce an observable start attempt without leaving a replacement holder.
+    std::fs::write(&runner.program, b"#!/bin/sh\n: > \"$0.started\"\n").unwrap();
+    std::fs::set_permissions(&runner.program, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let attempted = runner.program.with_extension("started");
+    drop(peer);
+    drop(listener);
+    std::fs::remove_file(address).unwrap();
+    let stop = async {
+        while !attempted.exists() {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    };
+    tokio::time::timeout(Duration::from_secs(5), runner.listen(stop))
+        .await
+        .expect("the stop must interrupt the holder retry")
+        .unwrap();
+    assert!(attempted.exists());
+}
+
 fn has_stage(daemon: &Path) -> bool {
     std::fs::read_dir(daemon).unwrap().any(|entry| {
         entry
@@ -121,8 +153,8 @@ fn fixture(dir: &Path, link: link::HolderLink) -> Runner {
         listings: BTreeMap::new(),
         projects: Vec::new(),
         watchers: Vec::new(),
-        waits: BTreeMap::new(),
-        unanswered: BTreeMap::new(),
+        waits: crate::threads::runner::Outstanding::new(),
+        unanswered: crate::threads::runner::Outstanding::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(dir),
         refusal_lines: calls::RefusalLines::default(),

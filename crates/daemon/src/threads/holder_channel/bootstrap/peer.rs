@@ -10,15 +10,16 @@ use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 /// The socket is opened inside the child role. An earlier executable holding the bootstrap
 /// pipe can read its public address but cannot inherit this newly opened socket.
 pub(super) fn signed_child(stream: &UnixStream, child: u32, arguments: &[OsString]) -> Option<()> {
-    let requirement = crate::hub::peer::daemon_requirement(child)?.parse().ok()?;
-    matches_child(stream, child, arguments, &requirement)
+    matches_child(stream, child, arguments, || {
+        crate::hub::peer::daemon_requirement(child)?.parse().ok()
+    })
 }
 
 fn matches_child(
     stream: &UnixStream,
     child: u32,
     arguments: &[OsString],
-    requirement: &SecRequirement,
+    requirement: impl FnOnce() -> Option<SecRequirement>,
 ) -> Option<()> {
     let peer = u32::try_from(getsockopt(stream, sockopt::LocalPeerPid).ok()?).ok()?;
     if peer != child {
@@ -40,7 +41,7 @@ fn matches_child(
     if system.process(pid)?.cmd().get(1..)? != arguments {
         return None;
     }
-    code.check_validity(Flags::NONE, requirement).ok()
+    code.check_validity(Flags::NONE, &requirement()?).ok()
 }
 
 #[cfg(test)]
@@ -56,11 +57,11 @@ mod tests {
         let (stream, _) = listener.accept().unwrap();
         let own = std::process::id();
         let arguments: Vec<_> = std::env::args_os().skip(1).collect();
-        let pass: SecRequirement = "always".parse().unwrap();
-        let refuse: SecRequirement = "never".parse().unwrap();
-        assert!(matches_child(&stream, own, &arguments, &pass).is_some());
-        assert!(matches_child(&stream, own, &arguments, &refuse).is_none());
-        assert!(matches_child(&stream, own, &["holder-public-root".into()], &pass).is_none());
-        assert!(matches_child(&stream, 0, &arguments, &pass).is_none());
+        let pass = || "always".parse().ok();
+        let refuse = || "never".parse().ok();
+        assert!(matches_child(&stream, own, &arguments, pass).is_some());
+        assert!(matches_child(&stream, own, &arguments, refuse).is_none());
+        assert!(matches_child(&stream, own, &["holder-public-root".into()], pass).is_none());
+        assert!(matches_child(&stream, 0, &arguments, pass).is_none());
     }
 }

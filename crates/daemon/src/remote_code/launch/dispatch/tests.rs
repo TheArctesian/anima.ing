@@ -18,7 +18,7 @@ fn ticks(micros: u64) -> Sample {
     }
 }
 
-fn launch() -> (tempfile::TempDir, Home, ClaimedLaunch, Uuid) {
+pub(crate) fn launch() -> (tempfile::TempDir, Home, ClaimedLaunch, Uuid) {
     let dir = tempfile::tempdir().unwrap();
     let home = Home::at(dir.path().join("daemon"));
     home.ensure().unwrap();
@@ -198,8 +198,7 @@ fn cancellation_before_the_marker_has_durable_original_attempt_evidence() {
     assert!(body.get("thread").is_none());
 }
 
-pub(in crate::remote_code) fn started_fixture()
--> (tempfile::TempDir, Home, Reservation, ProcessIdentity) {
+pub(crate) fn started_fixture() -> (tempfile::TempDir, Home, Reservation, ProcessIdentity) {
     let (dir, home, claim, device) = launch();
     let store = Store::at(&home);
     let reserved = store

@@ -6433,8 +6433,8 @@ State: Open.
 
 The macOS daemon gives its holder an identity for an encrypted local connection. The login
 Keychain keeps the local signing key with the enrollment. A fresh enrollment binds the key to the accepted device and canonical home.
-An older enrollment requires a fresh enrollment code for remote Code. Ordinary renewal retains
-an existing binding. The native synthetic test exercises
+An older enrollment requires a fresh enrollment code in the Developer ID release for remote Code.
+Ad hoc builds keep ordinary local threads. Ordinary bearer renewal retains the original binding. The native synthetic test exercises
 mutual authentication, the two roles and an enrollment mismatch. Use a signed test build and
 a disposable Mac to check the Keychain access list and the complete provider lifecycle.
 
