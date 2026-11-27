@@ -1,2 +1,2 @@
-2026-11-27T12:27:04.486Z
+2026-11-27T16:42:07.598Z
 `bun run quality:documents` failed on the merge commit: docs/mockup/records/mobile.md: screen-changed-after-mockup apps/client/src/lib/sessions/view/remote has 3 layout file(s) that changed after ae73187ea; compare [mobile/index.html](mobile/index.html) again
