@@ -204,7 +204,11 @@ pub(super) async fn oldest_queued(
         "WHERE state = 'queued' AND kind <> 'host' AND $1::timestamptz IS NULL \
            AND (cardinality(secrets) = 0 OR EXISTS (SELECT FROM jobs.project_devices allowed \
                 JOIN projects.projects project ON project.id = allowed.project_id \
-                WHERE allowed.project_id = jobs.jobs.project_id AND allowed.device_id = $2)) \
+                WHERE allowed.project_id = jobs.jobs.project_id AND allowed.device_id = $2) \
+            OR (work_type = 'build' AND parameters->>'recipe' = 'source_image_v1' \
+                AND secrets = ARRAY['repository_token']::text[] \
+                AND EXISTS (SELECT FROM jobs.project_machines pin \
+                    WHERE pin.project_id = jobs.jobs.project_id AND pin.device_id = $2))) \
          ORDER BY created_at, id LIMIT {CLAIM_LOOKS_AT} FOR UPDATE SKIP LOCKED"
     );
     jobs_where(conn, &condition, None, Some(device)).await
