@@ -98,7 +98,7 @@ impl Runner {
     /// The row of a new thread and the start for the holder: the folder that the person chose
     /// (THR-041), the program on the `PATH` of the login, the arguments of the closed list
     /// (THR-040) and the environment of the login (R-308).
-    pub(super) fn prepared(
+    pub(in crate::threads::runner) fn prepared(
         &self,
         new: &NewThread,
         id: Uuid,

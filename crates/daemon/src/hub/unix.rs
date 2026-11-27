@@ -74,7 +74,13 @@ impl Local {
             driving.abort();
             return Answer::Failed(Cause::Unreadable);
         };
-        let answer = read(sender.send_request(request).await, call.ok, read_ok).await;
+        let answer = read(
+            sender.send_request(request).await,
+            call.ok,
+            call.response_limit,
+            read_ok,
+        )
+        .await;
         driving.abort();
         answer
     }
@@ -96,6 +102,7 @@ pub(super) async fn checked(socket: &Path, expected: &Expected) -> Result<UnixSt
 async fn read<T>(
     sent: hyper::Result<hyper::Response<hyper::body::Incoming>>,
     ok: &[u16],
+    limit: usize,
     read_ok: impl FnOnce(u16, &[u8]) -> Option<T>,
 ) -> Answer<T> {
     let Ok(response) = sent else {
@@ -103,7 +110,7 @@ async fn read<T>(
     };
     let status = response.status().as_u16();
     let mut incoming = response.into_body();
-    let mut bytes = Body::new();
+    let mut bytes = Body::bounded(limit + 1);
     while !bytes.is_full() {
         match incoming.frame().await {
             Some(Ok(frame)) => {
@@ -114,6 +121,9 @@ async fn read<T>(
             Some(Err(_)) => return Answer::Failed(Cause::Network),
             None => break,
         }
+    }
+    if bytes.is_full() {
+        return Answer::Failed(Cause::Unreadable);
     }
     if ok.contains(&status) {
         return read_ok(status, bytes.bytes())

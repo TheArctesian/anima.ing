@@ -13,6 +13,8 @@
 //! folder and not its path, and no branch. Each text is cleaned and capped as each text from a
 //! device is (MCP-008).
 
+mod git;
+
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -31,6 +33,7 @@ use crate::mcp::untrusted::{cleaned, fitted};
 pub enum AgentTool {
     Threads,
     ManagedWorkspaces,
+    Git(git::GitTool),
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -62,7 +65,13 @@ enum ProgramName {
 }
 
 impl AgentTool {
-    pub const ALL: [Self; 2] = [Self::Threads, Self::ManagedWorkspaces];
+    pub const ALL: [Self; 5] = [
+        Self::Threads,
+        Self::ManagedWorkspaces,
+        Self::Git(git::GitTool::Status),
+        Self::Git(git::GitTool::Checkpoints),
+        Self::Git(git::GitTool::Changes),
+    ];
 
     #[must_use]
     pub fn definition(self) -> Definition {
@@ -71,6 +80,7 @@ impl AgentTool {
                 "anima_code_workspaces", Access::Read, Effect::Reads,
                 "List managed workspace IDs, generations, enablement and current readiness on an enrolled node. Gives no prompts, credentials or file paths; grants no execution permission.",
             ).returns(&[("workspaces", "array", "workspace, generation, enabled, ready, seenAt.")]),
+            Self::Git(tool) => tool.definition(),
             Self::Threads => Definition::new::<ThreadsInput>(
                 "anima_agents_threads",
                 Access::Read,
@@ -108,6 +118,7 @@ impl AgentTool {
                     cleaned(Value::Array(rows)),
                 )]))))
             }
+            Self::Git(tool) => tool.call(arguments).await,
             Self::Threads => {
                 let input: ThreadsInput = parse(arguments)?;
                 if let Some(device) = input.device {

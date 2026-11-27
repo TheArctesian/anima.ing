@@ -3,7 +3,7 @@
 //!
 //! Pure: the frames and the place of the socket. The runner and the clients do the I/O.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -28,7 +28,7 @@ pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as p
 pub use queue::{LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued};
 pub use refusal::Refusal;
 pub use shelf::{Activity, MOST_SNOOZE, Marks, SETTLE_AFTER, Shelf};
-pub use thread::{ProviderAddress, ThreadRow};
+pub use thread::{ProviderAddress, ThreadRow, folder};
 pub use workspace::{Workspace, WorkspaceKind};
 
 /// The most bytes of one frame of a client.
@@ -36,23 +36,6 @@ pub const MAX_FRAME: usize = 4 * 1024 * 1024;
 
 /// The name of the socket file in the folder of the threads of the daemon.
 pub const SOCKET: &str = "runner.sock";
-
-/// The folder of the threads of the daemon: `threads` below the folder of the daemon, which is
-/// `ANIMA_DAEMON_HOME`, else on macOS `~/Library/Application Support/anima-daemon`, else
-/// `$XDG_CONFIG_HOME/anima-daemon` or `~/.config/anima-daemon` (as `Home::locate` of the daemon).
-#[must_use]
-pub fn folder(env: impl Fn(&str) -> Option<String>, macos: bool) -> Option<PathBuf> {
-    let daemon = if let Some(set) = env("ANIMA_DAEMON_HOME") {
-        PathBuf::from(set)
-    } else if macos {
-        Path::new(&env("HOME")?).join("Library/Application Support/anima-daemon")
-    } else if let Some(config) = env("XDG_CONFIG_HOME").filter(|dir| !dir.is_empty()) {
-        Path::new(&config).join("anima-daemon")
-    } else {
-        Path::new(&env("HOME")?).join(".config/anima-daemon")
-    };
-    Some(daemon.join("threads"))
-}
 
 /// A call of a client, with an ID that the client chose. The action is beside the ID in one
 /// object, so no action has a field named `id` or `call`.
@@ -243,6 +226,8 @@ pub enum Action {
     },
     /// Drops a file that did not go with a prompt yet (TH111).
     Unattach { thread: Uuid, attachment: Uuid },
+    /// Read a summary from the worktree of the socket peer's own live thread.
+    GitRead(crate::git::read::Request),
     /// An action on the worktree of one repository of a thread (TC7, TH116): the Git engine of
     /// the runner does it. The new tag requires retirement and complete review support.
     #[serde(rename = "git_v2", alias = "git")]
@@ -345,6 +330,10 @@ pub enum Outcome {
         folders: Vec<String>,
         #[serde(default)]
         more: bool,
+    },
+    /// A peer-bound summary or a fixed refusal.
+    GitRead {
+        result: crate::git::read::Outcome,
     },
     /// The answer of the Git engine to [`Action::Git`].
     Git {

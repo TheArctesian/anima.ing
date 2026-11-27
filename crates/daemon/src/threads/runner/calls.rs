@@ -12,7 +12,7 @@ use crate::threads::wire;
 use answer::Answering;
 use send::Sender;
 
-mod answer;
+pub(super) mod answer;
 mod attach;
 mod commands;
 mod files;
@@ -22,7 +22,7 @@ mod queue;
 use permissions::for_the_person;
 mod reads;
 mod refusal_lines;
-mod send;
+pub(super) mod send;
 mod set;
 mod transcript;
 pub(super) use commands::FolderSkills;
@@ -43,11 +43,9 @@ impl Runner {
             client,
             agent,
             managed_owner,
+            ..
         } = incoming;
-        let back = Caller {
-            call: id,
-            client: client.clone(),
-        };
+        let back = client.reply_to(id);
         let named = thread_of(&action);
         if matches!(
             &action,
@@ -244,7 +242,7 @@ impl Runner {
         }
     }
 
-    async fn interrupt(&mut self, id: Uuid) -> Outcome {
+    pub(super) async fn interrupt(&mut self, id: Uuid) -> Outcome {
         let Some(thread) = self.threads.get_mut(&id) else {
             return Outcome::Refused {
                 why: Refusal::UnknownThread,
@@ -266,7 +264,7 @@ impl Runner {
         Outcome::Ok
     }
 
-    async fn stop(&mut self, id: Uuid, back: Caller) -> Result<(), Refusal> {
+    pub(super) async fn stop(&mut self, id: Uuid, back: Caller) -> Result<(), Refusal> {
         let thread = self.threads.get(&id).ok_or(Refusal::UnknownThread)?;
         if thread.row.state == RunState::Stopped {
             return Err(Refusal::NotRunning);

@@ -57,10 +57,12 @@ pub enum Command {
     SourceArtifact,
     #[cfg(target_os = "linux")]
     WorkspaceAuthClaude,
+    HolderPublicRoot(PathBuf),
     /// Started by the daemon, not the operator (THR-113).
     Holder {
         folder: std::path::PathBuf,
         limit: usize,
+        channel: bool,
     },
     /// Prints [`version_line`]: no home, no token and no network.
     Version,
@@ -95,6 +97,12 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
         Some("install") => install(args),
         Some("key") => key(args),
         Some("holder") => holder(args),
+        Some("holder-public-root") => match (args.next(), args.next()) {
+            (Some(dir), None) if std::path::Path::new(&dir).is_absolute() => {
+                Ok(Command::HolderPublicRoot(dir.into()))
+            }
+            _ => Err(CliError::Usage),
+        },
         Some("threads") if args.next().is_none() => Ok(Command::Threads),
         #[cfg(target_os = "linux")]
         Some("workspace-auth-claude") if args.next().is_none() => Ok(Command::WorkspaceAuthClaude),
@@ -112,7 +120,10 @@ fn holder(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
     let folder = args
         .next()
         .filter(|folder| std::path::Path::new(folder).is_absolute());
-    let limit = match args.next() {
+    let value = args.next();
+    let channel = value.as_deref() == Some("--channel");
+    let limit = match value {
+        _ if channel => Some(0),
         None => Some(0),
         Some(bytes) => bytes.parse().ok(),
     };
@@ -120,6 +131,7 @@ fn holder(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
         (Some(folder), Some(limit), None) => Ok(Command::Holder {
             folder: folder.into(),
             limit,
+            channel,
         }),
         _ => Err(CliError::Usage),
     }

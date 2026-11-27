@@ -136,6 +136,8 @@ fn fixture(dir: &Path, link: link::HolderLink) -> Runner {
         walked: calls::Walked::default(),
         attached: attachments::Attachments::at(dir),
         rights,
+        git_reads: super::super::git_reads::Reads::default(),
+        remote: super::super::remote_code::Remote::default(),
         git,
     }
 }

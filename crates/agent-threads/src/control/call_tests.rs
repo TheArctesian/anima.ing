@@ -177,6 +177,10 @@ fn files() -> Vec<Action> {
             thread,
             attachment: other,
         },
+        Action::GitRead(crate::git::read::Request {
+            repository: "app".to_owned(),
+            read: crate::git::read::Read::Status,
+        }),
         Action::Git {
             thread,
             repository: "app".to_owned(),
@@ -237,10 +241,11 @@ const fn kind(action: &Action) -> usize {
         Action::ManagedTranscript { .. } => 32,
         Action::ManagedAttention => 33,
         Action::CloneProject { .. } => 34,
+        Action::GitRead(_) => 35,
     }
 }
 
-const KINDS: usize = 35;
+const KINDS: usize = 36;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {
@@ -267,42 +272,4 @@ fn th109_each_call_reads_back_from_its_frame() {
     );
 }
 
-#[test]
-fn th116_a_git_answer_reads_back_from_its_frame() {
-    let done = Reply::Done {
-        id: 42,
-        result: Outcome::Git {
-            result: GitOutcome::Reverted {
-                turn: 2,
-                undo: "b2".to_owned(),
-            },
-        },
-    };
-    let frame = serde_json::to_string(&done).expect("a frame");
-    let read: Reply =
-        serde_json::from_str(&frame).unwrap_or_else(|error| panic!("{frame}: {error}"));
-    assert_eq!(read, done, "{frame}");
-}
-
-#[test]
-fn tc7_git_legacy_removal_frames_are_accepted_but_never_sent_to_older_runners() {
-    let old_frame = serde_json::json!({
-        "id": 4,
-        "call": "git",
-        "thread": "c30b92dd-5d0d-40e2-978e-3f26d0cf9af1",
-        "repository": "fixture",
-        "git": "remove"
-    });
-    let read: Call = serde_json::from_value(old_frame).expect("legacy request");
-    assert!(matches!(
-        read.action,
-        Action::Git {
-            action: GitAction::Remove,
-            ..
-        }
-    ));
-    assert_eq!(
-        serde_json::to_value(read).expect("new request")["call"],
-        "git_v2"
-    );
-}
+mod git;

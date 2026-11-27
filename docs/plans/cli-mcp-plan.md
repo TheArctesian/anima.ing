@@ -250,6 +250,9 @@ There is no MCP tool: this opens an authentication session and returns a sign-in
 
 ## 7. MCP server
 
+For TC7 W3, [the Code proposal, Section 6.0.2](../proposals/agent-threads.md#602-the-git-stage-tc7-what-is-ruled-what-is-built-and-the-steps-that-connect-it) owns the three agent Git reads and their acceptance (R-NEW-gitreadpeer). Apply MCP-004, MCP-008, MCP-009 and MCP-017 to the runner's typed projections and fixed errors. Keep the existing MCP tool policy on the stdio path. The runner must prove which live thread owns the socket peer before returning its repository summary.
+
+
 - **MCP-001.** `anima mcp` is an MCP server on standard input and output. It uses the same
   context and token as the command line. A remote HTTP server is not planned: it needs OAuth and
   a hub change. Exception (R-280, OD-AXT23: "Yes, reverse MCP-001 for the hosted hub only and

@@ -11,6 +11,7 @@ impl Runner {
     pub(in crate::threads::runner) async fn reconnect(&mut self) {
         tracing::warn!("the link to the holder closed; connecting again");
         self.holder.fits = false;
+        self.remote.disconnect();
         self.holder.newer = false;
         // Until the next hello nothing is known of the holder: no Quit goes to a new one.
         self.holder.older = false;
@@ -22,7 +23,12 @@ impl Runner {
 
     /// Sends each command that the holder did not answer again, in the order it went first.
     async fn send_again(&mut self) {
-        let again: Vec<Command> = self.unanswered.values().cloned().collect();
+        let again: Vec<Command> = self
+            .unanswered
+            .values()
+            .filter(|(_, private)| !private || self.link.accepts_remote_peer())
+            .map(|(command, _)| command.clone())
+            .collect();
         for command in again {
             if let Err(error) = self.link.resend(&command).await {
                 tracing::warn!(%error, "the holder did not take a command sent again");

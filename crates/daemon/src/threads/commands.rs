@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::OwnedMutexGuard;
 
 use super::holder::{Shared, locked};
-mod start;
+pub(super) mod start;
 use super::tree;
 use super::wire::{self, Action, Command, Event, Outcome, Refusal, ThreadKey};
 
@@ -54,8 +54,9 @@ async fn act(
     turn: &mut Option<OwnedMutexGuard<()>>,
 ) -> Outcome {
     match action {
-        Action::Hello { version } => hello(shared, version),
+        Action::Hello { version, git_reads } => hello(shared, version, git_reads),
         action @ Action::Start { .. } => start::run(shared, action).await,
+        Action::RemoteCode { .. } => refused(Refusal::BadStart),
         Action::Write { thread, line } => write(shared, &thread, line),
         Action::CloseInput { thread } => {
             if close_input(shared, &thread) {
@@ -81,6 +82,7 @@ async fn act(
             super::stop::end(shared, &thread, false, turn.take()).await
         }
         Action::Stop { thread } => {
+            locked(shared).revoke_git_read(&thread);
             close_input(shared, &thread);
             super::stop::end(shared, &thread, true, turn.take()).await
         }
@@ -102,7 +104,7 @@ async fn act(
 
 /// The environment of a start with the mark of `thread` last, so that no value of the daemon
 /// takes its place (THR-049).
-fn marked(mut env: Vec<(String, String)>, thread: &ThreadKey) -> Vec<(String, String)> {
+pub(super) fn marked(mut env: Vec<(String, String)>, thread: &ThreadKey) -> Vec<(String, String)> {
     env.retain(|(name, _)| name != super::marker::MARK);
     env.push(super::marker::entry(thread));
     env
@@ -114,15 +116,17 @@ pub(super) fn refused(why: Refusal) -> Outcome {
 
 /// Answers with the version and the threads, then gives again each line the daemon did not
 /// confirm and each end it did not see.
-fn hello(shared: &Arc<Mutex<Shared>>, version: u32) -> Outcome {
+fn hello(shared: &Arc<Mutex<Shared>>, version: u32, git_reads: bool) -> Outcome {
     let Ok(mut state) = shared.lock() else {
         return Outcome::Ok;
     };
     state.draining = version != wire::VERSION;
+    let git_read_roots = state.git_read_hello(git_reads);
     state.send(&Event::Hello {
         version: wire::VERSION,
         threads: state.held(),
         build: wire::this_build(),
+        git_read_roots,
     });
     for (thread, slot) in &state.threads {
         for (first, lines) in slot.outbox.pending() {

@@ -30,7 +30,14 @@ impl Runner {
                 version,
                 threads,
                 build,
+                ..
             } => self.hello(version, threads, build.as_deref()).await,
+            Event::GitReadRoot { .. } => {}
+            Event::RemoteCode { frame } => {
+                if self.link.current_remote_peer().await {
+                    self.remote_holder(&frame).await;
+                }
+            }
             Event::Done { id, outcome } => self.done(id, outcome).await,
             Event::Lines {
                 thread,
@@ -246,7 +253,15 @@ impl Runner {
         if self.quit_answered(command, &outcome) {
             return;
         }
-        let sent = self.unanswered.remove(&command);
+        if !self.link.accepts_remote_peer()
+            && self
+                .unanswered
+                .get(&command)
+                .is_some_and(|(_, private)| *private)
+        {
+            return;
+        }
+        let sent = self.unanswered.remove(&command).map(|(sent, _)| sent);
         let Some(waits) = self.waits.remove(&command) else {
             if let HolderOutcome::Refused { why } = outcome {
                 self.not_taken(sent, why);
