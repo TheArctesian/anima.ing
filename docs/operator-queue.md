@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (231)
+## 2. Open decisions (230)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -186,7 +186,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AXT36 | "the hermes plugin set up in the configs" (R-389): is Hermes Agent a row of its own in the registry of extensions (K-E7), or a manifest under the one switch "Ag… | Open. Recommendation: a manifest under the one switch "Agent tools" (OD-AXT8). | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT44 | What may a granted agent transfer, and on which devices? (one choice: upload to the inbox of a named device only; upload to the inbox and download from the inbo… | Open. Recommendation: upload to the inbox and download from the inbox of named devices; a grant for each agent and each device. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT45 | What is the size limit of an agent-started transfer? (one choice: 20 MiB; 100 MiB; the same as the operator, with no extra limit) | Open. Recommendation: 20 MiB. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
-| OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI7 | Does job 1 get its own row in Section 4 of the work plan, before row 4.5? | Yes: one row "AI agents: usage and panes", tier 2b, before the model service. Row 4.5 keeps its number. | [proposals/ai-direction.md](proposals/ai-direction.md) |
