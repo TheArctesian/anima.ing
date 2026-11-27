@@ -28,6 +28,7 @@ pub(super) struct Turns {
     wait: Duration,
     addresses: InFlight<IpAddr>,
     devices: InFlight<DeviceId>,
+    polls: InFlight<DeviceId>,
 }
 
 impl Turns {
@@ -37,6 +38,7 @@ impl Turns {
             wait,
             addresses: InFlight::new(ADDRESS_REQUESTS),
             devices: InFlight::new(1),
+            polls: InFlight::new(1),
         }
     }
 
@@ -55,6 +57,9 @@ impl Turns {
     /// One turn per device, so one token cannot queue requests on its device's rows.
     pub(super) fn device(&self, device: DeviceId) -> Option<Turn<DeviceId>> {
         self.devices.take(device)
+    }
+    pub(super) fn command_poll(&self, device: DeviceId) -> Option<Turn<DeviceId>> {
+        self.polls.take(device)
     }
 }
 

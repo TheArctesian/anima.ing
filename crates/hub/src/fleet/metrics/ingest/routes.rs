@@ -138,6 +138,7 @@ fn routes(state: DaemonState) -> Router {
         .route("/daemon/v1/renew", post(renew))
         .route("/daemon/v1/keys/fetch", post(fetch_key))
         .merge(work::routes())
+        .merge(super::remote_threads::routes())
         .with_state(state)
 }
 

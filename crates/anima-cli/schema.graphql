@@ -5,7 +5,7 @@
 # CON-002 (crates/hub/tests/it/contract.rs) keeps the hub's schema equal to it.
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
-# Accepted TH30 addition pending hub and CLI implementation: compose agent-threads.graphql (R-460).
+# The remote Code operations implement the accepted TH30 amendment (R-460).
 # Conventions: contracts/conventions.md.
 # A token of the kind command_line (R-383) may do what a login token may do, except issueCommandLineToken.
 # Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket`, `hostedBrowserSignIn` and `claimComputerEnrolment` (API-003, D-4, R-111, R-129, HMD-061, HM-T33).
@@ -4183,6 +4183,18 @@ type AgentThreadSnapshot {
 }
 
 type Query {
+  "List work in descending creation order. First is from 1 to 100."
+  jobs(first: Int = 50, after: String, state: WorkJobState): WorkJobPage!
+  "Read one work item and the bounded tail of its log."
+  job(id: ID!): WorkJobDetail
+  "List remote Code start targets. Requires a person login, never an API key."
+  agentThreadStartTargets: [AgentThreadStartTarget!]!
+  "Read a remote Code launch receipt. Requires a person login, never an API key."
+  agentThreadLaunch(launch: ID!): AgentThreadLaunchReceipt!
+  "Read a remote Code control offer. Requires a person login, never an API key."
+  agentThreadControl(thread: ID!): AgentThreadControlView!
+  "Read a remote Code command receipt. Requires a person login, never an API key."
+  agentThreadCommand(command: ID!): AgentThreadCommandReceipt!
   commandLineSessions(offset: Int! = 0): [CommandLineSession!]!
 
   deviceOsUpdate(deviceId: ID!): JSON!
@@ -4383,6 +4395,24 @@ type Query {
 }
 
 type Mutation {
+  "Stop queued work immediately or tell its live holder to stop on the next report. Requires a person login, never an API key."
+  stopJob(id: ID!): Boolean!
+  "Set the hub work switch for one device. The local switch and cooldown keep their values. Requires a person login, never an API key."
+  setDeviceWork(deviceId: ID!, on: Boolean!): Boolean!
+  "Person login only. Replace the project's complete list of at most 100 devices that may receive work that needs its secrets. Requires a person login, never an API key."
+  setProjectWorkDevices(projectId: ID!, deviceIds: [ID!]!): Boolean!
+  "Pin the project's unnamed work to one device. A null device ID removes the pin. Requires a person login, never an API key."
+  setProjectWorkMachine(projectId: ID!, deviceId: ID): Boolean!
+  "Exclude a device from work that names no device. Requires a person login, never an API key."
+  setDeviceWorkExcluded(deviceId: ID!, excluded: Boolean!): Boolean!
+  "Start a remote Code thread. Requires a person login, never an API key."
+  startAgentThread(input: AgentThreadStartInput!): AgentThreadLaunchReceipt!
+  "Send a prompt to a remote Code thread. Requires a person login, never an API key."
+  sendAgentThreadPrompt(input: AgentThreadPromptInput!): AgentThreadCommandReceipt!
+  "Answer a request from a remote Code thread. Requires a person login, never an API key."
+  answerAgentThreadRequest(input: AgentThreadAnswerInput!): AgentThreadCommandReceipt!
+  "Stop a remote Code thread. Requires a person login, never an API key."
+  stopAgentThread(input: AgentThreadStopInput!): AgentThreadCommandReceipt!
   hostedCommandLineClaim(cloudKey: String!, computer: String!): HostedDeviceInvite!
   claimCommandLineToken(claim: String!): RemoteAuthPayload!
 
@@ -4875,4 +4905,137 @@ type RemoteAuthPayload {
   token: String!
   expiresAt: DateTime
   operator: Operator!
+}
+
+type AgentThreadStartTarget {
+  device: ID!
+  project: String!
+  folder: String!
+  program: AgentThreadLaunchProgram!
+  expiresAt: DateTime!
+}
+
+enum AgentThreadLaunchProgram { claude_code codex }
+enum AgentThreadAction { prompt answer stop }
+enum AgentThreadRequestKind { approval question }
+enum AgentThreadStopKind { interrupt end }
+enum AgentThreadDecision { allow_once allow_session decline }
+enum AgentThreadValueKind { choice free_text }
+enum AgentThreadBinding { waiting bound unavailable }
+enum AgentThreadLaunchState { queued claimed reconciling started refused failed stopped expired retired }
+enum AgentThreadCommandState { waiting delivered recorded refused expired retired }
+
+input AgentThreadStartInput {
+  launch: ID!
+  device: ID!
+  project: String!
+  folder: String!
+  program: AgentThreadLaunchProgram!
+  access: String!
+  prompt: String!
+}
+
+type AgentThreadLaunchReceipt {
+  launch: ID!
+  state: AgentThreadLaunchState!
+  cause: String
+  thread: ID
+  binding: AgentThreadBinding!
+  firstCommand: ID!
+}
+
+type AgentThreadCommandReceipt {
+  command: ID!
+  state: AgentThreadCommandState!
+  cause: String
+}
+
+type AgentThreadControlView { thread: ID!, offer: AgentThreadControlOffer }
+type AgentThreadControlOffer {
+  process: ID!
+  "Whole number from 1 through 2^53 - 1."
+  revision: Float!
+  actions: [AgentThreadAction!]!
+  stopTargets: [AgentThreadStopTarget!]!
+  requests: [AgentThreadRequestOffer!]!
+}
+
+type AgentThreadStopTarget { kind: AgentThreadStopKind!, process: ID!, turn: ID }
+type AgentThreadRule { selector: ID!, label: String! }
+type AgentThreadChoice { id: ID!, label: String! }
+type AgentThreadQuestion {
+  key: String!
+  text: String!
+  choices: [AgentThreadChoice!]!
+  many: Boolean!
+  freeText: Boolean!
+}
+type AgentThreadRequestOffer {
+  kind: AgentThreadRequestKind!
+  id: ID!
+  subject: String!
+  details: String
+  decisions: [AgentThreadDecision!]
+  rules: [AgentThreadRule!]
+  questions: [AgentThreadQuestion!]
+}
+
+input AgentThreadPromptInput { command: ID!, thread: ID!, prompt: String! }
+input AgentThreadStopInput { command: ID!, thread: ID!, target: AgentThreadStopTargetInput! }
+input AgentThreadStopTargetInput { kind: AgentThreadStopKind!, process: ID!, turn: ID }
+
+input AgentThreadAnswerInput {
+  command: ID!
+  thread: ID!
+  process: ID!
+  revision: Float!
+  request: ID!
+  answer: AgentThreadAnswerPayload!
+}
+input AgentThreadAnswerPayload {
+  kind: AgentThreadRequestKind!
+  decision: AgentThreadDecision
+  selector: ID
+  answers: [AgentThreadQuestionAnswer!]
+}
+input AgentThreadQuestionAnswer { key: String!, values: [AgentThreadAnswerValue!]! }
+input AgentThreadAnswerValue { kind: AgentThreadValueKind!, id: ID, text: String }
+
+enum WorkJobState {
+  QUEUED
+  CLAIMED
+  PREPARING
+  RUNNING
+  FINISHING
+  DONE
+  FAILED
+  STOPPED
+}
+
+type WorkJob {
+  id: ID!
+  type: String!
+  kind: String!
+  projectId: ID
+  repository: String
+  state: WorkJobState!
+  attempt: Int!
+  deviceId: ID
+  createdAt: DateTime!
+  claimedAt: DateTime
+  changedAt: DateTime!
+  endedAt: DateTime
+  "Untrusted text. The hub's placement reason is one line of up to 2048 UTF-8 bytes."
+  placement: String
+}
+
+type WorkJobPage {
+  nodes: [WorkJob!]!
+  pageInfo: PageInfo!
+}
+
+type WorkJobDetail {
+  job: WorkJob!
+  "Untrusted text. Up to 65536 UTF-8 bytes from the end of the redacted job log."
+  log: String!
 }

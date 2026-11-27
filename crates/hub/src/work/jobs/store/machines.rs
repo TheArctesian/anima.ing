@@ -143,3 +143,22 @@ pub(in crate::work::jobs) async fn set_off_until(
         .await?;
     Ok(())
 }
+
+pub(in crate::work::jobs) async fn set_device_work(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    on: bool,
+    at: DateTime<Utc>,
+) -> Result<(), Error> {
+    sqlx::query(
+        "INSERT INTO jobs.machines (device_id, switch, unclean, off_by_operator, last_claim_at)
+         VALUES ($1, 'off', false, NOT $2, $3)
+         ON CONFLICT (device_id) DO UPDATE SET off_by_operator = NOT $2",
+    )
+    .bind(device)
+    .bind(on)
+    .bind(at)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
