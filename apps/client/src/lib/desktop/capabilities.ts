@@ -10,15 +10,16 @@ const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true, dev
 /** `null` outside the shell (WP-42 D-4). System Settings at Sharing exists on a Mac only (R-059, R-079). */
 export function shellCapabilities(agent: Agent = navigator): Capabilities | null {
   if (!isTauri()) return null;
-  // The iPhone app shows the sign-in page of the account inside the app (mobile plan M3-5).
+  // The iPhone app shows the sign-in page of the account inside the app (mobile plan M3-5) and plays haptics (M4-4).
   if (isMobile(agent)) {
     const apple = isApple(agent);
-    return { ...MOBILE_SHELL, accountSession: apple, runnerReport: true };
+    return { ...MOBILE_SHELL, accountSession: apple, haptics: apple, runnerReport: true, workspacePreviews: true };
   }
   const { userAgent } = agent;
   return {
     keyStore: true,
     webViewTabs: true,
+    workspacePreviews: false,
     popOut: false,
     updates: true,
     processLog: true,
@@ -34,6 +35,7 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
     cloudAccount: true,
     accountSession: false,
     runnerReport: false,
+    haptics: false,
     overlayTitleBar: isMac(userAgent),
     // On Windows and Linux the window has no frame of the system (tauri.windows.conf.json, tauri.linux.conf.json).
     framelessWindow: !isMac(userAgent),

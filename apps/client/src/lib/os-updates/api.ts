@@ -9,15 +9,15 @@ const Status = graphql(`
 `);
 
 const Request = graphql(`
-  mutation DeviceOsUpdateRequest($deviceId: ID!, $action: OsUpdateAction!, $confirmed: Boolean!) {
-    requestDeviceOsUpdate(deviceId: $deviceId, input: { action: $action, confirmed: $confirmed })
+  mutation DeviceOsUpdateRequest($deviceId: ID!, $action: OsUpdateAction!, $confirmed: Boolean!, $reviewRevision: String) {
+    requestDeviceOsUpdate(deviceId: $deviceId, input: { action: $action, confirmed: $confirmed, reviewRevision: $reviewRevision })
   }
 `);
 
 export function osUpdatesApi(hub: Hub) {
   return {
     status: (deviceId: string) => hub.request(Status, { deviceId }),
-    request: (deviceId: string, action: OsUpdateAction, confirmed: boolean) => hub.request(Request, { deviceId, action, confirmed }),
+    request: (deviceId: string, action: OsUpdateAction, confirmed: boolean, reviewRevision: string | null) => hub.request(Request, { deviceId, action, confirmed, reviewRevision }),
   };
 }
 

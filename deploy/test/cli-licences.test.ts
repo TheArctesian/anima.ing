@@ -39,13 +39,13 @@ describe("the licence files of a copy of anima", () => {
   test.skipIf(!GNU_TAR)("cli-archive packs anima with each licence file, and the same inputs give the same bytes", () => {
     const folder = join(ROOM, "programs");
     mkdirSync(folder, { recursive: true });
-    writeFileSync(join(folder, "anima"), "#!/bin/sh\necho anima 0.8.15\n");
+    for (const program of ["anima", "anima-link", "anima-daemon"]) writeFileSync(join(folder, program), "#!/bin/sh\nexit 0\n");
     const pack = (archive: string) => run(["/bin/sh", join(ROOT, "deploy", "bin", "cli-archive"), folder, join(ROOM, archive), "1700000000"]);
     expect(pack("one.tar.gz").exitCode).toBe(0);
     expect(pack("two.tar.gz").exitCode).toBe(0);
     expect(readFileSync(join(ROOM, "one.tar.gz")).equals(readFileSync(join(ROOM, "two.tar.gz")))).toBe(true);
     const listed = run(["tar", "-tvzf", join(ROOM, "one.tar.gz")]).printed.trim().split("\n");
-    expect(listed.map((line) => line.split(/\s+/).at(-1)).sort()).toEqual(["anima", ...LICENCES.map(({ name }) => name)].sort());
+    expect(listed.map((line) => line.split(/\s+/).at(-1)).sort()).toEqual(["anima", "anima-link", "anima-daemon", "anima-setup", ...LICENCES.map(({ name }) => name)].sort());
     expect(listed.find((line) => line.endsWith(" anima"))?.startsWith("-rwxr-xr-x")).toBe(true);
     const out = join(ROOM, "out");
     mkdirSync(out, { recursive: true });

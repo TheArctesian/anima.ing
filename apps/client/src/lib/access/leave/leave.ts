@@ -1,3 +1,4 @@
+import { signOutCommandLine } from '$lib/desktop/command-line/sign-in';
 import { clearAccessToken } from '$lib/desktop/token';
 import { signOutOfGateway } from '$lib/hosted/gateway/here';
 import type { Hub } from '$lib/hub/hub';
@@ -29,7 +30,7 @@ export async function leaveHub(
     return kept;
   }
   const daemon = desktop ? await (leaveDaemon?.() ?? Promise.resolve(null)) : null;
-  const kept = await signOut({ api, address: hub.address, desktop, clearToken: clearAccessToken, forgetCopy });
+  const kept = await signOut({ api, address: hub.address, desktop, clearToken: clearAccessToken, forgetCopy, signOutCommandLine });
   // What stays is said, as for a token that stayed: the page then stays too, so that the sentence is read.
   const stays = [kept, daemon].filter((line) => line !== null);
   if (stays.length > 0) return stays.join(' ');

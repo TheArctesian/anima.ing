@@ -2,6 +2,8 @@
 
 mod rdp;
 mod vnc_device;
+mod vnc_identity;
+mod vnc_tls;
 
 use std::time::Duration;
 

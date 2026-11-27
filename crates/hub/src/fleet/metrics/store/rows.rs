@@ -4,14 +4,13 @@ use daemon_core::{
         Backend, BackendName, BackendReason, Hardware, PowerSource, ThermalState, UsableMemory,
         UsableSource,
     },
-    inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict},
     readings::{self, Drive, DriveKind},
 };
 
 use crate::{
     fleet::metrics::{
         Battery, Error, Gpu, GpuVendor, MetricKind, MetricPoint, MetricSeries,
-        capabilities::Capabilities, gpu_label::chart_label, latest::Latest,
+        gpu_label::chart_label, latest::Latest,
     },
     ids::{DeviceId, MetricSeriesId},
 };
@@ -164,58 +163,6 @@ impl TryFrom<BatteryRow> for Battery {
             state: state.into(),
             seconds_left: row.seconds_left,
             health_percent: row.health_percent.map(i32::from),
-        })
-    }
-}
-
-#[derive(sqlx::FromRow)]
-pub(super) struct InventoryRow {
-    device_id: DeviceId,
-    architecture: String,
-    os: String,
-    os_version: String,
-    found_at: DateTime<Utc>,
-    tool_names: Vec<String>,
-    tool_versions: Vec<Option<String>>,
-    tool_reasons: Vec<Option<String>>,
-    build_targets: Vec<String>,
-}
-
-impl TryFrom<InventoryRow> for Capabilities {
-    type Error = Error;
-
-    /// An unknown tool name is left out; an unknown reason reads as `failed`.
-    fn try_from(row: InventoryRow) -> Result<Self, Error> {
-        let mut tools: Vec<Tool> = row
-            .tool_names
-            .iter()
-            .zip(row.tool_versions)
-            .zip(row.tool_reasons)
-            .filter_map(|((name, version), reason)| {
-                let verdict = match version {
-                    Some(version) => Verdict::Usable(version),
-                    None => Verdict::NotUsable(Reason::parse(reason.as_deref().unwrap_or(""))),
-                };
-                Some(Tool {
-                    name: ToolName::parse(name)?,
-                    verdict,
-                })
-            })
-            .collect();
-        tools.sort_by_key(|tool| tool.name);
-        let inventory = Inventory {
-            remote_access: None,
-            architecture: Architecture::parse(&row.architecture).ok_or(Error::Unreadable)?,
-            os: Os::parse(&row.os).ok_or(Error::Unreadable)?,
-            os_version: row.os_version,
-            tools,
-            build_targets: row.build_targets,
-        };
-        Ok(Self {
-            device: row.device_id,
-            inventory,
-            found_at: row.found_at,
-            hardware: None,
         })
     }
 }

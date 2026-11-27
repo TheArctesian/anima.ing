@@ -32,9 +32,24 @@ pub(super) struct Allowed {
     pub(super) view: (usize, usize),
 }
 
+impl From<&Opening> for Allowed {
+    fn from(opening: &Opening) -> Self {
+        Self {
+            copy: opening.copy,
+            paste: opening.paste,
+            formats: opening.formats,
+            view: opening.view,
+        }
+    }
+}
+
+pub(super) trait DeviceStream: AsyncRead + AsyncWrite + Unpin + Send {}
+impl<T: AsyncRead + AsyncWrite + Unpin + Send> DeviceStream for T {}
+pub(super) type Connection = Box<dyn DeviceStream>;
+
 pub(super) struct Opened {
     pub(super) allowed: Allowed,
-    pub(super) device: TcpStream,
+    pub(super) device: Connection,
     pub(super) size: (usize, usize),
 }
 
@@ -110,6 +125,12 @@ where
     let Ok(Ok(offered)) = timeout(settings.device_wait, vnc::offered(&mut device)).await else {
         return Err(refuse(hub, status::UPSTREAM_ERROR, Ended::NotVnc).await);
     };
+    if opening.vnc_certificate.is_some() {
+        if !offered.supports_vencrypt() {
+            return Err(refuse(hub, status::UPSTREAM_ERROR, Ended::NoSignInMethod).await);
+        }
+        return super::vencrypt::open(hub, opening, device, settings).await;
+    }
     let Ok(method) = offered.method(opening.username.is_some(), opening.password.is_some()) else {
         return Err(refuse(hub, status::UPSTREAM_ERROR, Ended::NoSignInMethod).await);
     };
@@ -133,18 +154,13 @@ where
     };
     let signing = vnc::sign_in(&mut device, method, account, &mut hand_out);
     let signed_in = timeout(settings.device_wait, signing).await;
-    let allowed = Allowed {
-        copy: opening.copy,
-        paste: opening.paste,
-        formats: opening.formats,
-        view: opening.view,
-    };
+    let allowed = Allowed::from(&opening);
     match signed_in {
         // A sign-in that asked for more random bytes than were made used zeros for the rest.
         Ok(Ok(_)) if short => Err(refuse(hub, status::SERVER_ERROR, Ended::NoRandomNumbers).await),
         Ok(Ok(size)) => Ok(Opened {
             allowed,
-            device,
+            device: Box::new(device),
             size,
         }),
         Ok(Err(SignInError::Refused)) => {

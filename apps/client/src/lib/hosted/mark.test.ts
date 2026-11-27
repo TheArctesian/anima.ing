@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { noAnswer, UNREACHABLE } from '$lib/hub/hub';
 import { HOSTED_ADDRESS_MOVED, HOSTED_BROWSER_ORIGIN, holdsMovedAddress, hubIsHosted, isHostedHub, markHosted, networkAdvice } from './mark';
 
@@ -26,6 +26,23 @@ describe('the mark of a hosted hub (R-129, R-222)', () => {
 describe('NET-004: the advice when the hub does not answer', () => {
   it('names the network of the computer for a hosted hub, and never a VPN', () => {
     expect(networkAdvice(true)).toBe("Check this computer's network");
+  });
+
+  it('names the network of the device on a phone or a tablet, which is not a computer', () => {
+    expect(networkAdvice(true, 'device')).toBe("Check this device's network");
+    expect(networkAdvice(false, 'device')).toBe('Check the VPN client');
+  });
+
+  it('the app on an iPhone names the network of the device', async () => {
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', maxTouchPoints: 5 });
+    vi.resetModules();
+    try {
+      const onPhone = await import('./mark');
+      expect(onPhone.networkAdvice(true)).toBe("Check this device's network");
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
   });
 
   it('names the VPN client for each other hub', () => {

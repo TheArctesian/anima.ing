@@ -8,7 +8,7 @@ use super::{CREATE, ME, REVOKE, count, input, kind_refused, made, signed_in};
 use crate::hub::{Hub, PASSWORD, USERNAME, error};
 
 /// D-23, A-6, R-084, CR-8, R-100, VP-7, PRJ-039, PRJ-041.
-const REFUSED: [&str; 36] = [
+const REFUSED: [&str; 37] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -26,6 +26,7 @@ const REFUSED: [&str; 36] = [
     "revokeDaemonToken",
     "acceptHostKey",
     "acceptServerCertificate",
+    "acceptVncServerCertificate",
     "acceptWebCertificate",
     "updateDevice",
     "deleteDevice",

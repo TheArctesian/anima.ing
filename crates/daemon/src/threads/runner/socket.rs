@@ -7,6 +7,16 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+mod owner;
+pub(super) use owner::bind as bind_owner;
+
+#[derive(Clone, Copy)]
+pub(super) enum Authority {
+    Local,
+    WorkspaceAgent,
+    RootOwner,
+}
+
 use agent_threads::control::{Call, MAX_FRAME, Reply, SOCKET};
 use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader};
 use tokio::net::{UnixListener, UnixStream};
@@ -83,6 +93,8 @@ pub struct Incoming {
     pub client: Client,
     /// The client is a process of an agent of the holder (see [`super::peer`]).
     pub agent: bool,
+    /// Established from the socket and `SO_PEERCRED`, never from a frame.
+    pub managed_owner: bool,
 }
 
 /// Binds the socket of the runner in `dir`, in place of one an older runner left.
@@ -99,15 +111,16 @@ pub fn bind(dir: &Path) -> io::Result<UnixListener> {
 }
 
 /// Accepts clients and gives their calls to the runner, until the runner is gone.
-pub async fn accept(
+pub(super) async fn accept(
     listener: UnixListener,
     calls: mpsc::Sender<Incoming>,
     dir: std::path::PathBuf,
+    authority: Authority,
 ) {
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {
-                tokio::spawn(serve(stream, calls.clone(), dir.clone()));
+                tokio::spawn(serve(stream, calls.clone(), dir.clone(), authority));
             }
             Err(error) => {
                 tracing::warn!(%error, "the runner could not accept a client");
@@ -121,14 +134,15 @@ pub async fn accept(
 }
 
 /// One client: each line is a call; a line that is too long or does not read ends the client.
-async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>, dir: std::path::PathBuf) {
-    let Ok(peer) = stream.peer_cred() else {
+async fn serve(
+    stream: UnixStream,
+    calls: mpsc::Sender<Incoming>,
+    dir: std::path::PathBuf,
+    authority: Authority,
+) {
+    let Some(agent) = peer_authority(&stream, authority, &dir).await else {
         return;
     };
-    if peer.uid() != rustix::process::getuid().as_raw() {
-        return;
-    }
-    let agent = super::peer::of_an_agent(peer.pid(), &dir).await;
     let (reading, mut writing) = stream.into_split();
     let (frames, mut queue) = mpsc::channel::<String>(CLIENT_QUEUE);
     let queued_bytes = Arc::new(AtomicUsize::new(0));
@@ -170,6 +184,7 @@ async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>, dir: std::path
             call,
             client: client.clone(),
             agent,
+            managed_owner: matches!(authority, Authority::RootOwner),
         };
         if calls.send(incoming).await.is_err() {
             break;
@@ -178,4 +193,16 @@ async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>, dir: std::path
     drop(client);
     // The runner may still hold the way back of a watch; the writer ends when it lets go.
     let _ = writer.await;
+}
+
+async fn peer_authority(stream: &UnixStream, authority: Authority, dir: &Path) -> Option<bool> {
+    let peer = stream.peer_cred().ok()?;
+    Some(match authority {
+        Authority::RootOwner if peer.uid() == 0 => false,
+        Authority::WorkspaceAgent if peer.uid() == rustix::process::getuid().as_raw() => true,
+        Authority::Local if peer.uid() == rustix::process::getuid().as_raw() => {
+            super::peer::of_an_agent(peer.pid(), dir).await
+        }
+        _ => return None,
+    })
 }

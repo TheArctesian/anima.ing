@@ -66,13 +66,13 @@ export function followPaneFocus(pane: HTMLElement, change: (inside: boolean) => 
 }
 
 /** Nothing animates the display (MAT-008); its scale is the caller's. */
-export function showDisplay(client: Client, directTouch = true): Attachment<HTMLElement> {
+export function showDisplay(client: Client, directTouch = true, interactive = true): Attachment<HTMLElement> {
   return (host) => {
     const element = client.getDisplay().getElement();
     host.append(element);
-    const stop = forwardPointer(client, directTouch);
+    const stop = interactive ? forwardPointer(client, directTouch) : undefined;
     return () => {
-      stop();
+      stop?.();
       element.remove();
     };
   };

@@ -1,3 +1,5 @@
+import { isMobile } from '$lib/platform/mobile';
+
 const STORAGE_KEY = 'anima.hostedHub';
 
 /** A marked hub signs in only with the account, never the hub password page; the mark is not a secret (R-129, HMD-037). */
@@ -46,7 +48,12 @@ export function holdsMovedAddressHere(origin: string): boolean {
   return typeof location !== 'undefined' && holdsMovedAddress(location.origin, origin);
 }
 
+/** What the client runs on: a phone or a tablet is not a computer (NET-004). */
+export type Here = 'computer' | 'device';
+
+const HERE: Here = typeof navigator !== 'undefined' && isMobile(navigator) ? 'device' : 'computer';
+
 /** What the operator can check when the hub does not answer, with no full stop (NET-004, R-222). */
-export function networkAdvice(hosted: boolean): string {
-  return hosted ? "Check this computer's network" : 'Check the VPN client';
+export function networkAdvice(hosted: boolean, here: Here = HERE): string {
+  return hosted ? `Check this ${here}'s network` : 'Check the VPN client';
 }

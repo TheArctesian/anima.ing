@@ -5,7 +5,7 @@ use tauri::Rect;
 
 use super::{
     Fingerprint, WebViewError,
-    address::{Embedding, WebUrl, embedding},
+    address::{Embedding, WebUrl, embedding, require_preview_url},
     bounds::Bounds,
     storage::DeviceId,
     tabs::{Tab, TabId},
@@ -18,6 +18,7 @@ pub struct Opening {
     device_id: String,
     url: String,
     pin: Option<String>,
+    preview_endpoint: Option<uuid::Uuid>,
     bounds: Bounds,
 }
 
@@ -44,6 +45,12 @@ impl Opening {
             .as_deref()
             .map(str::parse::<Fingerprint>)
             .transpose()?;
+        if let Some(endpoint) = self.preview_endpoint {
+            require_preview_url(url.as_url(), endpoint, "/.anima/connect")?;
+            if pin.is_some() {
+                return Err(WebViewError::Arguments);
+            }
+        }
         let rect = self.bounds.rect()?;
         let (origin, pin) = match embedding(&url, pin, pinning)? {
             Embedding::Plain => (None, None),
@@ -53,6 +60,7 @@ impl Opening {
             url,
             origin,
             pin,
+            preview_endpoint: self.preview_endpoint,
             popped_out: false,
         };
         Ok(NewTab {

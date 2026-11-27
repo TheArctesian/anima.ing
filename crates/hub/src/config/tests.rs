@@ -1,3 +1,5 @@
+use std::ffi::OsString;
+
 use super::*;
 
 pub(super) fn env(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {

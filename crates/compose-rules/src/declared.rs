@@ -67,13 +67,15 @@ fn pairs<'a>(service: &Declared<'a>, key: &str) -> Result<Vec<(&'a str, &'a str)
     }
 }
 
-fn labels(service: &Declared<'_>, settings: &Settings) -> Result<(), Refusal> {
+fn labels(service: &Declared<'_>, settings: Option<&Settings>) -> Result<(), Refusal> {
     let permitted = |name: &str| {
         !name.starts_with("com.docker.")
-            && settings
-                .label_prefixes
-                .iter()
-                .any(|prefix| !prefix.is_empty() && name.starts_with(prefix.as_str()))
+            && settings.is_none_or(|settings| {
+                settings
+                    .label_prefixes
+                    .iter()
+                    .any(|prefix| !prefix.is_empty() && name.starts_with(prefix.as_str()))
+            })
     };
     if pairs(service, "labels")?
         .iter()
@@ -198,7 +200,7 @@ pub(crate) fn checked(
     node: &Node,
     position: usize,
     all: &Names<'_>,
-    settings: &Settings,
+    settings: Option<&Settings>,
 ) -> Result<(), Refusal> {
     let service = Declared { node, position };
     match service.text("image") {

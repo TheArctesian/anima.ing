@@ -147,7 +147,11 @@ async fn prj_039_code_ls_prints_kind_size_and_name_and_says_when_the_listing_may
         code_entry("main.rs", "FILE", 2048),
     ];
     hub.answer("CodeDirectoryRead", data(code_directory(&entries, true)));
-    let table = ask(&hub, &["code", "ls", REPOSITORY, "src", "--ref", "main"]).await;
+    let table = ask(
+        &hub,
+        &["forge", "code", "ls", REPOSITORY, "src", "--ref", "main"],
+    )
+    .await;
     assert_eq!(table.code, 0, "{table:?}");
     assert!(table.stdout.contains("directory"), "{table:?}");
     assert!(table.stdout.contains("2048"), "{table:?}");
@@ -162,7 +166,7 @@ async fn prj_039_code_ls_prints_kind_size_and_name_and_says_when_the_listing_may
     let hub = FakeHub::start().await;
     project(&hub);
     hub.answer("CodeDirectoryRead", data(code_directory(&entries, false)));
-    let json = ask(&hub, &["code", "ls", FULL_NAME, "--json"]).await;
+    let json = ask(&hub, &["forge", "code", "ls", FULL_NAME, "--json"]).await;
     assert_eq!(json.json()["entries"][1]["name"], "main.rs");
     assert_eq!(json.json()["partial"], false);
     assert!(json.stderr.is_empty(), "{json:?}");
@@ -178,7 +182,7 @@ async fn prj_040_code_show_prints_the_text_byte_for_byte_with_and_without_a_fina
             "CodeFileRead",
             data(code_file("README.md", "TEXT", Some(text))),
         );
-        let run = ask(&hub, &["code", "show", REPOSITORY, "README.md"]).await;
+        let run = ask(&hub, &["forge", "code", "show", REPOSITORY, "README.md"]).await;
         assert_eq!(run.code, 0, "{run:?}");
         assert_eq!(run.stdout, text);
         assert!(run.stderr.is_empty(), "{run:?}");
@@ -190,7 +194,15 @@ async fn prj_040_code_show_prints_the_text_byte_for_byte_with_and_without_a_fina
     );
     let cat = ask(
         &hub,
-        &["code", "cat", REPOSITORY, "README.md", "--ref", "v1"],
+        &[
+            "forge",
+            "code",
+            "cat",
+            REPOSITORY,
+            "README.md",
+            "--ref",
+            "v1",
+        ],
     )
     .await;
     assert_eq!(cat.stdout, "x");
@@ -207,7 +219,7 @@ async fn prj_040_code_show_sends_a_path_with_spaces_and_unicode_as_given() {
     project(&hub);
     let path = "docs/Mon résumé (final) #1.txt";
     hub.answer("CodeFileRead", data(code_file(path, "TEXT", Some("café"))));
-    let run = ask(&hub, &["code", "show", FULL_NAME, path]).await;
+    let run = ask(&hub, &["forge", "code", "show", FULL_NAME, path]).await;
     assert_eq!(run.stdout, "café", "{run:?}");
     let sent = &variables(&hub, "CodeFileRead")[0];
     assert_eq!(sent["path"], path);
@@ -219,7 +231,7 @@ async fn prj_040_code_show_for_binary_or_too_large_prints_the_reason_and_the_lin
     for (content, words) in [("BINARY", "is not text"), ("TOO_LARGE", "1,048,576")] {
         let hub = FakeHub::start().await;
         hub.answer("CodeFileRead", data(code_file("logo.png", content, None)));
-        let run = ask(&hub, &["code", "show", REPOSITORY, "logo.png"]).await;
+        let run = ask(&hub, &["forge", "code", "show", REPOSITORY, "logo.png"]).await;
         assert_eq!(run.code, 1, "{run:?}");
         assert!(run.stdout.is_empty(), "{run:?}");
         assert!(run.stderr.contains(words), "{run:?}");
@@ -235,13 +247,21 @@ async fn prj_040_code_show_for_binary_or_too_large_prints_the_reason_and_the_lin
 async fn prj_040_code_show_json_gives_the_whole_object_even_for_a_binary_file() {
     let hub = FakeHub::start().await;
     hub.answer("CodeFileRead", data(code_file("logo.png", "BINARY", None)));
-    let run = ask(&hub, &["code", "show", REPOSITORY, "logo.png", "--json"]).await;
+    let run = ask(
+        &hub,
+        &["forge", "code", "show", REPOSITORY, "logo.png", "--json"],
+    )
+    .await;
     assert_eq!(run.code, 0, "{run:?}");
     assert_eq!(run.json()["content"], "BINARY");
     assert_eq!(run.json()["size"], 12);
     let hub = FakeHub::start().await;
     hub.answer("CodeFileRead", data(code_file("a.txt", "TEXT", Some("hi"))));
-    let run = ask(&hub, &["code", "show", REPOSITORY, "a.txt", "--json"]).await;
+    let run = ask(
+        &hub,
+        &["forge", "code", "show", REPOSITORY, "a.txt", "--json"],
+    )
+    .await;
     assert_eq!(run.json()["text"], "hi");
 }
 
@@ -254,7 +274,7 @@ async fn prj_040_code_show_passes_on_the_hub_words_for_a_directory_a_link_a_subm
     ] {
         let hub = FakeHub::start().await;
         hub.answer("CodeFileRead", refusal("VALIDATION", words));
-        let run = ask(&hub, &["code", "show", REPOSITORY, "src"]).await;
+        let run = ask(&hub, &["forge", "code", "show", REPOSITORY, "src"]).await;
         assert_eq!(run.code, 2, "{run:?}");
         assert!(run.stdout.is_empty(), "{run:?}");
         assert!(run.stderr.contains(words), "{run:?}");
@@ -271,7 +291,15 @@ async fn prj_040_code_show_with_an_api_key_shows_the_hub_refusal_and_how_to_sign
     let key = "anima_historyTestKeyAbcdefghijklmnopqrstuvwxyz0123";
     let run = Anima::new()
         .with("ANIMA_TOKEN", key)
-        .run(&["code", "show", REPOSITORY, "a.txt", "--hub", &hub.origin])
+        .run(&[
+            "forge",
+            "code",
+            "show",
+            REPOSITORY,
+            "a.txt",
+            "--hub",
+            &hub.origin,
+        ])
         .await;
     assert_eq!(run.code, 5, "{run:?}");
     assert!(run.stdout.is_empty(), "{run:?}");

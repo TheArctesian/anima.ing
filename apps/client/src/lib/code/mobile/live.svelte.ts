@@ -12,6 +12,19 @@ export function onReturn(refresh: () => void): () => void {
   };
 }
 
+const SUMMARY_REFRESH_MS = 30_000;
+
+export function watchSummary(refresh: () => void): () => void {
+  const timer = setInterval(() => {
+    if (document.visibilityState === 'visible') refresh();
+  }, SUMMARY_REFRESH_MS);
+  const removeListeners = onReturn(refresh);
+  return () => {
+    clearInterval(timer);
+    removeListeners();
+  };
+}
+
 export function followThread(
   api: MobileCodeApi,
   id: string,
@@ -24,12 +37,11 @@ export function followThread(
   const resume = (): void => {
     unsubscribe?.();
     error = '';
-    unsubscribe = api.follow(id, cursor, {
+    unsubscribe = api.follow(id, () => cursor, {
       next: (entry) => {
-        // The shared socket can replay from the subscription's initial position after a drop.
         if (Number(entry.sequence) <= Number(cursor)) return;
-        cursor = entry.sequence;
         show(entry);
+        cursor = entry.sequence;
       },
       error: (reason) => { error = reason.message; },
       complete: () => { error = 'The thread stopped updating.'; },

@@ -1,17 +1,11 @@
 <script lang="ts">
+  import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import CodeIcon from '../../icons/CodeIcon.svelte';
   import IconButton from '../../kit/IconButton.svelte';
   import Tooltip from '../../kit/Tooltip.svelte';
   import { noticeOf, stopWords } from './notice';
 
-  interface Props {
-    /** The runner's words (TH98), or why the runner is not reachable. */
-    words: string;
-    /** Stops each running thread, so the holder of this build takes over; absent when the page cannot stop threads. */
-    onStop?: (() => Promise<void>) | undefined;
-  }
-
-  const { words, onStop }: Props = $props();
+  const { live, words }: { live: LiveThreads; words: string } = $props();
   const notice = $derived(noticeOf(words));
   /** The words that the person dismissed; new words show again. */
   let dismissed = $state<string | null>(null);
@@ -21,7 +15,11 @@
   async function stop(): Promise<void> {
     busy = true;
     try {
-      await onStop?.();
+      if (live.linked === true) {
+        const running = [...live.threads.values()].map((thread) => thread.row)
+          .filter((row) => row.state !== 'stopped' && row.state !== 'unknown');
+        await Promise.all(running.map((row) => live.call({ call: 'stop', thread: row.id })));
+      }
     } finally {
       busy = false;
       asking = false;
@@ -39,7 +37,7 @@
       <button type="button" class="act quiet" disabled={busy} onclick={() => (asking = false)}>Cancel</button>
     {:else}
       <span class="line" title={notice.full ?? undefined}>{notice.line}</span>
-      {#if notice.running > 0 && onStop !== undefined}
+      {#if notice.running > 0 && live.linked === true}
         <button type="button" class="act" onclick={() => (asking = true)}>{stopWords(notice.running)}</button>
       {/if}
       <Tooltip text="Dismiss"><IconButton label="Dismiss" icon="x" onclick={() => (dismissed = words)} /></Tooltip>

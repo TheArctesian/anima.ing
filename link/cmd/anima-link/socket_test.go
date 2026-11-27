@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"github.com/TheArctesian/anima/link/testpath"
 	"io"
 	"net"
 	"net/http"
@@ -14,8 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TheArctesian/anima/link/control"
 	"github.com/TheArctesian/anima/link/hublink/testhub"
+	"github.com/TheArctesian/anima/link/ports"
 	"github.com/TheArctesian/anima/link/statedir"
+	"github.com/TheArctesian/anima/link/testpath"
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
@@ -165,6 +167,44 @@ func TestHMD048TheDialSocketReachesAPortOnlyAfterThePersonTurnedItOn(t *testing.
 	wantWord(device, "22", "refused")
 	wantWord("fd41:4e49:4d41::ffff", "22", "not_connected")
 	wantPorts("", 2, "sideways", "22")
+}
+
+func TestPortsOffRevokesTheRunningLinksPermit(t *testing.T) {
+	state := stateDir(t)
+	dir, err := statedir.Open(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dir.Close()
+	listener, err := dir.Listen(controlSocket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	selected := ports.Selected(dir)
+	go func() {
+		done <- control.Serve(ctx, listener, map[string]control.Verb{portTurnVerb: turnVerb(selected)})
+	}()
+	defer func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Error(err)
+		}
+	}()
+	if got, code := portsOf(t, state, "on", "22"); code != 0 {
+		t.Fatalf("enable port: %q, exit %d", got, code)
+	}
+	before := selected.Permit(22)
+	if before == nil {
+		t.Fatal("the running link did not allow the port")
+	}
+	if got, code := portsOf(t, state, "off", "22"); code != 0 {
+		t.Fatalf("disable port: %q, exit %d", got, code)
+	}
+	if before.Err() != context.Canceled || selected.Permit(22) != nil {
+		t.Fatal("disable did not revoke the active permit")
+	}
 }
 
 // The link half of K8 Section 1.

@@ -1,0 +1,12 @@
+{
+  "scope": "Production checkout shell in a fresh unprivileged read-only disposable Docker container with bounded writable tmpfs. Not the installed workspace lifecycle, local root orchestration or routed build admission.",
+  "scriptSha256": "5d90a83a69210211cf6f84369bf28291d1cb70aeeadf0b0cc60c9bbf0efea007",
+  "repository": "octocat/Hello-World",
+  "commit": "7fd1a60b01f91b314f59955a4e4d4e80d8edf11d",
+  "results": [
+    {
+      "case": "public-exact-commit-checkout",
+      "result": "Passed"
+    }
+  ]
+}

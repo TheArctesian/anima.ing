@@ -16,6 +16,17 @@ query CapabilityList($tool: String, $buildTarget: String) {
     }
     buildTargets
     foundAt
+    mobileTools {
+      receivedAt
+      apple {
+        simulatorRuntimes { state entries { identifier version available } }
+        deviceTypes { state entries { identifier } }
+      }
+      android {
+        sdkPackages { state entries { path revision } }
+        emulator { state version }
+      }
+    }
     hardware {
       systemMemoryBytes
       unifiedMemoryBytes

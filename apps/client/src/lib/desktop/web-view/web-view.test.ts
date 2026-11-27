@@ -76,6 +76,16 @@ describe('desktopWebView commands (WP-31 shell interface)', () => {
 
 });
 
+it('carries a workspace endpoint to the native preview boundary', async () => {
+  const previewEndpoint = '0192f3a4-5b6c-7d8e-9fa0-b1c2d3e4f5a6';
+  await desktopWebView.open({
+    tabId: 'preview-1', deviceId: 'node-1',
+    url: 'https://0192f3a45b6c7d8e9fa0b1c2d3e4f5a6.preview.example/.anima/connect',
+    pin: null, bounds: BOUNDS, previewEndpoint,
+  });
+  expect(shell.invoke).toHaveBeenCalledWith('web_view_open', expect.objectContaining({ previewEndpoint }));
+});
+
 describe('desktopWebView URL guard', () => {
   it('never sends a URL the shell must not take: only http and https open, only https is read', async () => {
     await expect(desktopWebView.openSystemBrowser('file:///etc/passwd')).rejects.toMatchObject({ code: 'invalid_url' });

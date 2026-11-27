@@ -1,19 +1,25 @@
 use crate::{Error, Result};
 use serde_json::{Value, json};
+use sha2::{Digest as _, Sha256};
 use std::{
+    fmt::Write as _,
     fs::{self, File, OpenOptions},
     io::{Read, Write},
-    os::unix::fs::{OpenOptionsExt, PermissionsExt},
+    os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt},
     path::Path,
 };
 
 pub const DIRECTORY: &str = "/persist/anima-updates";
-pub const STATE: &str = "/persist/anima-updates/state.json";
+const STATE: &str = anima_os_maintenance::update_window::UPDATE_STATE;
 const PROGRESS: &str = "/persist/anima-updates/progress.json";
 
 pub fn prepare() -> Result<()> {
-    fs::create_dir_all(DIRECTORY)?;
-    if fs::symlink_metadata(DIRECTORY)?.file_type().is_symlink() {
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .recursive(true)
+        .create(DIRECTORY)?;
+    let directory = fs::symlink_metadata(DIRECTORY)?;
+    if !directory.is_dir() || directory.uid() != 0 {
         return Err(Error::Refused("The update state directory is not trusted."));
     }
     fs::set_permissions(DIRECTORY, fs::Permissions::from_mode(0o700))?;
@@ -95,6 +101,44 @@ pub fn save(value: &Value) -> Result<()> {
     atomic(Path::new(STATE), &serde_json::to_vec(value)?)
 }
 
+fn review_boot() -> Result<Vec<u8>> {
+    read_bounded(Path::new("/proc/sys/kernel/random/boot_id"), 64)
+}
+
+fn review_revision(action: &str, value: &Value, boot: &[u8]) -> Result<String> {
+    let selection = ["phase", "version", "system", "previous"].map(|field| &value[field]);
+    let digest = Sha256::digest(serde_json::to_vec(&(boot, action, selection))?);
+    let mut revision = String::with_capacity(64);
+    for byte in digest {
+        let _ = write!(revision, "{byte:02x}");
+    }
+    Ok(revision)
+}
+
+pub fn require_review(action: &str, revision: &str) -> Result<()> {
+    if revision != review_revision(action, &read()?, &review_boot()?)? {
+        return Err(Error::ReviewChanged);
+    }
+    Ok(())
+}
+
+pub fn activation_revision() -> Result<String> {
+    review_revision("activate", &read()?, &review_boot()?)
+}
+
+pub fn reviewed_status() -> Result<Value> {
+    let mut value = status()?;
+    let boot = review_boot()?;
+    let activate = review_revision("activate", &value, &boot)?;
+    value["activationWindow"] =
+        crate::window::status(&activate).unwrap_or_else(|_| json!({"phase":"unavailable"}));
+    value["review"] = json!({
+        "activate": activate,
+        "rollback": review_revision("rollback", &value, &boot)?,
+    });
+    Ok(value)
+}
+
 pub fn lock() -> Result<File> {
     Ok(OpenOptions::new()
         .read(true)
@@ -104,6 +148,17 @@ pub fn lock() -> Result<File> {
         .mode(0o600)
         .custom_flags(nix::libc::O_NOFOLLOW)
         .open("/run/anima-update.lock")?)
+}
+
+pub fn writer() -> Result<File> {
+    let lock = lock()?;
+    lock.try_lock().map_err(|error| match error {
+        std::fs::TryLockError::WouldBlock => {
+            Error::Refused("An update is already running. Wait for it to finish.")
+        }
+        std::fs::TryLockError::Error(error) => Error::Io(error),
+    })?;
+    Ok(lock)
 }
 
 pub fn progress(phase: &str, received: Option<u64>, total: Option<u64>) -> Result<()> {

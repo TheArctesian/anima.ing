@@ -5,7 +5,10 @@
 mod admission;
 mod credential;
 mod enrolment;
+#[cfg(unix)]
+mod handoffs;
 mod keys;
+mod managed_code;
 mod push;
 mod refusals;
 mod renewal;

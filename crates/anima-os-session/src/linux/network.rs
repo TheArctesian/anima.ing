@@ -1,4 +1,7 @@
-use super::{Error, Result, command::run};
+use super::{
+    Error, Result,
+    command::{run, unit_state},
+};
 use serde_json::{Value, json};
 use zeroize::Zeroizing;
 
@@ -36,7 +39,7 @@ fn rows(text: &str, names: &[&str]) -> Value {
     )
 }
 
-pub async fn scan() -> Result<Value> {
+async fn scan() -> Result<Value> {
     Ok(rows(
         &run(
             "nmcli",
@@ -67,7 +70,7 @@ struct Connection {
     password: String,
 }
 
-pub async fn connect(args: Value) -> Result<Value> {
+async fn connect(args: Value) -> Result<Value> {
     let connection: Connection = serde_json::from_value(args)?;
     let password = Zeroizing::new(connection.password);
     if password.len() > 256 || password.contains(['\n', '\r']) {
@@ -103,26 +106,7 @@ pub async fn connect(args: Value) -> Result<Value> {
     status().await
 }
 
-pub async fn unit(name: &str) -> String {
-    match run(
-        "systemctl",
-        &["show", "--property=ActiveState", "--value", "--", name],
-        None,
-        3,
-    )
-    .await
-    {
-        Ok(value)
-            if ["active", "inactive", "failed", "activating", "deactivating"]
-                .contains(&value.as_str()) =>
-        {
-            value
-        }
-        _ => "unknown".into(),
-    }
-}
-
-pub async fn status() -> Result<Value> {
+async fn status() -> Result<Value> {
     let disk = nix::sys::statvfs::statvfs("/persist")
         .map_err(|_| Error::Refused("Persistent storage is unavailable."))?;
     let devices = run(
@@ -144,10 +128,41 @@ pub async fn status() -> Result<Value> {
     Ok(
         json!({"hostname":std::fs::read_to_string("/proc/sys/kernel/hostname")?.trim(),
         "devices": rows(&devices, &["device","type","state","connection"]),
-        "storage":{"used":disk.blocks().saturating_sub(disk.blocks_free())*disk.fragment_size(),"total":disk.blocks()*disk.fragment_size()},
+        "storage":{"used":disk.blocks().saturating_sub(disk.blocks_free())*disk.fragment_size(),"total":disk.blocks()*disk.fragment_size(),"available":disk.blocks_available()*disk.fragment_size()},
         "drives":drives["blockdevices"],"enrolled":std::path::Path::new("/var/lib/anima-daemon/daemon.json").exists(),
-        "daemon":unit("anima-daemon").await,"supplicant":unit("wpa_supplicant").await,
+        "daemon":unit_state("anima-daemon").await,"supplicant":unit_state("wpa_supplicant").await,
         "radio":run("nmcli", &["radio","wifi"], None, 10).await?,
         "network":run("nmcli", &["-t","-f","STATE,CONNECTIVITY","general"], None, 10).await?}),
     )
+}
+
+pub async fn dispatch(operation: &str, args: Value) -> Result<Value> {
+    match operation {
+        "status" => status().await,
+        "scan" => scan().await,
+        "radio-on" => {
+            run("nmcli", &["radio", "wifi", "on"], None, 10).await?;
+            status().await
+        }
+        "connect" => connect(args).await,
+        _ => Err(Error::Refused("Unsupported network operation.")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn network_scan_preserves_adapter_bssid_and_escaped_ssid() {
+        let scan = rows(
+            r"wlp1s0:AA\:BB\:CC\:DD\:EE\:FF:Home\: Office:80:WPA2",
+            &["device", "bssid", "ssid", "signal", "security"],
+        );
+        assert_eq!(
+            scan,
+            json!([{"device":"wlp1s0","bssid":"AA:BB:CC:DD:EE:FF",
+            "ssid":"Home: Office","signal":"80","security":"WPA2"}])
+        );
+    }
 }

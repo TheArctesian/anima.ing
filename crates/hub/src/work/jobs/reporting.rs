@@ -1,14 +1,14 @@
 //! A holder's report (K10 Section 7), and the end of leases that ran out and attempts too long.
 
 use chrono::{DateTime, Utc};
-use daemon_core::wire::{Lease, Reported, StopOrder, WorkReport, WorkState};
+use daemon_core::wire::{Lease, Reported, StopOrder, WorkKind, WorkReport, WorkState};
 use sqlx::PgConnection;
 
 use super::{
     Error, Queue, Reporting, ended,
     lifecycle::{self, Refusal},
-    model::Fault,
-    placement, store, trail,
+    model::{Fault, Job, State},
+    placement, results, store, trail,
 };
 use crate::{
     fleet::events::{Bus, ClientAddr},
@@ -22,33 +22,54 @@ use crate::{
 pub async fn report(
     queue: Queue<'_>,
     device: DeviceId,
-    report: &WorkReport,
+    (report, artifact_retained): (&WorkReport, bool),
     (client, now): (ClientAddr, DateTime<Utc>),
 ) -> Result<Reporting, Error> {
     let mut tx = queue.db.begin().await?;
-    let outcome = report_in(&mut tx, queue.bus, (device, report), (client, now)).await;
+    let outcome = report_in(
+        &mut tx,
+        queue.bus,
+        (device, report, artifact_retained),
+        (client, now),
+    )
+    .await;
     ended(tx, outcome).await
 }
 
 async fn report_in(
     conn: &mut PgConnection,
     bus: &Bus,
-    (device, report): (DeviceId, &WorkReport),
+    (device, report, artifact_retained): (DeviceId, &WorkReport, bool),
     (client, now): (ClientAddr, DateTime<Utc>),
 ) -> Result<Reporting, Error> {
-    if let Some(machine) = store::machine_locked(conn, device).await?
-        && placement::is_off(&machine, now)
-    {
+    let work_off = store::machine_locked(conn, device)
+        .await?
+        .is_some_and(|machine| placement::is_off(&machine, now));
+    let Some(job) = store::job_locked(conn, JobId::from(report.id)).await? else {
+        return Ok(if work_off {
+            Reporting::Off
+        } else {
+            Reporting::NotHolder
+        });
+    };
+    let host = job.asked.kind == WorkKind::Host;
+    if work_off && !host {
         return Ok(Reporting::Off);
     }
-    let Some(job) = store::job_locked(conn, JobId::from(report.id)).await? else {
-        return Ok(Reporting::NotHolder);
-    };
+    if let Some(answer) = final_replay(&job, device, report) {
+        return Ok(Reporting::Reported(answer));
+    }
     let mut next = match lifecycle::reported(&job, device, report, now) {
         Ok(next) => next,
         Err(Refusal::NotHolder) => return Ok(Reporting::NotHolder),
         Err(Refusal::Malformed) => return Ok(Reporting::Malformed),
     };
+    if next.state == State::Done
+        && job.asked.parameters["recipe"] == "source_image_v1"
+        && (!artifact_retained || !next.result.as_ref().is_some_and(source_succeeded))
+    {
+        return Ok(Reporting::Malformed);
+    }
     if let Some(part) = &report.log
         && lifecycle::log_fits(&job, part.from, part.text.len())
     {
@@ -57,7 +78,9 @@ async fn report_in(
     }
     store::save(conn, &next).await?;
     if report.state == WorkState::Refused {
-        fault(conn, bus, (device, Fault::Refused), now).await?;
+        if !host {
+            fault(conn, bus, (device, Fault::Refused), now).await?;
+        }
         trail::attempt_ended(conn, &next, (device, "refused"), (client, now)).await?;
     } else if next.state.is_final() {
         trail::attempt_ended(conn, &next, (device, next.state.as_str()), (client, now)).await?;
@@ -69,6 +92,42 @@ async fn report_in(
         stop: next.stop.map(|reason| StopOrder { reason }),
         log_end: Some(next.log_end),
     }))
+}
+
+fn source_succeeded(result: &daemon_core::wire::WorkResult) -> bool {
+    result.outcome == "succeeded"
+        && result.cleanup.isolation == "deleted"
+        && result.cleanup.checkout == "deleted"
+}
+
+// An owner that lost the acknowledgement may repeat its final report without replaying the work.
+fn final_replay(job: &Job, device: DeviceId, report: &WorkReport) -> Option<Reported> {
+    let host = job.asked.kind == WorkKind::Host;
+    if (!host && job.asked.parameters["recipe"] != "source_image_v1")
+        || job.last_device != Some(device)
+        || job.attempt != report.attempt
+        || !job.state.is_final()
+        || lifecycle::reported_state(report.state, host) != Some(job.state)
+        || report.log.is_some()
+    {
+        return None;
+    }
+    let sent = report.result.as_ref()?;
+    let accepted = if host {
+        results::host(sent, report.state, job.asked.work_type)?
+    } else {
+        results::checked(sent)?
+    };
+    if job.result.as_ref() != Some(&accepted) {
+        return None;
+    }
+    Some(Reported {
+        lease: Lease {
+            until: job.ended_at?,
+        },
+        stop: None,
+        log_end: Some(job.log_end),
+    })
 }
 
 /// Counts a job that the machine refused or lost; the fifth in 1 hour gives the machine no
@@ -119,10 +178,14 @@ async fn end_lost_in(
         if !lifecycle::overdue(&job, now) {
             continue;
         }
-        let next = lifecycle::expired(&job, now);
+        let (next, reason) = if job.asked.kind == WorkKind::Host {
+            (lifecycle::orphan(&job, now), "orphan")
+        } else {
+            (lifecycle::expired(&job, now), "expired")
+        };
         store::save(conn, &next).await?;
-        trail::attempt_ended(conn, &next, (device, "expired"), (client, now)).await?;
+        trail::attempt_ended(conn, &next, (device, reason), (client, now)).await?;
         changed += 1;
     }
-    Ok(changed)
+    Ok(changed + super::hosting::expire_waiting(conn, now).await?)
 }

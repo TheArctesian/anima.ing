@@ -1,5 +1,8 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+#[path = "cli/thread_commands.rs"]
+mod thread_commands;
+
 use std::io::IsTerminal as _;
 use std::process::ExitCode;
 
@@ -17,14 +20,25 @@ use anima_daemon::token_store::TokenStore;
 use anima_daemon::units::install::Host;
 use anima_daemon::units::step::{STEP_DEADLINE, run_step};
 use anima_daemon::units::{self, plan::Target};
+use thread_commands::{holder, serves_a_person, threads};
 use zeroize::Zeroizing;
 
 fn main() -> ExitCode {
+    anima_daemon::readers::mobile::dispatch();
     // The fixed modes run before any runtime or thread; each never returns.
     #[cfg(unix)]
     anima_daemon::model::modes::dispatch();
+    let artifact_stdio =
+        cfg!(target_os = "linux") && std::env::args().nth(1).as_deref() == Some("source-artifact");
     match tokio::runtime::Runtime::new() {
-        Ok(runtime) => runtime.block_on(daemon()),
+        Ok(runtime) => {
+            let status = runtime.block_on(daemon());
+            if artifact_stdio {
+                // A timed-out stdin/stdout operation can leave a blocking I/O task.
+                runtime.shutdown_background();
+            }
+            status
+        }
         Err(error) => failure(&error),
     }
 }
@@ -32,11 +46,15 @@ fn main() -> ExitCode {
 async fn daemon() -> ExitCode {
     #[cfg(windows)]
     let _ = anima_windows::console::attach_parent();
-    start_log();
     let command = match cli::parse(std::env::args().skip(1)) {
         Ok(command) => command,
         Err(error) => return usage(&error),
     };
+    #[cfg(target_os = "linux")]
+    if let Some(status) = local_stream(&command).await {
+        return status;
+    }
+    start_log();
     if let Command::Holder { folder, limit } = &command {
         return holder(folder, *limit).await;
     }
@@ -54,6 +72,10 @@ async fn daemon() -> ExitCode {
     match command {
         Command::Run { hosted_hub } => run(&home, hosted_hub).await,
         Command::Threads => threads(home.dir().to_owned()).await,
+        #[cfg(target_os = "linux")]
+        Command::WorkspaceAuthCodex | Command::WorkspaceAuthClaude | Command::SourceArtifact => {
+            ExitCode::FAILURE
+        }
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
         Command::Install { target } => install(target, &home),
         Command::Uninstall => uninstall(&home),
@@ -64,6 +86,16 @@ async fn daemon() -> ExitCode {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),
         },
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn local_stream(command: &Command) -> Option<ExitCode> {
+    match command {
+        Command::WorkspaceAuthCodex => Some(anima_daemon::workspace_auth::run().await),
+        Command::WorkspaceAuthClaude => Some(anima_daemon::workspace_auth::run_claude().await),
+        Command::SourceArtifact => Some(anima_daemon::source_artifact::run().await),
+        _ => None,
     }
 }
 
@@ -272,64 +304,4 @@ async fn run(home: &Home, hosted_hub: Option<std::path::PathBuf>) -> ExitCode {
         runner.abort();
     }
     outcome
-}
-
-#[cfg(unix)]
-async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
-    use anima_daemon::threads::runner;
-    let program = match std::env::current_exe() {
-        Ok(program) => program,
-        Err(error) => return failure(&error),
-    };
-    // A value is read lossily, as the login shell's output is, so that a secret value that is
-    // not UTF-8 is still found and stripped (THR-040).
-    let daemon: Vec<(String, String)> = std::env::vars_os()
-        .filter_map(|(name, value)| {
-            Some((
-                name.into_string().ok()?,
-                value.to_string_lossy().into_owned(),
-            ))
-        })
-        .collect();
-    match runner::run(&daemon_dir, &program, daemon, stop()).await {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => failure(&error),
-    }
-}
-
-#[cfg(unix)]
-fn serves_a_person(daemon_dir: &std::path::Path) -> bool {
-    anima_daemon::threads::runner::serves_a_person(daemon_dir)
-}
-
-#[cfg(not(unix))]
-const fn serves_a_person(_: &std::path::Path) -> bool {
-    false
-}
-
-#[cfg(not(unix))]
-#[expect(
-    clippy::unused_async,
-    reason = "the threads run only on Unix; the caller awaits or spawns this on each system"
-)]
-async fn threads(_: std::path::PathBuf) -> ExitCode {
-    ExitCode::FAILURE
-}
-
-/// THR-113.
-#[cfg(unix)]
-async fn holder(folder: &std::path::Path, limit: usize) -> ExitCode {
-    match anima_daemon::threads::holder::hold(folder, limit).await {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => failure(&error),
-    }
-}
-
-#[cfg(not(unix))]
-#[expect(
-    clippy::unused_async,
-    reason = "the holder runs only on Unix; the caller awaits this on each system"
-)]
-async fn holder(_: &std::path::Path, _: usize) -> ExitCode {
-    ExitCode::FAILURE
 }

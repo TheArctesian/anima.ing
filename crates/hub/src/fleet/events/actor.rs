@@ -44,6 +44,8 @@ pub enum TokenKind {
     Login,
     Browser,
     ApiKey,
+    /// The `anima` program with the token that the desktop app gave it (R-383).
+    CommandLine,
 }
 
 impl TokenKind {
@@ -54,13 +56,14 @@ impl TokenKind {
             Self::Login => "login",
             Self::Browser => "browser",
             Self::ApiKey => "api_key",
+            Self::CommandLine => "command_line",
         }
     }
 
     /// The kind whose stored text is `text`.
     #[must_use]
     pub fn from_stored(text: &str) -> Option<Self> {
-        [Self::Login, Self::Browser, Self::ApiKey]
+        [Self::Login, Self::Browser, Self::ApiKey, Self::CommandLine]
             .into_iter()
             .find(|kind| kind.as_str() == text)
     }

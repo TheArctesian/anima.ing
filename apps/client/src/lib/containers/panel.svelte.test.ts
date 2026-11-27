@@ -54,10 +54,10 @@ it('HSE-008 HOST-019: the tab shows the one list narrowed to the device, a row f
   expect(text('tbody th[scope="row"]')).toEqual([
     '▾ ai Not managed Compose project · 1 container',
     'ollama Container of ai',
-    '▾ tracks Not managed Compose project · 2 containers',
+    'T ▾ tracks Not managed Compose project · 2 containers',
     'tracks-app-1 Container of tracks',
     'tracks-worker-1 Container of tracks',
-    'recorder Not managed example/recorder:1.0',
+    'R recorder Not managed example/recorder:1.0',
   ]);
   expect(document.body.textContent).toContain('Partly running');
   expect(document.querySelector('a[href$="/hosting"]')?.textContent).toBe('View in Hosting');

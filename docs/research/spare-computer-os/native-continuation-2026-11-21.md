@@ -32,7 +32,7 @@ The private read-only `anima-osd` service remains unprivileged. Root mutations s
 
 Installer VM, full-ISO checks, artifact measurements and repository-gate outcomes are recorded here. Existing OS1–OS8 work beyond this slice remains owned by the proposal; this report does not claim workload draining, encryption, backups or a renderer replacement.
 
-The updater boot fixture’s installed wrapper closure was inspected with `nix-store -qR`: no Python package is present. Its wrapper invokes the Rust binary and fixed system utilities. Publishing helpers and their Python tests remain available; no publishing code was deleted. Reproduction commands are in [ISO.md](../../../experiments/anima-os/ISO.md#updates-automated-tests).
+The updater boot fixture’s installed wrapper closure was inspected with `nix-store -qR`: no Python package is present. Its wrapper invokes the Rust binary and fixed system utilities. Publishing helpers and their Python tests remain available; no publishing code was deleted. Reproduction commands are in [ISO.md](../../../os/ISO.md#updates-automated-tests).
 
 ## Final acceptance
 

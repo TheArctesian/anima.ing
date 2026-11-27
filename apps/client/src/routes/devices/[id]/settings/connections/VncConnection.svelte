@@ -7,7 +7,7 @@
   import type { DeviceDetail } from '$lib/devices/api';
   import RemoteTest from '$lib/devices/form/remote/test/RemoteTest.svelte';
   import type { RemoteTestInput, RemoteTestResult } from '$lib/devices/form/remote/test/remote-test';
-  import { vncWarning } from '$lib/devices/form/remote/warnings';
+  import { validUntil, vncWarning } from '$lib/devices/form/remote/warnings';
   import type { DeviceFormValues } from '$lib/devices/form/values';
   import type { HubResult } from '$lib/hub/hub';
   import Icon from '$lib/icons/Icon.svelte';
@@ -107,9 +107,17 @@
     {#if mac}
       <div class="foot"><FormButton size="sm" onclick={showSetup}>Screen Sharing setup</FormButton></div>
     {/if}
+    {#if device.vnc.serverCertificate}
+      <dl class="certificate" aria-label="VNC server certificate">
+        <dt>Fingerprint (SHA-256)</dt>
+        <dd>{device.vnc.serverCertificate.fingerprintSha256}</dd>
+        {#if device.vnc.serverCertificate.subject}<dt>Subject</dt><dd>{device.vnc.serverCertificate.subject}</dd>{/if}
+        {#if device.vnc.serverCertificate.notAfter}<dt>Valid until</dt><dd>{validUntil(device.vnc.serverCertificate.notAfter)}</dd>{/if}
+      </dl>
+    {/if}
     {#if draft.values.vnc.enabled}
       <div class="foot">
-        <RemoteTest protocol="VNC" initial={saved} values={draft.values} deviceId={device.id} canTest={() => draft.checkForTest('vnc')} {onTest} />
+        <RemoteTest protocol="VNC" initial={saved} values={draft.values} deviceId={device.id} canTest={() => draft.checkForTest('vnc')} acceptedFingerprint={device.vnc.serverCertificate?.fingerprintSha256} onAcceptServerCertificate={(fingerprint) => calls.onAcceptServerCertificate(fingerprint, 'VNC')} {onTest} />
       </div>
     {/if}
   </ConnectionRow>
@@ -134,6 +142,17 @@
 {/if}
 
 <style>
+  .certificate {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--space-1) var(--space-3);
+    margin-block: var(--space-4);
+    font-size: var(--text-sm);
+  }
+
+  .certificate dt { color: var(--text-secondary); }
+  .certificate dd { margin: 0; font-family: var(--font-mono); overflow-wrap: anywhere; }
+
   .steps {
     display: grid;
     gap: var(--space-3);

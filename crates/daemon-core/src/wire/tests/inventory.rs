@@ -1,5 +1,7 @@
 //! K8 Section 4; CAP-020, CAP-024, CAP-029.
 
+mod mobile;
+
 use proptest::prelude::*;
 use serde_json::json;
 
@@ -26,6 +28,8 @@ fn not_usable(name: &str, reason: Reason) -> BatchTool {
 fn mac() -> BatchInventory {
     BatchInventory {
         remote_access: None,
+        mobile_tools: None,
+        remote_vnc_user: None,
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),
@@ -59,6 +63,8 @@ fn cap_020_an_inventory_reaches_the_hub_with_its_tools_in_name_order() {
     let accepted = checked(with(|_| {})).unwrap();
     let expected = Inventory {
         remote_access: None,
+        mobile_tools: None,
+        remote_vnc_user: None,
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),
@@ -268,6 +274,8 @@ proptest! {
     ) {
         let sent = BatchInventory {
             remote_access: None,
+            mobile_tools: None,
+            remote_vnc_user: None,
             architecture: Architecture::X86_64,
             os: Os::Linux,
             os_version,

@@ -5,6 +5,7 @@ import type { Capabilities } from './capabilities';
 export const browserCapabilities: Capabilities = {
   keyStore: false,
   webViewTabs: false,
+  workspacePreviews: false,
   popOut: false,
   updates: false,
   processLog: false,
@@ -20,6 +21,7 @@ export const browserCapabilities: Capabilities = {
   cloudAccount: false,
   accountSession: false,
   runnerReport: false,
+  haptics: false,
   overlayTitleBar: false,
   framelessWindow: false,
   recentCopy: false,

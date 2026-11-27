@@ -59,6 +59,10 @@ impl Claims {
 #[derive(Default)]
 pub struct ComputerClaims(pub(crate) Claims);
 
+/// Account-approved CLI claims cannot be redeemed as app or daemon credentials.
+#[derive(Default)]
+pub struct CommandLineClaims(pub(crate) Claims);
+
 #[cfg(test)]
 mod tests {
     use chrono::TimeDelta;

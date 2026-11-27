@@ -8,7 +8,7 @@ use source_exchange::Declaration;
 use crate::{
     engine::sources::{
         Scheduling,
-        acquisition::{MintFailure, mint, stored_key},
+        acquisition::{MintFailure, app_key::AppKey, mint, stored_key},
         model::{Account, ErrorKind},
         run::Failure,
     },
@@ -43,6 +43,22 @@ pub(in crate::engine::sources) async fn token(
     }
     // Taken before the key is read, so a removal after this point makes `keep` store nothing.
     let ticket = scheduling.transport.tokens().ticket();
+    let key = open(scheduling, account).await?;
+    let minted = mint(
+        &scheduling.transport,
+        declaration,
+        &key,
+        (now, &SystemRandom::new()),
+    )
+    .await
+    .map_err(mint_failed)?;
+    Ok(scheduling
+        .transport
+        .tokens()
+        .keep(account.id, minted, ticket))
+}
+
+pub(super) async fn open(scheduling: &Scheduling, account: &Account) -> Result<AppKey, Failure> {
     let credential = account.credential_id.ok_or(Failure::new(
         ErrorKind::Auth,
         "No key is stored. Connect the account again.",
@@ -60,21 +76,16 @@ pub(in crate::engine::sources) async fn token(
             "The stored key cannot be opened. Connect the account again.",
         ),
     })?;
-    let key = stored_key::from_secret(&secret, &account.instance_key).map_err(|_| {
+    stored_key::from_secret(&secret, &account.instance_key).map_err(|_| {
         Failure::new(
             ErrorKind::Auth,
             "The stored key does not belong to this account. Connect the account again.",
         )
-    })?;
-    drop(secret);
-    let minted = mint(
-        &scheduling.transport,
-        declaration,
-        &key,
-        (now, &SystemRandom::new()),
-    )
-    .await
-    .map_err(|failure| match failure {
+    })
+}
+
+pub(super) fn mint_failed(failure: MintFailure) -> Failure {
+    match failure {
         MintFailure::Refused => REFUSED_KEY,
         MintFailure::RateLimited(until) => rate_limited(until),
         MintFailure::Unreachable => {
@@ -83,9 +94,5 @@ pub(in crate::engine::sources) async fn token(
         MintFailure::Unusable | MintFailure::NotAppKey | MintFailure::Unsigned => {
             Failure::new(ErrorKind::Provider, "The source did not give a token.")
         }
-    })?;
-    Ok(scheduling
-        .transport
-        .tokens()
-        .keep(account.id, minted, ticket))
+    }
 }

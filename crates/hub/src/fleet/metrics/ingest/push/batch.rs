@@ -136,15 +136,28 @@ async fn write_announcements(
     }
     if let Some(inventory) = push.inventory {
         metrics_store::write_inventory(&mut *tx, push.device, inventory, now).await?;
-        if let Some(access) = &inventory.remote_access {
-            changed = devices::configure_private_access(&mut *tx, push.device, access).await?;
-        }
+        changed = configure_access(tx, push.device, inventory).await?;
     }
     if let Some(hardware) = push.hardware {
         metrics_store::write_hardware(&mut *tx, push.device, hardware, now).await?;
     }
     if let Some(usage) = push.agent_usage {
         agent_usage::record(&mut *tx, push.device, usage, now).await?;
+    }
+    Ok(changed)
+}
+
+async fn configure_access(
+    tx: &mut PgConnection,
+    device: DeviceId,
+    inventory: &Inventory,
+) -> Result<bool, Error> {
+    let mut changed = false;
+    if let Some(user) = &inventory.remote_vnc_user {
+        changed |= devices::configure_private_vnc(&mut *tx, device, user).await?;
+    }
+    if let Some(access) = &inventory.remote_access {
+        changed |= devices::configure_private_access(tx, device, access).await?;
     }
     Ok(changed)
 }

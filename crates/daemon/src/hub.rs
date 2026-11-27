@@ -9,9 +9,14 @@
 //! its callers log at their own boundary, and never a code, a token or a body (LOG-007).
 
 pub mod answer;
+#[cfg(target_os = "linux")]
+mod artifact;
 pub mod body;
 pub mod enrolment;
+#[cfg(target_os = "linux")]
+pub(crate) mod handoffs;
 pub mod link_socket;
+mod managed_code;
 #[cfg(unix)]
 pub mod peer;
 #[cfg(unix)]
@@ -19,6 +24,7 @@ mod unix;
 #[cfg(windows)]
 mod windows;
 pub mod work;
+mod workspaces;
 
 use std::path::Path;
 use std::time::Duration;
@@ -228,6 +234,15 @@ impl HubClient {
         if let Some(local) = &self.local {
             return local.post(call, read_ok).await;
         }
+        self.post_http(call, body::LIMIT, read_ok).await
+    }
+
+    async fn post_http<T>(
+        &self,
+        call: Call<'_>,
+        limit: usize,
+        read_ok: impl FnOnce(u16, &[u8]) -> Option<T>,
+    ) -> Answer<T> {
         let Ok(url) = self.base.join(call.route) else {
             return Answer::Failed(Cause::Unreadable);
         };
@@ -248,7 +263,7 @@ impl HubClient {
             Err(error) => return Answer::Failed(cause(&error)),
         };
         let status = response.status().as_u16();
-        let mut bytes = Body::new();
+        let mut bytes = Body::bounded(limit);
         while !bytes.is_full() {
             match response.chunk().await {
                 Ok(Some(chunk)) => bytes.add(&chunk),

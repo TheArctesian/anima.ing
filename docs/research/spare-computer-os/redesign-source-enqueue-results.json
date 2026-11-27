@@ -1,0 +1,25 @@
+{
+  "scope": "Hub source-image enqueue validation, not artifact delivery or installed-VM qualification",
+  "baseline": {
+    "command": "bun quality/bin/with-postgres.ts cargo test --locked -p anima-hub --test it jobs::source:: -- --nocapture",
+    "result": "Failed as expected: extra command parameter entered the queue"
+  },
+  "fixed": {
+    "command": "bun quality/bin/with-postgres.ts cargo test --locked -p anima-hub --test it jobs::",
+    "passed": 20,
+    "failed": 0,
+    "ignored": 0
+  },
+  "sources": {
+    "crates/daemon-core/src/work/types.rs": "5c0769d3c2db76490d3ef01bb97bd4369cbaf06ba931c211b84cbf2d7d5d4ceb",
+    "crates/hub/src/work/jobs/model.rs": "37bfa4a15bf890a55cc571f395012401cb5178487049a14ad2efeabfc4c42855",
+    "crates/hub/tests/it/jobs/source.rs": "45067eb9c90b2be592a83d2507e2425ed0b3ba5689fd54047ea10bef3ad6f253",
+    "crates/hub/tests/it/jobs.rs": "2d6c764db796ccf8a1ebd2a0f65b230aa0a2af11dde232784f944ac53063979c"
+  },
+  "gates": {
+    "linuxClippy": "cargo clippy --locked -j 1 -p anima-hub --all-targets -- -D warnings: passed",
+    "changedFileLimits": "passed",
+    "whitespace": "passed",
+    "documents": "passed"
+  }
+}

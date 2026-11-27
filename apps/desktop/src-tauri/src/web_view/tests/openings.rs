@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 
-use crate::web_view::{WebViewError, caller, opening::Opening};
+use crate::web_view::{WebViewError, address::may_navigate, caller, opening::Opening};
 
 const DEVICE: &str = "0192f3a4-5b6c-7d8e-9fa0-b1c2d3e4f5a6";
 
@@ -101,5 +101,31 @@ fn web_007_only_the_main_web_view_may_drive_web_views() {
     assert_eq!(caller("main"), Ok(()));
     for other in ["web-tab-1", "pop-tab-1", "Main", "main ", ""] {
         assert_eq!(caller(other), Err(WebViewError::Caller), "{other:?}");
+    }
+}
+
+#[test]
+fn a_workspace_preview_only_loads_its_exact_https_endpoint() {
+    let host = "0192f3a45b6c7d8e9fa0b1c2d3e4f5a6.preview.example";
+    let mut body = arguments(&format!("https://{host}/.anima/connect"), None);
+    body["previewEndpoint"] = json!(DEVICE);
+    let tab = Opening::read(&body).unwrap().check(true).unwrap().tab;
+    let origin = tab.url.as_url().origin();
+    let loads = |url: &str| may_navigate(&tauri::Url::parse(url).unwrap(), true, Some(&origin));
+    assert!(loads(&format!("https://{host}/api/status?q=1")));
+    for url in [
+        format!("http://{host}/"),
+        format!("https://{host}:8443/"),
+        "https://another.preview.example/".to_owned(),
+        "http://127.0.0.1:3000/".to_owned(),
+    ] {
+        assert!(!loads(&url), "{url}");
+    }
+    for url in [
+        format!("https://{host}/.anima/connect?next=other"),
+        "https://another.preview.example/.anima/connect".to_owned(),
+    ] {
+        body["url"] = json!(url);
+        assert_eq!(checked(&body, true), Err(WebViewError::Arguments));
     }
 }

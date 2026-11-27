@@ -60,13 +60,13 @@ export type RemoteOutcome =
 const UNREACHABLE_MESSAGE = 'The device did not answer.';
 
 /**
- * DEV-013, SEC-007: a changed RDP certificate is never reachable-only. `authenticated` is not read: RDP and VNC sign in
+ * DEV-013, SEC-007: a changed server certificate is never reachable-only. `authenticated` is not read: RDP and VNC sign in
  * only when a session starts. A `null` certificate says nothing about the pin.
  */
 export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult, acceptedFingerprint: string | null = null): RemoteOutcome {
   const message = result.message ?? '';
   if (!result.reachable) return { kind: 'unreachable', message: message === '' ? UNREACHABLE_MESSAGE : message };
-  if (protocol === 'RDP') {
+  if (protocol === 'RDP' || protocol === 'VNC') {
     const certificate = result.serverCertificate ?? null;
     if (result.certificateChanged === true) return { kind: 'certificateChanged', certificate };
     if (certificate !== null && certificate.fingerprintSha256 !== acceptedFingerprint) return { kind: 'certificateNew', certificate };

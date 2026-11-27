@@ -1,6 +1,6 @@
 //! The `agents` tool set: the sessions of Claude Code and Codex on the computer where
-//! `anima mcp` runs, read from their files as threads (THR-018). It has one tool, a read, and
-//! it can read summaries from a specified connected device.
+//! `anima mcp` runs, read from their files as threads (THR-018). Its tools read summaries from a specified connected device and discover managed
+//! workspaces without granting execution permission.
 //!
 //! No tool gives the entries of a thread: a prompt or a tool output can hold a secret, and no
 //! tool returns one (MCP-004). The person reads a thread with `anima agents thread` or in the
@@ -27,6 +27,14 @@ use crate::mcp::untrusted::{cleaned, fitted};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AgentTool {
     Threads,
+    ManagedWorkspaces,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ManagedWorkspaceInput {
+    /// Enrolled device ID or exact name.
+    device: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -51,11 +59,15 @@ enum ProgramName {
 }
 
 impl AgentTool {
-    pub const ALL: [Self; 1] = [Self::Threads];
+    pub const ALL: [Self; 2] = [Self::Threads, Self::ManagedWorkspaces];
 
     #[must_use]
     pub fn definition(self) -> Definition {
         match self {
+            Self::ManagedWorkspaces => Definition::new::<ManagedWorkspaceInput>(
+                "anima_code_workspaces", Access::Read, Effect::Reads,
+                "List managed workspace IDs, generations, enablement and current readiness on an enrolled node. Gives no prompts, credentials or file paths; grants no execution permission.",
+            ).returns(&[("workspaces", "array", "workspace, generation, enabled, ready, seenAt.")]),
             Self::Threads => Definition::new::<ThreadsInput>(
                 "anima_agents_threads",
                 Access::Read,
@@ -80,6 +92,19 @@ impl AgentTool {
     /// [`ToolError`] for wrong arguments or a home folder that is not known.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
+            Self::ManagedWorkspaces => {
+                use crate::agents::managed::documents::{ManagedWorkspaces, managed_workspaces};
+                let input: ManagedWorkspaceInput = parse(arguments)?;
+                let device = crate::devices::get::resolve(hub, &input.device).await?;
+                let rows = hub
+                    .run::<ManagedWorkspaces>(managed_workspaces::Variables { device })
+                    .await?
+                    .managed_code_workspaces;
+                Ok(Value::Object(fitted(object([(
+                    "workspaces",
+                    cleaned(Value::Array(rows)),
+                )]))))
+            }
             Self::Threads => {
                 let input: ThreadsInput = parse(arguments)?;
                 if let Some(device) = input.device {

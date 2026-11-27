@@ -47,6 +47,17 @@ fn met_019_run_takes_no_other_argument() {
         Ok(Command::Run { hosted_hub: None })
     ));
     assert!(matches!(parse(args("threads")), Ok(Command::Threads)));
+    #[cfg(target_os = "linux")]
+    {
+        assert!(matches!(
+            parse(args("source-artifact")),
+            Ok(Command::SourceArtifact)
+        ));
+        assert!(matches!(
+            parse(args("source-artifact extra")),
+            Err(CliError::Usage)
+        ));
+    }
     assert!(matches!(parse(args("run now")), Err(CliError::Usage)));
 }
 

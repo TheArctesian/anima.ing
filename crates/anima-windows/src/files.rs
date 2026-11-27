@@ -77,8 +77,12 @@ pub fn directory(path: &Path) -> io::Result<()> {
         }
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
             directory(path.parent().ok_or(io::ErrorKind::InvalidInput)?)?;
-            fs::create_dir(path)?;
-            protect(path)
+            match fs::create_dir(path) {
+                Ok(()) => protect(path),
+                // A second process made it first; it gets the checks of a directory that was there.
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => directory(path),
+                Err(error) => Err(error),
+            }
         }
         Err(error) => Err(error),
     }
@@ -118,4 +122,44 @@ pub fn read_single(path: &Path) -> io::Result<File> {
         return Err(io::ErrorKind::PermissionDenied.into());
     }
     Ok(file)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::directory;
+    use std::{io, path::Path, sync::Barrier, thread};
+
+    const MAKERS: usize = 8;
+
+    /// Each maker asks for the same tree at the same moment, as two processes of the CLI do.
+    fn make_at_once(path: &Path) -> Vec<io::Result<()>> {
+        let start = Barrier::new(MAKERS);
+        let maker = || {
+            start.wait();
+            directory(path)
+        };
+        thread::scope(|scope| {
+            let makers: Vec<_> = (0..MAKERS).map(|_| scope.spawn(maker)).collect();
+            makers
+                .into_iter()
+                .map(|each| each.join().expect("a maker thread"))
+                .collect()
+        })
+    }
+
+    #[test]
+    fn cmd_012_makers_of_one_new_private_tree_at_the_same_time_all_get_it() {
+        let root = tempfile::tempdir().expect("a temporary directory");
+        for round in 0..20 {
+            let path = root
+                .path()
+                .join(round.to_string())
+                .join("config")
+                .join("anima");
+            for made in make_at_once(&path) {
+                made.expect("each maker gets the private tree");
+            }
+            assert!(path.is_dir());
+        }
+    }
 }

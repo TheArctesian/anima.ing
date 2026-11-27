@@ -77,7 +77,7 @@ pub(in crate::fleet::access) struct StoredToken {
     pub username: String,
     pub kind: String,
     pub scope: String,
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: Option<DateTime<Utc>>,
     pub last_used_at: Option<DateTime<Utc>>,
     /// The seconds with no request after which the token is refused; `None` for no such rule.
     pub idle_seconds: Option<i32>,

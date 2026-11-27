@@ -27,6 +27,7 @@ use std::sync::Arc;
 use async_graphql::{Context, Error as GraphQlError};
 
 pub use self::forge::{KeyChanges, RequestReads};
+pub(super) use self::store::reads::{checkout_identity, locked_checkout_matches};
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 

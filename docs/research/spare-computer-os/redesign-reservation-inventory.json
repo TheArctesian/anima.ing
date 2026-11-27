@@ -1,0 +1,65 @@
+{
+  "workspaces": [
+    {
+      "workspace": "037627a8-3417-40fb-ad88-f4c32238d9dd",
+      "generation": 0,
+      "phase": "prepared",
+      "storage_bytes": 1073741824
+    },
+    {
+      "workspace": "369d0249-ea9c-4806-8fb2-0a40a20e7214",
+      "generation": 0,
+      "phase": "prepared",
+      "storage_bytes": 1073741824
+    },
+    {
+      "workspace": "e8f5a9a2-e7dc-4165-b745-3e2b7a9c16f8",
+      "generation": 0,
+      "phase": "prepared",
+      "storage_bytes": 1073741824
+    }
+  ],
+  "contexts": [
+    {
+      "id": "63a64973-5976-4216-ac8a-6b8d79ad2439",
+      "workspace": "e8f5a9a2-e7dc-4165-b745-3e2b7a9c16f8",
+      "generation": 0,
+      "phase": "captured",
+      "quota_bytes": 4294967296
+    },
+    {
+      "id": "b4bc89b1-64cd-4b1e-8e74-8b3d5febd2f9",
+      "workspace": "037627a8-3417-40fb-ad88-f4c32238d9dd",
+      "generation": 0,
+      "phase": "deleted",
+      "quota_bytes": 0
+    },
+    {
+      "id": "ddcb686f-a6e2-4094-a993-9f798a8e318b",
+      "workspace": "369d0249-ea9c-4806-8fb2-0a40a20e7214",
+      "generation": 0,
+      "phase": "captured",
+      "quota_bytes": 4294967296
+    }
+  ],
+  "builds": [
+    {
+      "id": "384c3bef-0f57-48c2-9eae-7901b523a500",
+      "workspace": "369d0249-ea9c-4806-8fb2-0a40a20e7214",
+      "generation": 0,
+      "phase": "deleted",
+      "context": "ddcb686f-a6e2-4094-a993-9f798a8e318b"
+    },
+    {
+      "id": "4f3bbf8f-2dd4-4f45-889d-c51fa21e9d6f",
+      "workspace": "037627a8-3417-40fb-ad88-f4c32238d9dd",
+      "generation": 0,
+      "phase": "deleted",
+      "context": "b4bc89b1-64cd-4b1e-8e74-8b3d5febd2f9"
+    }
+  ],
+  "workspaceReservedBytes": 3221225472,
+  "contextReservedBytes": 8589934592,
+  "buildReservedBytes": 0,
+  "scope": "Retained disposable diagnostic VM; receipts inspected after Node build release. No live user workloads."
+}

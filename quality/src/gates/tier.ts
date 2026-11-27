@@ -1,3 +1,4 @@
+import { OS_SOURCE } from "./os.ts";
 import type { Gate } from "./gates.ts";
 
 export interface Member {
@@ -16,8 +17,8 @@ export type Touched = "all" | string[];
 export type Choice =
   | { tier: "nothing"; reasons: string[] }
   | { tier: "documents"; reasons: string[] }
-  | { tier: "code"; rust: Touched; go: boolean; bun: Touched; reasons: string[] }
-  | { tier: "full"; reasons: string[] };
+  | { tier: "code"; rust: Touched; go: boolean; bun: Touched; reasons: string[]; os?: boolean }
+  | { tier: "full"; reasons: string[]; os?: boolean };
 
 const RUST_ROOT = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "clippy.toml", "rustfmt.toml", ".config/", ".cargo/"];
 /** `design/` holds the tokens that the client reads. */
@@ -71,6 +72,7 @@ function add(touched: Touched, name: string): Touched {
 export function choose(paths: string[], layout: Layout): Choice {
   if (paths.length === 0) return { tier: "nothing", reasons: ["no file is different from the base"] };
   if (paths.every(isDocument)) return { tier: "documents", reasons: [`${paths.length} changed file(s), each a document`] };
+  const os = paths.some((path) => path.startsWith("os/"));
   const members = [
     ...layout.crates.map((member) => ({ member, rust: true })),
     ...layout.packages.map((member) => ({ member, rust: false })),
@@ -81,7 +83,9 @@ export function choose(paths: string[], layout: Layout): Choice {
   const reasons: string[] = [];
   for (const path of paths.filter((each) => !isDocument(each))) {
     const owner = ownerOf(path, members);
-    if (path.startsWith(GO_MODULE)) {
+    if (path.startsWith("os/")) {
+      continue;
+    } else if (path.startsWith(GO_MODULE)) {
       go = true;
     } else if (path.startsWith(CONTRACTS)) {
       [rust, bun] = ["all", "all"];
@@ -99,10 +103,10 @@ export function choose(paths: string[], layout: Layout): Choice {
     } else if (owner !== undefined) {
       bun = add(bun, owner.member.name);
     } else {
-      return { tier: "full", reasons: [`${path}: no rule of the fast tier knows this path`] };
+      return { tier: "full", ...(os ? { os } : {}), reasons: [`${path}: no rule of the fast tier knows this path`] };
     }
   }
-  return { tier: "code", rust, go, bun, reasons };
+  return { tier: "code", rust, go, bun, ...(os ? { os } : {}), reasons };
 }
 
 function packageFlags(names: string[]): string[] {
@@ -210,15 +214,16 @@ export function fastGates(choice: Choice, full: Gate[], busy?: Busy): Gate[] {
     case "documents":
       return full.filter((gate) => gate.name === "documents");
     case "full":
-      return full;
+      return choice.os ? [...full, OS_SOURCE] : full;
     case "code":
-      if (busy !== undefined && macOnly(busy.paths).length === 0) return busyGates(choice, full, busy);
+      if (busy !== undefined && macOnly(busy.paths).length === 0) return [...busyGates(choice, full, busy), ...(choice.os ? [OS_SOURCE] : [])];
       return [
         ...rustGates(full, choice.rust),
         ...(choice.go ? full.filter((gate) => gate.group === "go") : []),
         ...bunGates(full, choice.bun),
         ...workspaceMaps(choice.rust, testsDeploy(choice.bun)),
         ...full.filter((gate) => gate.group === "quality"),
+        ...(choice.os ? [OS_SOURCE] : []),
       ];
   }
 }

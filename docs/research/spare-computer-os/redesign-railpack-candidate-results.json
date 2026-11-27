@@ -1,0 +1,18 @@
+{
+  "iso_sha256": "ba0a11ef7857c3d45c40da9d3c66e8d128b87016db46c9bef3dccd38c59dc631",
+  "memory_mib": 6144,
+  "execution_package": "/nix/store/yjyrfcn4hlv0v8q8lwn4nqja63g2xnd2-anima-os-execution-0.1.0",
+  "sandbox_config": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+  "results": [
+    {
+      "case": "railpack-candidate",
+      "result": "Failed",
+      "reason": "Guest command failed: printf '%s\\n' '{\"operation\": \"build-reconcile\", \"attempt\": \"0501a0d2-77e4-4d3a-8562-93f60c344009\"}' | /nix/store/yjyrfcn4hlv0v8q8lwn4nqja63g2xnd2-anima-os-execution-0.1.0/bin/anima-os-execution > /run/anima-railpack-check-0501a0d2-77e4-4d3a-8562-93f60c344009/verified.json || { cat /run/anima-railpack-check-0501a0d2-77e4-4d3a-8562-93f60c344009/verified.json; exit 1; }; cat /run/anima-railpack-check-0501a0d2-77e4-4d3a-8562-93f60c344009/verified.json; jq -e '.ok and (.value.phase == \"verified\" and .value.result.integrityVerified and (.value.result.deployed | not))' /run/anima-railpack-check-0501a0d2-77e4-4d3a-8562-93f60c344009/verified.json"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "limitation": "Candidate package with frozen harness-16; synthetic Node/Python/Rust Railpack projects with outbound user networking and explicit test-only Docker import/run; no routed hosting, provider or secrets acceptance"
+}

@@ -15,9 +15,14 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE" "$STAGE.tar"' EXIT
 
-cp "$1/anima" "$STAGE/anima"
-chmod 0755 "$STAGE/anima"
-names="anima"
+for program in anima anima-link anima-daemon; do
+    [ -f "$1/$program" ] || refuse "$1 holds no $program"
+    cp "$1/$program" "$STAGE/$program"
+    chmod 0755 "$STAGE/$program"
+done
+cp "$ROOT/deploy/bin/anima-setup" "$STAGE/anima-setup"
+chmod 0755 "$STAGE/anima-setup"
+names="anima anima-link anima-daemon anima-setup"
 while read -r source name; do
     case "$source" in '' | '#'*) continue ;; esac
     [ -f "$ROOT/$source" ] || refuse "the licence file $source is missing"
