@@ -5747,11 +5747,15 @@ absence of tool-side cache writes, or a blocked filesystem on each host platform
 Windows collection is not implemented; no positive Windows inventory is claimed.
 
 Independent review of `00e1cc235` found no blocking code findings for default-off CI.
-Before real-probe enablement, TH135 must add synthetic tests through the parent
-collection boundary for a blocked worker and a descendant retaining stdout. The tests
-must prove the five-second deadline, bounded return and descendant cleanup, and run
-with `mobile-inventory` enabled. Direct worker-dispatch tests do not establish these
-properties. This validation follow-up remains open; review did not authorize probes.
+Synthetic tests now exercise the parent collection I/O boundary for a blocked worker
+and an exited worker whose descendant retains stdout. They check the five-second
+deadline, bounded return and process cleanup; the feature-enabled Linux and Mac CI
+steps select them. Increasing the deadline and removing group cleanup each makes
+its respective test fail. Local Mac tests pass. Separate review found no production or security regression.
+The paused-clock case rejects a six-second deadline. Removing the outer guard failed
+in the measured run, but that failure depends on OS reaping timing: deterministic
+coverage of a stalled reap remains open before real-probe enablement. Linux CI
+execution also remains pending. This does not authorize real probes.
 
 After that validation, implementation review and operator authorization for real
 probes, use a disposable enrolled Mac with an existing Xcode and Android SDK installation:
