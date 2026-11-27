@@ -1,0 +1,69 @@
+{
+  "local": {
+    "scope": "Root CLI release of cancelled registration without allocated runtime resources, refusal of active/unconfirmed release, idempotent retry and durable attempt tombstone; registration and enrollment-filtered recovery inventory in disposable Linux container, synthetic public job metadata only. Registration launches no work and does not qualify daemon claims, runtime cancellation or installed OS.",
+    "results": [
+      {
+        "case": "durable-idempotent-registration-without-resource-creation",
+        "result": "Passed"
+      },
+      {
+        "case": "enrollment-filtered-inventory-with-terminal-and-expired-executions",
+        "result": "Passed"
+      },
+      {
+        "case": "attempt-bound-renewal-and-terminal-registration",
+        "result": "Passed"
+      },
+      {
+        "case": "release-refusals-idempotence-and-attempt-tombstone-without-runtime-resources",
+        "result": "Passed"
+      },
+      {
+        "case": "local-switch-refusal-before-registration",
+        "result": "Passed"
+      }
+    ]
+  },
+  "installed": {
+    "execution": {
+      "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+      "package": "/nix/store/0nq0ama8kmhbsjw99jkwmcisshr3ma05-anima-os-execution-0.1.0",
+      "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+      "narSha256": "12bc540b70c75ccd6e676ed59dab38d99144aa51bf6a452bf403c49717385679",
+      "watchdogUnitSha256": "07a93c90ce060653db18d541cf94fcf55b8029ee81bfe0875a0d6df235b8e08a",
+      "bytes": 6980088
+    },
+    "scope": "Candidate package in disposable overlay of cancelled source checkout. Real workspace release refuses a referencing stopped container, retains release intent and succeeds on retry after reference removal. No build/context was created; boot resumption and successful artifact deletion remain unqualified.",
+    "results": [
+      {
+        "case": "candidate-setup",
+        "result": "Passed"
+      },
+      {
+        "case": "source-release-refuses-referenced-workspace-and-resumes",
+        "result": "Passed"
+      }
+    ]
+  },
+  "recovery": {
+    "execution": {
+      "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+      "package": "/nix/store/0nq0ama8kmhbsjw99jkwmcisshr3ma05-anima-os-execution-0.1.0",
+      "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+      "narSha256": "12bc540b70c75ccd6e676ed59dab38d99144aa51bf6a452bf403c49717385679",
+      "watchdogUnitSha256": "07a93c90ce060653db18d541cf94fcf55b8029ee81bfe0875a0d6df235b8e08a",
+      "bytes": 6980088
+    },
+    "scope": "Candidate package in disposable overlay of cancelled source checkout. Real workspace release refuses a referencing stopped container and retains release intent. After removing the reference and this disposable guest boot-readiness marker, explicit recovery must finish cleanup and restore readiness before repeated release succeeds. No build/context was created; Actual reboot dispatch and successful artifact deletion remain unqualified.",
+    "results": [
+      {
+        "case": "candidate-setup",
+        "result": "Passed"
+      },
+      {
+        "case": "source-release-recovery-resumes-after-runtime-refusal",
+        "result": "Passed"
+      }
+    ]
+  }
+}

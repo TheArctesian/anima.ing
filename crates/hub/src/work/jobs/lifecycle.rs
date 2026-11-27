@@ -1,7 +1,9 @@
 //! The pure rules of a job (K10 Sections 4, 5 and 7).
 
 use chrono::{DateTime, TimeDelta, Utc};
-use daemon_core::wire::{MAX_LOG_PART_BYTES, StopReason, WorkReport, WorkState, WorkType};
+use daemon_core::wire::{
+    MAX_LOG_PART_BYTES, StopReason, WorkKind, WorkReport, WorkState, WorkType,
+};
 
 use super::{
     model::{Job, State},
@@ -67,22 +69,30 @@ pub(super) fn reported(
     report: &WorkReport,
     now: DateTime<Utc>,
 ) -> Result<Job, Refusal> {
+    let host = job.asked.kind == WorkKind::Host;
     let holds = job.holder == Some(device)
         && job.attempt == report.attempt
         && job.state.is_held()
-        && !lease::ended(job.lease_ends_at, now);
+        && if host {
+            !overdue(job, now)
+        } else {
+            !lease::ended(job.lease_ends_at, now)
+        };
     if !holds || !permitted(job.state, report.state) {
         return Err(Refusal::NotHolder);
     }
-    if report.state.is_final() != report.result.is_some() {
+    if report.state.is_final() != report.result.is_some() || (host && report.log.is_some()) {
         return Err(Refusal::Malformed);
     }
     // Only codes of the fixed lists are kept: a result is never text of the machine.
     let result = match &report.result {
+        Some(sent) if host => {
+            Some(results::host(sent, report.state, job.asked.work_type).ok_or(Refusal::Malformed)?)
+        }
         Some(sent) => Some(results::checked(sent).ok_or(Refusal::Malformed)?),
         None => None,
     };
-    let Some(state) = State::reported(report.state) else {
+    let Some(state) = reported_state(report.state, host) else {
         return Ok(refused(job, device, now));
     };
     let mut next = Job {
@@ -97,8 +107,19 @@ pub(super) fn reported(
         next.ended_at = Some(now);
     } else {
         next.lease_ends_at = Some(lease::end(now));
+        if host && next.stop.is_none() && past_limit(job, now, 0) {
+            next.stop = Some(StopReason::Expired);
+        }
     }
     Ok(next)
+}
+
+pub(super) fn reported_state(state: WorkState, host: bool) -> Option<State> {
+    if host && state == WorkState::Refused {
+        Some(State::Failed)
+    } else {
+        State::reported(state)
+    }
 }
 
 fn release(job: &mut Job) {
@@ -158,16 +179,26 @@ pub(super) fn lease_lost(job: &Job, now: DateTime<Utc>) -> Job {
 
 /// The answer to its claim was lost, so no lease counts as lost (SF-011).
 pub(super) fn answer_lost(job: &Job, now: DateTime<Utc>) -> Job {
-    queued_again(job, now)
+    if job.asked.kind == WorkKind::Host {
+        orphan(job, now)
+    } else {
+        queued_again(job, now)
+    }
+}
+
+pub(super) fn orphan(job: &Job, now: DateTime<Utc>) -> Job {
+    failed(job, "orphan", now)
 }
 
 pub(super) fn overdue(job: &Job, now: DateTime<Utc>) -> bool {
+    job.state.is_held() && past_limit(job, now, OVERTIME.num_seconds())
+}
+
+fn past_limit(job: &Job, now: DateTime<Utc>, grace: i64) -> bool {
     let limit = i64::try_from(job.asked.limits.seconds).unwrap_or(i64::MAX);
-    let most = limit.saturating_add(OVERTIME.num_seconds());
-    job.state.is_held()
-        && job
-            .claimed_at
-            .is_some_and(|since| now.signed_duration_since(since).num_seconds() >= most)
+    let most = limit.saturating_add(grace);
+    job.claimed_at
+        .is_some_and(|since| now.signed_duration_since(since).num_seconds() >= most)
 }
 
 pub(super) fn expired(job: &Job, now: DateTime<Utc>) -> Job {

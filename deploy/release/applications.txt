@@ -44,8 +44,12 @@ cli out link/
 cli out design/
 cli out contracts/
 cli out crates/anima-applications/
+cli out crates/anima-applications-wire/
+cli out crates/anima-os-execution/
+cli out crates/anima-os-maintenance/
 cli out crates/anima-osd/
 cli out crates/anima-os-session/
+cli out crates/anima-os-storage/
 cli out crates/anima-os-update/
 cli out crates/anima-os-install/
 cli out crates/anima-database/
@@ -53,10 +57,9 @@ cli out crates/anima-gateway/
 cli out crates/anima-local-hub/
 cli out crates/catalogue/
 cli out crates/compose-rules/
+cli out crates/oci-artifact/
 cli out crates/daemon/
-cli out crates/daemon-core/
 cli out crates/guac-protocol/
-cli out crates/power/
 cli out crates/hub/
 cli out crates/model-relay/
 cli out crates/route-proxy/
@@ -90,8 +93,12 @@ ios out docs/
 ios out quality/
 ios out deploy/
 ios out crates/anima-applications/
+ios out crates/anima-applications-wire/
+ios out crates/anima-os-execution/
+ios out crates/anima-os-maintenance/
 ios out crates/anima-osd/
 ios out crates/anima-os-session/
+ios out crates/anima-os-storage/
 ios out crates/anima-os-update/
 ios out crates/anima-os-install/
 ios out crates/anima-database/
@@ -99,6 +106,7 @@ ios out crates/anima-gateway/
 ios out crates/anima-local-hub/
 ios out crates/catalogue/
 ios out crates/compose-rules/
+ios out crates/oci-artifact/
 ios out crates/daemon/
 ios in crates/daemon-core/
 ios out crates/guac-protocol/

@@ -97,3 +97,32 @@ async fn a_revert_puts_the_files_back_and_keeps_what_was_there_for_an_undo() {
     let unknown = bench.call(PERSON, GitAction::Revert { turn: 7 }).await;
     assert_eq!(refused(&unknown), Some(&GitRefusal::UnknownCheckpoint));
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn tc7_review_groups_the_delete_and_add_of_a_regular_file_becoming_a_link() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::remove_file(folder.join("a.txt")).expect("replace the file");
+    std::os::unix::fs::symlink("new-target", folder.join("a.txt")).expect("a symbolic link");
+    let GitOutcome::Changes(changes) = bench
+        .call(
+            PERSON,
+            GitAction::Changes {
+                scope: Scope::Uncommitted,
+                ignore_whitespace: false,
+            },
+        )
+        .await
+    else {
+        panic!("expected the changes");
+    };
+    let patch = changes.files[0]
+        .patch
+        .as_deref()
+        .expect("the complete type change");
+    assert_eq!(changes.files.len(), 1);
+    assert!(patch.contains("deleted file mode 100644"), "{patch}");
+    assert!(patch.contains("new file mode 120000"), "{patch}");
+    assert!(changes.snapshot.is_some());
+}

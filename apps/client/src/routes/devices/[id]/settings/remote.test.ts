@@ -226,8 +226,8 @@ function certificateTest(serverCertificate: typeof CERTIFICATE, changed: boolean
   };
 }
 
-async function testAndAccept(): Promise<void> {
-  document.querySelector<HTMLButtonElement>('[data-connection-test="rdp"]')?.click();
+async function testAndAccept(protocol = 'rdp'): Promise<void> {
+  document.querySelector<HTMLButtonElement>(`[data-connection-test="${protocol}"]`)?.click();
   await settle();
   button('Accept certificate').click();
   await settle();
@@ -286,5 +286,38 @@ describe('simple SSH setup', () => {
     const updates = sent(fake, 'UpdateDevice');
     expect(updates).toHaveLength(1);
     expect(updates[0]?.variables).toMatchObject({ input: { ssh: { enabled: true, port: 22, username: 'operator', auth: 'PASSWORD' } } });
+  });
+});
+
+
+describe('settings VNC identity', () => {
+  it('accepts the VNC fingerprint without replacing the RDP identity', async () => {
+    const saved = remote(true, false);
+    const vnc = { ...CERTIFICATE, fingerprintSha256: 'DD:EE:FF' };
+    const fake = await show(answers({
+      Device: { device: { ...saved, accessWarnings: ['UNENCRYPTED_VNC'], rdp: { ...saved.rdp, serverCertificate: CERTIFICATE } } },
+      TestRemoteConnection: { testConnection: certificateTest(vnc, false) },
+      AcceptVncServerCertificate: { acceptVncServerCertificate: vnc },
+    }), '?tab=settings&section=vnc');
+    const toggle = document.querySelector<HTMLButtonElement>('[data-connection="vnc"] .toggle');
+    if (toggle?.getAttribute('aria-expanded') !== 'true') toggle?.click();
+    await settle();
+    const test = document.querySelector<HTMLButtonElement>('[data-connection-test="vnc"]');
+    expect(test, document.body.textContent ?? '').not.toBeNull();
+    test?.click();
+    await settle();
+    expect(sent(fake, 'TestRemoteConnection'), document.body.textContent ?? '').toHaveLength(1);
+    button('Accept certificate').click();
+    await settle();
+    expect(sent(fake, 'TestRemoteConnection')[0]?.variables).toEqual({ input: { deviceId: ID, protocol: 'VNC' } });
+    expect(sent(fake, 'AcceptVncServerCertificate')).toEqual([
+      { operation: 'AcceptVncServerCertificate', variables: { deviceId: ID, fingerprintSha256: 'DD:EE:FF' } },
+    ]);
+    expect(sent(fake, 'AcceptServerCertificate')).toEqual([]);
+    expect(document.querySelector('[data-connection="vnc"]')?.textContent).not.toContain('not encrypted');
+    expect(document.querySelector('[aria-label="VNC server certificate"]')?.textContent).toContain('DD:EE:FF');
+    document.querySelector<HTMLButtonElement>('[data-connection="rdp"] .toggle')?.click();
+    await settle();
+    expect(document.querySelector('[aria-label="Server certificate"]')?.textContent).toContain('AA:BB:CC');
   });
 });

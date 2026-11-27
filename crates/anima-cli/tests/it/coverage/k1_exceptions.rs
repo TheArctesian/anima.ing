@@ -1,10 +1,22 @@
 //! The K1 root fields the command line never uses, each with its reason (CMD-031).
 
-const NO_KEY_NOUN: &str = "no command yet: K-E5 Section 2.2 names the noun `anima key`, which is \
-    already the API key noun (INT-003, `key list|create|revoke`); the noun waits for a ruling \
-    (E0-6 T3)";
-
 pub const EXCEPTIONS: &[(&str, &str)] = &[
+    (
+        "Mutation.login",
+        "password sign-in belongs to the app; the command uses browser approval (CMD-010)",
+    ),
+    (
+        "Mutation.commandLineSignIn",
+        "approval details are for the signed-in app or browser, never an agent (SGN-NEW-approve)",
+    ),
+    (
+        "Mutation.approveCommandLineSignIn",
+        "a person approves in the app or browser, never through the CLI or MCP (SGN-NEW-approve)",
+    ),
+    (
+        "Mutation.managedCodePreviewHandoff",
+        "Code app browser/native handoff only: returns a one-use secret transferred directly to the isolated preview origin (contracts/managed-code.md)",
+    ),
     (
         "Mutation.hostedDeviceInvite",
         "the Anima.ing cloud only: takes the cloud key, a secret (R-129)",
@@ -22,9 +34,8 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "the desktop app's silent join through the link only: returns a token (R-129, HMD-037)",
     ),
     (
-        "Mutation.claimComputerEnrolment",
-        "the install script of a computer with no application only, through its link: returns \
-         a daemon enrolment code (HM-T33)",
+        "Mutation.hostedCommandLineClaim",
+        "the account site only: a cloud-authorized browser approval (SGN-NEW-hosted)",
     ),
     (
         "Mutation.signInBrowser",
@@ -61,13 +72,4 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "client work: a client adds a client by QR code; no command takes part in a key offer \
          (K-E5 Section 3, a trust decision)",
     ),
-    ("Query.operationalKeys", NO_KEY_NOUN),
-    ("Query.operationalKey", NO_KEY_NOUN),
-    ("Mutation.createOperationalKey", NO_KEY_NOUN),
-    ("Mutation.updateOperationalKey", NO_KEY_NOUN),
-    ("Mutation.removeOperationalKey", NO_KEY_NOUN),
-    ("Mutation.rotateOperationalKey", NO_KEY_NOUN),
-    ("Mutation.revokeOperationalKey", NO_KEY_NOUN),
-    ("Mutation.grantOperationalKey", NO_KEY_NOUN),
-    ("Mutation.ungrantOperationalKey", NO_KEY_NOUN),
 ];

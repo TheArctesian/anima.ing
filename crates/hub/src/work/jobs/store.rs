@@ -1,8 +1,12 @@
 //! I/O only (CQ-032): writes take the caller's connection, so a change commits with its audit entry or event.
 
+pub(super) mod application_files;
+pub(super) mod checkout;
+pub(super) mod hosting;
 mod logs;
 mod machines;
 mod placements;
+pub(super) mod source_placement;
 
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{
@@ -39,9 +43,9 @@ struct JobRow {
     os: Option<String>,
     architecture: Option<String>,
     project_id: Option<ProjectId>,
-    forge: String,
-    owner: String,
-    name: String,
+    forge: Option<String>,
+    owner: Option<String>,
+    name: Option<String>,
     parameters: serde_json::Value,
     secrets: Vec<String>,
     limit_seconds: i64,
@@ -88,6 +92,18 @@ pub(super) fn stored(value: u64) -> Result<i64, Error> {
 }
 
 impl JobRow {
+    fn repository(&self) -> Result<Option<WorkRepository>, Error> {
+        match (&self.forge, &self.owner, &self.name) {
+            (Some(forge), Some(owner), Some(name)) => Ok(Some(WorkRepository {
+                forge: forge.clone(),
+                owner: owner.clone(),
+                name: name.clone(),
+            })),
+            (None, None, None) => Ok(None),
+            _ => Err(Error::Unreadable),
+        }
+    }
+
     fn asked(&self) -> Result<NewJob, Error> {
         Ok(NewJob {
             work_type: read_word::<WorkType>(&self.work_type)?,
@@ -99,11 +115,7 @@ impl JobRow {
                 .map(read_word::<WorkArchitecture>)
                 .transpose()?,
             project: self.project_id,
-            repository: WorkRepository {
-                forge: self.forge.clone(),
-                owner: self.owner.clone(),
-                name: self.name.clone(),
-            },
+            repository: self.repository()?,
             parameters: self.parameters.clone(),
             secrets: self.secrets.clone(),
             limits: Limits {
@@ -167,6 +179,14 @@ async fn jobs_where(
     rows.into_iter().map(Job::try_from).collect()
 }
 
+pub(super) async fn source_job(db: &sqlx::PgPool, id: JobId) -> Result<Option<Job>, Error> {
+    let sql = format!(
+        "{SELECT_JOB}WHERE id = $1 AND work_type = 'build' AND parameters->>'recipe' = 'source_image_v1'"
+    );
+    let row: Option<JobRow> = sqlx::query_as(&sql).bind(id).fetch_optional(db).await?;
+    row.map(Job::try_from).transpose()
+}
+
 pub(super) async fn job_locked(conn: &mut PgConnection, id: JobId) -> Result<Option<Job>, Error> {
     let sql = format!("{SELECT_JOB}WHERE id = $1 FOR UPDATE");
     let row: Option<JobRow> = sqlx::query_as(&sql).bind(id).fetch_optional(conn).await?;
@@ -176,7 +196,7 @@ pub(super) async fn job_locked(conn: &mut PgConnection, id: JobId) -> Result<Opt
 /// A job that a different transaction has locked is skipped, so two claims never take one job (BLD-004).
 pub(super) async fn oldest_queued(conn: &mut PgConnection) -> Result<Vec<Job>, Error> {
     let condition = format!(
-        "WHERE state = 'queued' AND $1::timestamptz IS NULL AND $2::uuid IS NULL \
+        "WHERE state = 'queued' AND kind <> 'host' AND $1::timestamptz IS NULL AND $2::uuid IS NULL \
          ORDER BY created_at, id LIMIT {CLAIM_LOOKS_AT} FOR UPDATE SKIP LOCKED"
     );
     jobs_where(conn, &condition, None, None).await
@@ -191,7 +211,7 @@ pub(super) async fn ended_leases(
     conn: &mut PgConnection,
     now: DateTime<Utc>,
 ) -> Result<Vec<Job>, Error> {
-    let condition = "WHERE lease_ends_at <= $1 AND $2::uuid IS NULL \
+    let condition = "WHERE lease_ends_at <= $1 AND kind <> 'host' AND $2::uuid IS NULL \
                      ORDER BY lease_ends_at, id FOR UPDATE SKIP LOCKED";
     jobs_where(conn, condition, Some(now), None).await
 }
@@ -207,14 +227,18 @@ pub(super) async fn over_time(
     jobs_where(conn, condition, Some(now), None).await
 }
 
-pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Error> {
+pub(super) async fn insert(
+    conn: &mut PgConnection,
+    job: &Job,
+    host_api_key: Option<&str>,
+) -> Result<(), Error> {
     let asked = &job.asked;
     sqlx::query(
         "INSERT INTO jobs.jobs (id, work_type, kind, os, architecture, project_id, forge, owner, \
          name, parameters, secrets, limit_seconds, limit_idle_seconds, limit_memory_bytes, \
-         limit_disk_bytes, limit_orphan_seconds, state, created_at, state_changed_at, machine_id) \
+         limit_disk_bytes, limit_orphan_seconds, state, created_at, state_changed_at, machine_id, host_api_key) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, \
-         $18, $18, $19)",
+         $18, $18, $19, $20)",
     )
     .bind(job.id)
     .bind(word(&asked.work_type)?)
@@ -222,9 +246,9 @@ pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Err
     .bind(asked.os.as_ref().map(word).transpose()?)
     .bind(asked.architecture.as_ref().map(word).transpose()?)
     .bind(asked.project)
-    .bind(&asked.repository.forge)
-    .bind(&asked.repository.owner)
-    .bind(&asked.repository.name)
+    .bind(asked.repository.as_ref().map(|repo| repo.forge.as_str()))
+    .bind(asked.repository.as_ref().map(|repo| repo.owner.as_str()))
+    .bind(asked.repository.as_ref().map(|repo| repo.name.as_str()))
     .bind(&asked.parameters)
     .bind(&asked.secrets)
     .bind(stored(asked.limits.seconds)?)
@@ -235,6 +259,7 @@ pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Err
     .bind(job.state.as_str())
     .bind(job.created_at)
     .bind(asked.machine)
+    .bind(host_api_key)
     .execute(conn)
     .await?;
     Ok(())
@@ -268,7 +293,10 @@ pub(super) async fn save(conn: &mut PgConnection, job: &Job) -> Result<(), Error
     .bind(stored(job.log_end)?)
     .bind(job.changed_at)
     .bind(job.ended_at)
-    .execute(conn)
+    .execute(&mut *conn)
     .await?;
+    if job.asked.work_type == WorkType::ApplicationApply && job.state.is_final() {
+        application_files::clear(conn, job.id).await?;
+    }
     Ok(())
 }

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { changedGates } from "../../src/gates/changed.ts";
 import { gateList, ofGroups } from "../../src/gates/gates.ts";
 import { choose, describeChoice, fastGates, isBusy, macOnly, type Layout } from "../../src/gates/tier.ts";
 
@@ -176,4 +177,25 @@ describe("R-268 the fast tier of a busy machine", () => {
     expect(busyNames(["docs/rulings.md"])).toEqual(["documents"]);
     expect(busy(["some/unknown/path.bin"])).toEqual(FULL);
   });
+});
+
+
+test("OS-only changes cannot bypass source checks in either local gate mode", () => {
+  for (const path of ["os/images/appliance.nix", "os/console/ui.js", "os/release/signing/preview-public.pem"]) {
+    const choice = choose([path], LAYOUT);
+    expect(fastGates(choice, FULL).some((gate) => gate.name === "os-source")).toBe(true);
+    expect(changedGates(choice, FULL, LAYOUT, [path]).gates.some((gate) => gate.name === "os-source")).toBe(true);
+  }
+});
+
+
+test("OS checks preserve the checks of code changed alongside it", () => {
+  const paths = ["os/images/appliance.nix", "crates/daemon/src/hub.rs", "apps/client/src/app.ts"];
+  const choice = choose(paths, LAYOUT);
+  for (const gates of [fastGates(choice, FULL), changedGates(choice, FULL, LAYOUT, paths).gates]) {
+    const selected = gates.map((gate) => gate.name);
+    for (const name of ["os-source", "clippy", "rust-test", "lint", "check", "test"]) {
+      expect(selected).toContain(name);
+    }
+  }
 });

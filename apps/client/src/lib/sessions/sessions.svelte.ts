@@ -36,6 +36,7 @@ export interface PoppedOutDevice {
   readonly deviceId: string;
   readonly deviceName: string;
   readonly protocol: SessionProtocol;
+  readonly viewOnly?: true;
 }
 
 export interface SessionRequest {
@@ -44,6 +45,7 @@ export interface SessionRequest {
   readonly os?: OperatingSystem;
   readonly distribution?: string | null;
   readonly protocol: SessionProtocol;
+  readonly viewOnly?: true;
   readonly origin: Origin | null;
 }
 
@@ -143,10 +145,10 @@ class OpenSessions implements Sessions {
     return this.#find(this.#state.activeId) ?? null;
   }
 
-  openSession({ deviceId, deviceName, os, distribution, protocol, origin }: SessionRequest): TabId {
+  openSession({ deviceId, deviceName, os, distribution, protocol, origin, viewOnly }: SessionRequest): TabId {
     this.#opens += 1;
     const id = `tab-${String(this.#opens)}`;
-    this.#state = opened(this.#state, { id, deviceId, deviceName, ...(os === undefined ? {} : { os }), ...(distribution == null ? {} : { distribution }), protocol, origin, sessionId: null });
+    this.#state = opened(this.#state, { id, deviceId, deviceName, ...(os === undefined ? {} : { os }), ...(distribution == null ? {} : { distribution }), protocol, origin, sessionId: null, ...(viewOnly ? { viewOnly } : {}) });
     return id;
   }
 
@@ -170,7 +172,7 @@ class OpenSessions implements Sessions {
     return (display, events) =>
       this.#begin(id, (tab) => {
         if (tab.protocol === 'SSH' || tab.protocol === 'WEB') return undefined;
-        const start = this.#port.start(tab.deviceId).remote(tab.protocol);
+        const start = this.#port.start(tab.deviceId).remote(tab.protocol, tab.viewOnly);
         return (ended) => start(display, { ...events, onend: afterEnded(ended, events.onend) });
       });
   }
@@ -202,7 +204,8 @@ class OpenSessions implements Sessions {
   async popOut(id: TabId): Promise<void> {
     const tab = this.#find(id);
     if (this.#popOut === undefined || tab === undefined || tab.protocol === 'WEB') return;
-    await this.#popOut({ deviceId: tab.deviceId, deviceName: tab.deviceName, protocol: tab.protocol });
+    const { deviceId, deviceName, protocol, viewOnly } = tab;
+    await this.#popOut({ deviceId, deviceName, protocol, ...(viewOnly ? { viewOnly } : {}) });
     // A tab closed while the window opened has already ended its session (see `close`).
     const sessionId = this.#find(id)?.sessionId;
     if (sessionId === undefined) return;

@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use agent_threads::control::{Action, Outcome, Refusal};
+use agent_threads::control::{Action, Outcome, Refusal, RunState};
 
 use super::super::Runner;
 use super::super::socket::CLIENT_BYTES;
@@ -27,6 +27,16 @@ impl Runner {
             },
             Action::Accounts => Outcome::Accounts {
                 accounts: self.said.accounts.rows(),
+            },
+            Action::ManagedTranscript { thread, after } => self.managed_transcript(*thread, *after),
+            Action::ManagedAttention => Outcome::ManagedAttention {
+                waiting_threads: self
+                    .threads
+                    .values()
+                    .filter(|thread| {
+                        thread.row.state == RunState::NeedsYou && !thread.row.open.is_empty()
+                    })
+                    .count(),
             },
             Action::Earlier {
                 thread,

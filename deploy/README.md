@@ -83,6 +83,7 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    | `ANIMA_PERMITTED_NETWORKS` | no | `100.64.0.0/10` | Client networks that may use the hub (NET-001): the VPN range and the site subnets, comma-separated. |
    | `ANIMA_LOG` | no | `info` | Hub log filter. |
    | `ANIMA_PUBLIC_ORIGIN` | no | `https://hub.anima.ing` | The origin clients use. The hub checks the browser cookie's `Origin` against it, and the web client's security headers use it. |
+   | `ANIMA_PREVIEW_ORIGIN` | no | empty (previews off) | Dedicated HTTPS DNS suffix for managed Code previews, for example `https://preview.anima.ing`. Compose uses port 443; omit a port, path and trailing slash. The certificate service orders its wildcard SAN. |
    | `APPRISE_ALLOW_SERVICES` | no | `discord,tgram,slack` | The services Apprise may send to. See "Apprise". |
    | `ANIMA_ACME_SERVER` | no | Let's Encrypt production | Use the staging URL to test. |
    | `ANIMA_RELEASES_ENDPOINT` | no | empty (publishing off) | The R2 S3 API origin, `https://<account>.r2.cloudflarestorage.com`. See "Release publishing". |
@@ -1093,3 +1094,37 @@ Undo: remove the device in the app.
   the roles, runs the certificate hook on a fixture certificate with the real container
   limits, and starts the hub without `migrate`. It uses a temporary copy of this folder and
   contacts neither Let's Encrypt nor Cloudflare.
+
+
+## Managed Code preview ingress
+
+Set `ANIMA_PREVIEW_ORIGIN` to a dedicated DNS origin, such as
+`https://preview.anima.ing`. Each grant uses an unpredictable UUID hostname below
+that suffix. Create a wildcard DNS record for `*.preview.anima.ing` resolving to
+the hub's **private VPN address**, reachable by the enrolled clients. Keep DNS
+records unproxied. The hub's existing permitted-network policy remains in force;
+this does not publish the node or its development port on the Internet.
+
+The `certs` container receives the same origin as the hub and orders a certificate
+covering `hub.anima.ing` and `*.preview.anima.ing` through DNS-01. Its existing DNS
+credential must be authorized for the chosen zone. A separate ACME state directory
+per preview suffix ensures enabling or changing previews creates the required SAN
+set instead of reusing a still-valid hub-only certificate. The installer retains
+its atomic PEM replacement. Wait for successful issuance before treating preview
+TLS as available; a running certificate service or an existing hub certificate
+alone does not prove wildcard coverage. Changing deployment configuration and DNS
+is an operator rollout step, not performed by the source migration.
+
+The hub terminates preview HTTPS directly. No additional gateway container, node
+port publishing, or wildcard route to the app is needed. Exact endpoint hosts enter
+the isolated preview proxy; other hosts in the suffix return 404. If an external
+reverse proxy is used, preserve the original Host and WebSocket upgrade, provide
+matching wildcard TLS, and retain the private-network boundary. Do not rewrite
+preview Host to the hub hostname. Compose's certificate automation assumes its
+existing `hub.anima.ing` host and port 443; deployments with other hub names or
+ports must provision matching certificates through their ingress configuration.
+
+With the origin unset, grant creation fails before persisting a preview. Keep the
+origin stable while grants are active. Wildcard resolution, SAN coverage, network
+denial, HTTP streaming, WebSocket upgrades and grant revocation remain on the
+deferred VM/integration qualification list.

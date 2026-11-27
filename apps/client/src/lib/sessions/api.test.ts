@@ -29,6 +29,16 @@ function hubAnswering(body: unknown) {
 const DISPLAY = { widthPx: 1280, heightPx: 800, dpi: 192, timezone: 'Europe/London' };
 const TICKET = { sessionId: 's-1', token: 't'.repeat(43), tunnelPath: '/tunnel', expiresAt: '2026-11-04T10:00:30Z', wakeSent: false };
 
+describe('VNC certificate protocol selection', () => {
+  it('VNC acceptance uses its independent mutation and returns its certificate', async () => {
+    const { api, sent } = hubAnswering({ data: { acceptVncServerCertificate: CERTIFICATE } });
+    expect(await api.acceptServerCertificate('device-1', CERTIFICATE.fingerprintSha256, 'VNC')).toEqual({ ok: true, value: CERTIFICATE });
+    expect(sent[0]?.query).toMatch(/acceptVncServerCertificate\(\s*deviceId: \$deviceId/);
+    expect(sent[0]?.variables).toEqual({ deviceId: 'device-1', fingerprintSha256: CERTIFICATE.fingerprintSha256 });
+  });
+
+});
+
 describe('sessionsApi (K1, CQ-045)', () => {
   it('K1: startSession asks for SSH on the device with the display and returns the ticket', async () => {
     const { api, sent } = hubAnswering({ data: { startSession: TICKET } });
@@ -98,12 +108,16 @@ function k1Hub(...changes: Parameters<typeof fakeHub>) {
 }
 
 describe('sessionsApi, K1 starts and policy', () => {
-  it.each(['RDP', 'VNC'] as const)('K1: startSession asks for %s and the ticket names the Guacamole tunnel', async (protocol) => {
-    const { api, named } = k1Hub({ certificateExempt: true });
-    const ticket = await api.startSession('device-1', protocol, DISPLAY);
-    expect(ticket).toMatchObject({ ok: true, value: { sessionId: 'session-1', tunnelPath: '/tunnel' } });
-    expect(named('StartSession')[0]?.variables).toEqual({ input: { deviceId: 'device-1', protocol, display: DISPLAY } });
-  });
+  it.each([['RDP', false], ['VNC', false], ['RDP', true], ['VNC', true]] as const)(
+    'K1: %s start carries view-only mode %s and returns a Guacamole ticket', async (protocol, viewOnly) => {
+      const { api, named } = k1Hub({ certificateExempt: true });
+      const ticket = await api.startSession('device-1', protocol, DISPLAY, viewOnly);
+      expect(ticket).toMatchObject({ ok: true, value: { sessionId: 'session-1', tunnelPath: '/tunnel' } });
+      expect(named('StartSession')[0]?.variables).toEqual({
+        input: { deviceId: 'device-1', protocol, display: DISPLAY, ...(viewOnly ? { viewOnly } : {}) },
+      });
+    }
+  );
 
   it('K4 §1: an RDP start without an accepted certificate is CONFLICT', async () => {
     const { api } = k1Hub();

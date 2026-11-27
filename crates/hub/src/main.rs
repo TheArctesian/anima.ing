@@ -1,6 +1,11 @@
 //! Hub binary: serves the router or runs one of its commands (R-016, D-9, FRN-003, FRN-004, R-179).
 
 mod core_dumps;
+#[path = "main/storage.rs"]
+mod startup_storage;
+#[cfg(unix)]
+use startup_storage::artifact_store;
+use startup_storage::{file_store, release_bucket, vault};
 mod shutdown;
 use shutdown::first_stop_signal;
 mod operator;
@@ -9,14 +14,13 @@ mod upkeep;
 use std::{collections::BTreeMap, process::ExitCode, sync::Arc};
 
 use anima_hub::{
-    DRAIN_LIMIT, Shutdown, all_routes,
+    DRAIN_LIMIT, Shutdown,
     clock::SystemClock,
     config::{self, Config},
-    engine::{files, locations, reminders, sealing_keys::SealingKeys},
+    engine::{files, locations, reminders},
     fleet::{
         access::{self, listen},
         builds,
-        credentials::Vault,
         events::{self, Bus, process_log},
         metrics, sessions,
         targets::AddressPolicy,
@@ -35,6 +39,9 @@ const BUS_CAPACITY: usize = 1024;
 enum StartError {
     #[error("invalid configuration")]
     Config(#[from] config::Error),
+    #[cfg(unix)]
+    #[error("private artifact storage could not be opened: {0}")]
+    Artifacts(#[from] anima_hub::work::artifacts::Error),
     #[error("{0}")]
     Sources(#[from] anima_hub::engine::sources::BuildFailed),
     #[error("the database URL file cannot be read ({0})")]
@@ -202,6 +209,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let vault = vault(&config)?;
     let files = file_store(&config, &vault)?;
     let bucket = release_bucket(&config)?;
+    #[cfg(unix)]
+    let artifacts = artifact_store(config.artifact_storage.clone(), clock.clone()).await?;
     let pool = database(&config).await?;
     // One deny list for every outbound connection; `tunnels` says which path takes it how.
     // A hub with a link reaches the computers of the link through its dial socket (HMD-048).
@@ -216,11 +225,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     // A hosted hub's own checks are ready before the scheduler runs.
     let hosted = upkeep::hosted(&config, &pool, &bus, &clock).await;
     let feed = metrics::Feed::new();
-    // The sources reach only their declared API bases, through the same deny list (K-E1).
-    // The Dawarich pull stores its points with the sealing keys of the positions (R-261).
-    let positions = locations::Seal::new(files.sealing_keys().clone());
-    let intakes = vec![projects::intake(), locations::dawarich_intake(positions)];
-    let sources = anima_hub::source_reach(intakes, policy.clone())?;
+    let sources = source_reach(&files, &policy)?;
     let dependencies = Dependencies {
         vpn_broker: config.vpn_broker.clone().map(vpn::Broker::new),
         config,
@@ -241,7 +246,10 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let background = upkeep::spawn(&dependencies, hosted);
     // Every route is behind the same permitted-networks check (K3, NET-002).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
-    let app = all_routes(dependencies, edge.clone());
+    #[cfg(unix)]
+    let app = anima_hub::all_routes_with_artifacts(dependencies, edge.clone(), artifacts);
+    #[cfg(not(unix))]
+    let app = anima_hub::all_routes(dependencies, edge.clone());
     let shutdown = Shutdown {
         db: pool,
         live,
@@ -286,28 +294,15 @@ async fn migrate(config: &Config) -> Result<(), StartError> {
     Ok(())
 }
 
-fn vault(config: &Config) -> Result<Vault, StartError> {
-    Vault::from_key_file(&config.key_file).map_err(|source| StartError::Key {
-        path: config.key_file.display().to_string(),
-        source,
-    })
-}
-
-/// A data key that is the credential key or another data key stops the start (VLT-003); without either folder an upload answers UNAVAILABLE.
-fn file_store(config: &Config, vault: &Vault) -> Result<files::Store, StartError> {
-    let keys = SealingKeys::open(config.data_key_dir.as_deref(), vault.key_id().as_bytes())?;
-    let store = files::Store::in_folder(config.files_dir.as_deref(), keys);
-    tracing::info!(files = store.available(), "file store");
-    Ok(store)
-}
-
-/// An unusable updater key turns publishing off and the hub still starts (BLD-060, R-108, R-117).
-/// The log names the check that failed, never a value (LOG-007).
-fn release_bucket(config: &Config) -> Result<Option<Arc<builds::Bucket>>, StartError> {
-    let opened = config.releases.as_ref().map(builds::open_bucket);
-    let bucket = opened.transpose()?.flatten();
-    tracing::info!(publishing = bucket.is_some(), "release bucket");
-    Ok(bucket.map(Arc::new))
+fn source_reach(
+    files: &files::Store,
+    policy: &AddressPolicy,
+) -> Result<anima_hub::engine::sources::Reach, StartError> {
+    // The sources reach only their declared API bases, through the same deny list (K-E1).
+    // The Dawarich pull stores its points with the sealing keys of the positions (R-261).
+    let positions = locations::Seal::new(files.sealing_keys().clone());
+    let intakes = vec![projects::intake(), locations::dawarich_intake(positions)];
+    anima_hub::source_reach(intakes, policy.clone()).map_err(Into::into)
 }
 
 /// Each command that writes to the audit log calls this before anything writes an audit entry (LOG-026).

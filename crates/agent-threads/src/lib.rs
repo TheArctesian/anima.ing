@@ -16,6 +16,7 @@ pub mod control;
 pub mod drive;
 pub mod files;
 pub mod git;
+pub mod managed;
 pub mod marks;
 pub mod project;
 #[cfg(test)]

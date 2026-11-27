@@ -3,18 +3,21 @@
   import type { Pair } from '$lib/page/pair';
   import Section from '$lib/page/Section.svelte';
   import type { Project } from '../api';
+  import type { SourceBuildApi } from '../builds/api';
+  import SourceBuildPanel from '../builds/SourceBuildPanel.svelte';
   import RepositoryRow from '../RepositoryRow.svelte';
   import ResourceRow from '../ResourceRow.svelte';
   import { primaryRepository } from '../words';
 
   interface Props {
     project: Project;
+    builds?: SourceBuildApi | undefined;
     onLeaveOut: (repositoryId: string) => void;
     onRestore: (repositoryId: string) => void;
     onConfirm: (resourceId: string) => void;
   }
 
-  const { project, onLeaveOut, onRestore, onConfirm }: Props = $props();
+  const { project, builds, onLeaveOut, onRestore, onConfirm }: Props = $props();
   const primary = $derived(primaryRepository(project));
   const about = $derived<readonly Pair[]>(
     primary === undefined
@@ -49,6 +52,9 @@
         {/each}
       </ul>
     </Section>
+    {#if builds !== undefined}
+      {#key project.id}<SourceBuildPanel api={builds} {project} />{/key}
+    {/if}
   </div>
   {#if about.length > 0}
     <aside aria-label="About this project">

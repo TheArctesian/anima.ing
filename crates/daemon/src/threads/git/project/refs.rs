@@ -198,11 +198,12 @@ fn replace(
         held.sync_all()?;
         Ok(above.rename(&lock, name)?)
     });
-    if written.is_err() {
-        // The lock is of this call alone; the first failure is the answer.
+    if let Err(error) = written {
         let _ = above.remove(&lock, false);
+        return Err(error);
     }
-    written
+    // Rename released this lock. A later sync error must leave the next writer's lock alone.
+    Ok(above.sync()?)
 }
 
 /// Points the ref `wanted` of the shared Git folder at `to`, only when it is as `was` says.
@@ -297,7 +298,7 @@ pub fn take_back(common: &Path, wanted: &str, at: &str) -> Result<(), ProjectErr
 pub fn point_head(layout: &Layout, branch: &str) -> Result<(), ProjectError> {
     let to = format!("refs/heads/{branch}");
     let to = name(&to).ok_or(ProjectError::Escapes)?;
-    let git_dir = layout.entry()?;
+    let git_dir = layout.entry_for_write()?;
     replace(
         &git_dir,
         walk::name("HEAD"),

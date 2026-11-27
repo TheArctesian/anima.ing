@@ -7,6 +7,8 @@ mod fixed;
 pub mod folder;
 pub mod hooks;
 mod one;
+mod output;
+mod records;
 pub mod said;
 pub mod settings;
 
@@ -15,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 pub(super) use fixed::{fixed_configuration, fixed_environment};
 use folder::FolderId;
@@ -110,6 +112,7 @@ pub struct Git {
     /// ([`Git::for_worktree`]): with them `git` reads no `.git` file of the worktree and
     /// nothing of the Git folder of the person but its objects.
     bound: Vec<(&'static str, OsString)>,
+    records: Option<PathBuf>,
 }
 
 impl Git {
@@ -146,6 +149,7 @@ impl Git {
             as_thread: None,
             folder: None,
             bound: Vec::new(),
+            records: None,
         })
     }
 
@@ -317,7 +321,10 @@ impl Git {
         }
     }
 
-    async fn finished(&self, run: Run<'_>) -> Result<(Option<i32>, Vec<u8>, String), GitError> {
+    pub(super) async fn finished(
+        &self,
+        run: Run<'_>,
+    ) -> Result<(Option<i32>, Vec<u8>, String), GitError> {
         // Directly before the run: the work folder is still the one that the runner made, not
         // a folder or a link that an agent put in its place (P12).
         if let Some((folder, made)) = &self.folder
@@ -325,6 +332,7 @@ impl Git {
         {
             return Err(GitError::Replaced);
         }
+        self.check_records(&run)?;
         let mut child = self.command(&run).spawn().map_err(GitError::Start)?;
         let group = child.id();
         let input = child.stdin.take().zip(run.input);
@@ -336,7 +344,11 @@ impl Git {
                     let _ = pipe.write_all(&bytes).await;
                 }
             };
-            let ((), out, said) = tokio::join!(write, held(stdout), held(stderr));
+            let ((), out, said) = tokio::join!(
+                write,
+                output::held(stdout, run.output_prefix),
+                output::held(stderr, None)
+            );
             let status = child.wait().await.map_err(GitError::Start)?;
             Ok::<_, GitError>((status.code(), out, said))
         };
@@ -401,39 +413,4 @@ impl Git {
     pub(super) fn env_names(&self) -> Vec<OsString> {
         self.env.iter().map(|(name, _)| name.clone()).collect()
     }
-
-    /// The configuration a run gets through its environment, which wins over each file and
-    /// can name a key with any character in it: each hook of the configuration, off, for a
-    /// run of the runner itself; no push to a folder of this computer for the person.
-    fn overrides(&self, run: &Run<'_>) -> Vec<(String, String)> {
-        let asked = run.asked;
-        let mut set = match asked {
-            Asked::Runner => self.hooks_off.clone(),
-            Asked::Person => Vec::new(),
-        };
-        if asked == Asked::Person && !self.local_remotes {
-            // A push to a folder runs the hooks of that folder, which nothing here turns off.
-            set.push(("protocol.file.allow".to_owned(), "never".to_owned()));
-        }
-        set.extend(run.settings.iter().cloned());
-        let mut env = vec![("GIT_CONFIG_COUNT".to_owned(), set.len().to_string())];
-        for (at, (name, value)) in set.iter().enumerate() {
-            env.push((format!("GIT_CONFIG_KEY_{at}"), name.clone()));
-            env.push((format!("GIT_CONFIG_VALUE_{at}"), value.clone()));
-        }
-        env
-    }
-}
-
-/// Reads a pipe to its end; `None` when it gave more than [`MAX_OUTPUT`].
-async fn held(pipe: Option<impl tokio::io::AsyncRead + Unpin>) -> Option<Vec<u8>> {
-    let mut kept = Vec::new();
-    let Some(pipe) = pipe else {
-        return Some(kept);
-    };
-    let limit = u64::try_from(MAX_OUTPUT).unwrap_or(u64::MAX);
-    let mut pipe = pipe.take(limit.saturating_add(1));
-    // A pipe that fails gives what it gave so far; the exit code tells the rest.
-    let _ = pipe.read_to_end(&mut kept).await;
-    (kept.len() <= MAX_OUTPUT).then_some(kept)
 }

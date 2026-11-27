@@ -77,6 +77,7 @@ name = "agent-threads"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "daemon-core",
  "serde",
  "serde_json",
  "tempfile",
@@ -152,6 +153,7 @@ dependencies = [
  "chrono",
  "core-foundation 0.10.1",
  "daemon-core",
+ "futures-util",
  "getrandom 0.3.4",
  "keyring",
  "minisign",
@@ -175,6 +177,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-account-session",
  "tauri-plugin-dialog",
+ "tauri-plugin-haptics",
  "tauri-plugin-keyboard",
  "tauri-plugin-log",
  "tauri-plugin-notification",
@@ -182,10 +185,12 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-runner",
  "tauri-plugin-updater",
+ "tauri-plugin-workspace-preview",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "tokio-rustls",
+ "tokio-tungstenite",
  "url",
  "uuid",
  "whoami 2.1.3",
@@ -196,11 +201,26 @@ dependencies = [
 name = "anima-applications"
 version = "0.1.0"
 dependencies = [
+ "anima-applications-wire",
+ "anima-os-maintenance",
  "compose-rules",
+ "getrandom 0.4.3",
+ "nix 0.31.3",
+ "rustix",
  "serde",
  "serde_json",
  "sha2 0.11.1",
+ "tempfile",
  "thiserror 2.0.21",
+ "tokio",
+ "zeroize",
+]
+
+[[package]]
+name = "anima-applications-wire"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -251,6 +271,7 @@ dependencies = [
  "tokio-util",
  "uuid",
  "webpki-roots 1.0.11",
+ "whoami 2.1.3",
  "zeroize",
 ]
 
@@ -259,14 +280,17 @@ name = "anima-daemon"
 version = "0.1.0"
 dependencies = [
  "agent-threads",
+ "anima-applications-wire",
  "anima-daemon",
  "anima-windows",
  "axum",
  "base64 0.23.1",
  "bytes",
+ "calcifer-macos-acl",
  "chrono",
  "daemon-core",
  "flate2",
+ "futures-util",
  "getrandom 0.4.3",
  "http-body-util",
  "hyper",
@@ -277,6 +301,7 @@ dependencies = [
  "nix 0.29.0",
  "plist",
  "redaction",
+ "remote-login",
  "reqwest 0.12.28",
  "rpassword",
  "rustix",
@@ -343,6 +368,7 @@ dependencies = [
  "num-bigint 0.4.8",
  "png",
  "proptest",
+ "rcgen",
  "rdp-test-device",
  "rustls",
  "sha2 0.11.1",
@@ -359,6 +385,7 @@ name = "anima-hub"
 version = "0.1.0"
 dependencies = [
  "aes 0.9.4",
+ "agent-threads",
  "anima-database",
  "anima-gateway",
  "anima-hub",
@@ -375,6 +402,7 @@ dependencies = [
  "chacha20poly1305",
  "chrono",
  "chrono-tz",
+ "compose-rules",
  "daemon-core",
  "futures-util",
  "getrandom 0.4.3",
@@ -388,6 +416,7 @@ dependencies = [
  "lettre",
  "minisign",
  "nix 0.31.3",
+ "oci-artifact",
  "proptest",
  "provider-dawarich",
  "provider-github",
@@ -396,6 +425,7 @@ dependencies = [
  "rdp-test-device",
  "redaction",
  "release-record",
+ "remote-login",
  "reqwest 0.12.28",
  "ring",
  "rpassword",
@@ -414,11 +444,13 @@ dependencies = [
  "static_assertions",
  "subtle",
  "surge-ping",
+ "tar",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "tokio-rustls",
  "tokio-tungstenite",
+ "tokio-util",
  "tower",
  "tower-http",
  "tracing",
@@ -453,9 +485,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "anima-os-execution"
+version = "0.1.0"
+dependencies = [
+ "agent-threads",
+ "anima-os-maintenance",
+ "chrono",
+ "daemon-core",
+ "nix 0.31.3",
+ "oci-artifact",
+ "redaction",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "tar",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "anima-os-install"
 version = "0.1.0"
 dependencies = [
+ "anima-os-storage",
  "clap",
  "rustix",
  "serde",
@@ -467,10 +521,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "anima-os-session"
+name = "anima-os-maintenance"
 version = "0.1.0"
 dependencies = [
  "nix 0.31.3",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "anima-os-session"
+version = "0.1.0"
+dependencies = [
+ "anima-os-maintenance",
+ "nix 0.31.3",
+ "remote-login",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -482,9 +550,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "anima-os-storage"
+version = "0.1.0"
+dependencies = [
+ "rustix",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "uuid",
+]
+
+[[package]]
 name = "anima-os-update"
 version = "0.1.0"
 dependencies = [
+ "anima-os-maintenance",
  "base64 0.23.1",
  "nix 0.31.3",
  "reqwest 0.12.28",
@@ -494,6 +574,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -1351,6 +1432,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "calcifer-macos-acl"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d623f1bbaccbe0d1c6a9e4d2366feef6e179ac4e235aa86342601caf29358df4"
+
+[[package]]
 name = "camino"
 version = "1.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2016,6 +2103,7 @@ dependencies = [
  "hmac 0.13.0",
  "power",
  "proptest",
+ "quick-xml",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -3659,6 +3747,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "rustls",
+ "rustls-native-certs",
  "tokio",
  "tokio-rustls",
  "tower-service",
@@ -5474,6 +5563,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "oci-artifact"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "tar",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "oid"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6390,6 +6490,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b"
 dependencies = [
  "memchr",
+ "serde",
 ]
 
 [[package]]
@@ -6745,6 +6846,7 @@ name = "remote-login"
 version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
+ "proptest",
  "thiserror 2.0.21",
  "tokio",
  "whoami 2.1.3",
@@ -6759,6 +6861,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "futures-core",
+ "futures-util",
  "http",
  "http-body",
  "http-body-util",
@@ -6771,6 +6874,7 @@ dependencies = [
  "pin-project-lite",
  "quinn",
  "rustls",
+ "rustls-native-certs",
  "rustls-pki-types",
  "serde",
  "serde_json",
@@ -6778,12 +6882,14 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
+ "tokio-util",
  "tower",
  "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams 0.4.2",
  "web-sys",
  "webpki-roots 1.0.11",
 ]
@@ -6823,7 +6929,7 @@ dependencies = [
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams",
+ "wasm-streams 0.5.0",
  "web-sys",
 ]
 
@@ -8781,6 +8887,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-haptics"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tauri",
+ "tauri-plugin",
+]
+
+[[package]]
 name = "tauri-plugin-keyboard"
 version = "0.1.0"
 dependencies = [
@@ -8902,6 +9017,16 @@ dependencies = [
  "url",
  "windows-sys 0.61.2",
  "zip",
+]
+
+[[package]]
+name = "tauri-plugin-workspace-preview"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
 ]
 
 [[package]]
@@ -9211,7 +9336,11 @@ checksum = "8f72a05e828585856dacd553fba484c242c46e391fb0e58917c942ee9202915c"
 dependencies = [
  "futures-util",
  "log",
+ "rustls",
+ "rustls-native-certs",
+ "rustls-pki-types",
  "tokio",
+ "tokio-rustls",
  "tungstenite",
 ]
 
@@ -9483,6 +9612,8 @@ dependencies = [
  "httparse",
  "log",
  "rand 0.9.5",
+ "rustls",
+ "rustls-pki-types",
  "sha1 0.10.7",
  "thiserror 2.0.21",
 ]
@@ -9804,6 +9935,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b1f9c3798725016c6ee5f2f57869ec0831e8bbc0ab0310a86e787e97f41389e"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "wasm-streams"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15053d8d85c7eccdbefef60f06769760a563c7f0a9d6902a13d35c7800b0ad65"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

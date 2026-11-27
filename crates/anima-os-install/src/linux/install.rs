@@ -88,6 +88,7 @@ fn execute(plan: &Plan) -> Result<()> {
     progress("Retaining local connection settings", 0.9);
     persist::network(&root.join("persist/network-connections"))?;
     persist::display(&root.join("persist/display.json"))?;
+    persist::reduced_motion(&root.join("persist/anima-reduced-motion"))?;
     command::run("sync", &[])?;
     mounts.clean()?;
     println!(

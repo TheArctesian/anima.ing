@@ -1,6 +1,6 @@
 [package]
 name = "anima-applications"
-description = "The applications program of a machine: the one program of Anima that talks to Docker (contract K10 Section 6.4). Part 1: the settings, the check of each request, the final form and the plans; it starts no program and opens no socket"
+description = "The applications program of a machine: the one program of Anima that talks to Docker (contract K10 Section 6.4). The request planner and Linux plan executor"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -18,8 +18,20 @@ name = "anima-applications"
 path = "src/main.rs"
 
 [dependencies]
+anima-applications-wire = { path = "../anima-applications-wire" }
 compose-rules = { path = "../compose-rules" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
+zeroize.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+anima-os-maintenance = { path = "../anima-os-maintenance" }
+getrandom.workspace = true
+nix = { version = "0.31", default-features = false, features = ["signal", "user"] }
+rustix = { version = "1.1", features = ["event", "fs", "net", "process", "termios"] }
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+tempfile.workspace = true
+tokio.workspace = true

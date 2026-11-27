@@ -8,7 +8,9 @@ mod layout;
 mod messages;
 pub mod requests;
 mod sign_in;
+mod vencrypt;
 mod zrle;
+pub(crate) use vencrypt::{plain_sign_in, secure};
 
 use crate::screen::Screen;
 pub use layout::Monitor;
@@ -33,6 +35,8 @@ pub enum Malformed {
     TooManyPixels,
     #[error("a rectangle outside the screen")]
     OutsideScreen,
+    #[error("a pointer shape larger than the screen")]
+    LargePointer,
     #[error("more bytes for a rectangle than its pixels need")]
     TooManyBytes,
     #[error("a ZRLE tile that does not decode")]

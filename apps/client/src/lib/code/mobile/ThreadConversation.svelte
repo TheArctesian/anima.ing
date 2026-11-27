@@ -1,43 +1,76 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+  import type { PendingRequest } from './transcript.svelte';
   import { resolve } from '$app/paths';
   import CodeIcon from '$lib/code/icons/CodeIcon.svelte';
   import { programName } from '$lib/agent-threads/thread';
   import Markdown from '$lib/agent-threads/view/Markdown.svelte';
   import type { Connection } from '$lib/hub/hub';
   import EmptyState from '$lib/states/EmptyState.svelte';
-  import type { MobileCodeApi, ThreadEntry, ThreadSummary } from './api';
-  import { followThread } from './live.svelte';
+  import type { MobileCodeApi } from './api';
+  import { followThread, watchSummary } from './live.svelte';
   import ThreadState from './ThreadState.svelte';
-  import { createTranscript, threadTitle, updatedState } from './transcript.svelte';
+  import { createConversation, threadTitle } from './transcript.svelte';
 
   interface Props {
     api: MobileCodeApi;
     id: string;
     machines: ReadonlyMap<string, string>;
     connection: Connection;
+    embedded?: boolean;
+    respond?: Snippet<[PendingRequest]>;
   }
 
-  const { api, id, machines, connection }: Props = $props();
+  const { api, id, machines, connection, embedded = false, respond }: Props = $props();
   let read = $state(() => api.snapshot(id));
   let failure = $state('');
-  let summary = $state.raw<ThreadSummary | null>(null);
+  let staleSummary = $state(false);
+  let conversation = $state.raw(createConversation());
+  const summary = $derived(conversation.summary);
+  const displayedState = $derived(conversation.state);
+  let refreshSummary: (() => void) | undefined;
   let live = $state.raw<ReturnType<typeof followThread> | null>(null);
   let latest: HTMLDivElement | undefined = $state();
-  const conversation = createTranscript();
   const displayProgram = $derived(summary?.program === 'codex' || summary?.program === 'claude_code'
     ? programName(summary.program)
     : 'Agent');
 
-  function append(entry: ThreadEntry): void {
-    conversation.append(entry);
-    const state = updatedState(entry);
-    if (state !== undefined && summary !== null) summary = { ...summary, state };
-  }
+  $effect(() => {
+    if (connection === 'connected') refreshSummary?.();
+  });
 
   $effect(() => {
     const request = read();
     let active = true;
     let stop: (() => void) | undefined;
+    let refreshing = false;
+
+    function stopFollowing(): void {
+      active = false;
+      refreshSummary = undefined;
+      stop?.();
+      stop = undefined;
+    }
+
+    function refresh(): void {
+      if (refreshing) return;
+      refreshing = true;
+      void api.summary(id).then((result) => {
+        refreshing = false;
+        if (!active) return;
+        staleSummary = !result.ok;
+        if (!result.ok) return;
+        if (result.value === null) {
+          stopFollowing();
+          live = null;
+          conversation = createConversation();
+          failure = 'This thread is no longer on the hub.';
+          return;
+        }
+        conversation.acceptSummary(result.value.summary, result.value.lastSequence);
+      });
+    }
+
     void request.then((result) => {
       if (!active) return;
       if (!result.ok || result.value === null) {
@@ -45,28 +78,30 @@
         return;
       }
       const { summary: thread, entries: recent, lastSequence } = result.value;
-      summary = thread;
       for (const entry of recent) conversation.append(entry);
-      const stream = followThread(api, id, lastSequence, append);
+      conversation.acceptSummary(thread, lastSequence);
+      const stream = followThread(api, id, lastSequence, conversation.append);
       live = stream;
-      stop = stream.stop;
+      refreshSummary = refresh;
+      const stopWatching = watchSummary(refresh);
+      stop = () => {
+        stream.stop();
+        stopWatching();
+      };
     });
-    return () => {
-      active = false;
-      stop?.();
-    };
+    return stopFollowing;
   });
 </script>
 
 <section aria-labelledby="mobile-thread-title">
-  <nav aria-label="Code thread">
+  {#if !embedded}<nav aria-label="Code thread">
     <a href={resolve('/code')}><CodeIcon name="chevron-left" size="md" /> Threads</a>
     {#if conversation.messages.length > 0}
       <button class="jump" type="button" onclick={() => latest?.scrollIntoView({ block: 'end' })} aria-label="Jump to latest message">
         <CodeIcon name="arrow-down" size="md" />
       </button>
     {/if}
-  </nav>
+  </nav>{/if}
 
   {#if summary === null}
     <h1 id="mobile-thread-title">Thread</h1>
@@ -81,9 +116,13 @@
       <h1 id="mobile-thread-title">{threadTitle(summary.title)}</h1>
       <div class="context">
         <span>{machines.get(summary.deviceId) ?? 'Connected computer'}{summary.repository ? ` · ${summary.repository}` : ''} · {displayProgram}</span>
-        <ThreadState state={conversation.pending.length > 0 ? 'needs_you' : summary.state} />
+        <ThreadState state={conversation.pending.length > 0 ? 'needs_you' : displayedState} />
       </div>
     </header>
+
+    {#if staleSummary}
+      <p class="notice" role="status">Couldn’t refresh this thread. Showing the last known state.</p>
+    {/if}
 
     {#if live?.error}
       <div class="reconnect">
@@ -94,7 +133,7 @@
       <p class="notice" role="status">Reconnecting to the hub…</p>
     {/if}
 
-    {#if conversation.pending.length > 0 || summary.state === 'needs_you'}
+    {#if conversation.pending.length > 0 || displayedState === 'needs_you'}
       <section class="pending" aria-labelledby="mobile-pending-title">
         <h2 id="mobile-pending-title"><CodeIcon name="shield-question" /> Needs you</h2>
         {#each conversation.pending as request (request.id)}
@@ -104,9 +143,10 @@
             {#if request.diff !== ''}
               <details><summary>View changes</summary><pre>{request.diff}</pre></details>
             {/if}
+            {#if respond}{@render respond(request)}{/if}
           </div>
         {/each}
-        <p>Open the thread on its computer to respond.</p>
+        {#if !respond}<p>Open the thread on its computer to respond.</p>{/if}
       </section>
     {/if}
 
@@ -116,7 +156,7 @@
       <ol aria-label="Recent messages">
         {#each conversation.messages as message (message.sequence)}
           <li class:prompt={message.role === 'you'}>
-            <h2>{message.role === 'you' ? 'You' : displayProgram}</h2>
+            <h2>{message.role === 'you' ? 'You' : message.role === 'notice' ? 'Transcript notice' : displayProgram}</h2>
             <Markdown text={message.text} />
           </li>
         {/each}

@@ -94,3 +94,38 @@ fn a_link_in_the_refs_does_not_send_a_write_out_of_them() {
         0
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn failed_ref_directory_sync_does_not_remove_the_next_writers_lock() {
+    let folder = common();
+    let heads = folder.path().join("refs/heads");
+    let lock = heads.join("x.lock");
+    let next = lock.clone();
+    let fault = walk::sync_probe::fail_for(&heads, move || {
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&next)
+            .expect("rename released the lock")
+            .write_all(B.as_bytes())
+            .expect("the next writer");
+    });
+    let result = put(folder.path(), "refs/heads/x", A, Was::Absent);
+    drop(fault);
+    assert!(
+        matches!(result, Err(ProjectError::Io(error)) if error.to_string().contains("injected directory sync failure"))
+    );
+    assert_eq!(
+        resolve(folder.path(), "refs/heads/x").unwrap().as_deref(),
+        Some(A)
+    );
+    assert_eq!(
+        std::fs::read_to_string(&lock).expect("next writer owns the lock"),
+        B
+    );
+    assert!(matches!(
+        put(folder.path(), "refs/heads/x", B, Was::At(A)),
+        Err(ProjectError::Locked(_))
+    ));
+}

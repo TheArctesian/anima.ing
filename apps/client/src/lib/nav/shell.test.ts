@@ -79,7 +79,7 @@ function show(pathname = '/devices', status: HubStatus = CONNECTED): HTMLElement
 
 beforeEach(() => {
   keyStore.available.mockReset().mockReturnValue(false);
-  keyStore.read.mockReset();
+  keyStore.read.mockReset().mockResolvedValue(null);
   router.goto.mockClear();
   vi.useFakeTimers();
   vi.setSystemTime(NOW);

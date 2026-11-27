@@ -169,6 +169,30 @@ pub async fn session_limit<'e>(
     store::remote::session_limit(db, id).await
 }
 
+/// Initializes untouched VNC settings on the authenticated private daemon device.
+///
+/// # Errors
+/// Returns a database error when device settings cannot be read or written.
+pub async fn configure_private_vnc(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    user: &str,
+) -> Result<bool, Error> {
+    let found = store::fetch(&mut *conn, device).await?;
+    let private = found
+        .host
+        .parse::<std::net::Ipv6Addr>()
+        .is_ok_and(|ip| ip.segments()[..3] == [0xfd41, 0x4e49, 0x4d41]);
+    if private
+        && found.metrics_source == MetricsSource::Daemon
+        && found.kind != "hub"
+        && daemon_core::inventory::is_remote_user(user)
+    {
+        return store::automatic::configure_vnc(conn, device, user).await;
+    }
+    Ok(false)
+}
+
 /// Initializes untouched connection settings for a private, enrolled device.
 ///
 /// # Errors

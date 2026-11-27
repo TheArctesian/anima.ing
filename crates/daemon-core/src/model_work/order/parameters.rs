@@ -11,7 +11,7 @@ use crate::model_work::names::{
 };
 use crate::model_work::releases::Release;
 use crate::model_work::settings::{self, ServerSettings};
-use crate::wire::WorkType;
+use crate::wire::WorkType::{self, ApplicationApply, Build, ContainerAction, Runner, Unknown};
 
 type Object = Map<String, Value>;
 
@@ -287,6 +287,6 @@ pub fn read(
                 .ok_or(Cause::MemberUnknown)?;
             Ok(Parameters::Drain { seconds })
         }
-        WorkType::Build | WorkType::Runner | WorkType::Unknown => Err(Cause::TypeUnknown),
+        Build | Runner | ContainerAction | ApplicationApply | Unknown => Err(Cause::TypeUnknown),
     }
 }

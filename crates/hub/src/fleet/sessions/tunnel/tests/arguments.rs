@@ -13,6 +13,7 @@ use chrono::DateTime;
 use guac_protocol::{ConnectParams, Decoder, Display, Handshake, HandshakeStep, Instruction};
 
 use super::super::arguments::{BadConnectValue, Sources, audio, connect_values, time_zone};
+use super::super::policy::Policy;
 use super::device;
 use crate::fleet::credentials::Secret;
 use crate::fleet::devices::Device;
@@ -56,7 +57,7 @@ fn values_for(desktop: Desktop, device: &Device) -> guac_protocol::ArgValues {
         certificate: Some(&certificate),
         drive_root: DRIVE_ROOT,
     };
-    connect_values(desktop, &sources).unwrap()
+    connect_values(Policy::of(desktop, sources.device, false), &sources).unwrap()
 }
 
 fn params(desktop: Desktop, device: &Device, zone: Option<&str>) -> ConnectParams {
@@ -289,7 +290,9 @@ fn log_007_a_password_that_is_not_text_is_refused_without_its_bytes() {
         certificate: None,
         drive_root: DRIVE_ROOT,
     };
-    let error = connect_values(Desktop::Vnc, &sources).err().unwrap();
+    let error = connect_values(Policy::of(Desktop::Vnc, sources.device, false), &sources)
+        .err()
+        .unwrap();
     assert_eq!(
         error,
         BadConnectValue::NotText {

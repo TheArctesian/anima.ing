@@ -15,6 +15,7 @@ fn report(state: WorkState) -> WorkReport {
         outcome: "succeeded".to_owned(),
         cause: None,
         seconds: 12,
+        health: None,
         cleanup: Cleanup {
             isolation: "deleted".to_owned(),
             checkout: "deleted".to_owned(),

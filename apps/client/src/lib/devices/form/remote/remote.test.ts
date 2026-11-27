@@ -30,7 +30,7 @@ const K1: RemoteDeviceFields = {
     credentialStored: true,
     serverCertificate: null,
   },
-  vnc: { enabled: true, port: 5901, username: null, credentialStored: true },
+  vnc: { serverCertificate: null, enabled: true, port: 5901, username: null, credentialStored: true },
   macAddress: 'aa:bb:cc:dd:ee:ff',
   metricsSource: 'SSH',
   transfer: { upload: true, download: false, copy: true, paste: true },

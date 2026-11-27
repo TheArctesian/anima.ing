@@ -1,5 +1,6 @@
 //! RA-021.
 
+use super::Policy;
 use super::{
     Desktop, PASSWORD, Secret, Sources, TARGET, connect_by_name_of, connect_for, connect_values,
     device,
@@ -30,7 +31,7 @@ fn ra_021_a_root_with_a_trailing_slash_gets_no_double_slash() {
         certificate: None,
         drive_root: "/srv/drives/",
     };
-    let values = connect_values(Desktop::Rdp, &sources).unwrap();
+    let values = connect_values(Policy::of(Desktop::Rdp, sources.device, false), &sources).unwrap();
     let values = connect_by_name_of(Desktop::Rdp, &device, values);
     assert_eq!(values["drive-path"], format!("/srv/drives/{}", device.id));
     assert_eq!(values["cert-fingerprints"], "", "no certificate, no pin");

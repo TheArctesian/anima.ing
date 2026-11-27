@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { commitThenCheck } from "../../src/merge/commit.ts";
 import { members, stack } from "../../src/merge/stack.ts";
 import { firstFault } from "../../src/merge/finish.ts";
-import { batch, firstHalf, leftOutSaid, MOST, standing, trainName, verdict, type GatesRun, type Tip } from "../../src/merge/train.ts";
+import { batch, firstHalf, leftOutSaid, MOST, queue, standing, trainName, verdict, type GatesRun, type Tip } from "../../src/merge/train.ts";
 
 function gatesRun(headBranch: string, headSha: string, conclusion: string | null, updatedAt = "2026-11-20T04:00:00Z"): GatesRun {
   const event = headBranch.startsWith("train/") ? "workflow_dispatch" : "push";
@@ -31,24 +31,24 @@ describe("R-252 which branches the next train holds", () => {
       gatesRun("dev", "d0", "success"),
       gatesRun("train/d0-x", "t0", "success"),
     ];
-    expect(batch(tips, runs, new Map(), notInDev).map((tip) => tip.branch)).toEqual(["ui/b", "hub/a"]);
+    expect(queue(tips, runs, new Map(), notInDev).map((tip) => tip.branch)).toEqual(["ui/b", "hub/a"]);
   });
 
   test("a pass of an older commit of the branch does not count, and no run that failed or still runs", () => {
     const runs = [gatesRun("docs/c", "c1", "success"), gatesRun("ui/b", "b1", "failure"), gatesRun("hub/a", "a1", null)];
-    expect(batch(tips, runs, new Map(), notInDev)).toEqual([]);
+    expect(queue(tips, runs, new Map(), notInDev)).toEqual([]);
   });
 
   test("a branch that dev already holds is not taken again", () => {
     const runs = [gatesRun("ui/b", "b1", "success"), gatesRun("hub/a", "a1", "success")];
-    expect(batch(tips, runs, new Map(), (sha) => sha === "b1").map((tip) => tip.branch)).toEqual(["hub/a"]);
+    expect(queue(tips, runs, new Map(), (sha) => sha === "b1").map((tip) => tip.branch)).toEqual(["hub/a"]);
   });
 
   test("a tip that failed alone stays out until its own gates pass again after that failure", () => {
     const runs = [gatesRun("ui/b", "b1", "success", "2026-11-20T04:10:00Z")];
-    expect(batch(tips, runs, new Map([["b1", "2026-11-20T05:00:00.000Z"]]), notInDev)).toEqual([]);
+    expect(queue(tips, runs, new Map([["b1", "2026-11-20T05:00:00.000Z"]]), notInDev)).toEqual([]);
     const again = [...runs, gatesRun("ui/b", "b1", "success", "2026-11-20T05:40:00Z")];
-    expect(batch(tips, again, new Map([["b1", "2026-11-20T05:00:00.000Z"]]), notInDev)).toHaveLength(1);
+    expect(queue(tips, again, new Map([["b1", "2026-11-20T05:00:00.000Z"]]), notInDev)).toHaveLength(1);
   });
 
   test("each branch that is not taken has a reason, and a branch in dev is not named", () => {
@@ -68,9 +68,24 @@ describe("R-252 which branches the next train holds", () => {
     expect([...reasons.keys()].sort()).toEqual(["docs/c", "hosted/d", "hub/a", "new/e", "ui/b"]);
   });
 
+});
+
+describe("R-252 how many branches the next train holds", () => {
+  const many = Array.from({ length: MOST + 5 }, (_, at) => ({ branch: `work/${String(at).padStart(2, "0")}`, sha: `s${at}` }));
+  const waiting = queue(many, many.map((tip) => gatesRun(tip.branch, tip.sha, "success")), new Map(), notInDev);
+
   test("one train holds a limited number of branches", () => {
-    const many = Array.from({ length: MOST + 5 }, (_, at) => ({ branch: `work/${String(at).padStart(2, "0")}`, sha: `s${at}` }));
-    expect(batch(many, many.map((tip) => gatesRun(tip.branch, tip.sha, "success")), new Map(), notInDev)).toHaveLength(MOST);
+    expect(batch(waiting, () => []).taken).toHaveLength(MOST);
+  });
+
+  test("a branch that conflicts with dev takes no place: the train is filled with the next branches that merge", () => {
+    const conflicting = new Set(["work/00", "work/03"]);
+    const chosen = batch(waiting, (tip) => (conflicting.has(tip.branch) ? ["docs/plan/priorities.md"] : []));
+    expect(chosen.taken).toEqual(many.filter((tip) => !conflicting.has(tip.branch)).slice(0, MOST));
+    expect(chosen.conflicts.map((each) => [each.tip.branch, each.paths])).toEqual([
+      ["work/00", ["docs/plan/priorities.md"]],
+      ["work/03", ["docs/plan/priorities.md"]],
+    ]);
   });
 });
 

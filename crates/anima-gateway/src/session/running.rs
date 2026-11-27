@@ -1,12 +1,12 @@
+use tokio::io::WriteHalf;
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite};
-use tokio::net::tcp::OwnedWriteHalf;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, sleep_until};
 
 use super::hub::{Hub, write_unless_stalled};
 use super::input::{Clipboard, Input, copy_to_client};
-use super::opening::{Allowed, Opened, refuse};
+use super::opening::{Allowed, Connection, Opened, refuse};
 use super::picture::Picture;
 use super::{Ended, Settings, status};
 use crate::vnc::{self, Event, Monitor, requests};
@@ -17,7 +17,7 @@ const WAITING_READS: usize = 4;
 
 struct Running<'a, S> {
     hub: &'a mut Hub<S>,
-    to_device: OwnedWriteHalf,
+    to_device: WriteHalf<Connection>,
     allowed: Allowed,
     write_wait: std::time::Duration,
     reader: JoinHandle<()>,
@@ -41,7 +41,7 @@ where
     let Ok(picture) = Picture::new(size, &allowed, settings.pace) else {
         return refuse(hub, status::UPSTREAM_ERROR, Ended::DeviceFault).await;
     };
-    let (mut from_device, to_device) = device.into_split();
+    let (mut from_device, to_device) = tokio::io::split(device);
     let (read, mut reads) = mpsc::channel::<Vec<u8>>(WAITING_READS);
     let reader = tokio::spawn(async move {
         let mut buffer = vec![0; READ_BYTES];

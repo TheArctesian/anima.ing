@@ -1,0 +1,43 @@
+{
+  "execution": {
+    "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+    "package": "/nix/store/lzfglhaazyp8z9blvlvkwn2yfmw4207q-anima-os-execution-0.1.0",
+    "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+    "narSha256": "28dbe8e0780eb480c6ddcb859ba4b6e59dd5df024f98bcac3b660620738b754f",
+    "bytes": 5690728
+  },
+  "retainedFixture": "/Users/stephenokita/.local/share/anima-os-prototype/redesign-20261124-railpack-02",
+  "harness": "harness-19",
+  "scope": "Synthetic workspace cleanup in retained disposable VM. Not latest ISO, original-store recovery or routed hosting acceptance.",
+  "results": [
+    {
+      "case": "candidate-boot-reconciliation",
+      "result": "Passed"
+    },
+    {
+      "case": "confirmation-and-generation-refusal-preserves-home",
+      "result": "Passed"
+    },
+    {
+      "case": "captured-source-prevents-workspace-deletion",
+      "result": "Passed"
+    },
+    {
+      "case": "released-storage-idempotency-and-identity-tombstone",
+      "result": "Passed"
+    },
+    {
+      "case": "clean-shutdown",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "limitations": [
+    "Retained older installed OS with current execution package; not latest ISO acceptance.",
+    "Interruption during Btrfs deletion remains unqualified.",
+    "Shutdown reached power-off but reported a busy temporary mount."
+  ]
+}

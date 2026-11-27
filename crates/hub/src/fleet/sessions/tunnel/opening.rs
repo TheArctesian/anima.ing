@@ -29,7 +29,9 @@ use crate::{
         devices::{Device, RdpSecurity},
         sessions::{
             Desktop, PendingTicket,
-            connection_test::{ReadError, Reply, TLS_PROTOCOLS, read_server_certificate},
+            connection_test::{
+                ReadError, Reply, TLS_PROTOCOLS, read_server_certificate, read_vnc_certificate,
+            },
             start::{certificate_required, protocol_off},
         },
         ssh::{self, SshError, Target},
@@ -78,12 +80,16 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
     };
     let pinned = certificate
         .as_ref()
-        .filter(|_| certificate_required(&device.rdp));
+        .filter(|_| desktop == Desktop::Vnc || certificate_required(&device.rdp));
     if let Some(accepted) = pinned {
-        let Some(chosen) = presents(route, SocketAddr::new(address, port), accepted).await? else {
+        let Some(chosen) =
+            presents(route, SocketAddr::new(address, port), accepted, desktop).await?
+        else {
             return Ok(Opening::CertificateChanged);
         };
-        device.rdp.security = pinned_security(device.rdp.security, chosen);
+        if let Verified::Rdp(chosen) = chosen {
+            device.rdp.security = pinned_security(device.rdp.security, chosen);
+        }
     }
     let checked = Checked {
         device: &device,
@@ -124,7 +130,8 @@ async fn through_gateway(
         certificate,
         drive_root: &route.drive_root,
     };
-    let values = connect_values(desktop, &sources)?;
+    let policy = Policy::of(desktop, device, ticket.view_only);
+    let values = connect_values(policy, &sources)?;
     drop(password);
     let params = ConnectParams {
         display: ticket.display,
@@ -133,7 +140,6 @@ async fn through_gateway(
         audio: audio(desktop, device),
         values,
     };
-    let policy = Policy::of(desktop, device);
     let connected = guacd::connect(&route.guacd, desktop.select(), params, route.timing).await?;
     Ok(Opening::Gateway(Box::new(Opened {
         connected,
@@ -163,21 +169,63 @@ async fn certificate(
     device: &Device,
     desktop: Desktop,
 ) -> Result<Option<ServerCertificate>, NotOpened> {
-    if desktop == Desktop::Vnc {
-        return Ok(None);
+    let accepted = match desktop {
+        Desktop::Rdp => trust::server_certificates(&route.db, &[device.id]).await,
+        Desktop::Vnc => trust::vnc_server_certificates(&route.db, &[device.id]).await,
     }
-    let accepted = trust::server_certificates(&route.db, &[device.id])
-        .await
-        .map_err(|error| NotOpened::Sessions(error.into()))?
-        .remove(&device.id);
-    if accepted.is_none() && certificate_required(&device.rdp) {
+    .map_err(|error| NotOpened::Sessions(error.into()))?
+    .remove(&device.id);
+    if desktop == Desktop::Rdp && accepted.is_none() && certificate_required(&device.rdp) {
         return Err(NotOpened::NoCertificate);
     }
     Ok(accepted)
 }
 
-/// `None` when another certificate is presented; the address is an IP, so it is not resolved again.
+enum Verified {
+    Rdp(RdpSecurity),
+    Vnc,
+}
+
 async fn presents(
+    route: &Route,
+    address: SocketAddr,
+    accepted: &ServerCertificate,
+    desktop: Desktop,
+) -> Result<Option<Verified>, NotOpened> {
+    if desktop == Desktop::Rdp {
+        return rdp_presents(route, address, accepted)
+            .await
+            .map(|chosen| chosen.map(Verified::Rdp));
+    }
+    let host = address.ip().to_string();
+    let target = Target {
+        host: &host,
+        port: address.port(),
+        policy: route.live.policy(),
+    };
+    let presented = read_vnc_certificate(target, route.timing.connect)
+        .await
+        .map_err(unread)?;
+    Ok(presented
+        .filter(|presented| {
+            accepted
+                .fingerprint_sha256
+                .parse::<CertificateFingerprint>()
+                .is_ok_and(|accepted| accepted == presented.fingerprint)
+        })
+        .map(|_| Verified::Vnc))
+}
+
+fn unread(error: ReadError) -> NotOpened {
+    match error {
+        ReadError::Unresolved => NotOpened::Unresolved,
+        ReadError::RefusedTarget => NotOpened::RefusedTarget,
+        other => NotOpened::CertificateUnread(other),
+    }
+}
+
+/// `None` when another certificate is presented; the address is an IP, so it is not resolved again.
+async fn rdp_presents(
     route: &Route,
     address: SocketAddr,
     accepted: &ServerCertificate,
@@ -189,11 +237,7 @@ async fn presents(
         policy: route.live.policy(),
     };
     let read = read_server_certificate(target, TLS_PROTOCOLS, route.timing.connect).await;
-    match read.map_err(|error| match error {
-        ReadError::Unresolved => NotOpened::Unresolved,
-        ReadError::RefusedTarget => NotOpened::RefusedTarget,
-        other => NotOpened::CertificateUnread(other),
-    })? {
+    match read.map_err(unread)? {
         Reply::Certificate(presented, chosen) => Ok(accepted
             .fingerprint_sha256
             .parse::<CertificateFingerprint>()

@@ -7,6 +7,8 @@ publish.workspace = true
 [lints]
 workspace = true
 [target.'cfg(target_os = "linux")'.dependencies]
+anima-os-maintenance = { path = "../anima-os-maintenance" }
+remote-login = { path = "../remote-login" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

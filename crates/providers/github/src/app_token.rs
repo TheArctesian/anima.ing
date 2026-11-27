@@ -1,5 +1,7 @@
 //! Minting an installation token (SRC-002).
 
+pub(crate) mod checkout;
+
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use source_exchange::{Minted, Problem};

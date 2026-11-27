@@ -65,7 +65,9 @@ impl ArgValues {
         self.values.insert(name.into(), value.into());
     }
 
-    pub(crate) fn get(&self, name: &str) -> Option<&str> {
+    /// Returns a configured value for checking required gateway capabilities before sending it.
+    #[must_use]
+    pub fn get(&self, name: &str) -> Option<&str> {
         self.values.get(name).map(String::as_str)
     }
 }

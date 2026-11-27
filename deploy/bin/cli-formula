@@ -46,7 +46,7 @@ class Anima < Formula
   end
 
   def install
-    bin.install "anima"
+    bin.install "anima", "anima-link", "anima-daemon"
     prefix.install "LICENSE", "NOTICE", "LICENSE-APACHE"
   end
 

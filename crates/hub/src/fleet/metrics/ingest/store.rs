@@ -170,16 +170,24 @@ pub(super) async fn lock_token(
     token: TokenHash,
     now: DateTime<Utc>,
 ) -> Result<bool, sqlx::Error> {
-    let found: Option<DeviceId> = sqlx::query_scalar(
-        "SELECT device_id FROM metrics.daemons
+    Ok(lock_token_until(conn, device, token, now).await?.is_some())
+}
+
+pub(super) async fn lock_token_until(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    token: TokenHash,
+    now: DateTime<Utc>,
+) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT expires_at FROM metrics.daemons
          WHERE device_id = $1 AND token_sha256 = $2 AND expires_at > $3 FOR UPDATE",
     )
     .bind(device)
     .bind(token.to_bytes().as_slice())
     .bind(now)
     .fetch_optional(conn)
-    .await?;
-    Ok(found.is_some())
+    .await
 }
 
 /// Clears the stale mark and the need (R-364); `None` when the token was revoked or replaced

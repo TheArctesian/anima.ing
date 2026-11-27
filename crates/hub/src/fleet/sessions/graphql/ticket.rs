@@ -33,6 +33,8 @@ pub(super) struct StartSessionInput {
     device_id: ID,
     protocol: Protocol,
     display: DisplayInput,
+    /// Open an RDP or VNC session without control or data transfer.
+    view_only: Option<bool>,
 }
 
 impl StartSessionInput {
@@ -52,6 +54,7 @@ impl StartSessionInput {
                 dpi: i64::from(display.dpi.unwrap_or(DEFAULT_DPI)),
                 timezone: display.timezone,
             },
+            view_only: self.view_only.unwrap_or_default(),
             wake: None,
         })
     }

@@ -1,4 +1,4 @@
-//! `anima code`: the files of a repository the hub reads live from GitHub (PRJ-039, PRJ-040).
+//! `anima forge code`: the files of a repository the hub reads live from GitHub (PRJ-039, PRJ-040).
 
 pub mod documents;
 pub mod ls;

@@ -18,8 +18,8 @@ describe('placeGroups (HSE-002)', () => {
     expect(immich?.what).toBe('Compose project');
   });
 
-  it('marks each row Not managed in stage 1: Anima has installed nothing', () => {
-    expect(placeGroups(places, every).flatMap((group) => group.rows).every((row) => !row.managed)).toBe(true);
+  it('shows projects without a matching application as unmanaged', () => {
+    expect(placeGroups(places, every).flatMap((group) => group.rows).every((row) => row.managedApplicationId === null)).toBe(true);
   });
 
   it('says Nothing installed for a machine that was read and has no container, and gives the running count of the others', () => {

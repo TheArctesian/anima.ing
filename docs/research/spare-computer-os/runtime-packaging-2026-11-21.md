@@ -35,7 +35,7 @@ The build command completed image production, but its shell session ended with s
 - Actual graphical ISO test passed all four cases: multi-drive Calamares installation and consent reset, completion shutdown, installed GUI authentication/lock/network/display/read-only root/reboot persistence, and unchanged unselected disk. `graphical/results.json` names the exact ISO checksum. The installed Overview screenshot was inspected; its four destinations and direct sign-in remain intact.
 - All 21 required local gates passed: the full run passed the first 20, including 7,513 Rust nextest cases (two skips), doctests, Go race tests, Bun checks/tests, client production build and quality checks. Its last baseline check initially lacked the local `phase-2` ref in this new clone. Restoring it from `origin/phase-2` at `b33788f8004dc9a0631db52e33192b5a40d88300` and rerunning that gate passed; no baseline or product code changed. The macOS-only pinning execution remains skipped on this Linux host.
 
-The test commands are documented in [ISO.md](../../../experiments/anima-os/ISO.md#console-runtime-packaging). HT-127 remains Open for physical hardware, live-account completion and perceived responsiveness.
+The test commands are documented in [ISO.md](../../../os/ISO.md#console-runtime-packaging). HT-127 remains Open for physical hardware, live-account completion and perceived responsiveness.
 
 ## Local delivery
 

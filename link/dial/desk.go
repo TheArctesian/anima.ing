@@ -2,6 +2,8 @@ package dial
 
 import (
 	"context"
+	"github.com/TheArctesian/anima/link/workspaceauth"
+	"github.com/TheArctesian/anima/link/workspacepreview"
 	"net"
 	"net/netip"
 	"sync"
@@ -37,6 +39,27 @@ func (d *Desk) Open(ctx context.Context, device netip.Addr, port uint16, ask fun
 	if port == 0 {
 		return nil, nil, ErrBadRequest
 	}
+	return d.open(ctx, device, ask, func(id string) string { return openLine(port, id) })
+}
+
+// OpenPreview preserves the namespace binding on the authenticated reverse stream.
+func (d *Desk) OpenPreview(ctx context.Context, device netip.Addr, preview workspacepreview.Open, ask func(string) error) (net.Conn, func(), error) {
+	encoded, err := workspacepreview.Encode(preview)
+	if err != nil {
+		return nil, nil, ErrBadRequest
+	}
+	return d.open(ctx, device, ask, func(id string) string { return "preview " + id + " " + encoded + "\n" })
+}
+
+// OpenProvider opens a transient sign-in stream for a workspace's human owner.
+func (d *Desk) OpenProvider(ctx context.Context, device netip.Addr, login workspaceauth.Login, ask func(string) error) (net.Conn, func(), error) {
+	encoded, err := workspaceauth.Encode(login)
+	if err != nil {
+		return nil, nil, ErrBadRequest
+	}
+	return d.open(ctx, device, ask, func(id string) string { return "provider " + id + " " + encoded + "\n" })
+}
+func (d *Desk) open(ctx context.Context, device netip.Addr, ask func(string) error, line func(string) string) (net.Conn, func(), error) {
 	id := newID()
 	waits := &waiter{device: device, answer: make(chan answer, 1)}
 	d.mu.Lock()
@@ -45,7 +68,7 @@ func (d *Desk) Open(ctx context.Context, device netip.Addr, port uint16, ask fun
 	}
 	d.waiting[id] = waits
 	d.mu.Unlock()
-	if ask(openLine(port, id)) != nil {
+	if ask(line(id)) != nil {
 		if !d.forget(id) {
 			(<-waits.answer).drop()
 		}

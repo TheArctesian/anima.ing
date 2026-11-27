@@ -1,6 +1,7 @@
 import { accessApi } from '$lib/access/api';
 import { storeHubAddress } from '$lib/desktop/address';
 import { joinLink, readLink } from '$lib/desktop/link/shell';
+import { writeTokenAndCommandLine } from '$lib/desktop/command-line/sign-in';
 import { clearAccessToken, writeAccessToken } from '$lib/desktop/token';
 import { createRequestHub } from '$lib/hub/hub';
 import type { HubAccess } from './access';
@@ -36,7 +37,7 @@ export function hostedParts(mode: string | undefined, query: URLSearchParams): H
         // The claim is the credential of this request: it carries no token.
         claim: (address, claim) => accessApi(createRequestHub({ address, token: () => Promise.resolve(null) })).claimDeviceToken(claim),
         clearToken: clearAccessToken,
-        writeToken: writeAccessToken,
+        writeToken: writeTokenAndCommandLine(writeAccessToken),
         saveAddress: (origin) => {
           storeHubAddress(localStorage, origin);
           markHosted(localStorage, origin);

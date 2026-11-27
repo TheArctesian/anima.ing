@@ -1,4 +1,5 @@
 use crate::{Error, Result, boot, command, download, feed, state};
+use anima_os_maintenance::Admission;
 use serde_json::{Value, json};
 use std::path::Path;
 
@@ -50,6 +51,7 @@ async fn stage(checked: Value) -> Result<Value> {
     download::fetch(&release).await?;
     download::import(&release).await?;
     state::progress("staging", None, None)?;
+    let _admission = Admission::configuration()?;
     let current = boot::stage(&release.system).await?;
     let value = json!({"phase":"staged","version":release.version,"highest":release.version,"system":release.system,"previous":current});
     state::save(&value)?;
@@ -61,8 +63,10 @@ async fn health() -> Result<Value> {
     if pending["phase"] != "booting" {
         return Ok(pending);
     }
+    let _admission = Admission::configuration()?;
     let current = boot::current()?;
     if pending["system"] != current {
+        boot::check_rollback(&current)?;
         boot::profile(&current).await?;
         pending["phase"] = json!("rolled-back");
         state::save(&pending)?;
@@ -79,6 +83,7 @@ async fn health() -> Result<Value> {
     if Path::new("/var/lib/anima-daemon/daemon.json").exists() {
         command::run("systemctl", &["is-active", "--quiet", "anima-daemon"]).await?;
     }
+    boot::check_current(&current)?;
     let bless = std::env::var("ANIMA_BLESS_BOOT")
         .unwrap_or_else(|_| "/run/current-system/sw/lib/systemd/systemd-bless-boot".into());
     command::run(&bless, &["good"]).await?;
@@ -89,7 +94,7 @@ async fn health() -> Result<Value> {
     Ok(pending)
 }
 
-async fn rollback() -> Result<Value> {
+async fn rollback(mut lease: anima_os_maintenance::Lease) -> Result<Value> {
     let mut pending = state::read()?;
     let previous = pending["previous"].as_str().ok_or(Error::Refused(
         "There is no previous update to roll back to.",
@@ -102,6 +107,8 @@ async fn rollback() -> Result<Value> {
             "There is no previous update to roll back to.",
         ));
     }
+    boot::check_rollback(previous)?;
+    lease.dispatching()?;
     boot::profile(previous).await?;
     boot::select("anima-current.conf").await?;
     pending["phase"] = json!("rolled-back");
@@ -110,30 +117,64 @@ async fn rollback() -> Result<Value> {
     Ok(pending)
 }
 
-pub async fn dispatch(action: &str) -> Result<Value> {
+pub fn retry_needed() -> Result<bool> {
+    candidate_started(&state::read()?)
+}
+
+fn candidate_started(pending: &Value) -> Result<bool> {
+    Ok(pending["phase"] == "booting" && pending["system"] == boot::current()?)
+}
+
+pub async fn dispatch(action: &str, lease: Option<anima_os_maintenance::Lease>) -> Result<Value> {
     match action {
         "check" => check().await,
         "automatic" => crate::automatic::run().await,
         "download" => download().await,
         "health" => health().await,
-        "rollback" => rollback().await,
+        "rollback" => {
+            rollback(lease.ok_or(Error::Refused("Maintenance ownership is required."))?).await
+        }
         "activate" => {
-            let mut pending = state::read()?;
-            if pending["phase"] != "staged" {
-                return Err(Error::Refused("Download and verify an update first."));
-            }
-            pending["phase"] = json!("booting");
-            state::save(&pending)?;
-            boot::activate().await?;
-            Ok(pending)
+            let lease = lease.ok_or(Error::Refused("Maintenance ownership is required."))?;
+            activate(activation_target()?, lease).await
         }
         "failure" => {
             let pending = state::read()?;
-            if pending["phase"] == "booting" && pending["system"] == boot::current()? {
+            if candidate_started(&pending)? {
+                let mut lease =
+                    lease.ok_or(Error::Refused("Maintenance ownership is required."))?;
+                boot::check_boot_retry(system_of(&pending, "previous")?)?;
+                lease.dispatching()?;
                 boot::reboot().await?;
             }
             Ok(pending)
         }
         _ => Err(Error::Refused("Unknown update operation.")),
     }
+}
+
+pub fn activation_target() -> Result<Value> {
+    let pending = state::read()?;
+    if pending["phase"] != "staged" {
+        return Err(Error::Refused("Download and verify an update first."));
+    }
+    boot::check_activation(
+        system_of(&pending, "system")?,
+        system_of(&pending, "previous")?,
+    )?;
+    Ok(pending)
+}
+
+pub async fn activate(mut pending: Value, mut lease: anima_os_maintenance::Lease) -> Result<Value> {
+    lease.dispatching()?;
+    pending["phase"] = json!("booting");
+    state::save(&pending)?;
+    boot::activate().await?;
+    Ok(pending)
+}
+
+pub(super) fn system_of<'a>(pending: &'a Value, key: &str) -> Result<&'a str> {
+    pending[key]
+        .as_str()
+        .ok_or(Error::Refused("The retained update systems are invalid."))
 }

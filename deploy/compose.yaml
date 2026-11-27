@@ -88,6 +88,7 @@ services:
     environment:
       ANIMA_ACME_EMAIL: ${ANIMA_ACME_EMAIL:?set ANIMA_ACME_EMAIL to the Let's Encrypt contact address}
       ANIMA_ACME_SERVER: ${ANIMA_ACME_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
+      ANIMA_PREVIEW_ORIGIN: ${ANIMA_PREVIEW_ORIGIN:-}
       CF_DNS_API_TOKEN_FILE: /run/secrets/cloudflare_dns_token
     secrets: [cloudflare_dns_token]
     volumes:
@@ -194,6 +195,7 @@ services:
       # broker unit on the host the folder is empty and the app says NOT_INSTALLED.
       ANIMA_VPN_BROKER: ${ANIMA_VPN_BROKER:-/run/anima-broker/broker.sock}
       ANIMA_PUBLIC_ORIGIN: ${ANIMA_PUBLIC_ORIGIN:-https://hub.anima.ing}
+      ANIMA_PREVIEW_ORIGIN: ${ANIMA_PREVIEW_ORIGIN:-}
       ANIMA_WEB_ROOT: /usr/share/anima/web
       ANIMA_LOG: ${ANIMA_LOG:-info}
       # Release publishing (WP-36, R-108, R-117): off while the endpoint is empty. The R2 token

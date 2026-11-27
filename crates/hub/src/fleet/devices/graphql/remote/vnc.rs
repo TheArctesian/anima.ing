@@ -2,14 +2,22 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use async_graphql::{Context, Object, Result, dataloader::Loader};
+use async_graphql::{
+    Context, Object, Result,
+    dataloader::{DataLoader, Loader},
+};
 use sqlx::PgPool;
 
 use super::{credential_stored, passwords_stored};
 use crate::{
+    api_errors::{internal, schema_dependency},
     fleet::{
         credentials::{self, PasswordKind},
         devices::{Device, VncSettings},
+        trust::{
+            ServerCertificate,
+            graphql::{ServerCertificatesByDevice, VncCertificateKey},
+        },
     },
     ids::DeviceId,
 };
@@ -48,6 +56,14 @@ impl DeviceVnc {
     /// macOS Screen Sharing needs one.
     async fn username(&self) -> Option<&str> {
         self.settings.username.as_deref()
+    }
+
+    /// The independently accepted VNC TLS certificate, when configured.
+    async fn server_certificate(&self, ctx: &Context<'_>) -> Result<Option<ServerCertificate>> {
+        schema_dependency::<DataLoader<ServerCertificatesByDevice>>(ctx)?
+            .load_one(VncCertificateKey(self.device))
+            .await
+            .map_err(internal)
     }
 
     /// True when the hub holds a VNC password for this device. Passwords are never returned.

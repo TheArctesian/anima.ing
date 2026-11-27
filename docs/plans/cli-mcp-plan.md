@@ -155,7 +155,7 @@ read key; change commands with a write key).
 | `context` | `list`, `add`, `use`, `remove` |
 | `device` | `list`, `get`, `create`, `update` L, `delete` L, `wake`, `test`, `metrics` (`--watch`), `uptime`, `watch` |
 | `device credential` | `set ssh\|rdp\|vnc` L, `clear ssh\|rdp\|vnc` L |
-| `device trust` | `accept-host-key` L, `accept-certificate` L |
+| `device trust` | `accept-host-key` L, `accept-certificate [--protocol rdp\|vnc]` L |
 | `site` | `list`, `create`, `set-wake-relay` |
 | `tag` | `list` |
 | `check` | `list`, `get`, `create`, `update`, `delete`, `pause`, `resume`, `heartbeats`, `defaults get\|set`, `notifications set`, `watch` |
@@ -187,7 +187,7 @@ read key; change commands with a write key).
 | `pr` | `list <repo>` (`--state open\|closed\|all`, `--checks`; `pullRequests`; table: number, title, author, branches, draft, can merge, checks), `get <repo> <n>` (`--comments`; `pullRequest`, `issueComments`), `merge <repo> <n>...` L (`--method merge\|squash\|rebase`, required; `--sha`, required with one number whenever no question is asked: with `--yes`, `--no-input` or off a terminal; `--allow-failing-checks` and `--fork <owner/name>`, one number only; `--yes`. One number: `mergePullRequest`; 2 to 20: `mergePullRequests`, never one from a fork. It reads each pull request fresh. For one number it shows title, head, fork, merge state, checks and method, and sends the head it showed or the `--sha` given, which must equal the head it read. For several it shows each number, head (seven digits) and title, asks once and sends the heads it read; with `--yes` no one is asked, so those heads were read a moment before and confirmed by no one (the hub refuses any head that moved after the read). What it shows goes to standard error before the question, with `--json` too; each field from GitHub stays on its own line. One line for each result; exit 1 when any of several is not `MERGED` or `ALREADY_MERGED`) |
 | `issue` | `list <repo>` (`--state`; `issues`), `get <repo> <n>` (`--comments`; `issue`, `issueComments`), `create <repo>` (`--title`, `--body-file <path\|->`, `--label`; `createIssue`), `comment <repo> <n>` (`--body-file <path\|->`; `addIssueComment`), `close <repo> <n>` (`--reason completed\|not-planned`) and `reopen <repo> <n>` (`setIssueOpen`). No confirmation; the body is never printed back |
 | `workflow` | `list <repo>` (`workflows`), `start <repo> <workflow id\|path>` L (`--branch`, `--input name=value` repeated, at most 25, `--yes`; `dispatchWorkflow`; the question names the inputs, never their values, and no output or refusal shows a value), `runs <repo>` (`--branch`, `--status`, `--jobs`; `workflowRuns`; table with the commit), `run <repo> <run>` (`workflowRun`, with its jobs), `rerun <repo> <run>` L (`--failed`, `--yes`; `rerunWorkflowRun`, or `rerunFailedWorkflowJobs` with `--failed`), `cancel <repo> <run>` L (`--yes`; `cancelWorkflowRun`) |
-| `code` | `ls <repo> [path]` (`--ref`; `codeDirectory`; table: kind, size, name), `show <repo> <path>` L (`--ref`; `codeFile`: the text on standard output, cleaned of control characters when it is a terminal; `BINARY` or `TOO_LARGE` is `FAILED`, exit 1, with the GitHub link) |
+| `forge code` | `ls <repo> [path]` (`--ref`; `codeDirectory`; table: kind, size, name), `show <repo> <path>` L (`--ref`; `codeFile`: the text on standard output, cleaned of control characters when it is a terminal; `BINARY` or `TOO_LARGE` is `FAILED`, exit 1, with the GitHub link) |
 | `repo` | `commits <repo>` (`--ref`, `--checks`; `commits`), `branches <repo>` (`branches`), `releases <repo>` (`repositoryReleases`), `status set <repo> <sha>` L (`--state pending\|success\|failure\|error`, `--context anima/...`, `--description`, `--url`; `setCommitStatus`; no confirmation: the hub fences the context to `anima/`) |
 | `key` | `list` L, `create` L (`--for user\|agent`, required, LOG-015), `revoke` L |
 | `api` | Send a GraphQL document from a file or standard input |
@@ -227,6 +227,26 @@ Not in the command line, with the reason:
   JOB-027). The command names are reserved.
 - The operator password and the authenticator setup: they stay on the hub host
   (`anima-hub operator`).
+
+Managed AnimaOS Code previews use `anima code node preview list|create|close`
+for human-owned grant metadata and access changes. The dedicated browser/native
+handoff is app-only because it returns a one-use session credential. No MCP tool
+creates, revokes or launches these sessions (MCP-004, MCP-005); private session
+listing requires the owning human principal. The additive protocol and exact
+commands are in [managed-code.md](../../contracts/managed-code.md).
+
+Managed workspace lifecycle is available to the person through
+`anima code node workspace list|status|prepare|start|stop|reconcile`. The lifecycle
+GraphQL fields are human-only and have no MCP tools: execution allocation and
+termination are trust decisions (MCP-005), and their private lifecycle records
+remain scoped to the same owner. Non-authorizing Code workspace discovery keeps
+its existing MCP tool. See [managed-code.md](../../contracts/managed-code.md).
+
+Managed provider sign-in uses the human-only `managedCodeProviderLogin` subscription
+and interactive `anima code node login <device> <workspace> --generation <generation>`.
+It shows transient Codex device challenges; `--provider claude` opens the Claude URL and reads a returned code with echo disabled. The reply uses the human-only `replyManagedCodeProviderLogin` mutation on the live session. Closing the command ends sign-in.
+There is no MCP tool: this opens an authentication session and returns a sign-in code
+(MCP-004, MCP-005). The Code app uses the same live flow and one-time reply. Real provider acceptance remains open.
 
 ## 7. MCP server
 
@@ -476,6 +496,16 @@ and it reaches no machine. No tool returns the details of a container
 (`containerDetail`, HOST-017): the command, the labels and the health-check command can hold a
 secret as the environment can (MCP-004), so the root is closed to every API key and only
 `anima containers inspect` reads it.
+`anima_application_apply_status` and `anima_application_apply_targets` (read, tool set
+`devices`) give a managed Compose apply's state and devices ready to accept applies.
+`Mutation.queueApplicationApply` has no MCP tool (CMD-030, K10 Section 6.4.12).
+It accepts operator-authored Compose and environment files, which can hold secrets.
+The operator submits them through Hosting or `anima containers apply` with a login.
+`Query.projectBuildPlacement` and `Mutation.setProjectBuildPin` require an
+operator login and have no MCP tool. A project pin authorizes the named
+node to receive private repository credentials (MCP-005, K10 Section 3).
+The operator uses `anima project build placement`, `pin`, or `unpin`, or
+the Projects build panel.
 `anima_capability_list` (read, tool set `devices`) gives the tool inventory of each device
 (CAP-030, CAP-031). `anima_agents_usage` (read, tool set `devices`) gives the use of the AI agent programs on each
 device with the estimate of its cost and each daemon's state (R-135; AIS-020, AIS-021, AIS-024); it takes
@@ -483,6 +513,11 @@ and returns no secret, and the model, repository and device names are named fiel
 `mcp/untrusted.rs` (MCP-008). `anima_agents_sessions` (read, tool set `devices`) gives the single sessions
 that the daemons counted, the newest use first, with the same limits (AIS-025, AIS-026). `anima snapshot` has no tool: it changes no hub state and acts on a folder of
 the computer that runs `anima mcp`, and an agent with a shell can run the command.
+
+The source-build commands `anima project build download` and `anima project build inspect-image`
+use the private HTTP routes of [K10](../../contracts/work-route.md#inspect-the-image-of-a-completed-source-build).
+These routes require an operator login. They form the private handoff to a separately authorized
+Hosting operation.
 
 Reserved tools, proposed and not built (jobs proposal JOB-012 to JOB-027):
 the read tools `anima_job_status`, `anima_job_log`, `anima_jobs_list`
@@ -637,10 +672,10 @@ The state of each task is in the table (PLN-006). T1 to T10 are Done: each commi
 | T11 | R-120, the library and the command: the built-in state of the change tools is `allow`, and the switch "Ask before destructive actions" (MCP-024, MCP-025) in `permissions show\|set\|reset` | Opus | security | Not started | — |
 | T12 | R-120, the audit: each destructive call that runs without a question is in the hub's audit log with the tool, the cleaned arguments and the MCP client name (MCP-026) | Opus | security | Not started | — |
 | T13 | R-120, the desktop Settings panel: the switch "Ask before destructive actions", off for a new user (MCP-025), on the library of T11 | Sonnet |  | Not started | — |
-| T14 | R-383, the command: `anima auth adopt --hub <origin> -` (the token on standard input, checked with `me`, stored as CMD-012 says), `anima auth logout --hub <origin>` called by the app, and the agent declaration with each request that uses a thread token from `ANIMA_TOKEN` (K-E5 Section 3b) | Opus | security (E0-6 T9) | Not started. Needs E0-6 T8 | — |
+| T14 | R-383, the command: `anima auth adopt --hub <origin> -` (the token on standard input, checked with `me`, stored as CMD-012 says), `anima auth logout --hub <origin>` called by the app, and the agent declaration with each request that uses a thread token from `ANIMA_TOKEN` (K-E5 Section 3b) | Opus | security (E0-6 T9) | In progress (2026-11-23) on `engine/e0-6-t8-hub-tokens` with E0-6 T8: `anima auth adopt --hub <origin> -` is built (the token on standard input only, refused from a terminal and for an API key, checked with `me`, stored as CMD-012 says; the hub becomes the context `app` and the current context, so that the link address of a hosted hub, `http://127.0.0.1:<port>`, is the hub of the command line), and the error of the hosted gateway (HOSTED_ADDRESS) sends the person to the app. No MCP tool: it takes a token (Section 7). `anima auth logout` of an adopted token revokes only that token. Not built: the agent declaration of a thread token (with TH114). Waits: the command line alone on a hosted hub (HM-T40, the hosted part of T16, the command line that runs `anima-link` itself). | — |
 | T15 | R-382, the desktop app: on each hub, at the sign-in, put `anima` on `PATH` with no click (the checks of INS-002 to INS-009 stay), write the line of `PATH` into the profile of the login shell (zsh, bash or fish) one time, marked as Anima's, never when it is there and never into a link to a place outside the home folder, and name the file; then get the command-line token and run `anima auth adopt`; at the sign-out run `anima auth logout`. After U14 of [daemon-and-hub-update-plan.md](daemon-and-hub-update-plan.md), which changes the same start of the app (`+layout.svelte`) | Opus | security (E0-6 T9) | Not started. Needs T14 and E0-6 T8 | — |
-| T16 | R-381, the command: `anima auth login` by a one-time code (`--hosted`, `--hub`, `--web`, `--clipboard`, `--with-token` for an API key; `--no-input` and `--json` as CMD-020 and CMD-023 say), `anima auth status` and `anima auth logout` in the shape of `gh` (SGN-NEW-ask to SGN-NEW-status); the prompt for a password and a code goes | Opus | security (E0-6 T9) | Not started. Needs E0-6 T8; the hosted path needs HM-T40 of [hosted-mode.md](../proposals/hosted-mode.md) | — |
-| T17 | R-381, the client: the page `/device` of the hub and the same screen in the app: the code, the computer, the address, the time and the plain words of SGN-NEW-approve, then Approve or Deny; the list of sign-ins with revoke | Sonnet | security (E0-6 T9) | Not started. Needs E0-6 T8 | — |
+| T16 | R-381, the command: `anima auth login` by a one-time code (`--hosted`, `--hub`, `--web`, `--clipboard`, `--with-token` for an API key; `--no-input` and `--json` as CMD-020 and CMD-023 say), `anima auth status` and `anima auth logout` in the shape of `gh` (SGN-NEW-ask to SGN-NEW-status); the prompt for a password and a code goes | Opus | security (E0-6 T9) | In progress: browser login, hosted login, API-key input, session listing and revoke implemented; validation and separate security review running. Clipboard and richer status metadata remain outside this initial repair. | — |
+| T17 | R-381, the client: the page `/device` of the hub and the same screen in the app: the code, the computer, the address, the time and the plain words of SGN-NEW-approve, then Approve or Deny; the list of sign-ins with revoke | Sonnet | security (E0-6 T9) | In progress: approval page and session revocation implemented; validation and separate security review running. | — |
 
 ### Tasks of R-120 (T11 to T13)
 
@@ -1328,4 +1363,4 @@ database also at the other blanks. The entries of a folder that passes, other th
 
 ### Anima OS update controls (OS5-R1)
 
-`anima device os-update <device> [status|check|download|activate|rollback]` uses the authenticated hub API. Activation and rollback need `--confirm-restart`. The MCP tool `anima_device_os_update` exposes status, check and download; activation and rollback are excluded because they require the person's disruptive-action confirmation in the desktop or CLI. This does not add an arbitrary remote command tool.
+`anima device os-update <device> [status|check|download|activate|rollback]` uses the authenticated Hub API. Activation and rollback require `--confirm-restart` and `--review-revision`. Use the selected action's revision from the device status. The MCP tool `anima_device_os_update` exposes status, check and download. The desktop and CLI own confirmation for restart actions.

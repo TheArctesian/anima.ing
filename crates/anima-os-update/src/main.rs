@@ -14,6 +14,8 @@ mod remote;
 mod state;
 #[cfg(target_os = "linux")]
 mod update;
+#[cfg(target_os = "linux")]
+mod window;
 
 #[cfg(target_os = "linux")]
 use std::{path::Path, process::ExitCode};
@@ -21,6 +23,10 @@ use std::{path::Path, process::ExitCode};
 #[cfg(target_os = "linux")]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error(transparent)]
+    Maintenance(#[from] anima_os_maintenance::Error),
+    #[error("The update changed. Review it again before restarting.")]
+    ReviewChanged,
     #[error("{0}")]
     Refused(&'static str),
     #[error("The update could not access local storage. Check available space and retry.")]
@@ -47,10 +53,11 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(error) => {
-            println!(
-                "{}",
-                serde_json::json!({"ok":false,"error":error.to_string()})
-            );
+            let mut value = serde_json::json!({"ok":false,"error":error.to_string()});
+            if matches!(error, Error::ReviewChanged) {
+                value["code"] = serde_json::json!("REVIEW_CHANGED");
+            }
+            println!("{value}");
             ExitCode::FAILURE
         }
     }
@@ -68,29 +75,62 @@ async fn run() -> Result<serde_json::Value> {
             feed::verify(&bytes, Path::new(key)).await?,
         )?);
     }
-    let [action] = args.as_slice() else {
-        return Err(Error::Refused(
-            "Choose status, check, automatic, download, activate, rollback, health or failure.",
-        ));
-    };
     if !nix::unistd::Uid::effective().is_root() {
         return Err(Error::Refused("Local owner authentication required."));
     }
+    if let Some(outcome) = window::dispatch(&args).await {
+        return outcome;
+    }
+    let (action, review) = match args.as_slice() {
+        [action] => (action.as_str(), None),
+        [action, flag, revision]
+            if flag == "--review"
+                && matches!(
+                    action.as_str(),
+                    "activate"
+                        | "rollback"
+                        | "remote-activate"
+                        | "remote-rollback"
+                        | "remote-activate-run"
+                        | "remote-rollback-run"
+                ) =>
+        {
+            (action.as_str(), Some(revision.as_str()))
+        }
+        _ => {
+            return Err(Error::Refused(
+                "Choose status, check, automatic, download, activate, rollback, schedule-activation, cancel-activation, health or failure.",
+            ));
+        }
+    };
     state::prepare()?;
     if let Some(action) = action.strip_prefix("remote-") {
-        return remote::dispatch(action).await;
+        return remote::dispatch(action, review).await;
     }
     if action == "status" {
-        return state::status();
+        return state::reviewed_status();
     }
-    let lock = state::lock()?;
-    lock.try_lock()
-        .map_err(|_| Error::Refused("An update is already running. Wait for it to finish."))?;
-    update::dispatch(action).await
+    let lease = maintenance(action).await?;
+    let _lock = state::writer()?;
+    if let Some(review) = review {
+        state::require_review(action, review)?;
+    }
+    update::dispatch(action, lease).await
 }
 
 #[cfg(not(target_os = "linux"))]
 fn main() -> std::process::ExitCode {
     println!("{{\"ok\":false,\"error\":\"Anima OS updates are supported only on Linux.\"}}");
     std::process::ExitCode::FAILURE
+}
+
+#[cfg(target_os = "linux")]
+async fn maintenance(action: &str) -> Result<Option<anima_os_maintenance::Lease>> {
+    let operation = match action {
+        "activate" => anima_os_maintenance::Operation::Activate,
+        "failure" if update::retry_needed()? => anima_os_maintenance::Operation::Activate,
+        "rollback" => anima_os_maintenance::Operation::Rollback,
+        _ => return Ok(None),
+    };
+    Ok(Some(anima_os_maintenance::Lease::prepare(operation).await?))
 }

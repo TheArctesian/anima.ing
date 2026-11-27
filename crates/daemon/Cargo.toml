@@ -16,6 +16,8 @@ name = "anima-daemon"
 path = "src/main.rs"
 
 [features]
+# THR-172: enable only after review of the real probe implementation.
+mobile-inventory = []
 # The integration tests start the daemon as a child of the test and call its runner as the
 # person. On a system that keeps a read of that test from the daemon (the Mac runner of GitHub,
 # 2026-11-23) the rule of R-315 fails closed and takes the test for an agent; with this feature
@@ -29,6 +31,7 @@ test-person = []
 # The protocols of the agent programs and the frames of the local socket of the runner.
 agent-threads = { path = "../agent-threads" }
 daemon-core = { path = "../daemon-core" }
+remote-login = { path = "../remote-login" }
 # The account salt of the hub arrives in base64 (K8 Section 8.2).
 base64.workspace = true
 bytes.workspace = true
@@ -54,15 +57,22 @@ zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 tempfile.workspace = true
 thiserror.workspace = true
 # `process` runs the fixed read-only commands, `signal` ends the daemon on SIGTERM, `fs` reads /proc.
-tokio = { workspace = true, features = ["process", "signal", "fs"] }
+tokio = { workspace = true, features = ["process", "signal", "fs", "io-std"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
 zeroize.workspace = true
 
 # The macOS Keychain holds the daemon token (MET-013). Linux uses a 0600 file and never builds this.
+[target.'cfg(target_os = "linux")'.dependencies]
+anima-applications-wire = { path = "../anima-applications-wire" }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+reqwest = { workspace = true, features = ["stream"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring.workspace = true
+# Inspect effective recovery permissions on the pinned directory descriptor.
+calcifer-macos-acl = "=0.1.0"
 
 [dev-dependencies]
 anima-daemon = { path = ".", features = ["test-person"] }

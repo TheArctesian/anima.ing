@@ -11,6 +11,7 @@ export type Tone = 'up' | 'down' | 'warning' | 'unknown';
 
 export interface ContainerRow {
   readonly id: string;
+  readonly actionsAvailable: boolean;
   /** The first 12 digits of the identifier, as Docker shows it. */
   readonly shortId: string;
   readonly name: string;
@@ -95,6 +96,7 @@ function row(container: Container, updates: ReadonlyMap<string, ImageUpdate>): C
   const update = updates.get(container.id);
   return {
     id: container.id,
+    actionsAvailable: container.actionsAvailable,
     shortId: container.id.slice(0, 12),
     name: container.name,
     image: container.image,

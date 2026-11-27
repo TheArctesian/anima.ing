@@ -1,0 +1,100 @@
+{
+  "probe01": {
+    "execution": {
+      "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+      "package": "/nix/store/1r0xmh615hn757s8h2k3sni8mqpds85p-anima-os-execution-0.1.0",
+      "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+      "narSha256": "698e48155bd8f91c5d976b301a375e9e8a4e057c8e72600fbea765305719ea46",
+      "watchdogUnitSha256": "b3b7b416042bb10173d307a38757d20c148c0c35ad0a333f92828d2b10ff351e",
+      "bytes": 7072720
+    },
+    "scope": "Existing verified synthetic Railpack Node artifact in disposable overlay: exact root CLI export bytes/digest, mismatched digest emits no bytes, build cleanup refused while streaming is blocked, cleanup succeeds after exporter termination. Does not qualify successful source-job broker transfer or remote delivery acknowledgement.",
+    "results": [
+      {
+        "case": "candidate-setup",
+        "result": "Passed"
+      },
+      {
+        "case": "verified-export-and-cleanup-lock",
+        "result": "Failed",
+        "reason": "Guest command failed: python3 /run/export-check.py /nix/store/1r0xmh615hn757s8h2k3sni8mqpds85p-anima-os-execution-0.1.0/bin/anima-os-execution"
+      }
+    ]
+  },
+  "probe02": {
+    "execution": {
+      "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+      "package": "/nix/store/1r0xmh615hn757s8h2k3sni8mqpds85p-anima-os-execution-0.1.0",
+      "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+      "narSha256": "698e48155bd8f91c5d976b301a375e9e8a4e057c8e72600fbea765305719ea46",
+      "watchdogUnitSha256": "b3b7b416042bb10173d307a38757d20c148c0c35ad0a333f92828d2b10ff351e",
+      "bytes": 7072720
+    },
+    "scope": "Existing verified synthetic Railpack Node artifact in disposable overlay: exact root CLI export bytes/digest, mismatched digest emits no bytes, build cleanup refused while streaming is blocked, cleanup succeeds after exporter termination. Does not qualify successful source-job broker transfer or remote delivery acknowledgement.",
+    "results": [
+      {
+        "case": "candidate-setup",
+        "result": "Passed"
+      },
+      {
+        "case": "verified-export-and-cleanup-lock",
+        "result": "Failed",
+        "reason": "Guest command failed: interpreter=; for candidate in /nix/store/*-python3-*-env/bin/python3; do if test -x \"$candidate\"; then interpreter=\"$candidate\"; break; fi; done; test -n \"$interpreter\"; \"$interpreter\" /run/export-check.py /nix/store/1r0xmh615hn757s8h2k3sni8mqpds85p-anima-os-execution-0.1.0/bin/anima-os-execution"
+      }
+    ]
+  },
+  "probe03": {
+    "execution": {
+      "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+      "package": "/nix/store/1r0xmh615hn757s8h2k3sni8mqpds85p-anima-os-execution-0.1.0",
+      "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+      "narSha256": "698e48155bd8f91c5d976b301a375e9e8a4e057c8e72600fbea765305719ea46",
+      "watchdogUnitSha256": "b3b7b416042bb10173d307a38757d20c148c0c35ad0a333f92828d2b10ff351e",
+      "bytes": 7072720
+    },
+    "scope": "Fresh synthetic offline Dockerfile build through actual capture/build/reconcile owners in disposable overlay. Root CLI export digest/length and no-output mismatch refusal, blocked transfer retains cleanup lock, exporter termination permits cleanup. Fixture rootfs uses isolated Docker store. No source-job broker success or remote delivery acknowledgement.",
+    "results": [
+      {
+        "case": "candidate-setup",
+        "result": "Passed"
+      },
+      {
+        "case": "fresh-offline-build-export-and-cleanup-lock",
+        "result": "Passed"
+      }
+    ]
+  },
+  "daemonConsumer01": {
+    "scope": "Real Linux daemon CLI with synthetic 3-byte stream server in disposable container. Verifies root peer UID, exact bytes/digest and bounded incomplete stdin with writer left open. Not an OCI build, real source broker success or remote delivery acknowledgement.",
+    "results": [
+      {
+        "case": "real-cli-root-peer-and-stream-integrity",
+        "result": "Passed"
+      },
+      {
+        "case": "incomplete-stdin-exits-with-writer-still-open",
+        "result": "Passed"
+      }
+    ]
+  },
+  "rootStdio01": {
+    "scope": "Actual root Linux execution CLI in disposable container. Incomplete frame with open writer must exit at deadline; complete invalid and oversized frames must refuse. Does not exercise stalled artifact stdout or installed VM behavior.",
+    "sourceSha256": "3a4f80f01aa75ad2521b0ffb8cba0b86087bf9f8f2de81f45a8f452760d4fe79",
+    "results": [
+      {
+        "case": "incomplete-frame-exits-with-stdin-writer-open",
+        "result": "Passed",
+        "seconds": 5.43
+      },
+      {
+        "case": "complete-invalid-frame",
+        "result": "Passed"
+      },
+      {
+        "case": "oversized-frame",
+        "result": "Passed"
+      }
+    ],
+    "baseline": "Previously packaged root command remained running after nine seconds with incomplete input and its writer still open; the disposable container was stopped after reproduction."
+  }
+}

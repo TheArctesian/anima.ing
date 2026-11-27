@@ -46,6 +46,7 @@ export function hubName(origin: string, hosted: boolean): string {
 
 export interface UnreachableBanner {
   readonly title: string;
+  /** The hub's address, or who hosts it: a hosted hub is at a port of this computer or phone, which says nothing (NET-004, R-224). */
   readonly origin: string;
   readonly advice: string;
   readonly age: string;
@@ -57,7 +58,7 @@ export function unreachableBanner(status: HubStatus, origin: string, now: Date, 
   // A copy on the screen may be older than the last contact, and is all there is after a start with no hub (FND-007).
   const since = status.copyFrom ?? status.lastContactAt;
   const age = since === null ? 'No data yet' : `Data from ${dataAge(since, now)}`;
-  return { title: 'Not on the network', origin, advice: networkAdvice(hosted), age };
+  return { title: 'Not on the network', origin: hosted ? hubName(origin, true) : origin, advice: networkAdvice(hosted), age };
 }
 
 /** `dataAge` changes at most once a minute. */

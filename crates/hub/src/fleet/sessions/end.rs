@@ -11,6 +11,7 @@
 
 mod cause;
 mod record;
+mod removal;
 
 use chrono::{DateTime, Utc};
 use serde_json::json;
@@ -36,6 +37,7 @@ pub(super) use cause::{
 #[cfg(test)]
 pub(super) use record::finish;
 pub(super) use record::{Records, Unfinished};
+pub(crate) use removal::DeviceSessions;
 
 /// Who ends a session, from where and when: what its `session.end` audit entry records.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -196,7 +198,7 @@ pub(super) async fn close_stale(db: &PgPool, now: DateTime<Utc>) -> Result<u64, 
 async fn end_by_operator(
     db: &PgPool,
     live: &Live,
-    session: SessionId,
+    sessions: &[SessionId],
     by: &Actor,
 ) -> Result<(), Error> {
     let end = SessionEnd {
@@ -204,9 +206,12 @@ async fn end_by_operator(
         reason: EndReason::Operator,
     };
     let mut tx = db.begin().await?;
-    let ended = end_row(&mut tx, session, end, by).await?;
+    let mut ended = Vec::with_capacity(sessions.len());
+    for &session in sessions {
+        ended.extend(end_row(&mut tx, session, end, by).await?);
+    }
     tx.commit().await?;
-    if let Some(row) = ended {
+    for row in ended {
         live.publish_change(row);
     }
     Ok(())
@@ -236,12 +241,12 @@ pub(super) async fn end_session(
                 .unwrap_or_default();
         }
         live::Ending::Withdrawn(ticket) => {
-            if let Err(error) = end_by_operator(db, live, session, by).await {
+            if let Err(error) = end_by_operator(db, live, &[session], by).await {
                 live.restore(vec![ticket]);
                 return Err(error);
             }
         }
-        live::Ending::Neither => end_by_operator(db, live, session, by).await?,
+        live::Ending::Neither => end_by_operator(db, live, &[session], by).await?,
     }
     current(db, session).await
 }

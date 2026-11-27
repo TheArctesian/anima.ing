@@ -3,7 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CERTIFICATE, fakeHub } from '../../fake/hub.fixture';
 import { installBrowserFakes } from '../view.fixture.svelte';
-import type { SessionsApi } from '../../api';
+import type { RemoteProtocol, SessionsApi } from '../../api';
 import CertificateModal from './CertificateModal.svelte';
 import { PROBLEM } from './certificate';
 
@@ -23,13 +23,14 @@ async function settle() {
   flushSync();
 }
 
-async function showModal(api: Partial<SessionsApi> = {}) {
+async function showModal(api: Partial<SessionsApi> = {}, protocol: RemoteProtocol = 'RDP') {
   const fake = fakeHub({ acceptedFingerprint: 'sha256:old' });
   const heard = { closed: 0, accepted: 0 };
   const component = mount(CertificateModal, {
     target: document.body,
     props: {
       device: { id: 'device-1', name: 'desk' },
+      protocol,
       api: { ...fake.api, ...api },
       onclose: () => (heard.closed += 1),
       onaccepted: () => (heard.accepted += 1),
@@ -44,6 +45,30 @@ const dialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]')
 const shown = (field: string) => dialog()?.querySelector(`[data-${field}]`)?.textContent;
 const button = (name: string) =>
   [...(dialog()?.querySelectorAll('button') ?? [])].find((candidate) => candidate.textContent.trim() === name);
+
+describe('VNC certificate protocol selection', () => {
+  it('VNC reads and accepts only the selected protocol identity', async () => {
+    const reads: unknown[] = [];
+    const approvals: unknown[] = [];
+    const { heard } = await showModal({
+      testConnection: (input) => {
+        reads.push(input);
+        return Promise.resolve({ ok: true, value: { reachable: true, authenticated: false, hostKey: null, hostKeyChanged: false, message: null, serverCertificate: CERTIFICATE, certificateChanged: true, certificateMatched: false } });
+      },
+      acceptServerCertificate: (...args) => {
+        approvals.push(args);
+        return Promise.resolve({ ok: true, value: CERTIFICATE });
+      },
+    }, 'VNC');
+    expect(reads).toEqual([{ deviceId: 'device-1', protocol: 'VNC' }]);
+    expect(dialog()?.textContent).toContain('different VNC server certificate');
+    button('Accept new certificate')?.click();
+    await settle();
+    expect(approvals).toEqual([['device-1', CERTIFICATE.fingerprintSha256, 'VNC']]);
+    expect(heard.accepted).toBe(1);
+  });
+
+});
 
 describe('certificate modal (SEC-007, K4 §3)', () => {
   it('SEC-007: reads the new certificate with an RDP connection test and shows its fingerprint, subject and end', async () => {
