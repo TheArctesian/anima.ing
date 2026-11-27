@@ -1,6 +1,9 @@
 //! A daemon token or an enrolment code signs in only on the daemon routes (MET-013, K8 Section 2);
 //! an API key may not make a code or revoke a token (INT-003, D-23).
 
+#[cfg(unix)]
+mod handoffs;
+
 use std::{net::SocketAddr, sync::Arc};
 
 use anima_hub::clock::Clock;

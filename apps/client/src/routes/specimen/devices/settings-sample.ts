@@ -46,7 +46,7 @@ export const SAMPLE_DEVICE: DeviceDetail = {
     credentialStored: false,
     serverCertificate: null,
   },
-  vnc: { enabled: true, port: 5900, username: 'okita', credentialStored: true },
+  vnc: { serverCertificate: null, enabled: true, port: 5900, username: 'okita', credentialStored: true },
   transfer: { upload: true, download: true, copy: true, paste: false },
   day: 0.9995,
   week: 0.99,

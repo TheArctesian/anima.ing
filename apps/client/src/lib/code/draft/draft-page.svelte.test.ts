@@ -55,7 +55,7 @@ it("lists this Mac's real models in the draft page's picker, Claude Code's own d
   const names = [...document.querySelectorAll('[role="option"] .name')].map((row) => row.firstChild?.textContent);
   expect(names).toContain('Opus 5.5');
   expect(names.filter((name) => name?.includes('Default') || name?.includes('default'))).toHaveLength(1);
-  expect(document.querySelector('.notice')).toBeNull();
+  expect(document.querySelector('.notice')?.textContent).toContain('Grok listed no models.');
 });
 
 it('asks for the models again each time the picker opens, and keeps the list shown meanwhile', async () => {

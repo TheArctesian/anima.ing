@@ -1,4 +1,10 @@
+import { brandMark, composeImages, type BrandMark } from '$lib/brands/mark';
 import type { CatalogueEntry } from './api';
+
+/** HSE-020: the brand mark of an entry, found by its identifier, its name and the images of its Compose file. */
+export function entryMark(entry: Pick<CatalogueEntry, 'id' | 'name' | 'composeFile'>): BrandMark {
+  return brandMark([entry.id, entry.name], composeImages(entry.composeFile));
+}
 
 export function enumWords(value: string): string {
   const words = value.toLowerCase().replaceAll('_', ' ');

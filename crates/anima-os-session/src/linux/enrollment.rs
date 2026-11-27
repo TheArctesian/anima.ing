@@ -10,6 +10,9 @@ use std::{
 };
 use zeroize::Zeroizing;
 
+pub(super) mod install;
+mod private_link;
+
 pub fn available() -> Result<()> {
     if Path::new("/var/lib/anima-daemon/daemon.json").exists() {
         return Err(Error::Refused(
@@ -123,11 +126,7 @@ async fn enroll_hosted(token: &str, name: &str) -> Result<Value> {
         Some(token),
     )
     .await?;
-    enroll(
-        text(&answer["enrolDaemon"], "code")?,
-        "unix:/var/lib/anima-daemon/link.sock",
-    )
-    .await
+    enroll(text(&answer["enrolDaemon"], "code")?, private_link::ORIGIN).await
 }
 
 async fn provision(access: &str, name: &str) -> Result<Value> {
@@ -145,32 +144,13 @@ async fn provision(access: &str, name: &str) -> Result<Value> {
         ));
     }
     if let Some(invite) = grant["invite"].as_str().filter(|s| !s.is_empty()) {
-        let input = Zeroizing::new(format!("{invite}\n"));
-        run(
-            "runuser",
-            &[
-                "-u",
-                "anima-daemon",
-                "--",
-                "anima-link",
-                "join",
-                "-state",
-                "/var/lib/anima-link",
-            ],
-            Some(input.as_bytes()),
-            45,
-        )
-        .await?;
-    } else if !Path::new("/var/lib/anima-link/device.json").exists() {
+        private_link::join(invite).await?;
+    } else if !private_link::paired() {
         return Err(Error::Refused(
             "The account expects an existing link identity that is missing from this disk.",
         ));
     }
-    run("systemctl", &["restart", "anima-link"], None, 45).await?;
-    let deadline = Instant::now() + Duration::from_secs(30);
-    while !Path::new("/var/lib/anima-daemon/link.sock").exists() && Instant::now() < deadline {
-        tokio::time::sleep(Duration::from_millis(200)).await;
-    }
+    private_link::start().await?;
     Ok(grant)
 }
 

@@ -4,6 +4,7 @@ mod agent_usage;
 mod batch;
 mod batteries;
 mod bodies;
+mod build_recipes;
 mod check;
 mod inventory;
 mod keys;
@@ -15,6 +16,7 @@ mod thread_summaries;
 mod times;
 mod update;
 mod work;
+pub use build_recipes::{BuildRecipes, REPOSITORY_TOKEN, SOURCE_IMAGE_PRIVATE_CHECKOUT};
 
 pub use agent_usage::{BatchAccount, BatchAgentUsage, BatchLimit, BatchModel, BatchSessionDay};
 pub use batch::{
@@ -44,8 +46,10 @@ pub use update::{
     TryResult, UpdateInstruction, UpdateRequest, UpdateTry,
 };
 pub use work::{
-    Claim, Cleanup, CopyOutcome, FileHash, FoundEntry, Free, Held, Lease, Limits, LoadEntry,
-    LogPart, MAX_LOG_PART_BYTES, MODEL_TYPES, ModelOutcome, ModelState, Progress, Reported,
-    SecretRequest, ServerLoads, StopOrder, StopReason, Switch, WorkArchitecture, WorkJob, WorkKind,
-    WorkOs, WorkReport, WorkRepository, WorkResult, WorkState, WorkType,
+    ApplicationApply, ApplicationHealth, COMPOSE_FILE, Claim, Cleanup, ContainerAction,
+    ContainerVerb, CopyOutcome, ENVIRONMENT_FILE, FileHash, FoundEntry, Free, Held, HostWork,
+    Lease, Limits, LoadEntry, LogPart, MAX_LOG_PART_BYTES, MODEL_TYPES, ModelOutcome, ModelState,
+    Progress, Reported, SecretRequest, ServerLoads, StopOrder, StopReason, Switch,
+    WorkArchitecture, WorkJob, WorkKind, WorkOs, WorkReport, WorkRepository, WorkResult, WorkState,
+    WorkType,
 };

@@ -58,8 +58,9 @@ impl TestArgs {
             .filter(|_| !result.certificate_matched)
         {
             invocation.output.note(&format!(
-                "To trust this certificate: anima device trust accept-certificate {} {}",
-                self.device, certificate.fingerprint_sha256
+                "To trust this certificate: anima device trust accept-certificate {} {} --protocol {}",
+                self.device, certificate.fingerprint_sha256,
+                if matches!(self.protocol, ProtocolArg::Vnc) { "vnc" } else { "rdp" }
             ));
         }
         Ok(())

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use daemon_core::wire::Claim;
+use daemon_core::wire::{Claim, WorkType};
 use sqlx::PgConnection;
 
 use super::{count, read_word, stored, word};
@@ -28,19 +28,29 @@ pub(in crate::work::jobs) async fn save_said(
     (device, name): (DeviceId, &str),
     claim: &Claim,
 ) -> Result<(), Error> {
+    let types: Vec<_> = claim
+        .types
+        .iter()
+        .copied()
+        .filter(|kind| {
+            !matches!(kind, WorkType::ContainerAction | WorkType::ApplicationApply)
+                || crate::work::jobs::hosting::can_take(claim)
+        })
+        .collect();
     sqlx::query(
         "UPDATE jobs.machines SET name = $2, types = $3, kinds = $4, os = $5, architecture = $6, \
-         free_slots = $7, free_memory_bytes = $8, free_disk_bytes = $9 WHERE device_id = $1",
+         free_slots = $7, free_memory_bytes = $8, free_disk_bytes = $9, build_recipes = $10 WHERE device_id = $1",
     )
     .bind(device)
     .bind(name)
-    .bind(words(&claim.types)?)
+    .bind(words(&types)?)
     .bind(words(&claim.kinds)?)
     .bind(word(&claim.os)?)
     .bind(word(&claim.architecture)?)
     .bind(i64::from(claim.free.slots))
     .bind(stored(claim.free.memory_bytes)?)
     .bind(stored(claim.free.disk_bytes)?)
+    .bind(serde_json::to_value(&claim.build_recipes).map_err(|_| Error::Unreadable)?)
     .execute(conn)
     .await?;
     Ok(())
@@ -55,12 +65,14 @@ type OfferRow = (
     i64,
     i64,
     bool,
+    serde_json::Value,
 );
 
 fn offer(
-    (device, types, kinds, os, architecture, memory, disk, excluded): OfferRow,
+    (device, types, kinds, os, architecture, memory, disk, excluded, recipes): OfferRow,
 ) -> Result<Offer, Error> {
     Ok(Offer {
+        build_recipes: serde_json::from_value(recipes).map_err(|_| Error::Unreadable)?,
         device,
         types: known(&types),
         kinds: known(&kinds),
@@ -75,7 +87,7 @@ fn offer(
 }
 
 const SELECT_OFFER: &str = "SELECT device_id, types, kinds, os, architecture, free_memory_bytes, \
-     free_disk_bytes, excluded FROM jobs.machines ";
+     free_disk_bytes, excluded, build_recipes FROM jobs.machines ";
 
 /// `None` before the machine's first claim.
 pub(in crate::work::jobs) async fn offer_of(
@@ -124,17 +136,23 @@ pub(in crate::work::jobs) async fn pin(
     conn: &mut PgConnection,
     project: ProjectId,
     device: DeviceId,
-) -> Result<bool, Error> {
-    let done = sqlx::query(
-        "INSERT INTO jobs.project_machines (project_id, device_id) \
-         SELECT $1, id FROM devices.devices WHERE id = $2 \
-         ON CONFLICT (project_id) DO UPDATE SET device_id = $2",
+) -> Result<Option<bool>, Error> {
+    let (exists, changed): (bool, bool) = sqlx::query_as(
+        "WITH target AS (SELECT id FROM devices.devices WHERE id=$2),
+         changed AS (
+            INSERT INTO jobs.project_machines AS pins (project_id, device_id)
+            SELECT $1,id FROM target
+            ON CONFLICT (project_id) DO UPDATE SET device_id=EXCLUDED.device_id
+                WHERE pins.device_id IS DISTINCT FROM EXCLUDED.device_id
+            RETURNING device_id
+         )
+         SELECT EXISTS(SELECT 1 FROM target), EXISTS(SELECT 1 FROM changed)",
     )
     .bind(project)
     .bind(device)
-    .execute(conn)
+    .fetch_one(conn)
     .await?;
-    Ok(done.rows_affected() == 1)
+    Ok(exists.then_some(changed))
 }
 
 pub(in crate::work::jobs) async fn unpin(

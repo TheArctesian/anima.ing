@@ -18,6 +18,7 @@ pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]
        anima-daemon key read <name>
        anima-daemon key forget
        anima-daemon threads
+       anima-daemon source-artifact
        anima-daemon holder <folder> [<bytes kept for each thread>]
        anima-daemon --version";
 
@@ -54,6 +55,13 @@ pub enum Command {
     },
     KeyForget,
     Threads,
+    /// Internal transient login pipe, launched only inside a managed workspace.
+    #[cfg(target_os = "linux")]
+    WorkspaceAuthCodex,
+    #[cfg(target_os = "linux")]
+    SourceArtifact,
+    #[cfg(target_os = "linux")]
+    WorkspaceAuthClaude,
     /// Started by the daemon, not the operator (THR-113).
     Holder {
         folder: std::path::PathBuf,
@@ -94,6 +102,12 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
         Some("key") => key(args),
         Some("holder") => holder(args),
         Some("threads") if args.next().is_none() => Ok(Command::Threads),
+        #[cfg(target_os = "linux")]
+        Some("workspace-auth-claude") if args.next().is_none() => Ok(Command::WorkspaceAuthClaude),
+        #[cfg(target_os = "linux")]
+        Some("source-artifact") if args.next().is_none() => Ok(Command::SourceArtifact),
+        #[cfg(target_os = "linux")]
+        Some("workspace-auth-codex") if args.next().is_none() => Ok(Command::WorkspaceAuthCodex),
         Some("--version") if args.next().is_none() => Ok(Command::Version),
         _ => Err(CliError::Usage),
     }

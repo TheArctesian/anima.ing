@@ -1,12 +1,17 @@
 //! Hub configuration, parsed from a map of environment variables (no process env, no files).
 
 use std::collections::BTreeMap;
-use std::ffi::OsString;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+mod artifacts;
+mod environment;
+pub use environment::collect_env;
 mod link;
+pub use artifacts::{ArtifactRegistry, ArtifactStorage};
 mod origin;
+mod previews;
+pub use previews::PreviewOrigins;
 mod own_daemon;
 mod paths;
 use paths::{optional_path, optional_root, optional_socket, remote_drive_path};
@@ -75,6 +80,8 @@ pub struct Config {
     /// The origin clients use, in canonical form (see `origin`). Compared byte-for-byte with a
     /// browser's `Origin` header (D-3).
     pub public_origin: String,
+    /// Dedicated wildcard HTTPS origin for isolated workspace previews; absent disables browser launches.
+    pub preview_origins: Option<PreviewOrigins>,
     /// Whether `ANIMA_PUBLIC_ORIGIN` was given. Without it the origin is the default, which is
     /// right only for a hub that a browser reaches at that address (HMD-070).
     pub public_origin_given: bool,
@@ -88,6 +95,7 @@ pub struct Config {
     /// The folder of the sealed file pieces (K-E4 Section 9, FIL-001). `None`: the hub has no
     /// file store.
     pub files_dir: Option<PathBuf>,
+    pub artifact_storage: Option<ArtifactStorage>,
     /// The public names of applications (task H21); off by default.
     pub routes: Routes,
 }
@@ -104,6 +112,12 @@ impl Config {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error(
+        "private artifacts require a Unix host, a dedicated directory and positive quota and reserve bytes"
+    )]
+    ArtifactStorage,
+    #[error("artifact registry publication requires artifact storage, an origin and a repository")]
+    ArtifactRegistry,
     #[error("{variable} is set but empty")]
     Empty { variable: &'static str },
     #[error("{LISTEN}={value:?} is not a socket address")]
@@ -261,31 +275,6 @@ fn networks(variable: &'static str, text: &str) -> Result<Vec<ipnet::IpNet>, Err
         .collect()
 }
 
-/// Collect process variables into a map. A non-unicode `ANIMA_*` name or value is an error;
-/// other non-unicode variables are skipped.
-///
-/// # Errors
-/// Returns [`Error::NotUnicode`] naming the offending `ANIMA_*` variable.
-pub fn collect_env(
-    vars: impl IntoIterator<Item = (OsString, OsString)>,
-) -> Result<BTreeMap<String, String>, Error> {
-    let mut env = BTreeMap::new();
-    for (name, value) in vars {
-        let ours = name.as_encoded_bytes().starts_with(b"ANIMA_");
-        match (name.into_string(), value.into_string()) {
-            (Ok(name), Ok(value)) => {
-                env.insert(name, value);
-            }
-            (name, _) if ours => {
-                let name = name.unwrap_or_else(|raw| raw.to_string_lossy().into_owned());
-                return Err(Error::NotUnicode { name });
-            }
-            _ => {}
-        }
-    }
-    Ok(env)
-}
-
 /// The release settings alone, for the `anima-hub release` commands, which need no other
 /// setting of the hub (R-179); `None` when `ANIMA_RELEASES_ENDPOINT` is unset or empty.
 ///
@@ -339,11 +328,19 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
             PUBLIC_ORIGIN,
             value(env, PUBLIC_ORIGIN, "https://hub.anima.ing")?,
         )?,
+        preview_origins: match value(env, "ANIMA_PREVIEW_ORIGIN", "")? {
+            "" => None,
+            text => Some(PreviewOrigins::parse(
+                text,
+                value(env, PUBLIC_ORIGIN, "https://hub.anima.ing")?,
+            )?),
+        },
         public_origin_given: env.contains_key(PUBLIC_ORIGIN),
         web_root: optional_root(env, WEB_ROOT)?,
         releases: releases::from_env(env)?,
         data_key_dir: optional_root(env, DATA_KEY_DIR)?,
         files_dir: optional_root(env, FILES_DIR)?,
+        artifact_storage: artifacts::from_env(env)?,
         routes: routes::from_env(env)?,
     })
 }

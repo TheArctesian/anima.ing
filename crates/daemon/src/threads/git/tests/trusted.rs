@@ -239,3 +239,83 @@ async fn full_access_runs_no_hook_when_the_runner_gave_no_way_to_start_one() {
     );
     assert!(!ran.exists(), "a hook of the repository ran");
 }
+
+#[tokio::test]
+#[cfg(unix)]
+async fn tc7_review_keeps_the_patches_of_paths_with_spaces_and_quoted_characters() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let paths = ["notes with spaces.md", "λ\tquoted.txt"];
+    for path in paths {
+        std::fs::write(folder.join(path), format!("new content for {path}\n")).expect("a file");
+    }
+    let GitOutcome::Changes(changes) = bench.call(PERSON, UNCOMMITTED).await else {
+        panic!("expected uncommitted changes");
+    };
+    for path in paths {
+        let file = changes
+            .files
+            .iter()
+            .find(|file| file.path == path)
+            .expect("changed path");
+        assert!(
+            file.patch
+                .as_ref()
+                .is_some_and(|patch| patch.contains(&format!("+new content for {path}"))),
+            "the patch of {path:?}: {file:?}"
+        );
+    }
+    assert!(changes.snapshot.is_some());
+}
+
+#[tokio::test]
+async fn tc7_review_with_ignored_whitespace_cannot_authorize_a_commit() {
+    let bench = Bench::new().await;
+    let source = "mode.py";
+    let indented = "if enabled:\n    prepare()\n    send()\n";
+    let dedented = "if enabled:\n    prepare()\nsend()\n";
+    std::fs::write(bench.project.join(source), indented).expect("a program");
+    bench.git_in(&bench.project, &["add", source]).await;
+    bench
+        .git_in(&bench.project, &["commit", "-qm", "initial program"])
+        .await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join(source), dedented).expect("dedent the call");
+    let filtered = GitAction::Changes {
+        scope: Scope::Uncommitted,
+        ignore_whitespace: true,
+    };
+    let GitOutcome::Changes(changes) = bench.call(PERSON, filtered).await else {
+        panic!("expected filtered changes");
+    };
+    assert_eq!(
+        changes.snapshot, None,
+        "a filtered diff cannot authorize a commit"
+    );
+    let reviewed = bench.reviewed().await;
+    assert!(
+        !reviewed.is_empty(),
+        "an unfiltered review can authorize a commit"
+    );
+    let committed = bench.call(PERSON, commit(&reviewed, None)).await;
+    assert!(
+        matches!(committed, GitOutcome::Committed { .. }),
+        "{committed:?}"
+    );
+    assert_eq!(
+        bench.git_in(&folder, &["show", "HEAD:mode.py"]).await,
+        dedented.trim_end()
+    );
+}
+
+#[tokio::test]
+async fn tc7_review_never_authorizes_opaque_binary_changes() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join("opaque.bin"), b"\0data\0").expect("an opaque file");
+    let GitOutcome::Changes(changes) = bench.call(PERSON, UNCOMMITTED).await else {
+        panic!("expected changes");
+    };
+    assert!(changes.files.iter().any(|file| file.binary));
+    assert_eq!(changes.snapshot, None, "a binary notice is not a review");
+}

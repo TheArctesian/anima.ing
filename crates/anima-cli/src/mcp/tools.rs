@@ -14,6 +14,7 @@ pub mod projects;
 pub mod releases;
 pub mod repositories;
 pub mod retention;
+pub mod secrets;
 pub mod sessions;
 pub mod shared_records;
 pub mod sources;
@@ -55,6 +56,7 @@ pub enum Tool {
     Locations(shared_records::locations::LocationTool),
     Reminders(shared_records::reminders::ReminderTool),
     Agents(agents::AgentTool),
+    Secrets(secrets::SecretTool),
 }
 
 impl Tool {
@@ -86,13 +88,14 @@ impl Tool {
         tools.extend(shared_records::locations::LocationTool::ALL.map(Self::Locations));
         tools.extend(shared_records::reminders::ReminderTool::ALL.map(Self::Reminders));
         tools.extend(agents::AgentTool::ALL.map(Self::Agents));
+        tools.extend(secrets::SecretTool::ALL.map(Self::Secrets));
         tools
     }
 
     #[must_use]
     pub const fn set(self) -> ToolSet {
         match self {
-            Self::Devices(_) => ToolSet::Devices,
+            Self::Devices(_) | Self::Secrets(_) => ToolSet::Devices,
             Self::Checks(_) => ToolSet::Checks,
             Self::Maintenance(_) => ToolSet::Maintenance,
             Self::Events(_) => ToolSet::Events,
@@ -147,6 +150,7 @@ impl Tool {
             Self::Locations(tool) => tool.definition(),
             Self::Reminders(tool) => tool.definition(),
             Self::Agents(tool) => tool.definition(),
+            Self::Secrets(tool) => tool.definition(),
         }
     }
 
@@ -183,6 +187,7 @@ impl Tool {
             Self::Locations(tool) => tool.call(hub, arguments).await,
             Self::Reminders(tool) => tool.call(hub, arguments).await,
             Self::Agents(tool) => tool.call(hub, arguments).await,
+            Self::Secrets(tool) => tool.call(hub, arguments).await,
         }
     }
 }

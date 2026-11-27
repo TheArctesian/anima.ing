@@ -18,8 +18,8 @@ describe('placeGroups (HSE-002)', () => {
     expect(immich?.what).toBe('Compose project');
   });
 
-  it('marks each row Not managed in stage 1: Anima has installed nothing', () => {
-    expect(placeGroups(places, every).flatMap((group) => group.rows).every((row) => !row.managed)).toBe(true);
+  it('shows projects without a matching application as unmanaged', () => {
+    expect(placeGroups(places, every).flatMap((group) => group.rows).every((row) => row.managedApplicationId === null)).toBe(true);
   });
 
   it('says Nothing installed for a machine that was read and has no container, and gives the running count of the others', () => {
@@ -79,4 +79,15 @@ it.each([false, true])('keeps project paths when folder and file labels are on d
   });
   const project = placeGroups(split, every).flatMap((group) => group.rows).find((row) => row.name === 'immich');
   expect(project).toMatchObject({ folder: '/srv/immich', files: ['/srv/immich/compose.yaml'] });
+});
+
+describe('the mark of a row (HSE-020)', () => {
+  it('draws each row with the brand mark of its program, else its first letter', () => {
+    const marks = placeGroups(places, every).flatMap((group) => group.rows.map((row) => [row.name, row.mark]));
+    expect(marks).toEqual([
+      ['samba', { letter: 'S' }],
+      ['immich', { icon: 'simple-icons:immich' }],
+      ['watchtower', { icon: 'simple-icons:watchtower' }],
+    ]);
+  });
 });

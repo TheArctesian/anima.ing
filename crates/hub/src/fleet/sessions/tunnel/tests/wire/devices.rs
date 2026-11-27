@@ -2,12 +2,16 @@
 
 use std::collections::HashMap;
 
+use async_graphql::{EmptySubscription, Request, Schema, Variables};
+use chrono::TimeDelta;
+use serde_json::json;
 use sqlx::PgPool;
 use tokio_tungstenite::tungstenite::http::StatusCode;
 
 use super::{
     bench::{
-        DRIVE_ROOT, LOOPBACK, PASSWORD, Setup, VNC_PASSWORD, docker_host, enter_again, move_host,
+        DRIVE_ROOT, LOOPBACK, PASSWORD, Setup, VNC_PASSWORD, address, docker_host, enter_again,
+        move_host, now, operator, request,
     },
     ended_once,
     fake_guacd::{FakeGuacd, RDP_ARGS, Script, VNC_ARGS, connect_values, fake_guacd},
@@ -15,7 +19,86 @@ use super::{
     records::ended,
     socket::{open, open_with},
 };
-use crate::fleet::{credentials::PasswordKind, sessions::Protocol};
+use crate::{
+    fleet::{
+        access::Identity,
+        credentials::PasswordKind,
+        sessions::{Protocol, start},
+    },
+    schema::Mutation,
+};
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn dev_015_deleting_a_device_closes_its_tunnel_and_withdraws_its_pending_ticket(
+    pool: PgPool,
+) {
+    let (_guacd, bench, mut client) = super::session(&pool, Setup::default()).await;
+    let pending = start(
+        &pool,
+        &bench.route.clock,
+        &bench.live,
+        &operator(),
+        address(LOOPBACK),
+        request(Protocol::Rdp),
+    )
+    .await
+    .unwrap();
+    let pending_url = format!("ws://{}/tunnel?token={}", bench.served, pending.token());
+    let schema = Schema::build(
+        crate::fleet::sessions::graphql::Query,
+        Mutation::default(),
+        EmptySubscription,
+    )
+    .data(pool.clone())
+    .data(bench.live.clone())
+    .data(bench.route.bus.clone())
+    .data(bench.route.clock.clone())
+    .finish();
+    let delete = Request::new("mutation($id: ID!) { deleteDevice(id: $id) }")
+        .variables(Variables::from_json(
+            json!({"id": docker_host().to_string()}),
+        ))
+        .data(address("10.10.0.80"));
+    let delete = Identity::for_tests(operator(), now() + TimeDelta::hours(1)).attach(delete);
+
+    let reply = schema.execute(delete).await;
+    assert!(reply.errors.is_empty(), "{:?}", reply.errors);
+    assert_eq!(
+        reply.data.into_json().unwrap()["deleteDevice"],
+        docker_host().to_string()
+    );
+    assert_eq!(
+        open_with(&pending_url, true).await.err(),
+        Some(StatusCode::FORBIDDEN)
+    );
+    assert_eq!(client.close_code().await, Some(1000));
+    for session in [bench.session, pending.session] {
+        let ended = ended(&pool, session).await;
+        assert_eq!(ended.reason, "operator");
+        assert_eq!(
+            ended.audits,
+            [(
+                "operator".into(),
+                "10.10.0.80".into(),
+                json!({"reason": "operator"})
+            )]
+        );
+        let events: Vec<_> = ended
+            .events
+            .iter()
+            .filter(|event| event.1 == "session")
+            .collect();
+        assert_eq!(
+            events.len(),
+            1,
+            "only the opened tunnel writes a session event"
+        );
+        assert_eq!(events[0].3, "The operator closed the RDP session.");
+    }
+}
 
 async fn serving(args: &'static [u8]) -> FakeGuacd {
     fake_guacd(Script::Serve {

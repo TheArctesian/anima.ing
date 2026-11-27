@@ -1143,6 +1143,15 @@ p.dl-group { margin-top:18px; }
                       <label class="field"><span>User name</span><span class="input"><input value="okita"></span><small>Optional. macOS Screen Sharing needs one.</small></label>
                       <div class="field wide"><span>Password</span><div class="cred"><span class="status s-up"><iconify-icon icon="carbon:locked"></iconify-icon>Stored</span><span class="quiet">in the hub, encrypted</span><span class="grow"></span><button type="button" class="btn sm">Replace</button><button type="button" class="btn sm ghost danger-text">Remove</button></div></div>
                     </div>
+                    <details>
+                      <summary>VNC server certificate on an AnimaOS node</summary>
+                      <dl class="kv">
+                        <dt>Fingerprint (SHA-256)</dt><dd><code>e5:b8:55:7a:…</code></dd>
+                        <dt>Subject</dt><dd>anima-node</dd>
+                        <dt>Valid until</dt><dd>2027-11-26</dd>
+                      </dl>
+                      <p>Test connection offers to accept a new fingerprint for the saved device.</p>
+                    </details>
                     <p class="inline-note s-warning"><iconify-icon icon="carbon:warning-alt"></iconify-icon><span>VNC is not encrypted. Use it only over the VPN, and prefer SSH or RDP where the device has them.</span></p>
                     <div class="conn-foot"><button type="button" class="btn sm" commandfor="mockup-screen-sharing" command="show-modal">Screen Sharing setup</button></div>
                     <dialog id="mockup-screen-sharing" aria-labelledby="mockup-screen-sharing-title" style="max-width: min(32rem, 90vw); color: var(--text); background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 24px">
@@ -1363,6 +1372,9 @@ p.dl-group { margin-top:18px; }
           <a href="#settings"><iconify-icon icon="carbon:vpn"></iconify-icon>VPN</a>
         </nav>
         <div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:user"></iconify-icon><span class="rule"></span>Account</div>
+            <div class="setting"><a href="/device">Command-line approval and sessions</a></div>
+          </div>
           <div class="section"><div class="label"><iconify-icon icon="carbon:color-palette"></iconify-icon><span class="rule"></span>Appearance</div>
             <div class="setting" style="border-top:1px solid var(--border-subtle)"><div>Theme<p>System follows this computer.</p></div><div class="seg"><button>System</button><button aria-pressed="true" data-theme-set="dark">Dark</button><button data-theme-set="light">Light</button></div></div>
             <div class="setting"><div>Colours<p>Graphite is neutral grey with one frost accent.</p></div><div class="seg"><button aria-pressed="true">Graphite</button><button>Nord</button></div></div>

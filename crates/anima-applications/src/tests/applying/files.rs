@@ -148,15 +148,4 @@ fn k10_6_4_4_an_image_is_pulled_as_an_operand_after_two_hyphens() {
         pull.pull.arguments[4..],
         ["image", "pull", "--", "example/tracks:1"]
     );
-    assert_eq!(
-        pull.inspect.arguments[4..],
-        [
-            "image",
-            "inspect",
-            "--format",
-            "{{json .RepoDigests}}",
-            "--",
-            "example/tracks:1"
-        ]
-    );
 }

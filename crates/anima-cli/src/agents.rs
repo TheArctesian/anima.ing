@@ -10,6 +10,7 @@ pub mod files;
 pub(crate) mod hub_threads;
 #[cfg(unix)]
 pub mod listing;
+pub mod managed;
 pub mod report;
 #[cfg(unix)]
 pub mod runner;
@@ -24,6 +25,12 @@ use crate::invocation::Invocation;
 
 #[derive(Debug, clap::Subcommand)]
 pub enum AgentCommand {
+    /// Control managed Code on an enrolled `AnimaOS` node through the hub.
+    #[command(subcommand)]
+    Node(managed::Command),
+    /// Read or change the Git worktree of a thread on this computer.
+    #[cfg(unix)]
+    Git(threads::git::GitArgs),
     /// Sum the sessions, prompts, tool calls and tokens of Claude Code and Codex, with an
     /// estimate of their cost.
     Usage(usage::UsageArgs),
@@ -137,6 +144,7 @@ impl AgentCommand {
     /// [`Failure`] for a refusal, an unknown device or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
+            Self::Node(command) => command.run(invocation).await,
             Self::Usage(args) => args.run(invocation).await,
             Self::Sessions(args) => args.run(invocation).await,
             Self::Threads(args) => args.run(invocation).await,
@@ -152,6 +160,7 @@ impl AgentCommand {
     #[cfg(unix)]
     async fn run_local(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
+            Self::Git(args) => args.run(invocation).await,
             Self::Start(args) => args.run(invocation).await,
             Self::Send(args) => args.run(invocation).await,
             Self::Queue(args) => args.run(invocation).await,

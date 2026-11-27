@@ -3,17 +3,9 @@ use super::{
     disks::{self, Disk},
     persist, progress,
 };
-use serde::{Deserialize, Serialize};
+use anima_os_storage::{RECORD_NAME, Volume};
 use std::path::Path;
 use uuid::Uuid;
-
-#[derive(Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct Volume {
-    pub uuid: Uuid,
-    pub model: Option<String>,
-    pub serial: Option<String>,
-}
 
 pub fn prepare(selected: &[Disk], destination: &Path) -> Result<()> {
     let mut volumes = Vec::new();
@@ -50,7 +42,7 @@ pub fn prepare(selected: &[Disk], destination: &Path) -> Result<()> {
         });
     }
     persist::private_write(
-        &destination.join("data-volumes.json"),
+        &destination.join(RECORD_NAME),
         &serde_json::to_vec(&volumes)?,
     )
 }

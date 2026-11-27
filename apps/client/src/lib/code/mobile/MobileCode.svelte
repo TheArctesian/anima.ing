@@ -6,6 +6,7 @@
   import ThreadConversation from './ThreadConversation.svelte';
   import ThreadInbox from './ThreadInbox.svelte';
 
+  const { onnodes }: { onnodes?: () => void } = $props();
   const hub = useHub();
   const api = mobileCodeApi(hub);
   const id = $derived(page.url.searchParams.get('thread'));
@@ -22,7 +23,7 @@
 
 <div class="mobile-code">
   {#if id === null}
-    <ThreadInbox {api} {machines} />
+    <ThreadInbox {api} {machines} {onnodes} />
   {:else}
     {#key id}
       <ThreadConversation {api} {id} {machines} connection={hub.status.current.connection} />

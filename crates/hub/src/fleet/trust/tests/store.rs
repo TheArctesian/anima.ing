@@ -135,6 +135,7 @@ async fn accept(
 ) -> Result<(), Error> {
     let accepted = AcceptedCertificate {
         device: device(device_id),
+        protocol: crate::fleet::trust::CertificateProtocol::Rdp,
         certificate,
         by: OPERATOR.parse().unwrap(),
     };
@@ -162,9 +163,13 @@ async fn sec_007_accepting_a_certificate_replaces_the_device_s_previous_one(pool
     accept(&mut conn, PVE_01, &first).await.unwrap();
     accept(&mut conn, PVE_01, &second).await.unwrap();
 
-    let stored = store::server_certificates(&mut conn, &[device(PVE_01)])
-        .await
-        .unwrap();
+    let stored = store::server_certificates(
+        &mut conn,
+        &[device(PVE_01)],
+        crate::fleet::trust::CertificateProtocol::Rdp,
+    )
+    .await
+    .unwrap();
     assert_eq!(stored.len(), 1);
     assert_eq!(stored[&device(PVE_01)], second);
 
@@ -200,9 +205,13 @@ async fn api_005_server_certificates_reads_only_devices_with_one_in_one_query(po
 
     let mut tx = pool.begin().await.unwrap();
     let devices = [device(PVE_01), device(DOCKER_HOST), device(OLLAMA)];
-    let stored = store::server_certificates(&mut *tx, &devices)
-        .await
-        .unwrap();
+    let stored = store::server_certificates(
+        &mut *tx,
+        &devices,
+        crate::fleet::trust::CertificateProtocol::Rdp,
+    )
+    .await
+    .unwrap();
     assert_eq!(certificate_scans(&mut tx).await, 1);
     assert_eq!(stored.len(), 2, "OLLAMA has no certificate");
     assert_eq!(stored[&device(PVE_01)], pve);
@@ -217,11 +226,18 @@ async fn api_005_server_certificates_of_no_devices_runs_no_query(pool: PgPool) {
         .execute(&mut *tx)
         .await
         .unwrap_err();
-    let stored = store::server_certificates(&mut *tx, &[]).await.unwrap();
+    let stored =
+        store::server_certificates(&mut *tx, &[], crate::fleet::trust::CertificateProtocol::Rdp)
+            .await
+            .unwrap();
     assert!(stored.is_empty());
     assert!(
-        store::server_certificates(&mut *tx, &[device(PVE_01)])
-            .await
-            .is_err()
+        store::server_certificates(
+            &mut *tx,
+            &[device(PVE_01)],
+            crate::fleet::trust::CertificateProtocol::Rdp
+        )
+        .await
+        .is_err()
     );
 }

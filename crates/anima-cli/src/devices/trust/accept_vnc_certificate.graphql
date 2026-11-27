@@ -1,0 +1,8 @@
+mutation VncCertificateAccept($deviceId: ID!, $fingerprintSha256: String!) {
+  acceptVncServerCertificate(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {
+    fingerprintSha256
+    subject
+    notAfter
+    firstSeenAt
+  }
+}

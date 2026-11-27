@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use reqwest::Url;
+use super::Origin;
 use rustls::pki_types::ServerName;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
@@ -13,7 +13,15 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send> Wire for T {}
 
 /// # Errors
 /// The reason the connection or the handshake failed, without the URL.
-pub async fn connect(url: &Url) -> Result<Box<dyn Wire>, String> {
+pub async fn connect(origin: &Origin) -> Result<Box<dyn Wire>, String> {
+    #[cfg(unix)]
+    if let Some(path) = origin.socket_path() {
+        return tokio::net::UnixStream::connect(path)
+            .await
+            .map(|stream| Box::new(stream) as Box<dyn Wire>)
+            .map_err(|error| error.to_string());
+    }
+    let url = origin.graphql();
     let port = url.port_or_known_default().ok_or("no port")?;
     let host = url.host_str().ok_or("no host")?;
     let address = host.trim_start_matches('[').trim_end_matches(']');

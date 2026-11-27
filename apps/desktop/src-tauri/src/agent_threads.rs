@@ -3,6 +3,13 @@
 //! `anima agents threads`. This module adds the caller check and the error codes, nothing else.
 //! It starts no program, sends nothing to the hub and logs no text of a session (LOG-007).
 
+#[cfg(unix)]
+mod folders;
+#[cfg(unix)]
+mod registrations;
+#[cfg(unix)]
+pub mod watch;
+
 use anima_cli::agents::threads::shown::Shown;
 use anima_cli::agents::threads::{self, Program, ThreadRow, files};
 use serde::{Serialize, Serializer, ser::SerializeStruct};

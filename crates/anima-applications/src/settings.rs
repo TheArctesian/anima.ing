@@ -28,9 +28,13 @@
 
 mod guard;
 mod reading;
+#[cfg(target_os = "linux")]
+mod setup;
 
 pub use guard::{Guarded, NotGuarded, guard};
 pub use reading::{LARGEST_SETTINGS, SettingsFault, read};
+#[cfg(target_os = "linux")]
+pub use setup::{SetupError, SetupObservation, install_system_docker, observe_setup};
 
 /// The kind of the engine of a machine (K10 Section 6.4.1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

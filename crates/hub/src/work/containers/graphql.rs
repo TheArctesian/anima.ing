@@ -2,8 +2,11 @@
 //! `containerLog` and `containerDetail` are closed to every API key: a log, a command or a label
 //! can hold a secret (D-23, MCP-004).
 
+mod actions;
+mod apply;
 mod compose_file;
 mod disk;
+mod managed;
 mod objects;
 mod sentences;
 
@@ -13,6 +16,7 @@ use async_graphql::{Context, ID, Object, Result};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
+pub use self::actions::Mutation;
 use self::compose_file::{FromDockerRun, TEXT_COMPLEXITY, off_the_runtime};
 pub(super) use self::sentences::to_graphql;
 use super::{
@@ -30,6 +34,7 @@ use crate::{
         targets::AddressPolicy,
     },
     ids::DeviceId,
+    work::jobs,
 };
 
 #[derive(Default)]
@@ -56,7 +61,49 @@ impl Query {
     #[graphql(guard = "Authenticated")]
     async fn containers(&self, ctx: &Context<'_>, device_id: ID) -> Result<Vec<Container>> {
         let (reach, device, now) = asked(ctx, &device_id)?;
-        list(reach, device, now).await.map_err(to_graphql)
+        let mut containers = list(reach, device, now).await.map_err(to_graphql)?;
+        if ctx.look_ahead().field("actionsAvailable").exists()
+            && jobs::container_actions_available(reach.db, device, now)
+                .await
+                .map_err(crate::api_errors::internal)?
+        {
+            for container in &mut containers {
+                container.actions_available = true;
+            }
+        }
+        if ctx.look_ahead().field("managedApplicationId").exists() {
+            managed::mark(reach.db, device, &mut containers).await?;
+        }
+        Ok(containers)
+    }
+
+    /// The state of a queued container action. Null for an unknown action ID.
+    #[graphql(guard = "Authenticated")]
+    async fn container_action(
+        &self,
+        ctx: &Context<'_>,
+        id: ID,
+    ) -> Result<Option<actions::ContainerActionRequest>> {
+        actions::status(ctx, id).await
+    }
+
+    /// The status of one managed Compose apply. Null for an unknown apply ID.
+    #[graphql(guard = "Authenticated")]
+    async fn application_apply(
+        &self,
+        ctx: &Context<'_>,
+        id: ID,
+    ) -> Result<Option<apply::ApplicationApplyRequest>> {
+        apply::status(ctx, id).await
+    }
+
+    /// Devices with a recent advertisement from a paired Compose service.
+    #[graphql(guard = "Authenticated")]
+    async fn application_apply_targets(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Vec<apply::ApplicationApplyTarget>> {
+        apply::targets(ctx).await
     }
 
     /// The last lines of the log of one container (HOST-001). Never an API key.

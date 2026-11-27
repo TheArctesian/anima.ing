@@ -1,3 +1,4 @@
+import { OS_SOURCE } from "./os.ts";
 import type { Gate } from "./gates.ts";
 import { workspaceMaps, type Choice, type Layout, type Member } from "./tier.ts";
 
@@ -90,8 +91,8 @@ export function changedGates(choice: Choice, full: Gate[], layout: Layout, paths
     case "documents":
       return { gates: documents, notes };
     case "full":
-      notes.push("a path that no rule knows: only the quality gates run here, the full list runs on GitHub");
-      return { gates: [...documents, ...quality], notes };
+      notes.push(choice.os ? "OS source and quality gates run here; Linux controller and installed-image qualification remain separate" : "a path that no rule knows: only the quality gates run here, the full list runs on GitHub");
+      return { gates: [...documents, ...quality, ...(choice.os ? [OS_SOURCE] : [])], notes };
     case "code": {
       const bunOwn = owners(paths, layout.packages);
       const deployTested = (choice.bun === "all" ? bunOwn : choice.bun).includes("@anima/deploy");
@@ -103,6 +104,7 @@ export function changedGates(choice: Choice, full: Gate[], layout: Layout, paths
           ...bunGates(full, { touched: choice.bun, own: bunOwn }, layout.packages, notes),
           ...workspaceMaps(choice.rust, deployTested),
           ...quality,
+          ...(choice.os ? [OS_SOURCE] : []),
         ],
         notes,
       };

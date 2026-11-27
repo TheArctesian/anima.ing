@@ -7,23 +7,14 @@ use std::{
 };
 
 pub fn run(program: &'static str, arguments: &[&str]) -> Result<()> {
-    execute(program, arguments, false, false).map(drop)
+    execute(program, arguments, false).map(drop)
 }
 
 pub fn capture(program: &'static str, arguments: &[&str]) -> Result<Vec<u8>> {
-    execute(program, arguments, true, false)?.ok_or(Error::Command(program))
+    execute(program, arguments, true)?.ok_or(Error::Command(program))
 }
 
-pub fn optional_capture(program: &'static str, arguments: &[&str]) -> Result<Option<Vec<u8>>> {
-    execute(program, arguments, true, true)
-}
-
-fn execute(
-    program: &'static str,
-    arguments: &[&str],
-    capture: bool,
-    absent: bool,
-) -> Result<Option<Vec<u8>>> {
+fn execute(program: &'static str, arguments: &[&str], capture: bool) -> Result<Option<Vec<u8>>> {
     let path = std::env::var_os("PATH").ok_or(Error::Command(program))?;
     let mut child = Command::new(program)
         .args(arguments)
@@ -51,7 +42,7 @@ fn execute(
     });
     let deadline = Instant::now()
         + Duration::from_secs(if program == "nixos-install" {
-            1800
+            3600
         } else {
             120
         });
@@ -67,7 +58,7 @@ fn execute(
             }
             let _ = child.kill();
             let _ = child.wait();
-            return Err(Error::Command(program));
+            return Err(Error::CommandTimeout(program));
         }
         std::thread::sleep(Duration::from_millis(20));
     };
@@ -75,9 +66,6 @@ fn execute(
         Some(reader) => reader.join().map_err(|_| Error::Command(program))??,
         None => Vec::new(),
     };
-    if absent && status.code() == Some(1) {
-        return Ok(None);
-    }
     if !status.success() || bytes.len() > 4 * 1024 * 1024 {
         return Err(Error::Command(program));
     }

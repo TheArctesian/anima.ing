@@ -105,6 +105,8 @@ impl Node {
     #[must_use]
     pub fn claim(&self) -> Claim {
         Claim {
+            build_recipes: None,
+            applications: Switch::Off,
             device: self.device,
             switch: if self.switch_on {
                 Switch::On

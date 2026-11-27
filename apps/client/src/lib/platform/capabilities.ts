@@ -4,6 +4,8 @@ export interface Capabilities {
   readonly keyStore: boolean;
   /** Web interfaces open in native web view tabs that can pin a certificate (WEB-003, WEB-008). */
   readonly webViewTabs: boolean;
+  /** Isolated native mobile workspace preview, without app IPC. */
+  readonly workspacePreviews: boolean;
   /** A session tab can move to its own window (RA-002). */
   readonly popOut: boolean;
   /** The app checks for and installs its own updates (UPD-001, UPD-006). */
@@ -34,6 +36,8 @@ export interface Capabilities {
   readonly agentThreads: boolean;
   /** The shell can read this device’s local runner capability report (OD-14). */
   readonly runnerReport: boolean;
+  /** The shell plays the haptic feedback of iOS, which the web view cannot (mobile plan M4-4, MOT-050). */
+  readonly haptics: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
   /** The client draws the window controls and the top of the window moves it (Windows and Linux; agent-threads.md TC2). */

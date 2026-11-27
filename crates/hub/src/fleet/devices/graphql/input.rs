@@ -96,7 +96,7 @@ fn site_id(id: &ID) -> Result<SiteId, FieldError> {
 }
 
 /// The id in a mutation argument.
-pub(super) fn device_id(id: &ID) -> Result<DeviceId, FieldError> {
+pub(crate) fn device_id(id: &ID) -> Result<DeviceId, FieldError> {
     id.parse()
         .map_err(|_| FieldError::new("id", "That device id is not valid."))
 }

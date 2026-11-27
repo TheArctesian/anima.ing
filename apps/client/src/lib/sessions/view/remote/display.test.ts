@@ -196,7 +196,7 @@ describe('MAT-008: the remote display', () => {
   const rules = new Map([...componentRules('./RemoteView.svelte'), ...componentRules('./RemoteDisplay.svelte')]);
 
   it('MAT-008: no rule on the display, the pane or the stage animates, transforms, filters or blurs them', () => {
-    for (const selector of ['.display', '.pane', '.stage']) {
+    for (const selector of ['.display', '.screen', '.pane', '.stage']) {
       const declarations = [...(rules.get(selector)?.keys() ?? [])];
       expect(declarations, selector).not.toEqual([]);
       for (const property of MOTION) expect(declarations, `${selector} ${property}`).not.toContain(property);
@@ -215,7 +215,7 @@ describe('MAT-008: the remote display', () => {
     for (const node of [element, ...element.querySelectorAll<HTMLElement>('*')]) {
       for (const property of ['transition', 'filter', 'backdrop-filter', 'animation']) expect(node.style.getPropertyValue(property), property).toBe('');
     }
-    const stage = target.querySelector('[data-display]')?.parentElement?.parentElement;
+    const stage = target.querySelector('[data-display]')?.closest('.pane')?.parentElement;
     expect(stage?.children).toHaveLength(1);
   });
 });

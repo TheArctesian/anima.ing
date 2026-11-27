@@ -1,6 +1,8 @@
 //! The Anima push daemon: it pushes this computer's metrics to the hub (MET-011 to MET-020,
 //! `contracts/daemon-push.md`).
 
+#[cfg(target_os = "linux")]
+pub mod applications;
 pub mod cli;
 pub mod config;
 pub mod hub;
@@ -21,4 +23,14 @@ pub mod units;
 
 #[cfg(test)]
 mod test_links;
-pub mod work;
+pub use daemon_core::work;
+pub mod work_switch;
+
+#[cfg(target_os = "linux")]
+pub mod workspace_auth;
+
+#[cfg(target_os = "linux")]
+pub mod source_artifact;
+
+#[cfg(target_os = "linux")]
+pub mod source_work;

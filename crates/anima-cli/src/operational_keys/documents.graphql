@@ -1,0 +1,91 @@
+fragment SecretFields on OperationalKey {
+  id
+  name
+  provider
+  purpose
+  instructions
+  providerLink
+  rotationDays
+  expiresAt
+  due
+  activeVersion
+  lastRotatedAt
+  lastRotatedBy
+  createdAt
+  createdBy
+  versions {
+    number
+    state
+    createdAt
+    createdBy
+    endedAt
+    rotatedAtProvider
+  }
+  consumers {
+    deviceId
+    workload
+    grantedAt
+    grantedBy
+    heldVersion
+    heldSeenAt
+    fetchedVersion
+    fetchedAt
+  }
+}
+fragment SecretEndingFields on OperationalKeyEnding {
+  key {
+    ...SecretFields
+  }
+  endedVersion
+  stillHeldBy {
+    deviceId
+    workload
+    heldVersion
+    heldSeenAt
+  }
+}
+query SecretList {
+  operationalKeys {
+    ...SecretFields
+  }
+}
+query SecretShow($name: String!) {
+  operationalKey(name: $name) {
+    ...SecretFields
+  }
+}
+mutation SecretAdd($input: CreateOperationalKeyInput!) {
+  createOperationalKey(input: $input) {
+    ...SecretFields
+  }
+}
+mutation SecretSet($name: String!, $input: UpdateOperationalKeyInput!) {
+  updateOperationalKey(name: $name, input: $input) {
+    ...SecretFields
+  }
+}
+mutation SecretRotate($name: String!, $value: String!, $rotatedAtProvider: Boolean!) {
+  rotateOperationalKey(name: $name, value: $value, rotatedAtProvider: $rotatedAtProvider) {
+    ...SecretEndingFields
+  }
+}
+mutation SecretRevoke($name: String!) {
+  revokeOperationalKey(name: $name) {
+    ...SecretEndingFields
+  }
+}
+mutation SecretRemove($name: String!) {
+  removeOperationalKey(name: $name) {
+    ...SecretEndingFields
+  }
+}
+mutation SecretGrant($name: String!, $device: ID!, $workload: String!) {
+  grantOperationalKey(name: $name, device: $device, workload: $workload) {
+    ...SecretFields
+  }
+}
+mutation SecretUngrant($name: String!, $device: ID!, $workload: String!) {
+  ungrantOperationalKey(name: $name, device: $device, workload: $workload) {
+    ...SecretFields
+  }
+}

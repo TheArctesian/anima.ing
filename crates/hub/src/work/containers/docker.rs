@@ -100,6 +100,8 @@ pub(super) fn containers(output: &CommandOutput) -> Result<Vec<Container>, Error
 
 fn container(line: Line) -> Container {
     Container {
+        actions_available: false,
+        managed_application_id: None,
         id: line.id,
         name: shown_name(&line.names),
         image: line.image,

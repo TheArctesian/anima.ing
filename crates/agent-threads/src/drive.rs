@@ -17,6 +17,7 @@ mod claude_in;
 mod claude_out;
 mod codex_in;
 mod codex_out;
+pub mod grok;
 mod launch;
 mod lists;
 mod prompt;

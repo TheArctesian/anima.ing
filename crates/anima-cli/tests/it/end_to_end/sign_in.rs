@@ -1,32 +1,37 @@
-//! `anima auth` against the real hub: the password and the authenticator code at a terminal,
+//! `anima auth` against the real hub: browser approval and hidden API-key input,
 //! the stored token, and sign-out ending it on the hub (CMD-010, CMD-012, CMD-014, CMD-021).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use crate::kit::Anima;
-use crate::kit::real_hub::{PASSWORD, RealHub, USERNAME};
+use crate::kit::real_hub::{RealHub, USERNAME};
 use crate::kit::terminal::{Terminal, assert_modes_restored};
-use crate::kit::totp::{code_now, wrong_code};
 
-/// `auth login` at a terminal, answering each question as it appears; its exit code and screen.
-async fn log_in(anima: &Anima, code: &str) -> (i32, String) {
-    let mut terminal = Terminal::start(anima, &["auth", "login"]);
-    terminal.expect("User name: ").await;
-    terminal.type_line(USERNAME).await;
-    terminal.expect("Password: ").await;
-    terminal.type_line(PASSWORD).await;
-    terminal.expect("Authenticator code").await;
-    terminal.type_line(code).await;
-    terminal.finish().await
+async fn browser_code(anima: &Anima, origin: &str) -> (Terminal, String) {
+    let mut terminal = Terminal::start(anima, &["auth", "login", "--hub", origin, "--no-input"]);
+    terminal.expect("Enter it at").await;
+    let screen = terminal.screen();
+    let code = screen
+        .split("Your one-time code: ")
+        .nth(1)
+        .and_then(|rest| rest.split_whitespace().next())
+        .expect("the browser code")
+        .to_owned();
+    (terminal, code)
 }
 
-/// `auth login` at a terminal with the modes shown, stopped at the password question.
-async fn at_the_password(anima: &Anima) -> Terminal {
-    let mut terminal = Terminal::start_showing_modes(anima, &["auth", "login"]);
-    terminal.expect("User name: ").await;
-    terminal.type_line(USERNAME).await;
-    terminal.expect("Password: ").await;
+async fn decide(hub: &RealHub, code: &str, approve: bool) {
+    let login = hub.login_token().await;
+    let answer = hub.data(&login,
+        "mutation($code: String!, $approve: Boolean!) { approveCommandLineSignIn(userCode: $code, approve: $approve) }",
+        json!({ "code": code, "approve": approve })).await;
+    assert_eq!(answer["approveCommandLineSignIn"], true);
+}
+
+async fn at_the_key(anima: &Anima) -> Terminal {
+    let mut terminal = Terminal::start_showing_modes(anima, &["auth", "login", "--with-token"]);
+    terminal.expect("API key: ").await;
     terminal
 }
 
@@ -47,16 +52,12 @@ fn stored_token(anima: &Anima, origin: &str) -> String {
 }
 
 #[sqlx::test(migrations = "../hub/migrations")]
-async fn cmd_010_login_at_a_terminal_with_totp_signs_in_and_logout_ends_the_token(pool: PgPool) {
+async fn cmd_010_browser_approval_signs_in_and_logout_ends_the_remote_token(pool: PgPool) {
     let hub = RealHub::start(pool).await;
-    let seed = hub.enrol_totp().await;
     let anima = hub.anima();
-
-    let (code, screen) = log_in(&anima, &wrong_code(&code_now(&seed))).await;
-    assert_eq!(code, 4, "{screen}");
-    assert!(!anima.config_dir().join("tokens.json").exists());
-
-    let (code, screen) = log_in(&anima, &code_now(&seed)).await;
+    let (terminal, code) = browser_code(&anima, &hub.origin).await;
+    decide(&hub, &code, true).await;
+    let (code, screen) = terminal.finish().await;
     assert_eq!(code, 0, "{screen}");
     let token = stored_token(&anima, &hub.origin);
     assert!(!screen.contains(&token), "{screen}");
@@ -90,37 +91,41 @@ async fn cmd_010_login_at_a_terminal_with_totp_signs_in_and_logout_ends_the_toke
     later.assert_never_shows(&token);
 }
 
-/// A person who types ahead: the user name and the password at once, before the password
-/// question is on screen. The terminal must never show the password (CMD-010, LOG-007).
 #[sqlx::test(migrations = "../hub/migrations")]
-async fn cmd_010_a_password_typed_ahead_is_never_echoed(pool: PgPool) {
+async fn cmd_010_browser_denial_saves_no_credentials(pool: PgPool) {
     let hub = RealHub::start(pool).await;
     let anima = hub.anima();
     let mut terminal = Terminal::start(&anima, &["auth", "login"]);
-    terminal.expect("User name: ").await;
-    terminal.type_line(&format!("{USERNAME}\r{PASSWORD}")).await;
-    terminal.expect("Authenticator code").await;
-    terminal.type_line("").await;
+    terminal.expect("Sign in:").await;
+    terminal.type_line("2").await;
+    terminal.expect("Hub address:").await;
+    terminal.type_line(&hub.origin).await;
+    terminal.expect("Press Enter to open the browser").await;
+    let screen = terminal.screen();
+    let code = screen
+        .split("Your one-time code: ")
+        .nth(1)
+        .and_then(|rest| rest.split_whitespace().next())
+        .expect("the browser code")
+        .to_owned();
+    terminal.type_line("skip").await;
+    decide(&hub, &code, false).await;
     let (code, screen) = terminal.finish().await;
-    assert!(
-        !screen.contains(PASSWORD),
-        "the password was echoed: {screen}"
-    );
-    assert_eq!(code, 0, "{screen}");
+    assert_eq!(code, 2, "{screen}");
+    assert!(screen.contains("denied"), "{screen}");
+    assert!(!anima.config_dir().join("tokens.json").exists());
 }
 
-/// Backspace and Ctrl-U edit the password; the terminal echoes again afterwards, in the modes
+/// Backspace and Ctrl-U edit the key; the terminal echoes again afterwards, in the modes
 /// it had before (CMD-010).
 #[sqlx::test(migrations = "../hub/migrations")]
-async fn cmd_010_an_edited_password_signs_in_and_the_terminal_echoes_again(pool: PgPool) {
+async fn cmd_010_an_edited_key_signs_in_and_the_terminal_echoes_again(pool: PgPool) {
     let hub = RealHub::start(pool).await;
     let anima = hub.anima();
-    let mut terminal = at_the_password(&anima).await;
-    terminal
-        .type_line(&format!("mistake\x15{PASSWORD}x\x7f"))
-        .await;
-    terminal.expect("Authenticator code").await;
-    terminal.type_line("").await;
+    let mut terminal = at_the_key(&anima).await;
+    let operator = hub.anima().with("ANIMA_TOKEN", &hub.login_token().await);
+    let key = super::keys::make_key(&operator, "terminal", "read", "user").await;
+    terminal.type_line(&format!("mistake\x15{key}x\x7f")).await;
     let (code, screen) = terminal.finish().await;
     assert_eq!(code, 0, "{screen}");
     assert!(
@@ -128,18 +133,18 @@ async fn cmd_010_an_edited_password_signs_in_and_the_terminal_echoes_again(pool:
         "the user name is shown: {screen}"
     );
     assert!(
-        !screen.contains(PASSWORD) && !screen.contains("mistake"),
+        !screen.contains(&key) && !screen.contains("mistake"),
         "{screen}"
     );
     assert_modes_restored(&screen);
 }
 
-/// Ctrl-C at the password cancels with exit code 1 (DECLINED) and restores the terminal.
+/// Ctrl-C at the key cancels with exit code 1 (DECLINED) and restores the terminal.
 #[sqlx::test(migrations = "../hub/migrations")]
-async fn cmd_010_ctrl_c_at_the_password_cancels_and_restores_the_terminal(pool: PgPool) {
+async fn cmd_010_ctrl_c_at_the_key_cancels_and_restores_the_terminal(pool: PgPool) {
     let hub = RealHub::start(pool).await;
     let anima = hub.anima();
-    let mut terminal = at_the_password(&anima).await;
+    let mut terminal = at_the_key(&anima).await;
     terminal.press("zqx\x03").await;
     let (code, screen) = terminal.finish().await;
     assert_eq!(code, 1, "{screen}");
@@ -149,26 +154,26 @@ async fn cmd_010_ctrl_c_at_the_password_cancels_and_restores_the_terminal(pool: 
     assert_modes_restored(&screen);
 }
 
-/// `SIGINT` from another program at the password ends `anima` as the signal would (128 + 2)
+/// `SIGINT` from another program at the key ends `anima` as the signal would (128 + 2)
 /// and restores the terminal first.
 #[cfg(unix)]
 #[sqlx::test(migrations = "../hub/migrations")]
-async fn cmd_010_sigint_at_the_password_restores_the_terminal(pool: PgPool) {
+async fn cmd_010_sigint_at_the_key_restores_the_terminal(pool: PgPool) {
     let hub = RealHub::start(pool).await;
     let anima = hub.anima();
-    let terminal = at_the_password(&anima).await;
+    let terminal = at_the_key(&anima).await;
     terminal.signal("INT").await;
     let (code, screen) = terminal.finish().await;
     assert_eq!(code, 130, "{screen}");
     assert_modes_restored(&screen);
 }
 
-/// Ctrl-D on an empty password is the end of input: a failure, and the terminal restored.
+/// Ctrl-D on an empty key is the end of input: a failure, and the terminal restored.
 #[sqlx::test(migrations = "../hub/migrations")]
-async fn cmd_010_end_of_input_at_the_password_fails_and_restores_the_terminal(pool: PgPool) {
+async fn cmd_010_end_of_input_at_the_key_fails_and_restores_the_terminal(pool: PgPool) {
     let hub = RealHub::start(pool).await;
     let anima = hub.anima();
-    let mut terminal = at_the_password(&anima).await;
+    let mut terminal = at_the_key(&anima).await;
     terminal.press("\x04").await;
     let (code, screen) = terminal.finish().await;
     assert_eq!(code, 1, "{screen}");
@@ -176,22 +181,16 @@ async fn cmd_010_end_of_input_at_the_password_fails_and_restores_the_terminal(po
     assert_modes_restored(&screen);
 }
 
-/// A password of multi-byte characters, pasted in one piece with the Return, signs in.
+/// Pasted non-ASCII secret input must remain hidden even when the hub refuses it.
 #[sqlx::test(migrations = "../hub/migrations")]
-async fn cmd_010_a_pasted_multi_byte_password_signs_in(pool: PgPool) {
+async fn cmd_010_a_pasted_multi_byte_key_is_hidden_when_refused(pool: PgPool) {
     let hub = RealHub::start(pool).await;
-    let password = "pässwörd-鍵-🔑-staple";
-    hub.set_password(password).await;
     let anima = hub.anima();
-    let mut terminal = Terminal::start(&anima, &["auth", "login", "--username", USERNAME]);
-    terminal.expect("Password: ").await;
-    terminal.type_line(password).await;
-    terminal.expect("Authenticator code").await;
-    terminal.type_line("").await;
+    let secret = "pässwörd-鍵-🔑-staple";
+    let mut terminal = at_the_key(&anima).await;
+    terminal.type_line(secret).await;
     let (code, screen) = terminal.finish().await;
-    assert_eq!(code, 0, "{screen}");
-    assert!(!screen.contains(password), "{screen}");
-    let token = stored_token(&anima, &hub.origin);
-    let me = hub.data(&token, "{ me { username } }", json!({})).await;
-    assert_eq!(me["me"]["username"], USERNAME);
+    assert_ne!(code, 0, "{screen}");
+    assert!(!screen.contains(secret), "{screen}");
+    assert_modes_restored(&screen);
 }

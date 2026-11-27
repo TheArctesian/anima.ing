@@ -8,7 +8,7 @@ use daemon_core::model_work::memory::keep::IDLE_SECONDS;
 use daemon_core::model_work::names::{Word as _, is_lower_hex};
 use daemon_core::wire::{
     Cleanup, CopyOutcome, FoundEntry, LoadEntry, ModelOutcome, ModelState, ServerLoads, WorkKind,
-    WorkResult,
+    WorkResult, WorkState, WorkType,
 };
 
 /// The outcomes of K10 Section 7.
@@ -84,6 +84,64 @@ pub(super) fn checked(result: &WorkResult, kind: WorkKind) -> Option<WorkResult>
     Some(WorkResult {
         cause,
         model: outcome,
+        health: None,
+        ..result.clone()
+    })
+}
+
+const HOST_CAUSES: &[&str] = &[
+    "applications_off",
+    "file_not_permitted",
+    "not_adopted",
+    "not_at_machine",
+    "busy",
+    "nothing_kept",
+    "no_digest",
+    "name_taken",
+    "migration_held",
+    "protected",
+    "start_not_permitted",
+    "no_container",
+];
+
+pub(super) fn host(result: &WorkResult, state: WorkState, kind: WorkType) -> Option<WorkResult> {
+    let wanted = match state {
+        WorkState::Done => "succeeded",
+        WorkState::Failed => "failed",
+        WorkState::Stopped => "stopped",
+        WorkState::Refused => "refused",
+        _ => return None,
+    };
+    let Cleanup {
+        isolation,
+        checkout,
+        secrets,
+        keychain,
+    } = &result.cleanup;
+    if result.outcome != wanted
+        || result.seconds > 1 << 53
+        || [isolation, checkout, secrets, keychain]
+            .iter()
+            .any(|member| member.as_str() != "none")
+    {
+        return None;
+    }
+    let cause = result.cause.as_deref().map(|cause| {
+        if CAUSES.contains(&cause) || HOST_CAUSES.contains(&cause) {
+            cause.to_owned()
+        } else {
+            "unknown".to_owned()
+        }
+    });
+    let apply = kind == WorkType::ApplicationApply;
+    let health = if apply { result.health } else { None };
+    if apply && state == WorkState::Done && health.is_none() {
+        return None;
+    }
+    Some(WorkResult {
+        cause,
+        health,
+        model: None,
         ..result.clone()
     })
 }

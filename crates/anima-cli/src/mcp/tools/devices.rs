@@ -1,5 +1,6 @@
 mod agent_sessions;
 mod agent_usage;
+mod application_apply;
 mod applications;
 mod capabilities;
 mod change;
@@ -39,6 +40,10 @@ pub enum DeviceTool {
     ContainerStorage,
     ContainerNetworks,
     ContainerUpdates,
+    ContainerAction,
+    ContainerActionStatus,
+    ApplicationApplyStatus,
+    ApplicationApplyTargets,
     ComposeCheck,
     ComposeFromRun,
     CatalogueList,
@@ -53,7 +58,7 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 25] = [
+    pub const ALL: [Self; 29] = [
         Self::OsUpdate,
         Self::FleetOverview,
         Self::Search,
@@ -67,6 +72,10 @@ impl DeviceTool {
         Self::ContainerStorage,
         Self::ContainerNetworks,
         Self::ContainerUpdates,
+        Self::ContainerAction,
+        Self::ContainerActionStatus,
+        Self::ApplicationApplyStatus,
+        Self::ApplicationApplyTargets,
         Self::ComposeCheck,
         Self::ComposeFromRun,
         Self::CatalogueList,
@@ -94,7 +103,12 @@ impl DeviceTool {
             Self::ContainerList
             | Self::ContainerStorage
             | Self::ContainerNetworks
-            | Self::ContainerUpdates => containers::definition_of(self),
+            | Self::ContainerUpdates
+            | Self::ContainerAction
+            | Self::ContainerActionStatus => containers::definition_of(self),
+            Self::ApplicationApplyStatus | Self::ApplicationApplyTargets => {
+                application_apply::definition_of(self)
+            }
             Self::ComposeCheck | Self::ComposeFromRun => compose_file::definition_of(self),
             Self::CatalogueList | Self::CatalogueShow | Self::CatalogueInstall => {
                 catalogue_entries::definition_of(self)
@@ -119,10 +133,25 @@ impl DeviceTool {
             }
             Self::DaemonNeedSet => daemon_need::set(hub, arguments).await,
             Self::AgentUsage | Self::AgentSessions => self.agents(hub, arguments).await,
+            other => other.hosting_or_change(hub, arguments).await,
+        }
+    }
+
+    async fn hosting_or_change(
+        self,
+        hub: &Hub,
+        arguments: Option<JsonObject>,
+    ) -> Result<Value, ToolError> {
+        match self {
             Self::ContainerList
             | Self::ContainerStorage
             | Self::ContainerNetworks
-            | Self::ContainerUpdates => containers::call(self, hub, arguments).await,
+            | Self::ContainerUpdates
+            | Self::ContainerAction
+            | Self::ContainerActionStatus => containers::call(self, hub, arguments).await,
+            Self::ApplicationApplyStatus | Self::ApplicationApplyTargets => {
+                application_apply::call(self, hub, arguments).await
+            }
             Self::ComposeCheck | Self::ComposeFromRun => {
                 compose_file::call(self, hub, arguments).await
             }

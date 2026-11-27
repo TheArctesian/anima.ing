@@ -19,6 +19,16 @@ impl Thread {
         for event in events {
             steps.extend(self.event(event, text, new_id));
         }
+        if let Driver::Grok(grok) = &mut self.driver {
+            steps.extend(
+                std::mem::take(&mut grok.writes)
+                    .into_iter()
+                    .map(Step::Write),
+            );
+            if grok.failed {
+                steps.push(Step::EndProgram);
+            }
+        }
         // A new use of tokens goes to the clients with the row when no turn runs: the change of
         // the state at the end of a turn carries the use of that turn, and Codex says it many
         // times within a turn (TH112).
@@ -68,7 +78,9 @@ impl Thread {
                 // servers up) before it works on a prompt.
                 let mark = match self.driver {
                     Driver::Codex(_) => matches!(other, DriveEvent::TurnStarted { .. }),
-                    Driver::Claude(_) => matches!(other, DriveEvent::Session { .. }),
+                    Driver::Claude(_) | Driver::Grok(_) => {
+                        matches!(other, DriveEvent::Session { .. })
+                    }
                 };
                 self.track(&other);
                 let mut steps: Vec<Step> = mark.then_some(Step::Mark).into_iter().collect();
@@ -110,6 +122,15 @@ impl Thread {
     /// record could not say so first (THR-041): the turn ends as one that Codex refused, so
     /// nothing waits for it and the profile stays.
     pub fn held_back(&mut self, line: &str) -> Vec<Step> {
+        if self.grok_prompt(line) {
+            self.not_sent(true);
+            self.stall();
+            let mut steps = vec![said(DriveEvent::Notice {
+                text: "Anima could not write its record, so the Grok prompt did not go. Make room on the disk, then send again.".into(),
+            })];
+            steps.extend(self.state_change());
+            return steps;
+        }
         let Driver::Codex(codex) = &mut self.driver else {
             return Vec::new();
         };

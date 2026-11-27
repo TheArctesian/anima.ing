@@ -11,7 +11,7 @@ use tauri::{
 use super::trust::{Answer, Presented, rule};
 use super::{
     Tabs, WebViewError,
-    address::may_load,
+    address::may_navigate,
     event::{self, Failure, WebViewEvent},
     pinning_available,
     storage::DeviceId,
@@ -33,34 +33,46 @@ fn native(_: tauri::Error) -> WebViewError {
     WebViewError::Native
 }
 
-pub fn attach(
+pub(super) enum ViewScope {
+    Device(DeviceId),
+    Preview(url::Origin),
+}
+
+pub(super) fn attach(
     window: &Window,
     id: &TabId,
-    device: DeviceId,
+    scope: ViewScope,
     rect: Rect,
 ) -> Result<Webview, WebViewError> {
-    let builder = with_store(
-        builder(window.app_handle(), id)?,
-        window.app_handle(),
-        device,
-    )?;
+    let app = window.app_handle();
+    let builder = match scope {
+        ViewScope::Device(device) => with_store(builder(app, id, None)?, app, device)?,
+        ViewScope::Preview(origin) => builder(app, id, Some(origin))?.incognito(true),
+    };
     window
         .add_child(builder, rect.position, rect.size)
         .map_err(native)
 }
 
-fn builder(app: &AppHandle, id: &TabId) -> Result<WebviewBuilder<tauri::Wry>, WebViewError> {
+fn builder(
+    app: &AppHandle,
+    id: &TabId,
+    preview_origin: Option<url::Origin>,
+) -> Result<WebviewBuilder<tauri::Wry>, WebViewError> {
     let blank = Url::parse(BLANK).map_err(|_| WebViewError::Native)?;
     let (app, label, loads) = (app.clone(), id.view_label(), id.clone());
     let opener = id.clone();
+    let new_window_origin = preview_origin.clone();
     Ok(
         WebviewBuilder::new(id.view_label(), WebviewUrl::External(blank))
             .focused(false)
             // Files dropped on the page reach the page, not the shell's drop events.
             .disable_drag_drop_handler()
-            .on_navigation(|url| may_load(url, pinning_available()))
+            .on_navigation(move |url| {
+                may_navigate(url, pinning_available(), preview_origin.as_ref())
+            })
             .on_new_window(move |url, _features| {
-                if may_load(&url, pinning_available()) {
+                if may_navigate(&url, pinning_available(), new_window_origin.as_ref()) {
                     follow(app.clone(), label.clone(), opener.clone(), url);
                 }
                 NewWindowResponse::Deny

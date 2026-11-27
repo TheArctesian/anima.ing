@@ -319,3 +319,16 @@ describe('signOut in a browser', () => {
     expect(await signOut({ api, address: ADDRESS, desktop: false, clearToken: () => Promise.resolve() })).toBe(COOKIE_KEPT);
   });
 });
+
+describe('signOut and the command line (R-383)', () => {
+  it('SGN-NEW-adopt: the app signs anima out of the same hub, and a refusal there is not told', async () => {
+    const api = { logout: () => Promise.resolve(ok(true)) };
+    const signOutCommandLine = vi.fn(() => Promise.resolve(false));
+    const clearToken = vi.fn(() => Promise.resolve());
+    expect(await signOut({ api, address: ADDRESS, desktop: true, clearToken, signOutCommandLine })).toBeNull();
+    expect(signOutCommandLine).toHaveBeenCalledWith(ADDRESS);
+    const browser = vi.fn(() => Promise.resolve(true));
+    await signOut({ api, address: ADDRESS, desktop: false, clearToken, signOutCommandLine: browser });
+    expect(browser).not.toHaveBeenCalled();
+  });
+});

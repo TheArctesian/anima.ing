@@ -1,0 +1,18 @@
+{
+  "iso_sha256": "ba0a11ef7857c3d45c40da9d3c66e8d128b87016db46c9bef3dccd38c59dc631",
+  "execution_package": "/nix/store/5gffv0z39axhjj4c349c261sc9qx4m65-anima-os-execution-0.1.0",
+  "sandbox_config": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+  "results": [
+    {
+      "case": "build-probe",
+      "result": "Failed",
+      "reason": "Guest command failed: while read -r manifest subject; do tar -xOf /run/anima-build-check-a28f73b5-3551-45fa-a1f2-489d6b5cb280/image.oci \"blobs/sha256/${manifest#sha256:}\" > /run/anima-build-check-a28f73b5-3551-45fa-a1f2-489d6b5cb280/attestation.json; layer=$(jq -er '.layers[] | select(.mediaType == \"application/vnd.in-toto+json\") | select(.annotations[\"in-toto.io/predicate-type\"] == \"https://slsa.dev/provenance/v0.2\") | .digest' /run/anima-build-check-a28f73b5-3551-45fa-a1f2-489d6b5cb280/attestation.json) || exit 1; tar -xOf /run/anima-build-check-a28f73b5-3551-45fa-a1f2-489d6b5cb280/image.oci \"blobs/sha256/${layer#sha256:}\" > /run/anima-build-check-a28f73b5-3551-45fa-a1f2-489d6b5cb280/provenance.json; jq -e --arg subject \"${subject#sha256:}\" '.predicateType == \"https://slsa.dev/provenance/v0.2\" and any(.subject[]; .digest.sha256 == $subject) and ((.predicate.materials // []) | type == \"array\")' /run/anima-build-check-a28f73b5-3551-45fa-a1f2-489d6b5cb280/provenance.json || exit 1; done < /run/anima-build-check-a28f73b5-3551-45fa-a1f2-489d6b5cb280/attestations.tsv"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "limitation": "Candidate package via the frozen shared harness; explicit Dockerfile, strategy conflict, write-open isolation and exact archive export with minimum provenance; cached image from probe13; no Railpack detection, provider, secrets, network or deployment",
+  "classification": "Corrected OCI exporter includes an attestation manifest and statement; subject-binding/content assertion still fails. No provenance acceptance. A stopped-disk clone is inspecting emitted metadata."
+}

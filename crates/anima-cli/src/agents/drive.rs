@@ -6,12 +6,13 @@ use std::path::PathBuf;
 use agent_threads::control::{
     Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow, WorkspaceKind,
 };
-use agent_threads::drive::{Effort, Mode, Program};
+use agent_threads::drive::{Effort, Program};
 use uuid::Uuid;
 
 use super::runner::{RunnerLink, refusal};
 
 mod approve;
+mod choice;
 mod queue;
 mod send;
 mod set;
@@ -20,48 +21,10 @@ use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
 use crate::output::{Cell, Table, Tone};
 pub use approve::ApproveArgs;
+pub use choice::{ModeName, ProgramName};
 pub use queue::QueueArgs;
 pub use send::SendArgs;
 pub use set::SetArgs;
-
-#[derive(Clone, Copy, Debug, clap::ValueEnum)]
-pub enum ProgramName {
-    ClaudeCode,
-    Codex,
-}
-
-impl ProgramName {
-    #[must_use]
-    pub const fn program(self) -> Program {
-        match self {
-            Self::ClaudeCode => Program::ClaudeCode,
-            Self::Codex => Program::Codex,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, clap::ValueEnum)]
-pub enum ModeName {
-    /// The program asks nothing (the default, R-308).
-    FullAccess,
-    /// The program changes files in the folder without asking and asks for the rest.
-    AcceptEdits,
-    /// The program asks before each change.
-    Ask,
-    /// The program plans and changes nothing until you accept its plan (Claude Code only).
-    Plan,
-}
-
-impl ModeName {
-    const fn mode(self) -> Mode {
-        match self {
-            Self::FullAccess => Mode::FullAccess,
-            Self::AcceptEdits => Mode::AcceptEdits,
-            Self::Ask => Mode::Ask,
-            Self::Plan => Mode::Plan,
-        }
-    }
-}
 
 #[derive(Debug, clap::Args)]
 pub struct StartArgs {
@@ -347,6 +310,7 @@ pub(super) const fn program_key(program: Program) -> &'static str {
     match program {
         Program::ClaudeCode => "claude_code",
         Program::Codex => "codex",
+        Program::Grok => "grok",
     }
 }
 

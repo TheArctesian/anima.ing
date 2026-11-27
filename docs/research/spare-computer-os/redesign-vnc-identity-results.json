@@ -1,0 +1,14 @@
+{
+  "unit": "/nix/store/0908nviciybdsabixncvami6q534rhsw-unit-anima-vnc-identity.service",
+  "command": "/nix/store/jz1wfyr7dfn9h50vpmk8hfc64mrxv2di-anima-vnc-identity/bin/anima-vnc-identity",
+  "result": "Passed",
+  "cases": [
+    "first generation",
+    "restart retains certificate",
+    "unsafe key permissions refused",
+    "invalid certificate retained and refused",
+    "symlink key retained and refused",
+    "mismatched certificate/key refused without replacement"
+  ],
+  "scope": "Packaged initializer in disposable Docker container; no systemd credential delivery or VNC session tested"
+}

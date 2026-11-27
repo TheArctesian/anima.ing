@@ -109,7 +109,7 @@ it('H38: the install button is present and refused with the reason of the hub; a
   await openCatalogue();
   row('PostgreSQL')?.click();
   flushSync();
-  const install = button('Install on this device');
+  const install = button('Install');
   expect(install?.getAttribute('aria-disabled')).toBe('true');
   const reason = document.getElementById(install?.getAttribute('aria-describedby') ?? '');
   expect(reason?.textContent).toContain('task H6');
@@ -134,7 +134,7 @@ it('H39: an empty catalogue says what the catalogue is and reads it again on Che
   };
   await openCatalogue();
   expect(document.body.textContent).toContain('No apps to install yet');
-  expect(document.body.textContent).toContain('The catalogue shows the apps that Anima can install on this device.');
+  expect(document.body.textContent).toContain('The catalogue shows the apps that Anima can install on a machine.');
   button('Check again')?.click();
   await settle();
   expect(calls.entriesAsked).toBe(2);

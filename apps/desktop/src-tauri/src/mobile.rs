@@ -1,11 +1,16 @@
 //! The mobile application (MOB-002, MOB-031; mobile plan M3-4). This file wires; it holds no rules.
 
-use tauri::RunEvent;
+use std::time::SystemTime;
 
-use crate::{cloud, phone_browser, phone_link};
+use tauri::{Manager, RunEvent, WindowEvent};
+
+use crate::{cloud, phone_browser, phone_link, phone_resume::Away};
 
 pub(crate) mod account_session;
+#[cfg(target_os = "ios")]
+mod haptics;
 mod metrics;
+mod preview;
 mod runner;
 pub(crate) mod tokens;
 
@@ -13,10 +18,13 @@ pub(crate) mod tokens;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_runner::init())
+        .plugin(tauri_plugin_workspace_preview::init())
         .plugin(tauri_plugin_keyboard::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_account_session::init())
+        .plugin(tauri_plugin_haptics::init())
         .manage(cloud::Cloud::default())
+        .manage(Away::default())
         .setup(|app| {
             phone_link::manage(app.handle());
             Ok(())
@@ -42,12 +50,24 @@ pub fn run() {
             cloud::cloud_hub_usage,
             phone_browser::system_browser_open,
             runner::runner_capabilities_read,
+            #[cfg(target_os = "ios")]
+            haptics::haptic_play,
+            preview::mobile_preview_open,
+            preview::mobile_preview_close,
         ])
         .build(tauri::generate_context!())
         .expect("the Tauri application failed to start")
-        .run(|app, event| {
-            if matches!(event, RunEvent::Resumed) {
-                phone_link::resume(app);
-            }
+        // A window's Suspended and Resumed are iOS `sceneWillResignActive` and `sceneWillEnterForeground`. The
+        // `RunEvent::Resumed` of the runtime is a wake of the event loop, not a return from the background.
+        .run(|app, event| match event {
+            RunEvent::WindowEvent {
+                event: WindowEvent::Suspended,
+                ..
+            } => app.state::<Away>().left(SystemTime::now()),
+            RunEvent::WindowEvent {
+                event: WindowEvent::Resumed,
+                ..
+            } => phone_link::resume(app, app.state::<Away>().back(SystemTime::now())),
+            _ => {}
         });
 }

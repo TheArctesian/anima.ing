@@ -1,0 +1,6 @@
+mutation LocalComputerInstall($name: String!) {
+  createComputerInstall(name: $name) { invite claim }
+}
+mutation LocalComputerEnrolment($claim: String!, $os: OperatingSystem!) {
+  claimComputerEnrolment(claim: $claim, os: $os) { code }
+}

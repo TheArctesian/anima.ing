@@ -1,7 +1,11 @@
 //! The job queue of the work route (K10, R-209; PRO-050, PRO-051).
 //! The hub never names a command: a job has a type of a fixed list and that type's object.
 
+mod application_apply;
+mod artifacts;
 mod claiming;
+mod enqueue;
+mod hosting;
 mod lifecycle;
 mod model;
 mod pinning;
@@ -15,14 +19,26 @@ mod tests;
 mod trail;
 
 use chrono::{DateTime, Utc};
-use daemon_core::wire::{Reported, StopReason, WorkType};
+use daemon_core::wire::{HostWork, Reported, StopReason, WorkType};
 use futures_util::future::BoxFuture;
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
+use enqueue::queued;
+
+pub use application_apply::{
+    ApplicationFiles, ReleasedApplicationFile, enqueue_application_apply, take_application_file,
+};
+pub use artifacts::{ArtifactAccess, ArtifactGuard, artifact_access};
+pub(crate) use checkout::{CheckoutSource, SourceSubmission};
+pub(super) use claiming::checkout;
 pub use claiming::claim;
 pub use claiming::{Claimant, ModelWork, Work};
+pub(crate) use enqueue::enqueue_source;
+pub use enqueue::{enqueue, enqueue_in};
+pub use hosting::enqueue_container_action;
 pub use model::{Fault, Job, Machine, NewJob, State, Target};
+pub(crate) use pinning::{SourceBuildPlacement, SourceNode, set_source_pin, source_placement};
 pub use pinning::{exclude, pin_project, placement_reason, unpin_project};
 pub use placement::{Unfit, Verdict};
 pub use reasons::Decision;
@@ -32,6 +48,65 @@ use crate::{
     fleet::events::{self, Bus, ClientAddr, Operator},
     ids::JobId,
 };
+
+/// Read-only projection of a source build, scoped to the source recipe.
+///
+/// # Errors
+/// Database failure or an unreadable job.
+pub async fn source_job(db: &PgPool, id: JobId) -> Result<Option<Job>, Error> {
+    store::source_job(db, id).await
+}
+
+/// Read an action result without exposing any other work kind.
+///
+/// # Errors
+/// Database or stored-record failure.
+pub async fn container_action(db: &PgPool, id: JobId) -> Result<Option<Job>, Error> {
+    store::hosting::request(db, id, WorkType::ContainerAction).await
+}
+
+/// Read the metadata of a managed Compose apply by its job ID.
+///
+/// # Errors
+/// Database or stored-record failure.
+pub async fn application_apply(db: &PgPool, id: JobId) -> Result<Option<Job>, Error> {
+    store::hosting::request(db, id, WorkType::ApplicationApply).await
+}
+
+/// Completed managed applications of this device among the observed IDs.
+///
+/// # Errors
+/// Database failure.
+pub(crate) async fn installed_applications(
+    db: &PgPool,
+    device: crate::ids::DeviceId,
+    candidates: &[Uuid],
+) -> Result<std::collections::HashSet<Uuid>, Error> {
+    store::hosting::installed_applications(db, device, candidates).await
+}
+
+/// Devices with a recent paired Compose apply advertisement.
+///
+/// # Errors
+/// Database failure.
+pub async fn application_apply_targets(
+    db: &PgPool,
+    now: DateTime<Utc>,
+) -> Result<Vec<(crate::ids::DeviceId, String)>, Error> {
+    store::hosting::apply_targets(db, now - placement::FRESH).await
+}
+
+/// Whether the named daemon recently advertised its paired hosting service.
+///
+/// # Errors
+/// Database failure.
+pub async fn container_actions_available(
+    db: &PgPool,
+    device: crate::ids::DeviceId,
+    now: DateTime<Utc>,
+) -> Result<bool, Error> {
+    store::hosting::available(db, device, now - placement::FRESH).await
+}
 
 pub const LEASE_SWEEP: std::time::Duration = std::time::Duration::from_secs(30);
 
@@ -86,6 +161,7 @@ pub enum Claimed {
     /// The hub gives this machine no work (`403 WORK_OFF`).
     Off,
     Job(Box<Work>),
+    Host(Box<HostWork>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -113,116 +189,6 @@ pub(super) async fn ended<T>(
             Err(error)
         }
     }
-}
-
-/// The secret purposes each job type may name (K10 Sections 6 and 8).
-fn secrets_permitted(job: &NewJob) -> bool {
-    let permitted: &[&str] = match job.work_type {
-        WorkType::Runner => &["jit_config"],
-        WorkType::Build => &["repository_token", "project_secret"],
-        // The token of a gated repository (K11 Section 7, PULL-010).
-        WorkType::ModelPull => &["hf_token"],
-        _ => &[],
-    };
-    job.secrets
-        .iter()
-        .all(|purpose| permitted.contains(&purpose.as_str()))
-}
-
-fn validate(job: &NewJob) -> Result<(), Error> {
-    use daemon_core::wire::WorkKind;
-    if job.work_type == WorkType::Unknown || job.kind == WorkKind::Unknown {
-        return Err(Error::Invalid(
-            "the type and the kind are of the fixed lists",
-        ));
-    }
-    let model_target = matches!(job.target, Target::Model { .. });
-    if job.work_type.is_model() != (job.kind == WorkKind::Model)
-        || model_target != (job.kind == WorkKind::Model)
-    {
-        return Err(Error::Invalid(
-            "a model item has a model type, the kind model and an actor",
-        ));
-    }
-    if model_target && job.project.is_some() {
-        return Err(Error::Invalid("a model item has no project"));
-    }
-    if !job.parameters.is_object() {
-        return Err(Error::Invalid("the parameters are an object"));
-    }
-    if !secrets_permitted(job) {
-        return Err(Error::Invalid(
-            "a secret purpose is not one of the type of the job",
-        ));
-    }
-    let limits = job.limits;
-    let all = [
-        limits.seconds,
-        limits.idle_seconds,
-        limits.memory_bytes,
-        limits.disk_bytes,
-        limits.orphan_seconds,
-    ];
-    if all
-        .iter()
-        .any(|&limit| limit == 0 || i64::try_from(limit).is_err())
-    {
-        return Err(Error::Invalid("each limit is above 0"));
-    }
-    Ok(())
-}
-
-/// Puts a job in the queue at `now`, with its audit entry (K10 Section 10).
-///
-/// # Errors
-/// `Invalid`, `NoFit` for a named or pinned machine that can never run it, `Database`, `Events`.
-pub async fn enqueue(
-    queue: Queue<'_>,
-    wanted: NewJob,
-    asker: Asker,
-    now: DateTime<Utc>,
-) -> Result<Job, Error> {
-    let mut tx = queue.db.begin().await?;
-    let outcome = enqueue_in(&mut tx, wanted, asker, now).await;
-    ended(tx, outcome).await
-}
-
-/// [`enqueue`] in the caller's transaction, so that the record of the function that makes the
-/// work and its job are written together (the copies of the compute domain).
-///
-/// # Errors
-/// As [`enqueue`].
-pub async fn enqueue_in(
-    conn: &mut PgConnection,
-    wanted: NewJob,
-    asker: Asker,
-    now: DateTime<Utc>,
-) -> Result<Job, Error> {
-    validate(&wanted)?;
-    let job = Job {
-        id: JobId::from(Uuid::now_v7()),
-        asked: wanted,
-        state: State::Queued,
-        attempt: 0,
-        lost: 0,
-        holder: None,
-        last_device: None,
-        refused_by: Vec::new(),
-        lease_ends_at: None,
-        claimed_at: None,
-        stop: None,
-        reason: None,
-        result: None,
-        log_end: 0,
-        progress: None,
-        created_at: now,
-        changed_at: now,
-        ended_at: None,
-    };
-    pinning::named_can_run(conn, &job, now).await?;
-    store::insert(conn, &job).await?;
-    trail::queued(conn, &job, asker, now).await?;
-    Ok(job)
 }
 
 /// The jobs with these ids; an id with no job is left out.

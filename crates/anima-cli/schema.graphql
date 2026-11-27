@@ -5,7 +5,9 @@
 # CON-002 (crates/hub/tests/it/contract.rs) keeps the hub's schema equal to it.
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
+# Accepted TH30 addition pending hub and CLI implementation: compose agent-threads.graphql (R-460).
 # Conventions: contracts/conventions.md.
+# A token of the kind command_line (R-383) may do what a login token may do, except issueCommandLineToken.
 # Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket`, `hostedBrowserSignIn` and `claimComputerEnrolment` (API-003, D-4, R-111, R-129, HMD-061, HM-T33).
 
 scalar DateTime # RFC 3339, UTC
@@ -321,6 +323,7 @@ type RdpSettings {
 }
 
 type VncSettings {
+  serverCertificate: ServerCertificate
   enabled: Boolean!
   "Default 5900."
   port: Int!
@@ -892,6 +895,8 @@ type Storage {
 # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned).
 "A device's capabilities: today the tool inventory its daemon last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
 type DeviceCapabilities {
+  "Last reported mobile tooling; null when not reported. R-456."
+  mobileTools: MobileTools
   device: Device!
   "aarch64 or x86_64."
   architecture: String!
@@ -907,6 +912,58 @@ type DeviceCapabilities {
   foundAt: DateTime!
   "The hardware values its daemon last sent; null until it sends them (CAP-001 to CAP-005, CAP-032). R-165 permits this field of the optional K8 member `hardware`."
   hardware: Hardware
+}
+
+type MobileTools {
+  receivedAt: DateTime!
+  apple: AppleMobileTools!
+  android: AndroidMobileTools!
+}
+type AppleMobileTools {
+  simulatorRuntimes: SimulatorRuntimeInventory!
+  deviceTypes: SimulatorDeviceTypeInventory!
+}
+type AndroidMobileTools {
+  sdkPackages: AndroidSdkInventory!
+  emulator: AndroidEmulatorInventory!
+}
+enum MobileInventoryState {
+  READ
+  MISSING
+  UNSUPPORTED
+  TIMED_OUT
+  EXITED
+  INVALID_OUTPUT
+  TOO_LARGE
+  UNKNOWN
+}
+type SimulatorRuntimeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorRuntime!]
+}
+type SimulatorRuntime {
+  identifier: String!
+  version: String!
+  available: Boolean!
+}
+type SimulatorDeviceTypeInventory {
+  state: MobileInventoryState!
+  entries: [SimulatorDeviceType!]
+}
+type SimulatorDeviceType {
+  identifier: String!
+}
+type AndroidSdkInventory {
+  state: MobileInventoryState!
+  entries: [AndroidSdkPackage!]
+}
+type AndroidSdkPackage {
+  path: String!
+  revision: String!
+}
+type AndroidEmulatorInventory {
+  state: MobileInventoryState!
+  version: String
 }
 
 # The device policy of a compute node (CMP-002, CAP-010 to CAP-012). Waits for a ruling: R-335.
@@ -1103,10 +1160,55 @@ enum ComposeProjectState {
   UNKNOWN
 }
 
+input ApplicationApplyInput {
+  deviceId: ID!
+  applicationId: ID
+  composeFile: String!
+  environmentFile: String
+  pull: Boolean! = true
+  keepPrevious: Boolean! = true
+}
+
+type ApplicationApplyRequest {
+  id: ID!
+  applicationId: ID!
+  deviceId: ID!
+  state: String!
+  reason: String
+  health: String
+}
+
+type ApplicationApplyTarget {
+  id: ID!
+  name: String!
+}
+
+enum ContainerActionVerb {
+  START
+  STOP
+  RESTART
+}
+
+input ContainerActionInput {
+  deviceId: ID!
+  containerId: String!
+  action: ContainerActionVerb!
+}
+
+type ContainerActionRequest {
+  id: ID!
+  state: String!
+  reason: String
+}
+
 "One container of a device (HOST-001). Every text is from the device."
 type Container {
   "The full identifier of Docker: 64 hexadecimal characters."
   id: String!
+  "The daemon recently advertised container actions on this device."
+  actionsAvailable: Boolean!
+  "A completed apply on the device matches the project and its Docker-reported Compose paths."
+  managedApplicationId: ID
   name: String!
   image: String!
   state: ContainerState!
@@ -2290,6 +2392,8 @@ enum TokenKind {
   LOGIN
   BROWSER
   API_KEY
+  "The anima program with the token that the desktop app gave it (R-383)."
+  COMMAND_LINE
 }
 
 type Event {
@@ -2798,6 +2902,8 @@ input StartSessionInput {
   deviceId: ID!
   protocol: Protocol!
   display: DisplayInput!
+  "Open an RDP or VNC session without control or data transfer."
+  viewOnly: Boolean
 }
 
 # ---------------------------------------------------------------- builds (WP-36, R-107)
@@ -4296,7 +4402,84 @@ type AgentThreadSnapshot {
   lastSequence: String!
 }
 
+input ManagedCodeWorkspaceInput {
+  workspace: ID!
+  enabled: Boolean!
+}
+
+input ManagedCodeProviderLoginInput {
+  workspace: ID!
+  generation: String!
+  provider: String
+}
+
+input ManagedCodePreviewInput {
+  endpoint: ID!
+  workspace: ID!
+  generation: String!
+  port: Int!
+}
+
+input ManagedWorkspaceInput {
+  request: ID!
+  workspace: ID!
+  action: JSON!
+}
+
+input ManagedCodeInput {
+  request: ID!
+  workspace: ID!
+  generation: String!
+  action: JSON!
+}
+
+enum SourceBuildTarget {
+  LINUX_X86_64
+  LINUX_AARCH64
+}
+
+enum SourceBuildStrategy {
+  AUTO
+  DOCKERFILE
+  RAILPACK
+}
+
+input SourceBuildInput {
+  request: ID
+  repository: ID!
+  commit: String!
+  target: SourceBuildTarget!
+  strategy: SourceBuildStrategy! = AUTO
+  memoryMib: Int
+}
+
+type SourceBuild {
+  id: ID!
+  state: String!
+  attempt: Int!
+  reason: String
+}
+
+type ProjectBuildNode {
+  id: ID!
+  name: String!
+  target: SourceBuildTarget
+  privateCheckout: Boolean!
+}
+
+type ProjectBuildPlacement {
+  pinned: ProjectBuildNode
+  candidates: [ProjectBuildNode!]!
+}
+
 type Query {
+  commandLineSessions(offset: Int! = 0): [CommandLineSession!]!
+
+  managedCodePreviews(device: ID!, workspace: ID!): [JSON!]!
+  managedCodeWorkspaces(device: ID!): [JSON!]!
+  managedNodeWorkspaces(device: ID!): JSON!
+  managedWorkspaceRequest(request: ID!): JSON
+  managedCodeCommand(request: ID!): JSON
   deviceOsUpdate(deviceId: ID!): JSON!
   agentThreads(device: ID, program: String, project: String, state: String, first: Int! = 50, after: String): AgentThreadPage!
   agentThread(id: ID!): AgentThreadSnapshot
@@ -4351,6 +4534,10 @@ type Query {
   extensions: [Extension!]!
   sources: [Source!]!
   sourceAccounts(sourceKey: String): [SourceAccount!]!
+  "Lookup by build ID. Login or browser token only (D-23, R-100)."
+  sourceBuild(id: ID!): SourceBuild
+  "Read the current build pin and candidate nodes. Login or browser token only (D-23, R-100)."
+  projectBuildPlacement(project: ID!): ProjectBuildPlacement!
   "By name, then ID. leftOut false: the projects with at least one repository that is not left out. leftOut true: only the projects whose repositories are all left out. The two lists hold every project once. first is 1 to 200. CONFLICT while Projects is off."
   projects(leftOut: Boolean = false, first: Int = 50, after: String, browse: ProjectBrowse): ProjectConnection!
   "Any project, left out or not. Null when no project has this slug. CONFLICT while Projects is off."
@@ -4396,6 +4583,10 @@ type Query {
   agentSessions(filter: AgentUsageFilter, first: Int! = 50): AgentSessions!
   "The containers of a device, running or not, newest first (HOST-001). CONFLICT when the device has no SSH credential in Anima, SSH is off, no host key is accepted, or it has no docker command. UNAVAILABLE when the device or Docker does not answer. NOT_FOUND for an unknown device."
   containers(deviceId: ID!): [Container!]!
+  "The state of a queued container action. Null for an unknown action ID."
+  containerAction(id: ID!): ContainerActionRequest
+  applicationApply(id: ID!): ApplicationApplyRequest
+  applicationApplyTargets: [ApplicationApplyTarget!]!
   "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
   containerLog(deviceId: ID!, containerId: String!, lines: Int): ContainerLog!
   "The details of one container (HOST-017): its command, restart policy, health check, mounts, networks, labels and processes, and the names of its environment variables with no value. containerId is 12 to 64 lower-case hexadecimal characters. The errors of containers apply; NOT_FOUND also when the device has no such container. A command or a label can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
@@ -4505,10 +4696,29 @@ type Query {
 }
 
 type Mutation {
+  hostedCommandLineClaim(cloudKey: String!, computer: String!): HostedDeviceInvite!
+  claimCommandLineToken(claim: String!): RemoteAuthPayload!
+
+  revokeCommandLineSession(id: ID!): Boolean!
+
+  startCommandLineSignIn(computer: String!): CommandLineSignIn!
+  pollCommandLineSignIn(deviceCode: String!): CommandLineSignInState!
+  commandLineSignIn(userCode: String!): CommandLineSignInDetails
+  approveCommandLineSignIn(userCode: String!, approve: Boolean!): Boolean!
+
+  replyManagedCodeProviderLogin(session: ID!, code: String!): Boolean!
+  setManagedCodeWorkspaceEnabled(device: ID!, input: ManagedCodeWorkspaceInput!): Boolean!
+  managedCodePreviewHandoff(endpoint: ID!): JSON!
+  openManagedCodePreview(device: ID!, input: ManagedCodePreviewInput!): JSON!
+  closeManagedCodePreview(endpoint: ID!): Boolean!
+  queueManagedCodeCommand(device: ID!, input: ManagedCodeInput!): ID!
+  queueManagedWorkspaceRequest(device: ID!, input: ManagedWorkspaceInput!): ID!
   requestDeviceOsUpdate(deviceId: ID!, input: OsUpdateRequest!): Boolean!
   login(input: LoginInput!): AuthPayload!
-  "Login or browser token only (D-23, R-100)."
+  "Login or browser token only (D-23, R-100), and a command-line token (R-383). The sign-out of the desktop app's login token also ends its command-line token, with an audit entry for each (R-383, SGN-NEW-linked)."
   logout: Boolean!
+  "A token of the kind COMMAND_LINE for the anima program on computer (its name: 1 to 64 characters, no control characters), linked to the login token of this request. It acts as the person (R-383) and ends with that token: its logout, its expiry, and its deletion. A device of a hosted hub that signs in again moves it to its new login token. A new one for the same login token ends the one before. The desktop app's login token only, with no agent declaration, never an API key: FORBIDDEN for each other token. The response is no-store. Writes an audit entry without the token (LOG-005, LOG-007)."
+  issueCommandLineToken(computer: String!): AuthPayload!
 
   createSite(name: String!, subnet: Cidr!): Site!
   createDevice(input: CreateDeviceInput!): Device!
@@ -4549,6 +4759,8 @@ type Mutation {
   clearVncCredential(deviceId: ID!): VncSettings!
   "The fingerprint must equal the one the hub saw, or CONFLICT. Login or browser token only (D-23, R-100)."
   acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate!
+  "Accepts the fingerprint observed in the last VNC connection test. CONFLICT if it differs. Login or browser token only (D-23, R-100)."
+  acceptVncServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate!
   "A ticket for the files tunnel of a live SSH session (K4 §9). Login or browser token only (D-23, R-100)."
   openFiles(sessionId: ID!): SessionTicket!
   wakeDevice(deviceId: ID!): WakeResult!
@@ -4657,6 +4869,14 @@ type Mutation {
   leaveOutRepository(id: ID!): Project!
   "By the repository's ID. Its proposed resources come back, and its account is made due so its signs are read again on the next sync (PRO-002). No change when it is not left out. Returns its project. NOT_FOUND for an unknown ID; CONFLICT while Projects is off."
   restoreRepository(id: ID!): Project!
+  "Queue an immutable project revision. Login or browser token only (D-23, R-100)."
+  queueSourceBuild(input: SourceBuildInput!): SourceBuild!
+  "Select a node for this project's builds, or clear the pin with a null device. Login or browser token only (D-23, R-100)."
+  setProjectBuildPin(project: ID!, device: ID): ProjectBuildPlacement!
+  "Queue a start, stop or restart by full Docker ID on one named device."
+  queueContainerAction(input: ContainerActionInput!): ContainerActionRequest!
+  "Queue operator-authored Compose and optional environment inputs. Login or browser token only (K10 Section 6.4.12)."
+  queueApplicationApply(input: ApplicationApplyInput!): ApplicationApplyRequest!
   "CONFLICT when it is already confirmed, or while Projects is off. NOT_FOUND for an unknown ID."
   confirmProjectResource(id: ID!): ProjectResource!
   "Imports a device group, reusing a matching name without replacing assigned projects. Returns only IDs known to this hub. Reuse source on retry: receipts preserve later user changes."
@@ -4820,6 +5040,7 @@ type Mutation {
 }
 
 type Subscription {
+  managedCodeProviderLogin(device: ID!, input: ManagedCodeProviderLoginInput!): JSON!
   agentThreadEntries(id: ID!, afterSequence: String!): AgentThreadEntry!
 
   deviceStatusChanged(deviceId: ID): DeviceStatusChange!
@@ -4961,4 +5182,42 @@ enum OsUpdateAction {
 input OsUpdateRequest {
   action: OsUpdateAction!
   confirmed: Boolean! = false
+  reviewRevision: String
+}
+
+# SGN-NEW-selfhosted: short-lived approval; the resulting remote session has no expiry (OD-E32).
+type CommandLineSignIn {
+  deviceCode: String!
+  userCode: String!
+  verificationUri: String!
+  expiresAt: DateTime!
+  interval: Int!
+}
+enum CommandLineSignInStatus { WAITING SLOW_DOWN DENIED EXPIRED APPROVED }
+type CommandLineSignInState {
+  status: CommandLineSignInStatus!
+  token: String
+  interval: Int!
+}
+type CommandLineSignInDetails {
+  computer: String!
+  address: String!
+  createdAt: DateTime!
+  expiresAt: DateTime!
+}
+
+type CommandLineSession {
+  id: ID!
+  computer: String!
+  createdAt: DateTime!
+  lastUsedAt: DateTime
+  expiresAt: DateTime
+  linked: Boolean!
+  current: Boolean!
+}
+
+type RemoteAuthPayload {
+  token: String!
+  expiresAt: DateTime
+  operator: Operator!
 }

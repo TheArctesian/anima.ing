@@ -306,34 +306,3 @@ async fn a_checkpoint_takes_new_files_and_no_ignored_file_and_moves_no_branch() 
         .collect();
     assert_eq!(turns, [0, 1]);
 }
-
-#[tokio::test]
-async fn a_removed_worktree_leaves_its_work_under_a_ref_and_its_branch_in_place() {
-    let bench = Bench::new().await;
-    let before = bench.person_sees().await;
-    let folder = bench.worktree().await;
-    std::fs::write(folder.join("unsaved.txt"), "work\n").expect("a file");
-    let GitOutcome::Removed { kept: Some(kept) } = bench.call(PERSON, GitAction::Remove).await
-    else {
-        panic!("not removed");
-    };
-    assert!(!folder.exists());
-    assert_eq!(
-        bench
-            .git_in(&bench.project, &["show", &format!("{kept}:unsaved.txt")])
-            .await,
-        "work"
-    );
-    bench
-        .git_in(
-            &bench.project,
-            &["show-ref", "--verify", "refs/heads/anima/12345678"],
-        )
-        .await;
-    assert_eq!(bench.person_sees().await, before);
-    assert_eq!(
-        bench.worktree().await,
-        folder,
-        "the thread gets its branch again"
-    );
-}

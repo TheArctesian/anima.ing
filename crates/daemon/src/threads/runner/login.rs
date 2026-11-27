@@ -6,6 +6,7 @@ use std::time::Duration;
 
 pub(super) mod asking;
 mod copies;
+mod managed;
 pub mod sign_in;
 
 pub use copies::{chosen_copy, copies, executable, find, trusted, with_folder_of};
@@ -79,6 +80,9 @@ pub fn of_the_daemon() -> Vec<(String, String)> {
 /// the names a login needs; `daemon` is the environment of the daemon. When the shell does not
 /// answer, the few names the daemon has, and a warning in the log.
 pub async fn environment(daemon: &[(String, String)]) -> Vec<(String, String)> {
+    if let Some(environment) = managed::environment(daemon) {
+        return environment;
+    }
     let base = base_of(daemon);
     let found = asked(daemon, &base).await;
     if found.iter().any(|(name, _)| name == "PATH") {

@@ -6,6 +6,7 @@ mod hub_side;
 mod program;
 mod rdp;
 mod rdp_faults;
+mod vencrypt;
 
 use std::time::Duration;
 

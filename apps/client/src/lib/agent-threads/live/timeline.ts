@@ -166,7 +166,7 @@ export const FIRST_ANSWER_MINUTES = 10;
 export function waitingWords(program: Program, started: Date, now: Date): string {
   const seconds = Math.max(0, Math.floor((now.getTime() - started.getTime()) / 1000));
   const waited = seconds < 60 ? `${String(seconds)} s` : `${String(Math.floor(seconds / 60))} min ${String(seconds % 60)} s`;
-  const first = program === 'claude_code' ? 'Claude Code reads its sign-in first' : 'Codex loads its plugins first';
+  const first = program === 'grok' ? 'Grok initializes its session first' : program === 'claude_code' ? 'Claude Code reads its sign-in first' : 'Codex loads its plugins first';
   return `Waiting for the first answer of the program: ${waited}. ${first}; on a busy computer this can take minutes. The runner ends it after ${String(FIRST_ANSWER_MINUTES)} minutes with no answer.`;
 }
 

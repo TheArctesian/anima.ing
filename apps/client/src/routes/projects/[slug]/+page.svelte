@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { projectsApi } from '$lib/projects/api';
+  import { sourceBuildApi } from '$lib/projects/builds/api';
   import { forgeApi } from '$lib/projects/forge/api';
   import ProjectScreen from '$lib/projects/detail/ProjectScreen.svelte';
   import type { ProjectTab } from '$lib/projects/detail/tabs';
@@ -12,6 +13,7 @@
   const hub = useHub();
   const store = new ProjectsStore(projectsApi(hub));
   const forge = forgeApi(hub);
+  const builds = sourceBuildApi(hub);
   const slug = $derived(page.params['slug'] ?? '');
   $effect(() => {
     void store.open(slug);
@@ -21,6 +23,7 @@
 <ProjectScreen
   {store}
   {forge}
+  {builds}
   {slug}
   tab={page.url.searchParams.get('tab')}
   onTab={(tab: ProjectTab) => {

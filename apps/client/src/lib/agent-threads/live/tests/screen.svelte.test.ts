@@ -101,3 +101,24 @@ it('THR-017: the composer of a driven thread is at the foot of the thread, outsi
   expect(field).not.toBeNull();
   expect(scroll?.contains(field)).toBe(false);
 });
+
+it('keeps shared live threads current after the view that created the store is destroyed', async () => {
+  const shell = madeShell();
+  const live = new LiveThreads(shell, () => ({ front: true, chosen: THREAD }), () => NOW);
+  await live.begin();
+  shell.emit(stateFrame(1, 'working'));
+  let store!: ThreadsStore;
+  let shown: string | undefined;
+  const dispose = $effect.root(() => {
+    store = new ThreadsStore({ list: () => Promise.resolve([]), read: () => Promise.reject(new Error('no file')) }, null, () => NOW, live);
+    store.chosen = THREAD;
+    $effect(() => { shown = store.liveThread?.row.state; });
+  });
+  flushSync();
+  expect(shown).toBe('working');
+  dispose();
+  shell.emit(saidFrame(2, { kind: 'message', text: 'Finished', parent: null }));
+  shell.emit(stateFrame(3, 'idle'));
+  expect(store.liveThread?.row.state).toBe('idle');
+  expect(store.listedRows?.map((row) => row.id)).toContain(THREAD);
+});

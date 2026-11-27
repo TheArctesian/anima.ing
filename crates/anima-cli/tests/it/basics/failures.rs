@@ -112,17 +112,9 @@ async fn cmd_021_a_hub_that_does_not_answer_is_exit_7() {
 #[tokio::test]
 async fn cmd_023_no_input_fails_with_exit_2_and_names_the_flag() {
     let anima = Anima::new();
-    let run = anima
-        .run(&[
-            "auth",
-            "login",
-            "--no-input",
-            "--hub",
-            "https://hub.example",
-        ])
-        .await;
+    let run = anima.run(&["auth", "login", "--no-input"]).await;
     assert_eq!(run.code, 2, "{run:?}");
-    assert!(run.stderr.contains("--with-token"), "{}", run.stderr);
+    assert!(run.stderr.contains("--hosted"), "{}", run.stderr);
 
     let added = anima
         .run(&["context", "add", "home", "https://home.example"])

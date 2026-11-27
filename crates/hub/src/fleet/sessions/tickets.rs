@@ -140,6 +140,7 @@ pub struct PendingTicket {
     pub timezone: Option<String>,
     pub expires_at: DateTime<Utc>,
     pub wake_sent: bool,
+    pub view_only: bool,
 }
 
 impl PendingTicket {

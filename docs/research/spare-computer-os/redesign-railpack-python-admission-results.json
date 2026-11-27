@@ -1,0 +1,98 @@
+{
+  "scope": "Retained disposable VM with imported execution candidate and isolated Docker store. No Python build or runtime pass; not latest-ISO acceptance.",
+  "runs": [
+    {
+      "execution": {
+        "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+        "package": "/nix/store/isp55ll4xwiypvfgawv4kssi9bk9vrr4-anima-os-execution-0.1.0",
+        "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+        "narSha256": "88d14504705b63635dd39b9639ac9c44565ad509adf8243c269fe3eea1b6d3f1",
+        "bytes": 5580712
+      },
+      "retainedFixture": "/Users/stephenokita/.local/share/anima-os-prototype/redesign-20261124-railpack-02",
+      "harness": "harness-19",
+      "scope": "Synthetic Python build/export/run in retained disposable VM with isolated Docker store. Not latest ISO, original-store recovery or routed hosting acceptance.",
+      "results": [
+        {
+          "case": "python-build-export-isolated-run",
+          "result": "Failed",
+          "reason": "Guest command failed: export DOCKER_HOST=unix:///run/anima-railpack-docker.sock; printf '%s\\n' '{\"operation\": \"prepare\", \"workspace\": \"84d14165-f7a8-4d92-875b-8e33d3bf539f\", \"storage_bytes\": 1073741824}' | /nix/store/isp55ll4xwiypvfgawv4kssi9bk9vrr4-anima-os-execution-0.1.0/bin/anima-os-execution > /run/anima-railpack-check-2a5ec837-01e7-457c-a40c-e193f04c7d2d/prepare.json || { cat /run/anima-railpack-check-2a5ec837-01e7-457c-a40c-e193f04c7d2d/prepare.json; exit 1; }; cat /run/anima-railpack-check-2a5ec837-01e7-457c-a40c-e193f04c7d2d/prepare.json; jq -e '.ok and (.value.phase == \"prepared\")' /run/anima-railpack-check-2a5ec837-01e7-457c-a40c-e193f04c7d2d/prepare.json"
+        },
+        {
+          "case": "clean-shutdown",
+          "result": "Passed"
+        },
+        {
+          "case": "unselected-disk",
+          "result": "Passed"
+        }
+      ]
+    },
+    {
+      "execution": {
+        "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+        "package": "/nix/store/isp55ll4xwiypvfgawv4kssi9bk9vrr4-anima-os-execution-0.1.0",
+        "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+        "narSha256": "88d14504705b63635dd39b9639ac9c44565ad509adf8243c269fe3eea1b6d3f1",
+        "bytes": 5580712
+      },
+      "retainedFixture": "/Users/stephenokita/.local/share/anima-os-prototype/redesign-20261124-railpack-02",
+      "harness": "harness-19",
+      "scope": "Synthetic Python build/export/run in retained disposable VM with isolated Docker store. Not latest ISO, original-store recovery or routed hosting acceptance.",
+      "results": [
+        {
+          "case": "candidate-boot-reconciliation",
+          "result": "Passed"
+        },
+        {
+          "case": "python-build-export-isolated-run",
+          "result": "Failed",
+          "reason": "Guest command failed: export DOCKER_HOST=unix:///run/anima-railpack-docker.sock; printf '%s\\n' '{\"operation\": \"prepare\", \"workspace\": \"e062a402-1fca-4a8d-870d-036af85c5fb0\", \"storage_bytes\": 1073741824}' | /nix/store/isp55ll4xwiypvfgawv4kssi9bk9vrr4-anima-os-execution-0.1.0/bin/anima-os-execution > /run/anima-railpack-check-436c014f-3638-4498-8237-d95b36cb921d/prepare.json || { cat /run/anima-railpack-check-436c014f-3638-4498-8237-d95b36cb921d/prepare.json; exit 1; }; cat /run/anima-railpack-check-436c014f-3638-4498-8237-d95b36cb921d/prepare.json; jq -e '.ok and (.value.phase == \"prepared\")' /run/anima-railpack-check-436c014f-3638-4498-8237-d95b36cb921d/prepare.json"
+        },
+        {
+          "case": "clean-shutdown",
+          "result": "Passed"
+        },
+        {
+          "case": "unselected-disk",
+          "result": "Passed"
+        }
+      ]
+    },
+    {
+      "execution": {
+        "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+        "package": "/nix/store/isp55ll4xwiypvfgawv4kssi9bk9vrr4-anima-os-execution-0.1.0",
+        "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+        "narSha256": "88d14504705b63635dd39b9639ac9c44565ad509adf8243c269fe3eea1b6d3f1",
+        "bytes": 5580712
+      },
+      "retainedFixture": "/Users/stephenokita/.local/share/anima-os-prototype/redesign-20261124-railpack-02",
+      "harness": "harness-19",
+      "scope": "Synthetic Python build/export/run in retained disposable VM with isolated Docker store. Not latest ISO, original-store recovery or routed hosting acceptance.",
+      "results": [
+        {
+          "case": "candidate-boot-reconciliation",
+          "result": "Passed"
+        },
+        {
+          "case": "verified-node-archive-preserved-and-build-reservation-released",
+          "result": "Passed"
+        },
+        {
+          "case": "python-build-export-isolated-run",
+          "result": "Failed",
+          "reason": "Guest command failed: export DOCKER_HOST=unix:///run/anima-railpack-docker.sock; printf '%s\\n' '{\"operation\": \"build\", \"attempt\": \"aece03b9-9457-46a9-9062-db575db939a6\", \"workspace\": \"e8f5a9a2-e7dc-4165-b745-3e2b7a9c16f8\", \"generation\": 0, \"context\": \"63a64973-5976-4216-ac8a-6b8d79ad2439\", \"strategy\": \"railpack\", \"resources\": {\"memory_bytes\": 536870912, \"cpu_millis\": 500, \"tasks\": 128}}' | /nix/store/isp55ll4xwiypvfgawv4kssi9bk9vrr4-anima-os-execution-0.1.0/bin/anima-os-execution > /run/anima-railpack-check-aece03b9-9457-46a9-9062-db575db939a6/launch.json || { cat /run/anima-railpack-check-aece03b9-9457-46a9-9062-db575db939a6/launch.json; exit 1; }; cat /run/anima-railpack-check-aece03b9-9457-46a9-9062-db575db939a6/launch.json; jq -e '.ok and (.value.phase == \"running\" and .value.strategy == \"railpack\")' /run/anima-railpack-check-aece03b9-9457-46a9-9062-db575db939a6/launch.json"
+        },
+        {
+          "case": "clean-shutdown",
+          "result": "Passed"
+        },
+        {
+          "case": "unselected-disk",
+          "result": "Passed"
+        }
+      ]
+    }
+  ]
+}

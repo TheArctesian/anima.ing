@@ -45,8 +45,11 @@ describe('navigation view logic', () => {
     });
   });
 
-  it('NET-004, R-222: for a hosted hub the banner names the network of the computer, not a VPN', () => {
-    expect(unreachableBanner(status('unreachable', null), 'http://127.0.0.1:4810', NOW, true)?.advice).toBe("Check this computer's network");
+  it('NET-004, R-222: for a hosted hub the banner names who hosts it, not its port, and the network of the computer, not a VPN', () => {
+    expect(unreachableBanner(status('unreachable', null), 'http://127.0.0.1:4810', NOW, true)).toMatchObject({
+      origin: 'Hosted by Anima.ing',
+      advice: "Check this computer's network",
+    });
   });
 
   it('R-224: the bar names a hosted hub by who hosts it, and each other hub by its host', () => {
