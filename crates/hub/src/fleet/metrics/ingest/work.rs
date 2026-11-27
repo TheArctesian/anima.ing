@@ -133,7 +133,10 @@ async fn claim(State(state): State<DaemonState>, request: Request) -> Response {
 
 /// Answers a report: `200` with the new lease, or the first refusal.
 async fn report(State(state): State<DaemonState>, request: Request) -> Response {
+    #[cfg(unix)]
     let artifacts = request.extensions().get::<ArtifactStore>().cloned();
+    #[cfg(not(unix))]
+    let artifacts = None;
     let limit = state.deadlines.answer;
     within(limit, async move {
         served!(state, request, Route::WorkReport, reported, artifacts)

@@ -38,10 +38,6 @@ pub(super) const fn serves_a_person(_: &std::path::Path) -> bool {
 }
 
 #[cfg(not(unix))]
-#[expect(
-    clippy::unused_async,
-    reason = "the threads run only on Unix; the caller awaits or spawns this on each system"
-)]
 pub(super) async fn threads(_: std::path::PathBuf) -> ExitCode {
     ExitCode::FAILURE
 }
@@ -56,10 +52,6 @@ pub(super) async fn holder(folder: &std::path::Path, limit: usize) -> ExitCode {
 }
 
 #[cfg(not(unix))]
-#[expect(
-    clippy::unused_async,
-    reason = "the holder runs only on Unix; the caller awaits this on each system"
-)]
 pub(super) async fn holder(_: &std::path::Path, _: usize) -> ExitCode {
     ExitCode::FAILURE
 }
