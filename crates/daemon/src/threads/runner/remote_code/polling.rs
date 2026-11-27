@@ -1,19 +1,21 @@
-use daemon_core::wire::{Claim, Free, RefusalCode, Switch, WorkArchitecture, WorkOs};
+use daemon_core::wire::{RefusalCode, Switch};
 use tokio::time::Instant;
 
 use crate::{
     config::home::Home,
-    hub::{
-        answer::{Answer, Cause},
-        remote_code::Claimed,
-    },
+    hub::answer::{Answer, Cause},
     remote_code::{
         Store, claim::Advertised, delivery::Delivery, launch::Progress, wire::NotCreated,
     },
-    threads::wire::remote_code::{Enrollment, ToHolder},
+    threads::wire::remote_code::ToHolder,
 };
 
-use super::{super::Runner, Event, request_of};
+use super::{
+    super::Runner,
+    Event,
+    claim::{claim, claimed},
+    request_of,
+};
 
 impl Runner {
     pub(in crate::threads::runner) async fn remote_tick(&mut self) {
@@ -27,10 +29,24 @@ impl Runner {
         let Some(policy) = self.remote_policy(&home) else {
             return;
         };
+        let current = self.link.current_remote_peer().await;
+        if !current && self.remote.holder != super::Holder::Unknown {
+            self.remote.disconnect();
+        }
+        if self.holder.fits
+            && !self.holder.older
+            && !self.holder.quitting
+            && !current
+            && policy.starts_enabled()
+            && self.running() == 0
+            && crate::threads::holder_channel::available(&self.dir).await
+        {
+            self.replace_idle_holder().await;
+        }
         if self.holder.fits
             && !self.holder.older
             && self.remote.holder == super::Holder::Unknown
-            && self.link.accepts_remote_peer().await
+            && current
         {
             self.remote.holder = super::Holder::Opening;
             self.remote_send(ToHolder::Open).await;
@@ -74,6 +90,7 @@ impl Runner {
                 if let (Some((enrollment, stamp)), Answer::Accepted(commands)) =
                     (enrollment, result)
                     && !commands.is_empty()
+                    && self.link.current_remote_peer().await
                     && self.remote.holder == super::Holder::Ready
                     && enrolled(self.remote_home()).await.is_some_and(|current| {
                         current.config().device == enrollment.device
@@ -162,18 +179,7 @@ impl Runner {
         tokio::spawn(async move {
             let result = if let Some(delivery) = enrolled(home).await {
                 let advert = Advertised::new(&base, Switch::Off, switch, &targets);
-                match delivery.claim(&advert).await {
-                    Answer::Accepted(Claimed::Work(work)) => {
-                        serde_json::from_value(work).ok().map(|claim| {
-                            (
-                                Enrollment::of(delivery.config()),
-                                delivery.credential_stamp(),
-                                claim,
-                            )
-                        })
-                    }
-                    _ => None,
-                }
+                claimed(&delivery, delivery.claim(&advert).await)
             } else {
                 None
             };
@@ -271,32 +277,6 @@ impl Runner {
                 let _ = delivery.evidence(&request).await;
             }
         });
-    }
-}
-
-fn claim(device: uuid::Uuid, free: bool) -> Claim {
-    Claim {
-        device,
-        switch: Switch::Off,
-        types: Vec::new(),
-        kinds: Vec::new(),
-        os: if cfg!(target_os = "macos") {
-            WorkOs::Macos
-        } else {
-            WorkOs::Linux
-        },
-        architecture: if cfg!(target_arch = "aarch64") {
-            WorkArchitecture::Aarch64
-        } else {
-            WorkArchitecture::X86_64
-        },
-        free: Free {
-            slots: u32::from(free),
-            memory_bytes: 0,
-            disk_bytes: 0,
-        },
-        holds: Vec::new(),
-        unclean: false,
     }
 }
 

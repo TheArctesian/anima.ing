@@ -10,10 +10,11 @@
 //! A new connection takes the place of the one before it, so that a daemon that starts again
 //! is never locked out by the one that died.
 
+mod channel;
 mod connection;
 mod records;
 mod remote_code;
-pub(super) mod remote_peer;
+mod remote_peer;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io;
@@ -21,7 +22,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use tokio::io::AsyncWriteExt as _;
-use tokio::net::{UnixListener, UnixStream};
+use tokio::net::UnixListener;
 use tokio::sync::mpsc;
 
 use super::outbox::{LIMIT, Outbox};
@@ -165,6 +166,14 @@ impl Shared {
 /// [`HolderError`] when the folder is not private, a different holder holds it, or the socket
 /// cannot be made.
 pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
+    hold_with_channel(dir, limit, false).await
+}
+
+/// Runs the holder, optionally with its leaf key from the daemon's child-stdin pipe.
+///
+/// # Errors
+/// Returns the same folder and listener errors as [`hold`].
+pub async fn hold_with_channel(dir: &Path, limit: usize, channel: bool) -> Result<(), HolderError> {
     super::program::keep_inherited_from_programs();
     // The build of the file this holder started from, before an update replaces it (TH98).
     let _ = wire::this_build();
@@ -172,8 +181,9 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
     let inherited = record::end_left_over(dir).await;
     let shared = holder_state(dir, limit, inherited);
     remote_code::recover_stale(&shared).await;
-    let listener = bind(dir)?;
-    serve_holder(dir, listener, shared).await
+    let remote = channel::Listener::open(dir, channel).await?;
+    let listener = bind(dir, SOCKET)?;
+    serve_holder(dir, (listener, remote), shared).await
 }
 
 fn holder_state(dir: &Path, limit: usize, inherited: Vec<record::Entry>) -> Arc<Mutex<Shared>> {
@@ -196,14 +206,14 @@ fn holder_state(dir: &Path, limit: usize, inherited: Vec<record::Entry>) -> Arc<
 
 async fn serve_holder(
     dir: &Path,
-    listener: UnixListener,
+    (listener, remote): (UnixListener, Option<channel::Listener>),
     shared: Arc<Mutex<Shared>>,
 ) -> Result<(), HolderError> {
     // One command at a time, from any connection: the check that a command was done and the
     // command itself are one step, so a command sent again on a new connection while the first
     // runs is still done one time (H10).
     let turn = Arc::new(tokio::sync::Mutex::new(()));
-    accept(&listener, &shared, &turn).await?;
+    accept((&listener, remote.as_ref()), &shared, &turn).await?;
     let _only = turn.lock().await;
     if let Ok(mut state) = shared.lock() {
         state.closing = true;
@@ -211,6 +221,9 @@ async fn serve_holder(
     }
     remote_code::end_pending(&shared).await;
     super::stop::end_all(&shared).await;
+    if remote.is_some() {
+        let _ = std::fs::remove_file(dir.join(super::holder_channel::SOCKET));
+    }
     let _ = std::fs::remove_file(dir.join(SOCKET));
     Ok(())
 }
@@ -219,7 +232,7 @@ async fn serve_holder(
 /// order of the accepts, so the newest connection is the one accepted last, not the one whose
 /// task ran last (H10).
 async fn accept(
-    listener: &UnixListener,
+    (listener, remote): (&UnixListener, Option<&channel::Listener>),
     shared: &Arc<Mutex<Shared>>,
     turn: &Arc<tokio::sync::Mutex<()>>,
 ) -> io::Result<()> {
@@ -230,15 +243,15 @@ async fn accept(
     pending.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tokio::select! {
-            accepted = listener.accept() => match accepted {
-                Ok((stream, _)) => {
+            accepted = channel::next(listener, remote) => match accepted {
+                Ok((stream, secure)) => {
                     count += 1;
                     let connection = Connection {
                         me: count,
                         turn: Arc::clone(turn),
                         quit: quit.clone(),
                     };
-                    tokio::spawn(serve(Arc::clone(shared), stream, connection));
+                    tokio::spawn(channel::serve(Arc::clone(shared), (stream, secure), connection));
                 }
                 Err(error) => {
                     // For example no free descriptor: wait, so that the loop does not spin.
@@ -277,9 +290,9 @@ fn lock(dir: &Path) -> Result<std::fs::File, HolderError> {
 }
 
 /// Binds the socket file with mode 0600, in place of one an older holder left (THR-128).
-fn bind(dir: &Path) -> Result<UnixListener, HolderError> {
+fn bind(dir: &Path, name: &str) -> Result<UnixListener, HolderError> {
     use std::os::unix::fs::PermissionsExt as _;
-    let socket = dir.join(SOCKET);
+    let socket = dir.join(name);
     let _ = std::fs::remove_file(&socket);
     let listener = UnixListener::bind(&socket)?;
     std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600))?;
@@ -319,16 +332,16 @@ struct Connection {
 /// One connection: the peer must be this user; a frame that is too long or does not read closes
 /// the connection and harms no agent (H8). It takes the place of an older connection, never of a
 /// newer one, and it stops at once when a newer one takes its place.
-async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Connection) {
+async fn serve<T>(
+    shared: Arc<Mutex<Shared>>,
+    stream: T,
+    connection: Connection,
+    remote_peer: Option<rustls::pki_types::CertificateDer<'static>>,
+) where
+    T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
     let Connection { me, turn, quit } = connection;
-    let same_user = stream
-        .peer_cred()
-        .is_ok_and(|peer| peer.uid() == rustix::process::getuid().as_raw());
-    if !same_user {
-        return;
-    }
-    let remote_peer = remote_peer::Peer::of(&stream);
-    let (reading, mut writing) = stream.into_split();
+    let (reading, mut writing) = tokio::io::split(stream);
     let (sender, mut outgoing) = mpsc::unbounded_channel::<String>();
     {
         let _one = turn.lock().await;

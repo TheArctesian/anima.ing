@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-holderchannel | Remote Code authority across a macOS restart and credential renewal (TH32, THR-025) | A disposable enrolled Mac, a test hub and a permitted test project | Open |
 | HT-194 | The scroll wheel of the trackpad and the motion of the connection steps on an iPhone (M4-2, RA-050, 5.7.3) | The iPhone app from a build of `dev` with this change; a Mac with a long page in a browser | Open |
 | HT-193 | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
@@ -5886,5 +5887,26 @@ the keyboard.
 4. Choose a different machine in Machine, then close the dialog with Escape.
    Expected: the title and the button name the new machine; Escape closes the dialog and the focus goes back to the
    button that opened it.
+
+Result: Open.
+
+## HT-NEW-holderchannel — Remote Code on an enrolled Mac (TH32)
+
+State: Open.
+
+The macOS daemon gives its holder an identity for an encrypted local connection. The login
+Keychain keeps the local signing key with the enrollment. A fresh enrollment and the next
+ordinary credential save add that key to an older record. The native synthetic test exercises
+mutual authentication, the two roles and an enrollment mismatch. Use a signed test build and
+a disposable Mac to check the Keychain access list and the complete provider lifecycle.
+
+1. Enroll the Mac in the test hub. Permit a disposable project in the local settings and enable
+   remote starts. Start one thread from the hub. Check that the machine starts one provider
+   and that the first prompt is delivered once.
+2. Restart the daemon while that provider runs. Send a second prompt from the same account.
+   Check that the original provider receives it once and that its local process continues.
+3. Repeat after the daemon renews its hub credential. Check the same thread and its answer.
+4. Turn remote starts off. Check that a new hub start is refused. Confirm local access to the
+   existing thread. End the provider and remove the test enrollment.
 
 Result: Open.

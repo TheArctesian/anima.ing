@@ -1,5 +1,8 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+#[path = "cli/holder_mode.rs"]
+mod holder_mode;
+
 use std::io::IsTerminal as _;
 use std::process::ExitCode;
 
@@ -38,8 +41,8 @@ async fn daemon() -> ExitCode {
         Ok(command) => command,
         Err(error) => return usage(&error),
     };
-    if let Command::Holder { folder, limit } = &command {
-        return holder(folder, *limit).await;
+    if let Some(result) = holder_mode::run(&command).await {
+        return result;
     }
     if matches!(command, Command::Version) {
         println!("{}", cli::version_line());
@@ -60,7 +63,9 @@ async fn daemon() -> ExitCode {
         Command::Uninstall => uninstall(&home),
         Command::Stop => stop_unit(),
         Command::KeyRead { name } => key_read(&name, &home),
-        Command::Holder { .. } | Command::Version => ExitCode::FAILURE,
+        Command::Holder { .. } | Command::HolderPublicRoot(_) | Command::Version => {
+            ExitCode::FAILURE
+        }
         Command::KeyForget => match KeyStore::open(&home).forget() {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),
@@ -314,23 +319,5 @@ const fn serves_a_person(_: &std::path::Path) -> bool {
     reason = "the threads run only on Unix; the caller awaits or spawns this on each system"
 )]
 async fn threads(_: std::path::PathBuf) -> ExitCode {
-    ExitCode::FAILURE
-}
-
-/// THR-113.
-#[cfg(unix)]
-async fn holder(folder: &std::path::Path, limit: usize) -> ExitCode {
-    match anima_daemon::threads::holder::hold(folder, limit).await {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => failure(&error),
-    }
-}
-
-#[cfg(not(unix))]
-#[expect(
-    clippy::unused_async,
-    reason = "the holder runs only on Unix; the caller awaits this on each system"
-)]
-async fn holder(_: &std::path::Path, _: usize) -> ExitCode {
     ExitCode::FAILURE
 }

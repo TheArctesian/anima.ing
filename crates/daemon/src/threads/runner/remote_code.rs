@@ -1,5 +1,6 @@
 //! Remote Code uses the runner's serialized event loop, apart from authenticated network I/O.
 
+mod claim;
 mod control;
 mod launch;
 mod polling;

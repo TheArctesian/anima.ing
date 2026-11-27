@@ -234,7 +234,7 @@ impl Runner {
     }
 
     pub(super) async fn remote_send(&mut self, frame: ToHolder) {
-        if !self.link.accepts_remote_peer().await {
+        if !self.link.current_remote_peer().await {
             self.remote.disconnect();
             return;
         }

@@ -77,11 +77,13 @@ fn read_now() -> Read {
 }
 
 fn write_now(text: &str, fresh: bool) -> Written {
+    let previous = if fresh { None } else { read_now()? };
+    let text = super::holder_authority::record(text, previous.as_deref().map(Vec::as_slice))?;
     if fresh {
         delete_now()?;
     }
     entry()?
-        .set_password(text)
+        .set_password(&text)
         .map_err(|error| error.to_string())
 }
 

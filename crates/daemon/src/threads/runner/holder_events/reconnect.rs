@@ -23,7 +23,12 @@ impl Runner {
 
     /// Sends each command that the holder did not answer again, in the order it went first.
     async fn send_again(&mut self) {
-        let again: Vec<Command> = self.unanswered.values().cloned().collect();
+        let again: Vec<Command> = self
+            .unanswered
+            .values()
+            .filter(|(_, private)| !private || self.link.accepts_remote_peer())
+            .map(|(command, _)| command.clone())
+            .collect();
         for command in again {
             if let Err(error) = self.link.resend(&command).await {
                 tracing::warn!(%error, "the holder did not take a command sent again");

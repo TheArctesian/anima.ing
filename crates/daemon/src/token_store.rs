@@ -15,6 +15,8 @@ use crate::keychain_wait;
 #[cfg(not(target_os = "macos"))]
 mod file;
 #[cfg(target_os = "macos")]
+mod holder_authority;
+#[cfg(target_os = "macos")]
 mod keychain;
 
 #[cfg(not(target_os = "macos"))]
@@ -155,6 +157,12 @@ impl TokenStore {
             return Ok(None);
         };
         Credential::from_record(&bytes).map(Some)
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(crate) fn holder_authority(&self, hub: &Origin) -> Option<Zeroizing<[u8; 32]>> {
+        let bytes = self.backend.read(self.deadline).ok()??;
+        holder_authority::at(&bytes, &hub.as_text())
     }
 
     /// The old credential stays when this fails (K8 Section 5).

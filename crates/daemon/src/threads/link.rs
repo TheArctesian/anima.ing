@@ -9,15 +9,18 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
+use std::pin::Pin;
+
 use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::UnixStream;
-use tokio::net::unix::OwnedWriteHalf;
 use tokio::sync::mpsc;
 
 use super::holder::SOCKET;
 use super::tree::identity::Process;
 use super::wire::GitReadRoot;
 
+mod channel;
 mod git_reads;
 use super::wire::{self, Action, Command, Event, MAX_FRAME};
 use git_reads::GitReads;
@@ -35,10 +38,10 @@ pub enum LinkError {
 
 /// A connection to the holder.
 pub struct HolderLink {
-    writer: OwnedWriteHalf,
+    writer: Pin<Box<dyn AsyncWrite + Send + Sync>>,
     next: u64,
     git_reads: GitReads,
-    remote_peer: Option<super::holder::remote_peer::Peer>,
+    remote_root: Option<(PathBuf, rustls::pki_types::CertificateDer<'static>)>,
     /// The events of the holder, in the order it sent them.
     pub events: mpsc::Receiver<Event>,
 }
@@ -52,7 +55,22 @@ impl HolderLink {
     /// [`LinkError::NotOurs`] for a socket of a different user or mode; an I/O error when no
     /// holder listens.
     pub async fn connect(dir: &Path) -> Result<Self, LinkError> {
-        let socket = dir.join(SOCKET);
+        Self::connect_with(dir, None).await
+    }
+
+    async fn connect_with(
+        dir: &Path,
+        client: Option<(
+            rustls::ClientConfig,
+            rustls::pki_types::CertificateDer<'static>,
+        )>,
+    ) -> Result<Self, LinkError> {
+        let remote_peer = client.is_some();
+        let socket = dir.join(if remote_peer {
+            super::holder_channel::SOCKET
+        } else {
+            SOCKET
+        });
         let metadata = std::fs::symlink_metadata(&socket)?;
         let ours = metadata.uid() == rustix::process::getuid().as_raw()
             && metadata.permissions().mode().trailing_zeros() >= 6
@@ -66,10 +84,11 @@ impl HolderLink {
             .ok()
             .filter(|peer| peer.uid() == rustix::process::getuid().as_raw())
             .and_then(|peer| Process::peer(&stream, peer.pid()));
-        let remote_peer = super::holder::remote_peer::Peer::of(&stream);
+
         let git_reads = GitReads::new(holder);
         let observed = git_reads.clone();
-        let (reading, writer) = stream.into_split();
+        let (config, root) = client.unzip();
+        let (reading, writer) = channel::open(stream, config).await?;
         let (sender, events) = mpsc::channel(1024);
         tokio::spawn(observe(reading, sender, observed));
         let first = std::time::SystemTime::now()
@@ -82,7 +101,7 @@ impl HolderLink {
             next: first,
             events,
             git_reads,
-            remote_peer,
+            remote_root: root.map(|root| (dir.to_owned(), root)),
         };
         link.send(Action::Hello {
             version: wire::VERSION,
@@ -92,11 +111,20 @@ impl HolderLink {
         Ok(link)
     }
 
-    pub(super) async fn accepts_remote_peer(&self) -> bool {
-        match &self.remote_peer {
-            Some(peer) => peer.is_daemon().await,
-            None => false,
-        }
+    pub(super) const fn accepts_remote_peer(&self) -> bool {
+        self.remote_root.is_some()
+    }
+
+    pub(super) async fn current_remote_peer(&self) -> bool {
+        let Some((dir, expected)) = &self.remote_root else {
+            return false;
+        };
+        let dir = dir.clone();
+        let root = tokio::task::spawn_blocking(move || {
+            super::holder_channel::Issuer::at(&dir).map(|issuer| issuer.root())
+        })
+        .await;
+        root.ok().flatten().as_ref() == Some(expected)
     }
 
     pub(super) fn suppress_git_root(&self, thread: &str) {
@@ -155,7 +183,7 @@ impl HolderLink {
 }
 
 async fn observe(
-    reading: tokio::net::unix::OwnedReadHalf,
+    reading: impl AsyncRead + Unpin,
     sender: mpsc::Sender<Event>,
     git_reads: GitReads,
 ) {
@@ -191,15 +219,16 @@ async fn observe(
 /// # Errors
 /// The I/O error when the program cannot start.
 pub fn start_holder(program: &Path, dir: &Path) -> io::Result<()> {
-    let mut child = std::process::Command::new(program)
+    let mut command = std::process::Command::new(program);
+    command
         .arg("holder")
         .arg(dir)
         .env_clear()
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .process_group(0)
-        .spawn()?;
+        .process_group(0);
+    let mut child = super::holder_channel::start(&mut command, dir)?;
     // The thread lifts the holder before it waits for it, so the pid stays the holder's; then
     // the daemon reaps the holder when it ends, so that it leaves no zombie.
     std::thread::spawn(move || {
@@ -209,18 +238,34 @@ pub fn start_holder(program: &Path, dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
+async fn connect_runner(dir: &Path) -> Result<HolderLink, LinkError> {
+    if dir.join(super::holder_channel::SOCKET).exists() {
+        let at = dir.to_owned();
+        if let Ok(Some(client)) = tokio::task::spawn_blocking(move || {
+            let issuer = super::holder_channel::Issuer::at(&at)?;
+            Some((issuer.client()?, issuer.root()))
+        })
+        .await
+            && let Ok(link) = HolderLink::connect_with(dir, Some(client)).await
+        {
+            return Ok(link);
+        }
+    }
+    HolderLink::connect(dir).await
+}
+
 /// Connects to the holder of `dir`, and starts one first when none answers.
 ///
 /// # Errors
 /// [`LinkError::NoHolder`] when no holder answers within a few seconds of its start.
 pub async fn reach(program: &Path, dir: &Path) -> Result<HolderLink, LinkError> {
-    if let Ok(link) = HolderLink::connect(dir).await {
+    if let Ok(link) = connect_runner(dir).await {
         return Ok(link);
     }
     start_holder(program, dir)?;
     for _ in 0..100 {
         tokio::time::sleep(Duration::from_millis(50)).await;
-        if let Ok(link) = HolderLink::connect(dir).await {
+        if let Ok(link) = connect_runner(dir).await {
             return Ok(link);
         }
     }

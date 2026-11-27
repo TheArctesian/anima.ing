@@ -7,9 +7,9 @@ use crate::threads::wire::{self, Action, Command, MAX_FRAME, Outcome};
 
 pub(super) async fn serve_commands(
     shared: &Arc<Mutex<Shared>>,
-    reading: tokio::net::unix::OwnedReadHalf,
+    reading: impl tokio::io::AsyncRead + Unpin,
     (me, turn): (u64, &Arc<tokio::sync::Mutex<()>>),
-    peer: Option<remote_peer::Peer>,
+    peer: Option<rustls::pki_types::CertificateDer<'static>>,
 ) -> bool {
     let mut reader = BufReader::new(reading).take(u64::MAX);
     let mut line = Vec::new();

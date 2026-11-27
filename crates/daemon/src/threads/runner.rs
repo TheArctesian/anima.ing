@@ -119,7 +119,7 @@ pub struct Runner {
     waits: BTreeMap<u64, Waits>,
     /// The commands that change a program and that the holder did not answer yet: a new link
     /// sends them again with their own IDs, and the holder does each one time (H10).
-    unanswered: BTreeMap<u64, Command>,
+    unanswered: BTreeMap<u64, (Command, bool)>,
     /// The last line of each thread that the runner read, so that a line the holder gives
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
@@ -351,7 +351,8 @@ impl Runner {
         let id = command.id;
         let sent = self.link.resend(&command).await;
         if kept {
-            self.unanswered.insert(id, command);
+            self.unanswered
+                .insert(id, (command, self.link.accepts_remote_peer()));
         }
         match sent {
             Ok(()) => Some(id),
