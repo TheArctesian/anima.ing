@@ -138,7 +138,7 @@ fn commands(plan: &Plan) -> Vec<&Command> {
     plan.steps
         .iter()
         .filter_map(|step| match step {
-            Step::Run(command) => Some(command),
+            Step::Run(command) | Step::ApplyVersion { command, .. } => Some(command),
             _ => None,
         })
         .collect()

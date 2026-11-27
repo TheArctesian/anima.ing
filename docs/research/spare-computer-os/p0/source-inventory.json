@@ -1,0 +1,705 @@
+{
+  "baseRevision": "83a01d481c9b21e7fb8ac186201fb7b168fe4321",
+  "files": [
+    {
+      "path": "experiments/anima-os/.gitignore",
+      "gitBlob": "3c29c39f12a754be9a4c61492252c739d9929c5c",
+      "extension": ""
+    },
+    {
+      "path": "experiments/anima-os/ISO.md",
+      "gitBlob": "30c15be797533eb8a2d4ca16dcd0b8ec001a4b5b",
+      "extension": ".md"
+    },
+    {
+      "path": "experiments/anima-os/README.md",
+      "gitBlob": "ba89a2f002d69ebd0292e553958b4f48a8561538",
+      "extension": ".md"
+    },
+    {
+      "path": "experiments/anima-os/appliance.nix",
+      "gitBlob": "ba8505214aba879fce3b8c8aaae2334af004b831",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/battery_fixture.py",
+      "gitBlob": "5774be86f6b1b197df72562ab9a5b21f219d3465",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/branding.nix",
+      "gitBlob": "3b4961ca44c078d6469fc9974587522e1e8e344a",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/branding/README.md",
+      "gitBlob": "218f885471699c7c35d88b3a4750a1d85e5118ec",
+      "extension": ".md"
+    },
+    {
+      "path": "experiments/anima-os/branding/back.svg",
+      "gitBlob": "6449d9525ef19cdd9a87b8f4ca201b2869af8f17",
+      "extension": ".svg"
+    },
+    {
+      "path": "experiments/anima-os/branding/boot.png",
+      "gitBlob": "2b37fbeb64fe652d8019635c712fcfa232a9f506",
+      "extension": ".png"
+    },
+    {
+      "path": "experiments/anima-os/branding/grub-theme.txt",
+      "gitBlob": "2d71152901f750544e8c6ee979ec9c2dca22ceeb",
+      "extension": ".txt"
+    },
+    {
+      "path": "experiments/anima-os/branding/hero.png",
+      "gitBlob": "ecc6fa19eef5a2d17824c845d9ab4a1d9b3c9b3b",
+      "extension": ".png"
+    },
+    {
+      "path": "experiments/anima-os/branding/logo.png",
+      "gitBlob": "7507c4c1184f9bed52fd3096aab1870eb6b388cb",
+      "extension": ".png"
+    },
+    {
+      "path": "experiments/anima-os/branding/next.svg",
+      "gitBlob": "21a08e948c422df701d7674d3e37c70611248667",
+      "extension": ".svg"
+    },
+    {
+      "path": "experiments/anima-os/branding/power.svg",
+      "gitBlob": "934f8e5b79ce55a3320806f4eb85e3f531721f0b",
+      "extension": ".svg"
+    },
+    {
+      "path": "experiments/anima-os/branding/render-hero.ts",
+      "gitBlob": "ae9e5152919da7dbf10f3b587945799a8459eec3",
+      "extension": ".ts"
+    },
+    {
+      "path": "experiments/anima-os/branding/restart.svg",
+      "gitBlob": "440f99801aaa202e79860a60f4d89570f988ab12",
+      "extension": ".svg"
+    },
+    {
+      "path": "experiments/anima-os/branding/settings.svg",
+      "gitBlob": "bbda77133bf19144f51621ebd897c25c4118aa4a",
+      "extension": ".svg"
+    },
+    {
+      "path": "experiments/anima-os/branding/welcome.png",
+      "gitBlob": "43de80314a9260deece32580776d24adb5b377b2",
+      "extension": ".png"
+    },
+    {
+      "path": "experiments/anima-os/branding/wordmark.svg",
+      "gitBlob": "625474acc7433f8a28d58bd8fbffb7e9193997e9",
+      "extension": ".svg"
+    },
+    {
+      "path": "experiments/anima-os/calamares.nix",
+      "gitBlob": "57a4d47b2b113d3b44b1f634e5f3a0bc670cc1cf",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/CMakeLists.txt",
+      "gitBlob": "5ff059a96be8fca92c5e7bc00ca2896fd05d1cb3",
+      "extension": ".txt"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/Hero.cpp",
+      "gitBlob": "c983cfa364b4fec082666647787d26960b57b3fa",
+      "extension": ".cpp"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/Network.cpp",
+      "gitBlob": "08ac6d9a740fb417ee7ff430da0064d135291a64",
+      "extension": ".cpp"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/Network.h",
+      "gitBlob": "138c04c86e3d8bdd85b186aa0e6a74d248ce1bc8",
+      "extension": ".h"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/NetworkConnection.cpp",
+      "gitBlob": "1c0d837a8f9f9d031d74c71163573d5ee543a3e2",
+      "extension": ".cpp"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/Review.cpp",
+      "gitBlob": "6f025e8c9d2b9b343a73f65c4dd85be2c7f42dd8",
+      "extension": ".cpp"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/Review.h",
+      "gitBlob": "4674dc56cfdaae1ac1ea94f6a4b83d75592806f7",
+      "extension": ".h"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/Setup.cpp",
+      "gitBlob": "36ea505c8dfa7975a4acb76b062ab5f3eaeba68d",
+      "extension": ".cpp"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/Setup.h",
+      "gitBlob": "318894aa08717bca4043b5e75e83496cc8d8e44f",
+      "extension": ".h"
+    },
+    {
+      "path": "experiments/anima-os/calamares/animasetup/Storage.cpp",
+      "gitBlob": "5aba5a3d04089bb19fec9577583622d3313bc286",
+      "extension": ".cpp"
+    },
+    {
+      "path": "experiments/anima-os/calamares/branding.desc",
+      "gitBlob": "d61e058487018343cc8f8904a1ee5b0ffc9bbcb2",
+      "extension": ".desc"
+    },
+    {
+      "path": "experiments/anima-os/calamares/contrast.patch",
+      "gitBlob": "6370f953ac17b2466c49e80a34272d2068df3870",
+      "extension": ".patch"
+    },
+    {
+      "path": "experiments/anima-os/calamares/forms.patch",
+      "gitBlob": "b0862f8e4659e85f712809b2469a9beabdfdb642",
+      "extension": ".patch"
+    },
+    {
+      "path": "experiments/anima-os/calamares/fullscreen.patch",
+      "gitBlob": "959f2ee9223ae5d06015c4620f8bb088052324ce",
+      "extension": ".patch"
+    },
+    {
+      "path": "experiments/anima-os/calamares/main.py",
+      "gitBlob": "821385b4fa1d8fb798b9aa0cdf06ec175987b7c7",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/calamares/module.desc",
+      "gitBlob": "f71f9c9186e9b66f692c5bd033b0e0394770ae82",
+      "extension": ".desc"
+    },
+    {
+      "path": "experiments/anima-os/calamares/selection.patch",
+      "gitBlob": "7ee989b057e4b87fc5aca76b7fa434113da59ebb",
+      "extension": ".patch"
+    },
+    {
+      "path": "experiments/anima-os/calamares/shell/AnimaBattery.h",
+      "gitBlob": "61bf8e3df98985adcef511b3d93872b86ae3dfb2",
+      "extension": ".h"
+    },
+    {
+      "path": "experiments/anima-os/calamares/shell/AnimaCompletion.h",
+      "gitBlob": "56001d0754cad2934c33ab21da7e024870e3c5db",
+      "extension": ".h"
+    },
+    {
+      "path": "experiments/anima-os/calamares/shell/AnimaSettings.h",
+      "gitBlob": "147515069ae594b7e7569ef21889d4052696c21f",
+      "extension": ".h"
+    },
+    {
+      "path": "experiments/anima-os/calamares/show.qml",
+      "gitBlob": "179956f8f5494552db8c6e3175ab8ae47ebefa60",
+      "extension": ".qml"
+    },
+    {
+      "path": "experiments/anima-os/calamares/stylesheet.qss",
+      "gitBlob": "ded58663b8dc4ab2329032cc9541984bb81477cf",
+      "extension": ".qss"
+    },
+    {
+      "path": "experiments/anima-os/console-python.nix",
+      "gitBlob": "971a0177a6f08519967ed3d8bf17e6d2c1568f0e",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/console.nix",
+      "gitBlob": "ec925ba56311d86f4f5390e6d15ac58b5bbd3a32",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/console/app.py",
+      "gitBlob": "58d399c5fa76e72492dc0f1641db08d8e08b1646",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/commands.py",
+      "gitBlob": "5233ebc44e352a7ccaf9607d522d7b66b020c337",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/diagnostic_job.py",
+      "gitBlob": "5a62ba1ecda942458987dcbe76a4f816d63037c4",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/hosted.py",
+      "gitBlob": "2f9602f8b010f08d38373573c5abeac33378f0f1",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/index.html",
+      "gitBlob": "4d671cf5edecd0dd3a081963f5844e3fa5552a97",
+      "extension": ".html"
+    },
+    {
+      "path": "experiments/anima-os/console/privileged.py",
+      "gitBlob": "44ffd9b4775be21351140abc229de2c4e8d70124",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/screen.py",
+      "gitBlob": "61f2554749c4495ab19778fac9ff7d337be09fe0",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/selfhost.py",
+      "gitBlob": "2dd09756279fe572464641487ad28bbe6c97e660",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/signin.py",
+      "gitBlob": "1bb9796f758459fe62f8464d8952d8e5988615b4",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/style.css",
+      "gitBlob": "af794680f8c4414c9184690d2ff63150704c5ffb",
+      "extension": ".css"
+    },
+    {
+      "path": "experiments/anima-os/console/telemetry.js",
+      "gitBlob": "c15b859787841f8a9ace25ab43f9ba32bbb97fa1",
+      "extension": ".js"
+    },
+    {
+      "path": "experiments/anima-os/console/test_bridge.py",
+      "gitBlob": "10a2676af62edc703c6b932f02cffedbb8ca78e4",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/test_hosted.py",
+      "gitBlob": "dc0601574385004532d2d805bea4d0daaa391848",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/test_screen.py",
+      "gitBlob": "2601f000b57c1b11923ac9d8f55349e2b3cb221f",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/test_selfhost.py",
+      "gitBlob": "80bb0ab13ed6917435eb8ab3224e99466ff107cb",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/test_session.py",
+      "gitBlob": "87385d893392ce50909fb948029f81f70838dfe4",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/test_signin_layout.py",
+      "gitBlob": "808f9b2435691e086f8bbe798443e4d9aed9e203",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/console/ui.js",
+      "gitBlob": "730042ae512e66b431962a1516513f78e644a3f3",
+      "extension": ".js"
+    },
+    {
+      "path": "experiments/anima-os/console_checks.py",
+      "gitBlob": "da6f7178aa46b75eba009b39bfbced07b3ce339a",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/control-build.nix",
+      "gitBlob": "4b96dab39f263310c6ce69b8bef8d0f3e8bce908",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/control-contract.md",
+      "gitBlob": "2084e0af0102403be93949a7470d39dba0bb68e7",
+      "extension": ".md"
+    },
+    {
+      "path": "experiments/anima-os/control-package.nix",
+      "gitBlob": "654815c802f46fe41d9a696fecc54d47bc0ebc14",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/control-vm.nix",
+      "gitBlob": "3f7024724141f88224166a520d93ef49df7f54c6",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/control.nix",
+      "gitBlob": "d5f367173ccae187fbe2b62d020bb29939ed88d5",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/daemon-package.nix",
+      "gitBlob": "e23532b8d92f4ea1cec53a98ea12af64b73110cf",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/display.nix",
+      "gitBlob": "a6d3c1255aff0ceba7bcf81ab252d4e16e28b423",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/display/orientation.py",
+      "gitBlob": "8ab927623bc7c1dd63d7f1bf1e6966ae34bdc720",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/display/scale.py",
+      "gitBlob": "e8c6b816946ebb2acb97cb6a67067972619b5a6b",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/display/test_orientation.py",
+      "gitBlob": "84938720d4478b15458582dcf152a0a1b477b437",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/faults.py",
+      "gitBlob": "0944ae1343d1aab5e34ed895aeaec7bce08de0f9",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/flake.lock",
+      "gitBlob": "46fcf99a91450a5b72aa6f9de245de7646e44437",
+      "extension": ".lock"
+    },
+    {
+      "path": "experiments/anima-os/flake.nix",
+      "gitBlob": "f095bdcf36e8df3068040a842dbaf608e5a434ce",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/gui_actions.py",
+      "gitBlob": "a665329fb2ffd1a571346be73a8f7c21c228933d",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/gui_test.py",
+      "gitBlob": "dff98f098bf72eb2264503fe178a3eb6ea828f8c",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/image.nix",
+      "gitBlob": "94f9e04e89f383947ed79fd5bc19d194557123b4",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/installer-package.nix",
+      "gitBlob": "d190107748ccb2836a7cf9d244591793baaa2e64",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/installer-vm.nix",
+      "gitBlob": "41ab17991bf382180f1d99a447fa41d3c29d8ddb",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/installer_checks.py",
+      "gitBlob": "a9c3b7af762723480bfbea13fc33a5a78a6e967f",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/iso.nix",
+      "gitBlob": "c26b8cf6a9ed5109648e87107e0b1b17f6bbb41a",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/iso_test.py",
+      "gitBlob": "76a68294bfa5789934aaa8b064fceb66be471837",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/link-package.nix",
+      "gitBlob": "95a924843b79b85d129d563e3de9750748211df8",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/live-desktop.nix",
+      "gitBlob": "6df65e326664cecfd0f4c648f3d9f1d9c7db39e2",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/local-tools.nix",
+      "gitBlob": "e80ccf819256ca7906649181d7c893bb5a5ff434",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/machine.nix",
+      "gitBlob": "a9ce8c67884054ecb96e1d9791589fc10a68a6b9",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/naming.nix",
+      "gitBlob": "7d80c4bc04004d82aef70973ff712adde185794f",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/performance/README.md",
+      "gitBlob": "8d913385e453cffef5aef0fd8542a4e6c9aaaf6a",
+      "extension": ".md"
+    },
+    {
+      "path": "experiments/anima-os/performance/guest.py",
+      "gitBlob": "a64b61a2c7078e6dc800dabbc290237926b49ca3",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/performance/report.py",
+      "gitBlob": "760ccc861ba59318841a2e3a186a8406e6abb7c7",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/performance/run.py",
+      "gitBlob": "0a7e07539bef9843e575ab79b9c66a6fa6827751",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/prepare-runtime.sh",
+      "gitBlob": "e7f2629f218416d4c6afae2cf32f3d64404796a7",
+      "extension": ".sh"
+    },
+    {
+      "path": "experiments/anima-os/release/build.sh",
+      "gitBlob": "4913b054bf60eeb3fa77e6d150b9979170c24974",
+      "extension": ".sh"
+    },
+    {
+      "path": "experiments/anima-os/release/candidate.py",
+      "gitBlob": "c4aa12ab41034dff0a8a0a7b685130411668b874",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/release/channel.py",
+      "gitBlob": "c507a1418e86c2d2e8337b7299b6c82c9a8bfeef",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/release/hosted.sh",
+      "gitBlob": "63c7a84cc2f73a7ad023d3a2b70327e74e82d7cd",
+      "extension": ".sh"
+    },
+    {
+      "path": "experiments/anima-os/release/queue.sh",
+      "gitBlob": "d40649aa1f97f11f3fe42f588f0b9fba0c7c8eff",
+      "extension": ".sh"
+    },
+    {
+      "path": "experiments/anima-os/release/receipt.py",
+      "gitBlob": "5b7ba89ec579691a80adb8670a7e0c6c2d5876fa",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/release/remote_checks.py",
+      "gitBlob": "1ddebb77f38b9c6dce367e21f12b2c9a4bb565da",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/release/test_channel.py",
+      "gitBlob": "d272366d5584a8826503816f5e95a88dedfea9c9",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/remote-updates.nix",
+      "gitBlob": "d4ff8ec3e2b0ee2465d7b4eb94ec9b39fb27e908",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/remote.nix",
+      "gitBlob": "4c83dd5da4d881ac78d7fc296bffb72fd9de5814",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/runtime.nix",
+      "gitBlob": "18d5cd2de0d24b2ebcc55692f396eb87158c9c3c",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/rust-package.nix",
+      "gitBlob": "eb90627240dcbf521a57f8081956d0279c64e7be",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/session-account-vm.nix",
+      "gitBlob": "07021485d64dd2612712d5e76c52d34b44c79532",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/session-package.nix",
+      "gitBlob": "89f2a5451d7c9f291a651deb817e9e7f319f8cb5",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/session-test/README.md",
+      "gitBlob": "eae5be2d5ddf3c0d8a5b044b09545e2dd3d9fcbe",
+      "extension": ".md"
+    },
+    {
+      "path": "experiments/anima-os/session-test/account-check.py",
+      "gitBlob": "d512c083e7e9781ddd157c41a1dda47c55c84193",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/session-test/account-server.py",
+      "gitBlob": "de2b65a7ef603c684d192c19603c959b46cff1d4",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/session-vm.nix",
+      "gitBlob": "093aedc3d70082a9a3e9fd2d8e88ca638c98b9d4",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/settings_test.py",
+      "gitBlob": "007a94376f92a833758edaa9ef2c40f03382d0b4",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/smoke-image.nix",
+      "gitBlob": "94eaf3f98a634db08e5834109ba832d62b895e64",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/storage_checks.py",
+      "gitBlob": "b4a4a80eafd9d51af2589497a3f331b3d6d80dbb",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/storage_probe.py",
+      "gitBlob": "e383a47f39219b25ecc541306de64c49303ff1b7",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/telemetry/readings.py",
+      "gitBlob": "e4cc4ec91095c2f8ce3ad43a48e91ae7dba70b73",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/telemetry/test_readings.py",
+      "gitBlob": "3ce655a2a3424a1aaa7c19a9b05551044b923f24",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/test_harness.py",
+      "gitBlob": "b4c8dd39a1d51b0d694af21d92d5bdeef6bb6963",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/ui-test/README.md",
+      "gitBlob": "7c417279d7264d61092c6b814df4bcda45761709",
+      "extension": ".md"
+    },
+    {
+      "path": "experiments/anima-os/ui-test/fixture.js",
+      "gitBlob": "08d9418ad36d2ed2962cc17b1d6745ab031eeb60",
+      "extension": ".js"
+    },
+    {
+      "path": "experiments/anima-os/ui-test/mockup.py",
+      "gitBlob": "6f4898106a75dbcd7977b21cead8ca6fbe459899",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/ui-test/network.mjs",
+      "gitBlob": "c44425172f94336b9c1e1e5322e2a7dfb6025cef",
+      "extension": ".mjs"
+    },
+    {
+      "path": "experiments/anima-os/ui-test/run.mjs",
+      "gitBlob": "5eb3e3727fda4b7e626f8f2f1018c8a46433af6d",
+      "extension": ".mjs"
+    },
+    {
+      "path": "experiments/anima-os/update-boot-vm.nix",
+      "gitBlob": "277d04c5dc658a9b6e04449a025c27e417a8f601",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/update-package.nix",
+      "gitBlob": "edeb73018bbca551f43a97e8f6e623ba6b70d9ba",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/update-rust-vm.nix",
+      "gitBlob": "47b4754eeaa7965623d493fc351c80b25c12a529",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/update_boot_test.py",
+      "gitBlob": "92bc0c93d4bce8b1de083be9145a2b33fbbd7800",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/update_failure_test.py",
+      "gitBlob": "157086758cdb2428702af235bd7f0c8a724bc612",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/update_fixture.py",
+      "gitBlob": "aae3dcaa8546fd60daff2fbf1b867ed55688c1bb",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/update_test.py",
+      "gitBlob": "c851b2630429a98be25d787492a063efcdbf2489",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/updates.nix",
+      "gitBlob": "821140070e76284d15629de91158c24e88afa295",
+      "extension": ".nix"
+    },
+    {
+      "path": "experiments/anima-os/updates/boot.py",
+      "gitBlob": "7352cd4519cd4436b2fe5625106b4778b21d3d4a",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/updates/feed.py",
+      "gitBlob": "3fb5a62a9ca6b699dcb2890c22c564a8919d803f",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/updates/package.py",
+      "gitBlob": "70991e1816c1ac2b9a77598b3a6fb528fffb30c7",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/updates/preview-public.pem",
+      "gitBlob": "3d774b479f9d8f9b215fb4b97f35e1ef40330187",
+      "extension": ".pem"
+    },
+    {
+      "path": "experiments/anima-os/updates/publish.py",
+      "gitBlob": "b96c0a5ab429e052b6980151895c168b4b8afe7b",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/updates/test_feed.py",
+      "gitBlob": "28bcbb14f68cebf9588a7c9ac2732a79d48cdf5f",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/updates/update.py",
+      "gitBlob": "29d658b97f8c2473bf90cfc345799d7ff012c1c0",
+      "extension": ".py"
+    },
+    {
+      "path": "experiments/anima-os/vm.py",
+      "gitBlob": "d792d9661ccd344f6d4d02a338f141167a0e348f",
+      "extension": ".py"
+    }
+  ]
+}

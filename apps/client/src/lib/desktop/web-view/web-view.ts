@@ -24,8 +24,8 @@ async function pinning(): Promise<boolean> {
 /** The event is heard on the main web view only: device web views have no IPC to emit with (D-3). */
 export const desktopWebView: WebViewShell = {
   pinning,
-  open: async ({ tabId, deviceId, url, pin, bounds }) => {
-    await command('web_view_open', { tabId, deviceId, url, pin, bounds });
+  open: async ({ tabId, deviceId, url, pin, bounds, previewEndpoint }) => {
+    await command('web_view_open', { tabId, deviceId, url, pin, bounds, previewEndpoint });
   },
   place: async (tabId, bounds) => {
     await command('web_view_place', { tabId, bounds });

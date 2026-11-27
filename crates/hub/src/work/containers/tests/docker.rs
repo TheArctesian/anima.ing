@@ -22,6 +22,8 @@ fn output(stdout: &str, exit_status: Option<u32>) -> CommandOutput {
 fn host_001_the_list_gives_name_image_state_status_ports_and_compose_project() {
     let containers = docker::containers(&output(LISTED, Some(0))).unwrap();
     let app = Container {
+        actions_available: false,
+        managed_application_id: None,
         id: ID.to_owned(),
         name: "dawarich_app".to_owned(),
         image: "freikin/dawarich:latest".to_owned(),

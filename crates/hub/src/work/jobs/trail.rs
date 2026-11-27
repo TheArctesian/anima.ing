@@ -46,11 +46,19 @@ async fn audit(
 
 fn described(job: &Job) -> serde_json::Value {
     let asked = &job.asked;
+    if asked.kind == daemon_core::wire::WorkKind::Host {
+        return json!({
+            "type": asked.work_type, "kind": asked.kind,
+            "device": asked.machine, "container": asked.parameters["container"],
+            "action": asked.parameters["action"],
+            "application": asked.parameters["application"],
+        });
+    }
     json!({
         "type": asked.work_type,
         "kind": asked.kind,
         "project": asked.project,
-        "repository": format!("{}/{}", asked.repository.owner, asked.repository.name),
+        "repository": asked.repository.as_ref().map(|repo| format!("{}/{}", repo.owner, repo.name)),
         "secrets": asked.secrets,
     })
 }
@@ -106,6 +114,46 @@ pub(super) async fn attempt_started(
     });
     let asker = (Operator::hub(), client);
     audit(conn, job, (AuditAction::Start, change), (asker, now)).await
+}
+
+pub(super) async fn host_started(
+    conn: &mut PgConnection,
+    job: &Job,
+    (device, client, now): (DeviceId, ClientAddr, DateTime<Utc>),
+) -> Result<(), Error> {
+    let change = json!({ "attempt": job.attempt, "device": device, "asked": described(job) });
+    audit(
+        conn,
+        job,
+        (AuditAction::Start, change),
+        ((Operator::hub(), client), now),
+    )
+    .await
+}
+
+pub(in crate::work) async fn secret_released(
+    conn: &mut PgConnection,
+    job: &Job,
+    (purpose, device): (&str, DeviceId),
+    (client, now): (ClientAddr, DateTime<Utc>),
+) -> Result<(), Error> {
+    let mut change = json!({
+        "attempt": job.attempt,
+        "device": device,
+        "purpose": purpose,
+    });
+    if job.asked.kind == daemon_core::wire::WorkKind::Host {
+        change["application"] = job.asked.parameters["application"].clone();
+    } else {
+        change["project"] = json!(job.asked.project);
+    }
+    audit(
+        conn,
+        job,
+        (AuditAction::Fetch, change),
+        ((Operator::hub(), client), now),
+    )
+    .await
 }
 
 pub(super) async fn attempt_ended(

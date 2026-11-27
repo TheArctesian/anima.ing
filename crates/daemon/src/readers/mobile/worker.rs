@@ -51,6 +51,10 @@ async fn read<T: DeserializeOwned>(kind: &'static str) -> Probe<T> {
             command.arg(root);
         }
     }
+    collect_probe(&mut command).await
+}
+
+async fn collect_probe<T: DeserializeOwned>(command: &mut tokio::process::Command) -> Probe<T> {
     let bounds = Bounds {
         limit: DEADLINE,
         keep_cut_output: false,
@@ -58,7 +62,7 @@ async fn read<T: DeserializeOwned>(kind: &'static str) -> Probe<T> {
     };
     // Dropping capture also kills its group; the outer deadline bounds the reap path.
     let captured =
-        tokio::time::timeout(DEADLINE, capture(&mut command, "mobile inventory", bounds)).await;
+        tokio::time::timeout(DEADLINE, capture(command, "mobile inventory", bounds)).await;
     match captured.unwrap_or(Err(CommandError::Timeout {
         program: "mobile inventory",
     })) {
@@ -154,3 +158,6 @@ fn output(program: &str, args: &[&str]) -> Result<Vec<u8>, State> {
     }
     Ok(bytes)
 }
+
+#[cfg(test)]
+mod tests;

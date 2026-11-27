@@ -1,6 +1,8 @@
 //! `anima containers`: the containers of a device, read through the hub's SSH link (HOST-001,
 //! HOST-013, HOST-017 to HOST-021, HOST-022, CMD-030).
 
+pub mod actions;
+pub mod apply;
 pub mod check_file;
 pub mod documents;
 pub mod from_run;
@@ -26,6 +28,10 @@ pub enum ContainerCommand {
     /// networks, labels, processes, and the names of its environment variables (needs a
     /// login, not an API key).
     Inspect(inspect::InspectArgs),
+    #[command(flatten)]
+    Control(actions::Command),
+    #[command(flatten)]
+    Apply(apply::Command),
     /// List the images of a device, with the size of each and the space a clean-up can free.
     Images(storage::StorageArgs),
     /// List the volumes of a device, with the size of each and the space a clean-up can free.
@@ -59,6 +65,8 @@ impl ContainerCommand {
             Self::List(args) => args.run(invocation).await,
             Self::Logs(args) => args.run(invocation).await,
             Self::Inspect(args) => args.run(invocation).await,
+            Self::Control(command) => command.run(invocation).await,
+            Self::Apply(command) => command.run(invocation).await,
             Self::Images(args) => args.images(invocation).await,
             Self::Volumes(args) => args.volumes(invocation).await,
             Self::Networks(args) => args.run(invocation).await,

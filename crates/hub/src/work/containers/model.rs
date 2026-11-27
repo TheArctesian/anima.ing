@@ -131,6 +131,8 @@ pub enum ProjectState {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Container {
     pub id: String,
+    pub actions_available: bool,
+    pub managed_application_id: Option<uuid::Uuid>,
     /// The first name Docker shows.
     pub name: String,
     pub image: String,

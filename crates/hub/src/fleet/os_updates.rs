@@ -12,7 +12,7 @@ use std::time::Duration;
 use async_graphql::Enum;
 use serde_json::Value;
 
-use crate::fleet::ssh::{FixedCommand, SshLink};
+use crate::fleet::ssh::{FixedCommand, HexDigits, SshLink};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Enum)]
 pub enum OsUpdateAction {
@@ -47,18 +47,32 @@ pub enum Error {
     Unsupported,
     #[error("The device returned an invalid update response.")]
     Invalid,
+    #[error("The update changed. Review it again before restarting.")]
+    ReviewChanged,
 }
 
-async fn run(link: &mut SshLink, action: Option<OsUpdateAction>) -> Result<Value, Error> {
-    let command = FixedCommand::new("sudo")
+async fn run(
+    link: &mut SshLink,
+    action: Option<OsUpdateAction>,
+    review: Option<&HexDigits>,
+) -> Result<Value, Error> {
+    let mut command = FixedCommand::new("sudo")
         .arg("-n")
         .arg("/run/current-system/sw/bin/anima-os-update")
         .arg(action.map_or("remote-status", OsUpdateAction::command));
+    if let Some(review) = review {
+        command = command.arg("--review").hex(review);
+    }
     let output = link.run(&command, Duration::from_secs(20)).await?;
     if output.cut || output.stdout.len() > 65536 {
         return Err(Error::Invalid);
     }
     if output.exit_status != Some(0) {
+        if serde_json::from_slice::<Value>(&output.stdout)
+            .is_ok_and(|value| value["ok"] == false && value["code"] == "REVIEW_CHANGED")
+        {
+            return Err(Error::ReviewChanged);
+        }
         return Err(Error::Unsupported);
     }
     let value: Value = serde_json::from_slice(&output.stdout).map_err(|_| Error::Invalid)?;

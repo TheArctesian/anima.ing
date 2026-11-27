@@ -43,6 +43,7 @@ fn refusal(job: &Job, decision: &Decision) -> String {
     match decision.verdict {
         Verdict::Fits => String::new(),
         Verdict::Type => format!("it takes no work of the type {}", spelled(&asked.work_type)),
+        Verdict::Recipe => "it does not support this build recipe".to_owned(),
         Verdict::Kind => format!("it runs no {} job", spelled(&asked.kind)),
         Verdict::Os => "it has a different operating system".to_owned(),
         Verdict::Architecture => "it has a different processor architecture".to_owned(),

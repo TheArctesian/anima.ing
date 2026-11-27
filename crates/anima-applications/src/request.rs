@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// The most bytes of the text of one item.
-pub const LARGEST_REQUEST: usize = 16 * 1024;
+pub use anima_applications_wire::MAX_ITEM_BYTES as LARGEST_REQUEST;
 
 const UNKNOWN: Refusal = Refusal::MemberUnknown;
 

@@ -1,21 +1,20 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import ContainerPane from '$lib/containers/ContainerPane.svelte';
-  import type { ContainerRow } from '$lib/containers/rows';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Input from '$lib/forms/input/Input.svelte';
   import Select from '$lib/forms/input/Select.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
+  import ApplicationName from './ApplicationName.svelte';
   import { needingYou, placeGroups, type ApplicationRow, type Show, type View } from './list';
+  import ComposeApply from './compose/ComposeApply.svelte';
+  import HostingRowActions from './HostingRowActions.svelte';
   import type { HostingStore } from './store.svelte';
 
-  /**
-   * HSE-002 and HSE-009, task H42 stage 1: the applications and the containers of all machines in one list, one group
-   * for each machine, read only. Until the hub keeps the record of the installs (task H6), an application is a Compose
-   * project that the hub reads on the machine, and each row is Not managed.
-   */
-  const { store }: { store: HostingStore } = $props();
+  /** HSE-002 and HSE-009: one inventory group for each machine. */
+  /** `oninstall` opens the picker of the Catalogue with a machine chosen (HSE-022); without it, the link opens the Catalogue. */
+  const { store, oninstall }: { store: HostingStore; oninstall?: (machineId: string) => void } = $props();
 
   const groups = $derived(placeGroups(store.places, { search: store.search, machine: store.machine, show: store.show, view: store.view }));
   const all = $derived(placeGroups(store.places, { search: '', machine: '', show: 'all', view: store.view }).flatMap((group) => group.rows));
@@ -27,10 +26,9 @@
   const options = $derived([
     { value: 'all' as Show, label: 'All', count: all.length },
     { value: 'needs-you' as Show, label: 'Needs you', count: needingYou(store.places, store.view) },
-    { value: 'not-managed' as Show, label: 'Not managed', count: all.filter((row) => !row.managed).length },
+    { value: 'not-managed' as Show, label: 'Not managed', count: all.filter((row) => row.managedApplicationId === null).length },
   ]);
   const count = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`;
-  const sub = (row: ApplicationRow) => (row.what === 'Compose project' ? `Compose project · ${count(row.containers.length, 'container')}` : row.what);
   /** HOST-021: a row says Up to date only when the hub said so of each of its containers. */
   function update(row: ApplicationRow): string {
     if (row.newer === null) return '';
@@ -38,8 +36,6 @@
     if (row.containers.length === 1) return row.containers[0]?.update?.words ?? 'Not known';
     return row.containers.every((container) => container.update?.words === 'Up to date') ? 'Up to date' : 'Not known';
   }
-  /** Whether the pane below the list shows this container's log or its details. */
-  const pressed = (machineId: string, id: string, shown: 'log' | 'detail') => store.pane?.machineId === machineId && store.pane.containerId === id && store.pane.store.selected === id && store.pane.store.shown === shown;
 </script>
 
 {#if store.status === 'failed'}
@@ -59,15 +55,17 @@
     <Segmented label="List" size="sm" options={VIEWS} bind:value={store.view} />
     <Segmented label="Show" size="sm" {options} bind:value={store.show} />
     <span class="grow"></span>
+    {#if store.view === 'applications'}
+      <ComposeApply calls={store.apply} onlyId={store.only?.id ?? null} preferredId={store.only?.id ?? store.machine} onApplied={(id) => store.applied(id)} />
+    {/if}
     <FormButton size="sm" tone="ghost" icon="carbon:update-now" busy={store.updatesStatus === 'loading'} onclick={() => void store.checkUpdates()}>Look for newer images</FormButton>
     <FormButton size="sm" icon="carbon:renew" busy={store.status === 'loading'} onclick={() => void store.load()}>Refresh</FormButton>
   </header>
-  <p class="note">The applications are the Compose projects that Anima reads on each machine. Anima installs nothing yet, so each row is read only.</p>
   {#if store.updatesStatus === 'failed'}<p class="note problem" role="alert">{store.updatesProblem}</p>{/if}
   <table>
     <caption>The applications and the containers of each machine</caption>
     <thead>
-      <tr><th scope="col">{store.view === 'containers' ? 'Container' : 'Application or container'}</th><th scope="col">State</th><th scope="col">Updates</th><th scope="col"><span class="hidden">Log and details</span></th></tr>
+      <tr><th scope="col">{store.view === 'containers' ? 'Container' : 'Application or container'}</th><th scope="col">State</th><th scope="col">Updates</th><th scope="col"><span class="hidden">Container controls</span></th></tr>
     </thead>
     {#each groups as group (group.id)}
       <tbody>
@@ -77,7 +75,8 @@
             {#if group.empty}· Nothing installed{:else if group.status === 'ready'}· {count(group.rows.length, 'item')}{/if}
             <span class="summary state {group.tone}"><span class="dot" aria-hidden="true"></span>{group.state}</span>
             {#if group.status === 'ready' && !group.empty}<span class="summary">{group.summary}</span>{/if}
-            {#if group.empty}<a class="summary to" href={resolve('/hosting/catalogue')}>Install from the catalogue</a>{/if}
+            {#if group.empty && oninstall !== undefined}<button type="button" class="summary to" onclick={() => { oninstall(group.id); }}>Install from the catalogue</button>
+            {:else if group.empty}<a class="summary to" href={resolve('/hosting/catalogue')}>Install from the catalogue</a>{/if}
             {#if group.status === 'loading'}<span class="summary">Reading…</span>{/if}
             {#if group.status === 'failed'}<span class="summary problem">{group.problem}</span>{/if}
           </th>
@@ -86,21 +85,17 @@
           {@const opens = row.containers.length > 1 || row.what === 'Compose project'}
           {@const open = store.open.includes(row.key)}
           <tr class:wash={row.needsYou} class={row.tone}>
-            <th scope="row">
-              {#if opens}
-                <button type="button" class="open" aria-expanded={open} onclick={() => store.toggle(row.key)}><span aria-hidden="true">{open ? '▾' : '▸'}</span> {row.name}</button>
-              {:else}<span class="lone">{row.name}</span>{/if}
-              {#if !row.managed} <span class="mark">Not managed</span>{/if} <span class="sub">{sub(row)}</span>
-            </th>
+            <th scope="row"><ApplicationName {row} {open} ontoggle={() => { store.toggle(row.key); }} /></th>
             <td><span class="state {row.tone}"><span class="dot" aria-hidden="true"></span>{row.state}</span></td>
-            <td class="sub">{row.managed ? update(row) : (update(row) || 'Read only')}</td>
-            <td class="action">{#if !opens && row.containers[0] !== undefined}{@render actions(group.id, row.containers[0])}{/if}</td>
+            <td class="sub">{update(row)}</td>
+            <td class="action">{#if !opens && row.containers[0] !== undefined}<HostingRowActions {store} machineId={group.id} machineName={group.name} container={row.containers[0]} />{/if}</td>
           </tr>
           {#if opens && open}
-            {#if row.folder !== null || row.files.length > 0}
+            {#if row.managedApplicationId !== null || row.folder !== null || row.files.length > 0}
               <!-- HOST-030: where the project was started from, as Docker says; read only. -->
               <tr class="inner started">
                 <th scope="row" colspan="4"><span class="line">
+                  {#if row.managedApplicationId !== null}<span class="path">Application ID <code>{row.managedApplicationId}</code></span>{/if}
                   <span class="sub">Started by Compose</span>
                   {#if row.folder !== null}<span class="path">in <code>{row.folder}</code></span>{/if}
                   {#if row.files.length > 0}<span class="path">from <code>{row.files.join(', ')}</code></span>{/if}
@@ -112,7 +107,7 @@
                 <th scope="row">{container.name} <span class="sub">Container of {row.name}</span></th>
                 <td title={container.status}><span class="state {container.tone}"><span class="dot" aria-hidden="true"></span>{container.state}</span></td>
                 <td class="sub">{container.update?.words ?? ''}</td>
-                <td class="action">{@render actions(group.id, container)}</td>
+                <td class="action"><HostingRowActions {store} machineId={group.id} machineName={group.name} {container} /></td>
               </tr>
             {/each}
           {/if}
@@ -122,12 +117,6 @@
   </table>
   {#if store.pane !== null}<ContainerPane store={store.pane.store} name={store.pane.name} />{/if}
 {/if}
-
-<!-- HOST-001 and HOST-017: the log and the details of one container open in the pane below the list. -->
-{#snippet actions(machineId: string, container: ContainerRow)}
-  <FormButton size="sm" tone="ghost" aria-pressed={pressed(machineId, container.id, 'detail')} aria-label="Details of {container.name}" onclick={() => void store.openDetail(machineId, container.id, container.name)}>Details</FormButton>
-  <FormButton size="sm" tone="ghost" aria-pressed={pressed(machineId, container.id, 'log')} aria-label="Log of {container.name}" onclick={() => void store.openLog(machineId, container.id, container.name)}>Log</FormButton>
-{/snippet}
 
 <style>
   .bar {
@@ -194,7 +183,7 @@
   }
 
   thead th:nth-child(4) {
-    inline-size: calc(var(--control-lg) * 3 + var(--space-6));
+    inline-size: calc(var(--control-lg) * 4 + var(--space-6));
   }
 
   .action {
@@ -218,7 +207,12 @@
   }
 
   .to {
+    padding: 0;
+    border: 0;
+    background: none;
     color: var(--accent);
+    font: inherit;
+    cursor: pointer;
   }
 
   /* A row that needs the operator has the wash of its status, as in Routes (HSE-002). */
@@ -229,21 +223,6 @@
   .wash.warning,
   .wash.unknown {
     background: var(--status-degraded-wash);
-  }
-
-  .open,
-  .lone {
-    padding: 0;
-    background: none;
-    border: 0;
-    color: var(--text);
-    font: inherit;
-    font-weight: var(--weight-medium);
-    cursor: pointer;
-  }
-
-  .lone {
-    cursor: auto;
   }
 
   .inner th {
@@ -274,15 +253,6 @@
 
   td.sub {
     display: table-cell;
-  }
-
-  /* The mark is a word with a border that repeats it (MAT-005). */
-  .mark {
-    margin-inline-start: var(--space-2);
-    padding: 0 var(--space-2);
-    border: var(--border-thin) solid var(--border-subtle);
-    border-radius: var(--radius-pill);
-    color: var(--text-secondary);
   }
 
   .state {

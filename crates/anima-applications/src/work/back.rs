@@ -4,12 +4,10 @@ use compose_rules::Rule;
 
 use super::{
     Facts,
-    apply::{
-        Planned, Prepared, folder_steps, in_place_steps, project_checked, sha256, version_steps,
-    },
+    apply::{Planned, Prepared, plan_version, project_checked},
     managed,
 };
-use crate::{Refusal, Step};
+use crate::Refusal;
 
 /// The kept Compose file and environment file, as read from `files/` of the application; `{:?}` shows only their lengths.
 #[derive(Clone, Copy)]
@@ -68,15 +66,5 @@ pub fn prepared(application: &str, kept: &Kept<'_>, facts: &Facts<'_>) -> Result
         known: digests,
         pulls: Vec::new(),
     };
-    let (started, form) = version_steps(&version, &version.known, facts)?;
-    let folders = facts.paths.application(application);
-    let mut steps = folder_steps(&folders, &form.binds);
-    steps.extend(started);
-    steps.extend(folders.kept().into_iter().map(|path| Step::Delete { path }));
-    steps.extend(in_place_steps(&folders));
-    Ok(Planned {
-        plan: crate::Plan { steps },
-        final_form_sha256: sha256(form.text.as_bytes()),
-        holds_volumes: form.holds_volumes,
-    })
+    plan_version(&version, &version.known, facts, false)
 }

@@ -3,10 +3,12 @@
 use guac_protocol::{Instruction, encode};
 use sqlx::PgPool;
 
+use crate::fleet::sessions::Protocol;
+
 use super::{
     bench::{Bench, Setup, bench, docker_host},
     decoded,
-    fake_guacd::{Act, FakeGuacd, RDP_ARGS, Script, connect_values, fake_guacd},
+    fake_guacd::{Act, FakeGuacd, RDP_ARGS, Script, VNC_ARGS, connect_values, fake_guacd},
     heard, opened,
     records::ended,
     socket::{Socket, open},
@@ -172,4 +174,66 @@ async fn ra_021_download_off_get_browses_and_guacd_hears_the_refused_file(pool: 
     );
     client.send("3.key,5.65307,1.1;").await;
     assert_eq!(heard(&mut guacd).await.opcode, "key");
+}
+
+async fn viewer(pool: &PgPool, protocol: Protocol, args: &'static [u8]) {
+    let mut guacd = fake_guacd(Script::Serve {
+        args,
+        with_ready: "",
+    })
+    .await;
+    let setup = Setup {
+        protocol,
+        view_only: true,
+        ..Setup::default()
+    };
+    let bench = bench(pool, &guacd.address, setup).await;
+    let mut client = open(&bench.url).await;
+    opened(&mut client).await;
+    let handshake = (&mut guacd.handshake).await.unwrap();
+    let values = connect_values(args, handshake.last().unwrap());
+    for restricted in ["read-only", "disable-copy", "disable-paste"] {
+        assert_eq!(values[restricted], "true");
+    }
+    verify_viewer_frames(&mut guacd, &mut client).await;
+}
+
+async fn verify_viewer_frames(guacd: &mut FakeGuacd, client: &mut Socket) {
+    client
+        .send(concat!(
+            "3.key,2.97,1.1;",
+            "5.mouse,2.20,2.20,1.1;",
+            "5.touch,1.0,2.20,2.20,1.1,1.1,1.0,1.1;",
+            "4.size,4.1024,3.768;",
+            "9.clipboard,1.0,10.text/plain;4.blob,1.0,4.YQ==;3.end,1.0;",
+            "4.sync,1.1;"
+        ))
+        .await;
+    assert_eq!(heard(guacd).await, Instruction::new("sync", ["1"]));
+
+    guacd
+        .act
+        .send(Act::Send("4.size,1.0,2.64,2.48;4.sync,1.2;".to_owned()))
+        .unwrap();
+    assert_eq!(client.text().await, "4.size,1.0,2.64,2.48;");
+    assert_eq!(client.text().await, "4.sync,1.2;");
+    client.send("10.disconnect;").await;
+    assert_eq!(client.close_code().await, Some(1000));
+    assert_eq!(heard(guacd).await.opcode, "disconnect");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn rdp_viewer_receives_the_display_without_controlling_it(pool: PgPool) {
+    viewer(&pool, Protocol::Rdp, RDP_ARGS).await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn vnc_viewer_receives_the_display_without_controlling_it(pool: PgPool) {
+    viewer(&pool, Protocol::Vnc, VNC_ARGS).await;
 }

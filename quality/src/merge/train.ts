@@ -63,10 +63,35 @@ export function standing(tips: Tip[], runs: GatesRun[], refused: Refused, inDev:
     });
 }
 
-export function batch(tips: Tip[], runs: GatesRun[], refused: Refused, inDev: (sha: string) => boolean): Tip[] {
+/** Each tip that waits for a train: its own gates passed and no train refused it; the oldest pass first, then the name. */
+export function queue(tips: Tip[], runs: GatesRun[], refused: Refused, inDev: (sha: string) => boolean): Tip[] {
   const ready = standing(tips, runs, refused, inDev).flatMap((each) => (each.reason === undefined && each.passedAt !== undefined ? [{ tip: each.tip, at: each.passedAt }] : []));
   ready.sort((a, b) => (a.at === b.at ? (a.tip.branch < b.tip.branch ? -1 : 1) : a.at < b.at ? -1 : 1));
-  return ready.slice(0, MOST).map((each) => each.tip);
+  return ready.map((each) => each.tip);
+}
+
+/** A tip that does not merge with `dev`, and the files of the conflict. */
+export interface Conflict {
+  tip: Tip;
+  paths: string[];
+}
+
+export interface Batch {
+  taken: Tip[];
+  conflicts: Conflict[];
+}
+
+/** The first `MOST` tips of the queue that merge with `dev`. A tip with a conflict takes no place; `conflict` is asked again at the next batch. */
+export function batch(waiting: Tip[], conflict: (tip: Tip) => string[]): Batch {
+  const taken: Tip[] = [];
+  const conflicts: Conflict[] = [];
+  for (const tip of waiting) {
+    if (taken.length === MOST) break;
+    const paths = conflict(tip);
+    if (paths.length === 0) taken.push(tip);
+    else conflicts.push({ tip, paths });
+  }
+  return { taken, conflicts };
 }
 
 export type Verdict = "start-gates" | "wait" | "land" | "split" | "build-again";

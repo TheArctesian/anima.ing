@@ -109,6 +109,14 @@ impl PhoneLink {
         Ok(Joined { fingerprint, port })
     }
 
+    /// The same port, so the hub's address and the token kept for it stay; a join or leave in progress starts or
+    /// stops the link itself.
+    fn restart(&self) -> Result<u16, LinkError> {
+        let _changing = self.changing.try_lock().map_err(|_| LinkError::Busy)?;
+        library::stop();
+        self.start()
+    }
+
     fn status(&self) -> LinkStatus {
         let running = library::status();
         let port = running.up.then(|| port_of(&running.local)).flatten();
@@ -157,14 +165,24 @@ pub fn manage<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Starts the link again when the app comes back from the background, where iOS stops it (MOB-036).
-pub fn resume<R: Runtime>(app: &AppHandle<R>) {
-    if let Some(link) = app.try_state::<PhoneLink>()
-        && link.joined()
-        && !library::status().up
-    {
-        let _ = link.start();
-    }
+/// Starts the link again when the app comes back to the screen (MOB-036). After iOS suspended the app, the library
+/// still runs but its tunnel and its local port are stale, so `restart` stops it first. Off the main thread: a stop
+/// waits for the link's streams.
+pub fn resume<R: Runtime>(app: &AppHandle<R>, restart: bool) {
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(link) = app.try_state::<PhoneLink>() else {
+            return;
+        };
+        if !link.joined() {
+            return;
+        }
+        if restart {
+            let _ = link.restart();
+        } else if !library::status().up {
+            let _ = link.start();
+        }
+    });
 }
 
 async fn blocking<T: Send + 'static>(

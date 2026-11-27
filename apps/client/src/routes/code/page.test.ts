@@ -43,6 +43,8 @@ it.each([
       expect(document.querySelector('a[href="/code?thread=thread-a"]')?.textContent ?? '').toContain('Inspect the fixtures');
     });
     expect(calls.keepFresh).not.toHaveBeenCalled();
+    document.querySelector<HTMLButtonElement>('[aria-label="Code on a node"]')?.click();
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Code · Nodes'));
   } finally {
     vi.unstubAllGlobals();
   }

@@ -8,7 +8,7 @@ use agent_threads::drive::Program;
 use uuid::Uuid;
 
 use super::accounts::Asked;
-use super::calls::codex_of;
+use super::codex::Codex;
 use super::socket::Caller;
 use super::thread::Thread;
 use super::{Runner, Waits, login};
@@ -80,12 +80,13 @@ impl Runner {
         }
         let copies = login::copies(new.program, &self.env, login::executable, login::trusted);
         let path = login::chosen_copy(new.program_path.as_deref(), &copies)?;
+        let managed_id = new.managed_id;
         let asking = Asking {
             new,
             back,
             path,
             copies,
-            id: None,
+            id: managed_id,
         };
         match self.silence.kept(&asking.path) {
             Some(true) => self.start_checked(asking).await,
@@ -120,6 +121,13 @@ impl Runner {
     }
 
     fn validate_start(&self, new: &NewThread) -> Result<(), Refusal> {
+        if let Some(id) = new.managed_id
+            && (self.threads.contains_key(&id)
+                || self.asks.open.values().any(|asking| asking.id == Some(id))
+                || self.asks.making.contains_key(&id))
+        {
+            return Err(Refusal::BadValue);
+        }
         // A start whose copy is being asked, or whose worktree is being made, counts against the
         // soft limit too (THR-114).
         let asking = self.asks.open.len() + self.asks.making.len();
@@ -244,6 +252,9 @@ impl Runner {
         // The holder or the count can change while the copy is asked.
         self.may_start(0)?;
         let id = id.unwrap_or_else(Uuid::now_v7);
+        if self.threads.contains_key(&id) {
+            return Err(Refusal::BadValue);
+        }
         let (row, action) = self.prepared(&new, id, &path)?;
         let daemon = self.dir.parent().unwrap_or(&self.dir);
         let mut notice = crate::threads::notice::before_start(&row.folder, daemon);
@@ -251,7 +262,7 @@ impl Runner {
         notice.extend(super::silence::chosen(new.program, &path, named, &copies));
         self.rights_copy(id, path.clone());
         self.silence.started(id, new.program, path);
-        let codex = codex_of(&row, new.effort, daemon);
+        let codex = Codex::for_row(&row, new.effort, daemon);
         self.threads.insert(id, Thread::new(row, new.effort, codex));
         // The hold of the Git engine counts the roots of this thread before its agent starts,
         // and no root of its sandbox is shared with a different running thread (THR-050).

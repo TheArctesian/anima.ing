@@ -1,4 +1,5 @@
 use crate::{Error, Result, command};
+pub(crate) use anima_os_maintenance::cutover::valid_system;
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use std::{io::Write, path::Path, time::Duration};
@@ -25,23 +26,6 @@ pub struct Release {
     pub bytes: u64,
     pub unpacked_bytes: u64,
     pub url: String,
-}
-
-pub fn valid_system(value: &str) -> bool {
-    let Some(rest) = value.strip_prefix("/nix/store/") else {
-        return false;
-    };
-    let Some((hash, name)) = rest.split_once("-nixos-system-anima-") else {
-        return false;
-    };
-    hash.len() == 32
-        && hash
-            .bytes()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
-        && !name.is_empty()
-        && name
-            .bytes()
-            .all(|c| c.is_ascii_alphanumeric() || b".+_-".contains(&c))
 }
 
 impl Release {
@@ -143,7 +127,7 @@ pub async fn latest() -> Result<Release> {
         }
         let mut key = tempfile::NamedTempFile::new()?;
         key.write_all(include_bytes!(
-            "../../../experiments/anima-os/updates/preview-public.pem"
+            "../../../os/release/signing/preview-public.pem"
         ))?;
         verify(&bytes, key.path()).await
     };

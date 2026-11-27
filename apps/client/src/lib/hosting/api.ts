@@ -1,3 +1,5 @@
+import { composeApplyApi, type ApplyCalls } from './compose/api';
+import { containerActionApi, type ContainerActionCalls } from '$lib/containers/action/api';
 import { graphql } from '$lib/hub/generated';
 import { containersApi, type Container, type ContainerCalls, type ContainerStorage, type ImageUpdate } from '$lib/containers/api';
 import type { HostingMachinesQuery } from '$lib/hub/generated/graphql';
@@ -34,6 +36,8 @@ export interface Machine {
 
 /** What the section Applications asks of the hub (HSE-002). Each call reads the machine at that time; the hub keeps nothing. */
 export interface HostingCalls {
+  readonly actions: ContainerActionCalls;
+  readonly apply: ApplyCalls;
   /** The machines with SSH on, by name. A device with SSH off has no containers that the hub can read. */
   machines(): Promise<HubResult<readonly Machine[]>>;
   containers(machineId: string): Promise<HubResult<readonly Container[]>>;
@@ -48,6 +52,8 @@ export interface HostingCalls {
 /** The calls of the section Applications: the device list of the hub, then the container calls of each machine (task H42). */
 export function hostingApi(hub: Pick<Hub, 'request'>): HostingCalls {
   return {
+    actions: containerActionApi(hub),
+    apply: composeApplyApi(hub),
     machines: async () => {
       const machines: Machine[] = [];
       let after: string | null = null;

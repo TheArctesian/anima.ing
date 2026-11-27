@@ -25,11 +25,9 @@ pub async fn of(git: &Git, worktree: &Worktree, listed: &[Setting]) -> Result<St
     let mut status = files(git, worktree, head.commit.as_deref()).await?;
     let remote = remote(listed);
     status.has_remote = remote.is_some();
-    status.push_url = remote
-        .as_ref()
-        .map(|(_, url)| said::without_credentials(url));
-    let remote = remote.map(|(name, _)| name);
-    status.default_branch = default_branch(common, remote.as_deref())?;
+    status.push_url = remote.as_ref().map(|(_, url)| said::destination(url));
+    let remote_name = remote.as_ref().map(|(name, _)| name.as_str());
+    status.default_branch = default_branch(common, remote_name)?;
     // What the remote says is the default can be changed in the repository, so the two usual
     // names count as the default branch too.
     status.is_default_branch = head.branch.as_deref().is_some_and(|branch| {
@@ -41,9 +39,9 @@ pub async fn of(git: &Git, worktree: &Worktree, listed: &[Setting]) -> Result<St
             _ => 0,
         }
     };
-    if let (Some(remote), Some(branch)) = (&remote, &head.branch) {
+    if let (Some((remote, url)), Some(branch)) = (&remote, &head.branch) {
         let tracked = refs::resolve(common, &format!("refs/remotes/{remote}/{branch}"))?;
-        let sent = sent(git, worktree, branch).await;
+        let sent = sent(git, worktree, (url, branch)).await;
         if sent.is_some() || tracked.is_some() {
             status.upstream = Some(format!("{remote}/{branch}"));
         }
@@ -51,7 +49,7 @@ pub async fn of(git: &Git, worktree: &Worktree, listed: &[Setting]) -> Result<St
         status.behind = count(head.commit.clone(), tracked).await;
     }
     if let Some(default) = &status.default_branch {
-        let tracked = match &remote {
+        let tracked = match remote_name {
             Some(remote) => refs::resolve(common, &format!("refs/remotes/{remote}/{default}"))?,
             None => None,
         };
@@ -93,9 +91,9 @@ pub fn remote(listed: &[Setting]) -> Option<(String, String)> {
         .filter(|(name, _)| place::branch_name(name).is_ok() && !name.contains('/'))
 }
 
-/// The commit of `branch` that the last push of the runner sent; `None` before the first.
-pub async fn sent(git: &Git, worktree: &Worktree, branch: &str) -> Option<String> {
-    let name = format!("{}^{{commit}}", checkpoint::pushed_ref(branch));
+/// The commit the runner sent to this destination and branch.
+pub async fn sent(git: &Git, worktree: &Worktree, (url, branch): (&str, &str)) -> Option<String> {
+    let name = format!("{}^{{commit}}", checkpoint::pushed_ref(url, branch));
     let verify = [
         "rev-parse",
         "--verify",

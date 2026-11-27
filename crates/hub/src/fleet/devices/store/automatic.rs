@@ -38,3 +38,14 @@ pub(in crate::fleet::devices) async fn configure(
     }
     Ok(changed)
 }
+
+pub(in crate::fleet::devices) async fn configure_vnc(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    user: &str,
+) -> Result<bool, Error> {
+    Ok(sqlx::query(
+        "UPDATE devices.vnc_settings SET enabled = true, username = $2, configured = true \
+         WHERE device_id = $1 AND NOT configured AND NOT enabled AND username IS NULL AND port = 5900",
+    ).bind(device).bind(user).execute(conn).await?.rows_affected() > 0)
+}

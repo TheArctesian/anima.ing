@@ -1,0 +1,27 @@
+{
+  "scope": "Root CLI and durable registration in disposable Linux container, synthetic public job metadata only. Registration launches no work and does not qualify daemon claims, runtime cancellation or installed OS.",
+  "results": [
+    {
+      "case": "durable-idempotent-registration-without-resource-creation",
+      "result": "Passed"
+    },
+    {
+      "case": "attempt-bound-renewal-and-terminal-registration",
+      "result": "Passed"
+    },
+    {
+      "case": "local-switch-refusal-before-registration",
+      "result": "Passed"
+    }
+  ],
+  "priorProbe": {
+    "scope": "Disposable-container fixture setup failure before registration.",
+    "results": [
+      {
+        "case": "registration-fixture",
+        "result": "Failed",
+        "reason": "Fixture used fractional UTC offset timestamps; K10 requires whole-second UTC Z timestamps. Production validation correctly refused it."
+      }
+    ]
+  }
+}

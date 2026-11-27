@@ -10,7 +10,7 @@ pub mod pull_request;
 
 use super::place::{self, Worktree, own};
 use super::run::hooks::Hooks;
-use super::run::settings::Setting;
+use super::run::settings::{self, Setting};
 use super::run::{Git, REMOTE_TIME, Run};
 use super::{checkpoint, status};
 
@@ -99,7 +99,7 @@ pub async fn ready(
     let commit = commit.ok_or(GitRefusal::NoCommits)?;
     // Only what the runner itself sent counts as pushed: the refs of the repository are
     // files that an agent can write.
-    let sent = status::sent(git, worktree, &branch).await;
+    let sent = status::sent(git, worktree, (&url, &branch)).await;
     Ok(Ready {
         remote,
         shown: now.push_url.unwrap_or_default(),
@@ -119,7 +119,7 @@ pub async fn ready(
 pub async fn send(
     git: &Git,
     worktree: &Worktree,
-    ready: Ready,
+    (ready, listed): (Ready, &[Setting]),
     hooks: Option<&Hooks<'_>>,
 ) -> Result<GitOutcome, GitRefusal> {
     let dir = worktree.folder();
@@ -150,6 +150,8 @@ pub async fn send(
         "-c",
         "push.pushOption=",
         "-c",
+        "http.followRedirects=false",
+        "-c",
         "protocol.git.allow=never",
         "push",
         "--receive-pack=git-receive-pack",
@@ -159,13 +161,19 @@ pub async fn send(
     ];
     // A push needs the history, which only the repository of the person has; the remote
     // checks each object that it gets.
-    let push = Run::new(dir, push)
+    let mut push = Run::new(dir, push)
         .for_the_person()
         .with_time(REMOTE_TIME)
+        // Pin the URL shown for consent. Keep login helpers from the settings we already read.
+        .with_env("GIT_CONFIG_NOSYSTEM", "1")
+        .with_env("GIT_CONFIG_GLOBAL", "/dev/null")
         // In the environment: a URL can hold a credential, and each user reads arguments.
         .with_setting(&format!("remote.{THERE}.url"), &ready.url);
+    for (key, value) in settings::push_auth(listed) {
+        push = push.with_setting(key, value);
+    }
     git.output(push).await?;
-    let sent = checkpoint::pushed_ref(&ready.branch);
+    let sent = checkpoint::pushed_ref(&ready.url, &ready.branch);
     let keep = [
         "update-ref",
         "--no-deref",

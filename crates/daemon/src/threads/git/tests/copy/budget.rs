@@ -166,7 +166,10 @@ async fn what_a_failed_snapshot_left_and_a_file_with_a_hole_do_not_lock_the_thre
     std::fs::write(folder.join("work.txt"), "work\n").expect("a file");
     let tiny = engine_with_budget(&bench, 1);
     let removed = tiny.call(PERSON, target(), GitAction::Remove).await;
-    let GitOutcome::Removed { kept: Some(kept) } = removed else {
+    let GitOutcome::Removed {
+        kept: Some(kept), ..
+    } = removed
+    else {
         panic!("not removed: {removed:?}");
     };
     let saved = ["show", &format!("{kept}:work.txt")];
@@ -184,7 +187,10 @@ async fn a_worktree_whose_last_commit_cannot_be_brought_is_removed_with_its_file
     let status = bench.call(PERSON, GitAction::Status).await;
     assert!(super::super::refused(&status).is_some(), "{status:?}");
     let removed = bench.call(PERSON, GitAction::Remove).await;
-    let GitOutcome::Removed { kept: Some(kept) } = removed else {
+    let GitOutcome::Removed {
+        kept: Some(kept), ..
+    } = removed
+    else {
         panic!("not removed: {removed:?}");
     };
     assert!(!folder.exists());

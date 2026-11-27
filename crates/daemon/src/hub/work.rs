@@ -35,3 +35,15 @@ impl HubClient {
         self.post(call, |_, body| read_json(body)).await
     }
 }
+
+#[cfg(target_os = "linux")]
+mod hosting;
+
+#[cfg(target_os = "linux")]
+pub use hosting::ApplicationStartError;
+
+#[cfg(target_os = "linux")]
+mod secrets;
+
+#[cfg(target_os = "linux")]
+pub(crate) use secrets::ReleasedSecret;

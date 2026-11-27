@@ -1,0 +1,36 @@
+{
+  "scope": "Pinned Railpack 0.43.1 prepare against synthetic Node, Python and Rust projects in local Linux container. No image build, runtime or installed-node acceptance.",
+  "plans": [
+    {
+      "language": "node",
+      "prepareExit": 0,
+      "planSha256": "2f0dc36e1a886a5da54a05b933fec26ecc67cbd874f49d001e6c25297b394d22",
+      "images": [
+        "ghcr.io/railwayapp/railpack-builder:mise-2026.11.12",
+        "ghcr.io/railwayapp/railpack-runtime:mise-2026.11.12"
+      ],
+      "startCommand": "npm run start"
+    },
+    {
+      "language": "python",
+      "prepareExit": 0,
+      "planSha256": "0d2da5cf82464e5db601aec7db13c42dffc954948214b0166edeaa4902024cab",
+      "images": [
+        "ghcr.io/railwayapp/railpack-builder:mise-2026.11.12",
+        "ghcr.io/railwayapp/railpack-runtime:mise-2026.11.12"
+      ],
+      "startCommand": "python main.py"
+    },
+    {
+      "language": "rust",
+      "prepareExit": 0,
+      "planSha256": "8c889d0436440451ca865d74aaebc951c6835bd71e800343d4d7a928c22a297e",
+      "images": [
+        "ghcr.io/railwayapp/railpack-builder:mise-2026.11.12",
+        "ghcr.io/railwayapp/railpack-runtime:mise-2026.11.12"
+      ],
+      "startCommand": "./bin/anima-build-probe"
+    }
+  ],
+  "finding": "Default plans reference tagged builder/runtime images; pinning the planner and frontend alone does not pin all build inputs."
+}

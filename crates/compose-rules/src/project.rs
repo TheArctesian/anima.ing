@@ -40,7 +40,7 @@ fn network(node: &Node) -> Result<(), Refusal> {
 }
 
 /// Applies the rules of the values to a file whose keys are permitted.
-pub(crate) fn checked(document: &Node, settings: &Settings) -> Result<(), Refusal> {
+pub(crate) fn checked(document: &Node, settings: Option<&Settings>) -> Result<(), Refusal> {
     let all = Names {
         services: names(document, "services", MOST_SERVICES)?,
         volumes: names(document, "volumes", MOST_VOLUMES)?,

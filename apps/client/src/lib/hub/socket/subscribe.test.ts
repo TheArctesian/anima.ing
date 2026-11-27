@@ -95,6 +95,28 @@ describe('Hub.subscribe and the connection status', () => {
   });
 });
 
+it('ends a transient operation on disconnect while ordinary subscriptions resume', async () => {
+  const hub = newHub();
+  const normal = recordingSink();
+  const { socket } = await liveSubscription(hub, normal.sink);
+  const transient = recordingSink();
+  hub.subscribe(STATUS_CHANGED, { deviceId: 'transient' }, transient.sink, { retry: false });
+  await settle();
+  expect(socket.sent.filter((sent) => sent.type === 'subscribe')).toHaveLength(2);
+  socket.close(1006);
+  await settle(FIRST_RETRY_MS);
+  const replacement = FakeSocket.opened.at(-1);
+  if (!replacement || replacement === socket) throw new Error('no replacement socket');
+  await acknowledge(replacement);
+  const requests = replacement.sent.filter((sent) => sent.type === 'subscribe');
+  expect(requests).toHaveLength(1);
+  expect(requests[0]).toMatchObject({ payload: { variables: { deviceId: 'd1' } } });
+  expect(transient.events.errors).toHaveLength(1);
+  expect(transient.events.completed).toBe(0);
+  expect(normal.events.errors).toEqual([]);
+  void hub.close();
+});
+
 describe('Hub.subscribe and the token', () => {
   it('API-002: each new connection reads the token again', async () => {
     const tokens = ['first-token', 'second-token'];

@@ -6,6 +6,10 @@ function text(value: unknown): string | null {
   return typeof value === 'string' ? value.slice(0, 512) : null;
 }
 
+function revision(value: unknown): string | null {
+  return typeof value === 'string' && /^[a-f0-9]{64}$/.test(value) ? value : null;
+}
+
 export function updateStatus(value: unknown) {
   const state = object(value);
   const remote = object(state['remote']);
@@ -13,6 +17,7 @@ export function updateStatus(value: unknown) {
   const result = object(remote['result']);
   const checked = object(result['value']);
   const operation = object(state['operation']);
+  const review = object(state['review']);
   const running = Object.values(jobs).some((job) => job === 'active' || job === 'activating');
   const failed = Object.values(jobs).some((job) => job === 'failed');
   const phase = text(state['phase']) ?? 'unknown';
@@ -26,6 +31,8 @@ export function updateStatus(value: unknown) {
     version: text(state['version']) ?? text(object(checked['release'])['version']),
     available: checked['available'] === true,
     rollback: typeof state['previous'] === 'string',
+    previous: text(state['previous']),
+    review: { activate: revision(review['activate']), rollback: revision(review['rollback']) },
     message: text(result['error']) ?? (failed ? 'The update request failed. Refresh the status and retry.' : running ? 'Updating. You can leave this page; work continues on the device.' : phase === 'staged' ? 'Update downloaded and verified. Ready to restart.' : phase === 'booting' ? 'Restarting and checking the updated system.' : phase === 'current' ? 'The installed OS update passed its startup checks.' : phase === 'rolled-back' ? 'The previous OS was restored.' : checked['available'] === false ? 'The OS is up to date.' : 'Ready to check for updates.'),
   };
 }

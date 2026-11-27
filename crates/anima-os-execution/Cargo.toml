@@ -1,0 +1,27 @@
+[package]
+name = "anima-os-execution"
+description = "Authorized isolated workspace execution on Anima OS"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+daemon-core = { path = "../daemon-core" }
+agent-threads = { path = "../agent-threads" }
+anima-os-maintenance = { path = "../anima-os-maintenance" }
+oci-artifact = { path = "../oci-artifact" }
+redaction = { path = "../redaction" }
+sha2.workspace = true
+chrono.workspace = true
+tar = "0.4.46"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+zeroize.workspace = true
+tokio = { workspace = true, features = ["process", "io-std", "fs", "signal"] }
+nix = { version = "0.31", default-features = false, features = ["user", "fs", "dir", "process"] }

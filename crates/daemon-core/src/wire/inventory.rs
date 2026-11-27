@@ -22,6 +22,8 @@ pub struct BatchInventory {
     pub mobile_tools: Option<crate::inventory::mobile::MobileTools>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub remote_access: Option<crate::inventory::RemoteAccess>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_vnc_user: Option<String>,
     pub architecture: Architecture,
     pub os: Os,
     pub os_version: String,
@@ -44,6 +46,7 @@ impl From<&Inventory> for BatchInventory {
         Self {
             remote_access: inventory.remote_access.clone(),
             mobile_tools: inventory.mobile_tools.clone(),
+            remote_vnc_user: inventory.remote_vnc_user.clone(),
             architecture: inventory.architecture,
             os: inventory.os,
             os_version: inventory.os_version.clone(),
@@ -78,6 +81,10 @@ impl BatchInventory {
                 .mobile_tools
                 .as_ref()
                 .is_none_or(crate::inventory::mobile::MobileTools::accepted)
+            && self
+                .remote_vnc_user
+                .as_deref()
+                .is_none_or(crate::inventory::is_remote_user)
             && is_version(&self.os_version)
             && self.tools.len() <= MAX_TOOLS
             && names.len() == self.tools.len()
@@ -108,6 +115,7 @@ impl BatchInventory {
         Some(Inventory {
             remote_access: self.remote_access,
             mobile_tools: self.mobile_tools,
+            remote_vnc_user: self.remote_vnc_user,
             architecture: self.architecture,
             os: self.os,
             os_version: self.os_version,

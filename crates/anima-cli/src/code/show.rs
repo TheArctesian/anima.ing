@@ -1,4 +1,4 @@
-//! `anima code show` (PRJ-040); the hub refuses an API key (D-23), so it needs a login.
+//! `anima forge code show` (PRJ-040); the hub refuses an API key (D-23), so it needs a login.
 
 use super::documents::{CodeFileRead, code_file_read};
 use crate::failure::{Failure, exit};

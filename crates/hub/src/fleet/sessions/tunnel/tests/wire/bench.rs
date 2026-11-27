@@ -71,6 +71,7 @@ pub(super) struct Setup {
     pub(super) ticket_client: ClientAddr,
     pub(super) live: Live,
     pub(super) protocol: Protocol,
+    pub(super) view_only: bool,
     pub(super) presents: Presents,
 }
 
@@ -81,6 +82,7 @@ impl Default for Setup {
             ticket_client: address(LOOPBACK),
             live: Live::default().reaching_loopback_for_tests(),
             protocol: Protocol::Rdp,
+            view_only: false,
             presents: Presents::Accepted,
         }
     }
@@ -191,6 +193,7 @@ pub(super) fn request(protocol: Protocol) -> StartRequest {
             dpi: 96,
             timezone: Some("Europe/Berlin".to_owned()),
         },
+        view_only: false,
         wake: None,
     }
 }
@@ -204,9 +207,8 @@ pub(super) async fn move_host(pool: &PgPool, host: &str) {
         .unwrap();
 }
 
-pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
-    let vault = vault();
-    let answer = match setup.presents {
+async fn prepare_rdp(pool: &PgPool, vault: &Vault, presents: Presents) -> (FakeRdp, String) {
+    let answer = match presents {
         Presents::Accepted | Presents::Changed => Answer::Nla,
         Presents::AcceptedOverTls => Answer::Tls,
         Presents::AcceptedOverNlaExt => Answer::NlaExt,
@@ -214,14 +216,20 @@ pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
     };
     let rdp = fake_rdp(answer).await;
     let accepted = if matches!(
-        setup.presents,
+        presents,
         Presents::Accepted | Presents::AcceptedOverTls | Presents::AcceptedOverNlaExt
     ) {
         rdp.fingerprint.clone()
     } else {
         FINGERPRINT.to_owned()
     };
-    desktop_ready(pool, &vault, rdp.port, &accepted).await;
+    desktop_ready(pool, vault, rdp.port, &accepted).await;
+    (rdp, accepted)
+}
+
+pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
+    let vault = vault();
+    let (rdp, accepted) = prepare_rdp(pool, &vault, setup.presents).await;
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     let live = setup.live;
     let client = setup.ticket_client;
@@ -231,7 +239,10 @@ pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
         &live,
         &operator(),
         client,
-        request(setup.protocol),
+        StartRequest {
+            view_only: setup.view_only,
+            ..request(setup.protocol)
+        },
     )
     .await
     .unwrap();

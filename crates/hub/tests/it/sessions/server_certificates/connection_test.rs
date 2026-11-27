@@ -203,7 +203,7 @@ async fn sec_007_a_reply_that_is_not_rdp_is_an_unreachable_result(pool: PgPool) 
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices"))
 )]
-async fn dev_013_a_vnc_test_reads_the_banner_and_sends_nothing(pool: PgPool) {
+async fn dev_013_a_legacy_vnc_test_negotiates_the_version_without_credentials(pool: PgPool) {
     let mut server = vnc(b"RFB 003.008\n").await;
     let not_vnc = vnc(b"SSH-2.0-OpenSSH_9.6\r\n").await;
     let schema = schema(&pool, &loopback_live());
@@ -221,9 +221,8 @@ async fn dev_013_a_vnc_test_reads_the_banner_and_sends_nothing(pool: PgPool) {
     assert_eq!(test["serverCertificate"], Value::Null);
     assert!(says_no_sign_in(&test), "{test}");
     assert_eq!(
-        visit.after,
-        Vec::<u8>::new(),
-        "no reply to the banner, no credential"
+        visit.after, b"RFB 003.008\n",
+        "version negotiation only, no security selection or credential"
     );
     assert_eq!(other["reachable"], false);
     assert_eq!(

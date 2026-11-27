@@ -66,11 +66,14 @@ impl Server {
         let end = Instant::now() + limit + Duration::from_secs(1);
         loop {
             if let Some(status) = stop.try_wait().map_err(io_error("wait for pg_ctl"))? {
-                if status.success() && self.ended()?.is_some() {
+                if !status.success() {
+                    break;
+                }
+                // pg_ctl can report success after the PID file disappears while PostgreSQL exits.
+                if self.ended()?.is_some() {
                     self.job.take();
                     return Ok(Stopped::Clean);
                 }
-                break;
             }
             if Instant::now() >= end {
                 let _ = stop.kill();

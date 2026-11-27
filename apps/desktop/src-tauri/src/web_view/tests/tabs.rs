@@ -18,6 +18,7 @@ fn tab(url: &str) -> Tab {
         url,
         origin,
         pin: None,
+        preview_endpoint: None,
         popped_out: false,
     }
 }

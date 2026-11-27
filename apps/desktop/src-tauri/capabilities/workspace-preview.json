@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "workspace-preview",
+  "description": "Main-view-only launch and close of an isolated workspace preview.",
+  "platforms": ["iOS", "android"],
+  "webviews": ["main"],
+  "permissions": ["allow-mobile-preview-open", "allow-mobile-preview-close"]
+}

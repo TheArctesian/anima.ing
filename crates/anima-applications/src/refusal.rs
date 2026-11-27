@@ -31,6 +31,8 @@ pub enum Refusal {
     NoDigest,
     #[error("name_taken")]
     NameTaken,
+    #[error("migration_held")]
+    MigrationHeld,
     #[error("protected")]
     Protected,
     #[error("start_not_permitted")]
@@ -60,6 +62,7 @@ impl Refusal {
             Self::NothingKept => "nothing_kept",
             Self::NoDigest => "no_digest",
             Self::NameTaken => "name_taken",
+            Self::MigrationHeld => "migration_held",
             Self::Protected => "protected",
             Self::StartNotPermitted => "start_not_permitted",
             Self::NoContainer => "no_container",

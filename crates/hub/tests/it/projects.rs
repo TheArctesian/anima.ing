@@ -4,6 +4,7 @@
 
 mod accounts;
 mod browse;
+mod builds;
 mod forge;
 mod github;
 mod groups;

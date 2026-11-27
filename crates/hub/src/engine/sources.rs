@@ -36,6 +36,7 @@ use crate::{
     ids::SourceAccountId,
 };
 
+pub use acquisition::repository::RepositoryToken;
 pub use acquisition::{
     app_key::KeyRefusal,
     tokens::Tokens,
@@ -46,7 +47,11 @@ pub use feed::Feed;
 pub use health::{HealthFacts, health};
 pub use intake::{Counts, Intake, IntakeError, Page, Registry, Taken};
 pub use key_connection::{KeyConnection, connect_with_key};
-pub use live::{Keep, LiveFailure, Reply, Reserve, Standing, ask, change, forget, standing};
+pub(crate) use live::lock_checkout_account;
+pub use live::{
+    Keep, LiveFailure, Reply, Reserve, Standing, ask, change, forget, mint_repository_checkout,
+    revoke_repository_checkout, standing,
+};
 pub use model::{Account, ErrorKind, Health, Outcome, PauseReason, Trigger};
 pub use registration::{
     attempts::Attempts,

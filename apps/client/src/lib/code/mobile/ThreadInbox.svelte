@@ -12,10 +12,11 @@
 
   interface Props {
     api: MobileCodeApi;
+    onnodes?: (() => void) | undefined;
     machines: ReadonlyMap<string, string>;
   }
 
-  const { api, machines }: Props = $props();
+  const { api, machines, onnodes }: Props = $props();
   let threads = $state.raw<ThreadSummary[]>([]);
   let more = $state<string | null>(null);
   let error = $state('');
@@ -54,6 +55,9 @@
 <section aria-labelledby="mobile-code-title" class="inbox">
   <header>
     <h1 id="mobile-code-title">Code</h1>
+    {#if onnodes}<button class="refresh" type="button" onclick={onnodes} aria-label="Code on a node">
+      <CodeIcon name="laptop" size="md" />
+    </button>{/if}
     <button class="refresh" type="button" onclick={() => { void load(null); }} disabled={busy} aria-label="Refresh threads">
       <CodeIcon name="refresh-cw" size="md" />
     </button>
