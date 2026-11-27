@@ -4187,9 +4187,13 @@ type Query {
   jobs(first: Int = 50, after: String, state: WorkJobState): WorkJobPage!
   "Read one work item and the bounded tail of its log."
   job(id: ID!): WorkJobDetail
+  "List remote Code start targets. Requires a person login, never an API key."
   agentThreadStartTargets: [AgentThreadStartTarget!]!
+  "Read a remote Code launch receipt. Requires a person login, never an API key."
   agentThreadLaunch(launch: ID!): AgentThreadLaunchReceipt!
+  "Read a remote Code control offer. Requires a person login, never an API key."
   agentThreadControl(thread: ID!): AgentThreadControlView!
+  "Read a remote Code command receipt. Requires a person login, never an API key."
   agentThreadCommand(command: ID!): AgentThreadCommandReceipt!
   commandLineSessions(offset: Int! = 0): [CommandLineSession!]!
 
@@ -4391,19 +4395,23 @@ type Query {
 }
 
 type Mutation {
-  "Stop queued work immediately or tell its live holder to stop on the next report."
+  "Stop queued work immediately or tell its live holder to stop on the next report. Requires a person login, never an API key."
   stopJob(id: ID!): Boolean!
-  "Set the hub work switch for one device. The local switch and cooldown keep their values."
+  "Set the hub work switch for one device. The local switch and cooldown keep their values. Requires a person login, never an API key."
   setDeviceWork(deviceId: ID!, on: Boolean!): Boolean!
-  "Person login only. Replace the project's complete list of at most 100 devices that may receive work that needs its secrets."
+  "Person login only. Replace the project's complete list of at most 100 devices that may receive work that needs its secrets. Requires a person login, never an API key."
   setProjectWorkDevices(projectId: ID!, deviceIds: [ID!]!): Boolean!
-  "Pin the project's unnamed work to one device. A null device ID removes the pin."
+  "Pin the project's unnamed work to one device. A null device ID removes the pin. Requires a person login, never an API key."
   setProjectWorkMachine(projectId: ID!, deviceId: ID): Boolean!
-  "Exclude a device from work that names no device."
+  "Exclude a device from work that names no device. Requires a person login, never an API key."
   setDeviceWorkExcluded(deviceId: ID!, excluded: Boolean!): Boolean!
+  "Start a remote Code thread. Requires a person login, never an API key."
   startAgentThread(input: AgentThreadStartInput!): AgentThreadLaunchReceipt!
+  "Send a prompt to a remote Code thread. Requires a person login, never an API key."
   sendAgentThreadPrompt(input: AgentThreadPromptInput!): AgentThreadCommandReceipt!
+  "Answer a request from a remote Code thread. Requires a person login, never an API key."
   answerAgentThreadRequest(input: AgentThreadAnswerInput!): AgentThreadCommandReceipt!
+  "Stop a remote Code thread. Requires a person login, never an API key."
   stopAgentThread(input: AgentThreadStopInput!): AgentThreadCommandReceipt!
   hostedCommandLineClaim(cloudKey: String!, computer: String!): HostedDeviceInvite!
   claimCommandLineToken(claim: String!): RemoteAuthPayload!
