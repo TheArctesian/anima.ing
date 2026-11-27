@@ -49,6 +49,7 @@ cli out crates/anima-os-execution/
 cli out crates/anima-os-maintenance/
 cli out crates/anima-osd/
 cli out crates/anima-os-session/
+cli out crates/anima-os-storage/
 cli out crates/anima-os-update/
 cli out crates/anima-os-install/
 cli out crates/anima-database/
@@ -97,6 +98,7 @@ ios out crates/anima-os-execution/
 ios out crates/anima-os-maintenance/
 ios out crates/anima-osd/
 ios out crates/anima-os-session/
+ios out crates/anima-os-storage/
 ios out crates/anima-os-update/
 ios out crates/anima-os-install/
 ios out crates/anima-database/
