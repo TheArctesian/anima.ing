@@ -46,6 +46,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-186 | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
+| HT-NEW-remotecodephone | Start and control a hub-launched Code thread on iOS and Android (TH52) | Signed native builds, a hub with TH31, and a test computer with verified TH32 and TH33 support | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with an account-authorized Anima-started desk thread and transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
 | HT-183 | Check the Overview and device tabs for the Hub and Pop!_OS (M2-7) | iPad with a current build, and a linked Linux device with several metric types | Open |
@@ -274,6 +275,16 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Tap the text field and type a word. Expected: the bar sits on the keyboard, the field stays visible, the page does not zoom, and the word appears once on the Mac.
 - Use Back, then reopen the session from its tab. Expected: the session stayed connected.
 - 2026-11-26: the operator still saw old pointers on the Mac's screen in a session from the iPhone app with the hosted hub. The session that built the change found that the hosted hub then ran a hub image of 2026-11-22, and the gateway asks for the cursor shape only from `c5f2c0347` (2026-11-25), so that session did not have the change. The step must be done again after the hosted hub runs an image with it. The state stays Open.
+
+### HT-NEW-remotecodephone: remote Code writes on iOS and Android (TH52)
+
+- State: Open.
+- Use a signed build on a real iPhone and a real Android phone. Sign in to a test hub with TH31 and connect a test computer with TH32 and TH33. Permit a test project folder on the computer and turn on remote starts.
+- In Code, tap **New thread**. Select the advertised computer, folder and program. Explicitly request **Supervised**, then submit a prompt for the test project. Interrupt the network after pressing Start. Reconnect and retry the same start if asked. Expected: the computer starts one thread. **Open thread** appears when the hub confirms the binding.
+- Follow the thread, background the app and switch from Wi-Fi to mobile data. Expected: the same thread opens and catches up. Send a follow-up asking for a harmless operation that needs approval and a live provider question. Try both **Allow once** and **Decline** on separate requests. Answer the question from its form. Expected: each result belongs to the original request and appears once on the computer.
+- With a turn active, press **Stop the turn**. Start a later turn and reopen the conversation. Expected: the first stop leaves the later turn alone. Use **End session…** and confirm on a disposable test thread. Expected: the original session ends.
+- Open an authorized Anima thread started at the desk. Expected: shared messages appear when transcript sharing is on. The phone offers no write controls. Open an imported thread ID and a thread from a different account through a direct link. Expected: neither reveals a transcript or controls.
+- Turn off remote starts or disconnect the computer. Refresh the target list. Expected: the unavailable target drops out. Submit using an offer obtained before the change. Expected: the hub or computer refuses the start or shows expiry. Repeat after removing the project folder from the permitted list.
 
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 

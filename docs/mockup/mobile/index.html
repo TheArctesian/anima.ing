@@ -618,10 +618,10 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
   </section>
 
   <section class="band">
-    <header><span class="n">6</span><h2>Code handoff</h2><p>MOB-010, TH50, TH51</p></header>
+    <header><span class="n">6</span><h2>Code on a phone</h2><p>MOB-010, TH50, TH51, TH52</p></header>
     <div class="row">
       <figure class="shot"><div class="phone gd ios"><div class="screen" data-tabs="code"><div class="body tabsroom">
-        <div class="pagehead"><h3 class="display">Code</h3><button class="iconbtn fill" aria-label="Refresh threads">↻</button></div>
+        <div class="pagehead"><h3 class="display">Code</h3><div class="btnrow"><button class="btn">New thread</button><button class="iconbtn fill" aria-label="Refresh threads">↻</button></div></div>
         <div class="scroll">
           <div class="code-row"><svg class="i sm"><use href="#i-code"/></svg><b>Fix checkout validation</b><span class="badge degraded">Needs you</span><small>Studio Mac · storefront · Codex</small><time>2 min</time></div>
           <div class="code-row"><svg class="i sm"><use href="#i-code"/></svg><b>Review invoice retry</b><span class="badge up">Working</span><small>Build laptop · billing · Claude Code</small><time>14 min</time></div>
@@ -647,6 +647,34 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
         <div class="connect"><button class="btn line">Try again</button></div>
       </div></div></div>
       <figcaption><b>Thread missing from the hub</b><span class="tag">dark, iOS</span><p>The phone clears the conversation and stops following it.</p></figcaption></figure>
+      <figure class="shot"><div class="phone gd ios"><div class="screen" data-tabs="code"><div class="body tabsroom">
+        <div class="scroll code-note">
+          <div class="pagehead"><b>New thread</b><button class="btn line">Close</button></div>
+          <p><label>Computer, project folder and program<br><select><option>Studio Mac · /work/storefront · Codex</option></select></label></p>
+          <p><label>Requested access<br><select><option>Supervised</option></select></label></p>
+          <p><label>First prompt<br><textarea rows="3">Check the required fields at checkout.</textarea></label></p>
+          <div class="btnrow"><button class="btn">Start thread</button><button class="btn line">Refresh targets</button></div>
+          <p role="status">The computer started the thread. Waiting for it to appear on the hub.</p>
+        </div>
+      </div></div></div>
+      <figcaption><b>Start a thread on a computer</b><span class="tag">dark, iOS</span><p>Choose the advertised target and explicitly request an access mode. The phone offers to open the thread when the hub confirms it.</p></figcaption></figure>
+      <figure class="shot"><div class="phone gl android"><div class="screen" data-tabs="code"><div class="body tabsroom">
+        <div class="navrow"><button class="back"><svg class="i"><use href="#i-left"/></svg>Threads</button></div>
+        <h3 class="devname">Fix checkout validation</h3>
+        <div class="statline"><span>Studio Mac · storefront · Codex</span><span class="badge degraded">Needs you</span></div>
+        <div class="scroll">
+          <div class="code-note">
+            <b>Needs you</b><p>Approval request</p><p class="mono">bun test checkout</p>
+            <div class="btnrow"><button class="btn line">Allow once</button><button class="btn line">Decline</button></div>
+          </div>
+          <div class="code-note">
+            <p><label>Follow-up<br><textarea rows="3"></textarea></label></p>
+            <div class="btnrow"><button class="btn" disabled>Send follow-up</button></div>
+            <div class="btnrow"><button class="btn line">Stop the turn</button><button class="btn line">End session…</button></div>
+          </div>
+        </div>
+      </div></div></div>
+      <figcaption><b>Live controls</b><span class="tag">light, Android</span><p>On a confirmed hub launch, the phone presents only the actions the computer offers.</p></figcaption></figure>
     </div>
   </section>
 
