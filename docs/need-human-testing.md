@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-buildretention | Old desktop files are removed after a Builds publish (R9, BLD-086) | A Builds hub with signing set up and a disposable R2 bucket | Open |
 | HT-194 | The scroll wheel of the trackpad and the motion of the connection steps on an iPhone (M4-2, RA-050, 5.7.3) | The iPhone app from a build of `dev` with this change; a Mac with a long page in a browser | Open |
 | HT-193 | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
@@ -5886,5 +5887,15 @@ the keyboard.
 4. Choose a different machine in Machine, then close the dialog with Escape.
    Expected: the title and the button name the new machine; Escape closes the dialog and the focus goes back to the
    button that opened it.
+
+Result: Open.
+
+## HT-NEW-buildretention — The Builds release bucket
+
+1. Point a test Builds hub at a disposable R2 bucket and publish four versions of one desktop target.
+2. Read the target's current feed and list the versioned desktop files in the bucket. Expect the feed
+   to name the fourth version and its files to be present. Expect the oldest version's desktop files
+   and updater signature to be gone and the three newest versions to remain.
+3. Open the oldest Builds job. Expect its state to remain Published.
 
 Result: Open.

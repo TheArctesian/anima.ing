@@ -21,7 +21,9 @@ On the first path a release starts only from the Builds view (BLD-001, UPD-007).
 target and upload the unsigned files to the R2 bucket `anima-releases`. The hub checks them, signs
 the updater file with the updater key it holds, writes `<file>.sig` beside it and then
 `https://releases.anima.ing/<target>-<arch>/latest.json` (BLD-064 to BLD-067, R-117). Installed apps read
-that feed. The hub side, its R2 credentials and the bucket setup are in
+that feed. After a Builds publish, the hub prunes the files and updater signatures of older
+Builds jobs for that target, keeping the 3 newest and any version a live feed names (BLD-086).
+The hub side, its R2 credentials and the bucket setup are in
 [deploy/README.md](../../deploy/README.md).
 
 The old GitHub release workflow was removed by R-114; the file `.github/workflows/release.yml` of
@@ -614,6 +616,8 @@ The rules of the workflow file have a test too: `bun test deploy/test/release-wo
 2. A feed whose version differs from the running one is offered. With `allowDowngrades: true` an
    older feed is offered too, which is how a rollback installs. The hub refuses to write an older
    feed (BLD-069), so a rollback is a manual write of an older `latest.json` to the bucket.
+   Pause Builds publishing during a manual rollback and confirm that the target version's files
+   and signature are still in the bucket before you write its feed (BLD-086).
 3. The plugin downloads the file and verifies its minisign signature with `plugins.updater.pubkey`
    before it installs anything (UPD-002). With `requireSignedVersion` the signature must also name
    the announced version in its trusted comment.

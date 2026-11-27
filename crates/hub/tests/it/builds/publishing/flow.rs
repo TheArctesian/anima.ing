@@ -1,5 +1,7 @@
 //! Publishing a job whose files are in, signed by the hub (BLD-063 to BLD-070, D-25, R-108, R-117).
 
+mod pruning;
+
 use std::time::Duration;
 
 use chrono::TimeDelta;

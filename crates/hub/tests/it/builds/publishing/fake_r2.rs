@@ -76,6 +76,7 @@ pub struct Store {
     pub public_missing: Option<String>,
     pub no_etag: Option<String>,
     pub unavailable: bool,
+    pub reject_delete: Option<String>,
 }
 
 pub type Shared = Arc<Mutex<Store>>;
@@ -200,6 +201,9 @@ async fn api(State(store): State<Shared>, request: Request) -> Response {
         Method::PUT => write(&store, &key, &parts.headers, body.to_vec()).await,
         Method::DELETE => {
             let mut store = store.lock().unwrap();
+            if store.reject_delete.as_ref() == Some(&key) {
+                return StatusCode::SERVICE_UNAVAILABLE.into_response();
+            }
             store.objects.remove(&key);
             store.deletes.push(key);
             StatusCode::NO_CONTENT.into_response()

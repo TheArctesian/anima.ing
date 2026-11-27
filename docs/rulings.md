@@ -691,3 +691,13 @@ Operator, 2026-11-23, firsthand in the session "Level 1 model service" (fork, on
 ## R-466 — The contract of the model address may be written (L1-10)
 
 Operator, 2026-11-23, firsthand in the same exchange: asked whether L1-10 may write the new contract `contracts/compute/model-request.md` (the listener and its port, the Anima fields of `/v1/models`, the header `Anima-Node`, the reasons of a refusal, the report of use, the rule for the choice of a node), the operator answered "yes". This is the ruling that CON-001 needs for task L1-10 of [compute-plan.md](plans/compute-plan.md). OD-C7 and OD-C10 were already decided (R-165).
+
+## R-NEW-buildretention — Keep three desktop releases from Builds
+
+Operator, 2026-11-12: "maybe we only keep like 3 versions on there" (recorded on
+`builds/keep-three-versions` as R-118, renumbered here because that number is in use).
+After publishing to the R2 bucket `anima-releases`, the Builds publisher keeps the files and
+signatures of the 3 newest published versions of the target and any version a live feed names.
+Migration 0966 records the removal while the job stays published (BLD-086, D-27).
+A manual rollback needs the retained version's files. This is task R9 of
+[projects-and-builds-plan.md](plans/projects-and-builds-plan.md).
