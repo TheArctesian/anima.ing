@@ -42,6 +42,7 @@ func listen(t *testing.T, serve func(net.Conn)) *net.TCPAddr {
 type bench struct {
 	desk      dial.Desk
 	permit    func(uint16) context.Context
+	rdp       func(context.Context) (net.Conn, error)
 	from      netip.Addr
 	asked     chan string
 	delivered atomic.Int32
@@ -79,7 +80,7 @@ func (b *bench) ask(line string) error {
 	if !valid {
 		return nil
 	}
-	local := dial.Local{Permit: b.permit, Hub: func(ctx context.Context) (net.Conn, error) {
+	local := dial.Local{Permit: b.permit, RDP: b.rdp, Hub: func(ctx context.Context) (net.Conn, error) {
 		var dialer net.Dialer
 		return dialer.DialContext(ctx, "tcp", b.openPort.String())
 	}}
