@@ -1,7 +1,7 @@
 /** Where the "Add project" palette is: its list of sources, or a folder of "Local folder" with the folders in it. */
 import type { CallResult } from '$lib/agent-threads/live/live.svelte';
 import type { PaletteGroup, PaletteRow } from '../palette/results';
-import { inside, parentOf, shownFolders, shownSources } from './sources';
+import { inside, parentOf, shownFolders, shownSources, type ProjectFormSource } from './sources';
 
 /** The folders in a folder as the runner gives them (`folders`, TH113), or the words of why it did not. */
 export type FolderList = { readonly ok: true; readonly folder: string; readonly folders: readonly string[]; readonly more: boolean } | { readonly ok: false; readonly words: string };
@@ -27,7 +27,7 @@ export class AddProjectWalk {
   readonly #add: (folder: string) => void;
 
   /** `start`: where "Local folder" opens; `add`: takes the chosen folder. */
-  constructor(list: (folder: string) => Promise<FolderList>, start: () => string, add: (folder: string) => void, private readonly create?: () => void) {
+  constructor(list: (folder: string) => Promise<FolderList>, start: () => string, add: (folder: string) => void, private readonly openForm: (source: ProjectFormSource) => void) {
     this.#list = list;
     this.#start = start;
     this.#add = add;
@@ -86,8 +86,11 @@ export class AddProjectWalk {
       title: source.title,
       icon: source.icon,
       detail: source.needs === null ? source.line : `${source.line}. ${source.needs}`,
-      disabled: source.needs !== null || (source.id === 'new' && this.create === undefined),
-      run: () => source.id === 'new' ? this.create?.() : void this.browse(this.#start()),
+      disabled: source.needs !== null,
+      run: () => {
+        if (source.id === 'new' || source.id === 'url') this.openForm(source.id);
+        else if (source.id === 'local') void this.browse(this.#start());
+      },
     }));
     return { id: 'sources', label: 'Sources', rows };
   }

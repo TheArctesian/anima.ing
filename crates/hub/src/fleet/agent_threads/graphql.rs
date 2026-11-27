@@ -1,3 +1,6 @@
+mod remote;
+pub use remote::{RemoteMutation, RemoteQuery};
+
 use std::{collections::VecDeque, time::Duration};
 
 use async_graphql::{Context, ID, Json, Object, Result, SimpleObject, Subscription};

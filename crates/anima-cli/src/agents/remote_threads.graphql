@@ -1,0 +1,49 @@
+query RemoteTargets {
+  agentThreadStartTargets { device project folder program expiresAt }
+}
+
+query RemoteLaunchResult($launch: ID!) {
+  agentThreadLaunch(launch: $launch) { ...RemoteLaunchReceipt }
+}
+
+query RemoteCommandResult($command: ID!) {
+  agentThreadCommand(command: $command) { ...RemoteCommandReceipt }
+}
+
+query RemoteControl($thread: ID!) {
+  agentThreadControl(thread: $thread) {
+    thread
+    offer {
+      process revision actions
+      stopTargets { kind process turn }
+      requests {
+        kind id subject details decisions rules { selector label }
+        questions { key text choices { id label } many freeText }
+      }
+    }
+  }
+}
+
+mutation RemoteStart($input: AgentThreadStartInput!) {
+  startAgentThread(input: $input) { ...RemoteLaunchReceipt }
+}
+
+mutation RemotePrompt($input: AgentThreadPromptInput!) {
+  sendAgentThreadPrompt(input: $input) { ...RemoteCommandReceipt }
+}
+
+mutation RemoteAnswer($input: AgentThreadAnswerInput!) {
+  answerAgentThreadRequest(input: $input) { ...RemoteCommandReceipt }
+}
+
+mutation RemoteStop($input: AgentThreadStopInput!) {
+  stopAgentThread(input: $input) { ...RemoteCommandReceipt }
+}
+
+fragment RemoteLaunchReceipt on AgentThreadLaunchReceipt {
+  launch state cause thread binding firstCommand
+}
+
+fragment RemoteCommandReceipt on AgentThreadCommandReceipt {
+  command state cause
+}

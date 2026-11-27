@@ -1,0 +1,33 @@
+query JobList($first: Int!, $after: String, $state: WorkJobState) {
+  jobs(first: $first, after: $after, state: $state) {
+    nodes { ...JobView }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+
+query JobDetail($id: ID!) {
+  job(id: $id) { job { ...JobView } log }
+}
+
+mutation JobStop($id: ID!) { stopJob(id: $id) }
+
+mutation JobDeviceWork($deviceId: ID!, $on: Boolean!) {
+  setDeviceWork(deviceId: $deviceId, on: $on)
+}
+
+mutation JobProjectDevices($projectId: ID!, $deviceIds: [ID!]!) {
+  setProjectWorkDevices(projectId: $projectId, deviceIds: $deviceIds)
+}
+
+mutation JobProjectMachine($projectId: ID!, $deviceId: ID) {
+  setProjectWorkMachine(projectId: $projectId, deviceId: $deviceId)
+}
+
+mutation JobDeviceExcluded($deviceId: ID!, $excluded: Boolean!) {
+  setDeviceWorkExcluded(deviceId: $deviceId, excluded: $excluded)
+}
+
+fragment JobView on WorkJob {
+  id type kind projectId repository state attempt deviceId
+  createdAt claimedAt changedAt endedAt placement
+}

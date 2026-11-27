@@ -11,6 +11,7 @@ pub(crate) mod hub_threads;
 #[cfg(unix)]
 pub mod listing;
 pub mod managed;
+mod remote_threads;
 pub mod report;
 #[cfg(unix)]
 pub mod runner;
@@ -31,6 +32,11 @@ pub enum AgentCommand {
     /// Read or change the Git worktree of a thread on this computer.
     #[cfg(unix)]
     Git(threads::git::GitArgs),
+    /// Start, control and inspect threads on an enrolled device.
+    Remote {
+        #[command(subcommand)]
+        command: remote_threads::RemoteCommand,
+    },
     /// Sum the sessions, prompts, tool calls and tokens of Claude Code and Codex, with an
     /// estimate of their cost.
     Usage(usage::UsageArgs),
@@ -145,6 +151,7 @@ impl AgentCommand {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::Node(command) => command.run(invocation).await,
+            Self::Remote { command } => command.run(invocation).await,
             Self::Usage(args) => args.run(invocation).await,
             Self::Sessions(args) => args.run(invocation).await,
             Self::Threads(args) => args.run(invocation).await,

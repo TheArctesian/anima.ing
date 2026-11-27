@@ -10,7 +10,7 @@ use anima_hub::{
     config::Config,
     engine::{locations, reminders, sources},
     fleet::{
-        access, builds, checks,
+        access, agent_threads, builds, checks,
         credentials::{Vault, operational},
         events::{self, Bus},
         metrics, notifications,
@@ -125,6 +125,7 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
         dependencies.config.tailscale_localapi.clone(),
     );
     let mut loops = vec![
+        tokio::spawn(remote_receipts(pool.clone())),
         checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing),
         metrics::spawn_collector(
             pool.clone(),
@@ -261,6 +262,22 @@ async fn job_leases(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) {
         let queue = jobs::Queue { db: &db, bus: &bus };
         if jobs::end_lost(queue, clock.now()).await.is_err() {
             tracing::warn!(job = "job_leases", fault = "jobs", "scheduled job failed");
+        }
+    }
+}
+
+/// Closes expired remote receipts and publication deadlines (K10 Section 6.5).
+async fn remote_receipts(db: PgPool) {
+    let mut ticks = tokio::time::interval(jobs::LEASE_SWEEP);
+    ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    loop {
+        ticks.tick().await;
+        if agent_threads::sweep_remote(&db).await.is_err() {
+            tracing::warn!(
+                job = "remote_receipts",
+                fault = "agent_threads",
+                "scheduled job failed"
+            );
         }
     }
 }

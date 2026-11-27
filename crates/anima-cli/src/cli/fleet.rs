@@ -1,12 +1,17 @@
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{
-    agents, capabilities, catalogue, checks, compute, containers, daemons, devices, link,
+    agents, capabilities, catalogue, checks, compute, containers, daemons, devices, jobs, link,
     maintenance, model_library, routes, sessions, sites, tags, web_interfaces,
 };
 
 #[derive(Debug, clap::Subcommand)]
 pub enum FleetCommand {
+    /// Work assigned by the hub.
+    Job {
+        #[command(subcommand)]
+        command: jobs::JobCommand,
+    },
     /// Devices (list, get, create, update, delete, wake, test, metrics, uptime, credential, trust).
     Device {
         #[command(subcommand)]
@@ -105,6 +110,7 @@ impl FleetCommand {
     )]
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
+            Self::Job { command } => command.run(invocation).await,
             Self::Device { command } => command.run(invocation).await,
             Self::Site { command } => command.run(invocation).await,
             Self::Tag { command } => command.run(invocation).await,

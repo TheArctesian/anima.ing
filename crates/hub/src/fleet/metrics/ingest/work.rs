@@ -12,6 +12,8 @@ mod secret_response;
 mod secret_route;
 mod workspace_secret;
 
+mod threads;
+
 use std::net::IpAddr;
 
 use axum::{
@@ -19,11 +21,11 @@ use axum::{
     body::Body,
     extract::{Request, State},
     http::{HeaderMap, StatusCode},
-    response::{IntoResponse as _, Response},
+    response::Response,
     routing::post,
 };
 use chrono::{DateTime, Utc};
-use daemon_core::wire::{Claim, RefusalCode, WorkReport};
+use daemon_core::wire::{DaemonToken, RefusalCode, WorkReport};
 use serde::de::DeserializeOwned;
 
 use self::secret_route::serve as secret;
@@ -33,13 +35,14 @@ use super::{
     admission::{Admitted, Stop, admit},
     credential, refusals,
     refusals::Route,
+    remote_threads,
     routes::{DaemonState, busy, client_of, read_body, unmounted, within},
     turns::Turn,
 };
 use crate::{
-    fleet::events::ClientAddr,
+    fleet::events::{ClientAddr, Operator},
     ids::DeviceId,
-    work::jobs::{self, Claimed, Queue, Reporting},
+    work::jobs::{self, Queue, Reporting},
 };
 
 #[cfg(unix)]
@@ -57,6 +60,7 @@ struct Asked<T> {
     device: DeviceId,
     name: String,
     body: T,
+    token: DaemonToken,
     /// The turn of the device, held until the answer is made (K8 Section 6).
     _turn: Turn<DeviceId>,
 }
@@ -71,7 +75,6 @@ async fn asked<T: DeserializeOwned>(
     let token =
         credential::bearer(headers).ok_or(Stop::Refused(RefusalCode::TokenRefused, None))?;
     let Admitted { device, name, turn } = admit(state, &token, address, now).await?;
-    drop(token);
     let refused = |code| Stop::Refused(code, Some(device));
     let bytes = read_body(state, headers, body, limit)
         .await
@@ -81,6 +84,7 @@ async fn asked<T: DeserializeOwned>(
         device,
         name,
         body,
+        token,
         _turn: turn,
     })
 }
@@ -185,38 +189,20 @@ async fn claimed(
     (address, client, private_output): (Turn<IpAddr>, ClientAddr, bool),
     now: DateTime<Utc>,
 ) -> Result<Response, Stop> {
-    let mut asked: Asked<Claim> = asked(state, request, address, (CLAIM_LIMIT, now)).await?;
-    let device = asked.device;
-    if DeviceId::from(asked.body.device) != device {
-        return Err(Stop::Refused(RefusalCode::WrongDevice, Some(device)));
-    }
-    if !private_output
-        && asked
-            .body
-            .build_recipes
-            .as_ref()
-            .is_some_and(|recipes| recipes.supports("source_image_v1"))
-    {
-        if asked.body.applications.is_off() {
-            return Err(Stop::Busy);
-        }
-        asked.body.build_recipes = None;
-        asked.body.free.slots = 0;
-    }
+    let asked: Asked<serde_json::Value> =
+        asked(state, request, address, (CLAIM_LIMIT, now)).await?;
     let _request = state.turns.request().await.ok_or(Stop::Busy)?;
-    let queue = Queue {
-        db: &state.db,
-        bus: &state.bus,
+    let holder = remote_threads::Holder {
+        device: asked.device,
+        token: asked.token,
     };
-    match jobs::claim(queue, (device, &asked.name), &asked.body, (client, now))
-        .await
-        .map_err(failed)?
-    {
-        Claimed::Nothing => Ok(StatusCode::NO_CONTENT.into_response()),
-        Claimed::Off => Err(Stop::Refused(RefusalCode::WorkOff, Some(device))),
-        Claimed::Job(job) => Ok(refusals::json(StatusCode::OK, &*job)),
-        Claimed::Host(item) => Ok(refusals::json(StatusCode::OK, &*item)),
-    }
+    Ok(threads::claim(
+        state,
+        holder,
+        (asked.body, &asked.name),
+        (client, private_output),
+    )
+    .await)
 }
 
 async fn reported(
@@ -225,16 +211,28 @@ async fn reported(
     (address, client, artifacts): (Turn<IpAddr>, ClientAddr, Option<ArtifactStore>),
     now: DateTime<Utc>,
 ) -> Result<Response, Stop> {
-    let asked: Asked<WorkReport> = asked(state, request, address, (REPORT_LIMIT, now)).await?;
+    let asked: Asked<serde_json::Value> =
+        asked(state, request, address, (REPORT_LIMIT, now)).await?;
     let device = asked.device;
     let refused = |code| Stop::Refused(code, Some(device));
     let _request = state.turns.request().await.ok_or(Stop::Busy)?;
+    let holder = remote_threads::Holder {
+        device,
+        token: asked.token,
+    };
+    match threads::report(state, holder, &asked.body, (Operator::hub(), client)).await {
+        Ok(Some(response)) => return Ok(response),
+        Ok(None) => {}
+        Err(error) => return Ok(remote_threads::response(&error)),
+    }
+    let report: WorkReport =
+        serde_json::from_value(asked.body).map_err(|_| refused(RefusalCode::Malformed))?;
     let queue = Queue {
         db: &state.db,
         bus: &state.bus,
     };
     #[cfg(unix)]
-    let retained = artifact_retained(artifacts.as_ref(), device, &asked.body).await;
+    let retained = artifact_retained(artifacts.as_ref(), device, &report).await;
     #[cfg(not(unix))]
     let retained = {
         let _ = artifacts;
@@ -243,7 +241,7 @@ async fn reported(
     match jobs::report(
         queue,
         device,
-        (&asked.body, retained),
+        (&report, retained),
         (client, state.clock.now()),
     )
     .await

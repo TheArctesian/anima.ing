@@ -135,7 +135,8 @@
       "access",
       "devices",
       "events",
-      "checkout"
+      "checkout",
+      "jobs"
     ],
     "code_previews": [
       "access",
@@ -182,7 +183,8 @@
     "jobs": [
       "events",
       "devices",
-      "credentials"
+      "credentials",
+      "access"
     ],
     "artifacts": [
       "access",

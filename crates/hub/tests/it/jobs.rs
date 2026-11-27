@@ -9,6 +9,7 @@ mod hosting;
 mod placement;
 mod refusals;
 mod source;
+mod surface;
 
 use anima_hub::{
     clock::Clock as _,
@@ -24,7 +25,9 @@ use daemon_core::wire::{Limits, WorkArchitecture, WorkKind, WorkOs, WorkReposito
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use crate::daemon::harness::{Daemons, PERMITTED};
+use crate::daemon::harness::{DOCKER_HOST, Daemons, PERMITTED, PVE_01};
+
+const TEST_PROJECT: &str = "0191c000-0000-7000-8000-000000000090";
 
 /// A hub with the fixture devices, and what a test needs to put a job in the queue.
 struct Work {
@@ -64,6 +67,7 @@ fn build() -> NewJob {
 fn runner() -> NewJob {
     NewJob {
         work_type: WorkType::Runner,
+        project: Some(TEST_PROJECT.parse().unwrap()),
         parameters: json!({ "runnerVersion": "2.330.0", "runnerSha256": "9f".repeat(32), "labels": ["self-hosted", "anima"] }),
         secrets: vec!["jit_config".to_owned()],
         ..build()
@@ -72,6 +76,24 @@ fn runner() -> NewJob {
 
 impl Work {
     async fn new(pool: &PgPool) -> Self {
+        sqlx::query(
+            "INSERT INTO projects.projects (id, slug, name, created_at)
+                    VALUES ($1::uuid, 'work-tests', 'Work tests', clock_timestamp())",
+        )
+        .bind(TEST_PROJECT)
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO jobs.project_devices (project_id, device_id)
+                    VALUES ($1::uuid, $2::uuid), ($1::uuid, $3::uuid)",
+        )
+        .bind(TEST_PROJECT)
+        .bind(PVE_01)
+        .bind(DOCKER_HOST)
+        .execute(pool)
+        .await
+        .unwrap();
         Self {
             daemons: Daemons::new(pool).await,
             pool: pool.clone(),

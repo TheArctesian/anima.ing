@@ -5,6 +5,7 @@ mod application_apply;
 mod artifacts;
 mod claiming;
 mod enqueue;
+pub mod graphql;
 mod hosting;
 mod lifecycle;
 mod model;
@@ -31,7 +32,7 @@ pub use application_apply::{
 pub use artifacts::{ArtifactAccess, ArtifactGuard, artifact_access};
 pub(crate) use checkout::{CheckoutSource, SourceSubmission};
 pub(super) use claiming::checkout;
-pub use claiming::claim;
+pub use claiming::{claim, claim_in};
 pub use enqueue::enqueue;
 pub(crate) use enqueue::enqueue_source;
 pub use hosting::enqueue_container_action;
@@ -41,6 +42,7 @@ pub use pinning::{exclude, pin_project, placement_reason, unpin_project};
 pub use placement::{Unfit, Verdict};
 pub use reasons::Decision;
 pub use reporting::{end_lost, report};
+pub use store::work_switch::{blocks_dispatch, set_device_work};
 
 use crate::{
     fleet::events::{self, Bus, ClientAddr, Operator},

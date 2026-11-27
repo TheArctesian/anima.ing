@@ -103,8 +103,9 @@ sqlx = { workspace = true, features = ["tls-rustls-ring-webpki"] }
 test-support = []
 
 # `process`: prctl(PR_SET_DUMPABLE, 0) keeps the hub's keys out of core dumps (WP-36 D-45).
-[target.'cfg(target_os = "linux")'.dependencies]
-nix = { version = "0.31", default-features = false, features = ["process"] }
+# `time`: K10 dispatch grants use a clock that includes suspend.
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+nix = { version = "0.31", default-features = false, features = ["process", "time"] }
 
 [dev-dependencies]
 tar = "0.4.46"
