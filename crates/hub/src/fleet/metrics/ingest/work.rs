@@ -8,6 +8,7 @@
 
 #[cfg(unix)]
 mod artifact_upload;
+mod remote_threads;
 mod secret_response;
 mod secret_route;
 mod workspace_secret;
@@ -35,7 +36,6 @@ use super::{
     admission::{Admitted, Stop, admit},
     credential, refusals,
     refusals::Route,
-    remote_threads,
     routes::{DaemonState, busy, client_of, read_body, unmounted, within},
     turns::Turn,
 };
@@ -113,6 +113,7 @@ pub(super) fn routes() -> Router<DaemonState> {
         .route("/work/v1/claim", post(claim))
         .route("/work/v1/report", post(report))
         .route("/work/v1/secret", post(secret_of_job))
+        .merge(remote_threads::routes())
         .route("/daemon/v3/workspaces/checkout", post(secret_of_workspace));
     #[cfg(unix)]
     let routes = routes.route(daemon_core::artifact::ROUTE, post(artifact_upload::serve));

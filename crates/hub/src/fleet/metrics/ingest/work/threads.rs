@@ -12,12 +12,11 @@ use crate::{
     work::jobs::{self, Claimed},
 };
 
-use super::super::{
-    refusals,
+use super::super::{refusals, routes::DaemonState};
+use super::{
+    ClientAddr,
     remote_threads::{self, Holder},
-    routes::DaemonState,
 };
-use super::ClientAddr;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
