@@ -50,6 +50,8 @@ type Config struct {
 	LookupTXT func(ctx context.Context, name string) ([]string, error)
 	// PermitPort grants access to a local port until its context ends (HMD-048, HMD-049). Nil opens none.
 	PermitPort func(port uint16) context.Context
+	// DialRDP reaches the authenticated bundled host on Apple Silicon. Other hosts use loopback TCP.
+	DialRDP func(context.Context) (net.Conn, error)
 	// Now is the clock. Nil means the system clock.
 	Now       func() time.Time
 	DebugLogf tunnel.Logf
@@ -77,6 +79,7 @@ type Link struct {
 	reverse    net.Conn
 	presentNow chan struct{}
 	permitPort func(port uint16) context.Context
+	dialRDP    func(context.Context) (net.Conn, error)
 	giving     chan struct{}
 }
 
@@ -136,7 +139,7 @@ func start(cfg Config) (*Link, error) {
 	link := &Link{
 		device: device, saved: cfg.Identity, listener: listener, daemon: cfg.DaemonSocket, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone},
 		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf, presentNow: make(chan struct{}, 1),
-		permitPort: cfg.PermitPort, giving: make(chan struct{}, maxLocalConnections),
+		permitPort: cfg.PermitPort, dialRDP: cfg.DialRDP, giving: make(chan struct{}, maxLocalConnections),
 	}
 	if link.now == nil {
 		link.now = time.Now

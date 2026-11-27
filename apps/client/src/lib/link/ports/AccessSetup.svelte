@@ -25,7 +25,7 @@
   let published = $state<readonly number[]>([]);
   let pendingOff = $state<readonly number[]>([]);
   let loading = $state(false);
-  const rows = $derived(portRows(system, selected));
+  const rows = $derived(portRows(system, selected, access?.macRdp === true));
 
   async function read(show: boolean): Promise<void> {
     published = [];
@@ -202,6 +202,7 @@
             {#if row.port === 22 && !enabled && !pendingOff.includes(row.port)}<p class="hint">Anima prepares private SSH access. Your system may ask for administrator approval.</p>{/if}
             {#if unverified}<p class="hint">Anima could not verify a supported sign-in method. Review the server’s sharing permissions, then check again.</p>
             {:else if macSharing}<p class="hint">macOS requires you to turn on Screen Sharing in System Settings.</p>{/if}
+            {#if system === 'mac' && row.port === 3389 && !ready && !unavailable}<p class="hint">{row.needs}</p>{/if}
             {#if system === 'windows' && row.port === 5900 && !enabled}<p class="hint">Needs an existing authenticated VNC server.</p>{/if}
           </div>
         {/each}

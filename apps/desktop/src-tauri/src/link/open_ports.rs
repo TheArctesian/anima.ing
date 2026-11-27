@@ -5,9 +5,12 @@
 use std::{ffi::OsString, path::Path, time::Duration};
 
 use serde::{Deserialize, Serialize};
-use tauri::{Runtime, State, Webview};
+use tauri::{Manager as _, Runtime, State, Webview};
 
 use super::{LinkError, PROGRAM, environment, folders, from_main};
+
+pub const MAC_RDP: bool = cfg!(all(target_os = "macos", target_arch = "aarch64"));
+pub const RDP_SUPPORTED: bool = MAC_RDP || cfg!(any(target_os = "windows", target_os = "linux"));
 
 const PORTS_LIMIT: Duration = Duration::from_secs(5);
 
@@ -48,7 +51,7 @@ pub fn ask(
     folder: &Path,
     change: Option<(u16, bool)>,
 ) -> Result<OpenPorts, LinkError> {
-    let rdp = cfg!(any(target_os = "windows", target_os = "linux"));
+    let rdp = RDP_SUPPORTED;
     if change.is_some_and(|(port, _)| !may_open(port, rdp)) {
         return Err(LinkError::Failed);
     }
@@ -75,9 +78,7 @@ pub async fn link_ports<R: Runtime>(
     from_main(webview.label())?;
     let _claim = changing.claim()?;
     let change = port.zip(on);
-    if change.is_some_and(|(port, _)| {
-        !may_open(port, cfg!(any(target_os = "windows", target_os = "linux")))
-    }) {
+    if change.is_some_and(|(port, _)| !may_open(port, RDP_SUPPORTED)) {
         return Err(LinkError::Failed);
     }
     let program = crate::carried::program(PROGRAM).ok_or(LinkError::NotCarried)?;
@@ -91,14 +92,25 @@ pub async fn link_ports<R: Runtime>(
             .map_err(|_| LinkError::SshSetup)?;
     }
     if let Some((port @ (3389 | 5900), true)) = change {
-        remote_login::desktop::enable(port, remote_login::Prompt::Desktop)
+        super::access::prepare(webview.app_handle(), &folders.device, port)
             .await
             .map_err(|_| LinkError::DesktopSetup)?;
+    }
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    if change == Some((3389, false)) {
+        super::rdp::close();
     }
     if let Some((port, on)) = change {
         super::access::remember(&folders.device, port, on)?;
     }
-    tauri::async_runtime::spawn_blocking(move || ask(&program, &folders.device, change))
-        .await
-        .unwrap_or(Err(LinkError::Failed))
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = ask(&program, &folders.device, change);
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        if result.is_err() && change == Some((3389, true)) {
+            super::rdp::close();
+        }
+        result
+    })
+    .await
+    .unwrap_or(Err(LinkError::Failed))
 }

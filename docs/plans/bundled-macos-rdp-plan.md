@@ -1,6 +1,6 @@
 ---
 kind: Plan
-state: Approved (R-451, operator, 2026-11-23)
+state: In progress (R-451, operator, 2026-11-23)
 evidence: The operator asked on 2026-11-23 to make VNC and RDP work on the same Mac from one Anima installation. The installed app reached the Mac over VNC on port 5900. The same Mac refused a connection on port 3389, and HMD-049 excludes macOS from the Link allowlist for that port.
 ---
 
@@ -22,7 +22,7 @@ An operator can use both VNC and RDP to reach a Mac after installing only Anima.
 
 **MRDP-003.** Require TLS with Network Level Authentication and a dedicated RDP credential. Store the host credential and private key in the local credential store. Reuse the hub's existing certificate check and RDP credential flow. The hub cannot enable the host, consent for the Mac or read its private key.
 
-**MRDP-004.** Listen on loopback. Change HMD-049 so Link can carry RDP to a macOS device only after local opt-in and readiness of the bundled host. The device must identify its own host before it opens that route. A listener already on port 3389 is a setup error. Closing the route must also end active RDP sessions. VNC on port 5900 is independent.
+**MRDP-004.** Listen on loopback. Change HMD-049 so Link can carry RDP to a macOS device only after local opt-in and readiness of the bundled host. Link must verify the connected peer audit token against the signed desktop bundle identity before it opens the route or forwards a new stream. A listener already on port 3389 is a setup error. Closing the route must also end active RDP sessions. VNC on port 5900 is independent.
 
 **MRDP-005.** For the first release, show the active display and accept keyboard and pointer input through the existing Anima gateway. Show a local indicator while a remote session is active. Login-window access, additional displays, audio, clipboard and file redirection are outside the first release.
 
@@ -44,8 +44,8 @@ An operator can use both VNC and RDP to reach a Mac after installing only Anima.
 
 | Task | Work | State |
 | --- | --- | --- |
-| MRDP-T1 | Bundle the Apple Silicon host, connect native capture and input, and add device-local setup and Link admission (MRDP-001 to MRDP-005). | Not started |
-| MRDP-T2 | Run the signed bundle on a Mac, with VNC and RDP through the same device entry. Record the live result. | Not started |
+| MRDP-T1 | Bundle the Apple Silicon host, connect native capture and input, and add device-local setup and Link admission (MRDP-001 to MRDP-005). | In progress. Implementation is on the task branch and awaits the signed-bundle check. |
+| MRDP-T2 | Run the signed bundle on a Mac, with VNC and RDP through the same device entry. Record the live result. | Not started. See the bundled macOS RDP entry in the human test list. |
 
 ## Sources
 

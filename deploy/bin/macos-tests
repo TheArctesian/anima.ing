@@ -14,7 +14,7 @@
 #   4. the pinning test of the desktop shell, with the trust hook of WKWebView.
 set -eu
 
-PACKAGES="anima-app anima-cli anima-daemon anima-database anima-hub remote-login"
+PACKAGES="anima-app anima-cli anima-daemon anima-database anima-hub anima-rdp-host remote-login"
 
 cd "$(dirname "$0")/../.."
 [ "$(uname -s)" = Darwin ] || { echo "macos-tests: this is not a Mac" >&2; exit 2; }
@@ -22,7 +22,7 @@ unset DATABASE_URL
 
 bun install --frozen-lockfile
 bun test deploy/test/check-mach-o.test.ts deploy/test/release-workflow.test.ts
-go -C link test -race ./statedir/...
+go -C link test -race ./statedir/... ./ports/... ./rdppeer/...
 packages=""
 for package in $PACKAGES; do packages="$packages -p $package"; done
 # shellcheck disable=SC2086 # the list is words, one for each package

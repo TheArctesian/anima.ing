@@ -78,3 +78,39 @@ func openStream(t *testing.T, b *bench, port int) net.Conn {
 	t.Cleanup(func() { stream.Close() })
 	return stream
 }
+
+func TestBundledRDPClosesBothSidesWhenItsPermitEnds(t *testing.T) {
+	grant, revoke := context.WithCancel(context.Background())
+	t.Cleanup(revoke)
+	b := newBench(t, nil)
+	b.permit = func(port uint16) context.Context {
+		if port == 3389 {
+			return grant
+		}
+		return nil
+	}
+	hostClosed := make(chan struct{})
+	b.rdp = func(context.Context) (net.Conn, error) {
+		device, host := net.Pipe()
+		go func() {
+			defer close(hostClosed)
+			defer host.Close()
+			_, _ = io.Copy(host, host)
+		}()
+		return device, nil
+	}
+
+	stream := openStream(t, b, 3389)
+	exchange(t, stream, "through the bundled host")
+	revoke()
+	_ = stream.SetReadDeadline(time.Now().Add(2 * time.Second))
+	var timeout net.Error
+	if _, err := stream.Read(make([]byte, 1)); err == nil || (errors.As(err, &timeout) && timeout.Timeout()) {
+		t.Fatalf("the hub retained the revoked RDP stream: %v", err)
+	}
+	select {
+	case <-hostClosed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the bundled host retained the revoked RDP stream")
+	}
+}

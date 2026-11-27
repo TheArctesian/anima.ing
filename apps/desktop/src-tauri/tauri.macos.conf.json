@@ -16,6 +16,7 @@
     ]
   },
   "bundle": {
+    "macOS": { "infoPlist": "RdpHostPermissions.plist" },
     "resources": {
       "../../../LICENSE": "licences/LICENSE",
       "../../../crates/shortening/NOTICE": "licences/NOTICE",

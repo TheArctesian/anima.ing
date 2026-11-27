@@ -16,7 +16,12 @@ for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64 wi
   suffix=""
   [ "$os" = windows ] && suffix=".exe"
   out="bin/anima-link-$os-$arch$suffix"
-  GOOS=$os GOARCH=$arch go build -trimpath -ldflags="-s -w" -tags "$tags" -o "$out" ./cmd/anima-link
+  case "$(uname -s)/$(uname -m)/$target" in
+    Darwin/arm64/darwin/arm64)
+      CGO_ENABLED=1 GOOS=$os GOARCH=$arch go build -trimpath -ldflags="-s -w" -tags "$tags" -o "$out" ./cmd/anima-link ;;
+    *)
+      GOOS=$os GOARCH=$arch go build -trimpath -ldflags="-s -w" -tags "$tags" -o "$out" ./cmd/anima-link ;;
+  esac
   size=$(wc -c <"$out" | tr -d ' ')
   echo "$out: $size bytes"
   if [ "$size" -gt "$LIMIT_BYTES" ]; then
