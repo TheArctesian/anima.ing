@@ -31,7 +31,6 @@ use tempfile::NamedTempFile;
 use tokio::sync::oneshot;
 
 use super::github::Stub;
-use super::totp;
 use crate::kit::Anima;
 
 pub const USERNAME: &str = "operator";
@@ -39,8 +38,6 @@ pub const PASSWORD: &str = "correct horse battery staple";
 
 pub struct RealHub {
     pub origin: String,
-    pub pool: PgPool,
-    vault_key: NamedTempFile,
     stop: Option<oneshot::Sender<()>>,
 }
 
@@ -125,13 +122,16 @@ impl RealHub {
     async fn serve(pool: PgPool, sources: Option<Reach>) -> Self {
         let vault_key = vault_key();
         let vault = Vault::from_key_file(vault_key.path()).expect("the vault");
-        let dependencies = dependencies(&pool, vault, sources).await;
+        let mut dependencies = dependencies(&pool, vault, sources).await;
         let clock = dependencies.clock.clone();
         let listen_on: SocketAddr = "127.0.0.1:0".parse().expect("an address");
         let listening = listen::listen(listen_on, None, clock.clone())
             .await
             .expect("the hub listens");
         let addr = listening.local_addr().expect("the bound address");
+        Arc::get_mut(&mut dependencies.config)
+            .expect("unshared configuration")
+            .public_origin = format!("http://{addr}");
         let live = dependencies.live.clone();
         let edge = access::Edge::new(pool.clone(), dependencies.bus.clone(), clock.clone());
         let app = all_routes(dependencies, edge.clone());
@@ -152,31 +152,8 @@ impl RealHub {
         ));
         Self {
             origin: format!("http://{addr}"),
-            pool,
-            vault_key,
             stop: Some(stop),
         }
-    }
-
-    pub async fn set_password(&self, password: &str) {
-        let now = SystemClock.now();
-        access::set_operator(
-            &self.pool,
-            USERNAME,
-            Password::new(password.to_owned()),
-            now,
-        )
-        .await
-        .expect("the new password");
-    }
-
-    /// Returns the TOTP seed the authenticator app would hold.
-    pub async fn enrol_totp(&self) -> Vec<u8> {
-        let vault = Vault::from_key_file(self.vault_key.path()).expect("the vault");
-        let enrolment = access::enrol_totp(&self.pool, &vault, USERNAME)
-            .await
-            .expect("TOTP enrolled");
-        totp::secret_of(enrolment.uri())
     }
 
     pub fn anima(&self) -> Anima {

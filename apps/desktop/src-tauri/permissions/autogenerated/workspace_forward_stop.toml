@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workspace-forward-stop"
+description = "Enables the workspace_forward_stop command without any pre-configured scope."
+commands.allow = ["workspace_forward_stop"]
+
+[[permission]]
+identifier = "deny-workspace-forward-stop"
+description = "Denies the workspace_forward_stop command without any pre-configured scope."
+commands.deny = ["workspace_forward_stop"]

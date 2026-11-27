@@ -3,7 +3,10 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, TimeDelta, Utc};
-use daemon_core::wire::{Claim, Switch, WorkArchitecture, WorkKind, WorkOs, WorkType};
+use daemon_core::wire::{
+    Claim, REPOSITORY_TOKEN, SOURCE_IMAGE_PRIVATE_CHECKOUT, Switch, WorkArchitecture, WorkKind,
+    WorkOs, WorkType,
+};
 
 use super::model::{Job, Machine};
 use crate::ids::{DeviceId, ProjectId};
@@ -20,6 +23,7 @@ pub(super) const FRESH: TimeDelta = TimeDelta::seconds(30);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Offer {
+    pub build_recipes: Option<daemon_core::wire::BuildRecipes>,
     pub device: DeviceId,
     pub types: Vec<WorkType>,
     pub kinds: Vec<WorkKind>,
@@ -38,6 +42,7 @@ pub struct Offer {
 impl Offer {
     pub(super) fn of(claim: &Claim, machine: &Machine, policy_permits: bool) -> Self {
         Self {
+            build_recipes: claim.build_recipes.clone(),
             device: machine.device,
             types: claim.types.clone(),
             kinds: claim.kinds.clone(),
@@ -88,6 +93,7 @@ pub(super) fn rank(job: &Job) -> u8 {
 pub enum Verdict {
     Fits,
     Type,
+    Recipe,
     Kind,
     Os,
     Architecture,
@@ -105,9 +111,10 @@ pub enum Verdict {
 }
 
 impl Verdict {
-    pub(super) const ALL: [Self; 12] = [
+    pub(super) const ALL: [Self; 13] = [
         Self::Fits,
         Self::Type,
+        Self::Recipe,
         Self::Kind,
         Self::Os,
         Self::Architecture,
@@ -126,6 +133,7 @@ impl Verdict {
         match self {
             Self::Fits => "fits",
             Self::Type => "type",
+            Self::Recipe => "recipe",
             Self::Kind => "kind",
             Self::Os => "os",
             Self::Architecture => "architecture",
@@ -221,7 +229,19 @@ impl Room {
 /// that the operator pinned for its project (ROU-006).
 pub(super) fn named(job: &Job, pins: &HashMap<ProjectId, DeviceId>) -> Option<DeviceId> {
     let pinned = || job.asked.project.and_then(|project| pins.get(&project));
+    if needs_private_checkout(&job.asked) {
+        return pinned().copied();
+    }
     job.asked.machine.or_else(|| pinned().copied())
+}
+
+pub(super) fn needs_private_checkout(asked: &super::NewJob) -> bool {
+    asked.work_type == WorkType::Build
+        && asked.parameters["recipe"] == "source_image_v1"
+        && asked
+            .secrets
+            .iter()
+            .any(|purpose| purpose == REPOSITORY_TOKEN)
 }
 
 /// Whether the machine of `offer` can run `job`, with no look at a different machine.
@@ -229,11 +249,15 @@ pub(super) fn alone(job: &Job, named: Option<DeviceId>, offer: &Offer) -> Verdic
     let asked = &job.asked;
     let checks = [
         (
-            named.is_none_or(|device| device == offer.device),
+            named.map_or_else(
+                || !needs_private_checkout(asked),
+                |device| device == offer.device,
+            ),
             Verdict::NamesOther,
         ),
         (named.is_some() || !offer.excluded, Verdict::Excluded),
         (offer.types.contains(&asked.work_type), Verdict::Type),
+        (recipe_fits(job, offer), Verdict::Recipe),
         (offer.kinds.contains(&asked.kind), Verdict::Kind),
         (
             offer.policy_permits || !policy_applies(job),
@@ -331,4 +355,22 @@ pub enum Unfit {
     NeverAsked,
     TakesNoWork,
     Requirement(Verdict),
+}
+
+pub(super) fn recipe_fits(job: &Job, offer: &Offer) -> bool {
+    if job.asked.work_type != WorkType::Build {
+        return true;
+    }
+    job.asked.parameters["recipe"]
+        .as_str()
+        .is_some_and(|recipe| {
+            offer
+                .build_recipes
+                .as_ref()
+                .map_or(recipe == "desktop_release", |recipes| {
+                    recipes.supports(recipe)
+                        && (!needs_private_checkout(&job.asked)
+                            || recipes.supports(SOURCE_IMAGE_PRIVATE_CHECKOUT))
+                })
+        })
 }

@@ -56,6 +56,19 @@ pub(crate) fn desktop_size(width: usize, height: usize) -> Vec<u8> {
     )
 }
 
+/// A pointer shape of `width` by `height` with its hot spot at `hot`: opaque white pixels and a full mask.
+pub(crate) fn cursor(width: usize, height: usize, hot: (usize, usize)) -> Vec<u8> {
+    let area = Area {
+        x: hot.0,
+        y: hot.1,
+        width,
+        height,
+    };
+    let pixels = vec![255; width * height * 4];
+    let mask = vec![255; width.div_ceil(8) * height];
+    [header(area, -239), pixels, mask].concat()
+}
+
 /// `ServerCutText` with `text` in Latin-1.
 pub(crate) fn cut_text(text: &[u8]) -> Vec<u8> {
     [vec![3, 0, 0, 0], four(text.len()).to_vec(), text.to_vec()].concat()

@@ -19,3 +19,12 @@ pub struct HostKeyAccept;
     variables_derives = "Debug"
 )]
 pub struct CertificateAccept;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/devices/trust/accept_vnc_certificate.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct VncCertificateAccept;

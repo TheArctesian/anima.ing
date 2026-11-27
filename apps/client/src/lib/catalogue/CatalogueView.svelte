@@ -5,14 +5,15 @@
   import LoadingState from '$lib/states/LoadingState.svelte';
   import CatalogueEntryPane from './CatalogueEntryPane.svelte';
   import CatalogueList from './CatalogueList.svelte';
+  import type { MachineImages } from './runs';
   import type { CatalogueStore } from './store.svelte';
 
   /**
-   * Tasks H38 and H39: the catalogue of applications that ships with Anima, on the Containers tab of the device that an
-   * install would go to: the list on the left and the description of the selected entry on the right. Nothing here
-   * reaches the device.
+   * Tasks H38, H39 and H55: the catalogue of applications that ships with Anima, the list on the left and the
+   * description of the selected entry on the right. `machines` says where each program runs; `installOn` names the
+   * machine that the picker chose (HSE-022). Nothing here reaches a machine.
    */
-  const { store }: { store: CatalogueStore } = $props();
+  const { store, machines = [], installOn = null }: { store: CatalogueStore; machines?: readonly MachineImages[]; installOn?: string | null } = $props();
   const shown = $derived(store.shown);
 </script>
 
@@ -24,7 +25,7 @@
   {:else if store.entries.length === 0}
     <EmptyState
       title="No apps to install yet"
-      line="The catalogue shows the apps that Anima can install on this device. This hub has no app to show now."
+      line="The catalogue shows the apps that Anima can install on a machine. This hub has no app to show now."
     >
       {#snippet action()}
         <FormButton onclick={() => void store.load()}>Check again</FormButton>
@@ -33,9 +34,9 @@
   {:else}
     <p class="about">The applications that ship with Anima. The hub reads this list from its own program and connects to no machine.</p>
     <div class="split">
-      <CatalogueList {store} />
+      <CatalogueList {store} {machines} />
       {#if shown !== null}
-        <CatalogueEntryPane entry={shown} onclose={() => { store.select(null); }} />
+        <CatalogueEntryPane entry={shown} {installOn} onclose={() => { store.select(null); }} />
       {/if}
     </div>
   {/if}

@@ -1,0 +1,38 @@
+{
+  "scope": "Retained synthetic Node Railpack build, inspected after reboot; no rebuild or production deployment",
+  "attempt": "384c3bef-0f57-48c2-9eae-7901b523a500",
+  "verifiedManifestDigest": "sha256:89dac57c2c2f6bb86169d44fbf926f985ab5b1840839b131a0aea75ff661bad8",
+  "dockerImageId": "sha256:89dac57c2c2f6bb86169d44fbf926f985ab5b1840839b131a0aea75ff661bad8",
+  "dockerRepoDigest": "localhost/anima/build@sha256:89dac57c2c2f6bb86169d44fbf926f985ab5b1840839b131a0aea75ff661bad8",
+  "results": [
+    {
+      "case": "imported-image-persisted-after-reboot",
+      "result": "Passed"
+    },
+    {
+      "case": "docker-identity-matches-verified-index",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    },
+    {
+      "case": "isolated-docker-reimport",
+      "result": "Passed"
+    },
+    {
+      "case": "node-runtime-offline-readonly",
+      "result": "Passed"
+    },
+    {
+      "case": "isolated-daemon-stop-and-sync",
+      "result": "Passed"
+    },
+    {
+      "case": "node-runtime-after-clean-guest-restart-without-reimport",
+      "result": "Passed"
+    }
+  ],
+  "limitation": "Node passed before and after clean guest restart with isolated fresh Docker data root. Original Docker layer state remains damaged. Python and Rust not tested; no routed hosting acceptance."
+}

@@ -58,8 +58,10 @@ impl Drop for Undo {
         if let Some((common, full)) = &self.branch {
             let _ = refs::take_back(common, full, &self.at);
         }
-        if let Some(own) = &self.own {
-            let _ = std::fs::remove_dir_all(own);
+        if let Some(own) = &self.own
+            && let (Ok(parent), Some(name)) = (self.home.state_parent(own, false), own.file_name())
+        {
+            let _ = parent.remove_tree(name);
         }
         self.home.forget(self.thread, &self.repository);
         // The folder of the thread goes when it is empty; one with a second repository stays.

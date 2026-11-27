@@ -1,6 +1,6 @@
 use super::{
     Error, Result,
-    command::{atomic, lock, run},
+    command::{atomic, lock},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -10,9 +10,11 @@ use uuid::Uuid;
 const PREVIEW: &str = "/run/anima-display-preview.json";
 mod cli;
 mod output;
+mod physical;
 pub(super) use cli::{cli, print_list};
 pub(super) use output::list;
 use output::{ROTATIONS, outputs, rotate};
+use physical::run;
 #[derive(Serialize, Deserialize)]
 struct Preview {
     id: Uuid,

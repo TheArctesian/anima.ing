@@ -1,69 +1,61 @@
-//! The removal of the worktree of a thread: its work is saved to a private ref of the thread
-//! in the repository of the person first (THR-097), then the folder, its entry and the Git
-//! folder of the runner go.
+//! Retires a worktree after saving its Git snapshot to a private ref (THR-097).
 
-use std::ffi::OsStr;
-
-use agent_threads::git::GitRefusal;
+use agent_threads::git::{GitOutcome, GitRefusal};
 use uuid::Uuid;
 
 use super::super::checkpoint;
-use super::super::place::{Home, Record, Worktree, own, shared};
-use super::super::project::{Layout, linked, refs};
+use super::super::place::{Home, Worktree, lfs, own, shared};
+use super::super::project::refs;
 use super::super::run::Git;
-use super::super::run::folder::FolderId;
+use super::retirement::{Completion, Retirement};
 
-/// Saves the files of the worktree to the private ref of its thread in the repository of the
-/// person, then removes the worktree, its entry and the Git folder of the runner with the
-/// checkpoints of the thread. The branch stays. Gives the name of the ref.
-///
-/// The work is saved one time. A removal that stops in the middle (a folder that cannot be
-/// emptied) leaves a note that the work is saved; the next try does not save again what is
-/// left of the files over the whole work.
+mod legacy;
+pub(super) use legacy::clean_scratch;
+
+/// Saves a private ref before moving the whole original directory out of use. Files that
+/// cannot go in a Git snapshot stay in the original directory, as do late writes to it.
+/// The branch and linked Git metadata stay for recovery.
 ///
 /// # Errors
-/// A [`GitRefusal`] when the work could not be saved (nothing is removed then) or a step
-/// fails.
-pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<String, GitRefusal> {
+/// The reason a snapshot, move, or active record update could not be completed.
+pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<GitOutcome, GitRefusal> {
+    let record = worktree.record();
+    let repository = record
+        .folder
+        .file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .ok_or(GitRefusal::BadPath)?;
+    let target = (worktree.thread(), repository);
+    let retirement = if let Some(pending) = Retirement::existing(home, record)? {
+        pending
+    } else {
+        let kept = if let Some(kept) = legacy_saved(git, home, record, worktree.thread()).await? {
+            kept
+        } else {
+            save(git, worktree).await?
+        };
+        Retirement::prepare(home, record, kept)?
+    };
+    retirement.finish(home, target, record)
+}
+
+async fn save(git: &Git, worktree: &Worktree) -> Result<String, GitRefusal> {
     let record = worktree.record();
     let common = &record.common_dir;
     let kept = checkpoint::kept_ref(worktree.thread());
-    let started = record.own.join(own::SAVED).exists();
-    // The work is saved whatever the size of the checkpoints of the thread is: it goes to
-    // the repository of the person, and the folder of the runner is removed after.
     let held = &git.for_worktree(worktree).await?.with_own_room(u64::MAX);
-    // A last commit that cannot be brought (the copy of the project is full, or the branch
-    // names a commit that is not there) does not keep the worktree: the saved commit then
-    // holds each file and has no parent.
+    // If the old tip cannot be read, the saved commit can hold the files without a parent.
     let tip = match own::tip(held, worktree).await {
         Ok(at) => at.commit,
-        // The place of the worktree cannot be read: the branch that the runner made for the
-        // thread says what the last commit is, when the thread can bring it.
         Err(_) => made_branch(held, worktree).await,
     };
     let commit = checkpoint::snapshot_on(held, worktree, tip.clone()).await?;
     own::give(held, worktree, &commit, tip.as_deref()).await?;
-    if started {
-        // A removal that stopped in the middle saved the whole work. What is left of the
-        // files now, with what changed since, is saved beside it and never over it.
-        let rest = format!("refs/anima/kept-rest/{}/{commit}", worktree.thread());
-        refs::own_put(common, &rest, &commit)?;
-    } else {
-        // The work that an earlier removal of this thread saved stays under a name of its own.
-        // A ref there that is no ref of the runner (an agent can write it) names no work.
-        if let Ok(Some(earlier)) = refs::resolve(common, &kept) {
-            let aside = format!("refs/anima/kept-before/{}/{earlier}", worktree.thread());
-            refs::own_put(common, &aside, &earlier)?;
-        }
-        refs::own_put(common, &kept, &commit)?;
-        std::fs::write(record.own.join(own::SAVED), &commit).map_err(|failed| gone(&failed))?;
+    if let Ok(Some(earlier)) = refs::resolve(common, &kept) {
+        let aside = format!("refs/anima/kept-before/{}/{earlier}", worktree.thread());
+        refs::own_put(common, &aside, &earlier)?;
     }
-    // The folder is still the one that the runner made, not one put in its place (P12).
-    if record.folder_id.is_some() && FolderId::of(&record.folder) != record.folder_id {
-        return Err(GitRefusal::NoWorktree);
-    }
-    std::fs::remove_dir_all(&record.folder).map_err(|failed| gone(&failed))?;
-    cleared(home, worktree.thread(), record)?;
+    refs::own_put(common, &kept, &commit)?;
     Ok(kept)
 }
 
@@ -77,66 +69,65 @@ async fn made_branch(git: &Git, worktree: &Worktree) -> Option<String> {
     known.is_ok().then_some(commit)
 }
 
-fn gone(failed: &std::io::Error) -> GitRefusal {
-    GitRefusal::Failed {
-        said: format!("the worktree could not be removed: {failed}"),
-    }
-}
-
-/// Removes what the runner keeps for a worktree whose folder is gone or is not removed by
-/// the runner: its entry in the repository of the person, the Git folder of the runner with
-/// the checkpoints, and the record.
-fn cleared(home: &Home, thread: Uuid, record: &Record) -> Result<(), GitRefusal> {
-    let layout = Layout {
-        git_dir: record.git_dir.clone(),
-        common_dir: record.common_dir.clone(),
-    };
-    // An entry that is gone already, with its Git folder, is the wanted state.
-    if record.common_dir.is_dir() {
-        linked::remove(&layout)?;
-    }
-    match std::fs::remove_dir_all(&record.own) {
-        Err(failed) if failed.kind() != std::io::ErrorKind::NotFound => {
-            return Err(gone(&failed));
-        }
-        _ => {}
-    }
-    if let Some(repository) = record.folder.file_name().and_then(OsStr::to_str) {
-        home.forget(thread, repository);
-    }
-    // The folder of the thread goes when it is empty; one with a second repository stays.
-    let _ = record.folder.parent().map(std::fs::remove_dir);
-    Ok(())
-}
-
-/// Removes a worktree that is not whole any more (its `.git` file or its entry is gone, or an
-/// earlier removal stopped in the middle), so that the thread and its project are never held
-/// by it. When its folder is still the one that the runner made, the work is saved first, as
-/// in [`remove`]. When the work cannot be saved and was not saved before, no file of the
-/// folder is touched: the person can still take them; the answer then names no saved work.
+/// Finishes a recorded move or saves the original directory of a broken linked worktree.
 ///
 /// # Errors
-/// A [`GitRefusal`] when the runner has no record of the worktree, or a step fails.
+/// The reason a recorded move or worktree could not be recovered.
 pub async fn remove_broken(
     git: &Git,
     home: &Home,
-    (thread, repository): (Uuid, &str),
-) -> Result<Option<String>, GitRefusal> {
-    let record = home.recorded(thread, repository)?;
-    // A folder that is still the one of the runner is saved as in each removal. When that
-    // fails, nothing goes: the failure is the answer, and the next try saves again.
+    target: (Uuid, &str),
+) -> Result<GitOutcome, GitRefusal> {
+    let (thread, repository) = target;
+    let Some(record) = home
+        .active(thread, repository)
+        .map_err(|error| GitRefusal::Failed {
+            said: format!("Could not read the active worktree record: {error}"),
+        })?
+    else {
+        return Completion::get(home, target);
+    };
+    if let Some(pending) = Retirement::existing(home, &record)? {
+        return pending.finish(home, target, &record);
+    }
     if let Some(worktree) = home.for_removal(thread, repository) {
-        return remove(git, home, &worktree).await.map(Some);
+        remove(git, home, &worktree).await
+    } else {
+        Completion::orphan(git, home, target, &record).await
     }
-    let saved = record.own.join(own::SAVED).exists();
-    // What is left of a folder whose work is saved goes too, when it is still the folder
-    // that the runner made at the place that the runner planned.
-    let planned = Home::at(&record.home, home.records())?.planned(thread, repository)?;
-    let ours = std::fs::canonicalize(&planned).is_ok_and(|real| real == record.folder)
-        && (record.folder_id.is_none() || FolderId::of(&record.folder) == record.folder_id);
-    if saved && ours {
-        std::fs::remove_dir_all(&record.folder).map_err(|failed| gone(&failed))?;
+}
+
+/// Preserve the complete snapshot saved by an interrupted pre-retirement removal.
+pub(super) async fn legacy_saved(
+    git: &Git,
+    home: &Home,
+    record: &super::super::place::Record,
+    thread: Uuid,
+) -> Result<Option<String>, GitRefusal> {
+    let marker = home
+        .read_state(&record.own.join(own::SAVED))
+        .map_err(|error| GitRefusal::Failed {
+            said: format!("Could not read the earlier removal: {error}"),
+        })?;
+    let Some(marker) = marker else {
+        return Ok(None);
+    };
+    let kept = checkpoint::kept_ref(thread);
+    let saved = std::str::from_utf8(&marker).ok().map(str::trim);
+    let resolved = refs::resolve(&record.common_dir, &kept)?;
+    if saved.is_none() || resolved.as_deref() != saved {
+        return Err(GitRefusal::Failed {
+            said:
+                "The earlier removal snapshot could not be verified; keep its records for recovery"
+                    .into(),
+        });
     }
-    cleared(home, thread, &record)?;
-    Ok(saved.then(|| checkpoint::kept_ref(thread)))
+    let saved = saved.unwrap_or_default();
+    lfs::check_storage(git, &record.own).await?;
+    legacy::verify(git, record, saved).await?;
+    own::sync_legacy_lfs(&record.common_dir, &record.own)
+        .map_err(|error| legacy::object_failure(&error))?;
+    // Re-publish after verifying the snapshot and synchronizing its directory entries.
+    refs::put(&record.common_dir, &kept, saved, refs::Was::At(saved))?;
+    Ok(Some(kept))
 }

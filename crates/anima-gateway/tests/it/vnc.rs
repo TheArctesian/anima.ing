@@ -95,6 +95,31 @@ fn raw_pixels_arrive_with_their_colours_in_order() {
 }
 
 #[test]
+fn a_pointer_shape_leaves_the_screen_as_it_is() {
+    let area = Area {
+        x: 140,
+        y: 80,
+        width: 2,
+        height: 1,
+    };
+    // A hot spot near the edge, with a shape that would pass the edge if it were a place on the screen.
+    let update = rfb::update(&[
+        rfb::cursor(19, 23, (148, 88)),
+        rfb::raw(area, &[255, 0, 0, 0, 0, 255]),
+    ]);
+    let (screen, events) = received(&update).expect("read");
+    let drawn: Vec<u8> = screen
+        .rows(area)
+        .expect("inside")
+        .flatten()
+        .copied()
+        .collect();
+    assert_eq!(drawn, [255, 0, 0, 0, 0, 255]);
+    assert_eq!(whole(&screen).iter().filter(|&&part| part != 0).count(), 2);
+    assert_eq!(events, [Event::Updated]);
+}
+
+#[test]
 fn every_form_of_zrle_tile_draws_the_picture() {
     for (kind, colours) in [
         (Tile::Raw, 16),

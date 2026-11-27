@@ -28,6 +28,7 @@ use crate::{
             warnings::{AccessWarning, access_warnings},
         },
         metrics::{self, Battery, DaemonNeed, Gpu, MetricRange, MetricSeries, Readings, Storage},
+        trust::graphql::{ServerCertificatesByDevice, VncCertificateKey},
         web_interfaces::{Suggestion, WebInterface},
     },
     scalars::IpAddr,
@@ -257,8 +258,14 @@ impl Device {
     }
 
     /// The weak settings the client marks with a badge, from the saved settings (RA-020).
-    async fn access_warnings(&self) -> Vec<AccessWarning> {
-        access_warnings(&self.rdp, &self.vnc)
+    async fn access_warnings(&self, ctx: &Context<'_>) -> Result<Vec<AccessWarning>> {
+        let pinned = self.vnc.enabled
+            && schema_dependency::<DataLoader<ServerCertificatesByDevice>>(ctx)?
+                .load_one(VncCertificateKey(self.id))
+                .await
+                .map_err(internal)?
+                .is_some();
+        Ok(access_warnings(&self.rdp, &self.vnc, pinned))
     }
 
     async fn created_at(&self) -> DateTime<Utc> {

@@ -155,7 +155,11 @@ fn select(instruction: &Instruction) -> Result<(State, Step), Refused> {
         Some(RDP) => true,
         _ => return Err(Refused::NotServed),
     };
-    let more: &[&str] = if rdp { &rdp::ARGUMENTS } else { &[] };
+    let more: &[&str] = if rdp {
+        &rdp::ARGUMENTS
+    } else {
+        &["cert-fingerprints"]
+    };
     let names = [VERSION]
         .into_iter()
         .chain(ARGUMENTS)

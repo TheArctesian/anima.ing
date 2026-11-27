@@ -1,6 +1,5 @@
 import type { Attachment } from 'svelte/attachments';
-import { createSubscriber } from 'svelte/reactivity';
-import { ambientMotionAllowed } from '$lib/motion/ambient';
+import { ambientAllowedNow as allowed } from '$lib/motion/ambient';
 import { motionPreference, type MotionPreference } from '$lib/motion/preference';
 
 /*
@@ -22,20 +21,6 @@ const PULSE: Keyframe[] = [
 /** T3's `live-tool-shine`: a band crosses the words in 2.2 s, in 30 steps so the screen changes 30 times, not each frame. */
 const SHINE_MS = 2200;
 const SHINE_STEPS = 'steps(30)';
-
-const watchVisibility = createSubscriber((update) => {
-  document.addEventListener('visibilitychange', update);
-  return () => {
-    document.removeEventListener('visibilitychange', update);
-  };
-});
-
-/** Whether repeating motion may run now; reading it in an attachment starts or stops the motion when that changes. */
-function allowed(preference: MotionPreference): boolean {
-  if (typeof document === 'undefined') return false;
-  watchVisibility();
-  return ambientMotionAllowed(document.visibilityState, preference.reduced);
-}
 
 /** The pulse of the mark of a thread that works; every mark pulses in time with the others, as in T3. */
 export function pulse(preference: MotionPreference = motionPreference()): Attachment<HTMLElement> {

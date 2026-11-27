@@ -43,6 +43,7 @@ async fn starting(bench: &Bench, live: &Live, asleep: bool) -> Result<Ticket, Er
             dpi: 96,
             timezone: None,
         },
+        view_only: false,
         wake: Some(Waking {
             asleep,
             vault: bench.vault.clone(),

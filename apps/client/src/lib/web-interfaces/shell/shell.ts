@@ -20,6 +20,7 @@ export interface WebViewOpening {
   readonly deviceId: string;
   readonly url: string;
   readonly pin: Fingerprint | null;
+  readonly previewEndpoint?: string;
   readonly bounds: Bounds;
 }
 

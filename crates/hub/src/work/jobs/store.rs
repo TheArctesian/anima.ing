@@ -1,8 +1,12 @@
 //! I/O only (CQ-032): writes take the caller's connection, so a change commits with its audit entry or event.
 
+pub(super) mod application_files;
+pub(super) mod checkout;
+pub(super) mod hosting;
 mod logs;
 mod machines;
 mod placements;
+pub(super) mod source_placement;
 
 use chrono::{DateTime, Utc};
 use daemon_core::model_work::names::{Actor, Word as _};
@@ -130,6 +134,7 @@ impl JobRow {
                     name: name.clone(),
                 }))
             }
+            (None, None, None, None) if self.kind == "host" => Ok(Target::Host),
             _ => Err(Error::Unreadable),
         }
     }
@@ -213,6 +218,14 @@ pub(super) async fn newest_done(
     rows.into_iter().map(Job::try_from).collect()
 }
 
+pub(super) async fn source_job(db: &sqlx::PgPool, id: JobId) -> Result<Option<Job>, Error> {
+    let sql = format!(
+        "{SELECT_JOB}WHERE id = $1 AND work_type = 'build' AND parameters->>'recipe' = 'source_image_v1'"
+    );
+    let row: Option<JobRow> = sqlx::query_as(&sql).bind(id).fetch_optional(db).await?;
+    row.map(Job::try_from).transpose()
+}
+
 pub(super) async fn job_locked(conn: &mut PgConnection, id: JobId) -> Result<Option<Job>, Error> {
     let sql = format!("{SELECT_JOB}WHERE id = $1 FOR UPDATE");
     let row: Option<JobRow> = sqlx::query_as(&sql).bind(id).fetch_optional(conn).await?;
@@ -222,7 +235,7 @@ pub(super) async fn job_locked(conn: &mut PgConnection, id: JobId) -> Result<Opt
 /// A job that a different transaction has locked is skipped, so two claims never take one job (BLD-004).
 pub(super) async fn oldest_queued(conn: &mut PgConnection) -> Result<Vec<Job>, Error> {
     let condition = format!(
-        "WHERE state = 'queued' AND $1::timestamptz IS NULL AND $2::uuid IS NULL \
+        "WHERE state = 'queued' AND kind <> 'host' AND $1::timestamptz IS NULL AND $2::uuid IS NULL \
          ORDER BY created_at, id LIMIT {CLAIM_LOOKS_AT} FOR UPDATE SKIP LOCKED"
     );
     jobs_where(conn, &condition, None, None).await
@@ -237,7 +250,7 @@ pub(super) async fn ended_leases(
     conn: &mut PgConnection,
     now: DateTime<Utc>,
 ) -> Result<Vec<Job>, Error> {
-    let condition = "WHERE lease_ends_at <= $1 AND $2::uuid IS NULL \
+    let condition = "WHERE lease_ends_at <= $1 AND kind <> 'host' AND $2::uuid IS NULL \
                      ORDER BY lease_ends_at, id FOR UPDATE SKIP LOCKED";
     jobs_where(conn, condition, Some(now), None).await
 }
@@ -253,19 +266,24 @@ pub(super) async fn over_time(
     jobs_where(conn, condition, Some(now), None).await
 }
 
-pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Error> {
+pub(super) async fn insert(
+    conn: &mut PgConnection,
+    job: &Job,
+    host_api_key: Option<&str>,
+) -> Result<(), Error> {
     let asked = &job.asked;
     let (repository, actor) = match &asked.target {
         Target::Repository(repository) => (Some(repository), None),
         Target::Model { actor } => (None, Some(actor.as_str())),
+        Target::Host => (None, None),
     };
     sqlx::query(
         "INSERT INTO jobs.jobs (id, work_type, kind, os, architecture, project_id, forge, owner, \
          name, parameters, secrets, limit_seconds, limit_idle_seconds, limit_memory_bytes, \
          limit_disk_bytes, limit_orphan_seconds, state, created_at, state_changed_at, machine_id, \
-         actor) \
+         actor, host_api_key) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, \
-         $18, $18, $19, $20)",
+         $18, $18, $19, $20, $21)",
     )
     .bind(job.id)
     .bind(word(&asked.work_type)?)
@@ -287,6 +305,7 @@ pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Err
     .bind(job.created_at)
     .bind(asked.machine)
     .bind(actor)
+    .bind(host_api_key)
     .execute(conn)
     .await?;
     Ok(())
@@ -321,7 +340,10 @@ pub(super) async fn save(conn: &mut PgConnection, job: &Job) -> Result<(), Error
     .bind(job.changed_at)
     .bind(job.ended_at)
     .bind(job.progress.map(|progress| serde_json::json!(progress)))
-    .execute(conn)
+    .execute(&mut *conn)
     .await?;
+    if job.asked.work_type == WorkType::ApplicationApply && job.state.is_final() {
+        application_files::clear(conn, job.id).await?;
+    }
     Ok(())
 }

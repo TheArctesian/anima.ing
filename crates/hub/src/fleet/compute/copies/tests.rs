@@ -129,6 +129,7 @@ fn pull_007_only_a_running_pull_shows_its_progress() {
 fn pull_011_a_pull_that_succeeds_takes_the_state_that_the_machine_reports() {
     let mut done = pull(State::Done);
     done.result = Some(WorkResult {
+        health: None,
         model: Some(ModelOutcome::Copy(CopyOutcome {
             copy: Uuid::now_v7(),
             copy_state: "validated".to_owned(),

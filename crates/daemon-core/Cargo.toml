@@ -13,6 +13,7 @@ workspace = true
 test-support = []
 
 [dependencies]
+quick-xml = { version = "0.42", features = ["serialize"] }
 base64 = { workspace = true }
 chrono = { workspace = true }
 hmac = { workspace = true }

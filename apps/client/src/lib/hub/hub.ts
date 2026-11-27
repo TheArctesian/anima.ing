@@ -3,7 +3,7 @@ import type { HubAddress } from './address';
 import type { HubResult } from './error';
 import { sendRequest, type TokenProvider } from './request';
 import { createConnection, type LiveStatus } from './status/connection';
-import { createSocket, type Sink } from './socket/socket';
+import { createSocket, type Sink, type Visibility } from './socket/socket';
 import type { CopyPlace } from './recent/copy';
 import { createRecentCopy } from './recent/recent';
 
@@ -38,12 +38,13 @@ export interface Hub {
   ): Promise<HubResult<TResult>>;
   /**
    * Returns the function that stops it (API-002). A refused (close 4403) or unreadable token gives the sink `error`
-   * (UNAUTHENTICATED), and the subscription is not sent again.
+   * (UNAUTHENTICATED), and the subscription is not sent again. Set retry:false for operations that must end on disconnect.
    */
   subscribe<TResult, TVariables extends Variables>(
     document: TypedDocumentNode<TResult, TVariables>,
     variables: TVariables,
     sink: Sink<TResult>,
+    options?: { retry?: boolean },
   ): () => void;
   /** `connected` on `connection_ack` or a refused token, `unreachable` on failure or no ack in time (NAV-003, NET-004). */
   readonly status: LiveStatus;
@@ -63,6 +64,8 @@ export interface HubOptions {
   readonly WebSocket?: typeof WebSocket;
   readonly now?: () => Date;
   readonly timeoutMs?: number;
+  /** The page whose return to the screen retries the socket at once (MOB-036); `document` when absent. */
+  readonly visibility?: Visibility;
   /** When given, a copied query that the hub does not answer gives its last answer (FND-007). */
   readonly recent?: CopyPlace;
 }
@@ -88,6 +91,7 @@ export function createHub(options: HubOptions): Hub {
     token: options.socketToken ?? token,
     signal: connection.signal,
     timeoutMs,
+    visibility: options.visibility ?? (typeof document === 'undefined' ? undefined : document),
   });
   const recent = options.recent === undefined ? undefined : createRecentCopy({ ...options.recent, address, now, served: connection.copyShown });
   return {
@@ -96,7 +100,7 @@ export function createHub(options: HubOptions): Hub {
       const send = () => sendRequest(http, document, variables);
       return recent === undefined ? send() : recent.answer(document, variables, send);
     },
-    subscribe: (document, variables, sink) => socket.subscribe(document, variables, sink),
+    subscribe: (document, variables, sink, options) => socket.subscribe(document, variables, sink, options),
     status: connection.status,
     close: () => socket.close(),
   };

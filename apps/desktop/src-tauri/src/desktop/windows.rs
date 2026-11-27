@@ -1,7 +1,8 @@
 //! Windows client entry point (WIN1). Unix host installation and build commands are not registered.
 use crate::{
-    agent_threads, builder, cloud, command_line, daemon, hub_listener, keystore, link, local_hub,
-    mcp_agents, mcp_permissions, process_log, stay_awake, system_browser, this_machine, web_view,
+    agent_threads, builder, cloud, command_line, command_line_sign_in, daemon, hub_listener,
+    keystore, link, local_hub, mcp_agents, mcp_permissions, process_log, stay_awake,
+    system_browser, this_machine, web_view,
 };
 use std::sync::Arc;
 use tauri::Manager;
@@ -16,6 +17,7 @@ pub fn run() {
     app.manage(builder::Running::default())
         .manage(builder::Bundled::default())
         .manage(web_view::Tabs::default())
+        .manage(web_view::forward::Forwards::default())
         .manage(cloud::Cloud::default())
         .manage(daemon::Installing::default())
         .manage(local_hub::Changing::default())
@@ -83,6 +85,9 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         command_line::command_line_read,
         command_line::command_line_install,
         command_line::command_line_remove,
+        command_line_sign_in::command_line_computer,
+        command_line_sign_in::command_line_adopt,
+        command_line_sign_in::command_line_sign_out,
         agent_threads::agent_threads_list,
         agent_threads::agent_thread_read,
         mcp_agents::mcp_agents_read,
@@ -110,6 +115,9 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         hub_listener::hub_listener_check,
         web_view::commands::web_view_pinning,
         web_view::commands::web_view_open,
+        web_view::preview::web_view_preview_handoff,
+        web_view::forward::workspace_forward_start,
+        web_view::forward::workspace_forward_stop,
         web_view::commands::web_view_place,
         web_view::commands::web_view_show,
         web_view::commands::web_view_go,

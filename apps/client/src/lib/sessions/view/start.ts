@@ -40,7 +40,7 @@ export type RemoteStart = (display: SessionDisplay, events: RemoteEvents) => Pro
 
 export interface DeviceStarts {
   readonly terminal: SessionStart;
-  readonly remote: (protocol: RemoteProtocol) => RemoteStart;
+  readonly remote: (protocol: RemoteProtocol, viewOnly?: boolean) => RemoteStart;
 }
 
 async function policed<Tunnel>(policy: Promise<SessionPolicy>, start: Promise<StartResult<Tunnel>>): Promise<ViewStartResult<Tunnel>> {
@@ -57,7 +57,9 @@ export function sessionStart(
   return {
     terminal: (display, events) =>
       policed(readPolicy(api, deviceId), startTerminal(api, { deviceId, display }, { origin, WebSocket, ...events })),
-    remote: (protocol) => (display, events) =>
-      policed(readPolicy(api, deviceId), startTunnel(api, { deviceId, protocol, display }, { origin, WebSocket, ...events })),
+    remote: (protocol, viewOnly = false) => (display, events) => {
+      const policy = viewOnly ? Promise.resolve({ read: true, copy: false, paste: false }) : readPolicy(api, deviceId);
+      return policed(policy, startTunnel(api, { deviceId, protocol, display, viewOnly }, { origin, WebSocket, ...events }));
+    },
   };
 }

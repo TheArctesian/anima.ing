@@ -7,6 +7,8 @@ use crate::fleet::metrics::CapabilityFilter;
 fn mac() -> Inventory {
     Inventory {
         remote_access: None,
+        mobile_tools: None,
+        remote_vnc_user: None,
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),

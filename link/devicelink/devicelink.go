@@ -48,8 +48,8 @@ type Config struct {
 	NoticeEvery int
 	// LookupTXT reads the TXT records of the identity's HubName (LNK-007). Nil means the system's resolver.
 	LookupTXT func(ctx context.Context, name string) ([]string, error)
-	// OpenPort reports, for each request, whether the hub may reach a local port (HMD-048, HMD-049). Nil opens none.
-	OpenPort func(port uint16) bool
+	// PermitPort grants access to a local port until its context ends (HMD-048, HMD-049). Nil opens none.
+	PermitPort func(port uint16) context.Context
 	// Now is the clock. Nil means the system clock.
 	Now       func() time.Time
 	DebugLogf tunnel.Logf
@@ -76,7 +76,7 @@ type Link struct {
 	path       tunnel.Path
 	reverse    net.Conn
 	presentNow chan struct{}
-	openPort   func(port uint16) bool
+	permitPort func(port uint16) context.Context
 	giving     chan struct{}
 }
 
@@ -136,7 +136,7 @@ func start(cfg Config) (*Link, error) {
 	link := &Link{
 		device: device, saved: cfg.Identity, listener: listener, daemon: cfg.DaemonSocket, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone},
 		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf, presentNow: make(chan struct{}, 1),
-		openPort: cfg.OpenPort, giving: make(chan struct{}, maxLocalConnections),
+		permitPort: cfg.PermitPort, giving: make(chan struct{}, maxLocalConnections),
 	}
 	if link.now == nil {
 		link.now = time.Now

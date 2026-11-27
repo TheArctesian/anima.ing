@@ -31,3 +31,6 @@ mod token_store;
 mod transport;
 #[cfg(unix)]
 mod units;
+
+#[cfg(all(unix, feature = "mobile-inventory"))]
+mod mobile_inventory;

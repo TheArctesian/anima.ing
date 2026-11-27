@@ -75,3 +75,45 @@ pub struct ComposeFileCheckRun;
     variables_derives = "Debug"
 )]
 pub struct ComposeFromDockerRunRead;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/containers/action.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct QueueContainerAction;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/containers/action_status.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct ContainerActionStatus;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/containers/apply.graphql",
+    response_derives = "Debug, Serialize"
+)]
+pub struct QueueApplicationApply;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/containers/apply_status.graphql",
+    response_derives = "Debug, Serialize"
+)]
+pub struct ApplicationApplyStatus;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/containers/apply_targets.graphql",
+    response_derives = "Debug, Serialize"
+)]
+pub struct ApplicationApplyTargets;

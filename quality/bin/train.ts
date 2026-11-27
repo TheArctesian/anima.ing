@@ -6,9 +6,10 @@ import { join } from "node:path";
 import { carry, changed } from "../src/merge/carry.ts";
 import { finishMerge } from "../src/merge/finish.ts";
 import { isDocument } from "../src/gates/tier.ts";
+import { readNotes, saveNote } from "../src/merge/notes.ts";
 import { conflictsForAHand, parseMergeRule } from "../src/merge/rules.ts";
 import { members, stack, type LeftOut } from "../src/merge/stack.ts";
-import { batch, firstHalf, leftOutSaid, oneLine, standing, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
+import { batch, firstHalf, leftOutSaid, oneLine, queue, standing, TRAIN, trainName, verdict, type Batch, type GatesRun, type Tip } from "../src/merge/train.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
 const INTO = "dev";
@@ -48,25 +49,20 @@ function gatesRuns(): GatesRun[] {
   return JSON.parse(must(["gh", "run", "list", "--workflow", "gates.yml", "--limit", "400", "--json", fields])) as GatesRun[];
 }
 
-function notes(ref: string): Map<string, string> {
-  run(["git", "fetch", "--quiet", "origin", `+${ref}:${ref}`]);
-  const noted = run(["git", "notes", "--ref", ref, "list"]).out.split("\n").map((line) => line.split(" ")[1] ?? "");
-  return new Map(noted.filter((sha) => sha !== "").map((sha) => [sha, run(["git", "notes", "--ref", ref, "show", sha]).out]));
-}
-
 function refused(): Map<string, string> {
-  return new Map([...notes(NOTES)].map(([sha, text]) => [sha, text.split("\n")[0] ?? ""]));
+  return new Map([...readNotes(REPO_ROOT, NOTES)].map(([sha, text]) => [sha, text.split("\n")[0] ?? ""]));
 }
 
 function noteLeftOut(each: LeftOut, sha: string, now: Date): void {
-  run(["git", "notes", "--ref", LEFT_OUT, "add", "--force", "-m", `${now.toISOString()}\n${oneLine(each.reason)}`, sha]);
-  run(["git", "push", "--quiet", "origin", LEFT_OUT]);
+  if (!saveNote(REPO_ROOT, LEFT_OUT, sha, `${now.toISOString()}\n${oneLine(each.reason)}`)) console.error(`train: why ${each.branch} is left out is not saved in ${LEFT_OUT}`);
 }
 
 function refuse(tip: Tip, now: Date): void {
   const text = `${now.toISOString()}\nThe gates failed for a train that held only ${tip.branch}, merged with dev.`;
-  must(["git", "notes", "--ref", NOTES, "add", "--force", "-m", text, tip.sha]);
-  must(["git", "push", "--quiet", "origin", NOTES]);
+  if (!saveNote(REPO_ROOT, NOTES, tip.sha, text)) {
+    console.error(`train: the refusal of ${tip.branch} is not saved in ${NOTES}; the train stays, and the next step tries again`);
+    process.exit(4);
+  }
   say(`${tip.branch} (${tip.sha.slice(0, 8)}) failed alone as merged with dev. It stays out until it moves or its own gates pass again.`);
 }
 
@@ -125,16 +121,18 @@ function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undef
     return "wait";
   }
   const held = members(REPO_ROOT, base, train.sha);
+  const [only] = held;
+  // A train that goes with no refusal saved is built again with the same branch: save it first.
+  if (what === "split" && held.length === 1 && only !== undefined) refuse(only, now);
   remove(train);
   if (what !== "split") return void say(`the train ${train.branch} is given up (${stale ? `${INTO} moved before its gates started` : "its gates were cancelled"}); its branches go into the next train`);
-  const [only] = held;
-  if (held.length === 1 && only !== undefined) return void refuse(only, now);
+  if (held.length === 1) return undefined;
   say(`the gates failed for a train of ${held.length} branches; the next train holds the first half`);
   return firstHalf(held);
 }
 
 function sayWhoWaits(runs: GatesRun[], also: "each" | "with-a-run"): void {
-  const left = notes(LEFT_OUT);
+  const left = readNotes(REPO_ROOT, LEFT_OUT);
   for (const each of standing(tips(), runs, refused(), inDev)) {
     const said = leftOutSaid(each.tip.branch, left.get(each.tip.sha));
     if (said !== undefined) say(said);
@@ -149,15 +147,18 @@ function conflictWithDev(tip: Tip): string[] {
   return tried.ok ? [] : conflictsForAHand(tried.out.split("\n").slice(1).filter((path) => path !== ""));
 }
 
-function build(wanted: Tip[], now: Date): void {
-  if (wanted.length === 0) return say("no branch is ready: each is in dev, or has a reason above");
+function leaveOut(each: LeftOut, sha: string | undefined, now: Date): void {
+  say(`${each.branch} is left out: ${oneLine(each.reason)}. Merge origin/${INTO} into the branch and solve it there.`);
+  if (sha !== undefined) noteLeftOut(each, sha, now);
+}
+
+function build(chosen: Batch, now: Date): void {
+  for (const { tip, paths } of chosen.conflicts) leaveOut({ branch: tip.branch, reason: `a conflict in ${paths.join(", ")}` }, tip.sha, now);
+  const wanted = chosen.taken;
+  if (wanted.length === 0) return say(chosen.conflicts.length === 0 ? "no branch is ready: each is in dev, or has a reason above" : "no branch of the batch merges with dev: no train");
   const base = must(["git", "rev-parse", "HEAD"]);
   const made = stack(REPO_ROOT, wanted, finish);
-  for (const each of made.leftOut) {
-    say(`${each.branch} is left out: ${oneLine(each.reason)}. Merge origin/${INTO} into the branch and solve it there.`);
-    const sha = wanted.find((tip) => tip.branch === each.branch)?.sha;
-    if (sha !== undefined) noteLeftOut(each, sha, now);
-  }
+  for (const each of made.leftOut) leaveOut(each, wanted.find((tip) => tip.branch === each.branch)?.sha, now);
   if (made.merged.length === 0) return say("no branch of the batch merges with dev: no train");
   const name = trainName(base, now);
   must(["git", "push", "--quiet", "origin", `HEAD:refs/heads/${name}`]);
@@ -172,10 +173,9 @@ if (process.argv.includes("--plan")) {
   const listed = gatesRuns();
   for (const train of tips().filter((tip) => tip.branch.startsWith(TRAIN))) say(`${train.branch}: ${verdict(train.sha, listed)}`);
   sayWhoWaits(listed, "each");
-  for (const tip of batch(tips(), listed, refused(), inDev)) {
-    const conflict = conflictWithDev(tip);
-    say(conflict.length === 0 ? `${tip.branch} is ready for the next train` : `${tip.branch} would be left out: a conflict with ${INTO} in ${conflict.join(", ")}`);
-  }
+  const chosen = batch(queue(tips(), listed, refused(), inDev), conflictWithDev);
+  for (const { tip, paths } of chosen.conflicts) say(`${tip.branch} would be left out: a conflict with ${INTO} in ${paths.join(", ")}`);
+  for (const tip of chosen.taken) say(`${tip.branch} is ready for the next train`);
   process.exit(0);
 }
 if (must(["git", "rev-parse", "--abbrev-ref", "HEAD"]) !== INTO) must(["git", "switch", "--quiet", INTO]);
@@ -198,4 +198,5 @@ for (const train of tips().filter((tip) => tip.branch.startsWith(TRAIN))) {
 const current = new Map(tips().map((tip) => [tip.branch, tip.sha]));
 sayWhoWaits(runs, "with-a-run");
 const still = next?.filter((tip) => current.get(tip.branch) === tip.sha && !inDev(tip.sha));
-build(still !== undefined && still.length > 0 ? still : batch(tips(), runs, refused(), inDev), now);
+// The half of a failed train goes again as it is; a new batch takes no branch that conflicts with `dev`.
+build(still !== undefined && still.length > 0 ? { taken: still, conflicts: [] } : batch(queue(tips(), runs, refused(), inDev), conflictWithDev), now);

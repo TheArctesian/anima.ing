@@ -2,12 +2,17 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { KEY_COMBINATIONS, type KeyCombination } from '../guacamole/keys';
   import KeysMenu from '../menu/KeysMenu.svelte';
-  import type { DisplayChoices } from '../../tunnel/guacamole/tunnel';
+  import type { DisplayChoices, SessionTunnel } from '../../tunnel/guacamole/tunnel';
   import Notice from '../pane/Notice.svelte';
+  import TouchText from './touch/TouchText.svelte';
 
   interface Props {
     deviceName: string;
     onback?: (() => void) | undefined;
+    /** One slim bar under the display on a touch screen: no device name or policy line, so the display keeps the height. */
+    docked?: boolean;
+    /** The client that the bar's text field types to, on a touch screen; no field without it. */
+    typing?: SessionTunnel['client'] | undefined;
     /** The session is connected, so the Keys menu may send. */
     ready: boolean;
     /** The clipboard policy notice (RA-033), shown while connected. */
@@ -21,19 +26,25 @@
     displays?: DisplayChoices | undefined;
     switching?: boolean;
     selectDisplay: (id: string) => void;
-    onkeys: (combination: KeyCombination) => void;
+    onkeys: ((combination: KeyCombination) => void) | undefined;
+    onopenviewer?: ((button: HTMLElement) => void) | undefined;
     onpaste: () => void;
     ondismiss: () => void;
   }
 
-  const { deviceName, onback, ready, policy, pasteOff, notice, fit, canFit = false, displays, switching = false, selectDisplay, onkeys, onpaste, ondismiss }: Props = $props();
+  const { deviceName, onback, docked = false, typing, ready, policy, pasteOff, notice, fit, canFit = false, displays, switching = false, selectDisplay, onkeys, onopenviewer, onpaste, ondismiss }: Props = $props();
 </script>
 
-<div class="toolbar">
+<div class="toolbar" class:docked>
   {#if onback !== undefined}
     <button type="button" aria-label="Back to app" onclick={onback}><Icon name="carbon:chevron-left" /></button>
   {/if}
-  <KeysMenu disabled={!ready} entries={KEY_COMBINATIONS} {onkeys} {onpaste} {pasteOff} />
+  {#if onkeys !== undefined}<KeysMenu disabled={!ready} entries={KEY_COMBINATIONS} {onkeys} {onpaste} {pasteOff} />{/if}
+  {#if onopenviewer !== undefined}
+    <button type="button" aria-label="Open view-only session" title="Open view-only session" onclick={(event) => onopenviewer?.(event.currentTarget)}>
+      <Icon name="carbon:screen" />
+    </button>
+  {/if}
   {#if ready && fit !== undefined}<button type="button" onclick={fit} disabled={!canFit}>Fit</button>{/if}
   {#if ready && displays !== undefined && displays.monitors.length > 1}
     <select aria-label="Displays" value={displays.active} disabled={switching} onchange={(event) => selectDisplay(event.currentTarget.value)}>
@@ -43,8 +54,9 @@
       {/each}
     </select>
   {/if}
-  <span class="device">{deviceName}</span>
-  {#if ready && policy !== undefined}<span class="policy" data-policy title={policy}>{policy}</span>{/if}
+  {#if typing !== undefined}<TouchText client={typing} />{/if}
+  {#if !docked}<span class="device">{deviceName}</span>{/if}
+  {#if !docked && ready && policy !== undefined}<span class="policy" data-policy title={policy}>{policy}</span>{/if}
   <!-- Notices lie over the toolbar row, which has a fixed height, so the display never moves for them (MOT-007). -->
   {#if notice !== undefined}
     <div class="cover">
@@ -68,6 +80,14 @@
     padding: var(--space-2) var(--space-3);
     border-bottom: var(--border-thin) solid var(--border-strong);
     background: var(--surface-raised);
+  }
+
+  .toolbar.docked {
+    block-size: var(--space-12);
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    border-block-start: var(--border-thin) solid var(--border-subtle);
+    border-block-end: 0;
   }
 
   button,

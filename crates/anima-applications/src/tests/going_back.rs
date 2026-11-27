@@ -1,7 +1,7 @@
 use compose_rules::Rule;
 
 use super::{
-    APPLICATION, FILES, PROJECT, World,
+    APPLICATION, PROJECT, World,
     applying::{COMPOSE, ENVIRONMENT, digests},
     commands,
 };
@@ -46,35 +46,21 @@ fn k10_6_4_9_the_kept_version_starts_with_the_kept_digests_and_no_pull() {
     let planned = prepared(APPLICATION, &KEPT, &world.facts()).expect("a kept version");
     let commands = commands(&planned.plan);
     assert_eq!(commands.len(), 1, "no pull and no tag: one command");
-    let verbs = commands[0].arguments[10..].join(" ");
+    let verbs = commands[0].arguments[6..].join(" ");
     assert_eq!(verbs, "up -d --remove-orphans --pull never --no-build");
-    assert_eq!(commands[0].arguments[5], PROJECT);
+    assert_eq!(commands[0].arguments[1], PROJECT);
     // It does not bring back data, and the result says so.
     assert!(planned.holds_volumes);
 }
 
 #[test]
-fn k10_6_4_9_a_second_back_is_refused_until_the_next_apply() {
+fn k10_6_4_9_going_back_does_not_keep_the_replaced_version() {
     let world = with_a_kept_version();
     let planned = prepared(APPLICATION, &KEPT, &world.facts()).expect("a kept version");
-    let steps = &planned.plan.steps;
-    let start = steps
-        .iter()
-        .position(|step| matches!(step, Step::Run(_)))
-        .expect("a start");
-    let deleted: Vec<&str> = steps[start..]
-        .iter()
-        .filter_map(|step| match step {
-            Step::Delete { path } => Some(path.as_str()),
-            _ => None,
-        })
-        .collect();
-    // After the start the plan deletes the kept version: the next item has nothing kept.
-    assert_eq!(deleted.len(), 3);
     assert!(
-        deleted
-            .iter()
-            .all(|path| path.starts_with(&format!("{FILES}/kept-")))
+        planned.plan.steps.iter().any(
+            |step| matches!(step, Step::ApplyVersion { version, .. } if !version.keep_previous)
+        )
     );
 }
 

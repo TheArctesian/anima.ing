@@ -30,13 +30,21 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-194 | The scroll wheel of the trackpad and the motion of the connection steps on an iPhone (M4-2, RA-050, 5.7.3) | The iPhone app from a build of `dev` with this change; a Mac with a long page in a browser | Open |
+| HT-193 | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
+| HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
+| HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
+| HT-187 | Desktop Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and ordinary browser | Open |
+| HT-192 | Migrate Podman data to Docker Hosting | Disposable AnimaOS VM, a previous generation, synthetic rootful and rootless workloads | Open |
+| HT-191 | Deploy and update a managed Compose application from AnimaOS Hosting | Disposable installed AnimaOS VM, an enrolled daemon and a pinned test image | Open |
+| HT-190 | Queue and observe Docker actions from AnimaOS Hosting (H5, HOST-002) | Disposable installed AnimaOS VM, an enrolled daemon and a disposable container | Open |
 | HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-186 | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
-| HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
+| HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with an account-authorized Anima-started desk thread and transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
 | HT-183 | Check the Overview and device tabs for the Hub and Pop!_OS (M2-7) | iPad with a current build, and a linked Linux device with several metric types | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
@@ -214,18 +222,74 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Tap the text field. Type ordinary text, one accented character and one IME composition, then use Enter and Backspace. Confirm each appears once on the remote desktop.
 - Background the app and interrupt its network. Reopen the app, check the session reconnect behavior, and use the pointer again.
 
+### HT-193: the iPhone app is back on the network a few seconds after it comes back from the background
+
+- State: Open.
+- Built: on a phone, the app starts its link again when it comes back to the screen after 10 s or more away. After iOS suspended the app, the tunnel of the link and its local port were stale, but the link still reported that it ran, so the app showed "Not on the network" for a minute or more (MOB-036; `apps/desktop/src-tauri/src/phone_resume.rs`, `phone_link.rs`, `mobile.rs`). The restart keeps the port, so the address of the hub and its token stay the same. The live connection of the client retries at once when the app shows again, and then waits from 1 s again (`apps/client/src/lib/hub/socket/socket.ts`). For a hub that Anima.ing hosts, the banner shows "Hosted by Anima.ing" in place of the port, and on a phone or a tablet it says "Check this device's network" (NET-004, R-461). The tests cover the decision to restart, the retry when the page shows and the words of the banner. They do not cover iOS suspending the app, a real tunnel or a real network.
+- Needs: the iPhone app from a build of `dev` with this change, signed in to the hosted hub.
+- Open the app on the Devices page. Expected: no banner.
+- Lock the iPhone for 5 minutes. Unlock it and open the app. Expected: the Devices page updates within about 5 seconds; the banner "Not on the network" shows for a few seconds or not at all.
+- Open a VNC session. Switch to a different app for 5 seconds and come back. Expected: the session is still connected, and the pointer moves.
+- Turn Wi-Fi off, so that the iPhone uses the mobile network. Switch to a different app for 1 minute and come back. Expected: the same result as after the lock.
+- If the banner shows, read it. Expected: "Hosted by Anima.ing", not an address such as 127.0.0.1, and "Check this device's network".
+
+### HT-194: the scroll wheel of the trackpad and the motion of the connection steps on an iPhone
+
+- State: Open.
+- Built: a scroll wheel in the middle of the trackpad of a touch session (R-462; `apps/client/src/lib/sessions/view/remote/touch/wheel.ts`, `touch/input.ts`, `touch/Trackpad.svelte`): a finger that lands on it and moves up or down sends one notch of a mouse wheel for each 14 px, with the content following the finger; a fast release lets it coast and slow down; a tap on it clicks. The connection steps at the start of a session (R-463; `apps/client/src/lib/sessions/view/steps/ConnectionSteps.svelte`, `steps/motion.ts`): a reel in the middle of the pane, where the step that runs is in the middle with a ring and a turning arc, the steps that ended roll up over it, and a step shows only when it starts; a check that grows in with one ring; a line and a row of segments under the reel. The line is a status for VoiceOver. After a start that stopped, the reason and Reconnect stand in the middle under the steps (`EndedPanel.svelte`). The client tests cover the notches, the coast and its stop, the tap, the place of each step in the reel, the line and its role, the old line leaving before the new one, the place of the ended panel, and that the repeating motions do not start with reduced motion or in a hidden window. They do not cover a real finger, the feel of the coast, VoiceOver, Increase Contrast, or the motion on a real screen.
+- Needs: the iPhone app from a build of `dev` with this change; a Mac with a long web page open in a browser.
+- Open a VNC session to the Mac from the iPhone app, in portrait. Expected: while it connects, the step that runs is large in the middle of the screen, with a ring that goes out from its mark and an arc that turns around it, and a line of text under it says what runs. When a step ends, its mark turns into a check, it rolls up and gets smaller, and the next step rises into the middle. A step that has not started is not shown. The segment of each step that ended fills.
+- Turn on Reduce Motion in the iPhone's settings (Accessibility, Motion) and open the session again. Expected: no ring and no turning arc; the steps change place at once, the marks cross-fade, and the old line under the steps fades before the new one shows. Turn Reduce Motion off.
+- Turn on Increase Contrast (Accessibility, Display & Text Size) and open the session again. Expected: the step that ended last is as clear as the step that runs; no faint row shows above it. Turn Increase Contrast off.
+- Turn on VoiceOver and open the session again. Expected: VoiceOver says each new line under the steps (for example "Opening the gateway to" and the Mac's name) without a swipe. Turn VoiceOver off.
+- Turn off Screen Sharing on the Mac (System Settings, General, Sharing) and open the session again. Expected: the step that stopped turns red with a cross, the line says "Stopped at" and the step, and the reason and the Reconnect button stand in the middle under the steps. Reconnect is easy to tap with a thumb. Turn Screen Sharing on again.
+- In the session, move the pointer over the long web page. Look at the trackpad under the Mac's screen. Expected: a wheel in its middle, with the words Trackpad on one side and Wheel on the other. The small words under them (Slide to move, Roll to scroll) are easy to read.
+- Put a finger on the wheel and move it down slowly. Expected: the ridges of the wheel move with the finger, and the page scrolls up a little for each small step, as on an iPhone. Move it up. Expected: the page scrolls down.
+- Flick the wheel and lift the finger. Expected: the page keeps scrolling for a moment and slows down to a stop. Flick it again, then touch the trackpad. Expected: the scrolling stops at once.
+- Tap the wheel without moving. Expected: the Mac clicks at the tip of the pointer, as a tap on the rest of the trackpad does.
+- Turn the iPhone to landscape. Expected: the wheel is in the middle of the trackpad beside the Mac's screen, with Trackpad above it and Wheel below it.
+
+### HT-195: the haptics of the trackpad wheel and of a session start on an iPhone
+
+- State: Open.
+- Built: haptic feedback in the iPhone app (mobile plan M4-4, R-464, MOT-050). The web view of iOS cannot vibrate, so a local Tauri plugin plays the feedback generators of iOS (`apps/desktop/haptics`) for the shell command `haptic_play` (`apps/desktop/src-tauri/src/mobile/haptics.rs`; capability `haptics.json`, iOS only). The client plays a selection tick for each notch of the trackpad wheel under the finger and none while the wheel coasts (`remote/touch/wheel.ts`, `touch/input.ts`, `RemoteDisplay.svelte`); a success when the connection steps reach connected and an error when a start stops before it, in the terminal and in the remote view (`steps/feedback.svelte.ts`); and nothing on Android, in a browser or on a desktop (`$lib/desktop/haptics/haptics.ts`). The client tests cover which change plays which pattern, that a coast plays nothing, and that only the app on an iPhone or an iPad calls the shell. The Swift package was compiled for the iOS simulator and the shell passes Clippy for it. They do not cover the feel on a real iPhone (the simulator plays no haptics), the time between a notch and its tick, or the System Haptics setting.
+- Needs: an iPhone with haptics (iPhone 8 or later) with System Haptics on (Settings, Sounds & Haptics); the iPhone app from a build of `dev` with this change; a Mac with Screen Sharing on and a long web page open in a browser.
+- Open a VNC session to the Mac. Expected: one short success feedback at the moment the screen of the Mac shows, and none while the steps run.
+- Put a finger on the wheel of the trackpad and move it down slowly. Expected: a light tick for each small step that the page scrolls, in time with the ridges of the wheel, as in a picker of iOS.
+- Flick the wheel and lift the finger. Expected: ticks while the finger is on the wheel; no ticks while the page keeps scrolling after the finger lifted.
+- While the session is connected, turn off Screen Sharing on the Mac. Expected: the session ends and the iPhone plays nothing.
+- Open the session again, with Screen Sharing still off. Expected: one error feedback, stronger than the success, at the moment the step that stopped turns red. Turn Screen Sharing on again.
+- Open an SSH session to a device. Expected: one success feedback when the terminal shows.
+- Turn off System Haptics. Open the VNC session and roll the wheel. Expected: no feedback at all. Turn System Haptics on again.
+
+### HT-192: a remote desktop on an iPhone fills the screen and shows the pointer
+
+- State: Open.
+- Built: on a phone, a VNC or RDP session uses the whole screen inside the safe area in each orientation, with the app's navigation hidden; one bar under the display holds Back, Keys, Fit, Displays and the text field; a pointer of a fixed size shows where a tap clicks (`apps/client/src/lib/sessions/strip/SessionPanes.svelte`, `apps/client/src/lib/sessions/view/remote/`). The room that the display leaves shows as a trackpad (`touch/Trackpad.svelte`); the display keeps the whole height of a landscape screen, grows until the trackpad is 160 px, is always bigger than the trackpad, and follows the pointer to its sides (`touch/trackpad.ts`, `touch/input.ts`). The gateway asks the VNC device for the cursor shape, so the device does not draw its pointer into the screen (`crates/anima-gateway/src/vnc/messages.rs`). The client tests cover the pointer position, the trackpad layout and the view that follows the pointer, the gateway tests cover the cursor shape, and a browser test covers the layout at iPhone sizes. They do not cover the iOS keyboard, the safe areas of a real iPhone, or a real VNC server.
+- Open a VNC session from the iPhone app to the Mac. In portrait, check that the Mac's screen shows its full height, from the menu bar to the Dock, that the pointer shows at the centre of it, and that one bar is at the bottom, above the home indicator. Expected: no bar at the top, and no app navigation.
+- Turn the iPhone to landscape. Expected: the Mac's screen uses the full height above the bar, and the app's navigation rail does not show.
+- Move one finger on the screen. Expected: the drawn pointer and the Mac's pointer move together. Tap a harmless spot. Expected: the click lands at the tip of the drawn pointer.
+- In portrait, look at the part under the Mac's screen. Expected: it shows a small trackpad with the word Trackpad. Slide one finger on it in large circles for 10 seconds. Expected: the pointer moves on the Mac's screen, and no copies of the pointer stay on the Mac's screen. Slide the pointer to the right edge of the Mac's screen, then to the left edge. Expected: the view moves with the pointer, and the pointer stays in view. Turn the iPhone to landscape. Expected: the Mac's screen shows at its full height, or larger when the full height would make it narrower than the trackpad, and the trackpad at the right of it is narrower than the Mac's screen.
+- Tap the text field and type a word. Expected: the bar sits on the keyboard, the field stays visible, the page does not zoom, and the word appears once on the Mac.
+- Use Back, then reopen the session from its tab. Expected: the session stayed connected.
+- 2026-11-26: the operator still saw old pointers on the Mac's screen in a session from the iPhone app with the hosted hub. The session that built the change found that the hosted hub then ran a hub image of 2026-11-22, and the gateway asks for the cursor shape only from `c5f2c0347` (2026-11-25), so that session did not have the change. The step must be done again after the hosted hub runs an image with it. The state stays Open.
+
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 
 - State: Open.
-- On iOS and Android, open Code. Check that a thread shows the computer, project, agent and state. Open it and check that recent prompts and replies display in order.
+- On iOS and Android, sign in as the operator and open the shared Anima-started desk thread in Code. Check that it shows the computer, project, agent and state. Open it and check that recent prompts and replies display in order.
+- Background the app or interrupt its connection. On its computer, send another prompt to that same thread and reach an approval request. Return to the same thread on the phone. Check that the new reply appears once and the request shows what it asks. Answer on the computer and check that the request clears on the phone.
+- Start a fresh thread through Anima at the desk on a computer with transcript sharing off. Open it on the phone. Check that its summary appears and the phone has no shared messages.
+- On native iOS and Android, sign in and open a shared Anima-started desk thread in the Code inbox. Check that it shows the computer, project, agent and state. Open it and check that recent prompts and replies display in order.
 - Background the app or interrupt its connection. On the computer, send another prompt and reach an approval request. Return to the same thread on the phone. Check that the new reply appears once and the request shows what it asks. Answer on the computer and check that the request clears on the phone.
-- Start a fresh thread on a computer with transcript sharing off. Open it on the phone. Check that its summary appears and the phone has no shared messages.
+- Start a fresh thread through Anima at the desk with transcript sharing off. Open it on the phone. Check that its summary appears and the phone has no shared messages.
 
 ### HT-149: reporting after an iPad update and the phone Code tab
 
 - State: Open.
 - On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. Keep the app open for two samples and check that CPU also shows. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
-- On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
+- On a native phone build with the TH50 read route, tap Code in the bottom bar. It opens the shared inbox for the signed-in hub. Open a device page and check that the device's sessions are still available there.
+- On a native phone, tap Code in the bottom bar. It opens the signed-in hub’s read-only Code inbox. Open a device page and check that the device's sessions are still available there.
 
 ### HT-183: Device Overview and tabs on iPad
 
@@ -340,7 +404,7 @@ Earlier operator report (2026-11-20): Wi-Fi connected successfully in the live i
 
 Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. This earlier failure is retained as history; see the later operator report below.
 
-Built: [preview source](../experiments/anima-os/README.md), under R-274.
+Built: [preview source](../os/README.md), under R-274.
 
 Operator report (2026-11-20): installed and rebooted on physical hardware to a terminal. NetworkManager showed wired and loopback only; Wi-Fi remains unqualified. The full check remains Open. R-273 adds Calamares and graphical network controls for the next trial. Boot that ISO, confirm the Anima.ing theme and hero background, connect through the installer Network step, install through Calamares, then verify that networking survives reboot. If no Wi-Fi adapter appears, collect `lspci -nnk`, `lsusb` and `rfkill list` from the included tools. Expected: supported adapters connect and saved system profiles survive; unknown adapters remain unqualified.
 VM tests cover only emulated hardware. USB writes were separately authorized; no real account was enrolled by the agent.
@@ -349,10 +413,34 @@ VM tests cover only emulated hardware. USB writes were separately authorized; no
 2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: fullscreen Anima installer with the approved proportions, no desktop panel or native erase popup; no installation starts by itself. Use the footer settings icon to correct display orientation. Verify that an unconfirmed rotation reverts after 15 seconds, and check touch alignment if applicable. Confirm the desired rotation before starting installation. Keep settings open while changing between portrait and landscape: the panel must recenter within the screen, its body must scroll on a short display, and Done must remain visible and clickable. The operator reported this failure on 2026-11-20; the rotation-panel follow-up needs physical retesting.
 3. Connect through the Network step; use `nmtui` from recovery as a comparison if needed. Expected: scan, authentication, IP address, DNS and internet access succeed on the intended adapter. Record which stage fails; detection alone is not a successful connection.
 4. Set the keyboard and admin password, choose the intended OS disk and optionally a disposable additional data disk. Review all identities and erase actions. Leave authorization unchecked, then change a selection and revisit Review. Expected: no disk changes and authorization is cleared.
-5. Authorize only the intended disks and select **Erase selected disks & install**. Expected: installation completion, unselected drives unchanged, and any selected data drive mounted separately under `/persist/volumes/<UUID>`. Remove the USB and reboot. Unlock the graphical console with the installed admin password. Check wrong-password rejection, Network, Storage, Display and Recovery. Expected: actual machine state, read-only Btrfs root and daemon inactive until enrolled. Lock the screen; the node must stay awake.
+5. Authorize only the intended disks and select **Erase selected disks & install**. Expected: installation completion, unselected drives unchanged, and any selected data drive mounted separately under `/persist/volumes/<UUID>`. Remove the USB and reboot. Unlock the graphical console with the installed admin password. If you selected a data disk, record its UUID and write a disposable marker to its mounted directory. Check wrong-password rejection, Network, Storage, Display and Recovery. Expected: actual machine state, read-only Btrfs root and daemon inactive until enrolled. Lock the screen; the node must stay awake.
 6. Choose **Sign in to Anima**, complete WorkOS authentication in the secure browser, then **Add this computer**. Expected: private link, device registration and daemon enrollment complete without a copied code or terminal command. Verify the actual device heartbeat in Anima; an active local service alone is insufficient. Record account-service/hub refusals without weakening trust rules. Test cancellation, retry after network loss, and existing-owner protection. Do not include credentials in screenshots or reports.
-7. Reboot, unlock and check the Anima screen. Expected: confirmed orientation, network profiles and enrollment persist, the private link resumes, and monitoring reaches the hub. Lock the local screen while observing monitoring remotely. Test hub disconnection separately; local recovery must remain usable.
+7. Reboot, unlock and check the Anima screen. Expected: confirmed orientation, network profiles and enrollment persist, the private link resumes, and monitoring reaches the hub. If you selected a data disk, check that `anima-data-volumes.service` is active and the same UUID and marker reappear under `/persist/volumes`. Lock the local screen while observing monitoring remotely. Test hub disconnection separately; local recovery must remain usable.
 8. Compare motion on this hardware at native orientation and after rotation, including fast navigation, dialog dismissal and reduced motion. Confirm responsiveness under representative workload load and record any rendering or touch issues.
+
+In the multi-disk installed fixture, open Storage. Compare the attached
+volume's displayed capacities with `df` for that exact mountpoint. The
+fixture adds a temporary record for an absent UUID and leaves an ordinary
+directory on `/persist` at its expected mountpoint. Verify the attached volume
+has a separate mount ID. The Storage response must omit capacity
+for the absent volume, and its row in `console-storage-capacity.ppm` must show
+the unmounted status without a capacity figure. `/persist` must retain the same
+mount ID through the console check. Compare the screenshot against the
+`filesystem_bytes` saved with the `installed-storage-capacity` result. The
+fixture restores the saved record and removes the directory.
+
+With a verified update staged on the disposable node, approve a one-time
+restart window from **Settings → Updates**. Keep a hosted service answering
+requests into the window and verify the console shows the deferral. Allow
+an accepted source build to continue and check that new agents and builds
+wait without interrupting the hosted service. Let the window expire while
+the service runs and verify that stopping the service
+after expiry does not trigger a restart. In a second window, stop the service
+through its owner before the end and observe the exact staged system boot
+and pass health checks. Check that cancelling a window or rebooting into
+another system invalidates the prior approval and leaves manual review available.
+Repeat cancellation with a separate manual pause in effect and confirm
+that new work stays paused until the operator clears it.
 
 This does not qualify managed apps/jobs/agents, BIOS/ARM, encryption, backups or updates on hardware.
 
@@ -3311,6 +3399,195 @@ One visit to a machine can close many rows.
 | --- | --- | --- | --- |
 | REL-1 | A real release confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) | [design-spec.md](spec/design-spec.md), Section 11 | Open. For macOS 0.2.0 and 0.2.1, the signature and the notarization are checked ([releases.md](procedures/releases.md), "Release record"). Not recorded here: the update of an installed application, and the AppImage launcher on Linux |
 
+## HT-190 — AnimaOS Hosting container actions
+
+**State.** Open. The installed VM check is deferred until implementation is complete.
+
+**Steps.** With a disposable installed AnimaOS VM, turn on Manage applications for the enrolled daemon. Open the device's Containers panel in Anima. Start, restart and stop a disposable container permitted by local policy. Confirm that the dialog identifies the device and container, shows the queued state first, and shows the result before the list refreshes. Turn off Manage applications and refresh after the last advertisement becomes stale. The action control should disappear. Repeat with a protected container and confirm the device refuses the action.
+
+**Expected.** The permitted requests affect only the selected container. The protected container stays in its original state. A queued action never appears as a successful action before the daemon reports its result.
+
+**Recovery check.** In the disposable VM, record Docker events for a single container and queue one Restart through the hub. Use a test relay to pause the attempt's terminal report after forwarding the running report. Once Docker records the restart, stop the daemon, discard the paused request, and restart the daemon with its existing state directory. Observe the same action ID in Hosting and check the Docker event log.
+
+**Expected recovery.** Docker records one restart. The hub keeps the same attempt and shows its terminal result. If the daemon could not save the result before it stopped, Hosting tells the operator to inspect the container before retrying.
+
+**Maintenance check.** On the same disposable device, hold a managed restart at Docker dispatch and request OS maintenance. The power request is refused while Docker may still act. Reverse the order and hold the power lease after its inventory check. A new start or Compose apply is refused, and a permitted stop still works. Interrupt the Docker command and verify that new starts and maintenance stay closed until the local administrator reviews the outcome and releases the matching dispatch receipt.
+
+**Application terminal check.** Deploy a disposable managed Compose service with
+`/bin/sh` and `stty`. In Workloads, review the exact service and non-root account,
+authenticate again, and open the shell. Check identity, copy/paste, resizing and
+the application header. Close the window and repeat using Ctrl+Alt+L while the
+shell has focus. Confirm the selected exec process exits, the application's main
+process keeps running and unrelated containers stay available. Repeat with a
+disposable interrupted relay. Try a protected container and a container replaced
+between review and confirmation. The launcher should refuse both. Exercise the
+host Powerline shell separately and confirm managed coding remains in Code.
+Check the account, node, working directory and explicit exit code after a
+successful and failing command. Compare the prompt in an external terminal
+without Nerd Fonts. With a disposable account configuration, check that
+the embedded terminal uses the configured login shell and personal prompt.
+
+In the disposable terminal fixture, hold the old xterm open during close
+and request a reopen. The terminal should stay hidden until the prior
+process exits, then show a fresh shell. Repeat and lock the console while
+the reopen is waiting. The terminal should remain closed after cleanup.
+
+The fresh-install harness enables Hosting and exercises the packaged terminal
+with a digest-pinned HTTP service. It checks the declared non-root account,
+shell exit, the unchanged service PID and a successful HTTP response afterward.
+
+**Workloads view check.** Use a disposable Compose project with two services
+and a standalone Docker container. Stop one project service and refresh the
+local console. Verify that both services appear in one project with the
+observed running count, and that the standalone container has its own row.
+Compare the application ID on a project deployed by Hosting with the ID in
+the Anima app. A Compose project started outside Hosting should appear as
+an observed project. During an interrupted apply, the container rows should
+remain visible while the application record is unavailable.
+In the disposable project, compare an instance from an older image that
+still has the same Compose project, service and file labels. Workloads
+should keep the instance visible and withhold its managed Terminal
+action. The current pinned instance should still match the application.
+At a narrow display size, use the keyboard and touch to select a view and
+open the exact container's logs. Filter by state and Docker ownership.
+Set a different line count and refresh the same container's logs. Search
+both streams and close the panel. Focus should return to that container.
+Lock while a log read is pending and verify that the reply never appears
+over the locked console or after unlocking.
+Confirm the project running count and management description still refer
+to all observed members. Cause a running service's disposable health check
+to fail. Refresh Workloads, check the project's unhealthy count, and
+select **Health → Unhealthy**. Open Logs or Details for the affected
+container. Restore the health check, then refresh. The unhealthy warning
+should clear and the selected filter should keep its value.
+Open **Details** on a test container with a health check, an attached
+network and a read-only volume. Compare the panel to Docker inspection.
+Confirm the displayed mount uses the container destination, and that the
+terminal action appears only on running containers with a verified record.
+Compare the resource sample to Docker stats and the configured limits to
+Docker inspect. Stop the test container and reopen Details. The limits
+should stay visible and the current sample should show as unavailable.
+Run a disposable managed workspace and build and refresh Workloads.
+Match the memory and task counts to each runtime's agent cgroup and
+compare the cumulative CPU time to its `cpu.stat`. Add data to the
+workspace, then compare its displayed storage use to the Btrfs referenced
+bytes for its exact home subvolume. Stop the workloads and refresh. The
+runtime counters should clear while the workspace's storage measurement
+and recorded limits remain visible. Before releasing the disposable build, open its
+Logs in Workloads and Activity. Confirm the full attempt ID, last retained
+stage and both streams match the local build owner. Release the build and
+refresh the open panel. The former snapshot should clear.
+
+**Operator drain check.** Keep a disposable hosted app, a managed workspace and a build active. Open Restart and review the workload counts, then select Pause new work. Close the review, lock and unlock the console, and revisit Maintenance under Diagnostics & recovery. Confirm the drain is still active, existing reservations are retained, the app is still available, and new workspace/build placements are held. Finish or stop work through its owner. Refresh with one active container or reservation, then with all blockers clear. Confirmation should become available only after the checks clear. Run a new workload after resuming the exact drain. Repeat for update activation with a disposable staged generation. Verify a workload that arrives between review and confirmation holds final dispatch. Pause new work after a source supervisor accepts a build and before the worker takes its build reservation. Confirm the accepted build can reach its worker under normal headroom, another source build stays queued, and the review shows the accepted pipeline during the reservation handoff. Verify the terminal cleanup clears that blocker.
+
+Hold the accepted source job before creating its checkout workspace. With
+pressure held or its sample missing, confirm the workspace home remains
+absent. Restore a fresh, clear sample and check that the same job reaches
+checkout. Repeat after Docker creates the checkout container and before it
+starts. Confirm lease renewal still succeeds, the reservation stays held
+and clearing pressure starts the same container ID once. In a separate run,
+cancel during this hold and verify reconciliation removes the unstarted
+container and releases the reservation.
+
+Hold the accepted source job just before context capture. With clear hosting
+pressure and an active drain, release it and confirm it captures and reaches
+the worker. A separate standalone capture must be refused before creating a
+context. Repeat during a hosting pressure hold and confirm the accepted
+pipeline keeps its checkout, releases the workspace runtime reservation and
+waits before creating the context. Clear pressure and check that the same
+job and context resume. Repeat with cancellation or an expired lease, then
+confirm the context remains absent after pressure clears.
+
+Repeat after capture while a hosting pressure hold still prevents the
+build receipt from being created. Confirm the supervisor renews the same
+lease past its original deadline and keeps the captured source. Clear
+pressure and check that the same job reaches one build worker. In a separate
+run, cancel during the hold and confirm that clearing pressure leaves the
+build receipt absent.
+
+Repeat with the source build receipt, scratch volume and reservation already
+present. Confirm the build stays in preparation while pressure is held,
+the reservation and source pin remain, and lease renewal still succeeds.
+Clear pressure and check one worker start for the same build ID. In a
+separate run, cancel while held, clear pressure and check that the worker
+never starts and reconciliation releases the reservation.
+
+**Resource pressure check.** Confirm the hosted container runs under `anima.slice/anima-hosting.slice`, with a matching nonzero `memory.low` on both slices. Record the agent slice's `memory.high` before the test. Keep a test application serving requests while a bounded workspace and build contend for memory on the disposable VM. Observe the hosting slice's `memory.pressure`, the `anima-hosting-pressure.service` journal, application latency and SSH responsiveness.
+
+**Expected under pressure.** When the hosting slice's `some avg10` reaches 2%, the agent slice's `memory.high` drops to half its previous value rounded down to a page. A new reservation waits or goes to a different eligible node. In a separate attempt, hold a workspace or build just before runtime dispatch, after it has reserved capacity. Induce hosting pressure before releasing it. While pressure holds, the controller defers `docker start` and `systemd-run`. Confirm the reservation stays accounted for until the owner dispatches or reconciles the attempt. In Code, verify the workspace owner stays connected, preparation and start are held, and stop, reconciliation and deletion stay available for eligible workspaces. A queued workspace request stays pinned to its original node and becomes eligible when its requested capacity returns. Active work keeps its reservation and hosting stays in place. Restart only the pressure controller during contention and confirm its saved soft limit and admission hold survive. Remove the test load and observe the 30-second recovery below 0.5%, the restored agent limit and renewed admission. Finish or cancel the build and verify the reservation remains until its cgroup is empty or gone. Record hosted request failures, latency and any workload restarts.
+
+
+**Pressure observation outage.** With little pressure and a hosted app plus a
+disposable workspace running, stop only the pressure controller. After 15
+seconds from its last successful sample, confirm the node stops offering new
+capacity and a final launch recheck refuses work. Overview and Workloads
+should show that they are waiting for a fresh hosting pressure check. The
+app, active workspace and cleanup operations should stay available.
+Restart the controller and confirm a fresh clear sample restores capacity
+and the local policy view clears. Repeat with an active pressure
+hold and confirm its normal recovery interval still applies.
+
+The frozen fresh-install fixture covers the controller outage with an
+offline hosted HTTP container and two managed workspaces. It checks the
+zero-capacity offer and workspace preparation refusal, then confirms one
+workspace can be removed while the other still serves its preview and
+answers the runner protocol. Starting the controller must restore a
+capacity offer and admit a new preparation. Actual memory contention,
+SSH latency and the active-pressure hold require the checks above.
+
+
+
+## HT-191 — Deploy Compose from AnimaOS Hosting
+
+**State.** Open. The installed VM check is deferred until implementation is complete.
+
+**Steps.** In a fresh disposable enrolled AnimaOS VM, check that the node has
+yet to advertise managed Hosting. From the local administration terminal run
+`sudo anima-enable-hosting --enable` and verify the service and daemon
+advertisement. Repeating the command should preserve the initial settings.
+The offline ISO fixture forces a service start failure on a fresh node.
+After removing the fault, it checks that repeating enable leaves the
+service inactive. The printed `sudo systemctl start anima-applications.service`
+command should bring the service up with the original settings and create
+its control socket. In Workloads, verify that a fresh node shows the setup
+command, the forced failure shows the recovery command, and a successful
+restart shows the local applications service running. Check deployment
+availability separately in Anima.
+Open Hosting > Applications > Deploy Compose and choose the VM. Queue a
+portable test Compose file with a permitted image pinned by digest and an
+optional synthetic environment file. Observe the apply through completion.
+Reopen the result with its apply ID. Expand the managed project in the
+inventory, copy its application ID and submit an update with that ID. Turn
+off Pull images again. Watch an unrelated container throughout both applies.
+
+**Expected.** The apply shows its progress and reports service health. The Docker inventory refreshes on completion. The update uses the recorded image digest for the same application. The unrelated container stays running. The operator can read status without the submitted files.
+
+**Private image.** Open a connected public repository in Projects > Overview. Queue a commit from Source builds and interrupt the response after the Hub accepts the request. Reopen the project and select Recover build request. The original job ID appears, with one build in the queue. Wait for Image ready, then inspect that job's retained image. Use a disposable private registry to publish with the exact receipt and digest, and repeat the publication with the same confirmation. Configure pull access on the VM and submit the returned digest reference through Hosting. Both publication requests return the same reference. Docker pulls that exact digest and the current application records the digest after the apply.
+
+**Build memory limit.** Submit a synthetic build whose allocation exceeds
+its cgroup limit in the disposable VM. Confirm the build unit reports
+`oom-kill`, the node reclaims the reservation after cleanup, and the failed
+attempt carries `limit_memory` without an image receipt. Projects > Source
+builds should explain that the build ran out of memory.
+
+## HT-192 — Migrate Podman data to Docker Hosting
+
+**State.** Open. The application store imports prepared binds, requires local authorization before starting the Docker candidate, and records final Docker authority after health and write verification. Installed cutover and rollback qualification remain open.
+
+The frozen fresh-install VM includes a rootful named-volume smoke on the
+same guest. It requires a hold before authorization and when the source
+is restarted after authorization. It then checks a healthy installed
+Hosting apply, a persistent write and Docker confirmation. Reboot must
+preserve the Docker write while Podman stays stopped and its source volume
+and independent backup keep the original value. The smoke is a subset of
+the rootless, Quadlet and previous-generation scenarios below.
+
+**Steps.** In disposable AnimaOS guests, exercise a stateful Podman workload under the root and an ordinary local account. Open the startup candidates report in the corresponding account. Match a Quadlet definition and a labeled or conventionally named systemd unit against the actual startup configuration. Verify that an unavailable user manager appears as unavailable. Record external automation, volume and bind ownership, port mapping and permitted image. Quiesce the workload, take an application-consistent recovery backup, and stage an independent copy with the destination ownership. Import the copy with the new application UUID. Replay the import after an interrupted response. Prepare a Compose candidate from the original project and an explicit bind map. Include a named volume, a read-only bind with an interpolated source, a fixed loopback port with an interpolated host port, a restart policy, an environment placeholder and an internal network alias. Confirm the prepared manifest keeps those settings, maps both mounts to the imported copy, and keeps the placeholder unresolved. Try a missing bind mapping and a network with static IPAM and confirm both are refused. Check that Hosting holds the apply before authorization. Disable the source's external starters and engine restart. For a retained source with a systemd unit label, try authorization with the unit disabled and then with a runtime-only mask. Both should be refused. Authorize with an inactive, persistently masked unit. Unmask the launcher during a disposable attempt after the candidate starts pulling, and verify the final check prevents Compose execution. Restore the mask and repeat with a test source container revived independently. The same final check should hold the attempt. With the source stopped again, deploy the managed Docker candidate, read back a new persistent write, and run `confirm-cutover` with the exact final-form hash. Repeat the same confirmation and try a different hash.
+
+**Auto-remove Quadlet.** In the disposable fixture, record the staged manifest with `capture-source` before stopping a source configured to remove its container. Keep the original Quadlet and a consistent backup. Mask the launcher persistently, stop the source, and import the staged copy. Verify capture replay while still staged. Authorize while all Anima-managed entries support the captured record. Repeat with a version 1-only boot entry and verify authorization is refused. With a compatible menu restored, try a replacement with the captured name and confirm cutover holds. Remove the disposable replacement, finish the Docker write check, and verify the updater refuses a staged or rollback entry which supports only version 1 after the captured authorization is retained.
+
+**Expected.** Confirmation records Docker authority, the installed generation, bind location, verified digest and validation results. Exact replay returns the same receipt. A different hash is refused. The Docker application is healthy with its initial state and the new write. Verify that activation and rollback refuse incompatible Anima-managed boot entries without changing the boot selection. Reboot into a compatible previous OS generation and verify that Podman remains stopped. The retained Podman backup still has the pre-cutover data, and a failed apply preserves the independent backup and the pre-cutover recovery path.
+
 ## Deferred
 
 The operator deferred these fifteen checks on 2026-11-18 (R-169: "Approve the sorting"). Each can run only against the hub on the VPS or its VPN, which the operator leaves (R-130, R-140), or on a server path that he does not use now. No check is deleted, and none is Passed. A ruling or the operator sets a check to Open again (PLN-014). [sort-2026-11-18.md](research/human-checks/sort-2026-11-18.md) has the reason for each.
@@ -4926,17 +5203,18 @@ Windows or on Linux, so each step below is the first run.
 Result: Open.
 ### HT-128: Rust host-control diagnostics in the graphical OS preview (OS3-R1 / OS3-R3)
 
-Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`, and the existing console Diagnostics action's adapter. The Rust socket and disposable NixOS service tests cover read-only transport, process-state reporting, restricted access and lifecycle. They do not exercise the complete appliance graphical session, real monitoring/link or physical hardware.
+The appliance enables `anima-osd` for read-only diagnostics and observations. The Rust socket and service fixtures cover transport, process-state reporting, restricted access and lifecycle. The full graphical session, real monitoring and link services, and physical hardware remain open.
 
-1. Build a disposable appliance trial from the existing ISO procedure with `services.anima-os-control.enable = true` and its source-built `package` supplied as described in `experiments/anima-os/control-contract.md`. Do not replace an existing installation or publish the ISO for this check.
-2. Unlock the local console and open Settings → Diagnostics → Run checks.
+1. Build a frozen, unsigned appliance candidate and install it on a disposable VM disk.
+2. Unlock the console and open **Settings → Diagnostics & recovery → Run checks**.
    Expected: existing network/root/Wi-Fi diagnostics remain present; monitoring and private-link states come from the Rust service. No terminal is required in the normal interface. Active processes do not claim hub reachability or agent readiness.
 3. In the disposable trial, stop the host-control service, then run the graphical check again.
    Expected: a visible operation failure and an available retry/close path; no fabricated success or silent fallback to old results. Restore the service and retry. A retained job is observed without restarting it; interrupted or missing history produces a clear error and a subsequent explicit new check returns results.
 4. Lock/unlock and restart the trial, then repeat the graphical check.
    Expected: owner authentication is still required, the service runs under its restricted account and the socket is private. Monitoring/link remain separate background services.
-5. Compare the console to the existing approved mockup on compact and portrait displays.
-   Expected: the OS3-R4 four-destination layout matches the updated mockup, with readable diagnostic rows and accessible controls.
+5. Delay the reply just after the controller accepts a diagnostic job and restart the graphical console. Unlock and reopen Diagnostics. Compare `anima-osd job-list` before and after reopening.
+   Expected: the same request and operation IDs are recovered. The next explicit check after the result creates a fresh job.
+6. Compare compact and portrait displays. Check that diagnostic rows remain readable and the controls work with the keyboard.
 
 Result: Open. No physical-hardware, real-account, full-appliance UI, speed or ISO-size result is claimed.
 
@@ -4949,6 +5227,11 @@ Built: four-destination graphical console and native session/update/install cont
    Expected: controls remain reachable; orientation restores after timeout and persists only after Keep; unselected/USB/busy disks are not erase targets.
 2. Install only to the explicitly selected disposable target, remove the USB and boot. Unlock the graphical console. Visit Overview, Network, Storage and Settings at the machine's normal scale.
    Expected: the familiar visual design remains, no normal flow requires a terminal, no controls overlap or leave excessive unused space, and network/display settings survive reboot.
+   With **Reduce interface motion** enabled at the end of installation, check that the first installed lock screen shows a still hero. After unlocking, confirm the choice under **Settings → Display & accessibility**, switch to **Follow system**, and reboot to verify the new choice takes precedence.
+   With landscape and portrait displays attached, select each under **Display & accessibility** and confirm the orientation matches that monitor before applying anything. Preview a change on one display. Revert once, then repeat and keep it. The selected display should still be selected, and its orientation should match the result. Check both monitors after reboot.
+   On the disposable system, confirm Overview shows CPU, memory and uptime, with a battery badge on a laptop. Stop the local host-control service, wait for the snapshot to expire and verify the console shows unavailable readings. Restart the service and verify that the values recover while the console stays open. During the outage, verify lock and screen-off remain usable.
+   Open Activity and check that recent service transitions show a time and a readable status with the hub disconnected. In the same authenticated session, begin and cancel a disposable maintenance hold. Verify Local console actions records the local account and result. Reboot the disposable system and confirm these action receipts remain available after unlocking. Compare the Builds section with a disposable build in Workloads. Lock from Activity, then unlock and check that it reloads. At narrow widths, confirm the navigation icons have accessible names and tooltips.
+   In a managed Code workspace, trigger a disposable Codex approval or question. Overview should show **Needs you** and link to Activity. Activity should show the correct workspace and generation. Open the same session in Code, respond there and confirm both console views clear within one refresh. Repeat with Claude. Stop a runner during an observation and verify Activity reports an incomplete check when no complete sample is available.
 3. Choose Sign in directly from Overview. Cancel once, then complete the provider sign-in and explicitly Add this computer with a real test account.
    Expected: cancel closes the provider view; sign-in does not add the machine before consent; failures offer retry; the machine appears once and monitoring/link state is truthful.
 4. Open Settings → Diagnostics and Updates. Run diagnostics; check a properly signed compatible preview update when one is available, stage it and explicitly restart. Confirm fallback/rollback on this test device while retaining a disposable workload sentinel.
@@ -5094,20 +5377,28 @@ Result: Open.
 
 Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback and are reached through the existing private link. Disposable-VM acceptance covers the services and protocol boundary. A real private hub, GUI trust flow and physical screen behavior still require operator acceptance.
 
+The frozen-image release fixture also checks VNC through a disposable
+private link. It refuses a mismatched certificate and a wrong password,
+authenticates the installed admin, reads the locked framebuffer and
+verifies a remote pointer event on the local shared X display. It checks
+VNC certificate and port-choice persistence alongside SSH and RDP.
+
 1. Upgrade the OS, retain its enrollment and open its device in your private hub. If disabled there, enable SSH port 22 and RDP port 3389, with user `admin`.
    Expected: existing device identity, permissions and saved credentials remain unchanged.
 2. From another machine signed into the hub, run `anima ssh <device>`, verify the host key and authenticate with the installation's admin password. Run `id -un`.
    Expected: the terminal prints `admin`; a wrong password is refused.
 3. In the Anima GUI, connect using SSH, then RDP. Verify the RDP certificate and use the same admin credentials.
-   Expected: SSH opens a terminal; RDP opens a separate graphical Anima console. Unlock it with the admin password. No external port forwarding is required.
+   Expected: SSH opens a terminal. RDP shows the shared graphical AnimaOS console. Unlock it with the admin password. No external port forwarding is required.
 4. Disconnect and reconnect RDP, then turn off the physical screen using the OS control while the remote session is open.
    Expected: the remote session and workloads continue; physical input wakes the physical screen.
 5. Restart the OS and reconnect from both clients.
    Expected: the SSH host key and RDP certificate remain the same, and both access paths still work.
-6. On the OS, run `sudo -u anima-daemon anima-link ports -state /var/lib/anima-link off 3389`, disconnect RDP and retry. Restart the OS and repeat.
-   Expected: new RDP connections are refused before and after restart; SSH remains available. Restore with the same command using `on`.
+6. Keep SSH and RDP open. On the OS, disable RDP from Private remote access or run `sudo -u anima-daemon anima-link ports -state /var/lib/anima-link off 3389`. Repeat with VNC.
+   Expected: connected clients on that protocol disconnect, new sessions are refused, and SSH and the shared console keep running. Re-enable the protocol and verify a fresh session works. Disable it again, reboot and confirm the choice persisted.
 7. Revoke the requesting user's device/session permissions in your hub and retry.
    Expected: the hub denies access before remote login. Restore your intended permissions afterwards.
+8. With sessions open on a disposable enrolled device, delete its record from the hub using `anima device delete <device>`.
+   Expected: its SSH, RDP and VNC sessions disconnect. The hub refuses unused tickets and records who ended the sessions. A session to a second device keeps running.
 
 Result: Open.
 
@@ -5125,6 +5416,53 @@ hub and OS versions. This is not included in the already published 2026112301363
    Expected: both connections appear with user admin and standard ports without re-enrollment or editing settings.
 2. Connect from the CLI and GUI using the OS admin password and existing trust confirmation.
    Expected: terminal and graphical sessions work through the private server; no LAN forwarding is needed.
+
+On a fresh installation, use an install code from `anima link install <name>`
+against a self-hosted Hub with its private link enabled. Verify that the
+node appears under its link address, monitoring survives reboot, and
+SSH, RDP and VNC each accept an authenticated session from an Anima app.
+Repeat the enrollment entry point with `sudo anima-enroll --install-code`
+on a second disposable node. If a claim fails after pairing, make a new
+code for the same link name and verify that it completes enrollment using
+the saved identity.
+
+On a fresh disposable AnimaOS installation, interrupt private-access initialization
+after the pending policy is saved and before the link port list is published. Boot
+again and enroll normally. Expect SSH, RDP and VNC to be offered with the admin
+username over the private link. In separate fixtures, keep an existing SSH/RDP-only
+list and an explicitly empty list through boot. Expect both lists to retain their
+saved choices and a fresh device record to initialize only the enabled protocols.
+Delay the VNC listener until more than a minute after the first daemon
+announcement, then start it. Expect the Hub to initialize VNC after the next
+30-second remote-access observation and telemetry push. Complete VNC
+certificate approval and admin authentication from the Anima app using the
+new installation. Use **Open view-only session** in the RDP
+and VNC toolbars to open each viewer alongside a control session. From the viewer, send
+keyboard, pointer, touch and clipboard input and resize the client. Expect the
+shared console to remain unchanged while the viewer continues receiving updates.
+Confirm the control session can still operate the console and that lock state
+matches in both viewers.
+
+While a disposable graphical transport is open, check the connection count
+on the lock screen and in the native sign-in and administration terminal
+headers. At 640×480 the confirmation code, sign-in actions and terminal
+close button must stay visible. Close the transport and confirm that the
+native count clears on the next observation.
+
+In that disposable installation, open **Settings → Private remote access**.
+Disable VNC and stop the RDP service, then select **Check again**. Expect
+SSH to pass its local protocol check, RDP to report unavailable, and VNC
+to show that private access is off. Restore RDP and explicitly re-enable
+VNC. Check again and verify each protocol by opening an authenticated
+session from the Anima app.
+
+Open **Overview → Connection details** after enrollment and compare its
+three local observations to Settings. With interrupted defaults in a
+fresh disposable VM, select **Retry default setup**. Verify that the
+initializer and private link start without a reboot or another
+enrollment. Repeat with an empty port list already saved during the
+interruption and verify that it stays empty.
+
 3. Disable SSH in the device settings, restart the OS, and wait for its next report.
    Expected: SSH stays disabled. Custom RDP settings and saved credentials also remain unchanged.
 4. On another device with SSH available, choose Set up, enter its login name and optionally its password, then Enable SSH.
@@ -5133,14 +5471,29 @@ hub and OS versions. This is not included in the already published 2026112301363
    Expected: a connection failure, never a false claim that the server was installed. Installing/enabling host SSH on arbitrary operating systems is not implemented by this connection-settings change.
 ### HT-163: the Git actions of a thread, when a person can reach them (TC7, steps W1 to W4)
 
-Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` at `56e0132c6` and `6791fb123`). Nothing reaches it yet: this check cannot start before step W2 (the command) or W4 (the page) of Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md). The tests use made repositories in temporary folders, a launcher that stands in, and no remote on the network. They do not cover: a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.
+Built: the Git engine, the runner calls (W1), and the local command (W2). The tests use made repositories in temporary folders and a launcher that stands in. The command tests use a made runner socket. They do not cover: the installed runner and command together, a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.
+
+Synthetic upgrade tests cover interrupted W1 removal with a partial or missing worktree. Recovery metadata and rename parents are synced before a completed receipt is released; source review and normal filesystem tests do not simulate power loss or establish storage-device persistence guarantees. Crash recovery remains an installed-system check.
+
+To check W2, start a thread in a worktree as in HT-169. Use the command prefix `anima code git --thread <thread ID> --repository <worktree folder name>`.
+
+1. Run `status`, then `checkpoints` and `changes` after the first turn.
+   Expected: the thread's branch and the files that changed. Checkpoints show turn 0 and the completed turn. Changes show a patch and a reviewed snapshot.
+2. If status lists Git settings to accept, read them and run `trust --shown <acceptance digest>`. Run `commit -m "Check the CLI" --reviewed <reviewed snapshot>`.
+   Expected: the command prints the commit. In the worktree, `git show HEAD` shows the changes from the snapshot.
+3. On a disposable worktree, run `revert 0` and confirm.
+   Expected: revert restores the files at turn 0 and shows an undo ref.
+4. Put a note in the worktree and add its name to `.gitignore`. Run `remove` and confirm.
+   Expected: the active worktree path goes away. The command prints the saved ref and the recovery directory. The ignored note is in the recovery directory and is absent from the saved Git ref. Run `remove` again with the same thread and repository. It returns the same original and recovery paths.
+
+For the remaining checks, use the page when W4 is available. The remote query and the hook and LFS notices also require the separate remote step in Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md).
 
 1. In a repository with a `pre-commit` hook, commit from a thread in Accept edits, then from a thread in Full access.
    Expected: the first commit runs no hook and says in a short line that the hooks of the repository were skipped; the second runs the hook.
 2. Push a branch of a thread through Anima to a private remote. Then push one more commit with `git push` in a terminal, and look at the status of the thread.
    Expected: no prompt for credentials that Anima shows; after the question to the remote the status says "pushed" for the commit that the remote has, however it came there; the upstream is not written into the settings of the repository.
 3. Remove a worktree that has files that are not committed, with one large file tracked by Git LFS.
-   Expected: the removal names the ref that keeps the work; `git show` of that ref in the repository has each file; the large file can be checked out.
+   Expected: the removal names the saved ref and the directory with the complete worktree. The large file remains in the retained directory and can be checked out from the saved ref.
 4. Start a thread in `/Users/Shared`, and one in the home folder.
    Expected: the first is refused with words that say why; the second starts with the warning of THR-041.
 5. Open a project that was made with `git clone --shared`, and a project on Windows.
@@ -5148,7 +5501,7 @@ Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` 
 6. Look at the folder of the records (`/Users/Shared/anima-<uid>` on a Mac) as a different user of the same Mac.
    Expected: that user cannot list it or read it.
 
-Result: Open. Not started: the steps W1 to W4 are not built.
+Result: Open.
 ### HT-164-bootstrap: One-action local SSH setup (OS3-R12)
 
 Built on `access/ssh-bootstrap`. The shared helper is called by the desktop SSH switch and `anima link enable-ssh`. Native macOS and Windows installation and system authorization dialogs have not been verified. The operator waived the Mac-before-push check for this change.
@@ -5250,31 +5603,42 @@ Result: Open.
 
 ### HT-151: `anima auth login` by a one-time code (cli-mcp T16 and T17, HM-T40; R-381)
 
-Not built. The gates cannot prove a browser on a second device, the hosted cloud or a real server. Do these steps when the tasks are built.
+Built locally at `f20798363` (test follow-up `61ee68a98`) on `cli/account-signin`, with site commit `e20c129` and cloud commit `de308a5` on their isolated `cli/browser-signin` branches. Not deployed. The gates cannot prove a browser on a second device, live WorkOS approval, or a real VPS. Run after a coordinated test release. Rich status provenance remains planned; `auth sessions` supplies approval/last-use/expiry metadata.
 
-1. On a computer with only `anima`, run `anima auth login`, choose "Self-hosted" and give the address of your hub.
-   Expected: the command shows a code `XXXX-XXXX`, the address of the page `/device`, and "It ends in 10 minutes"; no password is asked.
+Local validation (2026-11-24): 6,015 client tests, 826 deployment tests and 753 Headscale tests passed. The site and cloud suites passed, as did Rust lint, client build and the focused authentication and installer checks. The full Rust run passed 7,893 of 7,898 executed tests. Two GitHub URL expectations were corrected for the fixture's actual public origin and passed on rerun. Three tests still fail serially in code unchanged from `origin/dev`: `stay_awake::tests::holds::a_hold_program_that_ends_at_once_was_refused`, `this_machine::tests::vpn_client::the_vpn_address_is_the_one_the_anima_client_reports_even_beside_a_lower_overlay_address`, and `run::tests::stopping::a_migration_that_runs_past_its_limit_is_stopped_and_the_run_fails`. These remain validation blockers; no all-gates pass or release acceptance is claimed.
+
+1. On a computer with only `anima`, run `anima auth login`, choose "A hub of your own" and give the address of your hub.
+   Expected: the command shows a short code, the address of the page `/device`, and its ten-minute lifetime; no password is asked.
 2. Open the page in a browser where you are signed in, and type the code.
-   Expected: the page shows the name of the computer, its address, the time and the plain words of what the command line will get; after Approve the terminal prints `✓ Signed in to <hub> as <user> (command line on <computer>)`.
+   Expected: the page shows the name of the computer, its address, the time and the plain words of what the command line will get; after Approve the terminal confirms the hub and user without printing the credential.
 3. Run `anima auth status`.
-   Expected: the hub, the user, "approved on <day> from <device>", and no token, not even masked.
-4. Repeat step 1 with "Hosted by Anima.ing", and approve at `anima.ing/device`.
+   Expected: the hub, the user and credential source, with no token, not even masked. `anima auth sessions` shows approval, last-use and expiry metadata; richer status provenance remains planned.
+4. Repeat step 1 with "Anima account", and approve at `anima.ing/device`.
    Expected: no address is asked; the command signs in to the hub of the account.
-5. Type a wrong code 6 times in the page.
-   Expected: the sixth is refused for 10 minutes.
+5. Type five wrong codes in the page, then try again.
+   Expected: further attempts are refused during the ten-minute lockout.
 6. Run `anima auth logout`, then `anima auth status`.
    Expected: signed out, exit code 4; the list of sign-ins in the app no longer shows that computer.
+
+7. On a disposable VPS with a dedicated non-root user, run the published `/install` bootstrap after verifying the coordinated release is available. Complete browser approval on another device.
+   Expected: the programs install first, the private link connects, and the daemon enrolls. No password or token is pasted into a command line. `--cli-only` installs without signing in; `--enable-linger` explicitly enables operation after logout and reboot.
+8. Close and sign out of the approving browser, then run CLI commands on the VPS, restart its user services, and run again.
+   Expected: the remote session remains valid with no fixed or idle expiry. Explicit revocation from Settings → Command-line approval and sessions ends it. An app-adopted local credential still ends with its app session.
+9. Repeat installation and sign-in; briefly interrupt the network during link readiness.
+   Expected: an existing app-owned unit is refused, an owned running unit is reused, and loss of network readiness never restarts the unit. No existing hosted workload is interrupted.
 
 Result: Open.
 
 ### HT-153: one sign-in for the app, `anima`, the daemon and the threads (E0-6 T8, cli-mcp T14 and T15, U14, TH114; R-383, R-382)
 
-Not built. The gates cannot prove a fresh computer, the profile of a login shell, the Keychain or a running thread. Do these steps when the tasks are built.
+The app-to-CLI handoff is implemented on `cli/account-signin`, including startup adoption, serialized issuance and logout, and reuse of the exact linked child across reloads. It needs a rebuilt app and CLI. The silent PATH setup (T15), runner session (U14) and thread-scoped tokens/modes (TH114) are still separate unfinished work; this repair does not claim those checks passed. Source security review accepted the authentication and standalone installer scope on 2026-11-24. Live checks below remain open.
 
 1. On a fresh Mac (or a new user account), install the app and sign in, on a self-hosted hub and then on a hosted hub.
    Expected: with no click, the daemon is installed and enrolled, `anima` is in `~/.local/bin`, and one line names the shell profile that got the line of `PATH`.
 2. Open a new terminal and run `anima auth status`.
    Expected: signed in, the token kind "adopted from the app"; no `anima auth login` was needed.
+2a. On the hosted hub, run `anima context list`, then `anima device list` with no `--hub`.
+   Expected: the context `app` is current and names `http://127.0.0.1:` and the port of the link; the list of devices shows. Signing in to the app again (a new claim) keeps `anima` signed in.
 3. Look at the shell profile.
    Expected: one line, marked as Anima's; signing in again adds no second line.
 4. Start a Full access thread and have it run `anima device list` and add a private route.
@@ -5729,6 +6093,46 @@ on the device; they are not imported into another hub or deleted. The operator c
 Result: Open.
 
 
+## HT-188-code — Grok in Code (TH119)
+
+State: Open. Operator check required.
+
+Built: the local Grok ACP adapter, its model picker, Ask and Full access, streamed tool and reply
+entries, interruption, queued turns and changes of model or effort while idle. Protocol tests
+use synthetic frames. Local checks on Linux (2026-11-23, agent, c07e8fe11): the installed
+app lists Grok models, a prompt and follow-up show replies, and navigation away from Code
+and back keeps the thread current. An isolated runner continued after a daemon restart.
+These checks do not close the operator check or prove macOS behavior.
+
+1. Open Code on a machine signed in with `grok`. Select Grok: its installed model list and
+   reasoning levels appear, without Max or Ultra unless Grok reports them.
+2. Start a harmless prompt in a disposable folder in Ask. The reply streams and remains after
+   the turn ends. Request a file change: any approval Grok asks for is shown with its input;
+   Deny does not run it, and Allow grants only that request.
+3. Queue a second prompt during a turn: it goes only after the first turn succeeds. Stop a
+   running turn: no queued prompt goes automatically after the interruption.
+4. Between turns, change the model or effort: the row changes only after Grok accepts it.
+5. Restart the daemon while the Grok thread is idle: the thread remains usable.
+6. Navigate from Code to Devices and back. Open the thread and send another prompt: its title,
+   reply and completed state update; the page does not stay at “Working” after the reply.
+7. Repeat on macOS and Linux. Sessions started outside Anima and hub synchronization of Grok
+   threads are not included in this local slice.
+
+## HT-189-pointer — Linux tiled-window pointer alignment
+
+State: Open. The operator reported wrong hover and click targets on 2026-11-23.
+
+Built: the Linux main window no longer imposes a 960 by 600 minimum on a tiling
+compositor. In the reported arrangement the compositor allocated 863 pixels across,
+but WebKit rendered 960; the displayed buttons were compressed while input used
+the larger layout. Other platforms keep their existing minimum window sizes.
+
+1. Tile Anima beside another window on a fractionally scaled Linux display, narrower
+   than 960 logical pixels. Hover New thread and the adjacent project filter. Each
+   button highlights only when the pointer is over that button.
+2. Click each button. New thread opens a draft; the folder button opens the project
+   filter. Resize the tiled window and repeat, including a short window.
+3. Maximize and restore the window. Hover and clicks still match the drawn controls.
 ## HT-185-create — Create a local Code project (TH60A)
 
 State: Open. Built on `code/project-create`; the TC9 New project UI is owned separately.
@@ -5767,6 +6171,74 @@ On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing
 
 On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
 
+
+## HT-191 — Installed mobile tool reporting (TH135)
+
+State: Open. Built locally: the typed K8 snapshot, bounded collector, hub storage and
+K1/CLI/MCP read path. New collection is off in normal builds. `mobile-inventory` is an
+explicit build feature pending implementation review, not a default-on probe.
+Synthetic output and filesystem tests do not prove real Xcode behaviour, SDK layout,
+absence of tool-side cache writes, or a blocked filesystem on each host platform.
+Windows collection is not implemented; no positive Windows inventory is claimed.
+
+Independent review of `00e1cc235` found no blocking code findings for default-off CI.
+Synthetic tests now exercise the parent collection I/O boundary for a blocked worker
+and an exited worker whose descendant retains stdout. They check the five-second
+deadline, bounded return and process cleanup; the feature-enabled Linux and Mac CI
+steps select them. Increasing the deadline and removing group cleanup each makes
+its respective test fail. Local Mac tests pass. Separate review found no production or security regression.
+The paused-clock case rejects a six-second deadline. Removing the outer guard failed
+in the measured run, but that failure depends on OS reaping timing: deterministic
+coverage of a stalled reap remains open before real-probe enablement. Linux CI
+execution also remains pending. This does not authorize real probes.
+
+After that validation, implementation review and operator authorization for real
+probes, use a disposable enrolled Mac with an existing Xcode and Android SDK installation:
+
+1. Build the daemon with `cargo build -p anima-daemon --features mobile-inventory`.
+   Use a test hub with the mobile-inventory migration and this branch's CLI. Do not
+   replace a production service for this check. Start the test daemon as prescribed
+   by the existing enrolment procedure, with its own test state and token.
+2. Set `ANDROID_SDK_ROOT` to the existing SDK root and put its emulator directory on
+   the test daemon's `PATH`. Do not install a tool or accept a licence for this check.
+   Read `anima capability list --json` after the next inventory report. The Xcode
+   version stays in `tools`; mobile runtime identifiers, device-type identifiers,
+   package identifiers/revisions and emulator version match the installed tools.
+   No UDID, device instance, filesystem path, session, account or raw error appears.
+3. Read `anima_capability_list` from a test MCP client. It gives the same typed snapshot
+   and receipt time. The CLI table says "last reported", not ready. An unavailable
+   runtime has `available: false`; neither client promises that a device can boot.
+4. Repeat with the tools absent from the test daemon's search path and without its SDK
+   root setting. The affected result says `missing`, not successful empty inventory;
+   unrelated results remain independent. On Linux, Apple results say `unsupported`.
+5. Point the CLI at an older test hub. Capability listing still succeeds through its
+   legacy query; mobile tools are null in JSON/MCP and "Not reported" in the table.
+6. Confirm no simulator or emulator was created, booted or removed, no SDK downloaded,
+   and no phone or personal simulator was listed. Record any unexpected service/cache
+   activity for implementation review before enabling collection on a real account.
+
+Database migration/replacement tests are reserved for CI in this session: no local
+PostgreSQL was started. Passing fixture tests is not a Passed result for this entry.
+## HT-190 — Native session list refresh
+
+State: Open. Built on `t3/session-folder-watcher` (TH7, THR-058).
+
+The shell watches session paths with bounded native registrations. Synthetic tests cover folder creation,
+file changes, replacement, safe path opening and client subscription lifetime. Discovery enumerates pinned
+directory descriptors and reads entry metadata without following links. A synthetic replacement between
+validation and enumeration is refused; removing the pinned-open guard makes that regression fail. Tests do not prove the
+installed application window lifecycle or OS permissions on a person's Mac and Linux desktop.
+
+1. In a test OS account on each platform, open Code with one made Claude Code or Codex session. Change
+   its session file. Expect the visible list and count to update promptly, without changing the held order.
+2. Hide the window, change the made session, then show the window. Expect no hidden list reads and one
+   refresh when shown. Navigate away from and back to Code several times. Expect no duplicate updates.
+3. Remove and recreate the made session directories, then change a file there. Expect the list to recover.
+4. Close and reopen the application. Expect file changes to update the list again.
+5. Use a test home with more than 1,024 session paths, or a filesystem without native notifications.
+   Expect the visible list to refresh within 30 seconds of silence. Expect no error containing session paths.
+
+No result is recorded yet. Only the operator sets this check to Passed or Failed.
 ## HT-184-remote-update — Hosted desktop OS updates
 
 Status: Open. Owner: OS5-R1 in [spare-computer-os.md](proposals/spare-computer-os.md).
@@ -5775,7 +6247,7 @@ The hub, CLI and desktop invoke the signed OS updater over pinned private SSH. A
 
 1. Install the matching hub, desktop and OS versions. Open the enrolled OS device's Overview and choose View OS update status. Expect its retained update state, or a specific SSH/trust/version error.
 2. Check and download a signed newer release. Close the desktop during download, then reopen the device page. Expect progress or the verified staged release, without starting another download.
-3. Choose Restart to update, then Cancel. Expect no restart. Repeat and confirm. Expect the connection to drop and the applied version to appear only after reconnection and startup checks.
+3. Choose Restart to update and verify the staged release is named in the approval. Cancel and verify no restart. In the disposable fixture, change the staged release after approval opens and confirm the old choice. Expect a refusal and unchanged boot selection. Review the current release and confirm again. Expect the connection to drop and the applied version to appear only after reconnection and startup checks.
 4. Request Restore previous OS and confirm. Expect the prior OS and retained owner data after reconnecting.
 5. Verify SSH and RDP on the same physical device, including a locked local screen. The earlier reported automatic setup and RDP reachability failures remain unverified.
 
@@ -5788,9 +6260,234 @@ State: Open. Built on `code/local-anima-sessions-only`. Synthetic tests mount th
    Expected: only the Anima-started session and its project appear. There is no imported-history control. Imported sessions do not contribute to the Code attention badge.
 2. Open the local Anima session, leave Code, reopen it, then restart the app and reopen the persisted session.
    Expected: the Anima session remains available. An old selected/imported session or history entry never reveals its title, messages, details or composer.
-3. Open Code on a client that cannot read this computer's local runner, including the phone client.
+3. Open Code in an ordinary browser without a local runner. For a native phone use HT-149 and HT-170-code-handoff.
+3. Open Code in an ordinary browser without a local runner. For the native phone use HT-149 and HT-170-code-handoff.
    Expected: an explanation that Code currently shows Anima-started threads on this computer; no remote computer/session chooser is exposed.
 4. Confirm existing ingestion and session records are retained by the normal ingestion workflow.
    Expected: records remain available for future use; this UI change deletes no sessions and does not stop the watcher.
 
 Parent-worker/device authority, TH30, remote session enablement and live SDK probes are outside this check.
+
+## HT-196: The marks of the programs in Hosting (task H53; HSE-020)
+
+Built on the branch `hosted/h53-brand-marks`: each row of Hosting > Applications and each entry of the Catalogue has a
+tile before its name with the brand mark of its program from Simple Icons, in the accent colour, else the first letter
+of its name. The tests check which mark each name and image gets; nobody has seen the marks drawn in the application.
+
+1. In the desktop application of this build, signed in to a hub with a machine that has SSH on and Docker with a Compose
+   project of a known program (for example Immich, Jellyfin or Nextcloud), open Hosting > Applications.
+   Expected: the row of that program has its brand mark in a small tile before its name, in the accent colour; a
+   program that Simple Icons has no mark for has the first letter of its name in the same tile. The tile is the same
+   size on each row, and the name and the line below it are not moved.
+2. Change the appearance from dark to light.
+   Expected: each mark stays clear on its tile in both appearances.
+3. Open the Catalogue below Applications.
+   Expected: each entry has the mark of its program before its name (for example the elephant of PostgreSQL, the
+   shield of Vaultwarden), or its first letter.
+
+Result: Open.
+
+## HT-198: The Catalogue as rows and its picker (task H55; HSE-022)
+
+Built on the branch `hosted/h55-catalogue-list`: the entries of Hosting > Catalogue are rows as the models of the
+Library, and Install from the catalogue on an empty machine opens the same list in a dialog with that machine chosen.
+The tests use a fake hub in a test page; nobody has seen the rows or the dialog in the application, or used them with
+the keyboard.
+
+1. In the desktop application of this build, signed in to a hub with a machine that runs a program of the catalogue
+   (for example Vaultwarden or Immich), open Hosting > Catalogue.
+   Expected: the entries are rows in groups by category, each with the mark of the program, its name, its tier, its
+   description, and its version and parts; the row of the program that runs ends with "Runs on" and the machine.
+2. Press in the search field, type a part of a name, and press the down arrow, then the down arrow again.
+   Expected: the first matching row is selected, then the next one; its description opens on the right.
+3. Open Hosting > Applications, find a machine with no application, and press Install from the catalogue.
+   Expected: a dialog "Install on" the name of that machine opens, with Machine set to it and the same rows.
+   The button of a selected entry says "Install on" and the machine, and is off with its reason.
+4. Choose a different machine in Machine, then close the dialog with Escape.
+   Expected: the title and the button name the new machine; Escape closes the dialog and the focus goes back to the
+   button that opened it.
+
+Result: Open.
+## HT-188 — Managed workspace provider sign-in
+
+Claude follow-on: use `--provider claude` and the Code panel on desktop/mobile. Verify the external verification page, hidden returned-code entry, one reply only, cancellation during input, expiry while typing, changing providers/workspaces, and refusal after reconnect or routing to another hub process. Verify that malformed and foreign-principal replies never reach the worker, and that no reply or challenge appears in logs or persistent client/hub storage. Real account completion and in-container process cleanup remain required.
+
+State: Open. Hub subscription, private-link transport, root workspace worker and interactive CLI are implemented in `os/redesign-p0-baseline`; real provider sign-in and installed-container cleanup are not qualified.
+
+The frozen fresh-install harness exercises two owned workspaces through the
+installed lifecycle and preview sockets. Each replies to the runner's list
+command, starts its packaged Codex and Claude CLI for a version check, and
+serves different content on its own loopback port 3000. The harness checks
+wrong principal and generation, revocation, and the absence of Docker port
+publishing. Real login, Hub relay and desktop/mobile use remain separate
+acceptance steps.
+
+Before signing in, allow a test public repository in the VM's work policy and prepare a workspace pinned to a known commit. Start it from Code and verify the files and exact commit in the selected workspace. Repeat with an unavailable commit and with policy removed after preparation. Expect a refusal, no Code session for the failed generation, and successful reconciliation and deletion without interrupting a hosted application. Also start an empty workspace without a repository.
+
+Repeat with a test private repository connected in Projects. Select it in Code
+on a capable enrolled node and verify the exact commit after first start.
+Stop and restart the workspace without requesting another checkout credential.
+Repeat with a disconnected GitHub account and an interrupted first start.
+Expect a refusal or a recoverable workspace state as appropriate, with no
+token in Git configuration, runner environment, logs, or workspace files.
+
+1. On an enrolled test VM with a prepared, running and enabled workspace, run `anima code node login <device> <workspace> --generation <generation>` in an interactive terminal as its owning person. Complete the displayed Codex device flow using a test account.
+   Expected: one fixed Codex verification URL/code, then success; subsequent Codex work in that workspace uses the sign-in without exposing credentials.
+2. Start again and close the CLI, then repeat while revoking the hub login or stopping the workspace.
+   Expected: the sign-in stream closes, the worker and provider child terminate, and no challenge enters command receipts or logs. Hosted applications continue running.
+3. Try a different human principal, stale generation, disabled workspace, `--no-input`, `--json` and redirected output.
+   Expected: refusal; no host shell, arbitrary URL or host-port connection is opened.
+4. Interrupt the network after accepting a challenge, and allow an unused challenge to expire.
+   Expected: no automatic sign-in restart, no success claim without confirmation, and no surviving provider process after the configured lifetime.
+
+5. In the Code app, choose the same node/workspace and use Sign in to Codex. Cancel, switch workspaces, navigate away and interrupt the network in separate attempts.
+   Expected: the displayed code is cleared, the operation does not restart after reconnect, and the previous workspace never receives events for a new selection. Repeat on desktop and mobile; confirm the verification link opens correctly and keyboard/screen-reader access works.
+
+Visual and end-to-end qualification of the Code app adapter remains open.
+Claude supports the return-code flow in source. Completion with a real
+account and provider-process cleanup still need qualification.
+
+
+**Choose an available destination.** With hosted load active on two
+enrolled AnimaOS nodes, choose an available node from the workspace move
+form while the only candidate has insufficient headroom. Confirm Code
+reports that it is waiting and the source session and preview still serve.
+Free capacity or connect a fitting node. Expect one selected destination
+and the usual fenced handoff. Keep checking the hosted application while
+the new workspace starts. Repeat with a routing exclusion, a maintenance
+drain and a request withdrawn while waiting. The excluded or draining
+node should stay ineligible, and the withdrawn request should leave the
+source running.
+
+In the controlled relay fixture, delay the source's handoff poll while
+the destination briefly reports enough capacity and then reports a
+hosting hold. Let the source poll resume. Code should keep waiting and
+the source session and preview should still work. Restore capacity and
+drop the first export reply after the Hub commits it. The next source
+poll should recover the same transfer and destination.
+
+**Continue a session after a move.** Start a Codex session with an easily
+recognizable project goal and a second prompt. Select a named destination
+and check the continuation option while a hosted application there leaves
+insufficient headroom. Confirm Code shows it is waiting for the selected
+node, the source session and preview still work and the hosted application
+stays available. Keep another eligible node available and confirm the
+move stays bound to the selected destination. Restore headroom there,
+enable Code, and sign in to Codex on the destination. Expect one new session
+with the previous conversation available and the same permission mode. Open
+Code again to verify the destination receipt and transcript remain discoverable.
+Repeat with Claude, with continuation unchecked, and with withdrawal winning
+before activation. Verify provider credentials stay in their original workspace.
+
+**Managed preview and forwarding.** In two disposable workspaces, serve
+different responses on IPv4 loopback port 3000. From Mac Code, select each
+workspace and check that its detected port opens the matching private preview.
+Occupy local port 3000 with a disposable Mac service, then try to forward the
+workspace port. Code should report the conflict. Choose local port 3001 and
+use the address shown by Code to make an HTTP request from the Mac. Confirm it
+returns the selected workspace's response and the Mac's port 3000 still serves
+its own content. Repeat with a streaming response and WebSocket hot reload.
+
+On the frozen OS, hub and desktop builds, configure the disposable workspace
+app with an unprotected `/public` route returning a workspace-specific marker
+and a `/restricted` route returning 401 without app authentication. Keep the
+forward open in Code and run the following from macOS Terminal as a separate
+process. Substitute the actual local port shown by Code.
+
+```sh
+/usr/bin/curl -q --noproxy '*' --max-time 10 --include http://127.0.0.1:3001/public
+/usr/bin/curl -q --noproxy '*' --max-time 10 --include http://127.0.0.1:3001/restricted
+```
+
+Expect 200 with the selected workspace's marker and 401 without the protected
+response. Record the candidate revisions and both results. The hub grant
+authorizes the relay. Any process with access to Mac loopback can use the
+open listener and is subject to the workspace app's own authentication.
+Per-user isolation remains an open release gate if required on shared Macs.
+
+Change workspace generation, revoke the preview or interrupt the private link
+in separate attempts. Active streams should close without reconnecting to a
+different server. Confirm expiry and leaving Code release the local listener.
+An ordinary LAN client must be unable to connect to the forwarded port.
+
+With the preview open, move its workspace while another workspace on the
+destination serves different content on the same port. Check that the old
+view and forward stop serving, and that Code still shows the selected port.
+Restart the development server in the moved workspace. Reconnect and open
+the preview from both desktop and mobile. Verify the response comes from
+the moved workspace and that a fresh local forward requires explicit start.
+Repeat with Code closed during the move and reopen it to recover the choice.
+
+**Workspace move in Code.** With two enrolled disposable nodes and a hosted
+HTTP sentinel on the source, choose Move workspace in Code. Verify the exact
+destination and storage review. Compare an uncommitted file on both nodes.
+Check that the source remains fenced and the sentinel stays available. Drop
+the destination's connection after the local activation is recorded and
+before the Hub receives its report. Reconnect and confirm Code follows the
+same transfer to the destination, which offers the next workspace generation
+only after activation is acknowledged. The old node must refuse a launch
+with the transferred workspace identity.
+
+**Withdraw a workspace move.** In Code, withdraw while the destination copy
+is staged. Interrupt the destination after its withdrawal seal is written,
+then reconnect. Verify that the destination releases only the unpublished
+copy and the source retains its project and can start its next generation.
+If the Hub already offered activation, the source must stay fenced until the
+destination settles. When activation was never offered, repeat with the
+destination offline. Verify that the source can recover and the destination
+cleans up on reconnect. Repeat with a destination that already activated
+but has yet to report to the Hub. The destination should stay active and the
+source should remain fenced.
+
+**Remove the retained copy.** After activation, confirm Delete retained
+copy in the destination's Code workspace panel. Verify that captured sources
+and dependent builds hold deletion. Release those dependencies on the
+disposable source, interrupt cleanup after the deletion intent, and reboot.
+The same request should complete and release the source reservation while the
+destination project and hosted sentinel remain available. Confirm the removed
+source can receive a subsequent move of the same workspace at a newer generation.
+
+**Workspace handoff fence.** On a disposable installed node, start an owned
+coding workspace and a separate hosted HTTP sentinel. Write an uncommitted
+change in the workspace. Begin a source fence with an exact transfer UUID and
+destination device UUID. Interrupt the operation after the stopping record
+is synced, then reboot and repeat the exact request. The original workspace
+runtime, network and resource reservation should be absent before status
+becomes fenced. Verify the uncommitted bytes remain on the source, a held
+preview closes, the old runtime and a new generation are both refused, and
+the source files cannot be deleted through normal workspace deletion. Reject
+a replay with a different destination, owner or generation. Check the hosted
+sentinel during fencing and after the planned reboot. Test rollback across
+the fence-record format with the source's files and hosting intact.
+
+With that exact source fenced, describe the project and export its archive
+twice. Compare both lengths and SHA-256 digests with the receipt. Use a
+fixture with staged, unstaged and untracked edits, executable files, Git
+objects and a provider profile in the sibling home. Compare the archive
+tree with the project and confirm that the sibling profile stays on the
+source. A changed receipt, an escaping link, interrupted stdout or hosting
+pressure should prevent successful export while preserving the source.
+
+On a disposable destination with a matching policy and adequate quota,
+start a restore using the exact fenced checkpoint. Stop the transfer mid-file
+and reboot. The destination should remain unpublished, with its quota reserved.
+Replay using the same import and full archive. Compare worktree files, Git
+index and links with the source. Check wrong destination, different source
+device, conflicting workspace, extra bytes and altered digest separately.
+While restored, confirm that ordinary start is refused. Activate the exact
+receipt and start under normal admission. The generation must advance once,
+the source must stay fenced, and the destination must use its own provider
+authorization. Repeat under hosting pressure and with an active hosted
+sentinel. Hub authorization across the two VMs remains a separate check.
+
+## HT-189 — AnimaOS interrupted build cancellation
+
+State: Open. Owner: the AnimaOS redesign in [spare-computer-os.md](proposals/spare-computer-os.md).
+
+On a disposable installed VM with the latest execution package, start a synthetic build and cancel it. Interrupt the cancellation caller after its durable `cancelling` receipt is written but before termination cleanup finishes. Exercise both explicit reconciliation and boot recovery, including a worker that exported before cancellation won the attempt lock.
+
+Expected: cancellation remains authoritative; reconciliation ends at `cancelled`, never `verified`. The build cgroup must be empty before capacity and source leases are released. Repeated cancellation/reconciliation is safe, export refuses the cancelled attempt, and unrelated hosted applications remain running. A failed termination observation keeps capacity reserved. Do not synthesize a successful receipt or weaken the termination checks to make the scenario pass.
+
+Source implementation and strict Linux Clippy are complete; interrupted-process and reboot acceptance have not run.
+
+For the same build-lifecycle check, interrupt a confirmed artifact release after `deleting` is durable, both before and after subvolume deletion. Exercise explicit reconciliation, cancellation retry and boot recovery. Expect `deleted`, absent scratch/artifact storage, released capacity and source lease, and export refusal. No recovery path may promote this attempt back to `verified` or replace its deletion intent with cancellation. Verify repeated cleanup and a refused Btrfs deletion without removing unrelated workspace or hosting storage.

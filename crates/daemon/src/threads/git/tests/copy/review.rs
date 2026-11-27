@@ -25,8 +25,13 @@ async fn a_run_of_the_thread_starts_no_program_that_the_configuration_names() {
     let before = std::fs::read_to_string(&config).expect("the configuration");
     std::fs::write(&config, before + &planted).expect("the planted configuration");
     // An ID that the repository does not have, where the worktree of the thread is.
-    let entry = format!(".git/worktrees/anima-{}/HEAD", THREAD.as_simple());
-    std::fs::write(bench.project.join(entry), format!("{}\n", "1".repeat(40))).expect("HEAD");
+    let entry = std::fs::read_to_string(folder.join(".git")).expect("linked Git directory");
+    let entry = entry
+        .trim_end()
+        .strip_prefix("gitdir: ")
+        .expect("linked entry");
+    let head = std::path::Path::new(entry).join("HEAD");
+    std::fs::write(head, format!("{}\n", "1".repeat(40))).expect("HEAD");
     let outcome = bench.call(PERSON, GitAction::Status).await;
     assert!(
         matches!(refused(&outcome), Some(GitRefusal::Failed { .. })),

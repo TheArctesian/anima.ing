@@ -4,21 +4,25 @@ use zeroize::Zeroizing;
 pub const LIMIT: usize = 64 * 1024;
 
 /// Room for [`LIMIT`] is made at the start, so the buffer never moves and its wipe covers all.
-pub struct Body(Zeroizing<Vec<u8>>);
+pub struct Body(Zeroizing<Vec<u8>>, usize);
 
 impl Body {
     #[must_use]
     pub fn new() -> Self {
-        Self(Zeroizing::new(Vec::with_capacity(LIMIT)))
+        Self::bounded(LIMIT)
+    }
+
+    pub(super) fn bounded(limit: usize) -> Self {
+        Self(Zeroizing::new(Vec::with_capacity(limit)), limit)
     }
 
     #[must_use]
     pub fn is_full(&self) -> bool {
-        self.0.len() >= LIMIT
+        self.0.len() >= self.1
     }
 
     pub fn add(&mut self, chunk: &[u8]) {
-        let room = LIMIT - self.0.len();
+        let room = self.1 - self.0.len();
         self.0.extend_from_slice(&chunk[..chunk.len().min(room)]);
     }
 

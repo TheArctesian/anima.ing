@@ -8,6 +8,8 @@ mod hardware;
 mod inventory;
 mod linux;
 mod macos;
+pub mod mobile;
+mod remote_access;
 #[cfg(windows)]
 mod windows;
 
@@ -15,6 +17,7 @@ use chrono::{DateTime, Utc};
 use daemon_core::readings::Reading;
 pub use hardware::hardware;
 pub use inventory::inventory;
+pub(crate) use remote_access::refresh as refresh_remote_access;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Platform {

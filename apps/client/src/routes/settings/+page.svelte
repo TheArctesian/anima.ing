@@ -80,6 +80,7 @@
   <!-- One section per subject, in three groups: the hub and the account, this computer, connections (WP-50 F-10, R-224). -->
   <SettingsSection {...SECTIONS.account}>
     {#if phone}<PhoneAccount />{:else}<SignOutRow />{/if}
+    <a href={resolve("/device")}>Command-line approval and sessions</a>
   </SettingsSection>
 
   {#if phone}

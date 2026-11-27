@@ -15,6 +15,8 @@ use crate::fleet::credentials::{PasswordKind, Secret};
 use crate::fleet::devices::{Device, RdpSecurity, ResizeMethod, TransferPolicy};
 use crate::fleet::{sessions::Desktop, trust::ServerCertificate};
 
+use super::policy::Policy;
+
 /// The time zone when the client's is not zone-shaped (sites have no zone, R-032).
 const FALLBACK_ZONE: &str = "UTC";
 const TRUE: &str = "true";
@@ -60,7 +62,7 @@ pub(super) struct Sources<'a> {
     pub(super) port: u16,
     /// Without one guacd asks the client (GW-015).
     pub(super) password: Option<&'a Secret>,
-    /// The accepted RDP server certificate (SEC-007).
+    /// The independently accepted certificate for the selected protocol (SEC-007).
     pub(super) certificate: Option<&'a ServerCertificate>,
     /// `ANIMA_GUACD_DRIVE_ROOT`, a path inside the guacd container (RA-021).
     pub(super) drive_root: &'a str,
@@ -71,7 +73,7 @@ pub(super) struct Sources<'a> {
 /// # Errors
 /// [`BadConnectValue::NotText`] when the stored password is not UTF-8.
 pub(super) fn connect_values(
-    desktop: Desktop,
+    policy: Policy,
     sources: &Sources<'_>,
 ) -> Result<ArgValues, BadConnectValue> {
     let device = sources.device;
@@ -81,10 +83,15 @@ pub(super) fn connect_values(
     if let Some(password) = sources.password {
         values.set("password", text("password", password)?);
     }
-    clipboard(&mut values, device.transfer);
-    match desktop {
-        Desktop::Rdp => rdp(&mut values, sources),
+    clipboard(&mut values, policy.transfer);
+    flag(&mut values, "read-only", policy.view_only);
+    match policy.desktop {
+        Desktop::Rdp => rdp(&mut values, sources, policy),
         Desktop::Vnc => {
+            flag(&mut values, "disable-display-resize", policy.view_only);
+            if let Some(certificate) = sources.certificate {
+                values.set("cert-fingerprints", accepted_fingerprint(certificate));
+            }
             if let Some(username) = &device.vnc.username {
                 values.set("username", username.as_str());
             }
@@ -93,7 +100,7 @@ pub(super) fn connect_values(
     Ok(values)
 }
 
-fn rdp(values: &mut ArgValues, sources: &Sources<'_>) {
+fn rdp(values: &mut ArgValues, sources: &Sources<'_>, policy: Policy) {
     let device = sources.device;
     let rdp = &device.rdp;
     values.set("username", rdp.username.as_str());
@@ -105,12 +112,14 @@ fn rdp(values: &mut ArgValues, sources: &Sources<'_>) {
     if let Some(certificate) = sources.certificate {
         values.set("cert-fingerprints", accepted_fingerprint(certificate));
     }
-    values.set("resize-method", resize_method(rdp.resize));
+    if !policy.view_only {
+        values.set("resize-method", resize_method(rdp.resize));
+    }
     flag(values, "disable-audio", !rdp.audio_out);
-    flag(values, "enable-audio-input", rdp.microphone);
-    flag(values, "disable-download", !device.transfer.download);
-    flag(values, "disable-upload", !device.transfer.upload);
-    if rdp.shared_drive {
+    flag(values, "enable-audio-input", policy.microphone);
+    flag(values, "disable-download", !policy.transfer.download);
+    flag(values, "disable-upload", !policy.transfer.upload);
+    if policy.shared_drive {
         flag(values, "enable-drive", true);
         values.set("drive-path", drive_path(sources.drive_root, device));
         flag(values, "create-drive-path", true);

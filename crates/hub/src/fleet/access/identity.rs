@@ -28,7 +28,7 @@ pub(super) struct Grant {
     pub token: Uuid,
     pub kind: TokenKind,
     pub scope: Scope,
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: Option<DateTime<Utc>>,
     pub made_for: Option<MadeFor>,
     pub key_name: Option<String>,
 }
@@ -41,7 +41,7 @@ impl Grant {
             token: Uuid::nil(),
             kind,
             scope,
-            expires_at,
+            expires_at: Some(expires_at),
             made_for: None,
             key_name: None,
         }
@@ -138,7 +138,7 @@ impl Identity {
 
     /// When the token stops working. A long-lived connection must stop serving at this time.
     #[must_use]
-    pub const fn expires_at(&self) -> DateTime<Utc> {
+    pub const fn expires_at(&self) -> Option<DateTime<Utc>> {
         self.grant.expires_at
     }
 
@@ -177,7 +177,9 @@ impl Identity {
 
     /// Whether the identity still holds at `now`.
     pub(super) fn valid_at(&self, now: DateTime<Utc>) -> bool {
-        tokens::usable(self.grant.expires_at, now)
+        self.grant
+            .expires_at
+            .is_none_or(|expiry| tokens::usable(expiry, now))
     }
 
     /// Adds the identity and, for an operator token, its `Operator` to one HTTP request's data.
@@ -298,7 +300,9 @@ pub(super) async fn resolve(
     };
     if !tokens::consistent(kind, scope)
         || !tokens::admitted(kind, spelling, transport)
-        || !tokens::usable(row.expires_at, now)
+        || row
+            .expires_at
+            .is_some_and(|expiry| !tokens::usable(expiry, now))
         || tokens::idled_out(row.idle_seconds, row.last_used_at, now)
     {
         return Ok(None);
@@ -341,7 +345,7 @@ pub async fn operator_for_token(
 ) -> Result<Operator, Error> {
     let identity = resolve(db, token, Transport::Bearer, now)
         .await?
-        .filter(|identity| identity.kind() == TokenKind::Login)
+        .filter(|identity| matches!(identity.kind(), TokenKind::Login | TokenKind::CommandLine))
         .ok_or(Error::Unauthenticated)?;
     identity.operator().cloned().ok_or(Error::Unauthenticated)
 }

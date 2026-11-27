@@ -1,0 +1,48 @@
+#!/bin/sh
+# Invoked from a checksum-verified release bundle; never downloads executable code itself.
+set -eu
+umask 077
+unset ANIMA_TOKEN ANIMA_HUB
+fail() { printf 'anima-setup: %s\n' "$1" >&2; exit 1; }
+[ "$(id -u)" != 0 ] || fail "run as a dedicated user, not root"
+CLI_ONLY=false
+LINGER=false
+COMPUTER=$(hostname)
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --cli-only) CLI_ONLY=true ;;
+        --enable-linger) LINGER=true ;;
+        --computer) [ "$#" -ge 2 ] || fail "--computer needs a name"; COMPUTER=$2; shift ;;
+        *) fail "use --cli-only, --enable-linger, or --computer NAME" ;;
+    esac
+    shift
+done
+case $(uname -s) in Linux|Darwin) ;; *) fail "this installer supports Linux and macOS" ;; esac
+[ -n "${HOME:-}" ] || fail "HOME is not set"
+SOURCE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+DEST="$HOME/.local/bin"
+mkdir -p "$DEST"
+# Rename each verified program in place, so a running process keeps its original inode.
+for program in anima anima-link anima-daemon; do
+    [ -f "$SOURCE/$program" ] || fail "the release bundle is incomplete"
+    cp "$SOURCE/$program" "$DEST/.$program.install"
+    chmod 0755 "$DEST/.$program.install"
+    mv -f "$DEST/.$program.install" "$DEST/$program"
+done
+printf 'Installed Anima in %s. Add this directory to PATH if needed.\n' "$DEST" >&2
+if [ "$CLI_ONLY" = true ]; then exit 0; fi
+# Existing valid sessions resume setup without another approval.
+HUB="unix:${XDG_CONFIG_HOME:-$HOME/.config}/anima/hosted/link.sock"
+if ! "$DEST/anima" --no-input --hub "$HUB" auth status >/dev/null 2>&1; then
+    "$DEST/anima" --no-input auth login --hosted --computer "$COMPUTER"
+fi
+"$DEST/anima" --no-input --hub "$HUB" daemon install --computer "$COMPUTER"
+if [ "$(uname -s)" = Linux ]; then
+    if [ "$LINGER" = true ]; then
+        loginctl enable-linger "$(id -un)" || fail "lingering needs administrator approval; ask an administrator to enable it for this user"
+        printf 'User services will run at boot and after logout.\n' >&2
+    else
+        printf 'For operation after logout and reboot, run again with --enable-linger (applies to all your user services).\n' >&2
+    fi
+fi
+printf 'Anima is ready. Run %s/anima auth status to inspect the session.\n' "$DEST" >&2

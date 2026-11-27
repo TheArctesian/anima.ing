@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-command-line-computer"
+description = "Enables the command_line_computer command without any pre-configured scope."
+commands.allow = ["command_line_computer"]
+
+[[permission]]
+identifier = "deny-command-line-computer"
+description = "Denies the command_line_computer command without any pre-configured scope."
+commands.deny = ["command_line_computer"]

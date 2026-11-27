@@ -13,6 +13,8 @@ export interface Sink<T> {
   complete(): void;
 }
 
+export type Visibility = Pick<Document, 'visibilityState' | 'addEventListener' | 'removeEventListener'>;
+
 /** Every part is injected so that tests need no network (CQ-021). */
 interface SocketTransport {
   readonly address: HubAddress;
@@ -21,6 +23,8 @@ interface SocketTransport {
   readonly signal: (signal: StatusSignal) => void;
   /** The wait for `connection_ack` before closing and retrying (NET-004). */
   readonly timeoutMs: number;
+  /** The page; a socket that waits to retry retries at once when the page shows again (MOB-036). */
+  readonly visibility?: Visibility | undefined;
 }
 
 export interface Socket {
@@ -28,6 +32,7 @@ export interface Socket {
     document: TypedDocumentNode<TResult, TVariables>,
     variables: TVariables,
     sink: Sink<TResult>,
+    options?: { retry?: boolean },
   ): () => void;
   /** Completes every subscription, also later ones; rejects only when an open socket could not be closed. */
   close(): Promise<void>;
@@ -44,7 +49,7 @@ const FIRST_RETRY_MS = 1000;
 const LONGEST_RETRY_MS = 30_000;
 
 function retryDelayMs(retries: number): number {
-  return Math.min(FIRST_RETRY_MS * 2 ** retries, LONGEST_RETRY_MS);
+  return Math.min(FIRST_RETRY_MS * 2 ** Math.max(0, retries), LONGEST_RETRY_MS);
 }
 
 function closeCode(value: unknown): number | undefined {
@@ -79,6 +84,31 @@ interface SocketState {
   /** Fires `failed` when a connection attempt has no `connection_ack` within the timeout, even if it never opens. */
   deadline: ReturnType<typeof setTimeout> | undefined;
   retryTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Ends the wait for the next retry; set only while the socket waits. */
+  retryNow: (() => void) | undefined;
+  /** The retry of the current wait, and the retry from which the backoff counts again after the page showed. */
+  retries: number;
+  shownAt: number;
+}
+
+/** After a time in the background the backoff is long, and the link of a phone is back at once (MOB-036). */
+function retryWhenShown(state: SocketState): void {
+  if (state.retryNow === undefined) return;
+  state.shownAt = state.retries + 1;
+  state.retryNow();
+}
+
+function waitToRetry(state: SocketState, retries: number): Promise<void> {
+  return new Promise((resolve) => {
+    state.retries = retries;
+    const retry = (): void => {
+      clearTimeout(state.retryTimer);
+      state.retryNow = undefined;
+      resolve();
+    };
+    state.retryNow = retry;
+    state.retryTimer = setTimeout(retry, retryDelayMs(retries - state.shownAt));
+  });
 }
 
 function clearDeadline(state: SocketState): void {
@@ -96,7 +126,7 @@ function stoppedSignal(reason: unknown, state: SocketState): StatusSignal | unde
   return isHubCloseCode(closeCode(reason)) ? 'answered' : 'failed';
 }
 
-function lifecycle(transport: SocketTransport, state: SocketState, refuse: () => void) {
+function lifecycle(transport: SocketTransport, state: SocketState, refuse: (event: unknown) => void) {
   const signal = (value: StatusSignal | undefined): void => {
     if (value !== undefined && !state.closed) transport.signal(value);
   };
@@ -109,6 +139,8 @@ function lifecycle(transport: SocketTransport, state: SocketState, refuse: () =>
     },
     connected: () => {
       state.phase = 'live';
+      // graphql-ws counts the retries from zero again after `connection_ack`.
+      state.shownAt = 0;
       clearDeadline(state);
       signal('acknowledged');
     },
@@ -116,14 +148,14 @@ function lifecycle(transport: SocketTransport, state: SocketState, refuse: () =>
       state.phase = 'waiting';
       clearDeadline(state);
       // The socket keeps probing after a refusal; the subscriptions end, so they are not sent again.
-      if (closeCode(event) === REFUSED_CLOSE_CODE) refuse();
+      refuse(event);
       signal(closeSignal(event));
     },
     stopped: (reason: unknown) => signal(stoppedSignal(reason, state)),
   };
 }
 
-function connect(transport: SocketTransport, state: SocketState, refuse: () => void): Client {
+function connect(transport: SocketTransport, state: SocketState, refuse: (event: unknown) => void): Client {
   const events = lifecycle(transport, state, refuse);
   return createClient({
     url: transport.address.socket,
@@ -143,10 +175,7 @@ function connect(transport: SocketTransport, state: SocketState, refuse: () => v
     },
     connectionAckWaitTimeout: transport.timeoutMs,
     retryAttempts: Number.POSITIVE_INFINITY,
-    retryWait: (retries) =>
-      new Promise((resolve) => {
-        state.retryTimer = setTimeout(resolve, retryDelayMs(retries));
-      }),
+    retryWait: (retries) => waitToRetry(state, retries),
     // A refused token retries on the backoff, which resets only on `connection_ack`; each probe rereads the token (NET-004).
     shouldRetry: () => !state.tokenUnreadable,
     on: { connecting: events.connecting, connected: events.connected, closed: events.closed },
@@ -168,13 +197,22 @@ function deliverTo<T>(sink: Sink<T>, tokenUnreadable: () => boolean, origin: str
 
 /** The single graphql-transport-ws socket of one hub (API-002). */
 export function createSocket(transport: SocketTransport): Socket {
-  const state: SocketState = { phase: 'opening', closed: false, tokenUnreadable: false, deadline: undefined, retryTimer: undefined };
+  const state: SocketState = {
+    phase: 'opening', closed: false, tokenUnreadable: false, deadline: undefined, retryTimer: undefined, retryNow: undefined, retries: 0, shownAt: 0,
+  };
   const live = new Set<(error?: HubError) => void>();
-  const client = connect(transport, state, () => {
-    for (const finish of [...live]) finish(REFUSED);
+  const transient = new Set<(error?: HubError) => void>();
+  const client = connect(transport, state, (event) => {
+    const refused = closeCode(event) === REFUSED_CLOSE_CODE;
+    for (const finish of [...(refused ? live : transient)]) finish(refused ? REFUSED : noAnswer(transport.address.origin));
   });
+  const { visibility } = transport;
+  const shown = (): void => {
+    if (visibility?.visibilityState === 'visible') retryWhenShown(state);
+  };
+  visibility?.addEventListener('visibilitychange', shown);
   return {
-    subscribe(document, variables, sink) {
+    subscribe(document, variables, sink, options) {
       if (state.closed) {
         sink.complete();
         return () => undefined;
@@ -185,6 +223,7 @@ export function createSocket(transport: SocketTransport): Socket {
         if (ended) return;
         ended = true;
         live.delete(finish);
+        transient.delete(finish);
         stop();
         deliver();
       };
@@ -197,12 +236,14 @@ export function createSocket(transport: SocketTransport): Socket {
         complete: () => finish(),
       };
       live.add(finish);
+      if (options?.retry === false) transient.add(finish);
       stop = client.subscribe({ query: print(document), variables }, deliverTo(guarded, () => state.tokenUnreadable, transport.address.origin));
       return () => end(() => undefined);
     },
     close() {
       const { phase } = state;
       state.closed = true;
+      visibility?.removeEventListener('visibilitychange', shown);
       clearDeadline(state);
       clearTimeout(state.retryTimer);
       for (const finish of [...live]) finish();

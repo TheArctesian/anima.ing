@@ -1,5 +1,6 @@
 //! `anima project`: projects found in source repositories (PRJ-002, PRJ-016, PRO-004).
 
+mod builds;
 pub mod documents;
 pub mod get;
 pub mod group;
@@ -27,6 +28,11 @@ pub enum ProjectCommand {
         #[command(subcommand)]
         command: resource::ResourceCommand,
     },
+    /// Queue or inspect a source image build.
+    Build {
+        #[command(subcommand)]
+        command: builds::BuildCommand,
+    },
     /// Your own groups of projects (PRO-059).
     Group {
         #[command(subcommand)]
@@ -46,6 +52,7 @@ impl ProjectCommand {
             Self::LeaveOut(args) => args.run(invocation).await,
             Self::Restore(args) => args.run(invocation).await,
             Self::Resource { command } => command.run(invocation).await,
+            Self::Build { command } => command.run(invocation).await,
             Self::Group { command } => command.run(invocation).await,
         }
     }

@@ -1,6 +1,7 @@
 mod client;
 mod job_client;
 mod jobs;
+mod observation;
 mod probe;
 mod protocol;
 mod socket;
@@ -26,6 +27,9 @@ enum Command {
         systemctl: PathBuf,
         #[arg(long)]
         state_directory: Option<PathBuf>,
+        /// Publish read-only console observations at this boot-local path.
+        #[arg(long)]
+        console_snapshot: Option<PathBuf>,
     },
     /// Read local host facts. This does not establish hub connectivity or work readiness.
     Status,
@@ -65,7 +69,16 @@ async fn execute(arguments: Arguments) -> Result<(), Error> {
         Command::Serve {
             systemctl,
             state_directory,
-        } => socket::serve(&arguments.socket, &systemctl, state_directory.as_deref()).await,
+            console_snapshot,
+        } => {
+            socket::serve(
+                &arguments.socket,
+                &systemctl,
+                state_directory.as_deref(),
+                console_snapshot,
+            )
+            .await
+        }
         Command::JobStart { request_id } => {
             job_client::request(
                 &arguments.socket,

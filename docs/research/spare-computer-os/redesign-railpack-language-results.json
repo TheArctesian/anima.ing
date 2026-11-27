@@ -1,0 +1,74 @@
+{
+  "candidate": "1r0xmh615hn757s8h2k3sni8mqpds85p",
+  "harness": "harness-22",
+  "buildMemoryBytes": 536870912,
+  "python": {
+    "results": [
+      {
+        "case": "candidate-boot-reconciliation",
+        "result": "Passed"
+      },
+      {
+        "case": "python-build-export-isolated-run",
+        "result": "Passed"
+      },
+      {
+        "case": "clean-shutdown",
+        "result": "Passed"
+      },
+      {
+        "case": "unselected-disk",
+        "result": "Passed"
+      }
+    ],
+    "evidencePath": "/Users/stephenokita/.local/share/anima-os-prototype/railpack-independent.SJVbGw/python-d62tpjmg/results.json"
+  },
+  "rust": {
+    "results": [
+      {
+        "case": "candidate-boot-reconciliation",
+        "result": "Passed"
+      },
+      {
+        "case": "rust-build-export-isolated-run",
+        "result": "Failed",
+        "reason": "Guest command failed: export DOCKER_HOST=unix:///run/anima-railpack-docker.sock; printf '%s\\n' '{\"operation\": \"build-reconcile\", \"attempt\": \"fbe80734-2ac0-4eda-b125-852fa23b478f\"}' | /nix/store/1r0xmh615hn757s8h2k3sni8mqpds85p-anima-os-execution-0.1.0/bin/anima-os-execution > /run/anima-railpack-check-fbe80734-2ac0-4eda-b125-852fa23b478f/verified.json || { cat /run/anima-railpack-check-fbe80734-2ac0-4eda-b125-852fa23b478f/verified.json; exit 1; }; cat /run/anima-railpack-check-fbe80734-2ac0-4eda-b125-852fa23b478f/verified.json; jq -e '.ok and (.value.phase == \"verified\" and .value.result.integrityVerified and (.value.result.deployed | not))' /run/anima-railpack-check-fbe80734-2ac0-4eda-b125-852fa23b478f/verified.json"
+      },
+      {
+        "case": "clean-shutdown",
+        "result": "Passed"
+      },
+      {
+        "case": "unselected-disk",
+        "result": "Passed"
+      }
+    ],
+    "evidencePath": "/Users/stephenokita/.local/share/anima-os-prototype/railpack-independent.SJVbGw/rust-18_bp8ns/results.json",
+    "observedFailure": "The build service reported oom-kill at the 512 MiB build limit, before image export."
+  },
+  "rustRetry": {
+    "results": [
+      {
+        "case": "candidate-boot-reconciliation",
+        "result": "Passed"
+      },
+      {
+        "case": "rust-build-export-isolated-run",
+        "result": "Passed"
+      },
+      {
+        "case": "clean-shutdown",
+        "result": "Passed"
+      },
+      {
+        "case": "unselected-disk",
+        "result": "Passed"
+      }
+    ],
+    "scope": "Synthetic Rust build/export/run in a fresh disposable overlay with an isolated Docker store and a 2 GiB build reservation.",
+    "buildMemoryBytes": 2147483648,
+    "guestRequestedMiB": 10240,
+    "evidencePath": "/Users/stephenokita/.local/share/anima-os-prototype/railpack-rust-2gib-1akllz_c/attempt2/results.json",
+    "memoryEvidencePath": "/Users/stephenokita/.local/share/anima-os-prototype/railpack-rust-2gib-1akllz_c/attempt2/memory-evidence.json"
+  }
+}

@@ -1,12 +1,17 @@
 //! The work route through the hub's routes (K10, `contracts/work-route.md`; task W3): a daemon
 //! claims a job with its token, reports it, and the hub ends what a machine lost.
 
+mod application_apply;
+#[cfg(unix)]
+mod artifacts;
 mod copies;
 mod flow;
 mod found;
+mod hosting;
 mod model;
 mod placement;
 mod refusals;
+mod source;
 
 use anima_hub::{
     clock::Clock as _,

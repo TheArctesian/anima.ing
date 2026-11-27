@@ -11,7 +11,14 @@ fn k1_the_trust_part_declares_exactly_its_root_fields_as_k1_does() {
     let part = schema(&Schema::new(Query, Mutation, EmptySubscription).sdl());
     let k1 = k1();
     let fields: Vec<String> = part["TrustMutation"].members.keys().cloned().collect();
-    assert_eq!(fields, ["acceptHostKey", "acceptServerCertificate"]);
+    assert_eq!(
+        fields,
+        [
+            "acceptHostKey",
+            "acceptServerCertificate",
+            "acceptVncServerCertificate"
+        ]
+    );
     for (field, signature) in &part["TrustMutation"].members {
         assert_eq!(
             k1["Mutation"].members.get(field),

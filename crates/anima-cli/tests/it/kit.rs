@@ -7,7 +7,6 @@ pub mod real_hub;
 pub mod subscription_hub;
 #[cfg_attr(windows, path = "kit/terminal/windows.rs")]
 pub mod terminal;
-pub mod totp;
 pub mod tunnel_hub;
 
 use std::path::PathBuf;

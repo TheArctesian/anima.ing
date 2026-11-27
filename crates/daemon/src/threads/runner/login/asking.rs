@@ -85,6 +85,7 @@ pub async fn ask<T>(
             "--no-session-persistence",
         ],
         Program::Codex => &["app-server"],
+        Program::Grok => &["agent", "--no-leader", "stdio"],
     };
     let mut child = tokio::process::Command::new(&path)
         .args(args)

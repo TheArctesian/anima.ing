@@ -60,7 +60,7 @@ fn identity_of(kind: TokenKind, scope: Scope, expires_at: DateTime<Utc>) -> Iden
         token: Uuid::now_v7(),
         kind,
         scope,
-        expires_at,
+        expires_at: Some(expires_at),
         made_for: (kind == TokenKind::ApiKey).then_some(MadeFor::User),
         key_name: (kind == TokenKind::ApiKey).then(|| "tests".to_owned()),
     };

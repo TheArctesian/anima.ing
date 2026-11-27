@@ -1,14 +1,17 @@
 import { SvelteMap } from 'svelte/reactivity';
-import type { ThreadEntry } from './api';
+import type { ThreadEntry, ThreadSummary } from './api';
 
 export interface Message {
   readonly sequence: string;
-  readonly role: 'you' | 'agent';
+  readonly role: 'you' | 'agent' | 'notice';
   readonly text: string;
 }
 
-interface PendingRequest {
+export interface PendingRequest {
+  readonly kind: string;
+  readonly questions: readonly { key: string; text: string; choices: string[]; many: boolean }[];
   readonly id: string;
+  readonly sequence: number;
   readonly title: string;
   readonly subject: string;
   readonly diff: string;
@@ -34,11 +37,17 @@ function requestTitle(kind: unknown): string {
   }
 }
 
-function pendingRequest(id: string, value: unknown): PendingRequest {
+function pendingRequest(id: string, sequence: number, value: unknown): PendingRequest {
   const detail = record(value);
   const questions = Array.isArray(detail['questions']) ? detail['questions'] : [];
   return {
     id,
+    sequence,
+    kind: text(detail['kind']),
+    questions: questions.map((value: unknown) => {
+      const q = record(value);
+      return { key: text(q['key']), text: text(q['text']), choices: Array.isArray(q['choices']) ? q['choices'].filter((v): v is string => typeof v === 'string') : [], many: q['many'] === true };
+    }).filter((q) => q.key !== ''),
     title: requestTitle(detail['kind']),
     subject: questions.map((question: unknown) => text(record(question)['text'])).filter(Boolean).join('\n')
       || text(detail['subject']),
@@ -63,27 +72,75 @@ function appendReply(event: Record<string, unknown>, sequence: string, messages:
   }
 }
 
-export function createTranscript() {
+function attentionCleared(state: string): boolean {
+  return state === 'idle' || state === 'starting' || state === 'working' || state === 'stopped';
+}
+
+function operatorMessage(sequence: string, change: Record<string, unknown>): Message {
+  if (change['change'] === 'prompt') {
+    return { sequence, role: 'you', text: text(change['text']) || 'Prompt with attachments' };
+  }
+  const textForReason = change['reason'] === 'runner_history_gap'
+    ? 'Some earlier activity is no longer available on this node.'
+    : 'An entry exceeded the sharing limit and was omitted.';
+  return { sequence, role: 'notice', text: textForReason };
+}
+
+function reconcileOpenRequests(pending: SvelteMap<string, PendingRequest>, value: unknown): void {
+  const open = Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+  for (const id of pending.keys()) {
+    if (!open.includes(id)) pending.delete(id);
+  }
+}
+
+export function createConversation() {
   const messages = $state<Message[]>([]);
   const pending = new SvelteMap<string, PendingRequest>();
   let draft = $state.raw<Message | null>(null);
+  let published = $state.raw<{ summary: ThreadSummary; through: number } | null>(null);
+  let streamed = $state.raw<{ state: string; sequence: number } | null>(null);
+  let requestsClearedThrough = -1;
+
+  function acceptSummary(summary: ThreadSummary, lastSequence: string): void {
+    const through = Number(lastSequence);
+    if (published !== null && through < published.through) return;
+    // The summary covers status through this sequence; replay still supplies transcript entries.
+    published = { summary, through };
+    if (streamed !== null && streamed.sequence <= through) streamed = null;
+    if (!attentionCleared(summary.state)) return;
+    requestsClearedThrough = through;
+    for (const request of pending.values()) {
+      if (request.sequence <= through) pending.delete(request.id);
+    }
+  }
 
   function append({ sequence, content }: ThreadEntry): void {
     const change = record(content);
     switch (change['change']) {
+      case 'omitted':
       case 'prompt':
         if (draft !== null) messages.push(draft);
         draft = null;
-        messages.push({ sequence, role: 'you', text: text(change['text']) || 'Prompt with attachments' });
+        messages.push(operatorMessage(sequence, change));
         break;
       case 'said':
         draft = appendReply(record(change['event']), sequence, messages, draft);
         break;
-      case 'asked': {
-        const id = text(change['request']);
-        if (id !== '') pending.set(id, pendingRequest(id, change['detail']));
+      case 'state': {
+        const state = text(change['state']);
+        const position = Number(sequence);
+        if (state !== '' && position > (published?.through ?? -1)) streamed = { state, sequence: position };
         break;
       }
+      case 'asked': {
+        const id = text(change['request']);
+        const position = Number(sequence);
+        if (id !== '' && position > requestsClearedThrough) pending.set(id, pendingRequest(id, position, change['detail']));
+        break;
+      }
+      case 'open_requests':
+        reconcileOpenRequests(pending, change['requests']);
+        break;
       case 'closed':
         pending.delete(text(change['request']));
         break;
@@ -91,15 +148,13 @@ export function createTranscript() {
   }
 
   return {
+    get summary() { return published?.summary ?? null; },
+    get state() { return streamed?.state ?? published?.summary.state ?? ''; },
     get messages(): readonly Message[] { return draft === null ? messages : [...messages, draft]; },
     get pending(): readonly PendingRequest[] { return [...pending.values()]; },
+    acceptSummary,
     append,
   };
-}
-
-export function updatedState(entry: ThreadEntry): string | undefined {
-  const change = record(entry.content);
-  return change['change'] === 'state' ? text(change['state']) || undefined : undefined;
 }
 
 export function stateLabel(state: string): string {

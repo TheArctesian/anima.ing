@@ -139,7 +139,7 @@ pub fn accept_socket<E: Executor>(
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Lease {
     token: Uuid,
-    expires_at: DateTime<Utc>,
+    expires_at: Option<DateTime<Utc>>,
 }
 
 /// The outcome of `connection_init`.
@@ -318,11 +318,16 @@ async fn deliver<S: Sink<Message> + Unpin>(
 /// the token cannot be checked.
 async fn lapse(access: &SocketAccess, lease: Lease) -> Closing {
     loop {
-        let Some(wait) = next_check(lease.expires_at, access.clock.now(), access.recheck) else {
+        let Some(wait) = lease.expires_at.map_or(Some(access.recheck), |expiry| {
+            next_check(expiry, access.clock.now(), access.recheck)
+        }) else {
             return Closing::Forbidden;
         };
         tokio::time::sleep(wait).await;
-        if !tokens::usable(lease.expires_at, access.clock.now()) {
+        if lease
+            .expires_at
+            .is_some_and(|expiry| !tokens::usable(expiry, access.clock.now()))
+        {
             return Closing::Forbidden;
         }
         match store::token_exists(&access.db, lease.token).await {

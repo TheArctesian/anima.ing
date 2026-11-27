@@ -4,6 +4,8 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use sha2::{Digest as _, Sha256};
 use zeroize::Zeroizing;
 
 use super::token_store::StoreError;
@@ -51,6 +53,7 @@ impl TokenFile {
     /// # Errors
     /// [`StoreError`] when the file cannot be read or written.
     pub fn write(&self, origin: &Origin, token: &Token) -> Result<(), StoreError> {
+        self.choose_file(origin)?;
         let mut tokens = self.load()?;
         tokens.0.insert(origin.as_text(), token.expose().to_owned());
         self.save(&tokens)
@@ -61,6 +64,7 @@ impl TokenFile {
     /// # Errors
     /// [`StoreError`] when the file cannot be read or written.
     pub fn delete(&self, origin: &Origin) -> Result<bool, StoreError> {
+        self.choose_file(origin)?;
         let mut tokens = self.load()?;
         let Some(old) = tokens.0.remove(&origin.as_text()) else {
             return Ok(false);
@@ -71,6 +75,34 @@ impl TokenFile {
             return Ok(true);
         }
         self.save(&tokens).map(|()| true)
+    }
+
+    /// File authority survives logout: an inaccessible older keyring entry must never revive.
+    pub(super) fn authoritative(&self, origin: &Origin) -> Result<bool, StoreError> {
+        let marker = Self::source_name(origin);
+        if private_file::read(&self.dir.join(marker))
+            .map_err(|source| self.failed(source))?
+            .is_some()
+        {
+            return Ok(true);
+        }
+        if self.read(origin)?.is_some() {
+            self.choose_file(origin)?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn choose_file(&self, origin: &Origin) -> Result<(), StoreError> {
+        private_file::write(&self.dir, &Self::source_name(origin), b"file")
+            .map_err(|source| self.failed(source))
+    }
+
+    fn source_name(origin: &Origin) -> String {
+        format!(
+            "token-source-{}",
+            URL_SAFE_NO_PAD.encode(Sha256::digest(origin.as_text().as_bytes()))
+        )
     }
 
     fn load(&self) -> Result<Tokens, StoreError> {

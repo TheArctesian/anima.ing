@@ -7,12 +7,14 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"image/png"
 	"io"
 	"net"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/TheArctesian/anima/link/devicelink/testvnc"
 	"github.com/TheArctesian/anima/link/dial"
 	"github.com/TheArctesian/anima/link/hublink"
 	"github.com/TheArctesian/anima/link/ports"
@@ -138,7 +140,12 @@ func localPort(t *testing.T, answers bool) uint16 {
 func TestHMD048TheHubLinkReachesOnlyTheOpenLocalPortsOfADevice(t *testing.T) {
 	open, shut := localPort(t, true), localPort(t, false)
 	s := newSite(t)
-	s.openPort = func(port uint16) bool { return port == open }
+	s.openPort = func(port uint16) context.Context {
+		if port == open {
+			return context.Background()
+		}
+		return nil
+	}
 	hub := s.startHub(t)
 	s.startDevice(t, time.Second)
 	s.seenBy(t, hub, 30*time.Second)
@@ -169,7 +176,7 @@ func TestHMD048TheHubLinkReachesOnlyTheOpenLocalPortsOfADevice(t *testing.T) {
 	}
 }
 
-func TestOSPrivateSSHAndRDPTLS(t *testing.T) {
+func TestOSPrivateAccess(t *testing.T) {
 	password := os.Getenv("ANIMA_OS_TEST_PASSWORD")
 	if password == "" {
 		t.Skip("requires the disposable Anima OS acceptance VM")
@@ -180,7 +187,7 @@ func TestOSPrivateSSHAndRDPTLS(t *testing.T) {
 	}
 	defer dir.Close()
 	s := newSite(t)
-	s.openPort = func(port uint16) bool { return ports.IsOpen(dir, port) }
+	s.openPort = ports.Selected(dir).Permit
 	hub := s.startHub(t)
 	s.startDevice(t, time.Second)
 	s.seenBy(t, hub, 30*time.Second)
@@ -193,14 +200,7 @@ func TestOSPrivateSSHAndRDPTLS(t *testing.T) {
 	}
 	defer release()
 	defer stream.Close()
-	keyBytes, err := os.ReadFile("/run/anima-test-ssh.pub")
-	if err != nil {
-		t.Fatal(err)
-	}
-	key, _, _, _, err := ssh.ParseAuthorizedKey(keyBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	key := osSSHHostKey(t)
 	_ = stream.SetDeadline(time.Now().Add(15 * time.Second))
 	conn, channels, requests, err := ssh.NewClientConn(stream, "anima-os:22", &ssh.ClientConfig{User: "admin", Auth: []ssh.AuthMethod{ssh.Password(password)}, HostKeyCallback: ssh.FixedHostKey(key)})
 	if err != nil {
@@ -224,9 +224,56 @@ func TestOSPrivateSSHAndRDPTLS(t *testing.T) {
 	defer done()
 	defer desktop.Close()
 	checkOSRDP(t, desktop)
-	if _, _, err := hub.Open(ctx, address, 5900); !errors.Is(err, dial.ErrRefused) {
-		t.Fatalf("VNC must stay closed: %v", err)
+	checkOSVNC(t, password, func() net.Conn {
+		opening, stop := context.WithTimeout(context.Background(), 15*time.Second)
+		defer stop()
+		stream, release, err := hub.Open(opening, address, 5900)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(release)
+		t.Cleanup(func() { stream.Close() })
+		return stream
+	})
+}
+
+func checkOSVNC(t *testing.T, password string, open func() net.Conn) {
+	t.Helper()
+	frame := testvnc.Check(t, open, osCertificate(t, "/run/anima-test-vnc.pem"), password)
+	file, err := os.Create("/run/anima-test-vnc/frame.png")
+	if err != nil {
+		t.Fatal(err)
 	}
+	defer file.Close()
+	if err := png.Encode(file, frame); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func osCertificate(t *testing.T, path string) []byte {
+	t.Helper()
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certificate, _ := pem.Decode(contents)
+	if certificate == nil || certificate.Type != "CERTIFICATE" || len(certificate.Bytes) == 0 {
+		t.Fatal("fixture certificate is missing")
+	}
+	return certificate.Bytes
+}
+
+func osSSHHostKey(t *testing.T) ssh.PublicKey {
+	t.Helper()
+	keyBytes, err := os.ReadFile("/run/anima-test-ssh.pub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, _, _, _, err := ssh.ParseAuthorizedKey(keyBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return key
 }
 
 func checkOSRDP(t *testing.T, stream net.Conn) {
@@ -243,17 +290,10 @@ func checkOSRDP(t *testing.T, stream net.Conn) {
 	if response[11] != 2 || response[15] != 1 {
 		t.Fatalf("RDP did not negotiate TLS: %x", response)
 	}
-	certBytes, err := os.ReadFile("/run/anima-test-rdp.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
-	certificate, _ := pem.Decode(certBytes)
-	if certificate == nil {
-		t.Fatal("fixture certificate is missing")
-	}
+	certificate := osCertificate(t, "/run/anima-test-rdp.pem")
 	// VerifyConnection pins the certificate that the VM exports.
 	secure := tls.Client(stream, &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: true, VerifyConnection: func(state tls.ConnectionState) error {
-		if len(state.PeerCertificates) != 1 || !bytes.Equal(state.PeerCertificates[0].Raw, certificate.Bytes) {
+		if len(state.PeerCertificates) != 1 || !bytes.Equal(state.PeerCertificates[0].Raw, certificate) {
 			return fmt.Errorf("RDP certificate changed")
 		}
 		return nil

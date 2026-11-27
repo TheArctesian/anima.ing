@@ -1,5 +1,7 @@
 //! `anima capability list` against the scripted hub (CAP-030, CMD-020, CMD-030).
 
+mod mobile;
+
 use serde_json::{Value, json};
 
 use crate::kit::Anima;
@@ -38,14 +40,14 @@ fn nvidia_hardware() -> Value {
 pub fn capabilities() -> Value {
     json!({ "capabilities": [
         { "device": { "id": "0190a000-0000-7000-8002-00000000000a", "name": "mac-office-1" },
-          "architecture": "aarch64", "os": "macos", "osVersion": "27.0",
+          "mobileTools": null, "architecture": "aarch64", "os": "macos", "osVersion": "27.0",
           "tools": [ { "name": "cargo", "version": "1.91.0", "usable": true, "reason": null },
                      { "name": "bun", "version": null, "usable": false,
                        "reason": "TIMED_OUT" } ],
           "buildTargets": ["aarch64-apple-darwin", "aarch64-apple-ios"],
           "foundAt": "2026-11-15T09:00:00+00:00", "hardware": mac_hardware() },
         { "device": { "id": "0190a000-0000-7000-8002-000000000009", "name": "linux-pc-home" },
-          "architecture": "x86_64", "os": "linux", "osVersion": "24.04",
+          "mobileTools": null, "architecture": "x86_64", "os": "linux", "osVersion": "24.04",
           "tools": [], "buildTargets": [], "foundAt": "2026-11-15T09:01:00+00:00",
           "hardware": nvidia_hardware() }
     ] })

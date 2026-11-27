@@ -1,5 +1,7 @@
 # K10 — Work route: claim, report, log, stop and a secret for one job
 
+TH30 amendment: **accepted**, R-460 (2026-11-25), Section 6.5.
+
 Status: **accepted** (R-209, operator, 2026-11-19: "I accept the work route contract K10, version 0.3, as written in `contracts/work-route.md`, and for each open finding of its security review I accept the state that `docs/security-findings.md` gives."; task W1 of [projects-and-builds-plan.md](../docs/plans/projects-and-builds-plan.md); version 0.3, 2026-11-18; version 0.4 and version 0.5, 2026-11-19). It changes only by a ruling (CON-001), with the one exception that R-251 gives for corrections of the text. Version 0.4 adds the container work types (Section 6.4, and the paragraphs "Container types (version 0.4)" in Sections 1 to 9 and 13, and sentences in Sections 11 and 12). It is the second part of R-209: "I approve Section 4 of `docs/proposals/hosted-applications-stage-2.md` as the text of the container work types for a security review. It becomes version 0.4 of the contract when that review has no finding that I have not decided." Three separate reviewers read the text (SF-015 to SF-069 of [security-findings.md](../docs/security-findings.md)); the operator decided each point that needed him (R-226 to R-238, R-246); the third reviewer wrote: "No finding remains that the owner has not decided; the open points are changes of the text." Those changes are in this text; no reviewer of the security review read the text after them. A fourth separate reviewer then read version 0.4 as it is in this file (SF-070 to SF-089) and wrote the same last line: no finding remains that the owner has not decided; the open points are changes of the text. Version 0.5 has those changes and no other: more exact forms, eleven sentences that contradicted each other, and one sentence that was wider than R-211. It decides nothing new, but it adds rules that bind the hub and the daemon (the limits of items, the end of an item that no machine claims, the check of `result` by the hub, more causes of a refusal, the maximum time of a command). Version 0.5 is the text in force by R-251 (operator, 2026-11-19, relayed). By the same ruling a later correction of this text needs no ruling only when a reviewer separate from the writer has written that it needs no decision of the operator and the owner of this file has agreed; such a correction is recorded here with both names and changes the version number. That rule never covers a change of what a machine may do, of which actor may ask, of the default of a setting, or of a risk that the operator accepted. Version 0.4 changes no rule of `build` and `runner`, apart from the sentences that say so. Version 0.3 has the answers of the operator to three findings (R-185: SF-003, a machine with no list of repositories refuses each item; R-186: SF-006, the device list now and the device key later; R-187: SF-013, accepted). Version 0.1 was the text that the security review read; version 0.2 has the changes that the review asked for, and each is marked with its finding (SF-003 to SF-014). R-160 (operator, 2026-11-18) confirmed the work route and its default. The security review of this text is in [security-findings.md](../docs/security-findings.md), entries SF-003 to SF-014; the acceptance closes none of them: each keeps the state that the document gives, and each that is Open stays Open until code exists.
 
 Requirements: USE-001 to USE-009 and JOB-010, JOB-011 of [jobs.md](../docs/proposals/jobs.md); PRO-006, PRO-022 to PRO-024, PRO-029, PRO-030, PRO-034, PRO-039 to PRO-043, PRO-050 of the plan above; MET-013, MET-020, LOG-005, LOG-007, LOG-012 of the design specification. The number K9 is reserved for the link ([s6-spec-delta.md](../docs/plans/one-click/s6-spec-delta.md)).
@@ -27,6 +29,8 @@ this kind." In the text of the container types, "the administrator" is the user 
 
 ## 2. Transport
 
+For the agent thread work type, apply the [Section 6.5 amendments](#65-agent-threads-th30).
+
 - The transport, the times and the form of a body are those of K8 Section 1: HTTPS to the origin of the hub, or the local port of the link; UTF-8 JSON; camelCase; RFC 3339 UTC. The daemon sends no cookie, follows no redirect, ignores proxy variables and listens on no port (MET-020, USE-005).
 - The credential of each route is the daemon token of K8 Section 2, `Authorization: Bearer`. The token proves the device. There is no second token for work.
 - The daemon asks. The hub never opens a connection to a machine. A machine gets work only as the answer to its own request.
@@ -48,6 +52,8 @@ A hub that does not have this contract answers 404 to each route. The daemon the
 1 MiB, and stays `Cache-Control: no-store`.
 
 ## 3. What the machine decides, and what the hub decides
+
+For the agent thread work type, apply the [Section 6.5 amendments](#65-agent-threads-th30).
 
 | Subject | Who decides | Rule |
 | --- | --- | --- |
@@ -96,6 +102,8 @@ that is on adds what its row says. Each program of the user of the daemon can as
 with no hub (R-236)."
 
 ## 4. Claim
+
+For the agent thread work type, apply the [Section 6.5 amendments](#65-agent-threads-th30).
 
 The daemon asks for work each 10 seconds while its switch is on and it has a free slot (for a container type: the paragraph at the end of this section). A machine has one slot (BLD-029); a later version of the daemon can have more. While its switch is off, it sends one claim at its start and then one in each hour, so that the hub knows the state.
 
@@ -174,6 +182,8 @@ The daemon asks for work each 10 seconds while its switch is on and it has a fre
 
 ## 5. What the daemon does with an item
 
+For the agent thread work type, apply the [Section 6.5 amendments](#65-agent-threads-th30).
+
 Before it starts an item, the daemon checks it. It refuses the item when one of these is true. A refusal is a report with the state `refused` and a fixed cause (Section 7). It is not an attempt (for a container type: the paragraph at the end of this section): the hub gives the item to a different machine and adds nothing to its attempts.
 
 | Cause | When |
@@ -207,6 +217,8 @@ application has one machine, and a container identifier has meaning on one machi
 
 More causes of a refusal of a container item, each a fixed code: `busy` (the machine runs an item that changes Docker); `nothing_kept` (`application_back` with no kept version, or a second one); `no_digest` (`pull` false for a service with no digest of an earlier apply); `name_taken` (a project of that name exists with a different folder); `protected` (the item names something of the list "Protected"); `start_not_permitted` (a `start` that Section 6.4.6 does not permit); `no_container` (an identifier that the engine does not have). The cause `busy` is final as each refusal of a container item is: when the count of the hub and the state of the machine differ for a moment, the item fails, and neither the hub nor the machine tries it again by itself. The person or the caller asks again, which makes a new item.
 
+On AnimaOS, `migration_held` means a start or apply for an imported Podman application requires local cutover authorization and a fresh match to the stopped source containers. The machine can also use this cause if the source check fails after the application or container action was prepared. The operator resolves the local hold before requesting a new item.
+
 ## 6. Work types
 
 The list is fixed in the daemon program. There is no type that runs a command which the hub names (USE-006, JOB-015) (for a container type: the paragraph at the end of this section).
@@ -219,7 +231,7 @@ A `build` runs a recipe of Anima on one commit of a repository of a project (PRO
 { "recipe": "desktop_release", "commit": "0123456789abcdef0123456789abcdef01234567", "target": "linux-x86_64", "version": "0.3.0", "trigger": "operator", "origin": "default_branch" }
 ```
 
-- `recipe` is from a fixed list in the daemon. The steps of a recipe are code of the daemon program. Today the list has `desktop_release`.
+- `recipe` is from a fixed list in the daemon. The steps of a recipe are code of the daemon program. Validation recognizes `desktop_release` and `source_image_v1` (see the source-image amendment below); runtime capability advertisement remains separate.
 - `commit` is 40 hexadecimal characters. The job makes a new checkout of that commit (PRO-023, PRO-035). A recipe that publishes checks that the commit is an ancestor of the default branch (BLD-041).
 - `target` and `version` have the rules of the release (BLD-002, BLD-003). `trigger` is `operator` or `push`.
 - `origin` is `default_branch` or `other`. The hub writes `default_branch` only when it has verified that `commit` is an ancestor of the default branch of the repository. A pull request from a fork, a scratch ref (JOB-020) and each commit that the hub did not verify are `other` (SF-009).
@@ -339,6 +351,12 @@ Only the administrator of the machine can set them, on each kind of engine. They
 that the identifier 0 owns, with no write right for a group or for others; the applications program reads it. The program that writes the file runs as the administrator; it starts no program of Docker and opens no socket of an engine. For an adoption, the applications program, as the user that it runs as, makes the form and the comparison and shows the result; the administrator then writes the record. The hub cannot set one,
 the daemon cannot, and a request on the socket cannot (SF-007, SF-018).
 
+On a fresh AnimaOS node, `sudo anima-enable-hosting --enable` creates the
+initial settings for system Docker with the defaults below and asks systemd
+to start the applications service. The settings writer accepts local root
+authority and requires the settings file and pairing record to be absent.
+[Installed Hosting setup](../os/README.md)
+
 | Setting | After the install | Meaning |
 | --- | --- | --- |
 | Manage applications | Off | The machine takes container work (R-210). With it go: the user of the daemon that is accepted, the socket of the engine, and the paths of the Docker programs |
@@ -407,6 +425,7 @@ its own code, not with the reader of Compose.
    characters `A-Z`, `0-9` and `_`, the value is the text after the first `=` with no rule for
    quotes, and a name that is there two times is refused. An empty line and a line that starts with `#` are
    ignored; each other line with no `=`, and a line with a carriage return or a NUL, is refused.
+   The expanded scalar values share a 4 MiB UTF-8 budget (`too_large`).
 4. It applies the list of keys and the rules of values to the result.
 5. It writes the final form itself, as JSON, which Compose reads as a Compose file: each string in
    quotes, with each character below U+0020, U+007F to U+009F, U+2028, U+2029 and U+FEFF escaped as
@@ -639,7 +658,142 @@ The hub applies this table (R-234). The machine cannot see the actor. The hub ma
 - **A scheduled command in a container.** Not proposed (USE-006, JOB-015).
 - **A change of the file of an adopted project.** Not in this version (R-211).
 
+### 6.5 Agent threads (TH30)
+
+**Accepted by R-460, 2026-11-25.** This section specifies the exceptions and additions to Sections 2 to 7 and 11 for `agent_thread`. It applies before W7 only to devices the operator owns alone (R-186). K8 Sections 2, 4.1 and 4.2 govern device authentication and publication observations. The accepted K1 additions are [the TH30 schema amendment](agent-threads.graphql). The [TH30 owner](../docs/proposals/agent-threads.md#642-th30-accepted-contract-and-acceptance-cases) keeps the acceptance cases.
+
+**A. The start is one K10 item.**
+
+- The new work type `agent_thread` has the new kind `person`: the program runs as the user of the daemon, with the files and logins of the person, and no isolation (R-292, OD-THR12). A daemon lists `agent_thread` in `types` and `person` in `kinds` only while the switch "Threads may start here" (TH33) is on. The claim gains the member `threads` (`on` or `off`; absent is `off`). The local thread switch must be on for a start. USE-004 governs other job types. A thread launch requires the thread switch and the folder checks.
+- **K10 Sections 2 to 5, narrow claim exception.** When `threads:on` and a slot is free, claim every ten seconds even with `switch:off` and `applications:off`. In that combination only `agent_thread` is eligible. With no free slot advertise the current targets on the same cadence and dispatch nothing for threads. All three switches off keeps the startup/hourly cadence and 204. Keep the existing rules for other types. For a mixed claim keep container priority, then choose the oldest eligible job or thread launch. A hub WORK_OFF block (manual or cooldown) prevents new dispatch authorizations. For thread-capable claims return 204 or an otherwise eligible container operation under its existing rules. Do not count thread refusals against the five-job threshold. Order the block against the durable authorization below; a block after authorization can precede physical process start. If dispatch may already have occurred, reconcile; a job block cannot terminate the local thread. Currently authenticated evidence, command-result retries and receipt reconciliation remain available under WORK_OFF. Credential refusal still ends authenticated delivery. No new prompt is released under the work block; exact stops and answers to existing live approvals retain the checks in part C.
+- **Offers on the authenticated claim.** `threadTargets` replaces the whole previous offer for the authenticated device on its single-operator hub (OD-2, D-9). Each row is `{project, folder, program}` for one canonical permitted folder and one locally supported K8 program (`claude_code` or `codex`). Use the publisher's actual `shared_repository` check and enabled, readable usage-sharing settings. Require transcript sharing for an offer for this write flow so the operator can review its live requests; this adds no condition to existing TH21 summary-only reads. Exclude Grok, disabled sharing, unresolved folders and AIS-008 exclusions. Send only complete pairs that fit the 8 KiB claim. Omission, an empty list, switch-off or credential revocation clears the offer. A snapshot expires 30 seconds after hub receipt unless refreshed. Expose only fresh pairs for an eligible device; do not combine separate lists of folders and programs. Recheck the selected pair at enqueue, claim and locally immediately before dispatch, including current sharing settings. Return `target_unavailable` on failure. The initial requested mode follows THR-033; the separate owner ceiling limits it.
+- The hub returns the following `parameters` in the claimed `agent_thread` item: `{ "launch": "<UUID>", "account": "d9dd5386-7be1-484f-bf03-5b253ae3bdd9", "program": "claude_code", "folder": "/home/p/src/app", "access": "ask" }`. `program` is from a fixed list in the daemon. `folder` is an absolute path. `access` is from the fixed list of THR-033; the runner uses the lower of `access` and the ceiling that the person set at the machine. When the owner has set no ceiling, the ceiling is Full access (OD-THR89, R-459). An explicit owner-set ceiling still applies, and a lower requested access level stays lower. The item has no `repository`, no `secrets` and no text of a prompt. The first prompt is a command (part C).
+- `limits` has its five members; `seconds` is 120, each other member is 0 (as for kind `host`).
+- The holder reports `claimed → preparing` (the checks) `→ running` (the program started) `→ finishing → done`, the last three at once when the runner has the thread. K10 Section 7 governs the launch attempt. Part B governs recovery when the outcome of process creation is unknown.
+- The daemon checks at the claim and again before the start of the program (THR-129): the switch; the program; the folder, made real (links and `..` resolved), below a folder of the list and not excluded by AIS-008. It refuses with `threads_off` (the switch "Threads may start here" is off; `switch_off` stays for USE-004), `program_not_permitted` or `folder_not_permitted`, and writes a refusal line (THR-044). These three causes are added to the table of K10 Section 5. **Exception to K10 Section 5, as for container types:** the hub does not put a refused or failed `agent_thread` item back in the queue and gives it to no different machine, because the person chose the machine. A proven refusal before dispatch is final. Part B applies when dispatch may already have occurred.
+- Kind `person` `result`: the four members of K10 Section 7, each `cleanup` member `none`, and one new member `thread`: a non-nil UUID, the runner ID of the new thread, present exactly when `outcome` is `succeeded`. A missing or malformed `thread` is `400 MALFORMED`. The item then ends; the thread lives on the runner and the slot is free. The process of the agent is not held by a lease.
+- Before it reports `done`, the daemon makes an immediate K8 push with the summary of the new thread (K8 Section 4).
+- The holder serializes cancellation and dispatch against the same durable reservation. Report a launch stopped or expired before dispatch only with evidence that dispatch was prevented. After a possible dispatch, reconcile the holder outcome. Credential refusal ends the K10 attempt and prevents further remote work on that credential. It does not stop an already-running local thread. A remote stop of that thread requires authenticated contact and the command path.
+
+**B. The launch request and its result.**
+
+- A client sends `startAgentThread(input: { launch, device, project, folder, program, access, prompt })` (a new root field of K1, with its `anima` command; no MCP tool, because it starts a program, Section 7 of the CLI plan). `launch` is a UUID that the client makes once for one press of "Start" and keeps for each retry.
+- At admission the hub obtains the non-nil operator UUID (`access.operators.id`) from the authenticated person's `Identity`. This is the only source of `parameters.account`. A daemon request cannot assert it, and neither the daemon token nor session origin supplies it. In one transaction the hub reserves the launch for this account, creates one item for the chosen device, and reserves one stable `firstCommand` ID and one ordinary prompt slot in the same transaction. Both the mutation and `agentThreadLaunch` return `launch, state, cause, thread, firstCommand`; query `agentThreadCommand(firstCommand)` for the prompt outcome. Check existing idempotency records before capacity. At most 31 prompts (including held first prompts) and 32 total outstanding commands per device. If either bound would be exceeded, reject the entire new start without creating a launch, command or work item. Identical retries return the existing launch. Different input on that ID gives `LAUNCH_CONFLICT`. Retry identity must outlive every permitted retry. Apply the retry rules in the operating rules at the end of this section. A delivery timeout alone cannot authorize a fresh launch.
+- **Reserve and authorize.** The holder verifies that the claimed parameters include a non-nil UUID for `account`. Before any process start it durably reserves one runner UUID for the launch and saves that account unchanged in the original reservation. Missing, malformed or nil account prevents dispatch. Recovery and exact retries use the saved account. The authenticated daemon sends `POST /work/v1/thread-dispatch` (4 KiB) with `{device,launch,work,attempt,runner}`. Serialize authorization and both WORK_OFF causes under the same device lock. Under that lock verify the original account, device, claim, matching runner reservation asserted by that authenticated daemon, active lease, deadline and eligible pair. A block that wins records a terminal denial for that request (`403 WORK_OFF`); the holder closes its reserved intent without starting. Authorization that wins commits a single opaque `authorization` ID keyed by the launch and original tuple. Persist the grant ID, issuance time and immutable absolute hub expiry `validUntil` in that decision. Use the earliest of ten seconds from issuance, the lease end at issuance and the launch deadline. Persist the hub clock generation and issuance sample for the elapsed bound with the grant. Only one grant is possible for this launch. A K10 report can renew the lease (Section 7, 90 seconds from an accepted report); it cannot renew the grant. Bind the ID to the authenticated original tuple and keep it out of logs.
+- **Hub grant response.** On issuance and each exact-tuple retry with current device authentication, read the original decision under the same lock. A conflicting tuple gives `409 LAUNCH_CONFLICT`. At response calculation, `remainingMs` is a nonnegative integer in milliseconds: round the remaining duration down, bounded by the original `validUntil`, original grant lifetime still left on the hub's continuous elapsed clock, live lease and launch deadline. Never recompute expiry from retry time. If the attempt is final, the lease or deadline is no longer live, the remaining duration rounds to zero, or the hub cannot establish the original elapsed-clock bound after a discontinuity, return reconciliation-only `409 NOT_HOLDER`. For this dispatch refusal the K8-style JSON body is exactly `{"error":"NOT_HOLDER","authorization":"<original issued UUID>"}` after issuance, or `{"error":"NOT_HOLDER"}` when no grant was issued. Omit both `validUntil` and `remainingMs`. This also applies when only the grant expired and the lease is live. An otherwise valid retry returns `200 {authorization,validUntil,remainingMs}` for that same grant, even if WORK_OFF was set later.
+- **Holder dispatch bound.** Immediately before asking for authorization, the holder samples a continuous monotonic elapsed clock at `t0`. If the daemon performs HTTP on its behalf, take `t0` before that IPC request. Associate the sample with this individual exchange and accept its matching response once. At the serialized reserved-to-dispatching transition require all three: the original grant still live, the K10 lease still live under Section 7, and all immediate local guards passing. To check the grant use `elapsedUpperMs(t0,now) < remainingMs`. Use a conservative upper bound on elapsed time relative to the grant clock, including sample resolution and relative rate uncertainty over this short interval, then round up to whole milliseconds. Equality means expired. Charging the full request and response delay to the grant gives a conservative local bound. `validUntil` is a hub timestamp for reconciliation; comparing it with holder wall time or starting the timer on response receipt cannot authorize dispatch.
+- Use the same continuous clock domain for both holder samples. Its elapsed bound must include sleep, suspension and scheduling delays. An implementation whose clock pauses on suspend must reliably invalidate the exchange on suspension or disable remote dispatch on that path. A backwards sample, uncertain clock continuity or inability to bound elapsed time invalidates the response. Discard samples and cached permission on process restart, machine reboot or clock-generation change. A still-reserved holder may start a fresh timed exchange for the exact tuple, subject to the same original expiry; an expired grant stays reconciliation-only. The grant ID in durable state is never sufficient permission to start.
+- **Single effect.** Persist the original grant ID and dispatch marker on the reservation before the OS call. Check the elapsed bound again after persistence, immediately before issuing that call; if it is exhausted, issue no OS call. Retain the conservative evidence rules for a marked reservation. After loss of the reply recover the original decision only. A crash with a dispatch marker permits evidence recovery, never redispatch. An already-running local thread continues after grant expiry, disconnection or revocation. Add the dispatch route and refusal codes to K10 Sections 2, 6, 7 and 11 and the permitted K8 requests.
+- `agentThreadLaunch(launch)` returns `state`, `cause` and the TH21 hub thread ID when bound. A queued item is `queued`; work before dispatch is `claimed`. A lost claim response, lease expiry, credential refusal or crash with a possible dispatch yields `reconciling` until the holder proves the outcome. Confirmed creation gives `started` with a separate binding status described below. Report `refused`, `failed`, `stopped` or `expired` as a final launch outcome only on evidence of that outcome. The K10 attempt may already be final while its launch is reconciling.
+- K10 Section 7 exception for `agent_thread` only: `POST /work/v1/thread-launch-evidence` accepts a bounded 4 KiB body `{ "device": "<device>", "launch": "<UUID>", "work": "<work ID>", "attempt": 1, "outcome": "created" | "not_created", "thread": "<reserved runner UUID>", "cause": null }`. `thread` is required only for `created`; for `not_created` it is absent and `cause` is one fixed code: `refused`, `failed`, `stopped` or `expired`. It records proven creation or proven prevention of dispatch from the original durable holder reservation, not a new work report. Authenticate with a currently valid daemon credential for the original selected device and owning account; an old refused credential cannot submit evidence. Verify the retained original claim and its account, device, launch, work and attempt, even if that attempt is now final. Missing retained claim evidence cannot confer authority. Reject an unknown original binding with `404 LAUNCH_UNKNOWN`, a conflicting runner or binding with `409 LAUNCH_CONFLICT`, and malformed input with `400 MALFORMED`; existing authentication refusals remain unchanged. For `not_created`, the holder must have durably closed its reservation before any dispatch marker was committed, serialized with dispatch; missing process evidence or a dispatching reservation never proves non-creation. In one transaction save the first matching evidence. Creation runs the same summary join used by a timely result. Proven non-creation sets the launch to the named final outcome, releases no prompt and grants no thread authority. Conflicting outcomes are `409 LAUNCH_CONFLICT`; duplicate matching non-creation reports return the same final launch outcome. Identical retries return 200 with the existing launch state and bound hub ID, if present. Timely results and this route share one uniqueness constraint. Never reopen or renew the final attempt, alter its recorded result, assign a new attempt, or dispatch a process through this route. The launch may resolve separately while the attempt stays final. K10's ordinary report route retains `409 NOT_HOLDER`; for `agent_thread`, that refusal ends attempt reporting but does not kill an already-started local thread. Add this evidence route and its fixed refusal codes to K10 Sections 2 and 11 and the permitted K8 daemon requests. It carries no prompt or session content. It remains subject to the documented pre-W7 device-token trust limit.
+- The hub verifies the holder outcome reported through the authenticated daemon against the owning account, selected device, launch and its K10 attempt. A successful result names the runner ID reserved by the holder. Join it to the TH21 summary for that authenticated device and runner ID. The join uses the persisted publication verdict below and still requires creation evidence and an open control binding. A duplicate returns the same hub thread ID. Reject conflicting bindings. Clocks on the device and hub need no comparison. A summary alone remains ingestion only. Before the join, keep the first prompt out of every poll and refuse subsequent command admission. Once bound, the first prompt becomes eligible subject to the ordinary command checks and its original deadline. On a proven pre-dispatch refusal or failure close the never-delivered prompt with the launch cause and release its slot.
+
+- **Publication deadline.** Persist `D = admittedAt + 10 minutes` at hub admission. Both K8 ingestion paths persist the immutable hub observation time `firstPublishedAt` of the first committed summary for the authenticated device and runner UUID. Use the hub database clock sampled after acquiring the device/runner lock in the transaction that first accepts the row. Rollback leaves no observation. Duplicates, higher summary revisions, device timestamps and the later arrival of holder evidence cannot move it. Reserve a fresh runner ID: acquiring dispatch authorization also locks the device/runner key and refuses a pre-existing TH21 row as a binding conflict. Both locks use the same device-first order. Do not backdate observations for legacy rows. Serialize the deadline decision, evidence join and publication under the same key. Deadline evaluations use the persisted time, on every read or join as well as in the sweep. A blocked transaction must read committed observations and sample current time after taking the lock.
+- Publication is timely exactly when `firstPublishedAt < D` for the reserved runner. At or after D, persist the publication verdict (`timely` or `timed_out`) even if creation evidence is missing. Before a runner reservation is known no grant has been issued; close a never-authorized launch when proof rules permit. For an issued grant the hub already has its runner ID. For created evidence require the same tuple and runner as the committed authorization; the original attempt can already be final. Creation evidence and timely publication in either order give `bound` unless withdrawn. Timely publication alone awaits creation evidence and grants no actions. Late creation after a timely summary can bind the thread for subsequent actions; it cannot release an expired first prompt. A missing, late or exactly-at-D summary gives terminal `unavailable/publication_timeout` once D passes, independent of sweep order. Late evidence can establish a local start but cannot reverse that verdict. An explicit withdrawal independently closes control. Never assign a new claim at or after D.
+- Track the first prompt separately. In the transaction that first marks delivery, require hub time strictly before D and a bound launch. At or after D an undelivered prompt becomes expired, even if the summary was timely. An earlier delivery still follows its receipt through reconciliation. The daemon reports post-dispatch sharing withdrawal through the authenticated launch-evidence route as an idempotent publication update (`publication: withdrawn` with the original launch and runner binding). For a withdrawal, send outcome created, the reserved runner ID and publication withdrawn on the original authenticated evidence shape. Extending matching creation evidence with withdrawal is monotone; a duplicate or older created-only report cannot undo it. Withdrawal closes remote admission with `unavailable/sharing_withdrawn` and refuses the held prompt. Retain the local process and report its actual creation. Late summary or retry cannot reopen a closed binding or replay the first prompt. If withdrawal races a delivery, the holder checks publication again before consuming the command. A K8 summary from either the metrics batch or the transcript upload can supply the TH21 row; neither can substitute for holder creation evidence.
+
+**C. Commands of an open thread (THR-026).**
+
+- The two command-delivery routes follow. `POST /work/v1/commands`, body limit 8 KiB: `{ "device": "…" }`. It is a long poll: the hub answers at once when a command waits for this device, else after at most 25 seconds with 204. The answer is `{ "commands": [ … ] }`, at most 256 KiB, `Cache-Control: no-store`. It holds no database turn of K8 Section 6 while it waits; it has its own request slot (a device has at most one claim and one command poll in progress) and does not count toward the limit of pushes and renewals. The daemon sets a timeout longer than 25 seconds on this poll alone so an idle poll can receive the 204. Other HTTP requests keep their existing timeouts. The daemon asks again at once after an answer, after 5 seconds after an error, and with the backoff of K8 Section 6 after a 429 or 5xx. It polls only while `threads` is `on` or a thread that the hub drove is open on the runner. The routes and their refusal codes are added to the tables of K10 Sections 2 and 11.
+- Part D defines the delivered command envelope and its payload. Each command names a confirmed launch on the authenticated device. A command for a desk start gets `thread_unknown`.
+- Deliver only commands for a confirmed binding. The hub may redeliver until it durably records a result. Before handing a command to the program, the holder durably reserves its ID with the exact binding and action. Serialize duplicate deliveries. Persist a dispatch marker before the handoff. On retry, return the saved outcome. If a crash left the handoff uncertain, reconcile with the original request or keep it unresolved without repeating the effect.
+- Keep the receipt across restarts until the hub has durably closed delivery for that ID and every earlier delivery has been consumed or invalidated. A successful result response proves the hub recorded the result, but cannot recall an in-flight copy. Until both conditions can be proved, preserve the receipt. At capacity suspend admission of new work and continue reconciliation. A count or elapsed time alone never permits eviction. the operating rules at the end of this section specifies admission and stop ordering.
+
+- `POST /work/v1/command-result`, body limit 4 KiB: `{ "id": "…", "outcome": "recorded" | "refused", "cause": … }`. Causes: `thread_unknown`, `thread_ended`, `threads_off`, `folder_not_permitted`, `request_unknown`, `request_resolved`, `request_expired`, `busy` (a turn runs and the program takes no prompt now). The hub accepts a result only for an ID that it gave to that device (else `404 COMMAND_UNKNOWN`), keeps the first result of an ID, and answers each later one with 200 and no change.
+- Expiry can close a never-delivered command. Mark delivery durably before returning its body. A delivered command stays pending reconciliation until its result arrives. Apply the admission bound in the operating rules at the end of this section.
+- Carry the owning operator account and its authorized device, launch, runner thread and exact live request from admission through consumption. The authenticated hub checks the operator login and current ownership before release. The daemon accepts commands only on authenticated contact for its device. At consumption the holder compares the account, device, launch and runner thread with its durable record of the authenticated launch. For an answer it also checks the current process and the still-open request before handoff. Serialize answers with local answers and closure of that request. Record the first valid answer only. A later distinct answer gets `request_resolved`; a stale or mismatched request cannot affect a replacement.
+- With "Threads may start here" off, refuse new starts and prompts, including a queued prompt awaiting consumption. Preserve the person's local running-turn stop setting. A queued or new answer, including an allow, may resolve an existing live approval under the checks above (OD-THR90 B). A stop remains eligible on authenticated contact. A disconnected or revoked device continues its already-started threads locally. With W0 pending, the local port of the link cannot carry a command poll (K10 Section 2).
+
+**D. The client calls, access, ownership and audit.**
+
+Part D defines the fields on the wire. The notation below describes JSON objects, arrays and tagged alternatives. K1 uses these same field names in typed GraphQL objects and input objects. For a tagged input, only the fields of its selected kind are valid. IDs below are opaque strings except the UUIDs named in parts A and B. Revisions are positive integers up to 2^53 − 1.
+
+```text
+Target = {kind:"interrupt", process, turn} | {kind:"end", process}
+Rule = {selector, label}
+Question = {key, text, choices:[{id,label}], many:boolean, freeText:boolean}
+Request = {kind:"approval", id, subject, details, decisions:[Decision], rules:[Rule]}
+        | {kind:"question", id, subject, questions:[Question]}
+Decision = "allow_once" | "allow_session" | "decline"
+Value = {kind:"choice", id} | {kind:"free_text", text}
+Answer = {kind:"approval", decision:"allow_once"|"decline"}
+       | {kind:"approval", decision:"allow_session", selector}
+       | {kind:"question", answers:[{key, values:[Value]}]}
+Offer = {process, revision, actions:[Action], stopTargets:[Target], requests:[Request]}
+Action = "prompt" | "answer" | "stop"
+ControlUpload = {device, launch, runner, offer:Offer}
+ControlView = {thread, offer:Offer|null}
+Payload = {kind:"prompt", prompt}
+        | {kind:"answer", process, revision, request, answer:Answer}
+        | {kind:"stop", target:Target}
+Delivered = {id, account, device, launch, thread, payload:Payload}
+```
+
+`Delivered.account` is copied by the hub from the original admitted launch. At every delivery, including replay after restart, the holder requires it to equal the immutable `parameters.account` in its original reservation before acting or returning a receipt. `Delivered.thread` is the reserved runner UUID. `ControlView.thread` and K1 command input `thread` are the TH21 hub ID. The hub resolves the one confirmed binding and copies the admitted payload to K10 without translating selectors, IDs, free text or targets. `details` is the complete review text supplied by the adapter; omit the answer action if required information cannot be represented. A process ID denotes one holder-observed process lifetime. A selector denotes one original vendor rule within that process/request/revision. Each choice ID is unique within its question at that revision. Resolve IDs against the still-live holder offer; never construct a provider rule from a label or from client text.
+
+| Person-only K1 operation | Input | Result |
+| --- | --- | --- |
+| `agentThreadStartTargets` | none | list of `{device,project,folder,program,expiresAt}` |
+| `startAgentThread` | `input:{launch,device,project,folder,program,access,prompt}` | `LaunchReceipt` |
+| `agentThreadLaunch` | `launch` | `LaunchReceipt` |
+| `agentThreadControl` | `thread` | `ControlView` |
+| `sendAgentThreadPrompt` | `input:{command,thread,prompt}` | `CommandReceipt` |
+| `answerAgentThreadRequest` | `input:{command,thread,process,revision,request,answer:Answer}` | `CommandReceipt` |
+| `stopAgentThread` | `input:{command,thread,target:Target}` | `CommandReceipt` |
+| `agentThreadCommand` | `command` | `CommandReceipt` |
+
+`LaunchReceipt = {launch,state,cause,thread,binding,firstCommand}`. `thread` is null until bound, and `binding` is waiting, bound or unavailable. `CommandReceipt = {command,state,cause}`; states are waiting, delivered, recorded, refused, expired or retired. Causes are fixed codes or null. Part B governs idempotency. A foreign thread returns `THREAD_NOT_FOUND`. A readable desk start or missing/expired live offer returns `offer:null` for control. Reauthorize on every read, mutation and direct reopen.
+
+`POST /work/v1/thread-control` takes `ControlUpload` authenticated as the bound device (64 KiB; 204 on acceptance). Use one persisted revision sequence per launch, including across process replacement. Higher revision replaces the complete offer. Equal revision and identical canonical content refresh the offer. Equal revision with different content gives `409 CONTROL_REVISION_CONFLICT`, retains the prior content and does not refresh expiry. Older revision is ignored (204, no refresh). Refresh live offers every ten seconds; they expire after 30 seconds, on withdrawal or on loss of binding. Reject invalid bindings and omit unsupported or oversized requests. A stale answer cannot act on a newer offer. At admission and consumption require the same live process/request/revision, an offered decision, the exact selector when required and no extra selector. For questions require each offered key exactly once, one value for single-select and one or more distinct values for multi-select. A choice must match an offered ID; free text requires explicit `freeText:true`. Cap answer content at 64 KiB. A malformed or substituted answer gets `invalid_answer` without provider handoff. Map validated values to the adapter's original representation only at the holder. Redact answer contents like prompts.
+
+- **Cancelled or retired commands.** A stop that wins before handoff closes each affected prompt with `outcome:refused, cause:cancelled_by_stop` and its original command ID. Keep a content-free keyed fingerprint of canonical semantic input with retired launch and command IDs. An identical retry gets the retired receipt (including `firstCommand` on a launch); different input for that ID still gets `LAUNCH_CONFLICT` or `COMMAND_CONFLICT` before any capacity check. Retain fingerprint key versions for the lifetime of their records.
+- **CLI and MCP coverage (CMD-030).** Provide CLI reads `targets`, `launch-result`, `command-result` and `control` for the four new K1 reads, plus `start`, `prompt`, `answer` and `stop` for the four mutations. All eight use a person login. Exclude targets and control from MCP (local folder offers and live request/approval data); exclude launch and command receipts from MCP (private operator-action lookups). Exclude start, prompt and stop as session control, and answer as a trust decision or provider input. Preserve existing TH21 API-key access to metadata and person-token access to snapshots and entries. A direct reopen by ID repeats server authorization.
+
+- Only an operator login of the account that owns the device can call the four mutations. An API key cannot (THR-029, INT-003). A device that is not of the account gets `DEVICE_NOT_FOUND`, the same as a device that does not exist. Each mutation has the rate limit of a login mutation of the hub.
+- The hub writes one audit event for each launch, each command and each result: the actor, the device, the hub thread ID (or the launch), the action, the outcome and its cause. It holds no prompt text and no transcript (THR-044, LOG-007). GraphQL request logs, traces and error reports remove `prompt` of these mutations; an error response never repeats one.
+- The text of a prompt is kept in the hub only until the daemon reports its result or it expires; then the hub deletes it.
+- Threat: a thief of a daemon token can poll, read the prompts that wait for that device, and send false results and summaries for it. R-292 accepted trust in the hub, not a stolen device token. W7 (a device key that signs each request) closes it; R-460 accepts this residual risk on operator-owned devices until W7.
+
+**Complete control exchange.** The following JSON uses short aliases for UUIDs. Both deliveries carry the example account from the claim in part A. The two examples are independent calls against the same unchanged offer.
+Daemon upload and person control response, respectively:
+```json
+{"device":"D","launch":"L","runner":"R","offer":{"process":"p1","revision":7,"actions":["answer"],"stopTargets":[],"requests":[{"kind":"approval","id":"r1","subject":"Run checks","details":"Run the project checks","decisions":["allow_session"],"rules":[{"selector":"s1","label":"Project checks"}]},{"kind":"question","id":"r2","subject":"Select targets","questions":[{"key":"k1","text":"Which targets?","choices":[{"id":"c1","label":"Desktop"}],"many":true,"freeText":true}]}]}}
+```
+```json
+{"thread":"H","offer":{"process":"p1","revision":7,"actions":["answer"],"stopTargets":[],"requests":[{"kind":"approval","id":"r1","subject":"Run checks","details":"Run the project checks","decisions":["allow_session"],"rules":[{"selector":"s1","label":"Project checks"}]},{"kind":"question","id":"r2","subject":"Select targets","questions":[{"key":"k1","text":"Which targets?","choices":[{"id":"c1","label":"Desktop"}],"many":true,"freeText":true}]}]}}
+```
+K1 mutation variables, K10 delivery and K1 result lookup after consumption:
+```json
+{"input":{"command":"C1","thread":"H","process":"p1","revision":7,"request":"r1","answer":{"kind":"approval","decision":"allow_session","selector":"s1"}}}
+```
+```json
+{"commands":[{"id":"C1","account":"d9dd5386-7be1-484f-bf03-5b253ae3bdd9","device":"D","launch":"L","thread":"R","payload":{"kind":"answer","process":"p1","revision":7,"request":"r1","answer":{"kind":"approval","decision":"allow_session","selector":"s1"}}}]}
+```
+```json
+{"command":"C1","state":"recorded","cause":null}
+```
+K1 mutation variables, K10 delivery and K1 result lookup after consumption:
+```json
+{"input":{"command":"C2","thread":"H","process":"p1","revision":7,"request":"r2","answer":{"kind":"question","answers":[{"key":"k1","values":[{"kind":"choice","id":"c1"},{"kind":"free_text","text":"Tablet"}]}]}}}
+```
+```json
+{"commands":[{"id":"C2","account":"d9dd5386-7be1-484f-bf03-5b253ae3bdd9","device":"D","launch":"L","thread":"R","payload":{"kind":"answer","process":"p1","revision":7,"request":"r2","answer":{"kind":"question","answers":[{"key":"k1","values":[{"kind":"choice","id":"c1"},{"kind":"free_text","text":"Tablet"}]}]}}}]}
+```
+```json
+{"command":"C2","state":"recorded","cause":null}
+```
+
+**Operating rules for consumption and retry**
+
+- **Access at consumption.** Apply the lower of the original launch grant, current owner ceiling and actual running mode to remote prompts and positive answers. If the adapter cannot enforce that bound, return `access_changed` without handoff and leave a live request available locally. A local mode change cannot silently increase remote authority. Switch-off alone still permits a queued allow for the exact live approval. Declines and exact stops remain eligible.
+- **Stop target and order.** Carry either the observed turn ID and process binding (interrupt) or the observed process binding (end). Before provider acknowledgement, keep interrupt unavailable until there is a turn identity. Refuse a stale target with `target_stale` and leave its successor alone. A validated stop takes priority over queued prompts for its target. Cancel each affected, undispatched prompt with its own receipt. Hold new prompts behind the stop until it resolves. After interrupt the person may submit a fresh prompt. After process end the binding stays closed. A stop receipt does not prove OS exit.
+- **Thread switch.** Check the dedicated thread switch and permitted folder list for starts independently of USE-004. Continue authenticated receipt reconciliation after switch-off. Preserve the local running-turn setting and offline continuation.
+- **Retry and storage.** Start with version 2's proposed 32 outstanding commands per device, with at most 31 ordinary prompts to leave room for control. At capacity refuse fresh admission with `COMMANDS_FULL` before creating an intent. Identical retries and reconciliation still proceed. Expire an undelivered command after ten minutes. Never expire an uncertain effect. Keep terminal retry records without content. Once delivery is provably closed, a compact retired ID returns `retired` on a later client retry and cannot create a new effect. While its namespace still accepts requests, retain that ID. At the configured storage budget apply backpressure and measure actual receipt sizes. Evicting an old record solely by age would permit duplicate execution.
+- **Questions.** Reuse the runner's key/choice pairs and validation in `crates/agent-threads/src/drive/request.rs`. Accept exactly one of an approval decision and structured question answers, for the exact live request and process. Limit encoded answers to 64 KiB before admission. Reject a mismatched form with `invalid_answer`. Apply prompt redaction and deletion rules to answer content. Refuse an ordinary follow-up presented as a question answer.
+
 ## 7. Report, log and stop
+
+For the agent thread work type, apply the [Section 6.5 amendments](#65-agent-threads-th30).
 
 The holder reports at least each 15 seconds while it holds an item, and at once at each change of state (BLD-005, BLD-010).
 
@@ -857,6 +1011,8 @@ of a user the log is a file of that user: a program of that user, also the daemo
 
 ## 11. Refusals
 
+For the agent thread work type, apply the [Section 6.5 amendments](#65-agent-threads-th30).
+
 The body of each refusal is `{ "error": "<CODE>" }` and nothing else.
 
 | Status | Code | When | Daemon does |
@@ -898,3 +1054,101 @@ Before the ruling this section said what comes after it; that is done or stands 
 Version 0.4 (2026-11-19) is the second part of the same ruling, R-209, with the condition that it gives; the status line says how the condition was met. The rulings that decide its points are R-226 to R-238 and R-246. Two of them change an earlier ruling: R-228 changes R-210 (no profile `full`), and R-246 changes R-226 for a machine whose Docker belongs to a user. No code of a container work type exists; tasks H28, H31 and H32 of [hosted-applications-plan.md](../docs/plans/hosted-applications-plan.md) build it, after the queue of task W3 and the daemon part of task W4.
 
 Version 0.5 (2026-11-19) is the text in force by R-251. It has the corrections of the fourth read (SF-070 to SF-089) and the two changes that the owner of this file asked for. The reviewer was a separate agent of the session that wrote Section 6.4; the owner of this file (the session of the runner path) agreed to the nine points outside Section 6.4 and did not review the security of Section 6.4.
+
+## AnimaOS source-build placement amendment, 2026-11-24
+
+The operator's autonomous AnimaOS implementation direction requires source-image builds to use this job owner. Before any source-image executor is advertised, claims may include optional `buildRecipes`: a list of at most eight unique recipe identifiers, each 1–64 lowercase ASCII letters, digits or underscores. Invalid lists fail request decoding. Omission (or null) preserves the legacy `desktop_release` capability; an explicit empty list supports no build recipe. Non-build work types do not use this field.
+
+The hub persists this capability with the machine's last claim and applies it to both immediate placement and the comparison with other recently available machines. A build without a matching recipe remains queued with the `recipe` placement reason. Having more memory, a project pin or an explicit target does not override recipe eligibility. Existing limits, exclusion, repository checks, switch and lease behavior remain in force. This is an execution-capability advertisement, never repository permission or permission to deploy an output image.
+
+No daemon in this amendment advertises `source_image_v1`; its recipe parameters, local executor, source preparation, secret handling, lease reconciliation and result/hosting handoff remain implementation work. Merely accepting a claim field does not enable a new work type or an arbitrary command. Older hubs ignore the optional field and cannot provide this placement guarantee; source-image job submission must require the corresponding new hub/daemon implementation before activation.
+
+
+### Source-image recipe parameters
+
+The source-image executor uses `source_image_v1` with exactly `recipe`, `commit`, `target`, `strategy`, `trigger` and `origin`. The commit is a 40-digit hexadecimal Git revision; target is `linux-x86_64` or `linux-aarch64`; strategy is `auto`, `dockerfile` or `railpack`. Trigger and origin retain the desktop-build rules (`operator`/`push`, `default_branch`/`other`). Source-image work requires container isolation. It accepts neither a shell command nor a path, image tag, environment map or desktop release version. The existing repository allow-list, work switch, policy and secret-purpose rules still apply; a non-default-branch build cannot request project secrets.
+
+At queue entry, a source-image target binds placement to Linux and its named architecture. Omitted outer OS/architecture requirements are filled from that target; conflicting requirements, unsupported targets and non-container isolation are refused before persistence. A node capability alone never overrides these target requirements.
+
+This parameter validation is an implementation step, not an advertised executor. Repository checkout, resource enforcement, lease recovery, scoped secrets, immutable artifact reporting and separately authorized hosting handoff remain required before source-image work is offered by a node. Automatic strategy selection follows the captured source (Dockerfile when present, Railpack otherwise); explicit selection must not silently change strategies.
+
+### Private source checkout capability
+
+A daemon with isolated private checkout advertises
+`source_image_private_checkout_v1` alongside `source_image_v1`. The item
+keeps the existing recipe and declares only `repository_token`. The Hub
+queues private builds for a project with an operator pin to a capable node.
+Placement and secret release both require the current pin. The release
+binds the attempt to the repository and connection named at submission.
+
+The Hub reserves the one release before contacting GitHub. Daemon reports
+can renew or end the lease during minting. The Hub reauthenticates the
+daemon and checks the current lease, pin and repository again before it
+commits the release and its audit. A token that cannot be released is
+retained in sealed form for revocation. The revocation queue also clears
+credentials for ended attempts and retains the one-use record.
+
+The AnimaOS supervisor opens its checkout rendezvous after the isolated
+workspace starts. The daemon records the credential request after a
+preparing report has been accepted. It transfers the token once over the
+authenticated owner socket while lease reports continue. The owner
+requires the exact enrollment, job, attempt and waiting supervisor, and
+caps the credential's effective lifetime at its local grant. The Git
+fetch reads it through a pipe and closes that pipe before the checkout is
+captured. The token is absent from request JSON, durable node records,
+process arguments and Git configuration. An interrupted request with a
+supervisor still waiting settles as `secret_failed` after cleanup.
+
+
+### AnimaOS local build lease enforcement
+
+Routed source builds must carry the hub job identity, attempt number and lease end into the root execution owner. A new local grant may cover at most 90 seconds. The owner persists its boot identity and uptime deadline before launch, rejects renewal of expired or terminal work, and binds renewal to the original job/attempt. Repeating an unchanged grant never extends its uptime deadline. Wall-clock rollback cannot extend an existing grant; reboot invalidates it. The node watchdog cancels expired work through the normal cgroup termination proof before reclaiming resources. Leased build units depend on the watchdog so its exit stops their process groups. Root-local qualification builds without a hub lease retain their existing bounded runtime. This local mechanism does not authorize a hub job or replace the coordinated daemon claim/lease journal.
+
+
+### Private source-artifact delivery amendment (implementation in progress)
+
+The private source-artifact route uses the existing daemon token and permitted-network boundary. It is unavailable unless the hub has explicitly configured private artifact storage, a byte quota and a free-space reserve. This route is separate from public release uploads, registry publication and deployment. It does not enable source-image recipe advertisement by itself.
+
+An artifact offer contains exactly `job`, `attempt`, `bytes`, `archiveDigest` and `manifestDigest`. The job is a non-nil UUID; attempt is a positive 32-bit integer; bytes is between 1 and 8 GiB inclusive; both digests are `sha256:` followed by 64 lowercase hexadecimal digits. No destination path, filename, registry, URL or command comes from the caller. The authenticated enrollment supplies the device identity.
+
+Authorize only the current holder of a `build`/`container`/`source_image_v1` job in `finishing`, with the matching attempt, a live lease, no stop order and a machine permitted to work. Repeat authorization after verification and before retention acknowledgement. A receipt replay requires the same authorization and exact device/job/attempt/length/digests; it cannot replace the identity or let an old holder recover a new attempt's receipt.
+
+Streaming, rehashing and syncing the staged receipt leave the device request turn and database locks free for lease reporting. Final authorization holds the job and machine rows across the archive rename and directory sync. The storage owner checks lease expiry before the rename and after the sync. If it observes expiry during publication, it moves the newly published directory back to incoming storage and syncs the withdrawal before releasing those locks. Expiry or ownership uncertainty prevents acknowledgement. A failed or interrupted filesystem operation may leave retained bytes. The daemon releases its local artifact only after an exact, authorized receipt, and replay verifies retained bytes again.
+
+A retained receipt contains version 1, a stable receipt UUID, the authenticated device UUID and the exact offer. The daemon must check every identity and persist the receipt before requesting root cleanup. The receipt proves private retention of verified archive bytes, not execution provenance, OCI graph validity, permission to publish, or permission to deploy. Hosting must verify and consume the exact image under its separately authorized deployment operation.
+
+On a configured Unix hub, send `POST /work/v1/artifact` with the daemon bearer token. The five offer fields are the single-valued headers `Anima-Artifact-Job`, `Anima-Artifact-Attempt`, `Anima-Artifact-Bytes`, `Anima-Artifact-Archive` and `Anima-Artifact-Manifest`, respectively. The body is the raw archive. If present, `Content-Length` equals the declared archive length for an upload. An exact receipt replay may send an empty body and a zero content length. A matching revalidated receipt returns HTTP 200 with its JSON representation. An empty body without a matching receipt cannot create one.
+
+Set all three variables to enable the route. `ANIMA_ARTIFACTS_DIR` names a dedicated absolute directory under an existing parent. It must be owned by the hub and inaccessible to other users. `ANIMA_ARTIFACTS_QUOTA_BYTES` and `ANIMA_ARTIFACTS_RESERVE_BYTES` are positive decimal byte counts for stored archives and free space to preserve. An unconfigured hub answers `UNAVAILABLE`. Configure the private directory on storage for which the reserve is meaningful. The receiver verifies byte count and digest and the daemon must still persist the receipt before asking for cleanup.
+
+A source-image node can repeat an accepted final report without a log part when it loses the response. The hub returns the original end time as the closed lease and the existing log offset for a matching authenticated device, attempt, terminal state and validated result. A replay writes no state or audit event and cannot renew the lease.
+
+For node cleanup, the daemon presents the saved receipt to the enrolled root broker. The broker checks the device, attempt, byte count and both digests against the verified output it owns, then records the release intent before an independent root worker deletes the local copy. A failed, expired or cancelled source job can queue cleanup without a receipt if it has no retained output. The daemon reports final completion after observing the root-owned released state and, for success, the matching receipt.
+
+An AnimaOS daemon offers the source-image recipe only when its root broker reports one free slot and owner repository permission is configured. A hub without private artifact storage returns `UNAVAILABLE` to a source-capable claim and leaves the build queued. The daemon validates the returned repository, architecture, public-source policy, lease and resource limits. It journals the attempt before contacting the root executor and starts only after an accepted report confirms the hub still holds it. An expired unstarted intent can retire after a complete root inventory proves absence. A confirmed `NOT_HOLDER` stops local work. Cleanup or a root-owned retained artifact must be established before the daemon clears the hold.
+
+Once a coordinated execution is settled and its last lease has expired, the daemon may ask the local source broker to retire the execution metadata. The request and its acknowledgement carry the exact execution, job and attempt IDs. The root owner checks the enrollment and the released phase before removing a present record, then syncs its directory. An absent record with no pending write permits acknowledgement replay. The daemon removes its own settled entry only after an exact reply. Ready output without a delivery receipt remains under root ownership.
+
+The hub accepts the first successful source-image report only when private storage confirms the retained receipt for that device, job and attempt. The report must declare a succeeded outcome and completed checkout and isolation cleanup. A premature or incomplete success report is malformed and leaves the job held. Exact replay of an accepted terminal report still returns its stored acknowledgement.
+
+### Completed source-build downloads
+
+On a hub with private artifact storage, `GET /builds/v1/source-artifacts/{job}/{attempt}` streams the retained OCI archive. Pass a signed-in operator bearer on a permitted network. The route denies daemon credentials, API keys and requests that declare an agent. The job must be a completed source-image job with that attempt, and the receipt must belong to its last holder. An absent receipt, an unavailable attempt or an attempt that has yet to finish returns 404. Unreadable or corrupt storage and exhausted download slots return 503.
+
+HTTP 200 carries exact `Content-Length`, `Anima-Artifact-Job`, `Anima-Artifact-Attempt`, `Anima-Artifact-Receipt`, `Anima-Artifact-Archive` and `Anima-Artifact-Manifest` headers. The hub checks the archive hash, rechecks the login and streams the same open file descriptor. The response is a private, non-cacheable attachment. The hub records the download against the job before sending the body. Downloads use separate slots from intake, and deployment requires separate hosting authorization.
+
+### Inspect the image of a completed source build
+
+`GET /builds/v1/source-artifacts/{job}/{attempt}/image` uses the operator and network checks for the archive download. The hub opens the retained receipt for the completed attempt and independently verifies the archive length, digest and OCI graph. The response names the job, attempt, receipt and archive digest, with the exact image digest, its OCI or Docker media type and the runtime platforms of that descriptor. The image digest can name a runnable manifest or an index with runnable images. An attached attestation alone is not a runnable image.
+
+A retained archive that cannot be verified as a runnable image returns 422. The response holds only verified image metadata and is private and non-cacheable. Registry publication and deployment use separate authorization.
+
+### Publish a completed source-build image
+
+On a Unix hub with private artifact storage, set `ANIMA_ARTIFACT_REGISTRY_ORIGIN` to the HTTPS origin of an OCI Distribution registry and `ANIMA_ARTIFACT_REGISTRY_REPOSITORY` to one private repository. When the registry requires a write credential, `ANIMA_ARTIFACT_REGISTRY_AUTHORIZATION_FILE` names a private file containing a single `Basic …` or `Bearer …` authorization value. The hub loads it at startup. Use a credential scoped to read and write that repository. The registry must accept digest-addressed writes, serve uploads from the same origin and repository, and accept the configured authorization directly.
+
+`POST /builds/v1/source-artifacts/{job}/{attempt}/publish` requires a signed-in operator on a permitted network. Send JSON with the exact `receipt` UUID and `imageDigest` returned by image inspection. The hub checks the completed attempt, verifies the archive on its retained handle, rechecks operator authority, and audits the request before sending bytes. A mismatch returns 409. An unsupported publication graph returns 422. A disabled or busy writer returns 503. A registry failure returns 502. A subsequent request with the same confirmation can verify objects left by a previous request.
+
+The hub copies only the selected manifest or index and its dependencies, with their original bytes and digests. It writes dependencies first and reads the manifest bytes back by digest before confirming success. The writer accepts indexed BuildKit attachments. It refuses a selected graph with an OCI `subject` reference, which can require maintaining a referrers tag. HTTP 200 returns the job, attempt, receipt, image digest and repository reference by digest. The result is private and non-cacheable. The hub audits verified publication separately from the request.
+
+The operator can put that reference in a Compose `image` field and submit an apply through Hosting. The target device must already have pull access to that registry. The hub's write credential stays with the hub. The applications service still authorizes and checks the apply according to Section 6.4.

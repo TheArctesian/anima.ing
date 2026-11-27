@@ -15,7 +15,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{MissedTickBehavior, interval};
 use uuid::Uuid;
 
-use super::thread_sync::Target;
+use super::HubTarget as Target;
 use crate::config::home::Home;
 use crate::config::origin::Origin;
 use crate::hub::HubClient;
@@ -26,7 +26,7 @@ use crate::model::server::PORTS;
 use crate::model::supervise::{Servers, Shared};
 use crate::report;
 use crate::token_store::TokenStore;
-use crate::work::switch;
+use crate::work_switch as switch;
 
 /// The time between two claims while the switch is on (K10 Section 4).
 pub const CLAIM_ON: Duration = Duration::from_secs(10);

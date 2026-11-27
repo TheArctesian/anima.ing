@@ -1,0 +1,179 @@
+{
+  "scope": "Source-job supervisor candidate and journal-contention regression; installed source execution not qualified.",
+  "contention": {
+    "before": {
+      "case": "source-journal-contention-preserves-watchdog",
+      "result": "Failed",
+      "exit": 1,
+      "stderr": "anima-os-execution: Another operation owns source-job registration.\n"
+    },
+    "after": {
+      "case": "source-journal-contention-preserves-watchdog",
+      "result": "Passed",
+      "scope": "Real build-watch CLI stays alive for three seconds while another process holds the source-journal lock; no source jobs or builds run."
+    }
+  },
+  "vm": {
+    "execution": {
+      "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+      "package": "/nix/store/9qpm2p4ssay8niw2mn63gd1aljkbvxcp-anima-os-execution-0.1.0",
+      "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+      "narSha256": "f8684213c5dc3de7858031282d41e2458c6e82158111ec858a75133278fde100",
+      "watchdogUnitSha256": "3cb3aabdd489a1f5076718adae2761a8d0a2bd8e8c10346cf3dc7d4938503e81",
+      "bytes": 6655656
+    },
+    "scope": "Candidate package in disposable overlay; no network; failed-source lifecycle only. Watchdog unit adapted from previous evaluated unit for package and source-journal path. Not full ISO or successful build qualification.",
+    "results": [
+      {
+        "case": "candidate-setup",
+        "result": "Failed",
+        "reason": "Guest command failed: cp /run/build-tools/anima-build-leases.service /run/systemd/system/anima-build-leases.service; systemctl daemon-reload; systemctl restart anima-build-leases; systemctl is-active --quiet anima-build-leases"
+      },
+      {
+        "case": "shutdown",
+        "result": "Failed",
+        "reason": "Guest command failed: systemctl show anima-build-leases -p ActiveState -p Result; journalctl -b --no-pager -u \"anima-source-job-*\" -n 100"
+      }
+    ]
+  },
+  "followupVmProbes": [
+    {
+      "execution": {
+        "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+        "package": "/nix/store/9qpm2p4ssay8niw2mn63gd1aljkbvxcp-anima-os-execution-0.1.0",
+        "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+        "narSha256": "f8684213c5dc3de7858031282d41e2458c6e82158111ec858a75133278fde100",
+        "watchdogUnitSha256": "3cb3aabdd489a1f5076718adae2761a8d0a2bd8e8c10346cf3dc7d4938503e81",
+        "bytes": 6655656
+      },
+      "scope": "Candidate package in disposable overlay; no network; failed-source lifecycle only. Watchdog unit adapted from previous evaluated unit for package and source-journal path. Not full ISO or successful build qualification.",
+      "results": [
+        {
+          "case": "candidate-setup",
+          "result": "Passed"
+        },
+        {
+          "case": "source-supervisor-failure-cleanup",
+          "result": "Failed",
+          "reason": "Guest command failed: jq '{operation:\"work-policy-set\",revision:.value.revision,enabled:true,repositories:\"example/app\"}' /run/source-policy.json | /nix/store/9qpm2p4ssay8niw2mn63gd1aljkbvxcp-anima-os-execution-0.1.0/bin/anima-os-execution > /run/source-policy-set.json; jq -e '.ok' /run/source-policy-set.json"
+        }
+      ]
+    },
+    {
+      "execution": {
+        "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+        "package": "/nix/store/9qpm2p4ssay8niw2mn63gd1aljkbvxcp-anima-os-execution-0.1.0",
+        "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+        "narSha256": "f8684213c5dc3de7858031282d41e2458c6e82158111ec858a75133278fde100",
+        "watchdogUnitSha256": "3cb3aabdd489a1f5076718adae2761a8d0a2bd8e8c10346cf3dc7d4938503e81",
+        "bytes": 6655656
+      },
+      "scope": "Candidate package in disposable overlay; no network; failed-source lifecycle only. Watchdog unit adapted from previous evaluated unit for package and source-journal path. Not full ISO or successful build qualification.",
+      "results": [
+        {
+          "case": "candidate-setup",
+          "result": "Passed"
+        },
+        {
+          "case": "source-supervisor-failure-cleanup",
+          "result": "Passed"
+        }
+      ]
+    }
+  ],
+  "qualificationLimits": "Probe 03 proves controller failure reaches terminal state with MainPID zero and no running Docker container carrying the execution label. It does not establish the failed pipeline stage, absence of all reservations, successful checkout/build, cancellation during a running child, or the subsequent journal-contention changes.",
+  "retainedFailureInspection": {
+    "execution": "c4062509-9177-4d09-9916-ab386aab96fa",
+    "workspacePhase": "prepared",
+    "workspaceGeneration": 0,
+    "workspaceRun": null,
+    "executionReservationAbsent": true,
+    "buildReservationAbsent": true,
+    "scope": "Read from disposable overlay of probe 03 after reboot. Does not prove a launched container was stopped."
+  },
+  "cpuObservationProbe": {
+    "controllerCpuQuota": "0.25 CPU",
+    "availableParallelism": 1,
+    "onlineProcessors": 18,
+    "scope": "Disposable Linux container: confirms per-process CPU quota can undercount node capacity. Does not by itself establish the VM failure cause."
+  },
+  "admissionAndCleanupProbe": {
+    "execution": {
+      "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+      "package": "/nix/store/911i9x6knqviwpcprbzzl5pl39hak22l-anima-os-execution-0.1.0",
+      "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+      "narSha256": "73285e8854c31f091c78a646d76d359cd225c454a617b764092d6b8519ca3a40",
+      "watchdogUnitSha256": "859242c03a5beaf0c30c99aea4ee739fbb86c0a48b6c15ff064d5f1115b071ed",
+      "bytes": 6771464
+    },
+    "scope": "Candidate package in disposable overlay; no network; failed-source lifecycle only. Watchdog unit adapted from previous evaluated unit for package and source-journal path. Not full ISO or successful build qualification.",
+    "results": [
+      {
+        "case": "candidate-setup",
+        "result": "Passed"
+      },
+      {
+        "case": "source-supervisor-admission-and-failure-cleanup",
+        "result": "Passed"
+      }
+    ]
+  },
+  "admissionAndCleanupObserved": {
+    "phase": "failed",
+    "failure": "source_checkout_failed",
+    "workspaceGeneration": 1,
+    "workspacePhase": "stopped",
+    "checkoutPhase": "interrupted",
+    "executionReservationAbsent": true,
+    "buildReservationAbsent": true,
+    "scope": "Candidate CPU observation fix allowed workspace generation 1 and checkout; offline checkout failed, then the controller and workspace stopped and reservations were absent. Does not qualify successful source build or active cancellation."
+  },
+  "renewalCancellationHostingProbe": {
+    "execution": {
+      "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+      "package": "/nix/store/911i9x6knqviwpcprbzzl5pl39hak22l-anima-os-execution-0.1.0",
+      "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+      "narSha256": "73285e8854c31f091c78a646d76d359cd225c454a617b764092d6b8519ca3a40",
+      "watchdogUnitSha256": "859242c03a5beaf0c30c99aea4ee739fbb86c0a48b6c15ff064d5f1115b071ed",
+      "bytes": 6771464
+    },
+    "scope": "Candidate package in disposable overlay; no external network. Renewal and cancellation during running checkout, reservation removal and a synthetic hosted HTTP service polled every 0.5 seconds. Not successful source build or full hosted-load qualification.",
+    "results": [
+      {
+        "case": "candidate-setup",
+        "result": "Passed"
+      },
+      {
+        "case": "source-renewal-cancellation-hosting-continuity",
+        "result": "Failed",
+        "reason": "Guest command failed: systemctl is-active --quiet anima-source-hosting-observer; curl --fail --silent --max-time 3 http://127.0.0.1:18080/ >/dev/null; test \"$(docker inspect --format \"{{.State.Pid}}\" anima-source-hosting-check)\" = \"$(cat /run/hosting-pid)\"; test \"$(docker inspect --format \"{{.RestartCount}}\" anima-source-hosting-check)\" = 0; systemctl stop anima-source-hosting-observer; docker stop anima-source-hosting-check; docker rm anima-source-hosting-check"
+      },
+      {
+        "case": "shutdown",
+        "result": "Failed",
+        "reason": "VM did not exit after shutdown"
+      }
+    ]
+  },
+  "renewalCancellationHostingRerun": {
+    "execution": {
+      "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+      "package": "/nix/store/911i9x6knqviwpcprbzzl5pl39hak22l-anima-os-execution-0.1.0",
+      "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+      "narSha256": "73285e8854c31f091c78a646d76d359cd225c454a617b764092d6b8519ca3a40",
+      "watchdogUnitSha256": "859242c03a5beaf0c30c99aea4ee739fbb86c0a48b6c15ff064d5f1115b071ed",
+      "bytes": 6771464
+    },
+    "scope": "Candidate package in disposable overlay; no external network. Renewal and cancellation during running checkout, reservation removal and a synthetic hosted HTTP service polled every 0.5 seconds. Not successful source build or full hosted-load qualification.",
+    "results": [
+      {
+        "case": "candidate-setup",
+        "result": "Passed"
+      },
+      {
+        "case": "source-renewal-cancellation-hosting-continuity",
+        "result": "Passed"
+      }
+    ]
+  }
+}

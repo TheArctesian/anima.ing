@@ -10,7 +10,7 @@ use anima_daemon::config::home::Home;
 use anima_daemon::hub::{HubClient, TIMEOUT};
 use anima_daemon::runtime::model_work::{Hub, ModelWork};
 use anima_daemon::token_store::{Credential, TokenStore};
-use anima_daemon::work::switch;
+use anima_daemon::work_switch as switch;
 use serde_json::{Value, json};
 
 use crate::fake_hub::{FakeHub, Reply};

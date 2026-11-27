@@ -1,0 +1,40 @@
+query ManagedWorkspaces($device: ID!) {
+  managedCodeWorkspaces(device: $device)
+}
+query ManagedReceipt($request: ID!) {
+  managedCodeCommand(request: $request)
+}
+mutation ManagedEnable($device: ID!, $workspace: ID!, $enabled: Boolean!) {
+  setManagedCodeWorkspaceEnabled(device: $device, input: { workspace: $workspace, enabled: $enabled })
+}
+mutation ManagedSubmit($device: ID!, $input: ManagedCodeInput!) {
+  queueManagedCodeCommand(device: $device, input: $input)
+}
+
+query ManagedPreviews($device: ID!, $workspace: ID!) {
+  managedCodePreviews(device: $device, workspace: $workspace)
+}
+mutation ManagedPreviewOpen($device: ID!, $input: ManagedCodePreviewInput!) {
+  openManagedCodePreview(device: $device, input: $input)
+}
+mutation ManagedPreviewClose($endpoint: ID!) {
+  closeManagedCodePreview(endpoint: $endpoint)
+}
+
+query WorkspaceInventory($device: ID!) {
+  managedNodeWorkspaces(device: $device)
+}
+query WorkspaceReceipt($request: ID!) {
+  managedWorkspaceRequest(request: $request)
+}
+mutation WorkspaceSubmit($device: ID!, $input: ManagedWorkspaceInput!) {
+  queueManagedWorkspaceRequest(device: $device, input: $input)
+}
+
+subscription ManagedProviderLogin($device: ID!, $workspace: ID!, $generation: String!, $provider: String) {
+ managedCodeProviderLogin(device: $device, input: { workspace: $workspace, generation: $generation, provider: $provider })
+}
+
+mutation ManagedProviderReply($session: ID!, $code: String!) {
+ replyManagedCodeProviderLogin(session: $session, code: $code)
+}

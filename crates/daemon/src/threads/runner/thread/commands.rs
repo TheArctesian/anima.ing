@@ -29,7 +29,7 @@ impl Thread {
                 self.lists_asked = Some(now);
                 vec![Step::Write(codex.skills_again())]
             }
-            Driver::Codex(_) | Driver::Claude(_) => Vec::new(),
+            Driver::Codex(_) | Driver::Claude(_) | Driver::Grok(_) => Vec::new(),
         };
         let lists = self.lists.clone().map(|mut lists| {
             if matches!(self.driver, Driver::Codex(_)) {
@@ -89,6 +89,7 @@ impl Thread {
                 .compact()
                 .map(|line| vec![Step::Write(line)])
                 .ok_or_else(|| cannot("Codex has not started its thread yet: try again soon.")),
+            Driver::Grok(_) => Err(cannot("Grok compacts with /compact: send it as a prompt.")),
             Driver::Claude(_) => Err(cannot(
                 "Claude Code compacts with the prompt /compact: send it as a prompt.",
             )),

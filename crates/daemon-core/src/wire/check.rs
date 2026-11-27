@@ -69,8 +69,10 @@ impl Batch {
         if self.device != device {
             return Err(RefusalCode::WrongDevice);
         }
-        let keys = series_keys(&self.series).ok_or(RefusalCode::Malformed)?;
-        let shaped = points_fit(&self.points, &keys)
+        let inventory_only =
+            self.inventory.is_some() && self.series.is_empty() && self.points.is_empty();
+        let keys = batch_keys(&self.series, inventory_only).ok_or(RefusalCode::Malformed)?;
+        let shaped = (inventory_only || points_fit(&self.points, &keys))
             && gpus_fit(self.gpus.as_deref())
             && drives_fit(self.drives.as_deref())
             && batteries_fit(self.batteries.as_deref())
@@ -102,7 +104,7 @@ impl Batch {
             Some(sent) => Some(sent.accepted().ok_or(RefusalCode::Malformed)?),
             None => None,
         };
-        if !in_range(&self.points, now) {
+        if !inventory_only && !in_range(&self.points, now) {
             return Err(RefusalCode::OutOfRange);
         }
         let points = self
@@ -264,4 +266,12 @@ fn accepted(point: BatchPoint, keys: &[Option<SeriesKey>]) -> Point {
         })
         .collect();
     Point::new(point.at, values)
+}
+
+fn batch_keys(series: &[BatchSeries], inventory_only: bool) -> Option<Vec<Option<SeriesKey>>> {
+    if inventory_only {
+        Some(Vec::new())
+    } else {
+        series_keys(series)
+    }
 }

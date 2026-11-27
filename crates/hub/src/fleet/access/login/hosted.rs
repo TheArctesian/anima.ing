@@ -15,13 +15,13 @@ use super::{
         graphql::AuthPayload,
         hash_password,
         password::Password,
-        store::{self, NewToken},
+        store::{self, Account, NewToken},
         tokens::{
             HOSTED_BROWSER_IDLE, HOSTED_BROWSER_LIFETIME, LOGIN_LIFETIME, Scope, TOKEN_BYTES,
             Token, TokenKind,
         },
     },
-    SignedIn, random,
+    SignedIn, command_line, random,
 };
 use crate::fleet::events::{
     self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source,
@@ -50,6 +50,7 @@ pub async fn sign_in_hosted(
         client: device.client,
         at: device.at,
         token: TokenKind::Login,
+        device: Some(device.name),
         change: serde_json::json!({ "device": device.name, "through": "account" }),
         message: format!(
             "The device {} signed in with the Anima.ing account.",
@@ -79,6 +80,7 @@ pub async fn sign_in_hosted_browser(
         client,
         at,
         token: TokenKind::Browser,
+        device: None,
         change: serde_json::json!({ "browser": true, "through": "account" }),
         message: "A browser signed in with the Anima.ing account.".to_owned(),
     };
@@ -96,11 +98,13 @@ pub struct BrowserSession {
     pub expires_at: DateTime<Utc>,
 }
 
-/// One way in by the account: who asks, when, which token it gets and what the trail says.
-struct Entry {
+/// One way in by the account: who asks, when, which token it gets, the device on the link for a
+/// device's sign-in, and what the trail says.
+struct Entry<'a> {
     client: ClientAddr,
     at: DateTime<Utc>,
     token: TokenKind,
+    device: Option<&'a str>,
     change: serde_json::Value,
     message: String,
 }
@@ -115,11 +119,28 @@ fn terms(kind: TokenKind) -> (chrono::TimeDelta, Option<chrono::TimeDelta>) {
     }
 }
 
-async fn issue(db: &PgPool, bus: &Bus, entry: Entry) -> Result<SignedIn, Error> {
+/// The operator of the hub as a request with a token of `kind` and no declaration acts.
+fn operator_of(account: &Account, kind: TokenKind) -> Operator {
+    let signals = Signals {
+        token: kind,
+        made_for: None,
+        declared: Declaration::default(),
+    };
+    Operator {
+        id: account.id,
+        name: account.username.clone(),
+        actor: actor::actor(signals, None),
+    }
+}
+
+/// Gives the token of `entry`. A device's new sign-in replaces its earlier ones and keeps their
+/// command-line token (R-383, SGN-NEW-linked), in the same transaction.
+async fn issue(db: &PgPool, bus: &Bus, entry: Entry<'_>) -> Result<SignedIn, Error> {
     let Entry {
         client,
         at: now,
         token: kind,
+        device,
         change,
         message,
     } = entry;
@@ -138,17 +159,16 @@ async fn issue(db: &PgPool, bus: &Bus, entry: Entry) -> Result<SignedIn, Error> 
         scope: Scope::Write,
         expires_at,
     };
-    store::insert_token_with_idle(&mut tx, &new_token, now, idle).await?;
-    let signals = Signals {
-        token: kind,
-        made_for: None,
-        declared: Declaration::default(),
-    };
-    let operator = Operator {
-        id: account.id,
-        name: account.username.clone(),
-        actor: actor::actor(signals, None),
-    };
+    let id = store::insert_token_with_idle(&mut tx, &new_token, now, idle).await?;
+    let operator = operator_of(&account, kind);
+    if let Some(device) = device.filter(|_| kind == TokenKind::Login) {
+        let change = command_line::Change {
+            operator: &operator,
+            client,
+            at: now,
+        };
+        command_line::renew(&mut tx, device, (id, expires_at), &change).await?;
+    }
     let actor = operator.actor.kind();
     let audit = NewAudit {
         target: AuditTarget::Operator(operator.id),

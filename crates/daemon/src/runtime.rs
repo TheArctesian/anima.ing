@@ -2,21 +2,33 @@
 
 mod agent_usage;
 mod link_wait;
+#[cfg(target_os = "linux")]
+mod managed_code;
+#[cfg(target_os = "linux")]
+mod managed_transcripts;
 #[cfg(unix)]
 pub mod model_work;
 #[cfg(unix)]
 pub mod old_origin;
+#[cfg(target_os = "linux")]
+pub(crate) mod owner_socket;
+mod sampling;
+#[cfg(target_os = "linux")]
+mod source_work;
+#[cfg(unix)]
+pub(crate) mod thread_content;
 #[cfg(unix)]
 pub(crate) mod thread_sync;
 mod token_wait;
+#[cfg(target_os = "linux")]
+mod workspaces;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
 
 use chrono::Utc;
 use tokio::sync::mpsc;
-use tokio::time::{Instant, MissedTickBehavior, interval, sleep_until};
+use tokio::time::{Instant, sleep_until};
 use uuid::Uuid;
 
 use std::path::PathBuf;
@@ -26,22 +38,21 @@ use crate::hub::{HubClient, HubError, TIMEOUT};
 use crate::keys::{keeper::Keeper, store::KeyStore};
 use crate::push::pacing::RHYTHM;
 use crate::push::{Event, Pusher};
-use crate::readers::{self, Platform, Source, container::Container, gpu};
+use crate::readers::Platform;
 use crate::report;
-use crate::sampling::Sampler;
-use crate::sampling::batteries::BatteryWatch;
-use crate::sampling::drives::DriveWatch;
-use crate::sampling::gpu::Discovery;
-use crate::sampling::inventory::{InventoryWatch, Watch as Announced};
 use crate::token_store::{Credential, TokenStore, TokenStoreError};
 use agent_usage::{count, counting};
 use link_wait::LinkWatch;
 
-/// The time between samplings (MET-014).
-const SAMPLE_EVERY: Duration = Duration::from_secs(2);
-
-/// The time between two probe runs of the tool inventory (CAP-027).
-const PROBE_EVERY: Duration = Duration::from_mins(15);
+/// One enrolled hub destination, shared by independent publishing and command tasks.
+#[cfg(unix)]
+#[derive(Clone)]
+pub(crate) struct HubTarget {
+    pub(crate) hub: Arc<HubClient>,
+    pub(crate) device: Uuid,
+    pub(crate) origin: crate::config::origin::Origin,
+    pub(crate) tokens: TokenStore,
+}
 
 /// Far more than a slow push can build up.
 const CHANNEL_ROOM: usize = 64;
@@ -105,26 +116,24 @@ pub async fn run(
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
     let refusal_ends = hosted_hub.is_some();
     #[cfg(unix)]
-    let model = model_work::begin(home, refusal_ends, device, pusher.thread_sync_target());
-    let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
+    let model = model_work::begin(home, refusal_ends, device, pusher.runtime_target());
+    let probing = tokio::spawn(sampling::probe(Platform::current(), sender.clone()));
     let stopping = Arc::new(AtomicBool::new(false));
     let usage = tokio::spawn(count(
         counting(home, |name| std::env::var(name).ok()),
         sender.clone(),
         Arc::clone(&stopping),
     ));
-    let source = hosted_hub.map_or(Source::Machine(Platform::current()), |data| {
-        let processors = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-        let processors = u64::try_from(processors).unwrap_or(1);
-        Source::HostedHub(Container::new(PathBuf::from("/"), data, processors))
-    });
+    let source = sampling::source(hosted_hub);
     #[cfg(unix)]
     let publishing = tokio::spawn(thread_sync::publish(
         home.clone(),
         sender.clone(),
-        pusher.thread_sync_target(),
+        pusher.runtime_target(),
     ));
-    let mut sampling = tokio::spawn(sample(source, sender));
+    #[cfg(target_os = "linux")]
+    let mut managed = managed_tasks(home, pusher.runtime_target());
+    let mut sampling = tokio::spawn(sampling::sample(source, sender));
     report::running(device);
     let outcome = tokio::select! {
         ended = push(pusher, receiver, refusal_ends) => match ended {
@@ -151,7 +160,20 @@ pub async fn run(
     publishing.abort();
     #[cfg(unix)]
     model_work::end(model).await;
+    #[cfg(target_os = "linux")]
+    managed.abort_all();
     outcome
+}
+
+#[cfg(target_os = "linux")]
+fn managed_tasks(home: &Home, target: HubTarget) -> tokio::task::JoinSet<()> {
+    let mut tasks = tokio::task::JoinSet::new();
+    tasks.spawn(managed_code::run(home.clone(), target.clone()));
+    tasks.spawn(workspaces::run(home.clone(), target.clone()));
+    tasks.spawn(workspaces::handoffs::run(target.clone()));
+    tasks.spawn(source_work::run(home.clone(), target.clone()));
+    tasks.spawn(managed_transcripts::run(home.clone(), target));
+    tasks
 }
 
 #[cfg_attr(
@@ -208,99 +230,6 @@ fn refusal_end(forgot: Result<(), TokenStoreError>, mark: impl FnOnce()) -> RunE
         }
         Err(error) => error.into(),
     }
-}
-
-async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
-    let mac = matches!(source, Source::Machine(Platform::Macos));
-    let gpus = source.has_gpus();
-    let mut sampler = Sampler::new();
-    let mut drives = DriveWatch::new();
-    let mut batteries = BatteryWatch::new();
-    let mut watch = Watch::start(discover(mac, gpus, &events).await, Instant::now());
-    let mut ticks = interval(SAMPLE_EVERY);
-    ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    loop {
-        ticks.tick().await;
-        if watch.due(Instant::now()) {
-            watch.replace(discover(mac, gpus, &events).await, Instant::now());
-        }
-        let found = &watch.found;
-        let now = Utc::now();
-        let reading = source.reading(now, std::time::Instant::now()).await;
-        if let Some(changed) = drives.changed(reading.drives.as_deref())
-            && events.send(Event::Drives(changed)).await.is_err()
-        {
-            return;
-        }
-        if let Some(changed) = batteries.changed(reading.batteries.as_deref())
-            && events.send(Event::Batteries(changed)).await.is_err()
-        {
-            return;
-        }
-        let gpus = found
-            .placement
-            .place_all(gpu::read(found.sources, mac).await);
-        if let Some(point) = sampler.take(now, reading, &gpus)
-            && events.send(Event::Point(point)).await.is_err()
-        {
-            return;
-        }
-    }
-}
-
-async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
-    let mut watch = InventoryWatch::new();
-    let mut hardware = Announced::new();
-    let mut ticks = interval(PROBE_EVERY);
-    ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
-    loop {
-        ticks.tick().await;
-        let read = readers::inventory(platform).await;
-        if let Some(changed) = watch.changed(read, std::time::Instant::now())
-            && events.send(Event::Inventory(changed)).await.is_err()
-        {
-            return;
-        }
-        let read = readers::hardware(platform).await;
-        if let Some(changed) = hardware.changed(read, std::time::Instant::now())
-            && events.send(Event::Hardware(changed.clone())).await.is_err()
-        {
-            return;
-        }
-    }
-}
-
-struct Watch {
-    found: Discovery,
-    next: Instant,
-}
-
-impl Watch {
-    fn start(found: Discovery, now: Instant) -> Self {
-        let next = found.next_at(now, None);
-        Self { found, next }
-    }
-
-    fn due(&self, now: Instant) -> bool {
-        now >= self.next
-    }
-
-    fn replace(&mut self, again: Discovery, now: Instant) {
-        self.next = again.next_at(now, Some(&self.found));
-        self.found = again;
-    }
-}
-
-/// Tells the pusher the whole set, `[]` included (K8 Section 4).
-async fn discover(mac: bool, look: bool, events: &mpsc::Sender<Event>) -> Discovery {
-    let read = if look {
-        gpu::read(gpu::Sources::ALL, mac).await
-    } else {
-        Vec::new()
-    };
-    let found = Discovery::new(read);
-    events.send(Event::Gpus(found.announce.clone())).await.ok();
-    found
 }
 
 async fn push(

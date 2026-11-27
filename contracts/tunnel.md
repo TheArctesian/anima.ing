@@ -30,6 +30,10 @@ Sections 1, 5 and 6 apply to both tunnels.
 it refuses with CONFLICT ("This device has reached its session limit."). It counts under a transaction advisory
 lock on the device, so two starts cannot both pass. File tunnels do not count (RA-036).
 
+`startSession` accepts `viewOnly: true` for RDP and VNC. The hub binds it to the
+ticket and records it in the start audit. SSH refuses this mode. Changing modes
+requires a new authorized start and ticket.
+
 ## 2. Tunnel request (Guacamole, RDP and VNC)
 
 ```text
@@ -71,7 +75,7 @@ The hub, not the client, does the handshake with the `guac-protocol` `Handshake`
 | `username`, `domain` | settings | `username` when set |
 | `password` | `load_password(Rdp)` | `load_password(Vnc)` |
 | `security`, `ignore-cert` | `security`: settings; ANY is sent as the TLS mode the hub's certificate read negotiated (`tls`, `nla` or `nla-ext`), so guacd never falls back to standard RDP security when a pin is required (CR-2); `ignore-cert`: settings | — |
-| `cert-fingerprints` | the accepted `sha256` fingerprint (D-5) | — |
+| `cert-fingerprints` | the accepted `sha256` fingerprint (D-5) | native gateway: the independently accepted VNC leaf fingerprint, when configured (P3b extension below) |
 | `resize-method` | `display-update` or `reconnect` | — |
 | `disable-audio`, `enable-audio-input` | not `audioOut`, `microphone` | — |
 | `enable-drive`, `drive-path`, `create-drive-path` | `sharedDrive`, `<ANIMA_GUACD_DRIVE_ROOT>/<device_id>`, `true` (RA-021) | — |
@@ -97,6 +101,12 @@ Phase 1 SSH argument values:
 (Phase 3) guacd's own recording stays off: `recording-path`, `recording-name`, `create-recording-path`,
 `typescript-path` and `recording-include-keys` are always empty (GW-013, RA-008).
 
+### Native VNC certificate transport (AnimaOS P3b)
+
+The native gateway advertises `cert-fingerprints` for VNC in the same `sha256:AA:BB:…` encoding as RDP. A nonempty value requires VeNCrypt 0.2 X509Plain (subtype 262). It never falls back to VNC password, anonymous TLS or unencrypted Plain. The gateway completes TLS, verifies the leaf fingerprint and only then prompts for or sends Plain credentials. The encrypted connection carries subsequent framebuffer and input traffic. An empty value retains existing legacy VNC selection and does not enable VeNCrypt; malformed fingerprints are refused.
+
+The pin must come from independently accepted VNC trust for this device and endpoint; an RDP certificate is not a VNC pin. The browser cannot supply it. The hub now discovers VNC X509Plain certificates without account bytes, keeps VNC observations separate even at the same endpoint, and stores explicit `acceptVncServerCertificate` approvals independently of RDP. `VncSettings.serverCertificate` returns that approval. `anima device trust accept-certificate --protocol vnc` selects this mutation; the default remains RDP. Session preflight, argument projection and graphical-client integration remain pending. Do not advertise enrolled AnimaOS VNC readiness from this gateway change alone.
+
 ## 4. Relay (Guacamole, RDP and VNC)
 
 After `ready`, the hub sends to the client, in this order:
@@ -117,15 +127,25 @@ From the client, the hub:
     - `file` (3), `get` (2) and `put` (4) only when `sharedDrive` is on: `file` and `put` need `upload`, `get` of a file needs `download`;
 - closes the tunnel with close code 1002 (`PROTOCOL_ERROR`) if an instruction does not decode (GW-011) or is not allow-listed.
 
+A view-only session retains the display, frame acknowledgements and authentication
+prompts. The relay drops keyboard, pointer, touch, display-resize and clipboard
+writes. Clipboard reads, microphone input and the shared drive are disabled
+for that session. The hub requests view-only mode in the gateway handshake
+where supported. The relay enforces the same limits for either gateway.
+
 The hub sends a `nop` to the client when the gateway has sent nothing for 5 seconds. If the client sends nothing for 15 seconds (no ping, no input), the hub ends the session with `TIMEOUT`.
 
 ## 5. End of session
 
 The Guacamole tunnel's causes; Section 8.6 gives the terminal tunnel's causes for the same reasons and codes.
 
+Once `deleteDevice` commits, the hub withdraws unused session tickets for that device and
+signals its SSH, RDP and VNC tunnels to close as `OPERATOR`. The session end audit names the
+operator who removed the device. Historical sessions keep their device names and identifiers.
+
 | Cause | WebSocket close code sent to client | `endReason` |
 | --- | --- | --- |
-| Client closes, or `endSession` mutation | 1000 | `OPERATOR` |
+| Client closes, or `endSession` or `deleteDevice` mutation | 1000 | `OPERATOR` |
 | Gateway sends `disconnect`, or the remote host closes | 1000 after relaying `disconnect` | `REMOTE_CLOSED` |
 | Gateway sends `error` with status 0x0300–0x03FF (upstream) | 1011 after relaying `error` | `GATEWAY_ERROR` |
 | Gateway `error` with status 0x0301 / 0x0303 (unauthorized / forbidden) | 1011 after relaying `error` | `AUTH_FAILED` |
@@ -245,7 +265,7 @@ The reasons, events and audit are those of Section 5. The first cause wins. When
 
 | Cause | Close code | `endReason` |
 | --- | --- | --- |
-| Client closes, or `endSession` mutation | 1000 | `OPERATOR` |
+| Client closes, or `endSession` or `deleteDevice` mutation | 1000 | `OPERATOR` |
 | The shell exits, or the device closes the channel or sends an SSH disconnect | 1000 | `REMOTE_CLOSED` |
 | The hub's SSH connection fails after the opening (a TCP drop with no SSH disconnect, a transport or protocol error, lost keep-alives), the PTY or shell request is refused, or a write to the device stalls (Section 8.5) | 1011 | `GATEWAY_ERROR` |
 | The device refuses the credential, none is stored, or the stored key does not decode | 1011 | `AUTH_FAILED` |
