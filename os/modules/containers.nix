@@ -130,6 +130,8 @@ in
     unitConfig = {
       ConditionPathExists = applicationSettings;
       RequiresMountsFor = applicationRoot;
+      StartLimitIntervalSec = "2min";
+      StartLimitBurst = 5;
     };
     serviceConfig = {
       User = "root";
@@ -137,6 +139,8 @@ in
       RuntimeDirectory = "anima-applications";
       RuntimeDirectoryMode = "0755";
       Restart = "on-abnormal";
+      RestartForceExitStatus = "75"; # EX_TEMPFAIL from the bounded startup probes.
+      RestartSec = "5s";
       ExecStart = serveApplications;
     };
   };

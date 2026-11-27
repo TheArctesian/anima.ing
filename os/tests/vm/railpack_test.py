@@ -80,7 +80,7 @@ def build_online(output, password, expected_system, results):
         if authenticated and machine.process.poll() is None:
             try:
                 machine.send('systemctl poweroff')
-                machine.wait_exit(timeout=90)
+                machine.wait_exit(timeout=240 if vm_host.accelerator() == 'tcg' else 90)
                 results.append({'case': 'clean-shutdown', 'result': 'Passed'})
             except Exception as error:
                 failure(results, 'clean-shutdown', error, password)

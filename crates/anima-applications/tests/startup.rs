@@ -65,15 +65,19 @@ impl Host {
         );
     }
 
-    fn check(&self) -> Output {
+    fn command(&self, operation: &str) -> Command {
         let dir = self.root.path();
-        Command::new(env!("CARGO_BIN_EXE_anima-applications"))
-            .arg("check")
+        let mut command = Command::new(env!("CARGO_BIN_EXE_anima-applications"));
+        command
+            .arg(operation)
             .arg(dir.join("settings.json"))
             .arg(dir.join("docker-config"))
-            .arg(dir.join("applications"))
-            .output()
-            .unwrap()
+            .arg(dir.join("applications"));
+        command
+    }
+
+    fn check(&self) -> Output {
+        self.command("check").output().unwrap()
     }
 
     fn expect_refusal(&self, reason: &str) {
@@ -140,4 +144,24 @@ fn startup_checks_the_server_version_without_exposing_probe_output() {
     assert!(!rejected.status.success(), "{rejected:?}");
     assert!(!String::from_utf8_lossy(&rejected.stderr).contains("private-synthetic-marker"));
     assert!(String::from_utf8_lossy(&rejected.stderr).contains("version probe"));
+}
+
+#[test]
+#[ignore = "requires a root-owned fixture and the nobody account in a disposable Linux container"]
+fn serve_reports_a_temporary_error_for_a_startup_probe_timeout() {
+    let host = Host::new();
+    let socket = host.root.path().join("socket");
+    fs::create_dir(&socket).unwrap();
+
+    let mut serve = host.command("serve");
+    serve.arg(socket);
+    host.probes("printf '%s\\n' 'unrecognized version'");
+    let invalid = serve.output().unwrap();
+    assert_eq!(invalid.status.code(), Some(1), "{invalid:?}");
+    assert!(String::from_utf8_lossy(&invalid.stderr).contains("version probe"));
+
+    host.probes("exec /bin/sleep 30");
+    let delayed = serve.output().unwrap();
+    assert_eq!(delayed.status.code(), Some(75), "{delayed:?}");
+    assert!(String::from_utf8_lossy(&delayed.stderr).contains("time limit"));
 }

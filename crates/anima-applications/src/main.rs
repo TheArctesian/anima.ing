@@ -36,7 +36,7 @@ fn main() -> ExitCode {
                 applications: Path::new(applications),
             };
             control::serve(&files, Path::new(socket))
-                .map_or_else(|error| report(&error), |()| ExitCode::SUCCESS)
+                .map_or_else(report_service_error, |()| ExitCode::SUCCESS)
         }
         [command, applications] if command == "console-applications" => {
             control::applications::classify(Path::new(applications), std::io::stdin().lock())
@@ -59,6 +59,19 @@ fn main() -> ExitCode {
                 .map_or_else(|error| report(&error), |()| ExitCode::SUCCESS)
         }
         arguments => migrate(arguments),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn report_service_error(error: anima_applications::control::Error) -> ExitCode {
+    use anima_applications::{control, execution::Fault, startup};
+
+    let failure = report(&error);
+    match error {
+        control::Error::Startup(startup::Error::Execution(Fault::LimitSeconds)) => {
+            ExitCode::from(75) // EX_TEMPFAIL
+        }
+        _ => failure,
     }
 }
 

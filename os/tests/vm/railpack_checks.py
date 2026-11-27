@@ -3,6 +3,7 @@ from functools import partial
 import json
 import shlex
 import uuid
+import vm_host
 from build_checks import (
     build_request, exported_build, build_diagnostics, released_diagnostics, console_build_diagnostics,
 )
@@ -51,6 +52,14 @@ class BuildFixture:
                      strategy='railpack',
                      resources={'memory_bytes': memory_mib*1024**2, 'cpu_millis': BUILD_CPU_MILLIS, 'tasks': 128})
 
+    def check_cpu_limit(self):
+        self.machine.command(
+            f'group=$(systemctl show -p ControlGroup --value {self.unit}); test -n "$group"; '
+            'read -r quota period < "/sys/fs/cgroup${group}/cpu.max"; '
+            'printf "Effective Railpack CPU quota: %s / %s microseconds\\n" "$quota" "$period"; '
+            'test "$quota" != max; '
+            f'test "$((quota * 1000))" -eq "$((period * {BUILD_CPU_MILLIS}))"')
+
     def wait(self, seconds):
         self.machine.command(
             f"""timeout {seconds} sh -c 'while systemctl is-active --quiet {self.unit}; do sleep 2; done'""",
@@ -84,6 +93,7 @@ def installed_railpack(machine, language):
     build = BuildFixture(machine)
     try:
         build.start(PROJECTS[language], BUILD_MEMORY_MIB[language])
+        build.check_cpu_limit()
         build.wait(3900)
         build.request('verified', 'build-reconcile',
                 '.value.phase == "verified" and .value.result.integrityVerified and (.value.result.deployed | not)',
@@ -92,7 +102,10 @@ def installed_railpack(machine, language):
         build_diagnostics(machine, receipts, build.attempt)
         exported_build(machine, receipts)
         # Test-only deployment: production build completion must never perform this import.
-        machine.command(f'docker load -i {receipts}/image.oci > {receipts}/load.log', timeout=180)
+        import_timeout = 600 if vm_host.accelerator() == 'tcg' else 180
+        print(f'Importing the verified {language} OCI image for the offline run', flush=True)
+        machine.command(f'docker load -i {receipts}/image.oci > {receipts}/load.log',
+                        timeout=import_timeout)
         machine.command(f"manifest=$(jq -er '[.manifests[] | "
                         f"select(.platform.os == \"linux\" and .platform.architecture == \"amd64\") | "
                         f"select(.annotations[\"vnd.docker.reference.type\"] != \"attestation-manifest\")] | "
