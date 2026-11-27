@@ -31,7 +31,7 @@ async fn th32_holder_restart_recovers_cleanup_after_shutdown_cannot_inspect_a_de
     )
     .unwrap();
     let shared = holder_state(&dir, 0, Vec::new());
-    assert!(pending::reserve(&shared, request.runner));
+    assert!(pending::reserve(&shared, request));
     locked(&shared).remote_child = Some(PendingChild {
         request,
         child,

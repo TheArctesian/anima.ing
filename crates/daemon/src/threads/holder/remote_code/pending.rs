@@ -4,11 +4,15 @@ mod scan;
 use std::{sync::Mutex, time::Duration};
 
 use super::{PendingChild, Shared, locked};
-use uuid::Uuid;
+use crate::remote_code::wire::DispatchRequest;
 
-pub(in crate::threads::holder) fn reserve(shared: &Mutex<Shared>, runner: Uuid) -> bool {
+pub(in crate::threads::holder) fn reserve(
+    shared: &Mutex<Shared>,
+    request: DispatchRequest,
+) -> bool {
     let dir = locked(shared).dir.clone();
-    matches!(record::read(&dir), Ok(None)) && record::save(&dir, Some(runner))
+    matches!(record::read(&dir), Ok(None))
+        && record::save(&dir, Some(&record::Record::new(request)))
 }
 
 pub(super) fn attached(shared: &Mutex<Shared>) {
@@ -50,13 +54,14 @@ pub(in crate::threads::holder) async fn end_pending(shared: &Mutex<Shared>) {
 
 pub(in crate::threads::holder) async fn recover_stale(shared: &Mutex<Shared>) {
     let dir = locked(shared).dir.clone();
-    let Ok(Some(runner)) = record::read(&dir) else {
+    let Ok(Some(record)) = record::read(&dir) else {
         return;
     };
+    let runner = record.runner();
     let attached_here = locked(shared).threads.contains_key(&runner.to_string());
     if attached_here {
         attached(shared);
-    } else if scan::sweep(runner).await {
+    } else if record.ended(&dir) || scan::sweep(runner).await {
         record::save(&dir, None);
     }
 }

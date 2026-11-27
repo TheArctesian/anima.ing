@@ -6444,7 +6444,10 @@ a disposable Mac to check the Keychain access list and the complete provider lif
 2. Restart the daemon while that provider runs. Send a second prompt from the same account.
    Check that the original provider receives it once and that its local process continues.
 3. Repeat after the daemon renews its hub credential. Check the same thread and its answer.
-4. Turn remote starts off. Check that a new hub start is refused. Confirm local access to the
+4. Interrupt a disposable holder during dispatch. Restart it, then reboot the Mac. Check
+   that the old uncertain launch stays in reconciliation and a fresh request can proceed after
+   the reboot. An ambiguous same-boot child must continue to block new starts.
+5. Turn remote starts off. Check that a new hub start is refused. Confirm local access to the
    existing thread. End the provider and remove the test enrollment.
 
 Result: Open.

@@ -167,7 +167,7 @@ async fn launch(
     let Some((command, user)) = prepare(shared, &store, &order) else {
         return close(&store, request, NotCreated::Refused);
     };
-    if !pending::reserve(shared, request.runner) {
+    if !pending::reserve(shared, request) {
         return ToRunner::Pending { request };
     }
     let guard = |saved: &crate::remote_code::launch::Reservation| {
