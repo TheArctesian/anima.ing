@@ -11,7 +11,7 @@
    * reason until the install exists (task H6 of the hosted applications plan). The tier, the class, the streams and the
    * optional parts say what the entry needs beyond an application that Anima tested. Nothing here reaches the device.
    */
-  const { entry, onclose }: { entry: CatalogueEntry; onclose: () => void } = $props();
+  const { entry, installOn = null, onclose }: { entry: CatalogueEntry; installOn?: string | null; onclose: () => void } = $props();
 </script>
 
 <section class="pane" aria-label="About {entry.name}">
@@ -21,7 +21,7 @@
     <span class="mark">{TIER_LABELS[entry.tier]}</span>
     {#if entry.class === 'SHELL'}<span class="mark">Shell</span>{/if}
     {#if unreviewed(entry)}<span class="mark">Not reviewed</span>{/if}
-    <FormButton size="sm" tone="primary" aria-disabled={entry.install.refusal !== null} aria-describedby="install-reason">Install on this device</FormButton>
+    <FormButton size="sm" tone="primary" aria-disabled={entry.install.refusal !== null} aria-describedby="install-reason">{installOn === null ? 'Install' : `Install on ${installOn}`}</FormButton>
     <FormButton size="sm" tone="ghost" icon="carbon:close" label="Close the description" onclick={onclose} />
   </header>
   <p class="reason" id="install-reason" role="note"><Icon name="carbon:information" size="sm" />{entry.install.reason ?? 'The hub can install this entry.'}</p>

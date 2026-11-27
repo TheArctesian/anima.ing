@@ -107,3 +107,13 @@ it('HOST-030: an open project says the folder and the files that Compose started
   flushSync();
   expect(document.querySelector('tr.started')).toBeNull();
 });
+
+it('HSE-022: Install from the catalogue of a machine with nothing installed asks for the picker with that machine', async () => {
+  const asked: string[] = [];
+  const store = new HostingStore(calls);
+  app = mount(HostingList, { target: document.body, props: { store, oninstall: (id: string) => asked.push(id) } });
+  await store.load();
+  flushSync();
+  [...document.querySelectorAll<HTMLButtonElement>('tr.group button')].find((each) => each.textContent === 'Install from the catalogue')?.click();
+  expect(asked).toEqual(['m-mini']);
+});
