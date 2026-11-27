@@ -1,0 +1,66 @@
+{
+  "iso_sha256": "402af3203124c9ba0704e6b6a31d6d6f011710d6f60ca3042124007c2df784f7",
+  "results": [
+    {
+      "case": "wifi-supplicant-dbus-activation",
+      "result": "Passed"
+    },
+    {
+      "case": "mounted-child-excluded",
+      "result": "Passed"
+    },
+    {
+      "case": "iso-uefi-live",
+      "result": "Passed"
+    },
+    {
+      "case": "cancel-before-erase",
+      "result": "Passed"
+    },
+    {
+      "case": "offline-install",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-login-readonly-runtime",
+      "result": "Passed"
+    },
+    {
+      "case": "confirmed-orientation-transferred-and-applied",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-wifi-backend-after-root-lock",
+      "result": "Passed"
+    },
+    {
+      "case": "rootless-offline-build-verify-release",
+      "result": "Passed",
+      "limitation": "Synthetic Dockerfile only; no Railpack detection, secrets, network or deployment"
+    },
+    {
+      "case": "docker-hosting-slice-live-restore-and-isolation",
+      "result": "Passed",
+      "limitation": "Offline local Docker only; no hosted application orchestration or continuous availability measurement"
+    },
+    {
+      "case": "rootless-isolated-app-and-job",
+      "result": "Passed",
+      "limitation": "Local Podman only, not Anima orchestration or an agent run"
+    },
+    {
+      "case": "installed-gui-auth-lock-network-display-fixed-footer",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-persistence",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "scope": "Fresh offline install of asprpdmm ISO using frozen harness-10; predates explicit strategy, export, provenance and runtime/provenance packaging separation.",
+  "allPassed": true
+}

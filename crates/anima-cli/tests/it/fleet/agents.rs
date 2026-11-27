@@ -1,5 +1,7 @@
 //! `anima agents usage` against the scripted hub (AIS-020, AIS-021, AIS-024, CMD-020, CMD-030).
 
+mod managed;
+
 use serde_json::{Value, json};
 
 use crate::kit::Anima;

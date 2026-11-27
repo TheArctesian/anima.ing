@@ -36,7 +36,11 @@ fn asked(work_type: WorkType) -> NewJob {
             owner: "example".to_owned(),
             name: "app".to_owned(),
         }),
-        parameters: json!({}),
+        parameters: if work_type == WorkType::Build {
+            json!({"recipe":"desktop_release"})
+        } else {
+            json!({})
+        },
         secrets: Vec::new(),
         limits: Limits {
             seconds: 600,
@@ -74,6 +78,8 @@ fn queued(work_type: WorkType) -> Job {
 
 fn claim_of(text: &str) -> Claim {
     Claim {
+        build_recipes: None,
+        applications: Switch::Off,
         device: device(text).into(),
         switch: Switch::On,
         types: vec![WorkType::Build, WorkType::Runner],

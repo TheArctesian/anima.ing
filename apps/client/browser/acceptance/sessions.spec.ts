@@ -1,6 +1,7 @@
 import { expect, test } from '../test-hub';
 import { k7Policy } from '../csp/k7-policy';
 import { expectNoViolations, servePolicy, violationsSoFar, type PolicyReports } from '../csp/violations';
+import { HUB_ORIGIN } from '../synthetic/access';
 import { TERMINAL_TITLE } from '../synthetic/tunnels';
 import { openDevices } from './screens';
 
@@ -58,6 +59,54 @@ test('RA-001, D-5: a VNC session opens over the Guacamole tunnel and draws the r
     .toBe(true);
   expect(watch.pageErrors).toEqual([]);
   await expectNoViolations(page, watch, policy);
+});
+
+test('M4-3: VNC uses the iPad viewport with a narrow margin and Back keeps the session', async ({ page, hub }) => {
+  await page.setViewportSize({ width: 1366, height: 1024 });
+  await page.addInitScript(() => Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (iPad; CPU OS 26_7 like Mac OS X) AppleWebKit/605.1.15' }));
+  await page.goto(`${HUB_ORIGIN}/devices`);
+  await page.getByRole('button', { name: 'VNC to mac-mini' }).click();
+  const session = page.getByRole('region', { name: 'VNC session on mac-mini' });
+  await expect(session).toBeVisible();
+  await expect(page.locator('#main-nav')).toBeHidden();
+  expect(await session.boundingBox()).toMatchObject({ x: 8, y: 8, width: 1350, height: 1008 });
+  await expect(page.locator('[data-display] canvas').first()).toBeVisible();
+
+  await page.setViewportSize({ width: 1024, height: 1366 });
+  await expect.poll(() => session.boundingBox()).toMatchObject({ x: 8, y: 8, width: 1008, height: 1350 });
+
+  await page.getByRole('button', { name: 'Back to app' }).click();
+  await expect(page.locator('#main-nav')).toBeVisible();
+  await page.getByRole('tab', { name: /mac-mini/ }).click();
+  await expect(session).toBeVisible();
+  expect(hub.recording.where({ operation: 'StartSession' })).toHaveLength(1);
+});
+
+test('MOB-021: on an iPhone VNC fills the screen in each orientation, with one bar under the display', async ({ page, hub }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.addInitScript(() => Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_7 like Mac OS X) AppleWebKit/605.1.15' }));
+  await page.goto(`${HUB_ORIGIN}/devices`);
+  await page.getByRole('button', { name: 'VNC to mac-mini' }).click();
+  const session = page.getByRole('region', { name: 'VNC session on mac-mini' });
+  const display = page.getByRole('application', { name: 'Remote display of mac-mini' });
+  const back = page.getByRole('button', { name: 'Back to app' });
+  await expect(session).toBeVisible();
+  await expect(page.locator('#main-nav')).toBeHidden();
+  await expect(page.locator('[data-display] canvas').first()).toBeVisible();
+
+  for (const [width, height] of [[844, 390], [390, 844]] as const) {
+    await page.setViewportSize({ width, height });
+    await expect.poll(() => session.boundingBox()).toMatchObject({ x: 0, y: 0, width, height });
+    const shown = await display.boundingBox();
+    const bar = await back.boundingBox();
+    expect(shown).toMatchObject({ x: 0, y: 0, width });
+    expect(bar?.y).toBeGreaterThanOrEqual((shown?.y ?? 0) + (shown?.height ?? 0));
+    expect(height - (shown?.height ?? 0)).toBeLessThanOrEqual(48);
+  }
+
+  await back.click();
+  await expect(session).toBeHidden();
+  expect(hub.recording.where({ operation: 'StartSession' })).toHaveLength(1);
 });
 
 test('RA-002, CLI-001: a session tab offers no Pop out', async ({ page }) => {

@@ -112,6 +112,30 @@ describe('D-5: a monitor change (devicePixelRatio)', () => {
 });
 
 describe('D-5: VNC fits the display in the pane', () => {
+  it('M4-3: offers each VNC monitor and confirms the selected display from the gateway', async () => {
+    const { target } = show('VNC');
+    const socket = await connectRemote();
+    expect(target.querySelector('select[aria-label="Displays"]')).toBeNull();
+
+    socket.instruction('displays', 'all', '10', '21', '32');
+    flushSync();
+    const picker = target.querySelector<HTMLSelectElement>('select[aria-label="Displays"]');
+    if (picker === null) throw new Error('The VNC display picker was not shown');
+    expect(Array.from(picker.options, (option) => option.text)).toEqual(['All displays', 'Display 1', 'Display 2', 'Display 3']);
+
+    picker.value = '21';
+    picker.dispatchEvent(new Event('change', { bubbles: true }));
+    flushSync();
+    expect(sentOf(socket, 'display')).toEqual([['21']]);
+    expect(picker.disabled).toBe(true);
+    socket.instruction('size', 0, 630, 380);
+    socket.sync(2);
+    socket.instruction('displays', '21', '10', '21', '32');
+    flushSync();
+    expect(picker.value).toBe('21');
+    expect(picker.disabled).toBe(false);
+  });
+
   it('D-5: a pane resize sends no size, and the display scales to fit, recomputed on each change', async () => {
     const { heard } = show('VNC');
     const socket = await connectRemote(800, 600);
@@ -172,7 +196,7 @@ describe('MAT-008: the remote display', () => {
   const rules = new Map([...componentRules('./RemoteView.svelte'), ...componentRules('./RemoteDisplay.svelte')]);
 
   it('MAT-008: no rule on the display, the pane or the stage animates, transforms, filters or blurs them', () => {
-    for (const selector of ['.display', '.pane', '.stage']) {
+    for (const selector of ['.display', '.screen', '.pane', '.stage']) {
       const declarations = [...(rules.get(selector)?.keys() ?? [])];
       expect(declarations, selector).not.toEqual([]);
       for (const property of MOTION) expect(declarations, `${selector} ${property}`).not.toContain(property);
@@ -191,7 +215,7 @@ describe('MAT-008: the remote display', () => {
     for (const node of [element, ...element.querySelectorAll<HTMLElement>('*')]) {
       for (const property of ['transition', 'filter', 'backdrop-filter', 'animation']) expect(node.style.getPropertyValue(property), property).toBe('');
     }
-    const stage = target.querySelector('[data-display]')?.parentElement?.parentElement;
+    const stage = target.querySelector('[data-display]')?.closest('.pane')?.parentElement;
     expect(stage?.children).toHaveLength(1);
   });
 });

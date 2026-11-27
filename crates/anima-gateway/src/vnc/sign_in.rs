@@ -65,6 +65,10 @@ impl Method {
 pub struct Offered(Vec<u8>);
 
 impl Offered {
+    pub(crate) fn supports_vencrypt(&self) -> bool {
+        self.0.contains(&19)
+    }
+
     /// The method to use for what the hub has. An account's password never goes by the weaker VNC
     /// method, and a device that asks for no sign-in while the hub holds a password is not the one meant.
     ///
@@ -144,6 +148,13 @@ where
         }
         Method::Apple => apple(device, account, random).await?,
     }
+    finish(device, method == Method::Apple).await
+}
+
+pub(super) async fn finish<S>(device: &mut S, apple: bool) -> Result<(usize, usize), SignInError>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
     if device.read_u32().await? != 0 {
         // Version 3.8 sends a reason; Apple's server closes without one.
         let _ = skip(device, LONGEST_REASON).await;
@@ -160,7 +171,7 @@ where
         return Err(SignInError::BadNumbers);
     }
     device.write_all(&requests::pixel_format()).await?;
-    device.write_all(&requests::encodings()).await?;
+    device.write_all(&requests::encodings(apple)).await?;
     Ok(size)
 }
 

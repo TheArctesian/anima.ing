@@ -3,6 +3,7 @@
 use crate::screen::{Area, MAX_SIDE};
 
 use super::Malformed;
+use super::layout::{self, APPLE_LAYOUT, EXTENDED_SIZE, MAX_DISPLAYS, Monitor};
 
 /// The bytes of one pixel as the gateway asks for it (`requests::pixel_format`).
 pub(super) const PIXEL_BYTES: usize = 4;
@@ -13,8 +14,19 @@ const COPY_RECT: i32 = 1;
 const ZLIB: i32 = 6;
 const ZRLE: i32 = 16;
 const DESKTOP_SIZE: i32 = -223;
+/// The pointer's shape (RFC 6143 Section 7.8.1). A device that may send it does not draw its pointer
+/// into the screen, where an old pointer stays until that part of the screen changes.
+const CURSOR: i32 = -239;
 /// The encodings the gateway asks for, most wanted first.
-pub(super) const ENCODINGS: [i32; 5] = [ZRLE, ZLIB, COPY_RECT, RAW, DESKTOP_SIZE];
+pub(super) const ENCODINGS: [i32; 7] = [
+    ZRLE,
+    ZLIB,
+    COPY_RECT,
+    RAW,
+    EXTENDED_SIZE,
+    DESKTOP_SIZE,
+    CURSOR,
+];
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Body<'a> {
@@ -30,6 +42,8 @@ pub(super) enum Body<'a> {
     Zrle(&'a [u8]),
     /// No pixels: the screen now has the rectangle's width and height.
     NewSize,
+    Layout(Vec<Monitor>),
+    Ignored,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -137,6 +151,9 @@ pub(super) fn rect(
             height: unread.u16()?,
         };
         let encoding = unread.u32()?.cast_signed();
+        if encoding == EXTENDED_SIZE || encoding == APPLE_LAYOUT {
+            return layout_rect(unread, encoding, area);
+        }
         if encoding == DESKTOP_SIZE {
             if !(1..=MAX_SIDE).contains(&area.width) || !(1..=MAX_SIDE).contains(&area.height) {
                 return Err(Malformed::BadSize.into());
@@ -146,11 +163,67 @@ pub(super) fn rect(
                 body: Body::NewSize,
             });
         }
+        if encoding == CURSOR {
+            return cursor_rect(unread, area, size);
+        }
         if area.x + area.width > size.0 || area.y + area.height > size.1 {
             return Err(Malformed::OutsideScreen.into());
         }
         let body = pixel_body(unread, encoding, area.width * area.height)?;
         Ok(Rect { area, body })
+    })
+}
+
+/// A pointer shape is read and dropped: the client draws its own pointer, as for an RDP device. Its
+/// corner is the hot spot, not a place on the screen, so only its size is checked.
+fn cursor_rect(
+    unread: &mut Unread<'_>,
+    area: Area,
+    size: (usize, usize),
+) -> Result<Rect<'static>, Stop> {
+    if area.width > size.0 || area.height > size.1 {
+        return Err(Malformed::LargePointer.into());
+    }
+    // The pixels, then a mask with one bit for each pixel and each row padded to a whole byte.
+    unread.take(area.width * area.height * PIXEL_BYTES + area.width.div_ceil(8) * area.height)?;
+    Ok(Rect {
+        area,
+        body: Body::Ignored,
+    })
+}
+
+fn layout_rect(unread: &mut Unread<'_>, encoding: i32, area: Area) -> Result<Rect<'static>, Stop> {
+    let ignored = Rect {
+        area: Area {
+            width: 0,
+            height: 0,
+            ..area
+        },
+        body: Body::Ignored,
+    };
+    let (area, monitors) = if encoding == APPLE_LAYOUT {
+        let length = unread.u16()?;
+        if length > 20 + 56 * MAX_DISPLAYS {
+            return Err(Malformed::TooManyBytes.into());
+        }
+        let Some(layout) = layout::apple(unread.take(length)?) else {
+            return Ok(ignored);
+        };
+        layout
+    } else {
+        let count = usize::from(unread.take(4)?[0]);
+        let records = unread.take(16 * count)?;
+        if area.y != 0 || count > MAX_DISPLAYS {
+            return Ok(ignored);
+        }
+        (area, layout::extended(records, area))
+    };
+    if !(1..=MAX_SIDE).contains(&area.width) || !(1..=MAX_SIDE).contains(&area.height) {
+        return Err(Malformed::BadSize.into());
+    }
+    Ok(Rect {
+        area,
+        body: Body::Layout(monitors),
     })
 }
 

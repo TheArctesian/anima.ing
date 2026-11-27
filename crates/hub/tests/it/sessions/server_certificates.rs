@@ -4,7 +4,9 @@
 mod accept;
 mod connection_test;
 mod matched;
+mod private_link;
 mod servers;
+mod vnc_trust;
 
 use async_graphql::{Request, Response, Variables};
 use chrono::{DateTime, Utc};

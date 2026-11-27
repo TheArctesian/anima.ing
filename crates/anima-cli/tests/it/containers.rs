@@ -21,11 +21,12 @@ fn containers() -> Value {
           "createdAt": "2026-11-18T18:00:00+00:00",
           "composeProject": "dawarich", "composeService": "app",
           "composeProjectState": "PARTLY_RUNNING", "composeWorkingDir": "/srv/dawarich",
+          "managedApplicationId": null,
           "composeFiles": ["/srv/dawarich/compose.yaml", "/srv/dawarich/override.yaml"] },
         { "id": "a".repeat(64), "name": "old-db", "image": "postgres:17",
           "state": "EXITED", "status": "Exited (0) 2 days ago", "health": "NONE",
           "ports": [], "createdAt": null, "composeProject": null, "composeService": null,
-          "composeProjectState": null, "composeWorkingDir": null, "composeFiles": [] }
+          "composeProjectState": null, "composeWorkingDir": null, "composeFiles": [], "managedApplicationId": null }
     ] })
 }
 

@@ -33,6 +33,11 @@ pub struct Lease {
 
 impl Relays {
     pub async fn open(&self, thread: &str, program: Program) -> Result<Lease, Refusal> {
+        let program = match program {
+            Program::ClaudeCode => upstream::Program::ClaudeCode,
+            Program::Codex => upstream::Program::Codex,
+            Program::Grok => return Err(Refusal::RelayFailed),
+        };
         let relay = self
             .0
             .get_or_try_init(|| async {
@@ -42,10 +47,6 @@ impl Relays {
                 Ok::<_, Refusal>(Arc::new(Listener { relay, certificate }))
             })
             .await?;
-        let program = match program {
-            Program::ClaudeCode => upstream::Program::ClaudeCode,
-            Program::Codex => upstream::Program::Codex,
-        };
         let address = relay
             .relay
             .open(thread, program)
@@ -84,6 +85,12 @@ impl Lease {
         let mut args = start.args.to_vec();
         let mut env = start.env.to_vec();
         match program {
+            Program::Grok => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Unsupported,
+                    "Grok does not support the local relay",
+                ));
+            }
             Program::ClaudeCode => {
                 env.retain(|(name, _)| {
                     !matches!(

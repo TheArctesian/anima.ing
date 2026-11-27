@@ -1,0 +1,29 @@
+{
+  "execution": {
+    "baseSystem": "/nix/store/ym0kgn5slw77pg01aszfzl7xhjb67l98-nixos-system-anima-AnimaOS",
+    "package": "/nix/store/n8paqhlncbm7mc6wzlw2zzammjylv5kk-anima-os-execution-0.1.0",
+    "sandboxConfig": "/nix/store/fw344slspb59p6mqfw5qza6igaqap9f3-etc-anima-build-sandbox.json",
+    "narSha256": "47236276dd2c9a614f42171fc913d54e4d0c653eda553b9f7970312f28d26cbc",
+    "watchdogUnitSha256": "54fe71f4eb998c6e5d691ce827a674df18d8ce6e05a1d0255027d6b385d5fd09",
+    "bytes": 5993728
+  },
+  "retainedFixture": "/Users/stephenokita/.local/share/anima-os-prototype/redesign-20261124-railpack-02",
+  "harness": "harness-22",
+  "scope": "Offline synthetic Dockerfile diagnostics plus local lease renewal/expiry/watchdog-stop. Current-worktree Nix watchdog unit and candidate execution package in retained disposable VM. Temporary recovery ExecStart override invokes actual candidate owner. Isolated Docker store supplies test rootfs. Not latest ISO, original-store recovery or daemon-routed hosting acceptance.",
+  "results": [
+    {
+      "case": "candidate-setup",
+      "result": "Failed",
+      "reason": "Guest command failed: /nix/store/n8paqhlncbm7mc6wzlw2zzammjylv5kk-anima-os-execution-0.1.0/bin/anima-os-execution recover"
+    },
+    {
+      "case": "clean-shutdown",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "qualification": "Candidate import returned success, but invoking recovery failed with exit 127 and No such file or directory. This does not yet distinguish a missing executable from a missing ELF interpreter. Neither build acceptance case ran. Shutdown exited but reported a busy mount, so clean filesystem unmount is not established. The next harness inspects imported paths, verifies the candidate path, and only if its executable is absent deletes/reimports that exact disposable candidate package; it then adds a GC root and syncs. The package references glibc pagq7gjgxqbi09g0091x2cxwq2kwxyx8, whose guest presence also needs confirmation."
+}

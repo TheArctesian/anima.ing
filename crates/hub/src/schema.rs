@@ -1,10 +1,14 @@
 //! GraphQL schema root: merges each domain's `Query`, `Mutation` and `Subscription` (CQ-033, K3).
 
+mod device_removal;
+
 use std::{sync::Arc, time::Duration};
 
 use async_graphql::{MergedObject, MergedSubscription, Schema, SchemaBuilder};
 use axum::Router;
 use sqlx::PgPool;
+
+pub use device_removal::DeviceRemoval;
 
 use crate::{
     clock::Clock,
@@ -33,6 +37,8 @@ pub struct Query(
     os_updates::graphql::Query,
     access::graphql::Query,
     agent_threads::graphql::Query,
+    agent_threads::managed::graphql::Query,
+    agent_threads::provisioning::graphql::Query,
     agent_usage::graphql::Query,
     agent_usage::graphql::SessionsQuery,
     builds::graphql::Query,
@@ -69,6 +75,9 @@ pub struct Query(
 
 #[derive(MergedObject, Default)]
 pub struct Mutation(
+    agent_threads::managed::provider_login::Mutation,
+    agent_threads::managed::graphql::Mutation,
+    agent_threads::provisioning::graphql::Mutation,
     os_updates::graphql::Mutation,
     access::graphql::Mutation,
     builds::graphql::Mutation,
@@ -78,8 +87,10 @@ pub struct Mutation(
     compute::graphql::Mutation,
     compute::library::graphql::Mutation,
     compute::copies::graphql::Mutation,
+    containers::graphql::Mutation,
     credentials::graphql::Mutation,
     devices::graphql::Mutation,
+    DeviceRemoval,
     extensions::graphql::Mutation,
     link::graphql::Mutation,
     link::graphql::HostedMutation,
@@ -110,6 +121,7 @@ pub struct Mutation(
 
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(
+    agent_threads::managed::provider_login::Subscription,
     agent_threads::graphql::Subscription,
     builds::graphql::Subscription,
     checks::graphql::Subscription,
@@ -206,8 +218,10 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(pool.clone())
     .data(bus)
     .data(vault)
+    .data(agent_threads::managed::provider_login::Replies::default())
     .data(link::Claims::default())
     .data(link::ComputerClaims::default())
+    .data(link::CommandLineClaims::default())
     .data(access::BrowserTickets::default());
     let builder = with_devices_loaders(builder, &pool, &clock)
         .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))

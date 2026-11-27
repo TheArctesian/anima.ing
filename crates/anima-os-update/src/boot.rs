@@ -1,7 +1,9 @@
-use crate::{Error, Result, command, feed, state};
-use std::{fs, path::Path};
+mod cutover;
 
-pub const ENTRIES: &str = "/boot/loader/entries";
+use crate::{Error, Result, command, feed, state};
+pub use anima_os_maintenance::cutover::BOOT_ENTRIES as ENTRIES;
+use anima_os_maintenance::cutover::require_entry;
+use std::{fs, path::Path};
 
 pub fn current() -> Result<String> {
     let current = fs::canonicalize("/run/current-system")?;
@@ -62,6 +64,10 @@ pub async fn select(pattern: &str) -> Result<()> {
 
 pub async fn stage(system: &str) -> Result<String> {
     let current = current()?;
+    if let Some(format) = cutover::required()? {
+        cutover::generation(&current, format)?;
+        cutover::generation(system, format)?;
+    }
     pin("previous", &current)?;
     pin("candidate", system)?;
     entry(
@@ -88,10 +94,41 @@ pub async fn stage(system: &str) -> Result<String> {
     Ok(current)
 }
 
-pub async fn activate() -> Result<()> {
-    if !Path::new(ENTRIES).join("anima-candidate+2.conf").is_file() {
+pub fn check_activation(candidate: &str, previous: &str) -> Result<()> {
+    let entries = Path::new(ENTRIES);
+    let staged = entries.join("anima-candidate+2.conf");
+    if !staged.is_file() {
         return Err(Error::Refused("No staged update is ready to restart."));
     }
+    let format = cutover::required()?;
+    require_entry(&staged, Some(candidate), format)?;
+    cutover::fallback(entries, previous, format)
+}
+
+pub fn check_rollback(previous: &str) -> Result<()> {
+    require_entry(
+        &Path::new(ENTRIES).join("anima-current.conf"),
+        Some(previous),
+        cutover::required()?,
+    )?;
+    Ok(())
+}
+
+pub fn check_boot_retry(previous: &str) -> Result<()> {
+    if let Some(format) = cutover::required()? {
+        cutover::fallback(Path::new(ENTRIES), previous, Some(format))?;
+    }
+    Ok(())
+}
+
+pub fn check_current(system: &str) -> Result<()> {
+    if let Some(format) = cutover::required()? {
+        cutover::generation(system, format)?;
+    }
+    Ok(())
+}
+
+pub async fn activate() -> Result<()> {
     select("anima-*.conf").await?;
     reboot().await
 }
@@ -106,6 +143,7 @@ pub async fn profile(system: &str) -> Result<()> {
     if !feed::valid_system(system) {
         return Err(Error::Refused("The retained system path is invalid."));
     }
+    check_current(system)?;
     command::run(
         "nix-env",
         &["--profile", "/nix/var/nix/profiles/system", "--set", system],

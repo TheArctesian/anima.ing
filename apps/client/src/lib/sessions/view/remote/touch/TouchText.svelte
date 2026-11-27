@@ -42,35 +42,30 @@
   }
 </script>
 
-<div class="text-entry">
-  <input
-    type="text"
-    aria-label="Type on remote computer"
-    placeholder="Type on remote computer"
-    autocomplete="off"
-    autocapitalize="none"
-    spellcheck="false"
-    onbeforeinput={edit}
-    oninput={entered}
-    onkeydown={control}
-    onpaste={(event) => event.preventDefault()}
-    ondrop={(event) => event.preventDefault()}
-  />
-</div>
+<input
+  type="text"
+  aria-label="Type on remote computer"
+  placeholder="Type"
+  autocomplete="off"
+  autocapitalize="none"
+  spellcheck="false"
+  onbeforeinput={edit}
+  oninput={entered}
+  onkeydown={control}
+  onpaste={(event) => event.preventDefault()}
+  ondrop={(event) => event.preventDefault()}
+/>
 
 <style>
-  .text-entry {
-    padding: var(--space-2) var(--space-3);
-    border-block-end: var(--border-thin) solid var(--border-subtle);
-    background: var(--surface-raised);
-  }
-
+  /* A field of the bar, not a row of its own. iOS enlarges the page on focus when a field's text is under 16 px. */
   input {
     box-sizing: border-box;
-    inline-size: 100%;
-    min-block-size: var(--target-min-touch);
-    padding-inline: var(--space-3);
+    flex: 1;
+    min-inline-size: 0;
+    block-size: var(--control-md);
+    padding-inline: var(--space-2);
     font: inherit;
+    font-size: var(--text-lg);
     color: var(--text);
     border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);

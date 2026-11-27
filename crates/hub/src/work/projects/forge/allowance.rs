@@ -59,7 +59,7 @@ impl Extension for Counting {
 /// The most reads a request with `kind` may ask; an unknown kind gets the smaller budget.
 const fn most(kind: Option<TokenKind>) -> u32 {
     match kind {
-        Some(TokenKind::Login | TokenKind::Browser) => SIGNED_IN_READS,
+        Some(TokenKind::Login | TokenKind::Browser | TokenKind::CommandLine) => SIGNED_IN_READS,
         _ => KEY_READS,
     }
 }

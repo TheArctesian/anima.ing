@@ -1,4 +1,4 @@
-use super::{FIRST, World, arguments, commands};
+use super::{World, arguments, commands};
 use crate::{AdoptedAction, Refusal, work::adopted::applied};
 
 const NAMED: [&str; 6] = [
@@ -16,9 +16,8 @@ fn k10_6_4_7_an_adopted_project_is_started_from_its_recorded_paths() {
     world.inventory.containers[1].folder = Some("/tmp/other".to_owned());
     let plan = applied("tracks", (AdoptedAction::Up, false), &world.facts()).expect("adopted");
     let arguments = arguments(&plan);
-    assert_eq!(arguments[..4], FIRST);
-    assert_eq!(arguments[4..10], NAMED);
-    assert_eq!(arguments[10..], ["up", "-d", "--no-build"]);
+    assert_eq!(arguments[..6], NAMED);
+    assert_eq!(arguments[6..], ["up", "-d", "--no-build"]);
     let command = commands(&plan)[0];
     assert_eq!(
         command.program,
@@ -33,7 +32,7 @@ fn k10_6_4_7_up_pulls_only_when_pull_is_true_and_there_is_no_down() {
     let world = World::new();
     let verbs = |action, pull| {
         let plan = applied("tracks", (action, pull), &world.facts())?;
-        Ok::<_, Refusal>(arguments(&plan)[10..].join(" "))
+        Ok::<_, Refusal>(arguments(&plan)[6..].join(" "))
     };
     assert_eq!(
         verbs(AdoptedAction::Up, true).as_deref(),

@@ -12,15 +12,15 @@
   import CertificateModal from '../certificate/CertificateModal.svelte';
   import CredentialPrompt from '../credentials/CredentialPrompt.svelte';
   import { keyFilter, type KeyCombination, type KeyFilter } from '../guacamole/keys';
-  import { SessionConnection, progressOf, type Stage } from '../session.svelte';
+  import { REMOTE_CONFLICT, SessionConnection, progressOf, type Stage } from '../session.svelte';
   import type { RemoteStart } from '../start';
   import { clipboardRules, NO_CLIPBOARD } from '../clipboard/clipboard';
-  import ConnectionSteps from '../steps/ConnectionSteps.svelte';
-  import { displayScale } from './fit';
+  import ConnectionPanel from '../steps/ConnectionPanel.svelte';
+  import { playStartFeedback } from '../steps/feedback.svelte';
+  import { displayScale, fillDisplay } from './fit';
   import { followPixelRatio, remotePane, type RemotePane } from './pane';
   import { gatewayAsk, PROMPT_CANCELLED, PROMPT_REFUSED } from './prompt';
   import RemoteToolbar from './RemoteToolbar.svelte';
-  import TouchText from './touch/TouchText.svelte';
   import RemoteDisplay from './RemoteDisplay.svelte';
 
   type Client = SessionTunnel['client'];
@@ -28,6 +28,8 @@
   interface Props {
     device: { readonly id: string; readonly name: string };
     protocol: RemoteProtocol;
+    viewOnly?: boolean;
+    onopenviewer?: ((button: HTMLElement) => void) | undefined;
     /** Starts a session on `device` with a new ticket; see `sessionStart(...).remote(protocol)` in `../start`. */
     start: RemoteStart;
     api: Pick<SessionsApi, 'endSession' | 'setCredential' | 'testConnection' | 'acceptServerCertificate'>;
@@ -35,28 +37,24 @@
     visible: boolean;
     /** The pane should take the keyboard (its tab is selected and the app has focus). */
     focused: boolean;
+    onback?: (() => void) | undefined;
     /** Hears the final ending of each attempt (after `endSession` answered, D-4). */
     onended?: (ending: SessionEnding) => void;
     /** Hears the client of each opened tunnel before the gateway's first frame; the function it returns runs when that tunnel goes. */
     onclient?: (client: Client) => (() => void) | undefined;
   }
 
-  const { device, protocol, start, api, visible, focused, onended, onclient }: Props = $props();
+  const { device, protocol, viewOnly = false, onopenviewer, start, api, visible, focused, onback, onended, onclient }: Props = $props();
   /** Fixed texts of the clipboard notices; never the clipboard's content (LOG-007). */
   const COPY_FAILED = 'Could not copy to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow access, or use Paste in the Keys menu.';
   const PASTE_REFUSED = 'Paste to the device is off. Nothing sent.';
-  /** Fixed text for a `CONFLICT` refusal of the start (K4 §1); never the hub's own message (LOG-007). */
-  const CONFLICT_TEXT: Readonly<Record<RemoteProtocol, string | undefined>> = {
-    RDP: "Could not open the session. RDP certificate not accepted yet: run the connection test first.",
-    VNC: 'Could not open the session. The hub refused it: check the VNC settings, then run the connection test.',
-  };
 
   const connection = new SessionConnection<SessionTunnel, GuacamoleState>(
     (display, events) => start(display, events),
     { endSession: (id) => api.endSession(id) },
     (ending) => onended?.(ending),
-    untrack(() => CONFLICT_TEXT[protocol]),
+    untrack(() => REMOTE_CONFLICT[protocol]),
   );
   let pane: RemotePane | undefined;
   /** The remote size the open tunnel started with, in device pixels. */
@@ -84,17 +82,19 @@
   const stage = $derived(connection.stage);
   const client = $derived(connection.tunnel?.client);
   const ready = $derived(connection.ready);
-  const rules = $derived(stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
+  playStartFeedback(() => progressOf(connection.stage));
+  const displayState = $derived(protocol === 'VNC' && stage.kind === 'open' ? stage.state : undefined);
+  const rules = $derived(!viewOnly && stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
   const ask = $derived(gatewayAsk(protocol, stage.kind === 'open' ? stage.state.required : undefined, answered));
   /** The parent gives this pane the keyboard, unless the sign-in prompt has it; the pane then takes the focus. */
-  const wanted = $derived(visible && focused && ready && ask.kind !== 'ask');
+  const wanted = $derived(!viewOnly && visible && focused && ready && ask.kind !== 'ask');
   /** The sign-in prompt to show, at most one; a hidden tab shows none. */
   const prompts = $derived(visible && ask.kind === 'ask' && client !== undefined ? [{ ...ask, client }] : []);
   // A hidden tab's prompt or warning waits until its tab is shown, so it never covers or traps another tab (SEC-007).
   const certificateOpen = $derived(visible && stage.kind === 'ended' && stage.certificateChanged && dismissed !== stage);
   /** Keys are sent only while the focus is really in the pane, so no key is held when it leaves (D-8). */
   const bound = $derived(wanted && paneHasFocus);
-  const scale = $derived(displayScale(protocol, remote, paneSize ?? remote, pixelRatio));
+  const scale = $derived(onback ? fillDisplay(remote, paneSize ?? remote) : displayScale(protocol, remote, paneSize ?? remote, pixelRatio));
 
   function connect(css: Size) {
     const display = displayInput(css, window.devicePixelRatio, Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -102,7 +102,6 @@
     void connection.connect(display);
   }
 
-  /** Show the certificate warning again, which runs a new connection test (K4 §3). */
   /** The ended panel, so that the certificate warning gives focus back to its button. */
   let ended: EndedPanel | undefined = $state();
 
@@ -124,7 +123,7 @@
 
   /** The operator's paste shortcut (Command+V, or Ctrl+V and the others the filter leaves to the browser). */
   function paste(event: ClipboardEvent) {
-    if (client === undefined || !ready) return;
+    if (viewOnly || client === undefined || !ready) return;
     event.preventDefault();
     if (!rules.paste) notice = PASTE_REFUSED;
     else pasteText(client, event.clipboardData?.getData('text/plain') ?? '', filter.held);
@@ -196,7 +195,7 @@
       if (allowed.copy && bound) copyToSystem(text);
     });
     const gone = untrack(() => onclient?.(target));
-    const sizes = protocol === 'RDP' ? pane?.sendSizes(target, startedAt) : undefined;
+    const sizes = protocol === 'RDP' && !viewOnly ? pane?.sendSizes(target, startedAt) : undefined;
     return () => {
       sizes?.();
       gone?.();
@@ -237,20 +236,31 @@
   });
 </script>
 
-<section class="session" hidden={!visible} aria-label="{protocol} session on {device.name}">
+{#snippet toolbar()}
   <RemoteToolbar
     deviceName={device.name}
+    {onback}
+    docked={onback !== undefined}
+    typing={!viewOnly && mobile && ready && visible && ask.kind !== 'ask' ? client : undefined}
     {ready}
-    policy={rules.notice}
+    policy={viewOnly ? 'View only' : rules.notice}
     pasteOff={rules.pasteOff}
+    {onopenviewer}
     {notice}
     fit={mobile ? () => displayView?.fit() : undefined}
     canFit={displayView?.zoomed() ?? false}
-    onkeys={sendKeys}
+    displays={displayState?.displays}
+    switching={displayState?.displayPending ?? false}
+    selectDisplay={(id) => connection.tunnel?.selectDisplay?.(id)}
+    onkeys={viewOnly ? undefined : sendKeys}
     onpaste={pasteFromClipboard}
     ondismiss={() => (notice = undefined)}
   />
-  {#if mobile && ready && visible && client !== undefined && ask.kind !== 'ask'}<TouchText {client} />{/if}
+{/snippet}
+
+<!-- On a touch screen (Back is given) the bar is under the display, where the thumbs and the keyboard are. -->
+<section class="session" hidden={!visible} aria-label="{protocol} session on {device.name}">
+  {#if onback === undefined}{@render toolbar()}{/if}
   <div class="stage">
     <!-- The keyboard listens here only; menus, panels and modals are outside it (D-8). -->
     <!-- Focusable because the remote desktop takes the keyboard as a text field does (D-8). -->
@@ -265,28 +275,28 @@
       {@attach attachPane}
     >
       {#if ready && client !== undefined}
-        <RemoteDisplay bind:this={displayView} {client} pane={paneElement} paneSize={paneSize ?? remote} {remote} {scale} {mobile} interactive={visible && ask.kind !== 'ask'} />
+        <RemoteDisplay bind:this={displayView} {client} pane={paneElement} paneSize={paneSize ?? remote} fitKey={displayState?.displays} {remote} {scale} {mobile} {viewOnly} interactive={visible && ask.kind !== 'ask' && displayState?.displayPending !== true} />
       {/if}
     </div>
     {#if !ready}
-      <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
-      <div class="panel">
-        {#if !progressOf(stage).connected}
-          <ConnectionSteps progress={progressOf(stage)} deviceName={device.name} />
-        {/if}
-        {#if stage.kind === 'ending' || stage.kind === 'ended'}
-          {@const changed = stage.kind === 'ended' && stage.certificateChanged}
-          <EndedPanel
-            bind:this={ended}
-            ending={stage.ending}
-            settled={stage.kind === 'ended'}
-            certificateChanged={changed}
-            onreconnect={changed ? checkCertificate : reconnect}
-          />
-        {/if}
-      </div>
+      <ConnectionPanel progress={progressOf(stage)} deviceName={device.name}>
+        {#snippet end(underSteps)}
+          {#if stage.kind === 'ending' || stage.kind === 'ended'}
+            {@const changed = stage.kind === 'ended' && stage.certificateChanged}
+            <EndedPanel
+              bind:this={ended}
+              ending={stage.ending}
+              settled={stage.kind === 'ended'}
+              certificateChanged={changed}
+              onreconnect={changed ? checkCertificate : reconnect}
+              {underSteps}
+            />
+          {/if}
+        {/snippet}
+      </ConnectionPanel>
     {/if}
   </div>
+  {#if onback !== undefined}{@render toolbar()}{/if}
 </section>
 
 <!-- One prompt per `required`: a newer one while a save is awaited gets its own prompt, and answers only itself. -->
@@ -303,7 +313,7 @@
 {/each}
 
 {#if certificateOpen}
-  <CertificateModal {device} {api} onclose={() => (dismissed = stage)} onaccepted={reconnect} returnTo={() => ended?.actionButton()} />
+  <CertificateModal {device} {protocol} {api} onclose={() => (dismissed = stage)} onaccepted={reconnect} returnTo={() => ended?.actionButton()} />
 {/if}
 
 <style>
@@ -345,19 +355,5 @@
     inset: 0;
     pointer-events: none;
     box-shadow: inset 0 0 0 var(--border-focus) var(--accent);
-  }
-
-  /* Shown only while no display is: before ready and after the end. A narrow pane scrolls it, never the page (UI-009). */
-  .panel {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: var(--space-4);
-    overflow: auto;
-    padding: var(--space-6);
-    background: var(--surface-base);
   }
 </style>

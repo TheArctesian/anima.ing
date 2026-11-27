@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::thread::{Saved, Step, Thread};
-use super::{Runner, RunnerError, calls};
+use super::{Runner, RunnerError};
 
 /// The lock file of the runner in the folder of the threads: one runner for one folder.
 const LOCK: &str = "runner.lock";
@@ -134,7 +134,7 @@ impl Runner {
     pub(super) fn restore(&mut self, saved: Vec<Saved>) {
         for saved in saved {
             let daemon = self.dir.parent().unwrap_or(&self.dir);
-            let codex = calls::codex_of(&saved.row, saved.effort, daemon);
+            let codex = super::codex::Codex::for_row(&saved.row, saved.effort, daemon);
             let mut thread = Thread::restore(saved, codex);
             // A thread of a record from before TH112 learns where it works; the branch is read
             // again at the end of its next turn.
@@ -232,15 +232,14 @@ impl Runner {
 }
 
 impl Runner {
-    /// Whether `line` of thread `id` is held back. A turn that leaves the profile may be taken
-    /// while the runner is down: the record says that the profile is gone before its line goes,
-    /// or the line does not go and the turn ends (THR-041).
+    /// Save the recovery identity of a Grok prompt and a Codex profile departure before
+    /// dispatch. If the record fails, the prompt stays here (THR-041).
     pub(super) fn held_back(&mut self, id: Uuid, line: &str) -> bool {
-        let leaves = self
+        let must_save = self
             .threads
             .get(&id)
-            .is_some_and(|thread| thread.leaves_with(line));
-        if !leaves || self.written() {
+            .is_some_and(|thread| thread.leaves_with(line) || thread.grok_prompt(line));
+        if !must_save || self.written() {
             return false;
         }
         let ended = self

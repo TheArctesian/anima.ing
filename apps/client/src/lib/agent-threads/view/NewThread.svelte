@@ -114,6 +114,7 @@
       >
         <option value="claude_code">Claude Code</option>
         <option value="codex">Codex</option>
+        <option value="grok">Grok</option>
       </Select>
       {/snippet}
     </Field>
@@ -159,7 +160,7 @@
     {/if}
     {#if offer !== null}
       <div class="offer" role="alert">
-        <p>{programPath === '' ? 'The usual copy' : 'The chosen copy'} of {program === 'codex' ? 'Codex' : 'Claude Code'} does not answer. A different copy answers:</p>
+        <p>{programPath === '' ? 'The usual copy' : 'The chosen copy'} of {program === 'grok' ? 'Grok' : program === 'codex' ? 'Codex' : 'Claude Code'} does not answer. A different copy answers:</p>
         <p class="copy">{offer}</p>
         <FormButton type="button" tone="primary" busy={busy} onclick={() => useOffer(offer ?? '')}>Start with this copy</FormButton>
       </div>

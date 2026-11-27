@@ -9,6 +9,8 @@
 !apps/desktop/keyboard/
 !apps/desktop/account-session/
 !apps/desktop/runner/
+!apps/desktop/haptics/
+!apps/desktop/workspace-preview/
 # The web stage: manifests, the lock file and the client sources.
 !bun.lock
 !apps/client/

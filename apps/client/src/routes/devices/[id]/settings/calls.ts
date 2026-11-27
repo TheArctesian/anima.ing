@@ -3,7 +3,7 @@ import type { devicesApi } from '$lib/devices/client';
 import type { WebInterfaceCalls } from '$lib/devices/form/web/WebInterfaces.svelte';
 import type { DeviceFormValues } from '$lib/devices/form/values';
 import type { HubResult } from '$lib/hub/hub';
-import type { SessionsApi } from '$lib/sessions/api';
+import type { RemoteProtocol, SessionsApi } from '$lib/sessions/api';
 import type { webInterfacesApi } from '$lib/web-interfaces/api';
 import { saveDevice, type DeviceSaveCalls } from '../save';
 import {
@@ -33,7 +33,7 @@ export interface ShownDevice {
 export interface SettingsCalls {
   onSave: (values: DeviceFormValues) => Promise<HubResult<unknown>>;
   onAcceptHostKey: (fingerprint: string) => Promise<HubResult<unknown>>;
-  onAcceptServerCertificate: (fingerprint: string) => Promise<HubResult<unknown>>;
+  onAcceptServerCertificate: (fingerprint: string, protocol?: RemoteProtocol) => Promise<HubResult<unknown>>;
   onClearCredential: () => Promise<HubResult<unknown>>;
   onClearRdpCredential: () => Promise<HubResult<unknown>>;
   onClearVncCredential: () => Promise<HubResult<unknown>>;
@@ -67,7 +67,8 @@ export function settingsCalls(id: string, hub: SettingsHub, shown: ShownDevice):
     },
     onAcceptHostKey: (fingerprint) =>
       patched(hub.sessions.acceptHostKey(id, fingerprint), (device, hostKey) => ({ ...device, ssh: { ...device.ssh, hostKey } })),
-    onAcceptServerCertificate: (fingerprint) => patched(hub.sessions.acceptServerCertificate(id, fingerprint), withServerCertificate),
+    onAcceptServerCertificate: (fingerprint, protocol = 'RDP') =>
+      patched(hub.sessions.acceptServerCertificate(id, fingerprint, protocol), (device, certificate) => withServerCertificate(device, certificate, protocol)),
     onClearCredential: () =>
       patched(hub.devices.clearSshCredential(id), (device, stored) => ({
         ...device,

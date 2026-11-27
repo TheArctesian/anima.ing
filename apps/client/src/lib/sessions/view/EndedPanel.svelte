@@ -10,9 +10,11 @@
     onreconnect: () => void;
     /** The device's certificate changed: the button runs a new connection test, since Reconnect would be refused (K4 §3). */
     certificateChanged?: boolean;
+    /** The connection steps stand over it in the middle of the pane (5.7.3), so it stands in the middle under them. */
+    underSteps?: boolean;
   }
 
-  const { ending, settled, onreconnect, certificateChanged = false }: Props = $props();
+  const { ending, settled, onreconnect, certificateChanged = false, underSteps = false }: Props = $props();
   let action: HTMLButtonElement | undefined = $state();
 
   /** The button, for a caller whose dialog gives focus back to it. */
@@ -22,7 +24,7 @@
 </script>
 
 <!-- The reason is the plain text `ending` gives, never text from the hub or the gateway (RA-007, R-035). -->
-<div class="ended" role="status">
+<div class="ended" class:under-steps={underSteps} role="status">
   <p class="reason">
     <Icon name="carbon:unlink" />
     <span data-reason={ending.reason ?? 'unknown'}>{ending.text}</span>
@@ -40,6 +42,13 @@
     align-items: flex-start;
     gap: var(--space-3);
     color: var(--text);
+  }
+
+  /* One column with the steps over it: the reason and the one action stay under the step that stopped. */
+  .under-steps {
+    align-self: center;
+    align-items: center;
+    text-align: center;
   }
 
   .reason {
@@ -63,6 +72,12 @@
     color: var(--surface-base);
     font: inherit;
     transition: background-color var(--duration-press) var(--ease-enter);
+  }
+
+  @media (pointer: coarse) {
+    button {
+      min-block-size: var(--target-min-touch);
+    }
   }
 
   button:active {

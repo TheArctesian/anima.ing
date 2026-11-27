@@ -161,7 +161,7 @@ const documentsOnly = process.env["GATES_DOCUMENTS_ONLY"] === "true";
 if (documentsOnly) console.log("gates: the branch changed only documents, so only the quality gates run here");
 const grouped = groups === undefined ? tier : ofGroups(tier, documentsOnly ? groups.filter((group) => group === "quality") : groups);
 const named = option("--gate")?.split(",");
-const missingName = named?.find((name) => !full.some((gate) => gate.name === name));
+const missingName = named?.find((name) => ![...full, ...tier].some((gate) => gate.name === name));
 if (missingName !== undefined) {
   console.error(`gates: no such gate: ${missingName}\n${USAGE}`);
   process.exit(2);

@@ -1,5 +1,5 @@
 //! The connection test for RDP and VNC (DEV-013, SEC-007). No credential leaves the hub:
-//! RDP stops before `CredSSP`, VNC before the security handshake.
+//! RDP stops before `CredSSP`; VNC stops before Plain authentication.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -8,7 +8,7 @@ use super::{
     rdp::{Reply, read_server_certificate},
     reach::ReadError,
     ssh_test::{ConnectionTest, refused_host},
-    vnc::read_banner,
+    vnc::read_certificate,
     x224::{PROTOCOL_RDP, TLS_PROTOCOLS},
 };
 use crate::{
@@ -16,7 +16,10 @@ use crate::{
         devices::RdpSecurity,
         sessions::{Desktop, Error, find_device, live::Live},
         ssh::{Target, probe::PROBE_TIMEOUT},
-        trust::{self, Endpoint, Observation, PresentedCertificate, ServerCertificate},
+        trust::{
+            self, CertificateProtocol, Endpoint, Observation, PresentedCertificate,
+            ServerCertificate,
+        },
     },
     ids::DeviceId,
 };
@@ -95,7 +98,7 @@ pub(in crate::fleet::sessions) async fn test_desktop(
                 Reply::Certificate(certificate, _) => {
                     let endpoint = Endpoint::new(&host, port);
                     Seen::Certificate(live.sightings().observe_certificate(
-                        endpoint,
+                        (endpoint, CertificateProtocol::Rdp),
                         certificate,
                         at,
                     ))
@@ -106,7 +109,17 @@ pub(in crate::fleet::sessions) async fn test_desktop(
             rdp_outcome(accepted.as_ref(), seen)
         }
         DesktopSettings::Vnc { port } => {
-            vnc_outcome(read_banner(target(live, &host, port), PROBE_TIMEOUT).await)
+            let read = read_certificate(target(live, &host, port), PROBE_TIMEOUT).await;
+            let seen = read.map(|certificate| {
+                certificate.map(|certificate| {
+                    live.sightings().observe_certificate(
+                        (Endpoint::new(&host, port), CertificateProtocol::Vnc),
+                        certificate,
+                        at,
+                    )
+                })
+            });
+            vnc_outcome(accepted.as_ref(), seen)
         }
     }
 }
@@ -142,7 +155,7 @@ async fn plan(
             DesktopSettings::Vnc {
                 port: device.vnc.port,
             },
-            None,
+            trust::vnc_server_certificates(db, &[id]).await?.remove(&id),
         ),
     })
 }
@@ -187,32 +200,50 @@ fn rdp_outcome(
     let read = seen.map(|seen| match seen {
         Seen::Standard => reached(STANDARD_ONLY),
         Seen::Refused => reached(NEGOTIATION_REFUSED),
-        Seen::Certificate(seen) => {
-            let seen = ServerCertificate::from(seen);
-            match accepted {
-                Some(accepted) if accepted.fingerprint_sha256 == seen.fingerprint_sha256 => {
-                    ConnectionTest {
-                        certificate_matched: true,
-                        ..reached(ACCEPTED_CERTIFICATE)
-                    }
-                }
-                accepted => ConnectionTest {
-                    server_certificate: Some(seen),
-                    certificate_changed: accepted.is_some(),
-                    ..reached(if accepted.is_some() {
-                        CHANGED_CERTIFICATE
-                    } else {
-                        NEW_CERTIFICATE
-                    })
-                },
-            }
-        }
+        Seen::Certificate(seen) => certificate_outcome(accepted, seen),
     });
     unreached(read, NOT_RDP)
 }
 
-fn vnc_outcome(read: Result<(), ReadError>) -> Result<ConnectionTest, Error> {
-    unreached(read.map(|()| reached(VNC_ANSWERED)), NOT_VNC)
+fn certificate_outcome(
+    accepted: Option<&ServerCertificate>,
+    seen: Observation<PresentedCertificate>,
+) -> ConnectionTest {
+    let seen = ServerCertificate::from(seen);
+    if accepted.is_some_and(|accepted| accepted.fingerprint_sha256 == seen.fingerprint_sha256) {
+        return ConnectionTest {
+            certificate_matched: true,
+            ..reached(ACCEPTED_CERTIFICATE)
+        };
+    }
+    ConnectionTest {
+        server_certificate: Some(seen),
+        certificate_changed: accepted.is_some(),
+        ..reached(if accepted.is_some() {
+            CHANGED_CERTIFICATE
+        } else {
+            NEW_CERTIFICATE
+        })
+    }
+}
+
+fn vnc_outcome(
+    accepted: Option<&ServerCertificate>,
+    read: Result<Option<Observation<PresentedCertificate>>, ReadError>,
+) -> Result<ConnectionTest, Error> {
+    let read = read.map(|seen| {
+        seen.map_or_else(
+            || reached(VNC_ANSWERED),
+            |seen| certificate_outcome(accepted, seen),
+        )
+    });
+    // A TLS failure is a reachable VNC peer, never a successful identity match.
+    if matches!(read, Err(ReadError::Tls)) {
+        return Ok(reached(
+            "The device answered on VNC but did not complete a supported TLS handshake.",
+        ));
+    }
+    unreached(read, NOT_VNC)
 }
 
 #[cfg(test)]
@@ -269,17 +300,17 @@ mod tests {
     }
 
     #[test]
-    fn sec_007_a_vnc_test_never_matches_a_certificate() {
+    fn sec_007_a_vnc_banner_without_tls_never_matches_a_certificate() {
         let cases = [
-            ("answered", Ok(())),
+            ("answered", Ok(None)),
             ("unreachable", Err(ReadError::Unreachable)),
         ];
         for (case, read) in cases {
-            let test = vnc_outcome(read).unwrap_or_else(|_| panic!("{case}"));
+            let test = vnc_outcome(None, read).unwrap_or_else(|_| panic!("{case}"));
             assert!(!test.certificate_matched, "{case}");
         }
         assert_eq!(
-            vnc_outcome(Ok(())).map(|test| test.message).ok(),
+            vnc_outcome(None, Ok(None)).map(|test| test.message).ok(),
             Some(VNC_ANSWERED)
         );
     }

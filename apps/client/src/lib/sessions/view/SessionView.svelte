@@ -17,7 +17,8 @@
   import Notice from './pane/Notice.svelte';
   import { SessionConnection, progressOf, type Stage } from './session.svelte';
   import type { SessionStart } from './start';
-  import ConnectionSteps from './steps/ConnectionSteps.svelte';
+  import ConnectionPanel from './steps/ConnectionPanel.svelte';
+  import { playStartFeedback } from './steps/feedback.svelte';
   import { phoneLayout } from '$lib/nav/phone/layout.svelte';
   import { NO_LATCH, latched, toggled, withLatch, type Latch } from './phone/keys';
   import PhoneKeys from './phone/PhoneKeys.svelte';
@@ -73,6 +74,7 @@
 
   const stage = $derived(connection.stage);
   const ready = $derived(connection.ready);
+  playStartFeedback(() => progressOf(connection.stage));
   /** What this attempt may do with the clipboard, from the policy read at its start (RA-033). */
   const rules = $derived(stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
   /** The parent gives this pane the keyboard; the terminal then takes the focus (D-8). */
@@ -229,15 +231,13 @@
     <!-- The terminal draws here; its own hidden text field takes the keyboard (D-8). -->
     <div class="pane" role="group" aria-label="Terminal of {device.name}" {@attach attachPane}></div>
     {#if !ready}
-      <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
-      <div class="panel">
-        {#if !progressOf(stage).connected}
-          <ConnectionSteps progress={progressOf(stage)} deviceName={device.name} />
-        {/if}
-        {#if stage.kind === 'ending' || stage.kind === 'ended'}
-          <EndedPanel ending={stage.ending} settled={stage.kind === 'ended'} onreconnect={reconnect} />
-        {/if}
-      </div>
+      <ConnectionPanel progress={progressOf(stage)} deviceName={device.name}>
+        {#snippet end(underSteps)}
+          {#if stage.kind === 'ending' || stage.kind === 'ended'}
+            <EndedPanel ending={stage.ending} settled={stage.kind === 'ended'} onreconnect={reconnect} {underSteps} />
+          {/if}
+        {/snippet}
+      </ConnectionPanel>
     {/if}
   </div>
   {#if phone}
@@ -331,19 +331,5 @@
     inset: 0;
     pointer-events: none;
     box-shadow: inset 0 0 0 var(--border-focus) var(--accent);
-  }
-
-  /* Shown only while the terminal is not: before ready and after the end (D-7). A narrow pane scrolls it, never the page (UI-009). */
-  .panel {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: var(--space-4);
-    overflow: auto;
-    padding: var(--space-6);
-    background: var(--surface-base);
   }
 </style>

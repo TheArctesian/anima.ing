@@ -1,32 +1,23 @@
 mod transcript;
 
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{path::Path, time::Duration};
 
 use agent_threads::control::{Action, Outcome, RunState, ThreadRow};
 use agent_threads::drive::Program;
 use chrono::Utc;
 use daemon_core::wire::{ThreadSummaries, ThreadSummary};
 use tokio::{sync::mpsc, time::MissedTickBehavior};
-use uuid::Uuid;
 
 use super::agent_usage::runner;
 use crate::{
-    config::origin::Origin,
     config::{agent_usage::UsageSettings, home::Home, private_file},
-    hub::HubClient,
     push::Event,
     readers::agent_sessions::{shared_repository, user_home},
-    token_store::TokenStore,
 };
 
 const REVISION: &str = "thread-summary-revision";
 
-pub(crate) struct Target {
-    pub(crate) hub: Arc<HubClient>,
-    pub(crate) device: Uuid,
-    pub(crate) origin: Origin,
-    pub(crate) tokens: TokenStore,
-}
+pub(crate) use super::HubTarget as Target;
 
 pub(super) async fn publish(home: Home, events: mpsc::Sender<Event>, target: Target) {
     let env = |name: &str| std::env::var(name).ok();
@@ -88,6 +79,7 @@ fn summary(row: &ThreadRow, user: &Path, settings: &UsageSettings) -> Option<Thr
     let program = match row.program {
         Program::ClaudeCode => "claude_code",
         Program::Codex => "codex",
+        Program::Grok => return None,
     };
     let state = match row.state {
         RunState::Starting => "starting",

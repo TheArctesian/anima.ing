@@ -217,6 +217,7 @@ mod reports {
 
     fn result(cause: Option<&str>, copy_state: Option<&str>) -> WorkResult {
         WorkResult {
+            health: None,
             outcome: if cause.is_some() {
                 "failed"
             } else {

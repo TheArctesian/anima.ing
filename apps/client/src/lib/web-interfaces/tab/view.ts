@@ -7,6 +7,7 @@ export interface ViewTarget {
   readonly deviceId: string;
   readonly url: string;
   readonly pin: Fingerprint | null;
+  readonly previewEndpoint?: string;
 }
 
 export interface NativeViewOptions {

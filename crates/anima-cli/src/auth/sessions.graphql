@@ -1,0 +1,6 @@
+query CommandLineSessions($offset: Int!) {
+  commandLineSessions(offset: $offset) { id computer createdAt lastUsedAt expiresAt linked current }
+}
+mutation RevokeCommandLineSession($id: ID!) {
+  revokeCommandLineSession(id: $id)
+}

@@ -29,6 +29,18 @@ impl FolderId {
         })
     }
 
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    pub(in crate::threads::git) fn from_directory(
+        fd: std::os::fd::OwnedFd,
+    ) -> std::io::Result<Self> {
+        use std::os::unix::fs::MetadataExt as _;
+        let about = std::fs::File::from(fd).metadata()?;
+        Ok(Self {
+            device: about.dev(),
+            number: about.ino(),
+        })
+    }
+
     /// Windows gives no such number to safe code; the check of each call stays.
     #[cfg(not(unix))]
     #[must_use]

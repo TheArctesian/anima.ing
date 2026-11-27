@@ -1,0 +1,77 @@
+{
+  "initial": {
+    "scope": "Real root Unix broker and unprivileged synthetic daemon UID in disposable Linux container. Peer UID checks, enrollment binding before mutation, frame bounds and closed operations; no systemd dispatch, daemon hub claims or installed service qualification.",
+    "results": [
+      {
+        "case": "daemon-peer-accepted-root-peer-refused",
+        "result": "Passed"
+      },
+      {
+        "case": "closed-bounded-protocol-preserves-owner-policy",
+        "result": "Passed"
+      },
+      {
+        "case": "enrollment-refusal-precedes-expiry-mutation",
+        "result": "Passed"
+      },
+      {
+        "case": "broker-registration-renewal-cancellation-without-runtime-creation",
+        "result": "Passed"
+      }
+    ]
+  },
+  "coordinatorOwnership": {
+    "scope": "Real root Unix broker and unprivileged synthetic daemon UID in disposable Linux container. Peer UID checks, enrollment and immutable coordinator binding before mutation, local-job adoption refusal, frame bounds and closed operations; no systemd dispatch, daemon hub claims or installed service qualification.",
+    "results": [
+      {
+        "case": "daemon-peer-accepted-root-peer-refused",
+        "result": "Passed"
+      },
+      {
+        "case": "closed-bounded-protocol-preserves-owner-policy",
+        "result": "Passed"
+      },
+      {
+        "case": "enrollment-refusal-precedes-expiry-mutation",
+        "result": "Passed"
+      },
+      {
+        "case": "broker-cannot-adopt-local-registration-or-mutate-its-expiry",
+        "result": "Passed"
+      },
+      {
+        "case": "broker-registration-renewal-cancellation-without-runtime-creation",
+        "result": "Passed"
+      }
+    ]
+  },
+  "artifactRefusals": {
+    "scope": "Real root Unix broker and unprivileged synthetic daemon UID in disposable Linux container. Peer UID checks, enrollment and immutable coordinator binding before mutation, local-job adoption refusal, frame bounds and closed operations; no systemd dispatch, daemon hub claims or installed service qualification.",
+    "results": [
+      {
+        "case": "artifact-export-refuses-unready-and-unowned-execution",
+        "result": "Passed"
+      },
+      {
+        "case": "daemon-peer-accepted-root-peer-refused",
+        "result": "Passed"
+      },
+      {
+        "case": "closed-bounded-protocol-preserves-owner-policy",
+        "result": "Passed"
+      },
+      {
+        "case": "enrollment-refusal-precedes-expiry-mutation",
+        "result": "Passed"
+      },
+      {
+        "case": "broker-cannot-adopt-local-registration-or-mutate-its-expiry",
+        "result": "Passed"
+      },
+      {
+        "case": "broker-registration-renewal-cancellation-without-runtime-creation",
+        "result": "Passed"
+      }
+    ]
+  }
+}

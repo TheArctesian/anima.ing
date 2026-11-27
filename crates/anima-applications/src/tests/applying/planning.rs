@@ -1,7 +1,7 @@
 use super::{COMPOSE, ENVIRONMENT, digests, plan, prepare};
 use crate::{
     Refusal, Step,
-    tests::{DIGEST, FILES, FIRST, PROJECT, World, commands},
+    tests::{DIGEST, FILES, PROJECT, World, commands},
     work::apply::{Planned, planned, sha256},
 };
 
@@ -43,7 +43,7 @@ fn k10_6_4_5_the_plan_writes_the_files_below_files_and_makes_each_folder_of_bind
         .steps
         .iter()
         .filter_map(|step| match step {
-            Step::Folder { path } => Some(path.as_str()),
+            Step::Folder { path } | Step::BindFolder { path } => Some(path.as_str()),
             _ => None,
         })
         .collect();
@@ -64,20 +64,12 @@ fn k10_6_4_5_the_plan_writes_the_files_below_files_and_makes_each_folder_of_bind
             _ => None,
         })
     };
-    assert_eq!(
-        written("new-compose-as-it-came.yaml").as_deref(),
-        Some(COMPOSE.as_bytes())
-    );
-    assert_eq!(
-        written("new-environment-of-the-application").as_deref(),
-        Some(ENVIRONMENT.as_bytes())
-    );
-    assert_eq!(written("compose-as-it-came.yaml"), None);
-    let form = written("final-form.json").expect("the final form");
-    assert_eq!(planned.final_form_sha256, sha256(&form));
-    assert!(
-        written("new-digests.json").is_some_and(|text| text.starts_with(b"[{\"service\":\"app\""))
-    );
+    let version = version(&planned);
+    assert_eq!(version.folders.files(), FILES);
+    assert_eq!(version.compose, COMPOSE.as_bytes());
+    assert_eq!(version.environment, ENVIRONMENT.as_bytes());
+    assert_eq!(planned.final_form_sha256, sha256(&version.final_form));
+    assert!(version.digests.starts_with(b"[{\"service\":\"app\""));
     let pulled =
         String::from_utf8(written("pulled.json").expect("the pulled images")).expect("text");
     assert_eq!(
@@ -103,10 +95,9 @@ fn k10_6_4_4_the_project_starts_from_the_final_form_only() {
     assert_eq!(commands.len(), 1);
     let up = commands[0];
     assert_eq!(up.program, "/usr/libexec/docker/cli-plugins/docker-compose");
-    assert_eq!(up.arguments[..4], FIRST);
     let final_form = format!("{FILES}/final-form.json");
     assert_eq!(
-        up.arguments[4..],
+        up.arguments,
         [
             "--project-name",
             PROJECT,
@@ -136,14 +127,13 @@ fn k10_6_4_4_the_project_starts_from_the_final_form_only() {
     assert_eq!(names, ["DOCKER_HOST", "DOCKER_CONFIG"]);
     let last = steps
         .iter()
-        .position(|step| matches!(step, Step::Run(_)))
+        .position(|step| matches!(step, Step::ApplyVersion { .. }))
         .expect("a start");
     let binds = FILES.replace("/files", "/binds");
     assert_eq!(
         steps[last - 1],
-        Step::RealFolder {
-            path: format!("{binds}/config"),
-            below: binds.clone()
+        Step::BindFolder {
+            path: format!("{binds}/config")
         }
     );
     assert!(matches!(&steps[last - 2], Step::RealFolder { path, .. } if *path == binds));
@@ -155,102 +145,26 @@ fn k10_6_4_4_the_project_starts_from_the_final_form_only() {
     );
 }
 
-#[test]
-fn k10_6_4_6_the_records_say_the_new_version_runs_only_after_its_start() {
-    let world = World::new();
-    let planned = plan(&world, true);
-    let steps = &planned.plan.steps;
-    let start = steps
+fn version(planned: &Planned) -> &crate::plan::Version {
+    planned
+        .plan
+        .steps
         .iter()
-        .position(|step| matches!(step, Step::Run(_)))
-        .expect("a start");
-    let moved: Vec<(&str, &str)> = steps[start..]
-        .iter()
-        .filter_map(|step| match step {
-            Step::Move { from, to } => Some((from.as_str(), to.as_str())),
+        .find_map(|step| match step {
+            Step::ApplyVersion { version, .. } => Some(version.as_ref()),
             _ => None,
         })
-        .collect();
-    let file = |name: &str| format!("{FILES}/{name}");
-    let names = [
-        "compose-as-it-came.yaml",
-        "environment-of-the-application",
-        "digests.json",
-    ];
-    let mut expected: Vec<(String, String)> = names
-        .iter()
-        .map(|name| (file(name), file(&format!("kept-{name}"))))
-        .collect();
-    expected.extend(
-        names
-            .iter()
-            .map(|name| (file(&format!("new-{name}")), file(name))),
-    );
-    let expected: Vec<(&str, &str)> = expected
-        .iter()
-        .map(|(from, to)| (from.as_str(), to.as_str()))
-        .collect();
-    assert_eq!(moved, expected);
-    for step in &steps[..start] {
-        if let Step::Write { path, .. } | Step::Move { to: path, .. } = step {
-            assert!(
-                names
-                    .iter()
-                    .all(|name| !path.ends_with(&format!("/{name}"))),
-                "{path}"
-            );
-        }
-    }
+        .expect("one application version")
 }
 
 #[test]
-fn k10_6_4_6_keep_1_keeps_the_version_before_this_apply_and_keep_0_keeps_none() {
+fn k10_6_4_6_keep_1_preserves_an_existing_version() {
     let mut world = World::new();
-    let moves = |planned: &Planned| {
-        let moved = |step: &Step| matches!(step, Step::Move { from, to } if from.starts_with(FILES) && to.contains("/files/kept-"));
-        planned.plan.steps.iter().filter(|step| moved(step)).count()
-    };
-    let deletes = |planned: &Planned| {
-        let deleted =
-            |step: &Step| matches!(step, Step::Delete { path } if path.contains("/files/kept-"));
-        planned
-            .plan
-            .steps
-            .iter()
-            .filter(|step| deleted(step))
-            .count()
-    };
-    let kept = plan(&world, true);
-    assert_eq!((moves(&kept), deletes(&kept)), (3, 0));
-    // The kept version is replaced only after the start: a failed start keeps it.
-    let start = kept
-        .plan
-        .steps
-        .iter()
-        .position(|step| matches!(step, Step::Run(_)));
-    let first_move = kept
-        .plan
-        .steps
-        .iter()
-        .position(|step| matches!(step, Step::Move { .. }));
-    assert!(start < first_move);
-    let none = plan(&world, false);
-    let start = none
-        .plan
-        .steps
-        .iter()
-        .position(|step| matches!(step, Step::Run(_)));
-    let first_delete = none
-        .plan
-        .steps
-        .iter()
-        .position(|step| matches!(step, Step::Delete { .. }));
-    assert!(start < first_delete);
-    assert_eq!((moves(&none), deletes(&none)), (0, 3));
+    assert!(version(&plan(&world, true)).keep_previous);
+    assert!(!version(&plan(&world, false)).keep_previous);
     world.records.applications.clear();
     world.inventory.containers.remove(0);
-    let first = plan(&world, true);
-    assert_eq!((moves(&first), deletes(&first)), (0, 3));
+    assert!(!version(&plan(&world, true)).keep_previous);
 }
 
 #[test]

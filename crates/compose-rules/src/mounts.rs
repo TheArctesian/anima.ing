@@ -23,7 +23,8 @@ fn port(text: Option<&str>, lowest: u64) -> bool {
 }
 
 /// With "Open to the network" off, the address is the machine itself.
-pub(crate) fn ports(service: &Declared<'_>, settings: &Settings) -> Result<(), Refusal> {
+pub(crate) fn ports(service: &Declared<'_>, settings: Option<&Settings>) -> Result<(), Refusal> {
+    let open_to_network = settings.is_none_or(|settings| settings.open_to_network);
     for entry in items(service, "ports") {
         let text = |key: &str| entry.get(key).and_then(Node::text);
         let protocol = matches!(text("protocol"), None | Some("tcp" | "udp"));
@@ -32,10 +33,9 @@ pub(crate) fn ports(service: &Declared<'_>, settings: &Settings) -> Result<(), R
         }
         match text("host_ip") {
             Some(LOCAL) => {}
-            Some(address)
-                if settings.open_to_network && address.parse::<std::net::IpAddr>().is_ok() => {}
-            None if settings.open_to_network => {}
-            Some(_) if settings.open_to_network => {
+            Some(address) if open_to_network && address.parse::<std::net::IpAddr>().is_ok() => {}
+            None if open_to_network => {}
+            Some(_) if open_to_network => {
                 return Err(service.refusal(Rule::PortNotPermitted));
             }
             _ => {

@@ -62,7 +62,8 @@ impl Inflaters {
                             .map_err(|_| Malformed::OutsideScreen)
                     })?;
                 }
-                Body::NewSize => {
+                Body::Ignored => {}
+                Body::NewSize | Body::Layout(_) => {
                     screen
                         .resize(area.width, area.height)
                         .map_err(|_| Malformed::BadSize)?;

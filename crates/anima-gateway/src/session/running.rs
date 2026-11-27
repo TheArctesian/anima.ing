@@ -1,15 +1,15 @@
+use tokio::io::WriteHalf;
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite};
-use tokio::net::tcp::OwnedWriteHalf;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, sleep_until};
 
 use super::hub::{Hub, write_unless_stalled};
 use super::input::{Clipboard, Input, copy_to_client};
-use super::opening::{Allowed, Opened, refuse};
+use super::opening::{Allowed, Connection, Opened, refuse};
 use super::picture::Picture;
 use super::{Ended, Settings, status};
-use crate::vnc::{self, Event, requests};
+use crate::vnc::{self, Event, Monitor, requests};
 
 const READ_BYTES: usize = 64 * 1024;
 /// Small, so a device that sends faster than the session draws is held back by TCP.
@@ -17,7 +17,7 @@ const WAITING_READS: usize = 4;
 
 struct Running<'a, S> {
     hub: &'a mut Hub<S>,
-    to_device: OwnedWriteHalf,
+    to_device: WriteHalf<Connection>,
     allowed: Allowed,
     write_wait: std::time::Duration,
     reader: JoinHandle<()>,
@@ -25,6 +25,8 @@ struct Running<'a, S> {
     picture: Picture,
     clipboard: Clipboard,
     resized: bool,
+    monitors: Vec<Monitor>,
+    display: Option<u32>,
 }
 
 pub(super) async fn run<S>(hub: &mut Hub<S>, opened: Opened, settings: &Settings) -> Ended
@@ -39,7 +41,7 @@ where
     let Ok(picture) = Picture::new(size, &allowed, settings.pace) else {
         return refuse(hub, status::UPSTREAM_ERROR, Ended::DeviceFault).await;
     };
-    let (mut from_device, to_device) = device.into_split();
+    let (mut from_device, to_device) = tokio::io::split(device);
     let (read, mut reads) = mpsc::channel::<Vec<u8>>(WAITING_READS);
     let reader = tokio::spawn(async move {
         let mut buffer = vec![0; READ_BYTES];
@@ -59,6 +61,8 @@ where
         picture,
         clipboard: Clipboard::default(),
         resized: false,
+        monitors: Vec::new(),
+        display: None,
     };
     if running.ask_for_update(false).await.is_err() {
         return Ended::ByDevice;
@@ -124,7 +128,14 @@ where
         };
         for event in events {
             match event {
-                Event::Resized => self.resized = true,
+                Event::Resized => {
+                    self.resized = true;
+                    self.replace_monitors(Vec::new());
+                }
+                Event::Displays { monitors, resized } => {
+                    self.resized |= resized;
+                    self.replace_monitors(monitors);
+                }
                 Event::Updated => {
                     let all = std::mem::take(&mut self.resized);
                     self.ask_for_update(!all).await?;
@@ -141,12 +152,45 @@ where
         Ok(())
     }
 
+    fn replace_monitors(&mut self, monitors: Vec<Monitor>) {
+        if self.monitors == monitors {
+            return;
+        }
+        self.monitors = monitors;
+        self.show_display(self.display);
+    }
+
+    fn show_display(&mut self, display: Option<u32>) {
+        let monitor = self
+            .monitors
+            .iter()
+            .find(|screen| Some(screen.id) == display);
+        self.display = monitor.map(|screen| screen.id);
+        let active = self
+            .display
+            .map_or_else(|| "all".to_owned(), |id| id.to_string());
+        let ids = self.monitors.iter().map(|screen| screen.id.to_string());
+        let layout =
+            guac_protocol::Instruction::new("displays", std::iter::once(active).chain(ids));
+        self.picture
+            .show_display(monitor.map(|screen| screen.area), layout);
+    }
+
     async fn on_client(&mut self, instruction: &guac_protocol::Instruction) -> Result<(), Ended> {
         match self.clipboard.read(instruction) {
             Input::Key { keysym, pressed } => self.write(&requests::key(keysym, pressed)).await,
             Input::Pointer { x, y, buttons } => {
+                if self.picture.switching_display() && buttons != 0 {
+                    return Ok(());
+                }
                 let (x, y) = self.picture.to_device((x, y));
                 self.write(&requests::pointer(buttons, x, y)).await
+            }
+            Input::Display(display) => {
+                if self.monitors.len() > 1 {
+                    self.show_display(display);
+                }
+                Ok(())
             }
             Input::View(width, height) => {
                 self.picture.set_view((width, height));

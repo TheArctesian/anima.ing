@@ -9,6 +9,7 @@ const fn file_name(program: Program) -> &'static str {
     match program {
         Program::ClaudeCode => "claude",
         Program::Codex => "codex",
+        Program::Grok => "grok",
     }
 }
 
@@ -26,7 +27,7 @@ const USUAL: [&str; 6] = [
 /// Where an application keeps its own copy of a program, after the [`USUAL`] folders.
 const fn in_applications(program: Program) -> &'static [&'static str] {
     match program {
-        Program::ClaudeCode => &[],
+        Program::ClaudeCode | Program::Grok => &[],
         Program::Codex => {
             &["/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS"]
         }

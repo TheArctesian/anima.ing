@@ -5,6 +5,7 @@ pub mod agent_threads;
 pub mod agent_usage;
 pub mod builds;
 pub mod checks;
+pub(crate) mod code_previews;
 pub mod compute;
 pub mod credentials;
 pub mod devices;

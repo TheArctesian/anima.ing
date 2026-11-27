@@ -1,11 +1,9 @@
 //! The calls of the clients of this computer to the runner (TH12, TH13, TH15): each is checked
 //! here, written to the log of the runner (THR-044), and answered on the socket.
 
-use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState, ThreadRow};
-use agent_threads::drive::{Effort, KeptFolder, Model, Program};
+use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState};
 use uuid::Uuid;
 
-use super::codex::Codex;
 use super::log::{Kind, Line};
 use super::socket::{self, CLIENT_BYTES, CLIENT_QUEUE, Caller, Client, Incoming};
 use super::start::NewThread;
@@ -26,6 +24,7 @@ mod reads;
 mod refusal_lines;
 mod send;
 mod set;
+mod transcript;
 pub(super) use commands::FolderSkills;
 pub(super) use files::Walked;
 use refusal_lines::Say;
@@ -37,50 +36,54 @@ const SOURCE: &str = "local socket";
 /// The most clients that watch at one time.
 const WATCHERS: usize = 16;
 
-/// The Codex calls of a thread of Codex.
-/// Its sandbox keeps the folder of the daemon read-only when the folder of the thread holds it
-/// (THR-041).
-pub(super) fn codex_of(
-    row: &ThreadRow,
-    effort: Option<Effort>,
-    daemon: &std::path::Path,
-) -> Option<Codex> {
-    (row.program == Program::Codex).then(|| {
-        let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
-        let mut codex = Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
-            crate::threads::notice::held_anima(&row.folder, daemon)
-                .map(|anima| KeptFolder::new(anima, row.id)),
-        );
-        codex.change_speed(row.speed.clone());
-        codex
-    })
-}
-
 impl Runner {
     pub(super) async fn call(&mut self, incoming: Incoming) {
         let Incoming {
             call: Call { id, action },
             client,
             agent,
+            managed_owner,
         } = incoming;
         let back = Caller {
             call: id,
             client: client.clone(),
         };
         let named = thread_of(&action);
-        let answer = match self.read(&action) {
+        if matches!(
+            &action,
+            Action::StartManaged { .. }
+                | Action::ManagedTranscript { .. }
+                | Action::ManagedAttention
+        ) && !managed_owner
+        {
+            self.answer_call(
+                &back,
+                named,
+                Outcome::Refused {
+                    why: Refusal::FromAnAgent,
+                },
+            );
+            return;
+        }
+        if let Some(answer) = self.dispatch(action, back.clone(), agent).await {
+            self.answer_call(&back, named, answer);
+        }
+    }
+
+    async fn dispatch(&mut self, action: Action, back: Caller, agent: bool) -> Option<Outcome> {
+        Some(match self.read(&action) {
             Some(read) => read,
             None => match action {
                 ref asked if agent && for_the_person(asked) => Outcome::Refused {
                     why: Refusal::FromAnAgent,
                 },
                 Action::Watch => {
-                    self.watch(id, client);
-                    return;
+                    self.watch(back.call, back.client.clone());
+                    return None;
                 }
                 Action::Models => {
                     self.models_call(back, !agent);
-                    return;
+                    return None;
                 }
                 Action::Interrupt { thread } => self.interrupt(thread).await,
                 queued @ (Action::Queue { .. }
@@ -95,7 +98,7 @@ impl Runner {
                 Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
                 Action::CreateProject { folder, name } => {
                     self.create_project(folder, name, back);
-                    return;
+                    return None;
                 }
                 Action::ChangeProject { change } => self.change_project(&change),
                 Action::Files {
@@ -106,16 +109,15 @@ impl Runner {
                 Action::Folder { folder } => self.folder_notice(&folder),
                 Action::Folders { folder, hidden } => {
                     self.folders(folder, hidden, back);
-                    return;
+                    return None;
                 }
                 Action::RaiseLimit => self.raise_limit(),
                 waits => match self.held_call(waits, back.clone(), !agent).await {
-                    Ok(()) => return,
+                    Ok(()) => return None,
                     Err(why) => Outcome::Refused { why },
                 },
             },
-        };
-        self.answer_call(&back, named, answer);
+        })
     }
 
     pub(super) fn answer_call(&mut self, back: &Caller, named: Option<Uuid>, answer: Outcome) {
@@ -284,12 +286,14 @@ impl Runner {
 /// The thread a call names, for the line of the log of a refusal (THR-044).
 const fn thread_of(action: &Action) -> Option<Uuid> {
     match action {
-        Action::Send { thread, .. }
+        Action::StartManaged { thread, .. }
+        | Action::Send { thread, .. }
         | Action::Answer { thread, .. }
         | Action::Interrupt { thread }
         | Action::Stop { thread }
         | Action::ChangeListing { thread, .. }
         | Action::Earlier { thread, .. }
+        | Action::ManagedTranscript { thread, .. }
         | Action::Files { thread, .. }
         | Action::Queue { thread, .. }
         | Action::Requeue { thread, .. }

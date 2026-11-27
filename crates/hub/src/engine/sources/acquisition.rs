@@ -5,14 +5,18 @@ pub mod account_key;
 pub mod app_key;
 pub mod conversion;
 pub mod installations;
+pub(super) mod repository;
 pub mod stored_key;
 pub mod tokens;
 pub mod transport;
 pub mod verdict;
 
 use chrono::{DateTime, Utc};
+use provider_github::CheckoutScope;
 use ring::rand::SecureRandom;
-use source_exchange::{Acquisition, Declaration, Minted, Minting, Registration, Request};
+use source_exchange::{
+    Acquisition, AppKey as DeclarationKey, Declaration, Minted, Minting, Registration, Request,
+};
 
 use self::{
     app_key::AppKey,
@@ -53,9 +57,25 @@ pub async fn mint(
     key: &AppKey,
     (now, random): (DateTime<Utc>, &(dyn SecureRandom + Sync)),
 ) -> Result<Minted, MintFailure> {
-    let Acquisition::TokenPull(Minting::AppKey(app)) = declaration.acquisition else {
-        return Err(MintFailure::NotAppKey);
-    };
+    let app = declared_key(declaration)?;
+    let answer = installation((transport, declaration), key, (now, random), None).await?;
+    (app.parse_minted)(&answer).map_err(|_| MintFailure::Unusable)
+}
+
+fn declared_key(declaration: &Declaration) -> Result<DeclarationKey, MintFailure> {
+    match declaration.acquisition {
+        Acquisition::TokenPull(Minting::AppKey(app)) => Ok(app),
+        _ => Err(MintFailure::NotAppKey),
+    }
+}
+
+async fn installation(
+    (transport, declaration): (&Transport, &Declaration),
+    key: &AppKey,
+    (now, random): (DateTime<Utc>, &(dyn SecureRandom + Sync)),
+    checkout: Option<CheckoutScope>,
+) -> Result<zeroize::Zeroizing<Vec<u8>>, MintFailure> {
+    let app = declared_key(declaration)?;
     // The mint is a POST; the path goes through the same check as a provider's GET.
     let target = Request::get(&(app.mint_path)(key.installation_id()), &[])
         .map_err(|_| MintFailure::Unusable)?;
@@ -64,19 +84,23 @@ pub async fn mint(
         .map_err(|_| MintFailure::Unusable)?;
     let app_token = key.token(now, random).map_err(|_| MintFailure::Unsigned)?;
     let answer = transport
-        .mint(url, &app_token)
+        .mint(url, &app_token, checkout)
         .await
-        .map_err(|fault| match fault {
-            Fault::Network => MintFailure::Unreachable,
-            Fault::Refused => MintFailure::Unusable,
-        })?;
+        .map_err(mint_fault)?;
     match (judge(answer.status, answer.limits, now), answer.status) {
         (Verdict::RateLimited(until), _) => Err(MintFailure::RateLimited(until)),
         (Verdict::Refused, _) | (Verdict::Usable, 400..=499) => Err(MintFailure::Refused),
-        (Verdict::Usable, 200..=299) => match &answer.content {
-            Content::Body(body) => (app.parse_minted)(body).map_err(|_| MintFailure::Unusable),
+        (Verdict::Usable, 200..=299) => match answer.content {
+            Content::Body(body) => Ok(body),
             Content::TooLarge => Err(MintFailure::Unusable),
         },
         (Verdict::Usable, _) => Err(MintFailure::Unusable),
+    }
+}
+
+fn mint_fault(fault: Fault) -> MintFailure {
+    match fault {
+        Fault::Network => MintFailure::Unreachable,
+        Fault::Refused => MintFailure::Unusable,
     }
 }

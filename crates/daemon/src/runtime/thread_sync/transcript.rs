@@ -1,10 +1,12 @@
-use agent_threads::control::{Action, Change, Outcome, Update};
-use agent_threads::drive::DriveEvent;
+use crate::runtime::thread_content::content;
+#[cfg(test)]
+use agent_threads::control::Change;
+use agent_threads::control::{Action, Outcome, Update};
 use daemon_core::wire::{
     MAX_THREAD_ENTRIES, MAX_THREAD_ENTRY, ThreadEntry, ThreadSummary, ThreadUpload,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::json;
 use uuid::Uuid;
 
 use super::{Target, runner};
@@ -148,41 +150,6 @@ impl Journal {
             let sequence = self.accepted + i64::try_from(self.pending.len()).unwrap_or(0) + 1;
             self.pending.push(ThreadEntry { sequence, content });
         }
-    }
-}
-
-fn content(change: Change) -> Option<Value> {
-    let value = match change {
-        Change::State { state, .. } => json!({"change": "state", "state": state}),
-        Change::Said {
-            event:
-                DriveEvent::Account { .. }
-                | DriveEvent::Reply { .. }
-                | DriveEvent::Models { .. }
-                | DriveEvent::Commands { .. },
-        } => return None,
-        other => serde_json::to_value(other).ok()?,
-    };
-    let mut value = value;
-    redact(&mut value);
-    if serde_json::to_vec(&value).ok()?.len() > MAX_THREAD_ENTRY {
-        return Some(json!({"change": "omitted", "reason": "entry_size"}));
-    }
-    Some(value)
-}
-
-fn redact(value: &mut Value) {
-    match value {
-        Value::String(text) => {
-            text.retain(|ch| ch != '\0');
-            *text = redaction::redact_document(text);
-        }
-        Value::Array(rows) => rows.iter_mut().for_each(redact),
-        Value::Object(fields) => {
-            fields.retain(|key, _| !key.contains('\0'));
-            fields.values_mut().for_each(redact);
-        }
-        _ => (),
     }
 }
 

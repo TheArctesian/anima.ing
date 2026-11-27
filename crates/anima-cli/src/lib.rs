@@ -34,6 +34,7 @@ pub mod model_copies;
 pub mod model_library;
 pub mod notifications;
 pub mod one_time_secret;
+pub mod operational_keys;
 pub mod output;
 pub mod paging;
 pub mod places;

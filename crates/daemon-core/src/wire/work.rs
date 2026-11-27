@@ -1,6 +1,12 @@
 //! The bodies of the work route (K10); no job holds a command, an argument, a path, an address, an image name or an environment variable.
 //! No body holds a secret but the answer to a secret request, which this file does not type.
 
+mod hosting;
+pub use hosting::{
+    ApplicationApply, ApplicationHealth, COMPOSE_FILE, ContainerAction, ContainerVerb,
+    ENVIRONMENT_FILE, HostWork,
+};
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -22,6 +28,8 @@ pub const MAX_LOG_PART_BYTES: usize = 64 * 1024;
 pub enum WorkType {
     Build,
     Runner,
+    ContainerAction,
+    ApplicationApply,
     /// The model work types (`contracts/compute/model-work.md` Section 2) have the kind [`WorkKind::Model`].
     ModelReport,
     RuntimeInstall,
@@ -63,6 +71,8 @@ impl WorkType {
         match self {
             Self::Build => "build",
             Self::Runner => "runner",
+            Self::ContainerAction => "container_action",
+            Self::ApplicationApply => "application_apply",
             Self::ModelReport => "model_report",
             Self::RuntimeInstall => "runtime_install",
             Self::ModelPull => "model_pull",
@@ -81,10 +91,15 @@ impl WorkType {
 
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
-        [Self::Build, Self::Runner]
-            .into_iter()
-            .chain(MODEL_TYPES)
-            .find(|kind| kind.as_str() == text)
+        [
+            Self::Build,
+            Self::Runner,
+            Self::ContainerAction,
+            Self::ApplicationApply,
+        ]
+        .into_iter()
+        .chain(MODEL_TYPES)
+        .find(|kind| kind.as_str() == text)
     }
 
     #[must_use]
@@ -99,6 +114,8 @@ impl WorkType {
 pub enum WorkKind {
     Container,
     Native,
+    /// The applications owner takes the item without job isolation.
+    Host,
     /// The daemon does the steps itself; no job code runs (model work, Section 1).
     Model,
     #[serde(other)]
@@ -106,10 +123,11 @@ pub enum WorkKind {
 }
 
 /// The switch at the machine (USE-004). The hub cannot set it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Switch {
     On,
+    #[default]
     Off,
 }
 
@@ -164,11 +182,26 @@ pub struct Held {
     pub attempt: u32,
 }
 
+impl Switch {
+    #[must_use]
+    pub const fn is_off(&self) -> bool {
+        matches!(self, Self::Off)
+    }
+}
+
 /// `POST /work/v1/claim` (K10 Section 4).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Claim {
+    #[serde(
+        default,
+        rename = "buildRecipes",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub build_recipes: Option<super::BuildRecipes>,
     pub device: Uuid,
     pub switch: Switch,
+    #[serde(default, skip_serializing_if = "Switch::is_off")]
+    pub applications: Switch,
     pub types: Vec<WorkType>,
     pub kinds: Vec<WorkKind>,
     pub os: WorkOs,
@@ -302,6 +335,8 @@ pub struct WorkResult {
     /// and 8); only for the kind `model`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<ModelOutcome>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub health: Option<ApplicationHealth>,
 }
 
 /// `POST /work/v1/report` (K10 Section 7).

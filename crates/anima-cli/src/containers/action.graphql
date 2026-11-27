@@ -1,0 +1,3 @@
+mutation QueueContainerAction($input: ContainerActionInput!) {
+  queueContainerAction(input: $input) { id state reason }
+}

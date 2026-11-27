@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 function show(onAdd: (folder: string) => void): void {
-  app = mount(AddProject, { target: document.body, props: { open: true, list, start: '/Users/ana', onAdd } });
+  app = mount(AddProject, { target: document.body, props: { open: true, list, start: '/Users/ana', onAdd, onNew: vi.fn() } });
   flushSync();
 }
 
@@ -51,7 +51,7 @@ describe('the "Add project" palette', () => {
     show(vi.fn());
     expect(label()).toBe('Sources');
     expect(options()).toEqual([
-      { words: 'New project Start a new Git repository from a name. Needs a runner call that makes a folder and runs git init in it.', off: true },
+      { words: 'New project Start a new Git repository from a name', off: false },
       { words: 'Local folder Browse a folder on disk', off: false },
       { words: 'Git URL Clone from a remote URL. Needs a runner call that clones a URL into a folder.', off: true },
       { words: 'GitHub repository Clone GitHub owner/repo. Needs a runner call that clones owner/repo from GitHub into a folder.', off: true },
@@ -62,6 +62,7 @@ describe('the "Add project" palette', () => {
   it('walks folders from the runner with Enter and Backspace, and adds the one chosen', async () => {
     const onAdd = vi.fn();
     show(onAdd);
+    await press('ArrowDown');
     await press('Enter');
     expect(label()).toBe('/Users/ana');
     expect(options().map((row) => row.words)).toEqual(['Add this folder /Users/ana', 'notes', 'work']);
@@ -82,6 +83,7 @@ describe('the "Add project" palette', () => {
 
   it('says why a folder cannot be listed, and Backspace goes back to the sources', async () => {
     show(vi.fn());
+    await press('ArrowDown');
     await press('Enter');
     const field = document.querySelector<HTMLInputElement>('[role="combobox"]');
     if (field === null) throw new Error('no field');

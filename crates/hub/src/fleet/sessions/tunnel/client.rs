@@ -5,6 +5,8 @@
 
 use guac_protocol::{Display, Instruction};
 
+use crate::fleet::sessions::Desktop;
+
 use super::decimal::decimal;
 use super::ending::Cause;
 use super::relay::{ClientStep, MAX_STREAMS, Relay};
@@ -27,7 +29,14 @@ impl Relay {
     pub(super) fn on_client(&mut self, i: Instruction) -> ClientStep {
         match i.opcode.as_str() {
             "" => internal(i),
+            "key" | "mouse" | "touch" | "size" if self.policy.view_only => ClientStep::Drop,
             "size" => size(&i),
+            "display" if self.policy.desktop == Desktop::Vnc => match i.args.as_slice() {
+                [choice] if choice == "all" || decimal(choice, 10).is_some() => {
+                    ClientStep::Forward(i)
+                }
+                _ => ClientStep::Drop,
+            },
             "disconnect" => ClientStep::End {
                 forward: Some(i),
                 cause: Cause::OperatorClosed,

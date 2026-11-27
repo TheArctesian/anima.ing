@@ -16,7 +16,7 @@ pub(super) mod trail;
 use std::sync::Arc;
 
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 pub use self::{
@@ -34,12 +34,13 @@ pub use self::{
         web_interface_suggestions_loader, web_interfaces_loader,
     },
 };
+pub(crate) use input::device_id;
 
 use self::{
     connection::{DEFAULT_FIRST, DeviceConnection},
     error::to_graphql,
     filter::{DeviceFilterInput, DeviceSort, list_args},
-    input::{CreateDeviceInput, UpdateDeviceInput, checked, device_id},
+    input::{CreateDeviceInput, UpdateDeviceInput, checked},
     remote::{DeviceRdp, DeviceVnc, clear_password, set_password, set_wake_relay},
     ssh::DeviceSsh,
 };
@@ -61,6 +62,25 @@ use crate::{
     ids::{DeviceId, SiteId},
     scalars::Cidr,
 };
+
+pub(crate) async fn stage_removal(
+    ctx: &Context<'_>,
+    conn: &mut PgConnection,
+    id: DeviceId,
+    trail: Trail<'_>,
+) -> Result<()> {
+    // The credentials lock comes before the device row, the order `setSshCredential` takes.
+    clear_ssh(conn, id)
+        .await
+        .map_err(|error| credential::credential_error(error, id))?;
+    // The grants of operational keys end with the device (K-E5 Section 2.1).
+    credential::end_key_grants(ctx, conn, id).await?;
+    let device = store::delete_device(conn, id).await.map_err(to_graphql)?;
+    trail
+        .write(conn, trail::device_deleted(&device))
+        .await
+        .map_err(internal)
+}
 
 /// The loader behind `Device.site`: one query per batch of site ids. It has no cache, so one
 /// instance serves every request.
@@ -269,28 +289,6 @@ impl Mutation {
             .map_err(internal)?;
         commit(tx).await?;
         Ok(device)
-    }
-
-    #[graphql(guard = "Authenticated")]
-    async fn delete_device(&self, ctx: &Context<'_>, id: ID) -> Result<ID> {
-        let id = device_id(&id).map_err(|e| invalid(&[e]))?;
-        let trail = Trail::from_context(ctx)?;
-        let mut tx = begin(ctx).await?;
-        // The credentials lock comes before the device row, the order `setSshCredential` takes.
-        clear_ssh(&mut tx, id)
-            .await
-            .map_err(|error| credential::credential_error(error, id))?;
-        // The grants of operational keys end with the device (K-E5 Section 2.1).
-        credential::end_key_grants(ctx, &mut tx, id).await?;
-        let device = store::delete_device(&mut tx, id)
-            .await
-            .map_err(to_graphql)?;
-        trail
-            .write(&mut tx, trail::device_deleted(&device))
-            .await
-            .map_err(internal)?;
-        commit(tx).await?;
-        Ok(ID(device.id.to_string()))
     }
 
     /// Seals and stores the device's SSH secret, replacing any earlier one (DEV-012, SEC-003).

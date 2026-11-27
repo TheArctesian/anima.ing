@@ -97,12 +97,60 @@ pub struct NewJob {
     pub machine: Option<DeviceId>,
 }
 
-/// What a job works on: a repository (K10), or the machine itself for a model item, which
-/// names the actor that asked for it (K11 Sections 2 and 3).
+/// What a job works on: a repository (K10), the machine itself for host work, or the machine
+/// itself for a model item, which names the actor that asked for it (K11 Sections 2 and 3).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Target {
     Repository(WorkRepository),
+    Host,
     Model { actor: Actor },
+}
+
+impl Target {
+    /// The repository of build and runner work; none for host work and model items.
+    #[must_use]
+    pub const fn repository(&self) -> Option<&WorkRepository> {
+        match self {
+            Self::Repository(repository) => Some(repository),
+            Self::Host | Self::Model { .. } => None,
+        }
+    }
+}
+
+impl NewJob {
+    pub(super) fn bind_source_target(mut self) -> Result<Self, super::Error> {
+        if self.work_type != WorkType::Build || self.parameters["recipe"] != "source_image_v1" {
+            return Ok(self);
+        }
+        let secrets: Vec<_> = self.secrets.iter().map(String::as_str).collect();
+        if !self.parameters.as_object().is_some_and(|parameters| {
+            daemon_core::work::types::build_holds(parameters, &secrets, self.kind)
+        }) {
+            return Err(super::Error::Invalid(
+                "the source-image parameters are invalid",
+            ));
+        }
+        let architecture = match self.parameters["target"].as_str() {
+            Some("linux-x86_64") => WorkArchitecture::X86_64,
+            Some("linux-aarch64") => WorkArchitecture::Aarch64,
+            _ => {
+                return Err(super::Error::Invalid(
+                    "the source-image target is unsupported",
+                ));
+            }
+        };
+        if self.kind != WorkKind::Container
+            || self.os.is_some_and(|os| os != WorkOs::Linux)
+            || self.architecture.is_some_and(|value| value != architecture)
+        {
+            return Err(super::Error::Invalid(
+                "source-image placement must match its container target",
+            ));
+        }
+        self.os = Some(WorkOs::Linux);
+        self.architecture = Some(architecture);
+        Ok(self)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

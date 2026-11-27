@@ -1,20 +1,24 @@
 //! `application_apply` (K10 Section 6.4.6). The check has three parts, because the program gets
 //! the files and pulls the images between them.
 
+mod records;
+mod version;
+
 use std::fmt::Write;
+use zeroize::Zeroize as _;
 
 use compose_rules::{Checked, Node, Rule};
 use sha2::{Digest, Sha256};
 
 use super::{Facts, free, managed};
 use crate::{
-    Apply, Command, FinalForm, Folders, Frame, Plan, Pulled, Refusal, Step,
-    final_form::{self, image_by_digest},
-    forms::project_of,
+    Apply, Command, FinalForm, Frame, Plan, Pulled, Refusal, final_form, forms::project_of,
     inventory::project_is_protected,
-    json::{self, Json},
-    plan::Project,
 };
+
+#[cfg(target_os = "linux")]
+pub(crate) use records::MAX_PULLED_BYTES;
+pub(crate) use version::plan_version;
 
 /// The two files of an item; `{:?}` shows only their lengths.
 #[derive(Clone, Copy)]
@@ -39,12 +43,10 @@ pub struct Pull {
     pub service: String,
     pub image: String,
     pub pull: Command,
-    /// It prints the names by which the registry gave the image, each with its digest.
-    pub inspect: Command,
 }
 
 /// One version whose files passed each rule; `{:?}` shows no byte or value of the files.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct Prepared {
     pub(crate) application: String,
     pub(crate) keep: bool,
@@ -56,6 +58,13 @@ pub struct Prepared {
     pub(crate) known: Vec<Pulled>,
     /// The pulls that the caller does before [`planned`]; none when `pull` is false.
     pub pulls: Vec<Pull>,
+}
+
+impl Drop for Prepared {
+    fn drop(&mut self) {
+        self.compose.zeroize();
+        self.environment.zeroize();
+    }
 }
 
 impl std::fmt::Debug for Prepared {
@@ -130,16 +139,12 @@ fn images(checked: &Checked) -> Vec<(&str, &str)> {
 }
 
 fn pulls(checked: &Checked, facts: &Facts<'_>) -> Vec<Pull> {
-    let format = "{{json .RepoDigests}}";
     images(checked)
         .into_iter()
         .map(|(service, image)| Pull {
             service: service.to_owned(),
             image: image.to_owned(),
             pull: facts.paths.docker(&["image", "pull"], &[image]),
-            inspect: facts
-                .paths
-                .docker(&["image", "inspect", "--format", format], &[image]),
         })
         .collect()
 }
@@ -209,109 +214,6 @@ pub fn prepared(apply: &Apply, files: &Files<'_>, facts: &Facts<'_>) -> Result<P
     Ok(prepared)
 }
 
-fn digests_written(digests: &[Pulled]) -> Vec<u8> {
-    let one = |pulled: &Pulled| {
-        Json::Record(vec![
-            ("service".to_owned(), Json::text(&pulled.service)),
-            ("image".to_owned(), Json::text(&pulled.image)),
-            ("digest".to_owned(), Json::text(&pulled.digest)),
-        ])
-    };
-    json::written(&Json::List(digests.iter().map(one).collect())).into_bytes()
-}
-
-/// The steps that write one version and start it from the final form only (SF-017), checking
-/// each `binds/` folder right before the start (SF-016).
-/// The final form is written in place first because Compose reads it; the records move only after the start.
-pub(crate) fn version_steps(
-    prepared: &Prepared,
-    digests: &[Pulled],
-    facts: &Facts<'_>,
-) -> Result<(Vec<Step>, FinalForm), Refusal> {
-    let form = final_form_of(prepared, digests, facts)?;
-    let folders = facts.paths.application(&prepared.application);
-    let write = |path: String, content: &[u8]| Step::Write {
-        path,
-        content: content.to_vec(),
-    };
-    let [compose, environment, digests_file] = folders.staged();
-    let mut steps = vec![
-        write(compose, &prepared.compose),
-        write(environment, &prepared.environment),
-        write(folders.final_form(), form.text.as_bytes()),
-        write(digests_file, &digests_written(digests)),
-        Step::Absent {
-            path: folders.dot_env(),
-        },
-        Step::RealFolder {
-            path: folders.binds(),
-            below: folders.application().to_owned(),
-        },
-    ];
-    steps.extend(form.binds.iter().map(|name| Step::RealFolder {
-        path: format!("{}/{name}", folders.binds()),
-        below: folders.binds(),
-    }));
-    let project = project_of(&prepared.application);
-    let files = [folders.final_form()];
-    let named = Project {
-        name: &project,
-        folder: &folders.files(),
-        files: &files,
-    };
-    let up = [
-        "up",
-        "-d",
-        "--remove-orphans",
-        "--pull",
-        "never",
-        "--no-build",
-    ];
-    steps.push(Step::Run(facts.paths.compose(&named, &up)));
-    Ok((steps, form))
-}
-
-pub(crate) fn in_place_steps(folders: &Folders) -> Vec<Step> {
-    folders
-        .staged()
-        .into_iter()
-        .zip(folders.current())
-        .map(|(from, to)| Step::Move { from, to })
-        .collect()
-}
-
-pub(crate) fn folder_steps(folders: &Folders, binds: &[String]) -> Vec<Step> {
-    let mut paths = vec![
-        folders.application().to_owned(),
-        folders.files(),
-        folders.binds(),
-    ];
-    paths.extend(
-        binds
-            .iter()
-            .map(|name| format!("{}/{name}", folders.binds())),
-    );
-    paths
-        .into_iter()
-        .map(|path| Step::Folder { path })
-        .collect()
-}
-
-fn pulled_written(prepared: &Prepared, digests: &[Pulled], facts: &Facts<'_>) -> Vec<u8> {
-    let installed = facts.records.installed(&prepared.application);
-    let mut pulled = installed.map_or_default(|installed| installed.pulled.clone());
-    for one in digests {
-        let image = image_by_digest(&one.image, &one.digest);
-        if !pulled.contains(&image) {
-            pulled.push(image);
-        }
-    }
-    json::written(&Json::List(
-        pulled.iter().map(|image| Json::text(image)).collect(),
-    ))
-    .into_bytes()
-}
-
 /// The plan of `application_apply`; `facts` are of the moment after the pulls, and the checks
 /// of [`accepted`] run again with them.
 ///
@@ -329,31 +231,5 @@ pub fn planned(
     } else {
         pulled
     };
-    let (version, form) = version_steps(prepared, digests, facts)?;
-    let folders = facts.paths.application(&prepared.application);
-    let mut steps = folder_steps(&folders, &form.binds);
-    // The images are on the machine after the pulls, whether the start fails or not.
-    steps.push(Step::Write {
-        path: folders.pulled(),
-        content: pulled_written(prepared, digests, facts),
-    });
-    steps.extend(version);
-    let has_files = facts
-        .records
-        .installed(&prepared.application)
-        .is_some_and(|installed| installed.has_files);
-    // After the start only: a failed start never replaces the last kept version.
-    for (from, to) in folders.current().into_iter().zip(folders.kept()) {
-        // `keep` 0 keeps no version, so an `application_back` after it has nothing.
-        steps.push(match (prepared.keep, has_files) {
-            (true, true) => Step::Move { from, to },
-            _ => Step::Delete { path: to },
-        });
-    }
-    steps.extend(in_place_steps(&folders));
-    Ok(Planned {
-        plan: Plan { steps },
-        final_form_sha256: sha256(form.text.as_bytes()),
-        holds_volumes: form.holds_volumes,
-    })
+    plan_version(prepared, digests, facts, true)
 }

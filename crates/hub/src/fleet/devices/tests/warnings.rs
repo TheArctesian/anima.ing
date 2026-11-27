@@ -24,7 +24,7 @@ fn vnc(enabled: bool) -> VncSettings {
 #[test]
 fn ra_020_default_settings_earn_no_warning() {
     assert_eq!(
-        access_warnings(&RdpSettings::default(), &VncSettings::default()),
+        access_warnings(&RdpSettings::default(), &VncSettings::default(), false),
         []
     );
 }
@@ -32,7 +32,7 @@ fn ra_020_default_settings_earn_no_warning() {
 #[test]
 fn ra_020_every_weak_setting_earns_its_warning_in_k1_order() {
     assert_eq!(
-        access_warnings(&rdp(true, true, RdpSecurity::Rdp), &vnc(true)),
+        access_warnings(&rdp(true, true, RdpSecurity::Rdp), &vnc(true), false),
         [
             AccessWarning::IgnoredCertificate,
             AccessWarning::RdpSecurity,
@@ -45,15 +45,15 @@ fn ra_020_every_weak_setting_earns_its_warning_in_k1_order() {
 fn ra_020_each_warning_stands_alone() {
     let off = vnc(false);
     assert_eq!(
-        access_warnings(&rdp(true, true, RdpSecurity::Nla), &off),
+        access_warnings(&rdp(true, true, RdpSecurity::Nla), &off, false),
         [AccessWarning::IgnoredCertificate]
     );
     assert_eq!(
-        access_warnings(&rdp(true, false, RdpSecurity::Rdp), &off),
+        access_warnings(&rdp(true, false, RdpSecurity::Rdp), &off, false),
         [AccessWarning::RdpSecurity]
     );
     assert_eq!(
-        access_warnings(&RdpSettings::default(), &vnc(true)),
+        access_warnings(&RdpSettings::default(), &vnc(true), false),
         [AccessWarning::UnencryptedVnc]
     );
 }
@@ -68,7 +68,7 @@ fn ra_020_only_rdp_security_rdp_warns_of_the_security_layer() {
         RdpSecurity::Vmconnect,
     ] {
         assert_eq!(
-            access_warnings(&rdp(true, false, security), &vnc(false)),
+            access_warnings(&rdp(true, false, security), &vnc(false), false),
             [],
             "{security:?}"
         );
@@ -78,7 +78,7 @@ fn ra_020_only_rdp_security_rdp_warns_of_the_security_layer() {
 #[test]
 fn ra_020_a_protocol_that_is_off_earns_none() {
     assert_eq!(
-        access_warnings(&rdp(false, true, RdpSecurity::Rdp), &vnc(false)),
+        access_warnings(&rdp(false, true, RdpSecurity::Rdp), &vnc(false), false),
         []
     );
 }

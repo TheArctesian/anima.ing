@@ -28,7 +28,7 @@ use zeroize::Zeroizing;
 use super::{
     Error,
     admission::{Admitted, Stop, admit},
-    credential, enrolment, keys, push, random,
+    credential, enrolment, keys, managed_code, push, random,
     refusals::{self, Recorder, Refused, Route},
     renewal,
     turns::{DAEMON_REQUESTS, Turn, Turns},
@@ -137,6 +137,8 @@ fn routes(state: DaemonState) -> Router {
             "/daemon/v1/threads/entries",
             post(push::thread_upload::serve),
         )
+        .merge(managed_code::code_routes())
+        .merge(managed_code::workspace_routes())
         .route("/daemon/v1/renew", post(renew))
         .route("/daemon/v1/keys/fetch", post(fetch_key))
         .merge(work::routes())

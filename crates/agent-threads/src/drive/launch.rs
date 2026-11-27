@@ -14,6 +14,7 @@ use super::DriveError;
 pub enum Program {
     ClaudeCode,
     Codex,
+    Grok,
 }
 
 /// The permission mode of a thread (THR-033: Full access is the default).
@@ -186,6 +187,14 @@ impl Launch {
         let args = match self.program {
             Program::Codex => vec!["app-server".to_owned()],
             Program::ClaudeCode => self.claude_args(),
+            Program::Grok => {
+                if !matches!(self.mode, Mode::FullAccess | Mode::Ask) {
+                    return Err(DriveError::Refused {
+                        what: "Grok permission mode",
+                    });
+                }
+                vec!["agent".into(), "--no-leader".into(), "stdio".into()]
+            }
         };
         Ok(Invocation {
             program: self.path.clone(),

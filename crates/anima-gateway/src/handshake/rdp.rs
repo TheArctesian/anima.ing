@@ -91,7 +91,7 @@ impl Rdp {
 }
 
 /// The 32 bytes of `sha256:AA:BB:…`, the form the hub sends one accepted fingerprint in.
-fn fingerprint(text: &str) -> Option<[u8; 32]> {
+pub(super) fn fingerprint(text: &str) -> Option<[u8; 32]> {
     let (hash, pairs) = text.split_once(':')?;
     if !hash.eq_ignore_ascii_case(FINGERPRINT_HASH) {
         return None;

@@ -16,6 +16,7 @@ const VNC_PROMPTS: &[&str] = &["username", "password"];
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Policy {
     pub(super) desktop: Desktop,
+    pub(super) view_only: bool,
     pub(super) transfer: TransferPolicy,
     /// The client may send RDP audio input.
     pub(super) microphone: bool,
@@ -24,13 +25,23 @@ pub(super) struct Policy {
 }
 
 impl Policy {
-    pub(super) const fn of(desktop: Desktop, device: &Device) -> Self {
+    pub(super) const fn of(desktop: Desktop, device: &Device, view_only: bool) -> Self {
         let rdp = matches!(desktop, Desktop::Rdp);
         Self {
             desktop,
-            transfer: device.transfer,
-            microphone: rdp && device.rdp.microphone,
-            shared_drive: rdp && device.rdp.shared_drive,
+            view_only,
+            transfer: if view_only {
+                TransferPolicy {
+                    copy: false,
+                    paste: false,
+                    upload: false,
+                    download: false,
+                }
+            } else {
+                device.transfer
+            },
+            microphone: rdp && device.rdp.microphone && !view_only,
+            shared_drive: rdp && device.rdp.shared_drive && !view_only,
         }
     }
 

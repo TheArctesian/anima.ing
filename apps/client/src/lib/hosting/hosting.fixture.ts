@@ -33,9 +33,21 @@ export const VOLUMES: Readonly<Record<string, ContainerVolume[]>> = {
 /** The machine of a device page (HSE-008). */
 export const DEVICE: Machine = { id: 'device-1', name: 'nas', state: 'UP' };
 
+const actions = {
+  queue: () => Promise.resolve(ok({ id: 'action-1', state: 'queued', reason: null })),
+  status: () => Promise.resolve(ok({ id: 'action-1', state: 'done', reason: null })),
+};
+
+const apply: HostingCalls['apply'] = {
+  targets: () => Promise.resolve(ok(MACHINES.map(({ id, name }) => ({ id, name })))),
+  queue: (input) => Promise.resolve(ok({ id: 'apply-1', deviceId: input.deviceId, applicationId: 'app-1', state: 'queued', reason: null, health: null })),
+  status: () => Promise.resolve(ok({ id: 'apply-1', deviceId: 'm-pop', applicationId: 'app-1', state: 'done', reason: null, health: 'healthy' })),
+  check: () => Promise.resolve(ok({ syntaxValid: true, problems: [] })),
+};
+
 /** The calls of the device tab over the fake calls of one device: its containers, newer images, log and details. */
 export function deviceHosting(calls: FakeCalls): HostingCalls {
-  return { machines: () => Promise.resolve(ok([])), containers: () => calls.list(), updates: () => calls.updates(), machine: () => calls, storage: () => calls.storage() };
+  return { actions, apply, machines: () => Promise.resolve(ok([])), containers: () => calls.list(), updates: () => calls.updates(), machine: () => calls, storage: () => calls.storage() };
 }
 
 export interface FakeHosting extends HostingCalls {
@@ -53,6 +65,8 @@ const ok = <T>(value: T): HubResult<T> => ({ ok: true, value });
 
 export function fakeHosting(updates: readonly ImageUpdate[] = []): FakeHosting {
   const fake: FakeHosting = {
+    actions,
+    apply,
     containersAsked: [],
     updatesAsked: [],
     storageAsked: [],

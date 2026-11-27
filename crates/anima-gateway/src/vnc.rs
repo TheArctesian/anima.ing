@@ -4,12 +4,16 @@
 
 mod auth;
 mod drawing;
+mod layout;
 mod messages;
 pub mod requests;
 mod sign_in;
+mod vencrypt;
 mod zrle;
+pub(crate) use vencrypt::{plain_sign_in, secure};
 
 use crate::screen::Screen;
+pub use layout::Monitor;
 use messages::{Body, Start};
 pub use sign_in::{Account, Method, Offered, SignInError, offered, sign_in};
 
@@ -31,6 +35,8 @@ pub enum Malformed {
     TooManyPixels,
     #[error("a rectangle outside the screen")]
     OutsideScreen,
+    #[error("a pointer shape larger than the screen")]
+    LargePointer,
     #[error("more bytes for a rectangle than its pixels need")]
     TooManyBytes,
     #[error("a ZRLE tile that does not decode")]
@@ -47,6 +53,10 @@ pub enum Event {
     Updated,
     /// The device's screen has a new size and is black: the next request asks for all of it.
     Resized,
+    Displays {
+        monitors: Vec<Monitor>,
+        resized: bool,
+    },
     Clipboard(String),
     Bell,
 }
@@ -55,6 +65,28 @@ struct Update {
     rects_left: usize,
     pixels_left: usize,
     resized: bool,
+}
+
+impl Update {
+    fn account_for(&mut self, rect: &messages::Rect<'_>) -> Result<(), Malformed> {
+        let pixels = rect.area.width * rect.area.height;
+        if matches!(rect.body, Body::Layout(_) | Body::NewSize) {
+            // The rest of the limit holds the new screen at least once, and at most its own limit.
+            if std::mem::replace(&mut self.resized, true) {
+                return Err(Malformed::BadSize);
+            }
+            self.pixels_left = self
+                .pixels_left
+                .min(pixels * MOST_SCREENS_IN_AN_UPDATE)
+                .max(pixels);
+        } else {
+            self.pixels_left = self
+                .pixels_left
+                .checked_sub(pixels)
+                .ok_or(Malformed::TooManyPixels)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -130,24 +162,20 @@ impl Device {
         let Some((rect, length)) = messages::rect(unread, size)? else {
             return Ok(None);
         };
-        let pixels = rect.area.width * rect.area.height;
-        if rect.body == Body::NewSize {
-            // The rest of the limit holds the new screen at least once, and at most its own limit.
-            if std::mem::replace(&mut update.resized, true) {
-                return Err(Malformed::BadSize);
-            }
-            update.pixels_left = update
-                .pixels_left
-                .min(pixels * MOST_SCREENS_IN_AN_UPDATE)
-                .max(pixels);
-        } else {
-            update.pixels_left = update
-                .pixels_left
-                .checked_sub(pixels)
-                .ok_or(Malformed::TooManyPixels)?;
-        }
-        if self.inflaters.draw(&[rect], screen)? {
+        update.account_for(&rect)?;
+        let layout = match &rect.body {
+            Body::Layout(monitors) => Some(monitors.clone()),
+            _ => None,
+        };
+        let resized = self.inflaters.draw(&[rect], screen)?;
+        if resized && layout.is_none() {
             events.push(Event::Resized);
+        }
+        if let Some(monitors) = layout {
+            events.push(Event::Displays {
+                monitors,
+                resized: size != (screen.width(), screen.height()),
+            });
         }
         update.rects_left -= 1;
         if update.rects_left == 0 {

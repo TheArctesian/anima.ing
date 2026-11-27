@@ -16,6 +16,8 @@ mod cloud;
 #[cfg_attr(windows, path = "command_line/windows.rs")]
 mod command_line;
 #[cfg(desktop)]
+mod command_line_sign_in;
+#[cfg(desktop)]
 mod daemon;
 #[cfg(desktop)]
 #[cfg_attr(target_os = "windows", path = "desktop/windows.rs")]
@@ -48,6 +50,8 @@ mod os_program;
 mod phone_browser;
 #[cfg(mobile)]
 mod phone_link;
+#[cfg(any(mobile, test))]
+mod phone_resume;
 #[cfg(desktop)]
 mod process_log;
 #[cfg(desktop)]
