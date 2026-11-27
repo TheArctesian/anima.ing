@@ -16,8 +16,8 @@ pub struct DawarichArgs {
     /// A name for the account.
     #[arg(long)]
     label: String,
-    /// The address of the Dawarich server: `https`, the host, the port when it is not 443, and
-    /// no path.
+    /// The address of the Dawarich server: `https` (or `http` for a server whose every address
+    /// is private or on the VPN), the host, the port, and no path.
     #[arg(long, value_name = "ADDRESS")]
     url: String,
     /// Read the API key from this file, or from standard input for `-`. The file must be mode
@@ -52,6 +52,12 @@ impl DawarichArgs {
             "The Dawarich API key",
             self.from_file.as_deref(),
         )?;
+        if self.url.trim().to_ascii_lowercase().starts_with("http://") {
+            invocation.output.note(
+                "The address is plain http: the key goes to the server with no TLS. The hub sends \
+                 it only when each address of the host is private or on the VPN (OD-E26).",
+            );
+        }
         let hub = invocation.hub()?;
         let variables = source_connect_dawarich::Variables {
             input: source_connect_dawarich::DawarichInput {

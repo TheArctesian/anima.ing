@@ -6,7 +6,7 @@ use crate::engine::sources::acquisition::account_key::{
 
 #[test]
 fn dawarich_key_a_base_is_an_https_origin_and_nothing_more() {
-    let origin = |text: &str| base(text, false).map(|url| instance_key(&url));
+    let origin = |text: &str| base(text).map(|url| instance_key(&url));
     assert_eq!(
         origin(" https://Dawarich.Example "),
         Ok("https://dawarich.example".to_owned())
@@ -20,7 +20,6 @@ fn dawarich_key_a_base_is_an_https_origin_and_nothing_more() {
         Ok("https://dawarich.example".to_owned())
     );
     for refused in [
-        "http://dawarich.example",
         "https://user:pass@dawarich.example",
         "https://user@dawarich.example",
         "https://dawarich.example/api",
@@ -31,9 +30,10 @@ fn dawarich_key_a_base_is_an_https_origin_and_nothing_more() {
     ] {
         assert_eq!(origin(refused), Err(Refusal::Base), "{refused}");
     }
-    assert!(
-        base("http://127.0.0.1:8080", true).is_ok(),
-        "only a transport of the tests"
+    assert_eq!(
+        origin("http://192.168.1.20:3000"),
+        Ok("http://192.168.1.20:3000".to_owned()),
+        "the transport decides where plain http may go (OD-E26)"
     );
 }
 
@@ -47,13 +47,13 @@ fn dawarich_key_a_key_is_one_word_of_at_most_512_characters() {
 
 #[test]
 fn dawarich_key_a_stored_key_opens_only_for_the_base_of_its_account() {
-    let url = base("https://dawarich.example", false).unwrap();
+    let url = base("https://dawarich.example").unwrap();
     let secret = to_secret(&url, "the-key");
-    let (opened, api_key) = from_secret(&secret, "https://dawarich.example", false).unwrap();
+    let (opened, api_key) = from_secret(&secret, "https://dawarich.example").unwrap();
     assert_eq!(instance_key(&opened), "https://dawarich.example");
     assert_eq!(api_key.expose(), b"the-key");
     // A database writer points the account at a different server: the key does not open.
-    assert!(from_secret(&secret, "https://other.example", false).is_none());
+    assert!(from_secret(&secret, "https://other.example").is_none());
     let unknown = crate::fleet::credentials::Secret::new(b"{\"v\":2}".to_vec());
-    assert!(from_secret(&unknown, "https://dawarich.example", false).is_none());
+    assert!(from_secret(&unknown, "https://dawarich.example").is_none());
 }
