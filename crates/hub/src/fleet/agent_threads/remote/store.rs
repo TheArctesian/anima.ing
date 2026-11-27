@@ -88,7 +88,7 @@ pub(super) async fn expire_waiting(
     at: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "UPDATE agent_threads.commands SET state = 'expired', payload = NULL, closed_at = $2
+        "UPDATE agent_threads.remote_commands SET state = 'expired', payload = NULL, closed_at = $2
          WHERE device_id = $1 AND state = 'waiting' AND deadline <= $2",
     )
     .bind(device)
@@ -104,7 +104,7 @@ pub(super) async fn capacity(
     prompt: bool,
 ) -> Result<(), Error> {
     let (total, prompts): (i64, i64) = sqlx::query_as(
-        "SELECT count(*), count(*) FILTER (WHERE kind = 'prompt') FROM agent_threads.commands
+        "SELECT count(*), count(*) FILTER (WHERE kind = 'prompt') FROM agent_threads.remote_commands
          WHERE device_id = $1 AND state IN ('waiting', 'delivered')",
     )
     .bind(device)
@@ -161,7 +161,7 @@ pub(super) async fn close_first(
     (owner, launch, cause): (Owner, &Launch, &str),
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "UPDATE agent_threads.commands SET state = 'refused', cause = $3, payload = NULL, closed_at = clock_timestamp()
+        "UPDATE agent_threads.remote_commands SET state = 'refused', cause = $3, payload = NULL, closed_at = clock_timestamp()
          WHERE account_id = $1 AND command_id = $2 AND state = 'waiting'",
     )
     .bind(owner.account)

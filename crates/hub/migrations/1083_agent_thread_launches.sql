@@ -71,7 +71,7 @@ create index agent_thread_launch_queue on agent_threads.launches (device_id, adm
 create index agent_thread_launch_active on agent_threads.launches (device_id, deadline)
     where not retired;
 
-create table agent_threads.commands (
+create table agent_threads.remote_commands (
     account_id uuid not null,
     command_id text not null check (octet_length(command_id) between 1 and 256),
     device_id uuid not null,
@@ -95,10 +95,10 @@ create table agent_threads.commands (
     check ((state in ('recorded','refused','expired','retired')) = (closed_at is not null))
 );
 
-create index agent_thread_command_queue on agent_threads.commands (device_id, created_at, command_id)
+create index agent_thread_command_queue on agent_threads.remote_commands (device_id, created_at, command_id)
     where state in ('waiting','delivered');
 
-create index agent_thread_command_retirement on agent_threads.commands (closed_at)
+create index agent_thread_command_retirement on agent_threads.remote_commands (closed_at)
     where state in ('recorded','refused','expired');
 
 create table agent_threads.control_offers (
@@ -132,7 +132,7 @@ begin
         thread_id = null, folder = '', project = ''
     where device_id = old.id;
 
-    update agent_threads.commands
+    update agent_threads.remote_commands
     set payload = null,
         state = case when state = 'waiting' then 'expired' else state end,
         closed_at = case when state = 'waiting' then clock_timestamp() else closed_at end

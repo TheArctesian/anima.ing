@@ -25,7 +25,7 @@ pub(in crate::fleet) async fn poll(
 ) -> Result<Vec<Delivered>, Error> {
     store::expire_waiting(conn, owner.device, at).await?;
     let rows: Vec<InQueue> = sqlx::query_as(
-        "SELECT command_id, launch_id, payload, state FROM agent_threads.commands
+        "SELECT command_id, launch_id, payload, state FROM agent_threads.remote_commands
          WHERE account_id = $1 AND device_id = $2 AND state IN ('waiting','delivered') AND payload IS NOT NULL
          ORDER BY CASE kind WHEN 'stop' THEN 0 WHEN 'answer' THEN 1 ELSE 2 END, created_at, command_id",
     )
@@ -56,7 +56,7 @@ pub(in crate::fleet) async fn poll(
 async fn mark_delivery(conn: &mut PgConnection, owner: Owner, id: &str) -> Result<bool, Error> {
     let changed = sqlx::query(
         "WITH sampled AS MATERIALIZED (SELECT clock_timestamp() AS at)
-         UPDATE agent_threads.commands SET state = 'delivered', delivered_at = sampled.at
+         UPDATE agent_threads.remote_commands SET state = 'delivered', delivered_at = sampled.at
          FROM sampled WHERE account_id = $1 AND command_id = $2
            AND state = 'waiting' AND deadline > sampled.at",
     )
@@ -117,7 +117,7 @@ async fn refuse_waiting(
     (id, cause): (&str, &str),
 ) -> Result<(), Error> {
     sqlx::query(
-        "UPDATE agent_threads.commands SET state = 'refused', cause = $3, payload = NULL, closed_at = $4
+        "UPDATE agent_threads.remote_commands SET state = 'refused', cause = $3, payload = NULL, closed_at = $4
          WHERE account_id = $1 AND command_id = $2 AND state = 'waiting'",
     )
     .bind(owner.account)
@@ -142,7 +142,7 @@ async fn prompt_allowed(
         return Ok(false);
     }
     let has_stop: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT FROM agent_threads.commands WHERE account_id = $1 AND launch_id = $2
+        "SELECT EXISTS (SELECT FROM agent_threads.remote_commands WHERE account_id = $1 AND launch_id = $2
                        AND kind = 'stop' AND state IN ('waiting','delivered'))",
     )
     .bind(owner.account)
@@ -175,7 +175,7 @@ pub(super) async fn cancel_prompts(
     launch: Uuid,
 ) -> Result<(), Error> {
     sqlx::query(
-        "UPDATE agent_threads.commands SET state = 'refused', cause = 'cancelled_by_stop', payload = NULL, closed_at = clock_timestamp()
+        "UPDATE agent_threads.remote_commands SET state = 'refused', cause = 'cancelled_by_stop', payload = NULL, closed_at = clock_timestamp()
          WHERE account_id = $1 AND launch_id = $2 AND kind = 'prompt' AND state = 'waiting'",
     )
     .bind(owner.account)
@@ -229,7 +229,7 @@ pub(in crate::fleet) async fn result(
         return Err(Error::malformed());
     }
     let row: Option<(Uuid, String, Option<serde_json::Value>)> = sqlx::query_as(
-        "SELECT c.launch_id, c.state, c.payload FROM agent_threads.commands c
+        "SELECT c.launch_id, c.state, c.payload FROM agent_threads.remote_commands c
          JOIN agent_threads.launches l ON l.account_id = c.account_id AND l.launch_id = c.launch_id
          WHERE c.account_id = $1 AND c.device_id = $2 AND c.command_id = $3
            AND c.delivered_at IS NOT NULL AND l.device_removed_at IS NULL",
@@ -250,7 +250,7 @@ pub(in crate::fleet) async fn result(
         close_control(conn, owner, launch).await?;
     }
     sqlx::query(
-        "UPDATE agent_threads.commands SET state = $3, cause = $4, payload = NULL, closed_at = $5
+        "UPDATE agent_threads.remote_commands SET state = $3, cause = $4, payload = NULL, closed_at = $5
          WHERE account_id = $1 AND command_id = $2",
     )
     .bind(owner.account)
@@ -290,7 +290,7 @@ async fn close_control(conn: &mut PgConnection, owner: Owner, launch: Uuid) -> R
     .execute(&mut *conn)
     .await?;
     sqlx::query(
-        "UPDATE agent_threads.commands SET state = 'refused', cause = 'thread_ended', payload = NULL, closed_at = clock_timestamp()
+        "UPDATE agent_threads.remote_commands SET state = 'refused', cause = 'thread_ended', payload = NULL, closed_at = clock_timestamp()
          WHERE account_id = $1 AND launch_id = $2 AND state = 'waiting'",
     )
     .bind(owner.account)

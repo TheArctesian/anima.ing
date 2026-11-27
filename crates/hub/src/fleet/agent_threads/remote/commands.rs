@@ -114,7 +114,7 @@ async fn retry(
     payload: &Payload,
 ) -> Result<Option<CommandReceipt>, Error> {
     let row: Option<(Uuid, Vec<u8>, i16)> = sqlx::query_as(
-        "SELECT device_id, fingerprint, key_version FROM agent_threads.commands
+        "SELECT device_id, fingerprint, key_version FROM agent_threads.remote_commands
          WHERE account_id = $1 AND command_id = $2",
     )
     .bind(account)
@@ -226,7 +226,7 @@ async fn insert(
     fingerprint: Vec<u8>,
 ) -> Result<(), Error> {
     let bytes: i32 = sqlx::query_scalar(
-        "INSERT INTO agent_threads.commands (
+        "INSERT INTO agent_threads.remote_commands (
              account_id, command_id, device_id, launch_id, kind, payload, fingerprint,
              key_version, state, created_at, deadline
          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'waiting',$9,$10)
@@ -255,7 +255,7 @@ pub(in crate::fleet) async fn command_receipt(
 ) -> Result<CommandReceipt, Error> {
     let mut tx = db.begin().await?;
     let device: Option<Uuid> = sqlx::query_scalar(
-        "SELECT device_id FROM agent_threads.commands WHERE account_id = $1 AND command_id = $2",
+        "SELECT device_id FROM agent_threads.remote_commands WHERE account_id = $1 AND command_id = $2",
     )
     .bind(account)
     .bind(id)
@@ -276,7 +276,7 @@ async fn receipt(
     id: &str,
 ) -> Result<CommandReceipt, Error> {
     sqlx::query_as(
-        "SELECT command_id, state, cause FROM agent_threads.commands
+        "SELECT command_id, state, cause FROM agent_threads.remote_commands
          WHERE account_id = $1 AND command_id = $2",
     )
     .bind(account)

@@ -106,7 +106,7 @@ async fn close_waiting(
     cause: &str,
 ) -> Result<(), Error> {
     sqlx::query(
-        "UPDATE agent_threads.commands SET state = 'refused', cause = $3, payload = NULL, closed_at = clock_timestamp()
+        "UPDATE agent_threads.remote_commands SET state = 'refused', cause = $3, payload = NULL, closed_at = clock_timestamp()
          WHERE account_id = $1 AND launch_id = $2 AND state = 'waiting'",
     )
     .bind(owner.account)

@@ -11,7 +11,7 @@ pub(in crate::fleet::agent_threads) async fn sweep(db: &PgPool) -> Result<(), Er
                 AND (launch.\"authorization\" IS NOT NULL OR (launch.claimed_at IS NULL AND launch.evidence IS NULL)))
             OR (launch.lease_end IS NOT NULL AND
                 least(launch.lease_end, launch.claimed_at + interval '120 seconds') <= clock_timestamp())
-            OR EXISTS (SELECT FROM agent_threads.commands command
+            OR EXISTS (SELECT FROM agent_threads.remote_commands command
                        WHERE command.device_id = launch.device_id AND command.state = 'waiting'
                          AND command.deadline <= clock_timestamp())
          ORDER BY launch.device_id",
@@ -64,7 +64,7 @@ async fn retire(db: &PgPool) -> Result<(), Error> {
     .await?;
     // Retain the retry identity. Only records already closed to delivery can retire.
     sqlx::query(
-        "UPDATE agent_threads.commands SET state = 'retired', cause = NULL
+        "UPDATE agent_threads.remote_commands SET state = 'retired', cause = NULL
          WHERE state IN ('recorded','refused','expired')
            AND closed_at < clock_timestamp() - interval '24 hours'",
     )
@@ -76,7 +76,7 @@ async fn retire(db: &PgPool) -> Result<(), Error> {
            AND (launch.evidence <> 'created' OR launch.withdrawn OR launch.control_closed
                 OR launch.publication = 'timed_out')
            AND launch.deadline < clock_timestamp() - interval '24 hours'
-           AND NOT EXISTS (SELECT FROM agent_threads.commands c WHERE c.account_id = launch.account_id
+           AND NOT EXISTS (SELECT FROM agent_threads.remote_commands c WHERE c.account_id = launch.account_id
                            AND c.launch_id = launch.launch_id AND c.state <> 'retired')",
     ).execute(&mut *tx).await?;
     tx.commit().await?;

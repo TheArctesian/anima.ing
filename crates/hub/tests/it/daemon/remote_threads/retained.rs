@@ -181,7 +181,7 @@ async fn assert_scrubbed(pool: &PgPool) {
     let (offers, bodies): (i64, i64) = sqlx::query_as(
         "SELECT
             (SELECT count(*) FROM agent_threads.control_offers WHERE launch_id = $1::uuid),
-            (SELECT count(*) FROM agent_threads.commands WHERE launch_id = $1::uuid AND payload IS NOT NULL)"
+            (SELECT count(*) FROM agent_threads.remote_commands WHERE launch_id = $1::uuid AND payload IS NOT NULL)"
     ).bind(LAUNCH).fetch_one(pool).await.unwrap();
     assert_eq!((offers, bodies), (0, 0));
 }
