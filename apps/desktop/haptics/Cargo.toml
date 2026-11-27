@@ -1,0 +1,19 @@
+[package]
+name = "tauri-plugin-haptics"
+description = "Plays the haptic feedback of iOS for the web view, which cannot vibrate (mobile plan M4-4)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+# Tauri finds a plugin's iOS package through this name: the app's build reads it from the plugin's build output.
+links = "tauri-plugin-haptics"
+
+[build-dependencies]
+tauri-plugin = { version = "2.7", features = ["build"] }
+
+[dependencies]
+tauri.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

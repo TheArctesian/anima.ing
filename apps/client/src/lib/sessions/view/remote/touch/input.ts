@@ -1,5 +1,7 @@
 import type { Size } from '../../display';
 import type { SessionTunnel } from '../../../tunnel/guacamole/tunnel';
+import type { Region } from './trackpad';
+import { onWheel, wheelRoll, type Notch, type WheelRoll } from './wheel';
 
 type Client = Pick<SessionTunnel['client'], 'getDisplay' | 'sendMouseState'>;
 export interface Point { readonly x: number; readonly y: number }
@@ -12,6 +14,8 @@ export const FIT_VIEWPORT: TouchViewport = { x: 0, y: 0, zoom: 1 };
 const MAX_ZOOM = 4;
 const TAP_DISTANCE = 7;
 const DRAG_HOLD_MS = 350;
+/** Room, in CSS px, that the view keeps between the touch pointer and the edge of the screen. */
+const FOLLOW_MARGIN = 32;
 
 function limit(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -38,6 +42,26 @@ export function pointerInPane(at: Point | undefined, remote: Size, view: TouchVi
   const x = at === undefined ? remote.width / 2 : limit(at.x, 0, Math.max(0, remote.width - 1));
   const y = at === undefined ? remote.height / 2 : limit(at.y, 0, Math.max(0, remote.height - 1));
   return { x: view.x + x * shown, y: view.y + y * shown };
+}
+
+/** The view at rest: the middle of the remote is in the middle of the pane, where the touch pointer starts. */
+export function middleViewport(pane: Size, remote: Size, scale: number): TouchViewport {
+  return { zoom: 1, x: (pane.width - remote.width * scale) / 2, y: (pane.height - remote.height * scale) / 2 };
+}
+
+function followAxis(position: number, at: number, size: number): number {
+  const margin = Math.min(FOLLOW_MARGIN, size / 2);
+  if (at < margin) return position + margin - at;
+  if (at > size - margin) return position + size - margin - at;
+  return position;
+}
+
+/**
+ * The view moved so that the pointer, shown at `shown` in the pane, is inside the screen's margin: a display larger than
+ * its screen moves under the pointer, so the pointer does not leave the view. `boundViewport` then keeps the display on it.
+ */
+export function followPointer(view: TouchViewport, shown: Point, screen: Size): TouchViewport {
+  return { zoom: view.zoom, x: followAxis(view.x, shown.x, screen.width), y: followAxis(view.y, shown.y, screen.height) };
 }
 
 interface Pinch {
@@ -72,9 +96,15 @@ interface TouchHooks {
   show(view: TouchViewport): void;
   /** The remote pointer moved to `at`, in remote pixels. */
   pointer(at: Point): void;
+  /** The trackpad's wheel in the pane, when the trackpad shows one. */
+  wheel?(): Region | undefined;
+  /** The wheel turned to `travel` CSS px in all; `held` while a finger is on it. */
+  rolled?(travel: number, held: boolean): void;
+  /** One notch of the wheel under the finger, which the finger feels as a tick (mobile plan M4-4). A coasting wheel does not tick. */
+  ticked?(): void;
 }
 
-type Button = 'left' | 'right' | null;
+type Button = 'left' | 'right' | Notch | null;
 type Send = (delta: Point, button: Button) => void;
 
 /** The display's own cursor stays hidden: a touch screen has no pointer, so the view draws one at a readable size. */
@@ -93,7 +123,7 @@ function cursorSender(client: Client, moved: (at: Point) => void): Send {
       y: limit(from.y + delta.y / scale, 0, height - 1),
     };
     moved(cursor);
-    client.sendMouseState({ ...cursor, left: button === 'left', right: button === 'right', middle: false, up: false, down: false }, false);
+    client.sendMouseState({ ...cursor, left: button === 'left', right: button === 'right', middle: false, up: button === 'up', down: button === 'down' }, false);
   };
 }
 
@@ -106,7 +136,10 @@ interface TouchState {
   dragged: boolean;
   pinching: boolean;
   cancelled: boolean;
+  /** One finger that landed on the wheel scrolls, and a tap there still clicks. */
+  wheeling: boolean;
   send: Send;
+  roll: WheelRoll;
 }
 
 const STILL: Point = { x: 0, y: 0 };
@@ -116,8 +149,9 @@ function pointInPane(state: TouchState, event: PointerEvent): Point {
 }
 
 function down(state: TouchState, pane: HTMLElement, viewport: TouchHooks, event: PointerEvent): void {
-  if (event.pointerType !== 'touch' || state.touches.size >= 2) return;
+  if (event.pointerType !== 'touch' || state.touches.size >= 2 || state.wheeling) return;
   event.preventDefault();
+  state.roll.stop();
   if (state.touches.size === 0) {
     const { left, top } = pane.getBoundingClientRect();
     state.origin = { x: left, y: top };
@@ -125,6 +159,11 @@ function down(state: TouchState, pane: HTMLElement, viewport: TouchHooks, event:
   pane.setPointerCapture(event.pointerId);
   const point = pointInPane(state, event);
   state.touches.set(event.pointerId, point);
+  const wheel = state.touches.size === 1 ? viewport.wheel?.() : undefined;
+  if (wheel !== undefined && onWheel(point, wheel)) {
+    state.wheeling = true;
+    state.roll.start(point.y, event.timeStamp);
+  }
   if (state.touches.size === 1 && state.gesture === undefined) state.start = { point, at: event.timeStamp };
   if (state.touches.size === 2) {
     if (state.dragged) state.send(STILL, null);
@@ -149,6 +188,11 @@ function move(state: TouchState, viewport: TouchHooks, event: PointerEvent): voi
   const start = state.start;
   if (start === undefined) return;
   if (!state.moved && Math.hypot(point.x - start.point.x, point.y - start.point.y) < TAP_DISTANCE) return;
+  if (state.wheeling) {
+    state.moved = true;
+    state.roll.move(point.y, event.timeStamp);
+    return;
+  }
   if (!state.moved && event.timeStamp - start.at >= DRAG_HOLD_MS) {
     state.dragged = true;
     state.send(STILL, 'left');
@@ -162,6 +206,7 @@ function end(state: TouchState, event: PointerEvent): void {
   if (!state.touches.delete(event.pointerId)) return;
   state.cancelled ||= event.type !== 'pointerup';
   if (state.touches.size > 0) return;
+  if (state.wheeling) state.roll.release(event.timeStamp);
   if (!state.moved && !state.cancelled && !state.pinching) {
     state.send(STILL, state.gesture === undefined ? 'left' : 'right');
     state.send(STILL, null);
@@ -174,12 +219,21 @@ function end(state: TouchState, event: PointerEvent): void {
   state.dragged = false;
   state.pinching = false;
   state.cancelled = false;
+  state.wheeling = false;
 }
 
 export function touchRemote(pane: HTMLElement, client: Client, viewport: TouchHooks): () => void {
+  const send = cursorSender(client, (at) => { viewport.pointer(at); });
+  const roll = wheelRoll({
+    notch: (direction, held) => {
+      send(STILL, direction);
+      send(STILL, null);
+      if (held) viewport.ticked?.();
+    },
+    rolled: (travel, held) => { viewport.rolled?.(travel, held); },
+  });
   const state: TouchState = {
-    touches: new Map(), origin: STILL, moved: false, dragged: false, pinching: false, cancelled: false,
-    send: cursorSender(client, (at) => { viewport.pointer(at); }),
+    touches: new Map(), origin: STILL, moved: false, dragged: false, pinching: false, cancelled: false, wheeling: false, send, roll,
   };
   const listeners = new AbortController();
   const options = { signal: listeners.signal };
@@ -191,6 +245,7 @@ export function touchRemote(pane: HTMLElement, client: Client, viewport: TouchHo
   pane.addEventListener('lostpointercapture', release, options);
   return () => {
     if (state.dragged) state.send(STILL, null);
+    roll.stop();
     listeners.abort();
   };
 }

@@ -3,7 +3,7 @@ import type { HubAddress } from './address';
 import type { HubResult } from './error';
 import { sendRequest, type TokenProvider } from './request';
 import { createConnection, type LiveStatus } from './status/connection';
-import { createSocket, type Sink } from './socket/socket';
+import { createSocket, type Sink, type Visibility } from './socket/socket';
 import type { CopyPlace } from './recent/copy';
 import { createRecentCopy } from './recent/recent';
 
@@ -63,6 +63,8 @@ export interface HubOptions {
   readonly WebSocket?: typeof WebSocket;
   readonly now?: () => Date;
   readonly timeoutMs?: number;
+  /** The page whose return to the screen retries the socket at once (MOB-036); `document` when absent. */
+  readonly visibility?: Visibility;
   /** When given, a copied query that the hub does not answer gives its last answer (FND-007). */
   readonly recent?: CopyPlace;
 }
@@ -88,6 +90,7 @@ export function createHub(options: HubOptions): Hub {
     token: options.socketToken ?? token,
     signal: connection.signal,
     timeoutMs,
+    visibility: options.visibility ?? (typeof document === 'undefined' ? undefined : document),
   });
   const recent = options.recent === undefined ? undefined : createRecentCopy({ ...options.recent, address, now, served: connection.copyShown });
   return {

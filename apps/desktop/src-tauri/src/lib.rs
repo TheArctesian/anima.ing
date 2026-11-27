@@ -50,6 +50,8 @@ mod os_program;
 mod phone_browser;
 #[cfg(mobile)]
 mod phone_link;
+#[cfg(any(mobile, test))]
+mod phone_resume;
 #[cfg(desktop)]
 mod process_log;
 #[cfg(desktop)]
