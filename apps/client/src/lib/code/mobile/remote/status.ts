@@ -2,7 +2,11 @@ import type { HubError } from '$lib/hub/hub';
 import type { CommandReceipt, LaunchReceipt } from '../api';
 
 export function launchWaiting({ binding, state }: LaunchReceipt): boolean {
-  return binding === 'waiting' && ['queued', 'claimed', 'reconciling', 'started'].includes(state);
+  return ['queued', 'claimed', 'reconciling'].includes(state) || (state === 'started' && binding === 'waiting');
+}
+
+export function launchAcknowledgement({ binding, state }: LaunchReceipt): boolean {
+  return binding === 'bound' || state === 'started' || state === 'retired';
 }
 
 export function confirmedThread({ binding, thread }: LaunchReceipt): string | null {
@@ -28,8 +32,8 @@ function reason(cause: string | null | undefined): string {
 }
 
 export function launchMessage(receipt: LaunchReceipt): string {
-  if (receipt.binding === 'unavailable' && ['queued', 'claimed', 'reconciling'].includes(receipt.state)) {
-    return 'The hub cannot confirm the start on this computer.';
+  if (receipt.binding === 'unavailable' && launchWaiting(receipt)) {
+    return 'The hub has no confirmed result yet. Checking whether the computer started the thread.';
   }
   switch (receipt.state) {
     case 'queued': return 'Waiting for the computer to accept the start.';

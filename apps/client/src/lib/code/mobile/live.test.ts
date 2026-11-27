@@ -68,6 +68,9 @@ async function open(
         const agentThread = thread === undefined ? null : { summary: thread.summary, lastSequence: thread.lastSequence };
         return Promise.resolve(Response.json({ data: { agentThread } }));
       }
+      if (query.startsWith('query MobileRemoteOperator')) {
+        return Promise.resolve(Response.json({ data: { me: { id: 'operator-a' } } }));
+      }
       if (query.startsWith('query MobileRemoteControl')) {
         return Promise.resolve(Response.json({ data: { agentThreadControl: { thread: variables.thread, offer: null } } }));
       }

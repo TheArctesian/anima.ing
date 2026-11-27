@@ -6,19 +6,25 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { Connection } from '$lib/hub/hub';
   import type { CommandReceipt, RemoteCodeApi, StartTarget } from '../api';
+  import type { RecoveryScope } from './recovery';
   import { followReceipt, watchRemote } from './receipt.svelte';
-  import { commandMessage, commandWaiting, confirmedThread, launchMessage, launchWaiting, remoteError } from './status';
+  import { commandMessage, commandWaiting, confirmedThread, launchAcknowledgement, launchMessage, launchWaiting, remoteError } from './status';
   import './controls.css';
 
   interface Props {
     api: RemoteCodeApi;
+    scope: RecoveryScope;
     machines: ReadonlyMap<string, string>;
     connection: Connection;
     close: () => void;
   }
 
-  const { api, machines, connection, close }: Props = $props();
-  const launch = followReceipt((id) => api.launch(id), launchWaiting);
+  const { api, scope, machines, connection, close }: Props = $props();
+  const launch = untrack(() => followReceipt(
+    (id) => api.launch(id),
+    { waiting: launchWaiting, acknowledge: launchAcknowledgement },
+    { scope, key: scope.key('launch') },
+  ));
   let targets = $state.raw<readonly StartTarget[]>([]);
   let selected = $state.raw<StartTarget | null>(null);
   let access = $state<Mode | ''>('');
@@ -28,7 +34,7 @@
   let loaded = $state(false);
   let first = $state.raw<CommandReceipt | null>(null);
   const thread = $derived(launch.receipt === null ? null : confirmedThread(launch.receipt));
-  const locked = $derived(launch.pending || thread !== null);
+  const locked = $derived(launch.blocked);
   const ready = $derived(connection === 'connected' && !locked && !fetching
     && selected !== null && access !== '' && prompt.trim() !== '');
 
@@ -68,8 +74,19 @@
     void launch.start({ id: input.launch, submit: () => api.start(input) });
   }
 
+  function differentThread(): void {
+    launch.acknowledge();
+    selected = null;
+    access = '';
+    prompt = '';
+    void loadTargets();
+  }
+
   $effect(() => {
-    untrack(() => { void loadTargets(); });
+    untrack(() => {
+      void loadTargets();
+      void launch.refresh();
+    });
     return watchRemote(() => { void launch.refresh(); });
   });
 
@@ -86,7 +103,8 @@
     async function readFirst(id: string): Promise<void> {
       if (checking || settled) return;
       checking = true;
-      const result = await api.command(id);
+      const authorized = await scope.authorize();
+      const result = authorized.ok ? await api.command(id) : authorized;
       checking = false;
       if (!active) return;
       first = result.ok ? result.value : null;
@@ -104,13 +122,16 @@
 <section class="remote-control" aria-labelledby="remote-launch-title">
   <div class="remote-actions">
     <h2 id="remote-launch-title">New thread</h2>
-    <FormButton size="lg" tone="ghost" disabled={locked && thread === null} onclick={close}>Close</FormButton>
+    <FormButton size="lg" tone="ghost" onclick={close}>Close</FormButton>
   </div>
 
   {#if thread !== null}
     <p role="status">Thread started on the computer.</p>
     {#if first !== null}<p role="status">First prompt · {commandMessage(first)}</p>{/if}
-    <a href={resolve(`/code?thread=${encodeURIComponent(thread)}`)} class="remote-link" onclick={close}>Open thread</a>
+    <a href={resolve(`/code?thread=${encodeURIComponent(thread)}`)} class="remote-link" onclick={() => { launch.acknowledge(); close(); }}>Open thread</a>
+  {:else if launch.completed && launch.receipt !== null}
+    <p role="status">{launchMessage(launch.receipt)}</p>
+    <FormButton size="lg" onclick={differentThread}>Start a different thread</FormButton>
   {:else}
     <form onsubmit={start}>
       <label>
@@ -162,8 +183,12 @@
     {#if launch.error !== null}
       <p role="status">{remoteError(launch.error)}</p>
     {/if}
-    {#if launch.canRetry}
-      <FormButton size="lg" onclick={() => { void launch.retry(); }}>Retry same start</FormButton>
+    {#if launch.pending}
+      <p class="remote-note">You can close this form and check the same start again from Code.</p>
+      <FormButton size="lg" disabled={launch.busy} onclick={() => { void launch.refresh(); }}>Check start status</FormButton>
+      {#if launch.canRetry}
+        <FormButton size="lg" onclick={() => { void launch.retry(); }}>Retry same start</FormButton>
+      {/if}
     {/if}
   {/if}
 </section>

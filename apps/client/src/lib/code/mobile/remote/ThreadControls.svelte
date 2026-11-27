@@ -7,18 +7,20 @@
   import type { ControlOffer, RemoteCodeApi } from '../api';
   import CommandStatus from './CommandStatus.svelte';
   import QuestionAnswer from './QuestionAnswer.svelte';
+  import type { RecoveryScope } from './recovery';
   import { followReceipt, watchRemote } from './receipt.svelte';
   import { commandWaiting, remoteError } from './status';
   import './controls.css';
 
   interface Props {
     api: RemoteCodeApi;
+    scope: RecoveryScope;
     thread: string;
     connection: Connection;
     children: Snippet;
   }
 
-  const { api, thread, connection, children }: Props = $props();
+  const { api, scope, thread, connection, children }: Props = $props();
   type StopTarget = ControlOffer['stopTargets'][number];
   let offer = $state.raw<ControlOffer | null>(null);
   let offerError = $state('');
@@ -28,9 +30,13 @@
   const answered = new SvelteSet<string>();
   const stopped = new SvelteSet<string>();
   let ending = $state.raw<StopTarget | null>(null);
-  const prompt = followReceipt((id) => api.command(id), commandWaiting);
-  const answer = followReceipt((id) => api.command(id), commandWaiting);
-  const stop = followReceipt((id) => api.command(id), commandWaiting);
+  function command(kind: 'prompt' | 'answer' | 'stop') {
+    return followReceipt((id) => api.command(id), { waiting: commandWaiting }, { scope, key: scope.key([kind, thread]) });
+  }
+
+  const prompt = command('prompt');
+  const answer = command('answer');
+  const stop = command('stop');
   const connected = $derived(connection === 'connected');
   const live = $derived(connected ? offer : null);
   const answers = $derived(live?.actions.includes('answer') === true ? live.requests : []);
@@ -60,11 +66,15 @@
     };
   });
 
-  $effect(() => watchRemote(() => {
-    void prompt.refresh();
-    void answer.refresh();
-    void stop.refresh();
-  }));
+  $effect(() => {
+    function refreshReceipts(): void {
+      void prompt.refresh();
+      void answer.refresh();
+      void stop.refresh();
+    }
+    untrack(refreshReceipts);
+    return watchRemote(refreshReceipts);
+  });
 
   $effect(() => {
     if (prompt.receipt?.state === 'recorded') draft = '';
@@ -74,7 +84,7 @@
 
   function sendPrompt(event: SubmitEvent): void {
     event.preventDefault();
-    if (!canPrompt || prompt.pending || draft.trim() === '') return;
+    if (!canPrompt || prompt.blocked || draft.trim() === '') return;
     const input = { thread, command: crypto.randomUUID(), prompt: draft };
     void prompt.start({ id: input.command, submit: () => api.prompt(input) });
   }
@@ -84,7 +94,7 @@
   }
 
   function answerDisabled(process: string, request: string): boolean {
-    return answer.pending || answered.has(answerKey(process, request));
+    return answer.blocked || answered.has(answerKey(process, request));
   }
 
   function sendAnswer(current: ControlOffer, request: string, payload: AgentThreadAnswerPayload): void {
@@ -99,7 +109,7 @@
   }
 
   function stopDisabled(target: StopTarget): boolean {
-    return stop.pending || stopped.has(stopKey(target));
+    return stop.blocked || stopped.has(stopKey(target));
   }
 
   function sendStop(target: StopTarget): void {
@@ -155,14 +165,14 @@
   </section>
 {/if}
 
-{#if canPrompt || stopTargets.length > 0 || prompt.pending || prompt.receipt !== null || prompt.error !== null
-  || answer.pending || answer.receipt !== null || answer.error !== null || stop.pending || stop.receipt !== null || stop.error !== null}
+{#if canPrompt || stopTargets.length > 0 || prompt.blocked || prompt.receipt !== null || prompt.error !== null
+  || answer.blocked || answer.receipt !== null || answer.error !== null || stop.blocked || stop.receipt !== null || stop.error !== null}
   <section class="remote-control" aria-label="Thread actions">
     {#if canPrompt}
       <form onsubmit={sendPrompt}>
-        <label>Follow-up <textarea rows="3" bind:value={draft} disabled={prompt.pending}></textarea></label>
+        <label>Follow-up <textarea rows="3" bind:value={draft} disabled={prompt.blocked}></textarea></label>
         <div class="remote-actions">
-          <FormButton size="lg" tone="primary" type="submit" disabled={prompt.pending || draft.trim() === ''}>Send follow-up</FormButton>
+          <FormButton size="lg" tone="primary" type="submit" disabled={prompt.blocked || draft.trim() === ''}>Send follow-up</FormButton>
         </div>
       </form>
     {/if}

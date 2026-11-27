@@ -15,10 +15,11 @@
     api: MobileCodeApi;
     onnodes?: (() => void) | undefined;
     machines: ReadonlyMap<string, string>;
-    start: () => void;
+    startLabel: string;
+    start?: (() => void) | undefined;
   }
 
-  const { api, machines, onnodes, start }: Props = $props();
+  const { api, machines, onnodes, start, startLabel }: Props = $props();
   let threads = $state.raw<ThreadSummary[]>([]);
   let more = $state<string | null>(null);
   let error = $state('');
@@ -57,7 +58,7 @@
 <section aria-labelledby="mobile-code-title" class="inbox">
   <header>
     <h1 id="mobile-code-title">Code</h1>
-    <FormButton size="lg" tone="primary" onclick={start}>New thread</FormButton>
+    {#if start}<FormButton size="lg" tone="primary" onclick={start}>{startLabel}</FormButton>{/if}
     {#if onnodes}<button class="refresh" type="button" onclick={onnodes} aria-label="Code on a node">
       <CodeIcon name="laptop" size="md" />
     </button>{/if}

@@ -23,10 +23,11 @@ let app: ReturnType<typeof mount> | undefined;
 vi.mock('$app/state', () => ({ page: { get url() { return url; } } }));
 vi.mock('$lib/hub/context', () => ({ useHub: () => hub }));
 
-function open(answers: Record<string, unknown>, search = '') {
+function open(answers: Record<string, unknown>, search = '', endpoint = 'https://hub.test/graphql') {
   url = new URL(`https://hub.test/code${search}`);
+  answers['MobileRemoteOperator'] ??= { me: { id: 'operator-a' } };
   const mock = fakeHub(answers);
-  hub = mock.hub;
+  hub = { ...mock.hub, address: { ...mock.hub.address, http: endpoint } };
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
   app = mount(MobileCode, { target: document.body });
   return mock.requests;
@@ -56,9 +57,14 @@ function inputs(requests: ReturnType<typeof open>, name: string) {
   return requests.filter(({ operation }) => operation === name).map(({ variables }) => variables['input']);
 }
 
-afterEach(async () => {
+async function leave(): Promise<void> {
   if (app !== undefined) await unmount(app);
   app = undefined;
+}
+
+afterEach(async () => {
+  await leave();
+  localStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -69,6 +75,7 @@ it('retries the same start and only offers to open the thread after the hub bind
     MobileRemoteStart: { code: 'unreachable', message: 'The response was lost.' },
   };
   const requests = open(answers);
+  await vi.waitFor(() => { button('New thread'); });
   button('New thread').click();
   await vi.waitFor(() => { expect(document.querySelector('select')?.textContent).toContain(TARGET.folder); });
   select(0, 1);
@@ -141,6 +148,11 @@ it('binds each answer and stop to the live offer while keeping a follow-up pendi
   button('Send answer').click();
   button('Stop the turn').click();
 
+  await vi.waitFor(() => {
+    expect(inputs(requests, 'MobileRemotePrompt')).toHaveLength(1);
+    expect(inputs(requests, 'MobileRemoteAnswer')).toHaveLength(2);
+    expect(inputs(requests, 'MobileRemoteStop')).toHaveLength(1);
+  });
   const [prompt] = inputs(requests, 'MobileRemotePrompt');
   const sentAnswers = inputs(requests, 'MobileRemoteAnswer');
   const [stop] = inputs(requests, 'MobileRemoteStop');
@@ -151,4 +163,94 @@ it('binds each answer and stop to the live offer while keeping a follow-up pendi
   ]);
   expect(stop).toMatchObject({ thread: THREAD, target: STOP });
   expect(new Set([prompt, ...sentAnswers, stop].map((input) => (input as { command: string }).command)).size).toBe(4);
+});
+
+
+it('retains an ambiguous start through later auth refusal and restores only its receipt in the original scope', async () => {
+  const answers: Record<string, unknown> = {
+    MobileThreadInbox: { agentThreads: { nodes: [], pageInfo: { hasNextPage: false } } },
+    MobileRemoteTargets: { agentThreadStartTargets: [TARGET] },
+    MobileRemoteStart: { code: 'unreachable', message: 'The response was lost.' },
+  };
+  const requests = open(answers);
+  await vi.waitFor(() => { button('New thread'); });
+  button('New thread').click();
+  await vi.waitFor(() => { expect(document.querySelector('select')?.textContent).toContain(TARGET.folder); });
+  select(0, 1);
+  select(1, 1);
+  fill('Sensitive synthetic prompt');
+  await vi.waitFor(() => { expect(button('Start thread').disabled).toBe(false); });
+  button('Start thread').click();
+  await vi.waitFor(() => { button('Retry same start'); });
+
+  answers['MobileRemoteStart'] = { code: 'UNAUTHENTICATED', message: 'Sign in again.' };
+  button('Retry same start').click();
+  await vi.waitFor(() => { expect(document.body.textContent).toContain('Sign in again.'); });
+  expect(button('Start thread').disabled).toBe(true);
+  const [first, retry] = inputs(requests, 'MobileRemoteStart');
+  expect(retry).toEqual(first);
+  const { launch } = first as { launch: string };
+  expect(Object.values(localStorage)).toEqual([launch]);
+  expect(Object.keys(localStorage).join()).not.toContain('Sensitive synthetic prompt');
+  await leave();
+
+  for (const [account, endpoint] of [
+    ['operator-b', 'https://hub.test/graphql'],
+    ['operator-a', 'https://other.test/graphql'],
+  ] as const) {
+    const other = open({ ...answers, MobileRemoteOperator: { me: { id: account } } }, '', endpoint);
+    await vi.waitFor(() => { button('New thread'); });
+    button('New thread').click();
+    await vi.waitFor(() => { expect(other.some(({ operation }) => operation === 'MobileRemoteTargets')).toBe(true); });
+    expect(other.some(({ operation }) => operation === 'MobileRemoteLaunch')).toBe(false);
+    await leave();
+  }
+
+  answers['MobileRemoteLaunch'] = {
+    agentThreadLaunch: { ...STARTED, launch, state: 'reconciling', binding: 'unavailable', cause: 'publication_timeout' },
+  };
+  const restored = open(answers);
+  await vi.waitFor(() => { button('Check previous start'); });
+  button('Check previous start').click();
+  await vi.waitFor(() => { expect(document.body.textContent).toContain('Checking whether the computer started the thread.'); });
+  expect(restored).toContainEqual({ operation: 'MobileRemoteLaunch', variables: { launch } });
+  expect(button('Start thread').disabled).toBe(true);
+  expect(document.body.textContent).not.toContain('Retry same start');
+
+  answers['MobileRemoteLaunch'] = {
+    agentThreadLaunch: { ...STARTED, launch, binding: 'unavailable', cause: 'publication_timeout' },
+  };
+  button('Check start status').click();
+  await vi.waitFor(() => { expect(document.body.textContent).toContain('The computer started the thread.'); });
+  expect(inputs(restored, 'MobileRemoteStart')).toEqual([]);
+  expect(document.querySelector('a[href*="thread="]')).toBeNull();
+  button('Start a different thread').click();
+  await vi.waitFor(() => { expect(button('Start thread').disabled).toBe(true); });
+  expect(document.querySelector('textarea')?.value).toBe('');
+});
+
+it('looks up an ambiguous command by its original ID when the thread reopens', async () => {
+  const offer = { process: PROCESS, revision: 5, actions: ['prompt'], requests: [], stopTargets: [] };
+  const answers: Record<string, unknown> = {
+    ...conversation(offer),
+    MobileRemotePrompt: { code: 'unreachable', message: 'The command response was lost.' },
+  };
+  const original = open(answers, `?thread=${THREAD}`);
+  await vi.waitFor(() => { expect(document.querySelector('textarea')).not.toBeNull(); });
+  fill('Follow-up payload kept in memory only');
+  await vi.waitFor(() => { expect(button('Send follow-up').disabled).toBe(false); });
+  button('Send follow-up').click();
+  await vi.waitFor(() => { expect(document.body.textContent).toContain('The command response was lost.'); });
+  const [first] = inputs(original, 'MobileRemotePrompt');
+  const { command } = first as { command: string };
+  expect(Object.values(localStorage)).toEqual([command]);
+  await leave();
+
+  answers['MobileRemoteCommand'] = { agentThreadCommand: { command, state: 'delivered', cause: null } };
+  const restored = open(answers, `?thread=${THREAD}`);
+  await vi.waitFor(() => { expect(document.body.textContent).toContain('Sent to the computer.'); });
+  expect(restored).toContainEqual({ operation: 'MobileRemoteCommand', variables: { command } });
+  expect(inputs(restored, 'MobileRemotePrompt')).toEqual([]);
+  expect(button('Send follow-up').disabled).toBe(true);
+  expect(document.querySelector('textarea')?.value).toBe('');
 });

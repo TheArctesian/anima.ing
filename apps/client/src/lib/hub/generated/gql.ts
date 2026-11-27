@@ -71,6 +71,7 @@ type Documents = {
     "\n  subscription MobileThreadEntries($id: ID!, $afterSequence: String!) {\n    agentThreadEntries(id: $id, afterSequence: $afterSequence) {\n      sequence\n      content\n    }\n  }\n": typeof types.MobileThreadEntriesDocument,
     "\n  fragment MobileLaunchReceipt on AgentThreadLaunchReceipt {\n    launch state cause thread binding firstCommand\n  }\n": typeof types.MobileLaunchReceiptFragmentDoc,
     "\n  fragment MobileCommandReceipt on AgentThreadCommandReceipt {\n    command state cause\n  }\n": typeof types.MobileCommandReceiptFragmentDoc,
+    "\n  query MobileRemoteOperator {\n    me { id }\n  }\n": typeof types.MobileRemoteOperatorDocument,
     "\n  query MobileRemoteTargets {\n    agentThreadStartTargets { device project folder program expiresAt }\n  }\n": typeof types.MobileRemoteTargetsDocument,
     "\n  query MobileRemoteLaunch($launch: ID!) {\n    agentThreadLaunch(launch: $launch) { ...MobileLaunchReceipt }\n  }\n": typeof types.MobileRemoteLaunchDocument,
     "\n  query MobileRemoteCommand($command: ID!) {\n    agentThreadCommand(command: $command) { ...MobileCommandReceipt }\n  }\n": typeof types.MobileRemoteCommandDocument,
@@ -305,6 +306,7 @@ const documents: Documents = {
     "\n  subscription MobileThreadEntries($id: ID!, $afterSequence: String!) {\n    agentThreadEntries(id: $id, afterSequence: $afterSequence) {\n      sequence\n      content\n    }\n  }\n": types.MobileThreadEntriesDocument,
     "\n  fragment MobileLaunchReceipt on AgentThreadLaunchReceipt {\n    launch state cause thread binding firstCommand\n  }\n": types.MobileLaunchReceiptFragmentDoc,
     "\n  fragment MobileCommandReceipt on AgentThreadCommandReceipt {\n    command state cause\n  }\n": types.MobileCommandReceiptFragmentDoc,
+    "\n  query MobileRemoteOperator {\n    me { id }\n  }\n": types.MobileRemoteOperatorDocument,
     "\n  query MobileRemoteTargets {\n    agentThreadStartTargets { device project folder program expiresAt }\n  }\n": types.MobileRemoteTargetsDocument,
     "\n  query MobileRemoteLaunch($launch: ID!) {\n    agentThreadLaunch(launch: $launch) { ...MobileLaunchReceipt }\n  }\n": types.MobileRemoteLaunchDocument,
     "\n  query MobileRemoteCommand($command: ID!) {\n    agentThreadCommand(command: $command) { ...MobileCommandReceipt }\n  }\n": types.MobileRemoteCommandDocument,
@@ -724,6 +726,10 @@ export function graphql(source: "\n  fragment MobileLaunchReceipt on AgentThread
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  fragment MobileCommandReceipt on AgentThreadCommandReceipt {\n    command state cause\n  }\n"): (typeof documents)["\n  fragment MobileCommandReceipt on AgentThreadCommandReceipt {\n    command state cause\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MobileRemoteOperator {\n    me { id }\n  }\n"): (typeof documents)["\n  query MobileRemoteOperator {\n    me { id }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
