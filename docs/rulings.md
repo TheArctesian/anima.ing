@@ -696,11 +696,6 @@ Operator, 2026-11-23, firsthand in the session "Level 1 model service" (fork, on
 
 Operator, 2026-11-23, firsthand in the same exchange: asked whether L1-10 may write the new contract `contracts/compute/model-request.md` (the listener and its port, the Anima fields of `/v1/models`, the header `Anima-Node`, the reasons of a refusal, the report of use, the rule for the choice of a node), the operator answered "yes". This is the ruling that CON-001 needs for task L1-10 of [compute-plan.md](plans/compute-plan.md). OD-C7 and OD-C10 were already decided (R-165).
 
-## R-470 — Accept the W2 isolation design with conditions
-
-On 2026-11-23 the operator delegated the design decision, saying “for w2 design use your best judgment.” The session accepted Section 4 of the [W2 prototype record](research/work-isolation/w2-isolation.md) with conditions after two separate reviews. One reviewed the isolation security against the scripts and logs. The other checked the design against the plan and contracts.
-
-PRO-064 to PRO-070 of the [projects and builds plan](plans/projects-and-builds-plan.md) specify the conditions. Section 5 of the prototype record lists measurements for W4 and S. This ruling leaves OD-W36 open, changes no contract, and gives no permission to enable a runner for `TheArctesian/anima.ing` before task S and PRO-044. A per-job virtual machine or Docker service needs its own ruling. The prototype measurements and HT-065 do not cover the final implementation.
 ## R-471 — Keep three desktop releases from Builds
 
 Operator, 2026-11-12: "maybe we only keep like 3 versions on there" (recorded on
