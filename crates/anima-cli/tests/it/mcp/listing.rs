@@ -5,7 +5,7 @@ use serde_json::json;
 use super::session::{API_KEY, Desk, LOGIN_TOKEN, assert_protocol_only, hub};
 use crate::kit::fake_hub::{FakeHub, refusal};
 
-const DEVICE_TOOLS: [&str; 26] = [
+const DEVICE_READ_TOOLS: [&str; 19] = [
     "anima_fleet_overview",
     "anima_devices_search",
     "anima_device_get",
@@ -18,20 +18,13 @@ const DEVICE_TOOLS: [&str; 26] = [
     "anima_container_storage",
     "anima_container_networks",
     "anima_container_updates",
-    "anima_container_action",
     "anima_container_action_status",
+    "anima_application_apply_status",
+    "anima_application_apply_targets",
     "anima_compose_check",
     "anima_compose_from_run",
     "anima_catalogue_list",
     "anima_catalogue_show",
-    "anima_catalogue_install",
-    "anima_device_create",
-    "anima_site_create",
-    "anima_device_wake",
-    "anima_device_update",
-    "anima_device_delete",
-    "anima_compute_policy_set",
-    "anima_daemon_set_need",
 ];
 
 #[tokio::test]
@@ -115,14 +108,7 @@ async fn mcp_002_toolsets_limit_the_list_and_write_can_be_given_per_set() {
         .start(&hub, LOGIN_TOKEN, &["--toolsets", "devices"])
         .await;
     let names = session.tool_names().await;
-    assert_eq!(
-        names,
-        DEVICE_TOOLS[..18]
-            .iter()
-            .filter(|name| **name != "anima_container_action")
-            .copied()
-            .collect::<Vec<_>>()
-    );
+    assert_eq!(names, DEVICE_READ_TOOLS);
     session.finish().await;
 
     let (mut session, _) = desk
