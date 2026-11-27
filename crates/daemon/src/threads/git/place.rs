@@ -6,8 +6,10 @@
 
 pub mod chosen;
 pub mod disk;
+pub(super) mod lfs;
 pub mod own;
 pub mod records;
+mod registry;
 pub mod shared;
 pub mod walk;
 pub mod wired;
@@ -78,6 +80,9 @@ pub struct Record {
     /// What the work folder was when it was made; `None` where the system has no such number.
     #[serde(default)]
     pub folder_id: Option<super::run::folder::FolderId>,
+    /// Binds an interrupted orphan removal to a legacy record without a folder identity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) orphan_removal: Option<Uuid>,
 }
 
 /// A worktree of a thread that passed each check: its real folder is below the home and is the
@@ -197,41 +202,10 @@ impl Home {
         self.projects().join(format!("{name}.git"))
     }
 
-    fn record_file(&self, thread: Uuid, repository: &str) -> Result<PathBuf, BadPlace> {
+    pub(super) fn record_file(&self, thread: Uuid, repository: &str) -> Result<PathBuf, BadPlace> {
         self.planned(thread, repository)?;
         let thread = thread.as_hyphenated().to_string();
         Ok(self.records.join(thread).join(format!("{repository}.json")))
-    }
-
-    /// Writes the record of a worktree, in a folder and a file for the user alone.
-    ///
-    /// # Errors
-    /// A [`BadPlace`] for a bad name, or when the file cannot be written.
-    pub fn keep(&self, thread: Uuid, repository: &str, record: &Record) -> Result<(), BadPlace> {
-        let file = self.record_file(thread, repository)?;
-        let folder = file.parent().ok_or(BadPlace::Escapes)?;
-        private_folder(folder).map_err(|_| BadPlace::NotOurWorktree)?;
-        let text = serde_json::to_vec_pretty(record).map_err(|_| BadPlace::NotOurWorktree)?;
-        std::fs::write(&file, text).map_err(|_| BadPlace::NotOurWorktree)
-    }
-
-    /// Removes the record of a worktree that was removed.
-    pub fn forget(&self, thread: Uuid, repository: &str) {
-        if let Ok(file) = self.record_file(thread, repository) {
-            // A record that is gone already is the wanted state.
-            let _ = std::fs::remove_file(&file);
-            let _ = file.parent().map(std::fs::remove_dir);
-        }
-    }
-
-    /// The record of the worktree of `repository` of `thread`, as the runner wrote it.
-    ///
-    /// # Errors
-    /// [`BadPlace::NotOurWorktree`] when the runner made no such worktree.
-    pub fn recorded(&self, thread: Uuid, repository: &str) -> Result<Record, BadPlace> {
-        let file = self.record_file(thread, repository)?;
-        let text = std::fs::read(file).map_err(|_| BadPlace::NotOurWorktree)?;
-        serde_json::from_slice(&text).map_err(|_| BadPlace::NotOurWorktree)
     }
 
     /// The worktree of `repository` of `thread` for its removal alone, when it is not whole
@@ -254,7 +228,7 @@ impl Home {
             && real != home
             && same
             && record.own == self.own(thread, repository).ok()?
-            && record.own.is_dir();
+            && self.private_git_exists(&record.own).ok()?;
         ours.then_some(Worktree { thread, record })
     }
 
@@ -267,14 +241,17 @@ impl Home {
     /// A [`BadPlace`] when a check fails.
     pub fn worktree(&self, thread: Uuid, repository: &str) -> Result<Worktree, BadPlace> {
         let record = match self.recorded(thread, repository) {
-            Ok(record) if record.own.is_dir() => record,
-            // The system removed what was not used for a long time (`/var/tmp` on Linux).
-            Ok(_) => return Err(BadPlace::Expired),
+            Ok(record) => record,
             Err(_) if self.planned(thread, repository)?.join(".git").is_file() => {
                 return Err(BadPlace::Expired);
             }
             Err(none) => return Err(none),
         };
+        match self.private_git_exists(&record.own) {
+            Ok(true) => {}
+            Ok(false) => return Err(BadPlace::Expired),
+            Err(_) => return Err(BadPlace::NotOurWorktree),
+        }
         // Where the worktree was made, which is not the home of now after a change of it.
         let planned = Self::at(&record.home, &self.records)?.planned(thread, repository)?;
         let home = std::fs::canonicalize(&record.home).map_err(|_| BadPlace::NotOurWorktree)?;
@@ -295,7 +272,7 @@ impl Home {
         }
         let ours = record.own == self.own(thread, repository)?
             && record.shared == self.shared(&record.project);
-        if !ours || !record.own.is_dir() {
+        if !ours {
             return Err(BadPlace::NotOurWorktree);
         }
         Ok(Worktree { thread, record })
@@ -315,7 +292,7 @@ pub fn private_folder(folder: &Path) -> std::io::Result<()> {
 }
 
 /// A path with only normal parts: no `..`, no `.`.
-fn plain(path: &Path) -> bool {
+pub(super) fn plain(path: &Path) -> bool {
     path.components().all(|part| {
         matches!(
             part,

@@ -26,6 +26,7 @@ COPY apps/desktop/src-tauri ./apps/desktop/src-tauri
 COPY apps/desktop/keyboard ./apps/desktop/keyboard
 COPY apps/desktop/account-session ./apps/desktop/account-session
 COPY apps/desktop/runner ./apps/desktop/runner
+COPY apps/desktop/haptics ./apps/desktop/haptics
 RUN cargo build --release --locked --bin anima-hub
 
 FROM debian:bookworm-20261027-slim

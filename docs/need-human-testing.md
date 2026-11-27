@@ -30,6 +30,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-194 | The scroll wheel of the trackpad and the motion of the connection steps on an iPhone (M4-2, RA-050, 5.7.3) | The iPhone app from a build of `dev` with this change; a Mac with a long page in a browser | Open |
+| HT-193 | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
 | HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
@@ -216,15 +218,57 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Tap the text field. Type ordinary text, one accented character and one IME composition, then use Enter and Backspace. Confirm each appears once on the remote desktop.
 - Background the app and interrupt its network. Reopen the app, check the session reconnect behavior, and use the pointer again.
 
+### HT-193: the iPhone app is back on the network a few seconds after it comes back from the background
+
+- State: Open.
+- Built: on a phone, the app starts its link again when it comes back to the screen after 10 s or more away. After iOS suspended the app, the tunnel of the link and its local port were stale, but the link still reported that it ran, so the app showed "Not on the network" for a minute or more (MOB-036; `apps/desktop/src-tauri/src/phone_resume.rs`, `phone_link.rs`, `mobile.rs`). The restart keeps the port, so the address of the hub and its token stay the same. The live connection of the client retries at once when the app shows again, and then waits from 1 s again (`apps/client/src/lib/hub/socket/socket.ts`). For a hub that Anima.ing hosts, the banner shows "Hosted by Anima.ing" in place of the port, and on a phone or a tablet it says "Check this device's network" (NET-004, R-461). The tests cover the decision to restart, the retry when the page shows and the words of the banner. They do not cover iOS suspending the app, a real tunnel or a real network.
+- Needs: the iPhone app from a build of `dev` with this change, signed in to the hosted hub.
+- Open the app on the Devices page. Expected: no banner.
+- Lock the iPhone for 5 minutes. Unlock it and open the app. Expected: the Devices page updates within about 5 seconds; the banner "Not on the network" shows for a few seconds or not at all.
+- Open a VNC session. Switch to a different app for 5 seconds and come back. Expected: the session is still connected, and the pointer moves.
+- Turn Wi-Fi off, so that the iPhone uses the mobile network. Switch to a different app for 1 minute and come back. Expected: the same result as after the lock.
+- If the banner shows, read it. Expected: "Hosted by Anima.ing", not an address such as 127.0.0.1, and "Check this device's network".
+
+### HT-194: the scroll wheel of the trackpad and the motion of the connection steps on an iPhone
+
+- State: Open.
+- Built: a scroll wheel in the middle of the trackpad of a touch session (R-462; `apps/client/src/lib/sessions/view/remote/touch/wheel.ts`, `touch/input.ts`, `touch/Trackpad.svelte`): a finger that lands on it and moves up or down sends one notch of a mouse wheel for each 14 px, with the content following the finger; a fast release lets it coast and slow down; a tap on it clicks. The connection steps at the start of a session (R-463; `apps/client/src/lib/sessions/view/steps/ConnectionSteps.svelte`, `steps/motion.ts`): a reel in the middle of the pane, where the step that runs is in the middle with a ring and a turning arc, the steps that ended roll up over it, and a step shows only when it starts; a check that grows in with one ring; a line and a row of segments under the reel. The line is a status for VoiceOver. After a start that stopped, the reason and Reconnect stand in the middle under the steps (`EndedPanel.svelte`). The client tests cover the notches, the coast and its stop, the tap, the place of each step in the reel, the line and its role, the old line leaving before the new one, the place of the ended panel, and that the repeating motions do not start with reduced motion or in a hidden window. They do not cover a real finger, the feel of the coast, VoiceOver, Increase Contrast, or the motion on a real screen.
+- Needs: the iPhone app from a build of `dev` with this change; a Mac with a long web page open in a browser.
+- Open a VNC session to the Mac from the iPhone app, in portrait. Expected: while it connects, the step that runs is large in the middle of the screen, with a ring that goes out from its mark and an arc that turns around it, and a line of text under it says what runs. When a step ends, its mark turns into a check, it rolls up and gets smaller, and the next step rises into the middle. A step that has not started is not shown. The segment of each step that ended fills.
+- Turn on Reduce Motion in the iPhone's settings (Accessibility, Motion) and open the session again. Expected: no ring and no turning arc; the steps change place at once, the marks cross-fade, and the old line under the steps fades before the new one shows. Turn Reduce Motion off.
+- Turn on Increase Contrast (Accessibility, Display & Text Size) and open the session again. Expected: the step that ended last is as clear as the step that runs; no faint row shows above it. Turn Increase Contrast off.
+- Turn on VoiceOver and open the session again. Expected: VoiceOver says each new line under the steps (for example "Opening the gateway to" and the Mac's name) without a swipe. Turn VoiceOver off.
+- Turn off Screen Sharing on the Mac (System Settings, General, Sharing) and open the session again. Expected: the step that stopped turns red with a cross, the line says "Stopped at" and the step, and the reason and the Reconnect button stand in the middle under the steps. Reconnect is easy to tap with a thumb. Turn Screen Sharing on again.
+- In the session, move the pointer over the long web page. Look at the trackpad under the Mac's screen. Expected: a wheel in its middle, with the words Trackpad on one side and Wheel on the other. The small words under them (Slide to move, Roll to scroll) are easy to read.
+- Put a finger on the wheel and move it down slowly. Expected: the ridges of the wheel move with the finger, and the page scrolls up a little for each small step, as on an iPhone. Move it up. Expected: the page scrolls down.
+- Flick the wheel and lift the finger. Expected: the page keeps scrolling for a moment and slows down to a stop. Flick it again, then touch the trackpad. Expected: the scrolling stops at once.
+- Tap the wheel without moving. Expected: the Mac clicks at the tip of the pointer, as a tap on the rest of the trackpad does.
+- Turn the iPhone to landscape. Expected: the wheel is in the middle of the trackpad beside the Mac's screen, with Trackpad above it and Wheel below it.
+
+### HT-195: the haptics of the trackpad wheel and of a session start on an iPhone
+
+- State: Open.
+- Built: haptic feedback in the iPhone app (mobile plan M4-4, R-464, MOT-050). The web view of iOS cannot vibrate, so a local Tauri plugin plays the feedback generators of iOS (`apps/desktop/haptics`) for the shell command `haptic_play` (`apps/desktop/src-tauri/src/mobile/haptics.rs`; capability `haptics.json`, iOS only). The client plays a selection tick for each notch of the trackpad wheel under the finger and none while the wheel coasts (`remote/touch/wheel.ts`, `touch/input.ts`, `RemoteDisplay.svelte`); a success when the connection steps reach connected and an error when a start stops before it, in the terminal and in the remote view (`steps/feedback.svelte.ts`); and nothing on Android, in a browser or on a desktop (`$lib/desktop/haptics/haptics.ts`). The client tests cover which change plays which pattern, that a coast plays nothing, and that only the app on an iPhone or an iPad calls the shell. The Swift package was compiled for the iOS simulator and the shell passes Clippy for it. They do not cover the feel on a real iPhone (the simulator plays no haptics), the time between a notch and its tick, or the System Haptics setting.
+- Needs: an iPhone with haptics (iPhone 8 or later) with System Haptics on (Settings, Sounds & Haptics); the iPhone app from a build of `dev` with this change; a Mac with Screen Sharing on and a long web page open in a browser.
+- Open a VNC session to the Mac. Expected: one short success feedback at the moment the screen of the Mac shows, and none while the steps run.
+- Put a finger on the wheel of the trackpad and move it down slowly. Expected: a light tick for each small step that the page scrolls, in time with the ridges of the wheel, as in a picker of iOS.
+- Flick the wheel and lift the finger. Expected: ticks while the finger is on the wheel; no ticks while the page keeps scrolling after the finger lifted.
+- While the session is connected, turn off Screen Sharing on the Mac. Expected: the session ends and the iPhone plays nothing.
+- Open the session again, with Screen Sharing still off. Expected: one error feedback, stronger than the success, at the moment the step that stopped turns red. Turn Screen Sharing on again.
+- Open an SSH session to a device. Expected: one success feedback when the terminal shows.
+- Turn off System Haptics. Open the VNC session and roll the wheel. Expected: no feedback at all. Turn System Haptics on again.
+
 ### HT-192: a remote desktop on an iPhone fills the screen and shows the pointer
 
 - State: Open.
-- Built: on a phone, a VNC or RDP session uses the whole screen inside the safe area in each orientation, with the app's navigation hidden; one bar under the display holds Back, Keys, Fit, Displays and the text field; a pointer of a fixed size shows where a tap clicks (`apps/client/src/lib/sessions/strip/SessionPanes.svelte`, `apps/client/src/lib/sessions/view/remote/`). The client tests cover the pointer position, and a browser test covers the layout at iPhone sizes. They do not cover the iOS keyboard, the safe areas of a real iPhone, or a real VNC server.
-- Open a VNC session from the iPhone app to the Mac. In portrait, check that the Mac's screen spans the width, that the pointer shows at the centre of it, and that one bar is at the bottom, above the home indicator. Expected: no bar at the top, and no app navigation.
+- Built: on a phone, a VNC or RDP session uses the whole screen inside the safe area in each orientation, with the app's navigation hidden; one bar under the display holds Back, Keys, Fit, Displays and the text field; a pointer of a fixed size shows where a tap clicks (`apps/client/src/lib/sessions/strip/SessionPanes.svelte`, `apps/client/src/lib/sessions/view/remote/`). The room that the display leaves shows as a trackpad (`touch/Trackpad.svelte`); the display keeps the whole height of a landscape screen, grows until the trackpad is 160 px, is always bigger than the trackpad, and follows the pointer to its sides (`touch/trackpad.ts`, `touch/input.ts`). The gateway asks the VNC device for the cursor shape, so the device does not draw its pointer into the screen (`crates/anima-gateway/src/vnc/messages.rs`). The client tests cover the pointer position, the trackpad layout and the view that follows the pointer, the gateway tests cover the cursor shape, and a browser test covers the layout at iPhone sizes. They do not cover the iOS keyboard, the safe areas of a real iPhone, or a real VNC server.
+- Open a VNC session from the iPhone app to the Mac. In portrait, check that the Mac's screen shows its full height, from the menu bar to the Dock, that the pointer shows at the centre of it, and that one bar is at the bottom, above the home indicator. Expected: no bar at the top, and no app navigation.
 - Turn the iPhone to landscape. Expected: the Mac's screen uses the full height above the bar, and the app's navigation rail does not show.
 - Move one finger on the screen. Expected: the drawn pointer and the Mac's pointer move together. Tap a harmless spot. Expected: the click lands at the tip of the drawn pointer.
+- In portrait, look at the part under the Mac's screen. Expected: it shows a small trackpad with the word Trackpad. Slide one finger on it in large circles for 10 seconds. Expected: the pointer moves on the Mac's screen, and no copies of the pointer stay on the Mac's screen. Slide the pointer to the right edge of the Mac's screen, then to the left edge. Expected: the view moves with the pointer, and the pointer stays in view. Turn the iPhone to landscape. Expected: the Mac's screen shows at its full height, or larger when the full height would make it narrower than the trackpad, and the trackpad at the right of it is narrower than the Mac's screen.
 - Tap the text field and type a word. Expected: the bar sits on the keyboard, the field stays visible, the page does not zoom, and the word appears once on the Mac.
 - Use Back, then reopen the session from its tab. Expected: the session stayed connected.
+- 2026-11-26: the operator still saw old pointers on the Mac's screen in a session from the iPhone app with the hosted hub. The session that built the change found that the hosted hub then ran a hub image of 2026-11-22, and the gateway asks for the cursor shape only from `c5f2c0347` (2026-11-25), so that session did not have the change. The step must be done again after the hosted hub runs an image with it. The state stays Open.
 
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 
@@ -5149,14 +5193,29 @@ hub and OS versions. This is not included in the already published 2026112301363
    Expected: a connection failure, never a false claim that the server was installed. Installing/enabling host SSH on arbitrary operating systems is not implemented by this connection-settings change.
 ### HT-163: the Git actions of a thread, when a person can reach them (TC7, steps W1 to W4)
 
-Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` at `56e0132c6` and `6791fb123`). Nothing reaches it yet: this check cannot start before step W2 (the command) or W4 (the page) of Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md). The tests use made repositories in temporary folders, a launcher that stands in, and no remote on the network. They do not cover: a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.
+Built: the Git engine, the runner calls (W1), and the local command (W2). The tests use made repositories in temporary folders and a launcher that stands in. The command tests use a made runner socket. They do not cover: the installed runner and command together, a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.
+
+Synthetic upgrade tests cover interrupted W1 removal with a partial or missing worktree. Recovery metadata and rename parents are synced before a completed receipt is released; source review and normal filesystem tests do not simulate power loss or establish storage-device persistence guarantees. Crash recovery remains an installed-system check.
+
+To check W2, start a thread in a worktree as in HT-169. Use the command prefix `anima code git --thread <thread ID> --repository <worktree folder name>`.
+
+1. Run `status`, then `checkpoints` and `changes` after the first turn.
+   Expected: the thread's branch and the files that changed. Checkpoints show turn 0 and the completed turn. Changes show a patch and a reviewed snapshot.
+2. If status lists Git settings to accept, read them and run `trust --shown <acceptance digest>`. Run `commit -m "Check the CLI" --reviewed <reviewed snapshot>`.
+   Expected: the command prints the commit. In the worktree, `git show HEAD` shows the changes from the snapshot.
+3. On a disposable worktree, run `revert 0` and confirm.
+   Expected: revert restores the files at turn 0 and shows an undo ref.
+4. Put a note in the worktree and add its name to `.gitignore`. Run `remove` and confirm.
+   Expected: the active worktree path goes away. The command prints the saved ref and the recovery directory. The ignored note is in the recovery directory and is absent from the saved Git ref. Run `remove` again with the same thread and repository. It returns the same original and recovery paths.
+
+For the remaining checks, use the page when W4 is available. The remote query and the hook and LFS notices also require the separate remote step in Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md).
 
 1. In a repository with a `pre-commit` hook, commit from a thread in Accept edits, then from a thread in Full access.
    Expected: the first commit runs no hook and says in a short line that the hooks of the repository were skipped; the second runs the hook.
 2. Push a branch of a thread through Anima to a private remote. Then push one more commit with `git push` in a terminal, and look at the status of the thread.
    Expected: no prompt for credentials that Anima shows; after the question to the remote the status says "pushed" for the commit that the remote has, however it came there; the upstream is not written into the settings of the repository.
 3. Remove a worktree that has files that are not committed, with one large file tracked by Git LFS.
-   Expected: the removal names the ref that keeps the work; `git show` of that ref in the repository has each file; the large file can be checked out.
+   Expected: the removal names the saved ref and the directory with the complete worktree. The large file remains in the retained directory and can be checked out from the saved ref.
 4. Start a thread in `/Users/Shared`, and one in the home folder.
    Expected: the first is refused with words that say why; the second starts with the warning of THR-041.
 5. Open a project that was made with `git clone --shared`, and a project on Windows.
@@ -5164,7 +5223,7 @@ Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` 
 6. Look at the folder of the records (`/Users/Shared/anima-<uid>` on a Mac) as a different user of the same Mac.
    Expected: that user cannot list it or read it.
 
-Result: Open. Not started: the steps W1 to W4 are not built.
+Result: Open.
 ### HT-164-bootstrap: One-action local SSH setup (OS3-R12)
 
 Built on `access/ssh-bootstrap`. The shared helper is called by the desktop SSH switch and `anima link enable-ssh`. Native macOS and Windows installation and system authorization dialogs have not been verified. The operator waived the Mac-before-push check for this change.
@@ -5705,11 +5764,15 @@ absence of tool-side cache writes, or a blocked filesystem on each host platform
 Windows collection is not implemented; no positive Windows inventory is claimed.
 
 Independent review of `00e1cc235` found no blocking code findings for default-off CI.
-Before real-probe enablement, TH135 must add synthetic tests through the parent
-collection boundary for a blocked worker and a descendant retaining stdout. The tests
-must prove the five-second deadline, bounded return and descendant cleanup, and run
-with `mobile-inventory` enabled. Direct worker-dispatch tests do not establish these
-properties. This validation follow-up remains open; review did not authorize probes.
+Synthetic tests now exercise the parent collection I/O boundary for a blocked worker
+and an exited worker whose descendant retains stdout. They check the five-second
+deadline, bounded return and process cleanup; the feature-enabled Linux and Mac CI
+steps select them. Increasing the deadline and removing group cleanup each makes
+its respective test fail. Local Mac tests pass. Separate review found no production or security regression.
+The paused-clock case rejects a six-second deadline. Removing the outer guard failed
+in the measured run, but that failure depends on OS reaping timing: deterministic
+coverage of a stalled reap remains open before real-probe enablement. Linux CI
+execution also remains pending. This does not authorize real probes.
 
 After that validation, implementation review and operator authorization for real
 probes, use a disposable enrolled Mac with an existing Xcode and Android SDK installation:
@@ -5805,3 +5868,43 @@ successful HTTPS exchange with a real Git server still need a check.
    Reopen the desktop. Expect both clones in the project picker.
 4. Repeat with an existing folder containing a file. Expect refusal and the
    original file. In the form, expect the URL and destination fields to stay filled.
+## HT-196: The marks of the programs in Hosting (task H53; HSE-020)
+
+Built on the branch `hosted/h53-brand-marks`: each row of Hosting > Applications and each entry of the Catalogue has a
+tile before its name with the brand mark of its program from Simple Icons, in the accent colour, else the first letter
+of its name. The tests check which mark each name and image gets; nobody has seen the marks drawn in the application.
+
+1. In the desktop application of this build, signed in to a hub with a machine that has SSH on and Docker with a Compose
+   project of a known program (for example Immich, Jellyfin or Nextcloud), open Hosting > Applications.
+   Expected: the row of that program has its brand mark in a small tile before its name, in the accent colour; a
+   program that Simple Icons has no mark for has the first letter of its name in the same tile. The tile is the same
+   size on each row, and the name and the line below it are not moved.
+2. Change the appearance from dark to light.
+   Expected: each mark stays clear on its tile in both appearances.
+3. Open the Catalogue below Applications.
+   Expected: each entry has the mark of its program before its name (for example the elephant of PostgreSQL, the
+   shield of Vaultwarden), or its first letter.
+
+Result: Open.
+
+## HT-198: The Catalogue as rows and its picker (task H55; HSE-022)
+
+Built on the branch `hosted/h55-catalogue-list`: the entries of Hosting > Catalogue are rows as the models of the
+Library, and Install from the catalogue on an empty machine opens the same list in a dialog with that machine chosen.
+The tests use a fake hub in a test page; nobody has seen the rows or the dialog in the application, or used them with
+the keyboard.
+
+1. In the desktop application of this build, signed in to a hub with a machine that runs a program of the catalogue
+   (for example Vaultwarden or Immich), open Hosting > Catalogue.
+   Expected: the entries are rows in groups by category, each with the mark of the program, its name, its tier, its
+   description, and its version and parts; the row of the program that runs ends with "Runs on" and the machine.
+2. Press in the search field, type a part of a name, and press the down arrow, then the down arrow again.
+   Expected: the first matching row is selected, then the next one; its description opens on the right.
+3. Open Hosting > Applications, find a machine with no application, and press Install from the catalogue.
+   Expected: a dialog "Install on" the name of that machine opens, with Machine set to it and the same rows.
+   The button of a selected entry says "Install on" and the machine, and is off with its reason.
+4. Choose a different machine in Machine, then close the dialog with Escape.
+   Expected: the title and the button name the new machine; Escape closes the dialog and the focus goes back to the
+   button that opened it.
+
+Result: Open.

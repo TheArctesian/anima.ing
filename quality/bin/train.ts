@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { carry, changed } from "../src/merge/carry.ts";
 import { finishMerge } from "../src/merge/finish.ts";
 import { isDocument } from "../src/gates/tier.ts";
+import { readNotes, saveNote } from "../src/merge/notes.ts";
 import { conflictsForAHand, parseMergeRule } from "../src/merge/rules.ts";
 import { members, stack, type LeftOut } from "../src/merge/stack.ts";
 import { batch, firstHalf, leftOutSaid, oneLine, standing, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
@@ -48,25 +49,20 @@ function gatesRuns(): GatesRun[] {
   return JSON.parse(must(["gh", "run", "list", "--workflow", "gates.yml", "--limit", "400", "--json", fields])) as GatesRun[];
 }
 
-function notes(ref: string): Map<string, string> {
-  run(["git", "fetch", "--quiet", "origin", `+${ref}:${ref}`]);
-  const noted = run(["git", "notes", "--ref", ref, "list"]).out.split("\n").map((line) => line.split(" ")[1] ?? "");
-  return new Map(noted.filter((sha) => sha !== "").map((sha) => [sha, run(["git", "notes", "--ref", ref, "show", sha]).out]));
-}
-
 function refused(): Map<string, string> {
-  return new Map([...notes(NOTES)].map(([sha, text]) => [sha, text.split("\n")[0] ?? ""]));
+  return new Map([...readNotes(REPO_ROOT, NOTES)].map(([sha, text]) => [sha, text.split("\n")[0] ?? ""]));
 }
 
 function noteLeftOut(each: LeftOut, sha: string, now: Date): void {
-  run(["git", "notes", "--ref", LEFT_OUT, "add", "--force", "-m", `${now.toISOString()}\n${oneLine(each.reason)}`, sha]);
-  run(["git", "push", "--quiet", "origin", LEFT_OUT]);
+  if (!saveNote(REPO_ROOT, LEFT_OUT, sha, `${now.toISOString()}\n${oneLine(each.reason)}`)) console.error(`train: why ${each.branch} is left out is not saved in ${LEFT_OUT}`);
 }
 
 function refuse(tip: Tip, now: Date): void {
   const text = `${now.toISOString()}\nThe gates failed for a train that held only ${tip.branch}, merged with dev.`;
-  must(["git", "notes", "--ref", NOTES, "add", "--force", "-m", text, tip.sha]);
-  must(["git", "push", "--quiet", "origin", NOTES]);
+  if (!saveNote(REPO_ROOT, NOTES, tip.sha, text)) {
+    console.error(`train: the refusal of ${tip.branch} is not saved in ${NOTES}; the train stays, and the next step tries again`);
+    process.exit(4);
+  }
   say(`${tip.branch} (${tip.sha.slice(0, 8)}) failed alone as merged with dev. It stays out until it moves or its own gates pass again.`);
 }
 
@@ -125,16 +121,18 @@ function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undef
     return "wait";
   }
   const held = members(REPO_ROOT, base, train.sha);
+  const [only] = held;
+  // A train that goes with no refusal saved is built again with the same branch: save it first.
+  if (what === "split" && held.length === 1 && only !== undefined) refuse(only, now);
   remove(train);
   if (what !== "split") return void say(`the train ${train.branch} is given up (${stale ? `${INTO} moved before its gates started` : "its gates were cancelled"}); its branches go into the next train`);
-  const [only] = held;
-  if (held.length === 1 && only !== undefined) return void refuse(only, now);
+  if (held.length === 1) return undefined;
   say(`the gates failed for a train of ${held.length} branches; the next train holds the first half`);
   return firstHalf(held);
 }
 
 function sayWhoWaits(runs: GatesRun[], also: "each" | "with-a-run"): void {
-  const left = notes(LEFT_OUT);
+  const left = readNotes(REPO_ROOT, LEFT_OUT);
   for (const each of standing(tips(), runs, refused(), inDev)) {
     const said = leftOutSaid(each.tip.branch, left.get(each.tip.sha));
     if (said !== undefined) say(said);

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionEndReason } from '../ending';
 import { installBlankCanvas } from '../tunnel/fake/canvas.fixture';
 import { FakeTerminalSocket } from '../tunnel/terminal/fake/socket.fixture';
-import { FakeResizeObserver, connectView, flags, installBrowserFakes, settle, showView } from './view.fixture.svelte';
+import { FakeResizeObserver, connectView, flags, installBrowserFakes, screenText, settle, showView } from './view.fixture.svelte';
 
 let cleanups: (() => unknown)[] = [];
 
@@ -21,9 +22,14 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-async function endedBy(end: SessionEndReason | undefined, code: number, recorded: SessionEndReason | null = null) {
+function show() {
   const view = showView();
   cleanups.push(view.close);
+  return view;
+}
+
+async function endedBy(end: SessionEndReason | undefined, code: number, recorded: SessionEndReason | null = null) {
+  const view = show();
   view.answers.endReason = recorded;
   const socket = await connectView();
   if (end !== undefined) socket.end(end);
@@ -90,5 +96,54 @@ describe('each end of a session (K4 §8.6, RA-007)', () => {
     socket.closeWith(1011);
     await settle();
     expect(view.target.querySelector('[data-reason]')?.textContent).toBe('The hub lost the connection to the device.');
+  });
+});
+
+describe('ended panel and Reconnect (RA-007)', () => {
+  it('RA-007: the panel shows the recorded reason, which wins over the end message and the close code (D-4)', async () => {
+    const { target, answers, calls, ended } = show();
+    const socket = await connectView();
+    answers.endReason = 'REMOTE_CLOSED';
+    socket.end('GATEWAY_ERROR');
+    socket.closeWith(1011);
+    await settle();
+    expect(calls.endSession).toEqual(['session-1']);
+    expect(target.querySelector('[data-reason]')?.textContent).toBe('The device closed the session.');
+    expect(target.querySelector('.ended')?.classList.contains('under-steps')).toBe(false);
+    expect(ended.map((ending) => ending.reason)).toEqual(['REMOTE_CLOSED']);
+  });
+
+  it('RA-007: Reconnect calls startSession once, opens a new socket with a new token and clears the old screen', async () => {
+    const { target, calls, heard } = show();
+    const first = await connectView();
+    first.output('old session text');
+    first.closeWith(1000);
+    await settle();
+    expect(screenText(target)).toContain('old session text');
+    const reconnect = [...target.querySelectorAll('button')].find((button) => button.textContent.includes('Reconnect'));
+    reconnect?.click();
+    reconnect?.click();
+    await settle();
+    expect(calls.startSession).toHaveLength(2);
+    expect(FakeTerminalSocket.made).toHaveLength(2);
+    const [old, fresh] = FakeTerminalSocket.made.map((socket) => new URL(socket.url).searchParams.get('token'));
+    expect(fresh).not.toBe(old);
+    FakeTerminalSocket.latest().open();
+    flushSync();
+    expect(screenText(target)).not.toContain('old session text');
+    expect(heard.titles.at(-1)).toBe('');
+  });
+
+  it('a refused start shows fixed text, not the hub message, and offers Reconnect under the steps, whose status says where they stopped', async () => {
+    const { target } = show();
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    FakeTerminalSocket.latest().closeWith(1006);
+    await settle();
+    expect(target.querySelector('[data-reason]')?.textContent).toBe('Could not open the session.');
+    expect([...target.querySelectorAll('button')].some((button) => button.textContent.includes('Reconnect'))).toBe(true);
+    const status = target.querySelector('[data-caption]');
+    expect([status?.getAttribute('role'), status?.textContent]).toEqual(['status', expect.stringContaining('Stopped at')]);
+    expect(target.querySelector('.ended')?.classList.contains('under-steps')).toBe(true);
   });
 });

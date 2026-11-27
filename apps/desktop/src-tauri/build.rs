@@ -69,6 +69,7 @@ const APP_COMMANDS: &[&str] = &[
     "command_line_sign_out",
     "system_browser_open",
     "runner_capabilities_read",
+    "haptic_play",
     "stay_awake_read",
     "stay_awake_choose",
     "stay_awake_floor",

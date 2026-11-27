@@ -8,6 +8,8 @@ mod fixed;
 pub mod folder;
 pub mod hooks;
 mod one;
+mod output;
+mod records;
 pub mod said;
 pub mod settings;
 
@@ -109,6 +111,7 @@ pub struct Git {
     /// ([`Git::for_worktree`]): with them `git` reads no `.git` file of the worktree and
     /// nothing of the Git folder of the person but its objects.
     bound: Vec<(&'static str, OsString)>,
+    records: Option<PathBuf>,
 }
 
 impl Git {
@@ -145,6 +148,7 @@ impl Git {
             as_thread: None,
             folder: None,
             bound: Vec::new(),
+            records: None,
         })
     }
 
@@ -313,27 +317,5 @@ impl Git {
     #[cfg(test)]
     pub(super) fn env_names(&self) -> Vec<OsString> {
         self.env.iter().map(|(name, _)| name.clone()).collect()
-    }
-
-    /// The configuration a run gets through its environment, which wins over each file and
-    /// can name a key with any character in it: each hook of the configuration, off, for a
-    /// run of the runner itself; no push to a folder of this computer for the person.
-    fn overrides(&self, run: &Run<'_>) -> Vec<(String, String)> {
-        let asked = run.asked;
-        let mut set = match asked {
-            Asked::Runner => self.hooks_off.clone(),
-            Asked::Person => Vec::new(),
-        };
-        if asked == Asked::Person && !self.local_remotes {
-            // A push to a folder runs the hooks of that folder, which nothing here turns off.
-            set.push(("protocol.file.allow".to_owned(), "never".to_owned()));
-        }
-        set.extend(run.settings.iter().cloned());
-        let mut env = vec![("GIT_CONFIG_COUNT".to_owned(), set.len().to_string())];
-        for (at, (name, value)) in set.iter().enumerate() {
-            env.push((format!("GIT_CONFIG_KEY_{at}"), name.clone()));
-            env.push((format!("GIT_CONFIG_VALUE_{at}"), value.clone()));
-        }
-        env
     }
 }

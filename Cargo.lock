@@ -175,6 +175,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-account-session",
  "tauri-plugin-dialog",
+ "tauri-plugin-haptics",
  "tauri-plugin-keyboard",
  "tauri-plugin-log",
  "tauri-plugin-notification",
@@ -265,6 +266,7 @@ dependencies = [
  "axum",
  "base64 0.23.1",
  "bytes",
+ "calcifer-macos-acl",
  "chrono",
  "daemon-core",
  "flate2",
@@ -1350,6 +1352,12 @@ dependencies = [
  "libc",
  "system-deps",
 ]
+
+[[package]]
+name = "calcifer-macos-acl"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d623f1bbaccbe0d1c6a9e4d2366feef6e179ac4e235aa86342601caf29358df4"
 
 [[package]]
 name = "camino"
@@ -8781,6 +8789,15 @@ dependencies = [
  "thiserror 2.0.21",
  "toml 1.2.0+spec-1.1.0",
  "url",
+]
+
+[[package]]
+name = "tauri-plugin-haptics"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tauri",
+ "tauri-plugin",
 ]
 
 [[package]]

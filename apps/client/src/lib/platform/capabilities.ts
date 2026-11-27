@@ -34,6 +34,8 @@ export interface Capabilities {
   readonly agentThreads: boolean;
   /** The shell can read this device’s local runner capability report (OD-14). */
   readonly runnerReport: boolean;
+  /** The shell plays the haptic feedback of iOS, which the web view cannot (mobile plan M4-4, MOT-050). */
+  readonly haptics: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
   /** The client draws the window controls and the top of the window moves it (Windows and Linux; agent-threads.md TC2). */

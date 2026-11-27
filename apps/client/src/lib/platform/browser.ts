@@ -20,6 +20,7 @@ export const browserCapabilities: Capabilities = {
   cloudAccount: false,
   accountSession: false,
   runnerReport: false,
+  haptics: false,
   overlayTitleBar: false,
   framelessWindow: false,
   recentCopy: false,

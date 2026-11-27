@@ -38,7 +38,7 @@ pub(super) async fn linked(
     {
         return Ok((hub, receipt));
     }
-    let computer = whoami::hostname().unwrap_or_else(|_| "This computer".to_owned());
+    let computer = super::this_computer();
     let answer = parent
         .run::<AdoptAppSession>(adopt_app_session::Variables { computer })
         .await?;

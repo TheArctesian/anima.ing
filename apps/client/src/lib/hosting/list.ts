@@ -1,5 +1,6 @@
 import type { Container, ImageUpdate } from '$lib/containers/api';
 import { NO_PROJECT, projectGroups, type ContainerRow, type Tone } from '$lib/containers/rows';
+import { brandMark, type BrandMark } from '$lib/brands/mark';
 import { statusLabel } from '$lib/devices/card/card';
 import type { Machine } from './api';
 
@@ -33,6 +34,8 @@ export interface ApplicationRow {
   /** Unique in the list: the machine and the project or the container. */
   readonly key: string;
   readonly name: string;
+  /** HSE-020: the brand mark of its program, found by its name and its images, else its first letter. */
+  readonly mark: BrandMark;
   /** What it is: "Compose project" or the image of the one container. */
   readonly what: string;
   readonly state: string;
@@ -74,6 +77,11 @@ export interface PlaceGroup {
 /** The colour of the status of a machine, beside its word (MAT-005). */
 export const MACHINE_TONES: Readonly<Record<Machine['state'], Tone>> = { UP: 'up', DOWN: 'down', DEGRADED: 'warning', MAINTENANCE: 'warning', UNKNOWN: 'unknown' };
 
+/** HSE-022: each machine with the images that it runs, for the Catalogue to say where a program runs. */
+export function machineImages(places: readonly Place[]): readonly { readonly id: string; readonly name: string; readonly images: readonly string[] }[] {
+  return places.map((place) => ({ id: place.id, name: place.name, images: place.containers.map((container) => container.image) }));
+}
+
 /** HSE-002: the rows of each machine, the machines by name, narrowed by the field, the machine and the choice. */
 export function placeGroups(places: readonly Place[], narrowing: Narrowing): readonly PlaceGroup[] {
   const words = narrowing.search.trim().toLowerCase();
@@ -112,6 +120,7 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
         {
           key: `${place.id}/project/${group.project}`,
           name: group.project,
+          mark: brandMark([group.project], members.map((container) => container.image)),
           what: 'Compose project',
           state: group.state,
           tone: group.tone,
@@ -127,6 +136,7 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
     return group.rows.map((row) => ({
       key: `${place.id}/container/${row.id}`,
       name: row.name,
+      mark: brandMark([row.name], [row.image]),
       what: group.project === NO_PROJECT ? row.image : `${row.image} · Container of ${group.project}`,
       state: row.state,
       tone: row.tone,

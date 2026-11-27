@@ -2,7 +2,7 @@
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use super::{FolderId, Git, GitError, MAX_OUTPUT, Run, said};
+use super::{FolderId, Git, GitError, Run, output, said};
 
 const MAX_TRACE: usize = 256 * 1024;
 
@@ -13,11 +13,11 @@ impl Git {
     /// A [`GitError`] when `git` did not start, did not end in time, wrote too much, or ended
     /// with a code that is not 0.
     pub async fn output(&self, run: Run<'_>) -> Result<Vec<u8>, GitError> {
-        let finished = self.finished(run, Capture::Diagnostic).await?;
-        if finished.code == Some(0) {
-            Ok(finished.out)
+        let (code, out, said) = self.finished(run).await?;
+        if code == Some(0) {
+            Ok(out)
         } else {
-            Err(finished.failure())
+            Err(GitError::Failed { code, said })
         }
     }
 
@@ -25,7 +25,7 @@ impl Git {
     /// The evidence is for local validation and must stay out of logs and replies.
     pub(crate) async fn trace(&self, run: Run<'_>) -> Result<(u32, Vec<u8>), GitError> {
         let run = run.with_env("GIT_TRACE2_EVENT", "2");
-        let finished = self.finished(run, Capture::Trace).await?;
+        let finished = self.capture(run, Capture::Trace).await?;
         if finished.code != Some(0) {
             return Err(GitError::Failed {
                 code: finished.code,
@@ -49,15 +49,28 @@ impl Git {
     /// # Errors
     /// A [`GitError`] for each other code and each failure of the run.
     pub async fn yes(&self, run: Run<'_>) -> Result<bool, GitError> {
-        let finished = self.finished(run, Capture::Diagnostic).await?;
-        match finished.code {
-            Some(0) => Ok(true),
-            Some(1) => Ok(false),
-            _ => Err(finished.failure()),
+        match self.finished(run).await? {
+            (Some(0), ..) => Ok(true),
+            (Some(1), ..) => Ok(false),
+            (code, _, said) => Err(GitError::Failed { code, said }),
         }
     }
 
-    async fn finished(&self, run: Run<'_>, stderr: Capture) -> Result<Finished, GitError> {
+    /// Return the exit status, output and redacted diagnostics for the LFS storage check.
+    pub(in crate::threads::git) async fn finished(
+        &self,
+        run: Run<'_>,
+    ) -> Result<(Option<i32>, Vec<u8>, String), GitError> {
+        let captured = self.capture(run, Capture::Diagnostic).await?;
+        let stderr = String::from_utf8_lossy(captured.err.as_deref().unwrap_or_default());
+        Ok((
+            captured.code,
+            captured.out,
+            said::without_credentials(&stderr),
+        ))
+    }
+
+    async fn capture(&self, run: Run<'_>, stderr: Capture) -> Result<Finished, GitError> {
         // Directly before the run: the work folder is still the one that the runner made, not
         // a folder or a link that an agent put in its place (P12).
         if let Some((folder, made)) = &self.folder
@@ -65,10 +78,12 @@ impl Git {
         {
             return Err(GitError::Replaced);
         }
+        self.check_records(&run)?;
         let mut group = ProcessGroup(self.command(&run).spawn().map_err(GitError::Start)?);
         let pid = group.0.id();
         let input = group.0.stdin.take().zip(run.input);
         let (stdout, diagnostic) = (group.0.stdout.take(), group.0.stderr.take());
+        let prefix = run.output_prefix;
         let collect = async {
             let write = async {
                 if let Some((mut pipe, bytes)) = input {
@@ -76,8 +91,8 @@ impl Git {
                     let _ = pipe.write_all(&bytes).await;
                 }
             };
-            let ((), out) = tokio::join!(write, Capture::Diagnostic.read(stdout));
-            out?.ok_or(GitError::TooLarge)
+            let ((), out) = tokio::join!(write, output::held(stdout, prefix));
+            out.ok_or(GitError::TooLarge)
         };
         let work = async {
             let (out, err) = tokio::try_join!(collect, stderr.read(diagnostic))?;
@@ -101,16 +116,6 @@ struct Finished {
     code: Option<i32>,
     out: Vec<u8>,
     err: Option<Vec<u8>>,
-}
-
-impl Finished {
-    fn failure(&self) -> GitError {
-        let said = String::from_utf8_lossy(self.err.as_deref().unwrap_or_default());
-        GitError::Failed {
-            code: self.code,
-            said: said::without_credentials(&said),
-        }
-    }
 }
 
 struct ProcessGroup(tokio::process::Child);
@@ -142,20 +147,18 @@ impl Capture {
         self,
         pipe: Option<impl tokio::io::AsyncRead + Unpin>,
     ) -> Result<Option<Vec<u8>>, GitError> {
+        if matches!(self, Self::Diagnostic) {
+            return Ok(output::held(pipe, None).await);
+        }
         let mut kept = Vec::new();
         let Some(pipe) = pipe else {
             return Ok(Some(kept));
         };
-        let most = match self {
-            Self::Diagnostic => MAX_OUTPUT,
-            Self::Trace => MAX_TRACE,
-        };
-        let limit = u64::try_from(most).unwrap_or(u64::MAX);
+        let limit = u64::try_from(MAX_TRACE).unwrap_or(u64::MAX);
         let mut pipe = pipe.take(limit.saturating_add(1));
-        let read = pipe.read_to_end(&mut kept).await;
-        if matches!(self, Self::Trace) && (read.is_err() || kept.len() > most) {
+        if pipe.read_to_end(&mut kept).await.is_err() || kept.len() > MAX_TRACE {
             return Err(GitError::TooLarge);
         }
-        Ok((kept.len() <= most).then_some(kept))
+        Ok(Some(kept))
     }
 }

@@ -7,6 +7,7 @@
   import Select from '$lib/forms/input/Select.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
+  import ApplicationName from './ApplicationName.svelte';
   import { needingYou, placeGroups, type ApplicationRow, type Show, type View } from './list';
   import type { HostingStore } from './store.svelte';
 
@@ -15,7 +16,8 @@
    * for each machine, read only. Until the hub keeps the record of the installs (task H6), an application is a Compose
    * project that the hub reads on the machine, and each row is Not managed.
    */
-  const { store }: { store: HostingStore } = $props();
+  /** `oninstall` opens the picker of the Catalogue with a machine chosen (HSE-022); without it, the link opens the Catalogue. */
+  const { store, oninstall }: { store: HostingStore; oninstall?: (machineId: string) => void } = $props();
 
   const groups = $derived(placeGroups(store.places, { search: store.search, machine: store.machine, show: store.show, view: store.view }));
   const all = $derived(placeGroups(store.places, { search: '', machine: '', show: 'all', view: store.view }).flatMap((group) => group.rows));
@@ -30,7 +32,6 @@
     { value: 'not-managed' as Show, label: 'Not managed', count: all.filter((row) => !row.managed).length },
   ]);
   const count = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`;
-  const sub = (row: ApplicationRow) => (row.what === 'Compose project' ? `Compose project · ${count(row.containers.length, 'container')}` : row.what);
   /** HOST-021: a row says Up to date only when the hub said so of each of its containers. */
   function update(row: ApplicationRow): string {
     if (row.newer === null) return '';
@@ -77,7 +78,8 @@
             {#if group.empty}· Nothing installed{:else if group.status === 'ready'}· {count(group.rows.length, 'item')}{/if}
             <span class="summary state {group.tone}"><span class="dot" aria-hidden="true"></span>{group.state}</span>
             {#if group.status === 'ready' && !group.empty}<span class="summary">{group.summary}</span>{/if}
-            {#if group.empty}<a class="summary to" href={resolve('/hosting/catalogue')}>Install from the catalogue</a>{/if}
+            {#if group.empty && oninstall !== undefined}<button type="button" class="summary to" onclick={() => { oninstall(group.id); }}>Install from the catalogue</button>
+            {:else if group.empty}<a class="summary to" href={resolve('/hosting/catalogue')}>Install from the catalogue</a>{/if}
             {#if group.status === 'loading'}<span class="summary">Reading…</span>{/if}
             {#if group.status === 'failed'}<span class="summary problem">{group.problem}</span>{/if}
           </th>
@@ -86,12 +88,7 @@
           {@const opens = row.containers.length > 1 || row.what === 'Compose project'}
           {@const open = store.open.includes(row.key)}
           <tr class:wash={row.needsYou} class={row.tone}>
-            <th scope="row">
-              {#if opens}
-                <button type="button" class="open" aria-expanded={open} onclick={() => store.toggle(row.key)}><span aria-hidden="true">{open ? '▾' : '▸'}</span> {row.name}</button>
-              {:else}<span class="lone">{row.name}</span>{/if}
-              {#if !row.managed} <span class="mark">Not managed</span>{/if} <span class="sub">{sub(row)}</span>
-            </th>
+            <th scope="row"><ApplicationName {row} {open} ontoggle={() => { store.toggle(row.key); }} /></th>
             <td><span class="state {row.tone}"><span class="dot" aria-hidden="true"></span>{row.state}</span></td>
             <td class="sub">{row.managed ? update(row) : (update(row) || 'Read only')}</td>
             <td class="action">{#if !opens && row.containers[0] !== undefined}{@render actions(group.id, row.containers[0])}{/if}</td>
@@ -218,7 +215,12 @@
   }
 
   .to {
+    padding: 0;
+    border: 0;
+    background: none;
     color: var(--accent);
+    font: inherit;
+    cursor: pointer;
   }
 
   /* A row that needs the operator has the wash of its status, as in Routes (HSE-002). */
@@ -229,21 +231,6 @@
   .wash.warning,
   .wash.unknown {
     background: var(--status-degraded-wash);
-  }
-
-  .open,
-  .lone {
-    padding: 0;
-    background: none;
-    border: 0;
-    color: var(--text);
-    font: inherit;
-    font-weight: var(--weight-medium);
-    cursor: pointer;
-  }
-
-  .lone {
-    cursor: auto;
   }
 
   .inner th {
@@ -274,15 +261,6 @@
 
   td.sub {
     display: table-cell;
-  }
-
-  /* The mark is a word with a border that repeats it (MAT-005). */
-  .mark {
-    margin-inline-start: var(--space-2);
-    padding: 0 var(--space-2);
-    border: var(--border-thin) solid var(--border-subtle);
-    border-radius: var(--radius-pill);
-    color: var(--text-secondary);
   }
 
   .state {

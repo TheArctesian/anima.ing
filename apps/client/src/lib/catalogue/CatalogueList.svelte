@@ -1,18 +1,25 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import BrandMark from '$lib/brands/BrandMark.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Input from '$lib/forms/input/Input.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
-  import { SHELL_REASON, TIER_LABELS, rowLine, unreviewed, type TierChoice } from './entry';
+  import { SHELL_REASON, TIER_LABELS, entryMark, rowLine, unreviewed, type TierChoice } from './entry';
+  import { runsOn, type MachineImages } from './runs';
   import type { CatalogueStore } from './store.svelte';
 
   /**
-   * Task H39: the entries of the catalogue in groups by category, with a search and a choice of the tier, so that the
-   * list holds about 200 entries. Only the list scrolls; each group head stays at the top while its rows pass. The arrow
-   * keys move the selection from row to row.
+   * Tasks H39 and H55: the entries of the catalogue in groups by category, with a search and a choice of the tier, so
+   * that the list holds about 200 entries. A row is drawn as a model of the Library (HSE-022): the mark (HSE-020), the
+   * name, the tier, one line, and the facts with the machines where the program runs. Only the list scrolls; each group
+   * head stays at the top while its rows pass. The arrow keys move the selection from row to row, also from the search.
    */
-  const { store }: { store: CatalogueStore } = $props();
+  const { store, machines = [] }: { store: CatalogueStore; machines?: readonly MachineImages[] } = $props();
+  function facts(entry: (typeof store.entries)[number]): string {
+    const where = runsOn(entry, machines);
+    return where.length === 0 ? rowLine(entry) : `${rowLine(entry)} · Runs on ${where.join(', ')}`;
+  }
   const TIERS: readonly TierChoice[] = ['ALL', 'TESTED', 'GENERATED'];
   const tierOptions = $derived(TIERS.map((value) => ({ value, label: TIER_LABELS[value], count: store.counts[value] })));
   const groups = $derived(store.groups);
@@ -31,7 +38,7 @@
 
 <section class="list" aria-label="Entries">
   <div class="tools">
-    <div class="search"><Input type="search" icon="carbon:search" aria-label="Search the catalogue" placeholder="Search by name or tag" value={store.search} oninput={(event) => { store.filter(event.currentTarget.value, store.tier); }} /></div>
+    <div class="search"><Input type="search" icon="carbon:search" aria-label="Search the catalogue" placeholder="Search by name or tag" value={store.search} onkeydown={(event) => void arrow(event)} oninput={(event) => { store.filter(event.currentTarget.value, store.tier); }} /></div>
     <Segmented label="Tier" size="sm" options={tierOptions} value={store.tier} onchange={(tier) => { store.filter(store.search, tier); }} />
   </div>
   <p class="shown" role="status">{shown} {shown === 1 ? 'entry' : 'entries'}</p>
@@ -50,12 +57,12 @@
             {#each group.entries as entry (entry.id)}
               <li>
                 <button type="button" class="entry" aria-pressed={entry.id === store.selected} onkeydown={(event) => void arrow(event)} onclick={() => { store.select(entry.id === store.selected ? null : entry.id); }}>
-                  <span class="lines">
-                    <span class="name">{entry.name}{#if entry.class === 'SHELL'}<span class="mark">Shell</span>{/if}{#if unreviewed(entry)}<span class="mark">Not reviewed</span>{/if}</span>
-                    <span class="line">{rowLine(entry)}</span>
-                    {#if entry.class === 'SHELL'}<span class="line quiet">{SHELL_REASON}</span>{/if}
-                  </span>
+                  <BrandMark mark={entryMark(entry)} />
+                  <span class="name">{entry.name}{#if entry.class === 'SHELL'}<span class="mark">Shell</span>{/if}{#if unreviewed(entry)}<span class="mark">Not reviewed</span>{/if}</span>
                   <span class="mark">{TIER_LABELS[entry.tier]}</span>
+                  <span class="line">{entry.description}</span>
+                  <span class="line">{facts(entry)}</span>
+                  {#if entry.class === 'SHELL'}<span class="line quiet">{SHELL_REASON}</span>{/if}
                 </button>
               </li>
             {/each}
@@ -132,14 +139,15 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* As a model of the Library (Frame 9): the mark beside the lines, the tier at the end of the first. */
   .entry {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: var(--control-md) minmax(0, 1fr) auto;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-1) var(--space-3);
     inline-size: 100%;
     min-block-size: var(--control-lg);
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
     border: 0;
     border-block-start: var(--border-thin) solid var(--border-subtle);
     background: none;
@@ -150,18 +158,17 @@
     cursor: pointer;
   }
 
+  .entry > :global(:first-child) {
+    grid-row: span 3;
+    align-self: start;
+  }
+
   .entry:hover {
     background: var(--surface-hover);
   }
 
   .entry[aria-pressed='true'] {
     background: var(--surface-selected);
-  }
-
-  .lines {
-    display: flex;
-    flex-direction: column;
-    min-inline-size: 0;
   }
 
   .name {
@@ -172,6 +179,7 @@
   }
 
   .line {
+    grid-column: 2 / -1;
     overflow: hidden;
     color: var(--text-secondary);
     text-overflow: ellipsis;

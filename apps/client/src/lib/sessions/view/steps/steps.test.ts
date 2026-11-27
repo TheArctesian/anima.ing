@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { connectionSteps, wakeLine, type Progress } from './steps';
+import { connectionSteps, stepsLine, wakeLine, type Progress } from './steps';
 
 const at = (progress: Partial<Progress>): string[] =>
   connectionSteps({ ticketed: false, waking: false, opened: false, connected: false, stopped: false, ...progress }).map(
@@ -37,4 +37,17 @@ it('RA-031: the wake line names the device as plain text', () => {
 it('RA-031: without a wake packet there is no wake line, and the four steps are the same', () => {
   expect(wake({ waking: false })).toBeUndefined();
   expect(at({ waking: true, ticketed: true })).toEqual(at({ ticketed: true }));
+});
+
+const steps = (progress: Partial<Progress>) =>
+  connectionSteps({ ticketed: false, waking: false, opened: false, connected: false, stopped: false, ...progress });
+
+it.each([
+  [{}, 'Asking the hub for a session'],
+  [{ ticketed: true }, 'Opening the gateway to web-01'],
+  [{ ticketed: true, opened: true }, 'Waiting for web-01'],
+  [{ ticketed: true, stopped: true }, 'Stopped at Gateway'],
+  [{ ticketed: true, opened: true, connected: true }, 'Connected'],
+])('5.7.3: the line under the steps for progress %o says %s', (progress, line) => {
+  expect(stepsLine(steps(progress), 'web-01')).toBe(line);
 });

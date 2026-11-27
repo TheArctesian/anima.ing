@@ -26,7 +26,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.22 | User documentation and the docs site docs.anima.ing | Operator: the approval of UDOC-001 to UDOC-050 (task UD20) in user-documentation.md Section 10, and its [NEEDS CLARIFICATION] markers. Agent: nothing; no ruling names a task. UD0 (a record) can start when a ruling names it |
-| 4.4 | The engine (E0) | Agent: E0-6 T8 (one sign-in and the thread tokens), E0-6 T3 (the `anima secret` commands) and E0-5 T7 (plain `http` to a private address) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"); T1 to T4 of E0-7 are built. Operator: HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
+| 4.4 | The engine (E0) | Agent: E0-6 T8 (one sign-in and the thread tokens) and E0-5 T7 (plain `http` to a private address) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"); T1 to T4 of E0-7 and E0-6 T3 are built. Operator: HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Agent: the tasks of Section 12.4 of compute-plan.md, in their order; read the claims first. Operator: the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md |
 | 4.7 | Jobs, builds and AI agent runs | Operator: an administrator step on a Mac, the acceptance of the design (W2), the check HT-037 of task W0, and the steps of task B1 on his GitHub account. Agent: the assigned TH31 and TH32 workers own W3 part 2 and the W4 `agent_thread` path in projects-and-builds-plan.md. General W4 execution needs W2 and HT-065. |
 | 4.9 | Hosted applications | Operator: the checks HT-032, HT-038, HT-039 and HT-042 on a machine that runs Docker. OD-HOST-13 is decided (R-445). The choices of the two reads and the design for a Mac are decided (R-226 to R-238, R-246); the third read of the text of the container work types found changes of the text only (SF-049 to SF-069), and the text is in its fourth form for the owner of the contract of the work route. Agent: hosted-applications-plan.md, tasks H28, H29 and H30; version 0.4 of the contract of the work route (task H14) with the owner of that contract |
@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 The mobile launch also needs Code under row 4.24 (R-429). |
 
-## 2. Open decisions (231)
+## 2. Open decisions (230)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -186,7 +186,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AXT36 | "the hermes plugin set up in the configs" (R-389): is Hermes Agent a row of its own in the registry of extensions (K-E7), or a manifest under the one switch "Ag… | Open. Recommendation: a manifest under the one switch "Agent tools" (OD-AXT8). | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT44 | What may a granted agent transfer, and on which devices? (one choice: upload to the inbox of a named device only; upload to the inbox and download from the inbo… | Open. Recommendation: upload to the inbox and download from the inbox of named devices; a grant for each agent and each device. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT45 | What is the size limit of an agent-started transfer? (one choice: 20 MiB; 100 MiB; the same as the operator, with no extra limit) | Open. Recommendation: 20 MiB. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
-| OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI7 | Does job 1 get its own row in Section 4 of the work plan, before row 4.5? | Yes: one row "AI agents: usage and panes", tier 2b, before the model service. Row 4.5 keeps its number. | [proposals/ai-direction.md](proposals/ai-direction.md) |
@@ -313,12 +312,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (127)
+## 4. Checks that only the operator can do (130)
 
 | Check | What |
 | --- | --- |
 | HT-181 | the runner relay with real agent programs (TH118) |
 | HT-186 | one VNC monitor at a time on iPad |
+| HT-193 | the iPhone app is back on the network a few seconds after it comes back from the background |
+| HT-194 | the scroll wheel of the trackpad and the motion of the connection steps on an iPhone |
+| HT-195 | the haptics of the trackpad wheel and of a session start on an iPhone |
 | HT-192 | a remote desktop on an iPhone fills the screen and shows the pointer |
 | HT-149 | reporting after an iPad update and the phone Code tab |
 | HT-183 | Device Overview and tabs on iPad |

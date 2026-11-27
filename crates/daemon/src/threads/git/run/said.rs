@@ -2,6 +2,18 @@
 //!
 //! Pure.
 
+/// Redacts the authority user information without altering the destination text.
+#[must_use]
+pub fn destination(url: &str) -> String {
+    if let Some((scheme, rest)) = url.split_once("://") {
+        let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+        if let Some(at) = rest[..end].rfind('@') {
+            return format!("{scheme}://***@{}", &rest[at + 1..]);
+        }
+    }
+    url.to_owned()
+}
+
 /// The words of `git` with each credential of a URL removed (`https://name:secret@host`), cut
 /// to a size a screen can show.
 #[must_use]
