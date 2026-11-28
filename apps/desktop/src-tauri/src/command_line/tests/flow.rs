@@ -163,10 +163,11 @@ fn ins_004_only_the_proposed_folder_or_an_anima_entrys_folder_is_written() {
     let rig = Rig::new();
     fs::create_dir_all(rig.local_bin()).unwrap();
     let here = rig.here(rig.bundle("Anima.app"), true);
+    let outside = tempfile::tempdir().unwrap();
     for folder in [
         rig.home.join("bin"),
         rig.root.clone(),
-        PathBuf::from("/etc"),
+        outside.path().canonicalize().unwrap(),
     ] {
         assert_eq!(
             install_in(&here, &folder),
