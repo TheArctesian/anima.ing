@@ -1,2 +1,2 @@
-2026-11-28T12:49:20.351Z
+2026-11-28T13:41:38.710Z
 a conflict in Cargo.lock, contracts/database.md, crates/daemon-core/src/wire.rs, crates/daemon-core/src/wire/work.rs, crates/daemon/Cargo.toml, crates/hub/src/fleet/compute/policy.rs, crates/hub/src/fleet/metrics/ingest/work.rs, crates/hub/src/lib.rs, crates/hub/src/schema.rs, crates/hub/src/work/jobs.rs, crates/hub/src/work/jobs/claiming.rs, crates/hub/src/work/jobs/lifecycle.rs, crates/hub/src/work/jobs/model.rs, crates/hub/src/work/jobs/results.rs, crates/hub/src/work/jobs/store.rs, crates/hub/src/work/jobs/tests.rs, crates/hub/src/work/jobs/trail.rs, crates/hub/tests/it/daemon/harness.rs, crates/hub/tests/it/jobs.rs, deploy/release/applications.txt, docs/mockup/hosting/index.html, docs/plans/compute-plan.md
