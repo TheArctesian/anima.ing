@@ -179,6 +179,7 @@ impl TokenStore {
             .ok_or(TokenStoreError::Corrupt)
     }
 
+    #[cfg(unix)]
     pub(crate) fn remote_credential(
         &self,
         config: &crate::config::Config,
