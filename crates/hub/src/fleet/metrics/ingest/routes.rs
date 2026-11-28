@@ -94,18 +94,7 @@ pub fn daemon_router(
     feed: Feed,
     (vault, policy): (Vault, PolicyGate),
 ) -> Router {
-    let recorder = Recorder::new(db.clone(), bus.clone());
-    routes(DaemonState {
-        db,
-        feed,
-        bus,
-        clock,
-        vault,
-        turns: Turns::new(DAEMON_REQUESTS, Deadlines::HUB.request),
-        recorder,
-        deadlines: Deadlines::HUB,
-        policy,
-    })
+    routes_within((db, bus, clock), feed, (vault, policy), Deadlines::HUB)
 }
 
 /// The test seam of [`daemon_router`]: the deadlines are a parameter, so a test of one need not
@@ -115,17 +104,28 @@ pub(in crate::fleet::metrics) fn daemon_router_within(
     (db, bus, clock): (PgPool, Bus, Arc<dyn Clock>),
     deadlines: Deadlines,
 ) -> Router {
+    let vault = crate::fleet::credentials::test_vault();
+    let policy: PolicyGate = Arc::new(|_, _| Box::pin(async { Ok(true) }));
+    routes_within((db, bus, clock), Feed::new(), (vault, policy), deadlines)
+}
+
+fn routes_within(
+    (db, bus, clock): (PgPool, Bus, Arc<dyn Clock>),
+    feed: Feed,
+    (vault, policy): (Vault, PolicyGate),
+    deadlines: Deadlines,
+) -> Router {
     let recorder = Recorder::new(db.clone(), bus.clone());
     routes(DaemonState {
         db,
-        feed: Feed::new(),
+        feed,
         bus,
         clock,
-        vault: crate::fleet::credentials::test_vault(),
+        vault,
         turns: Turns::new(DAEMON_REQUESTS, deadlines.request),
         recorder,
         deadlines,
-        policy: Arc::new(|_, _| Box::pin(async { Ok(true) })),
+        policy,
     })
 }
 
@@ -146,23 +146,19 @@ fn routes(state: DaemonState) -> Router {
 }
 
 async fn enrol(State(state): State<DaemonState>, request: Request) -> Response {
-    let limit = state.deadlines.answer;
-    within(limit, serve_enrol(state, request)).await
+    within(state.deadlines.answer, serve_enrol(state, request)).await
 }
 
 async fn push(State(state): State<DaemonState>, request: Request) -> Response {
-    let limit = state.deadlines.answer;
-    within(limit, push::serve_push(state, request)).await
+    within(state.deadlines.answer, push::serve_push(state, request)).await
 }
 
 async fn renew(State(state): State<DaemonState>, request: Request) -> Response {
-    let limit = state.deadlines.answer;
-    within(limit, serve_renew(state, request)).await
+    within(state.deadlines.answer, serve_renew(state, request)).await
 }
 
 async fn fetch_key(State(state): State<DaemonState>, request: Request) -> Response {
-    let limit = state.deadlines.answer;
-    within(limit, keys::serve_fetch(state, request)).await
+    within(state.deadlines.answer, keys::serve_fetch(state, request)).await
 }
 
 /// The answer, or `UNAVAILABLE` once `limit` has passed. Dropping the late answer rolls back

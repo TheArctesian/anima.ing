@@ -11,6 +11,10 @@ use daemon_core::wire::{
 use super::model::{Job, Machine};
 use crate::ids::{DeviceId, ProjectId};
 
+mod room;
+
+pub(super) use room::Room;
+
 /// Faults in [`FAULT_WINDOW`] before a machine gets no work for [`OFF_FOR`] (K10 Section 11).
 pub(super) const MOST_FAULTS: usize = 5;
 pub(super) const FAULT_WINDOW: TimeDelta = TimeDelta::hours(1);
@@ -176,61 +180,6 @@ pub(super) fn off_until(faults: usize, now: DateTime<Utc>) -> Option<DateTime<Ut
 /// Whether a claim can get a job at all (K10 Section 4).
 pub(super) fn can_take(claim: &Claim) -> bool {
     claim.switch == Switch::On && !claim.unclean && claim.free.slots >= 1
-}
-
-/// The model types that change the machine: it holds at most one at a time (K11 Section 3).
-const CHANGING: [WorkType; 9] = [
-    WorkType::RuntimeInstall,
-    WorkType::ModelPull,
-    WorkType::CopyDelete,
-    WorkType::CopyAdopt,
-    WorkType::ServerStart,
-    WorkType::ServerStop,
-    WorkType::ModelLoad,
-    WorkType::ModelUnload,
-    WorkType::ModelKeep,
-];
-
-/// What a claim can still get, from the claim and the items that the machine holds. A job
-/// takes the slot of K10; a model item does not (K11 Section 3): the hub counts its own leases,
-/// one item that changes the machine and one `model_measure` at a time.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) struct Room {
-    job: bool,
-    model: bool,
-    /// The types of the model items that the machine holds.
-    held: Vec<WorkType>,
-}
-
-impl Room {
-    pub(super) fn of(claim: &Claim, holds: &[Job]) -> Self {
-        let (model, other): (Vec<&Job>, Vec<&Job>) = holds
-            .iter()
-            .partition(|job| job.asked.kind == WorkKind::Model);
-        Self {
-            job: can_take(claim) && other.is_empty(),
-            model: claim.switch == Switch::On,
-            held: model.iter().map(|job| job.asked.work_type).collect(),
-        }
-    }
-
-    /// Whether the claim can get nothing.
-    pub(super) const fn is_empty(&self) -> bool {
-        !self.job && !self.model
-    }
-
-    /// Whether the claim can get `job`.
-    pub(super) fn admits(&self, job: &Job) -> bool {
-        if job.asked.kind != WorkKind::Model {
-            return self.job;
-        }
-        let work_type = job.asked.work_type;
-        let one_at_a_time =
-            |test: fn(&WorkType) -> bool| test(&work_type) && self.held.iter().any(test);
-        self.model
-            && !one_at_a_time(|each| CHANGING.contains(each))
-            && !one_at_a_time(|each| *each == WorkType::ModelMeasure)
-    }
 }
 
 /// The one machine that may get `job`: the machine that the job names, or else the machine
