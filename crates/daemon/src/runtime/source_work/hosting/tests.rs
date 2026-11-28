@@ -193,11 +193,14 @@ async fn hub(
     });
     let tokens = TokenStore::open(home);
     tokens
-        .save_new(&Credential {
-            token: DaemonToken::from_random([19; 32]),
-            expires_at: Utc::now() + TimeDelta::hours(1),
-            hub: origin.clone(),
-        })
+        .save_new(
+            &Credential {
+                token: DaemonToken::from_random([19; 32]),
+                expires_at: Utc::now() + TimeDelta::hours(1),
+                hub: origin.clone(),
+            },
+            device,
+        )
         .unwrap();
     (
         HubTarget {
