@@ -41,6 +41,7 @@ pub(crate) use pinning::{SourceBuildPlacement, SourceNode, set_source_pin, sourc
 pub use pinning::{exclude, pin_project, placement_reason, unpin_project};
 pub use placement::{Unfit, Verdict};
 pub use reasons::Decision;
+pub(crate) use reporting::report_in;
 pub use reporting::{end_lost, report};
 pub use store::work_switch::{blocks_dispatch, set_device_work};
 

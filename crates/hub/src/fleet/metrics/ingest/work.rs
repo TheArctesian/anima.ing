@@ -42,7 +42,7 @@ use super::{
 use crate::{
     fleet::events::{ClientAddr, Operator},
     ids::DeviceId,
-    work::jobs::{self, Queue, Reporting},
+    work::jobs::{self, Reporting},
 };
 
 #[cfg(unix)]
@@ -221,17 +221,13 @@ async fn reported(
         device,
         token: asked.token,
     };
-    match threads::report(state, holder, &asked.body, (Operator::hub(), client)).await {
+    match threads::report(state, &holder, &asked.body, (Operator::hub(), client)).await {
         Ok(Some(response)) => return Ok(response),
         Ok(None) => {}
         Err(error) => return Ok(remote_threads::response(&error)),
     }
     let report: WorkReport =
         serde_json::from_value(asked.body).map_err(|_| refused(RefusalCode::Malformed))?;
-    let queue = Queue {
-        db: &state.db,
-        bus: &state.bus,
-    };
     #[cfg(unix)]
     let retained = artifact_retained(artifacts.as_ref(), device, &report).await;
     #[cfg(not(unix))]
@@ -239,15 +235,20 @@ async fn reported(
         let _ = artifacts;
         false
     };
-    match jobs::report(
-        queue,
-        device,
-        (&report, retained),
+    let (mut tx, _) = match holder.locked(state).await {
+        Ok(locked) => locked,
+        Err(error) => return Ok(remote_threads::response(&error)),
+    };
+    let answer = jobs::report_in(
+        &mut tx,
+        &state.bus,
+        (device, &report, retained),
         (client, state.clock.now()),
     )
     .await
-    .map_err(failed)?
-    {
+    .map_err(failed)?;
+    tx.commit().await.map_err(|error| failed(error.into()))?;
+    match answer {
         Reporting::Reported(answer) => Ok(refusals::json(StatusCode::OK, &answer)),
         Reporting::NotHolder => Err(refused(RefusalCode::NotHolder)),
         Reporting::Malformed => Err(refused(RefusalCode::Malformed)),

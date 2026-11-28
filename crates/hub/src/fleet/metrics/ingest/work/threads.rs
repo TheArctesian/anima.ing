@@ -126,7 +126,7 @@ async fn offer_thread(
 
 pub(super) async fn report(
     state: &DaemonState,
-    holder: Holder,
+    holder: &Holder,
     body: &Value,
     actor: remote::Actor,
 ) -> Result<Option<Response>, Error> {
