@@ -9,19 +9,30 @@ use sqlx::{PgConnection, PgPool};
 use super::{record::device_missing, rows::HardwareRow};
 use crate::{fleet::metrics::Error, ids::DeviceId};
 
-pub(in crate::fleet::metrics) async fn hardware(
-    db: &PgPool,
-) -> Result<HashMap<DeviceId, (Hardware, DateTime<Utc>)>, Error> {
-    let rows: Vec<HardwareRow> = sqlx::query_as(
-        "SELECT device_id, system_memory_bytes, unified_memory_bytes, dedicated_memory_bytes, \
+const SELECT_HARDWARE: &str = "SELECT device_id, system_memory_bytes, unified_memory_bytes, dedicated_memory_bytes, \
            usable_memory_bytes, usable_memory_source, free_disk_bytes, cpu_features, \
            backend_names, backend_reasons, power_source, thermal_state, operator_active, \
            found_at \
-         FROM metrics.hardware",
-    )
-    .fetch_all(db)
-    .await?;
+         FROM metrics.hardware";
+
+pub(in crate::fleet::metrics) async fn hardware(
+    db: &PgPool,
+) -> Result<HashMap<DeviceId, (Hardware, DateTime<Utc>)>, Error> {
+    let rows: Vec<HardwareRow> = sqlx::query_as(SELECT_HARDWARE).fetch_all(db).await?;
     rows.into_iter().map(HardwareRow::into_entry).collect()
+}
+
+pub(in crate::fleet::metrics) async fn hardware_for(
+    conn: &mut PgConnection,
+    device: DeviceId,
+) -> Result<Option<Hardware>, Error> {
+    let sql = format!("{SELECT_HARDWARE} WHERE device_id = $1");
+    let row: Option<HardwareRow> = sqlx::query_as(&sql)
+        .bind(device)
+        .fetch_optional(conn)
+        .await?;
+    row.map(|row| row.into_entry().map(|(_, (values, _))| values))
+        .transpose()
 }
 
 /// Replaces the stored hardware values of `device` in the caller's transaction.

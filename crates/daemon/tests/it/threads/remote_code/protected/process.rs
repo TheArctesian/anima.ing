@@ -67,8 +67,9 @@ impl Installation {
             !uid.is_root(),
             "the Linux fixture needs a non-root test user"
         );
+        // Avoid noexec mounts and runner-writable installation prefixes.
         let dir = output(
-            sudo("/usr/bin/mktemp").args(["-d", "/run/anima-th32.XXXXXXXXXX"]),
+            sudo("/usr/bin/mktemp").args(["-d", "/anima-th32.XXXXXXXXXX"]),
             "create the isolated root fixture directory",
         );
         let installed = Self {

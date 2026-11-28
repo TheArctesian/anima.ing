@@ -6,6 +6,7 @@ use uuid::Uuid;
 use super::{
     Claimed, Error, Queue, ended, hosting, lifecycle,
     model::{Job, Machine},
+    model_work,
     placement::{self, Around, Offer},
     store, trail,
 };
@@ -29,23 +30,84 @@ pub async fn claim(
         &mut tx,
         queue.bus,
         (device, name, claim),
-        (client, now, None),
+        (client, now, Dispatch::default()),
     )
     .await;
     ended(tx, outcome).await
 }
 
-/// Places ordinary work in the caller's authenticated claim transaction.
-/// A ready thread wins over a newer non-container job.
+#[derive(Default)]
+pub(crate) struct Dispatch {
+    pub thread_at: Option<DateTime<Utc>>,
+    pub threads_on: bool,
+    pub model_policy: Option<super::ModelPolicy>,
+}
+
+/// Places work in the caller's authenticated claim transaction.
 ///
 /// # Errors
 /// Returns a store error if the claim cannot be recorded.
-pub async fn claim_in(
+pub(crate) async fn claim_in(
     conn: &mut PgConnection,
     bus: &Bus,
     (device, name, claim): (DeviceId, &str, &Claim),
-    (client, now, thread_at): (ClientAddr, DateTime<Utc>, Option<DateTime<Utc>>),
+    (client, now, dispatch): (ClientAddr, DateTime<Utc>, Dispatch),
 ) -> Result<Claimed, Error> {
+    let machine = record_offer(conn, bus, (device, name, claim), now).await?;
+    let work_off = placement::is_off(&machine, now);
+    let slots = reconcile(conn, (device, claim, !work_off), (client, now)).await?;
+    if hosting::can_take(claim)
+        && let Some(host) =
+            hosting::claim_next(conn, (&machine, slots.mutation, claim), (client, now)).await?
+    {
+        return Ok(host);
+    }
+    if work_off && claim.applications == Switch::Off && claim.switch == Switch::On {
+        return Ok(Claimed::Off);
+    }
+    if work_off {
+        return Ok(Claimed::Nothing);
+    }
+    let offer = Offer::of(claim, &machine);
+    let admission = model_work::admission(
+        conn,
+        (claim, dispatch.threads_on, dispatch.model_policy),
+        device,
+        now,
+    )
+    .await?;
+    if let Some(model) = model_work::claim_next(
+        conn,
+        (&offer, model_work::exclusive(claim)),
+        (admission, &slots.model),
+        (client, now),
+    )
+    .await?
+    {
+        return Ok(model);
+    }
+    if slots.job || !placement::can_take(claim) || model_work::exclusive(claim) {
+        return Ok(Claimed::Nothing);
+    }
+    place(
+        conn,
+        (&offer, name),
+        (
+            client,
+            now,
+            dispatch.thread_at,
+            model_work::advertised(claim),
+        ),
+    )
+    .await
+}
+
+async fn record_offer(
+    conn: &mut PgConnection,
+    bus: &Bus,
+    (device, name, claim): (DeviceId, &str, &Claim),
+    now: DateTime<Utc>,
+) -> Result<Machine, Error> {
     let known = store::machine_locked(conn, device).await?;
     let first_on = claim.switch == Switch::On && known.is_none_or(|old| old.first_on_at.is_none());
     let machine = Machine {
@@ -64,28 +126,14 @@ pub async fn claim_in(
     if first_on {
         trail::first_claim(conn, bus, (device, name), now).await?;
     }
-    let work_off = placement::is_off(&machine, now);
-    let slots = reconcile(conn, (device, claim, !work_off), (client, now)).await?;
-    if hosting::can_take(claim)
-        && let Some(host) =
-            hosting::claim_next(conn, (&machine, slots.mutation, claim), (client, now)).await?
-    {
-        return Ok(host);
-    }
-    if work_off && claim.applications == Switch::Off && claim.switch == Switch::On {
-        return Ok(Claimed::Off);
-    }
-    if work_off || slots.job || !placement::can_take(claim) {
-        return Ok(Claimed::Nothing);
-    }
-    let offer = Offer::of(claim, &machine);
-    place(conn, (&offer, name), (client, now, thread_at)).await
+    Ok(machine)
 }
 
 #[derive(Default)]
 struct Slots {
     job: bool,
     mutation: bool,
+    model: model_work::Slots,
 }
 
 async fn reconcile(
@@ -94,9 +142,12 @@ async fn reconcile(
     (client, now): (ClientAddr, DateTime<Utc>),
 ) -> Result<Slots, Error> {
     let mut slots = Slots::default();
+    let model_advertised = model_work::advertised(claim);
+    let model_exclusive = model_work::exclusive(claim);
     for held in store::held_by(conn, device).await? {
         let host = held.asked.kind == WorkKind::Host;
-        if !host && !jobs_on {
+        let model = held.asked.kind == WorkKind::Model;
+        if model && !model_advertised || !model && model_exclusive || !host && !jobs_on {
             continue;
         }
         if claim
@@ -106,6 +157,8 @@ async fn reconcile(
         {
             if host {
                 slots.mutation |= hosting::occupies_mutation(&held);
+            } else if model {
+                slots.model.hold(held.asked.work_type);
             } else {
                 slots.job = true;
             }
@@ -122,7 +175,7 @@ async fn reconcile(
 async fn place(
     conn: &mut PgConnection,
     (offer, name): (&Offer, &str),
-    (client, now, thread_at): (ClientAddr, DateTime<Utc>, Option<DateTime<Utc>>),
+    (client, now, thread_at, mixed): (ClientAddr, DateTime<Utc>, Option<DateTime<Utc>>, bool),
 ) -> Result<Claimed, Error> {
     let queued = store::oldest_queued(conn, offer.device).await?;
     let pins = store::pins(conn).await?;
@@ -143,23 +196,7 @@ async fn place(
         .zip(verdicts.iter().copied())
         .collect();
     store::save_decisions(conn, (offer, name), &decided, now).await?;
-    let chosen = if let Some(thread_at) = thread_at {
-        queued
-            .iter()
-            .zip(&verdicts)
-            .find_map(|(job, verdict)| {
-                (*verdict == placement::Verdict::Fits && job.asked.kind == WorkKind::Container)
-                    .then_some(job)
-            })
-            .or_else(|| {
-                queued.iter().zip(&verdicts).find_map(|(job, verdict)| {
-                    (*verdict == placement::Verdict::Fits && job.created_at <= thread_at)
-                        .then_some(job)
-                })
-            })
-    } else {
-        placement::choose(&queued, &verdicts, offer.device)
-    };
+    let chosen = choose(&queued, &verdicts, (thread_at, mixed), offer.device);
     let Some(chosen) = chosen else {
         return Ok(Claimed::Nothing);
     };
@@ -174,6 +211,28 @@ async fn place(
     let decisions = store::decisions_of(conn, job.id).await?;
     trail::attempt_started(conn, &job, (offer.device, &decisions), (client, now)).await?;
     Ok(Claimed::Job(Box::new(wire_job(&job)?)))
+}
+
+fn choose<'a>(
+    queued: &'a [Job],
+    verdicts: &[placement::Verdict],
+    (thread_at, mixed): (Option<DateTime<Utc>>, bool),
+    device: DeviceId,
+) -> Option<&'a Job> {
+    let fitting = || {
+        queued
+            .iter()
+            .zip(verdicts)
+            .filter_map(|(job, verdict)| (*verdict == placement::Verdict::Fits).then_some(job))
+    };
+    match (thread_at, mixed) {
+        (Some(at), true) => fitting().find(|job| job.created_at <= at),
+        (None, true) => fitting().next(),
+        (Some(at), false) => fitting()
+            .find(|job| job.asked.kind == WorkKind::Container)
+            .or_else(|| fitting().find(|job| job.created_at <= at)),
+        (None, false) => placement::choose(queued, verdicts, device),
+    }
 }
 
 fn wire_job(job: &Job) -> Result<WorkJob, Error> {

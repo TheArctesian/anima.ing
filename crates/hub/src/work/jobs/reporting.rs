@@ -36,7 +36,8 @@ pub async fn report(
     ended(tx, outcome).await
 }
 
-async fn report_in(
+/// Records the report in the caller's transaction, which can also hold daemon authentication locks.
+pub(crate) async fn report_in(
     conn: &mut PgConnection,
     bus: &Bus,
     (device, report, artifact_retained): (DeviceId, &WorkReport, bool),
@@ -78,7 +79,7 @@ async fn report_in(
     }
     store::save(conn, &next).await?;
     if report.state == WorkState::Refused {
-        if !host {
+        if counts_toward_cooldown(job.asked.kind) {
             fault(conn, bus, (device, Fault::Refused), now).await?;
         }
         trail::attempt_ended(conn, &next, (device, "refused"), (client, now)).await?;
@@ -92,6 +93,10 @@ async fn report_in(
         stop: next.stop.map(|reason| StopOrder { reason }),
         log_end: Some(next.log_end),
     }))
+}
+
+fn counts_toward_cooldown(kind: WorkKind) -> bool {
+    matches!(kind, WorkKind::Container | WorkKind::Native)
 }
 
 fn source_succeeded(result: &daemon_core::wire::WorkResult) -> bool {
@@ -169,7 +174,9 @@ async fn end_lost_in(
         let Some(device) = job.holder else { continue };
         let next = lifecycle::lease_lost(&job, now);
         store::save(conn, &next).await?;
-        fault(conn, bus, (device, Fault::Lost), now).await?;
+        if counts_toward_cooldown(job.asked.kind) {
+            fault(conn, bus, (device, Fault::Lost), now).await?;
+        }
         trail::attempt_ended(conn, &next, (device, "lease_ended"), (client, now)).await?;
         changed += 1;
     }

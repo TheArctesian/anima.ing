@@ -84,6 +84,11 @@ const REDUCING: [WorkType; 5] = [
     WorkType::ModelReport,
 ];
 
+#[must_use]
+pub fn bypasses_switch_and_policy(work_type: WorkType) -> bool {
+    REDUCING.contains(&work_type)
+}
+
 fn cause(item: &Object, machine: &ModelMachine<'_>) -> Result<Order, Cause> {
     let work_type = item
         .get("type")
@@ -109,7 +114,7 @@ fn cause(item: &Object, machine: &ModelMachine<'_>) -> Result<Order, Cause> {
         .ok_or(Cause::MemberUnknown)?;
     let parameters = parameters::read(work_type, object, machine)?;
     secrets_hold(item, work_type, &parameters)?;
-    if !REDUCING.contains(&work_type) {
+    if !bypasses_switch_and_policy(work_type) {
         if !machine.switch_on {
             return Err(Cause::SwitchOff);
         }

@@ -14,7 +14,7 @@ pub(super) use batteries::{batteries, write_batteries};
 pub(super) use chart::chart;
 pub(super) use drives::{drives, replace_drives, write_drives};
 pub(super) use gpus::{Discovery, gpus, replace_gpus, write_gpus};
-pub(super) use hardware::{hardware, write_hardware};
+pub(super) use hardware::{hardware, hardware_for, write_hardware};
 pub(super) use inventory::{inventories, write_inventory};
 pub(super) use latest::latest;
 pub(super) use points::{PointValue, add_points, created_series};

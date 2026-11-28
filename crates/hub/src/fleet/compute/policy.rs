@@ -23,7 +23,7 @@ pub use store::StoreError;
 pub use verdict::{NodeState, Stop, WorkSwitch, takes_model_work};
 
 use crate::{
-    fleet::metrics,
+    fleet::{devices, metrics},
     ids::DeviceId,
     work::jobs::{self, Machine},
 };
@@ -91,6 +91,57 @@ pub async fn statuses(
         .collect())
 }
 
+/// The policy gate passed to the work route by the hub router.
+pub fn model_budget(
+    conn: &mut PgConnection,
+    (device, apple_silicon): (DeviceId, bool),
+    now: DateTime<Utc>,
+) -> std::pin::Pin<
+    Box<dyn Future<Output = Result<Option<jobs::ModelBudget>, jobs::Error>> + Send + '_>,
+> {
+    Box::pin(async move {
+        budget(conn, (device, apple_silicon), now)
+            .await
+            .map_err(|error| {
+                tracing::error!(%error, %device, "could not read model admission policy");
+                jobs::Error::ModelPolicy
+            })
+    })
+}
+
+async fn budget(
+    conn: &mut PgConnection,
+    (device, apple_silicon): (DeviceId, bool),
+    now: DateTime<Utc>,
+) -> Result<Option<jobs::ModelBudget>, Error> {
+    let policy = store::policy_for(conn, device).await?.unwrap_or_default();
+    let hardware = metrics::hardware_for(conn, device).await?;
+    let node = hardware
+        .as_ref()
+        .map_or_else(NodeState::default, NodeState::from);
+    if takes_model_work(&policy, WorkSwitch::On, node, now).is_err() {
+        return Ok(None);
+    }
+    let memory = hardware.as_ref().map_or(0, |node| {
+        let fallback = if apple_silicon || node.unified_memory_bytes.is_some() {
+            0
+        } else {
+            node.system_memory_bytes
+        };
+        node.usable_memory.map_or(fallback, |memory| memory.bytes)
+    });
+    let disk = hardware.and_then(|node| node.free_disk_bytes).unwrap_or(0);
+    Ok(Some(jobs::ModelBudget {
+        memory_bytes: share(memory, policy.memory_share),
+        disk_bytes: share(disk, policy.disk_share),
+    }))
+}
+
+fn share(bytes: u64, percent: u8) -> u64 {
+    let percent = u64::from(percent);
+    (bytes / 100) * percent + (bytes % 100) * percent / 100
+}
+
 /// Writes the policy of `device` in the caller's transaction.
 ///
 /// # Errors
@@ -101,5 +152,12 @@ pub async fn set_policy(
     policy: &DevicePolicy,
     now: DateTime<Utc>,
 ) -> Result<(), StoreError> {
+    devices::lock(conn, device)
+        .await
+        .map_err(|error| match error {
+            devices::Error::NotFound(_) => StoreError::NoDevice,
+            devices::Error::Database(error) => StoreError::Database(error),
+            _ => StoreError::Unreadable,
+        })?;
     store::write(conn, device, policy, now).await
 }

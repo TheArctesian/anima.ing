@@ -62,7 +62,10 @@ pub fn app(pool: &PgPool, clock: Arc<dyn Clock>) -> Router {
         (pool.clone(), bus.clone(), clock.clone()),
         Feed::new(),
         crate::hub::test_vault(),
-    );
+    )
+    .layer(axum::Extension(
+        anima_hub::fleet::compute::policy::model_budget as anima_hub::work::jobs::ModelPolicy,
+    ));
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     router(schema, pool.clone(), clock)
         .merge(logged(daemon))

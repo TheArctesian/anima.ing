@@ -6,6 +6,7 @@ pub(super) mod checkout;
 pub(super) mod hosting;
 mod logs;
 mod machines;
+pub(super) mod model_work;
 mod placements;
 pub(super) mod source_placement;
 pub(super) mod work_switch;
@@ -201,7 +202,7 @@ pub(super) async fn oldest_queued(
     device: DeviceId,
 ) -> Result<Vec<Job>, Error> {
     let condition = format!(
-        "WHERE state = 'queued' AND kind <> 'host' AND $1::timestamptz IS NULL \
+        "WHERE state = 'queued' AND kind IN ('container', 'native') AND $1::timestamptz IS NULL \
            AND (cardinality(secrets) = 0 OR EXISTS (SELECT FROM jobs.project_devices allowed \
                 JOIN projects.projects project ON project.id = allowed.project_id \
                 WHERE allowed.project_id = jobs.jobs.project_id AND allowed.device_id = $2) \

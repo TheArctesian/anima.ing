@@ -9,6 +9,8 @@ pub mod graphql;
 mod hosting;
 mod lifecycle;
 mod model;
+mod model_work;
+pub use model_work::{ModelBudget, ModelPolicy};
 mod pinning;
 mod placement;
 mod reasons;
@@ -32,7 +34,8 @@ pub use application_apply::{
 pub use artifacts::{ArtifactAccess, ArtifactGuard, artifact_access};
 pub(crate) use checkout::{CheckoutSource, SourceSubmission};
 pub(super) use claiming::checkout;
-pub use claiming::{claim, claim_in};
+pub use claiming::claim;
+pub(crate) use claiming::{Dispatch, claim_in};
 pub use enqueue::enqueue;
 pub(crate) use enqueue::enqueue_source;
 pub use hosting::enqueue_container_action;
@@ -41,6 +44,7 @@ pub(crate) use pinning::{SourceBuildPlacement, SourceNode, set_source_pin, sourc
 pub use pinning::{exclude, pin_project, placement_reason, unpin_project};
 pub use placement::{Unfit, Verdict};
 pub use reasons::Decision;
+pub(crate) use reporting::report_in;
 pub use reporting::{end_lost, report};
 pub use store::work_switch::{blocks_dispatch, set_device_work};
 
@@ -131,6 +135,8 @@ pub enum Error {
     Database(#[from] sqlx::Error),
     #[error("a stored job row cannot be read")]
     Unreadable,
+    #[error("the device policy cannot be read")]
+    ModelPolicy,
     #[error("the event log cannot be written")]
     Events(#[from] events::Error),
 }
@@ -151,6 +157,7 @@ pub enum Claimed {
     Off,
     Job(Box<WorkJob>),
     Host(Box<HostWork>),
+    Model(Box<model_work::ModelWork>),
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -6,6 +6,7 @@ mod application_apply;
 mod artifacts;
 mod flow;
 mod hosting;
+mod model_work;
 mod placement;
 mod refusals;
 mod source;

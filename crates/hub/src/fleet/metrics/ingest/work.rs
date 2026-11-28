@@ -42,7 +42,7 @@ use super::{
 use crate::{
     fleet::events::{ClientAddr, Operator},
     ids::DeviceId,
-    work::jobs::{self, Queue, Reporting},
+    work::jobs::{self, Reporting},
 };
 
 #[cfg(unix)]
@@ -91,7 +91,7 @@ async fn asked<T: DeserializeOwned>(
 
 /// What each of the three routes does before its own work, and how it answers a stop.
 macro_rules! served {
-    ($state:ident, $request:ident, $route:expr, $answer:ident $(, $extra:expr)?) => {{
+    ($state:ident, $request:ident, $route:expr, $answer:ident $(, $extra:expr)*) => {{
         let Some(client) = client_of(&$request) else {
             return unmounted();
         };
@@ -100,7 +100,7 @@ macro_rules! served {
             return busy();
         };
         let (parts, body) = $request.into_parts();
-        match $answer(&$state, (&parts.headers, body), (address, client $(, $extra)?), now).await {
+        match $answer(&$state, (&parts.headers, body), (address, client $(, $extra)*), now).await {
             Ok(response) => response,
             Err(stop) => $state.stopped(stop, ($route, client), now).await,
         }
@@ -129,9 +129,17 @@ async fn claim(State(state): State<DaemonState>, request: Request) -> Response {
         .is_some();
     #[cfg(not(unix))]
     let private_output = false;
+    let policy = request.extensions().get::<jobs::ModelPolicy>().copied();
     let limit = state.deadlines.answer;
     within(limit, async move {
-        served!(state, request, Route::WorkClaim, claimed, private_output)
+        served!(
+            state,
+            request,
+            Route::WorkClaim,
+            claimed,
+            private_output,
+            policy
+        )
     })
     .await
 }
@@ -187,7 +195,12 @@ fn failed(error: jobs::Error) -> Stop {
 async fn claimed(
     state: &DaemonState,
     request: (&HeaderMap, Body),
-    (address, client, private_output): (Turn<IpAddr>, ClientAddr, bool),
+    (address, client, private_output, policy): (
+        Turn<IpAddr>,
+        ClientAddr,
+        bool,
+        Option<jobs::ModelPolicy>,
+    ),
     now: DateTime<Utc>,
 ) -> Result<Response, Stop> {
     let asked: Asked<serde_json::Value> =
@@ -201,7 +214,7 @@ async fn claimed(
         state,
         holder,
         (asked.body, &asked.name),
-        (client, private_output),
+        (client, private_output, policy),
     )
     .await)
 }
@@ -221,17 +234,13 @@ async fn reported(
         device,
         token: asked.token,
     };
-    match threads::report(state, holder, &asked.body, (Operator::hub(), client)).await {
+    match threads::report(state, &holder, &asked.body, (Operator::hub(), client)).await {
         Ok(Some(response)) => return Ok(response),
         Ok(None) => {}
         Err(error) => return Ok(remote_threads::response(&error)),
     }
     let report: WorkReport =
         serde_json::from_value(asked.body).map_err(|_| refused(RefusalCode::Malformed))?;
-    let queue = Queue {
-        db: &state.db,
-        bus: &state.bus,
-    };
     #[cfg(unix)]
     let retained = artifact_retained(artifacts.as_ref(), device, &report).await;
     #[cfg(not(unix))]
@@ -239,15 +248,20 @@ async fn reported(
         let _ = artifacts;
         false
     };
-    match jobs::report(
-        queue,
-        device,
-        (&report, retained),
+    let (mut tx, _) = match holder.locked(state).await {
+        Ok(locked) => locked,
+        Err(error) => return Ok(remote_threads::response(&error)),
+    };
+    let answer = jobs::report_in(
+        &mut tx,
+        &state.bus,
+        (device, &report, retained),
         (client, state.clock.now()),
     )
     .await
-    .map_err(failed)?
-    {
+    .map_err(failed)?;
+    tx.commit().await.map_err(|error| failed(error.into()))?;
+    match answer {
         Reporting::Reported(answer) => Ok(refusals::json(StatusCode::OK, &answer)),
         Reporting::NotHolder => Err(refused(RefusalCode::NotHolder)),
         Reporting::Malformed => Err(refused(RefusalCode::Malformed)),
