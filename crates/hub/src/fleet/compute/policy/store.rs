@@ -28,15 +28,26 @@ type PolicyRow = (
     bool,
 );
 
-pub(super) async fn policies(db: &PgPool) -> Result<HashMap<DeviceId, DevicePolicy>, StoreError> {
-    let rows: Vec<PolicyRow> = sqlx::query_as(
-        "SELECT device_id, memory_share, disk_share, quiet_start, quiet_end, quiet_zone, \
+const SELECT_POLICY: &str = "SELECT device_id, memory_share, disk_share, quiet_start, quiet_end, quiet_zone, \
            mains_only, idle_only \
-         FROM compute.device_policies",
-    )
-    .fetch_all(db)
-    .await?;
+         FROM compute.device_policies";
+
+pub(super) async fn policies(db: &PgPool) -> Result<HashMap<DeviceId, DevicePolicy>, StoreError> {
+    let rows: Vec<PolicyRow> = sqlx::query_as(SELECT_POLICY).fetch_all(db).await?;
     rows.into_iter().map(read_row).collect()
+}
+
+pub(super) async fn policy_for(
+    conn: &mut PgConnection,
+    device: DeviceId,
+) -> Result<Option<DevicePolicy>, StoreError> {
+    let sql = format!("{SELECT_POLICY} WHERE device_id = $1");
+    let row: Option<PolicyRow> = sqlx::query_as(&sql)
+        .bind(device)
+        .fetch_optional(conn)
+        .await?;
+    row.map(|row| read_row(row).map(|(_, policy)| policy))
+        .transpose()
 }
 
 fn read_row(row: PolicyRow) -> Result<(DeviceId, DevicePolicy), StoreError> {

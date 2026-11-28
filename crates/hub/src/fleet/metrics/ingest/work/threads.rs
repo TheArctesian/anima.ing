@@ -40,7 +40,7 @@ pub(super) async fn claim(
     state: &DaemonState,
     holder: Holder,
     (body, name): (Value, &str),
-    request: (ClientAddr, bool),
+    request: (ClientAddr, bool, Option<jobs::ModelPolicy>),
 ) -> Response {
     issue(state, holder, (body, name), request)
         .await
@@ -51,7 +51,7 @@ async fn issue(
     state: &DaemonState,
     holder: Holder,
     (body, name): (Value, &str),
-    (client, private_output): (ClientAddr, bool),
+    (client, private_output, policy): (ClientAddr, bool, Option<jobs::ModelPolicy>),
 ) -> Result<Response, Error> {
     let mut base: Claim = parse(body.clone())?;
     let offer: ThreadOffer = parse(body)?;
@@ -78,13 +78,22 @@ async fn issue(
         &mut tx,
         &state.bus,
         (holder.device, name, &base),
-        (client, state.clock.now(), thread_at),
+        (
+            client,
+            state.clock.now(),
+            jobs::Dispatch {
+                thread_at,
+                threads_on: offer.threads == Some(Switch::On),
+                model_policy: policy,
+            },
+        ),
     )
     .await
     .map_err(Error::Jobs)?;
     let answer = match (regular, candidate) {
         (Claimed::Job(job), _) => refusals::json(StatusCode::OK, &*job),
         (Claimed::Host(work), _) => refusals::json(StatusCode::OK, &*work),
+        (Claimed::Model(work), _) => refusals::json(StatusCode::OK, &*work),
         (Claimed::Off, _) if !enabled => refusals::answer(RefusalCode::WorkOff),
         (Claimed::Nothing, Some((owner, launch, _))) => {
             let thread = remote::claim(&mut tx, owner, launch, at).await?;
@@ -117,7 +126,13 @@ async fn offer_thread(
         &[]
     };
     remote::replace_targets(conn, owner, (offered, offer.enabled()), at).await?;
-    if !offer.enabled() || base.unclean || base.free.slots == 0 {
+    if !offer.enabled()
+        || base.unclean
+        || base.free.slots == 0
+        || jobs::blocks_dispatch(conn, holder.device, at)
+            .await
+            .map_err(Error::Jobs)?
+    {
         return Ok(None);
     }
     let candidate = remote::candidate(conn, owner, &base.holds, at).await?;

@@ -4,7 +4,10 @@
 use std::net::{IpAddr, Ipv4Addr};
 
 use chrono::{DateTime, Utc};
-use daemon_core::wire::StopReason;
+use daemon_core::{
+    model_work::names::{Actor, Word},
+    wire::StopReason,
+};
 use serde_json::json;
 use sqlx::PgConnection;
 
@@ -122,6 +125,31 @@ pub(super) async fn host_started(
     (device, client, now): (DeviceId, ClientAddr, DateTime<Utc>),
 ) -> Result<(), Error> {
     let change = json!({ "attempt": job.attempt, "device": device, "asked": described(job) });
+    audit(
+        conn,
+        job,
+        (AuditAction::Start, change),
+        ((Operator::hub(), client), now),
+    )
+    .await
+}
+
+pub(super) async fn model_started(
+    conn: &mut PgConnection,
+    job: &Job,
+    (device, actor): (DeviceId, Actor),
+    (client, now): (ClientAddr, DateTime<Utc>),
+) -> Result<(), Error> {
+    let change = json!({
+        "attempt": job.attempt,
+        "device": device,
+        "asked": {
+            "type": job.asked.work_type,
+            "kind": job.asked.kind,
+            "actor": actor.as_str(),
+            "machine": job.asked.machine,
+        },
+    });
     audit(
         conn,
         job,

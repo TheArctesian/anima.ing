@@ -91,7 +91,7 @@ async fn asked<T: DeserializeOwned>(
 
 /// What each of the three routes does before its own work, and how it answers a stop.
 macro_rules! served {
-    ($state:ident, $request:ident, $route:expr, $answer:ident $(, $extra:expr)?) => {{
+    ($state:ident, $request:ident, $route:expr, $answer:ident $(, $extra:expr)*) => {{
         let Some(client) = client_of(&$request) else {
             return unmounted();
         };
@@ -100,7 +100,7 @@ macro_rules! served {
             return busy();
         };
         let (parts, body) = $request.into_parts();
-        match $answer(&$state, (&parts.headers, body), (address, client $(, $extra)?), now).await {
+        match $answer(&$state, (&parts.headers, body), (address, client $(, $extra)*), now).await {
             Ok(response) => response,
             Err(stop) => $state.stopped(stop, ($route, client), now).await,
         }
@@ -129,9 +129,17 @@ async fn claim(State(state): State<DaemonState>, request: Request) -> Response {
         .is_some();
     #[cfg(not(unix))]
     let private_output = false;
+    let policy = request.extensions().get::<jobs::ModelPolicy>().copied();
     let limit = state.deadlines.answer;
     within(limit, async move {
-        served!(state, request, Route::WorkClaim, claimed, private_output)
+        served!(
+            state,
+            request,
+            Route::WorkClaim,
+            claimed,
+            private_output,
+            policy
+        )
     })
     .await
 }
@@ -187,7 +195,12 @@ fn failed(error: jobs::Error) -> Stop {
 async fn claimed(
     state: &DaemonState,
     request: (&HeaderMap, Body),
-    (address, client, private_output): (Turn<IpAddr>, ClientAddr, bool),
+    (address, client, private_output, policy): (
+        Turn<IpAddr>,
+        ClientAddr,
+        bool,
+        Option<jobs::ModelPolicy>,
+    ),
     now: DateTime<Utc>,
 ) -> Result<Response, Stop> {
     let asked: Asked<serde_json::Value> =
@@ -201,7 +214,7 @@ async fn claimed(
         state,
         holder,
         (asked.body, &asked.name),
-        (client, private_output),
+        (client, private_output, policy),
     )
     .await)
 }

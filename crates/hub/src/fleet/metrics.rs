@@ -38,6 +38,13 @@ pub use model::{
     MetricSample, MetricSeries, MetricsAdded, Readings,
 };
 pub use retention::{Retention, Trimmed};
+pub(crate) async fn hardware_for(
+    conn: &mut sqlx::PgConnection,
+    device: DeviceId,
+) -> Result<Option<daemon_core::hardware::Hardware>, Error> {
+    store::hardware_for(conn, device).await
+}
+
 pub use storage::{DriveKind, Mount, Storage, StorageDrive};
 
 use crate::ids::DeviceId;

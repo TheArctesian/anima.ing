@@ -31,6 +31,9 @@ pub fn pushes(dependencies: &schema::Dependencies) -> Router {
         metrics_feed.clone(),
         vault.clone(),
     )
+    .layer(axum::Extension(
+        fleet::compute::policy::model_budget as crate::work::jobs::ModelPolicy,
+    ))
     .layer(axum::Extension(crate::work::checkout::Issuer(
         engine::sources::Scheduling::new(
             (pool.clone(), bus.clone(), clock.clone()),
