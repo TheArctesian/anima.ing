@@ -117,6 +117,10 @@ impl Installation {
         self.dir.join("person.json")
     }
 
+    pub(super) fn inherited_descriptor_path(&self) -> PathBuf {
+        self.dir.join("inherited-descriptor")
+    }
+
     pub(super) fn command(&self) -> Command {
         let mut launch = sudo(self.binary());
         launch.arg(SUPERVISE).arg(self.config());
@@ -128,9 +132,11 @@ impl Installation {
         let child = sudo("/bin/sh")
             .args([
                 "-c",
-                "umask 022; printf '%s\\n' \"$$\" > \"$1\" && shift && exec \"$@\"",
+                "umask 077; printf '%s\\n' 'TH32 synthetic descriptor' > \"$1\" && exec 9<\"$1\" && shift &&
+                 umask 022 && printf '%s\\n' \"$$\" > \"$1\" && shift && exec \"$@\"",
                 "anima-th32",
             ])
+            .arg(self.inherited_descriptor_path())
             .arg(&pid_file)
             .arg(self.binary())
             .arg(SUPERVISE)
@@ -173,6 +179,15 @@ impl Supervisor {
             self.config.as_os_str().as_bytes(),
         ];
         command_is(pid, &args).then_some(pid)
+    }
+
+    pub(super) fn assert_inherited(&self, expected: &Path) {
+        let pid = self.pid().expect("the root supervisor PID").as_raw_pid();
+        let inherited = output(
+            sudo("/usr/bin/readlink").arg(format!("/proc/{pid}/fd/9")),
+            "read the root supervisor's synthetic descriptor",
+        );
+        assert_eq!(Path::new(stdout(inherited).trim()), expected);
     }
 
     pub(super) fn process(&self, role: Role) -> Option<RoleProcess> {
@@ -221,6 +236,8 @@ impl Drop for Supervisor {
         if let Some(pid) = self.pid()
             && root_signal(pid, "-KILL")
         {
+            // Sudo mirrors a stopped command's job-control state until its caller resumes it.
+            root_signal(Pid::from_child(&self.child), "-CONT");
             let _ = self.child.wait();
             return;
         }

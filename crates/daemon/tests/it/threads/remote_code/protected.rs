@@ -1,6 +1,10 @@
 //! A real K8 enrollment and Linux supervisor for the protected K10 tests.
 
-use std::{path::Path, process::Stdio, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    process::Stdio,
+    time::Duration,
+};
 
 use anima_daemon::config::home::Home;
 use axum::Router;
@@ -68,6 +72,14 @@ impl Protected {
         );
         self.supervisor = Some(self.installation.start());
         self.process(Role::Daemon).await;
+        self.supervisor
+            .as_ref()
+            .expect("the started supervisor")
+            .assert_inherited(&self.inherited_descriptor_path());
+    }
+
+    pub(super) fn inherited_descriptor_path(&self) -> PathBuf {
+        self.installation.inherited_descriptor_path()
     }
 
     pub(super) fn process_now(&self, role: Role) -> Option<RoleProcess> {
