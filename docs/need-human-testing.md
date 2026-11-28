@@ -6166,6 +6166,28 @@ the keyboard.
    button that opened it.
 
 Result: Open.
+
+## HT-199: The overview at the top of Hosting (task H52; HSE-019)
+
+Built on the branch `hosted/h52-overview`: above the list of Hosting > Applications, three numbers (Machines up,
+Applications running, Routes proven) and one line with one action for each thing that needs you. The tests use a fake
+hub; nobody has seen the overview with real machines and routes.
+
+1. In the desktop application of this build, signed in to a hub with at least one machine that has SSH on and Docker,
+   and one route, open Hosting > Applications.
+   Expected: above the list, three numbers; under each, how many need you in the warning colour, or "of" and the total.
+   While a section is read, its number is a dash with the word Reading.
+2. Stop a container of an application on that machine, then open Hosting again.
+   Expected: Applications running counts one less and says that one needs you; a line names the application and the
+   machine with its state and the button Show. Press Show: the list narrows to that machine and to Needs you, and
+   the row of the application is open.
+3. Press the number Routes proven, then come back and press Applications running.
+   Expected: Routes opens with the choice Needs you; Applications shows the list with Needs you chosen.
+4. Switch off a machine that is listed (or take it off the network), then open Hosting again.
+   Expected: Machines up counts one less; a line names the machine with its status and Open device, which opens the
+   device page.
+
+Result: Open.
 ## HT-188 — Managed workspace provider sign-in
 
 Claude follow-on: use `--provider claude` and the Code panel on desktop/mobile. Verify the external verification page, hidden returned-code entry, one reply only, cancellation during input, expiry while typing, changing providers/workspaces, and refusal after reconnect or routing to another hub process. Verify that malformed and foreign-principal replies never reach the worker, and that no reply or challenge appears in logs or persistent client/hub storage. Real account completion and in-container process cleanup remain required.
