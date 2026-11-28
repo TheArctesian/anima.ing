@@ -16,7 +16,7 @@ pub(in super::super) async fn sweep(runner: Uuid) -> bool {
 async fn end_marked(runner: Uuid) -> bool {
     let wanted = format!("{MARK}={runner}");
     loop {
-        match empty_after_sweep(&wanted).await {
+        match empty_after_sweep(Path::new("/proc"), &wanted).await {
             Some(true) => return true,
             Some(false) => {}
             None => return false,
@@ -24,8 +24,8 @@ async fn end_marked(runner: Uuid) -> bool {
     }
 }
 
-async fn empty_after_sweep(wanted: &str) -> Option<bool> {
-    let mut folders = tokio::fs::read_dir("/proc").await.ok()?;
+async fn empty_after_sweep(proc: &Path, wanted: &str) -> Option<bool> {
+    let mut folders = tokio::fs::read_dir(proc).await.ok()?;
     let mut complete = true;
     let mut signalled = Vec::new();
     loop {
