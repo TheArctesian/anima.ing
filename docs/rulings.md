@@ -706,3 +706,19 @@ signatures of the 3 newest published versions of the target and any version a li
 Migration 0966 records the removal while the job stays published (BLD-086, D-27).
 A manual rollback needs the retained version's files. This is task R9 of
 [projects-and-builds-plan.md](plans/projects-and-builds-plan.md).
+
+
+## R-474 — Eligibility and order for mixed K10 and K11 claims
+
+Operator, 2026-11-28, first-hand (OD-C29, L1-5, CON-001): "Approve both OD-C29 defaults."
+With local work off, an eligible mixed thread/model claim can receive these advertised K11 exceptions:
+`model_drain`, `server_stop`, `model_unload`, `copy_delete`, and `model_report`. The rule permits deletion
+of a model copy. All three local switches off still returns 204. A hub manual or cooldown WORK_OFF
+block still prevents new model work and thread dispatch authorization. The existing container rules
+and actor, target, authentication, and lease checks apply.
+
+Choose container stops, other container work in its existing order, model drain, server stop,
+model unload, other eligible model work oldest first, then the oldest eligible build, runner job,
+or thread launch. Model work retains its separate lease limits. This ruling amends
+[K10 §6.5](../contracts/work-route.md#65-agent-threads-th30) and
+[K11 §3](../contracts/compute/model-work.md#3-how-the-daemon-asks-and-reports-cag-002-cag-003).

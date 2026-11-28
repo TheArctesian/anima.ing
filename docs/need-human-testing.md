@@ -76,7 +76,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
 | HT-124 | The child fetch process downloads a real `llama-server` release from GitHub, and a stall of the network ends only the child | A test hub that gives a `runtime_install` item, and a daemon of this build in a test folder on the Mac and on `pop-os` | Open |
-| HT-161 | A policy that stops a node ends its model servers within 60 seconds, and a machine that is off gets no model work (task L1-5) | A hub of this build with the hand-out of model work, and a daemon of this build in a test folder on `pop-os` | Open |
+| HT-161 | A policy that stops a node ends its model servers within 60 seconds, and a machine that is off gets no ordinary model work (task L1-5) | A hub of this build with the hand-out of model work, and a daemon of this build in a test folder on `pop-os` | Open |
 | HT-162 | A real Hugging Face copy with remote code, or with a long chat template, is refused before a server starts, and a clean copy starts in vLLM with `--load-format safetensors` (SF-298) | A daemon of this build in a test folder on `pop-os` with an NVIDIA GPU and vLLM | Open |
 | HT-160 | A crash or a stall of the child fetch process is reported as `fetch_failed`, and a source that does not answer as `source_failed` (R-406) | A daemon of this build in a test folder on the Mac, and a network that a person can cut | Open |
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
@@ -598,7 +598,9 @@ to a new test folder.
 
 1. Start a model server on the node through a test hub. Set the device policy of the node to off with
    `anima compute policy set`. Expected: the server stops within 60 seconds.
-2. Give the hub a model work item for that node. Expected: the node gets no item.
+2. Queue ordinary model work for that node. Expected: the node gets no ordinary model work.
+3. On a mixed claim with the local work switch off, advertise `model_report`. Expected: the
+   report can run if otherwise eligible. Turn all three local switches off. Expected: 204.
 
 Result: Open.
 

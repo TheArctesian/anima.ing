@@ -177,23 +177,28 @@ daemon, and the daemon refuses each other file of `files` (`file_type`) before i
   and `/work/v1/secret`, with the daemon token of K8 Section 2. The daemon asks; the hub never opens a
   connection to a machine. The daemon listens on no port for work (MET-020, USE-005). The model servers listen on
   loopback for model requests; that is the model address of task L1-10, not a route for work.
-- A daemon token alone permits no model work (CAG-002). The hub gives a model item only to a device that takes
-  work (CMP-002, USE-004) and whose device policy permits it now (CAP-010 to CAP-012). The machine checks the
-  switch and the policy again before each item (K10 Section 3: `switch_off`, `policy`). `server_stop`,
-  `model_unload`, `model_drain`, `copy_delete` and `model_report` are never refused for `policy` or `switch_off`:
-  they only reduce the work of the machine.
+- A daemon token alone permits no model work (CAG-002). The hub gives ordinary model work only when the local
+  work switch is on and the device policy permits it (CAP-010 to CAP-012). The daemon checks the switch and
+  policy again before each item. `model_drain`, `server_stop`, `model_unload`, `copy_delete` and
+  `model_report` are exempt from the `switch_off` and `policy` refusals. With local work off, the hub can
+  hand out those five only on a mixed thread/model claim with `threads:on` which advertises `model` in
+  `kinds` and the item's type in `types` (OD-C29, R-474). This can delete a model copy. Returning 204 when all
+  three local switches are off and applying the hub's manual or cooldown WORK_OFF block remain K10 rules.
+  The exceptions preserve actor, target, authentication, and lease checks.
 - **Who may ask (R-326).** The hub makes each of the ten types for an API key or an AI agent,
   with the MCP state of its tool, as R-153 does for `agent_install`. Each model item has the member `actor`:
   `User`, `Agent` or `Hub` (LOG-012). The setting `agentTypes` at the machine (Section 10.1) lists the types
   that the machine takes from an item whose `actor` is `Agent`; by default it has the ten types. The daemon
   refuses another (`actor_not_permitted`). The hub writes `actor`, so the setting limits an honest hub only.
-- The `Claim` gets `model` in `kinds` and the ten types in `types` when the daemon has the model function. The
-  model function is on when the switch is on; there is no second switch (OD-C8).
+- The `Claim` gets `model` in `kinds` and the ten types in `types` when the daemon has the model function. There is no second
+  model switch (OD-C8). With work off, a mixed thread/model claim may advertise the five exceptions above.
 - Model items do not use the job slot of K10 (`free.slots` counts jobs). The hub counts its own leases: one
   machine has at most one model item that changes the machine (`runtime_install`, `model_pull`, `copy_delete`,
   `server_start`, `server_stop`, `model_load`, `model_unload`) and one `model_measure` at a time. A `model_report`
-  and a `model_drain` are not counted. One claim gets at most one item. The order: `model_drain`, `server_stop`,
-  `model_unload`, then each other model item the oldest first, then a job.
+  and a `model_drain` are not counted. One claim gets at most one item. K10 Section 6.5 orders a mixed claim (OD-C29, R-474).
+  Container stops and other container items keep their existing priority, followed by `model_drain`,
+  `server_stop`, `model_unload`, other eligible model work oldest first, then the oldest eligible build,
+  runner job or thread launch.
 - A model item has the states, the reports, the lease, the stop and the refusals of K10 Section 7 and Section 11.
   `preparing` is the check of the item and of the disk; `running` is the step; `finishing` is the clean-up of
   partial files. A `model_pull` holds its lease by its reports, each 15 seconds.
