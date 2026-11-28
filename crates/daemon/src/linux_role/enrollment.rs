@@ -107,15 +107,14 @@ impl Enrollment {
         let _access = self.access.lock().map_err(|_| refused())?;
         self.home.check()?;
         let hub = record_hub(record)?;
-        let (device, seed) = match device {
-            Some(device) => (valid_device(device)?, new_seed()?),
-            None => {
-                let previous = self.read_record()?.ok_or_else(refused)?;
-                if previous.hub != hub {
-                    return Err(refused());
-                }
-                (previous.device, previous.seed)
+        let (device, seed) = if let Some(device) = device {
+            (valid_device(device)?, new_seed()?)
+        } else {
+            let previous = self.read_record()?.ok_or_else(refused)?;
+            if previous.hub != hub {
+                return Err(refused());
             }
+            (previous.device, previous.seed)
         };
         self.replace(&[
             MARKER,
