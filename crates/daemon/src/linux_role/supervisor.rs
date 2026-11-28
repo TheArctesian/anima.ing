@@ -116,6 +116,7 @@ impl Person {
                 .env(crate::config::home::HOME_VARIABLE, &self.state);
         }
         let child = command.spawn()?;
+        drop(command);
         let mut worker = Worker { child, stream };
         wire::send(
             &mut worker.stream,
