@@ -4,8 +4,8 @@
 
 use std::io;
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 
 mod owner;
 pub(super) use owner::bind as bind_owner;
@@ -22,6 +22,8 @@ use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, Buf
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 
+use crate::threads::tree::identity::Process;
+
 /// The way back to one client: its frames, written, and how many bytes of them wait. A client
 /// that does not read fills its queue and is let go, so that it never grows the memory of the
 /// daemon (THR-045).
@@ -30,12 +32,26 @@ pub struct Client {
     frames: mpsc::Sender<String>,
     waiting: Arc<AtomicUsize>,
     let_go: Arc<tokio::sync::Notify>,
+    closed: Arc<Mutex<bool>>,
 }
 
 impl Client {
     /// Closes the connection of this client, so that it knows it gets no more updates.
     pub fn close(&self) {
+        *self.closed.lock().unwrap_or_else(PoisonError::into_inner) = true;
         self.let_go.notify_one();
+    }
+
+    pub(super) fn reply_to(&self, call: u64) -> Caller {
+        Caller {
+            call,
+            client: self.clone(),
+        }
+    }
+
+    pub(super) fn with_open<T>(&self, run: impl FnOnce() -> T) -> Option<T> {
+        let closed = self.closed.lock().unwrap_or_else(PoisonError::into_inner);
+        (!*closed).then(run)
     }
 }
 
@@ -86,6 +102,18 @@ impl Caller {
     }
 }
 
+/// A reply channel for a runner-owned operation. It is never installed on the public socket.
+pub(super) fn internal_caller() -> (Caller, mpsc::Receiver<String>) {
+    let (frames, receiver) = mpsc::channel(1);
+    let client = Client {
+        frames,
+        waiting: Arc::new(AtomicUsize::new(0)),
+        let_go: Arc::new(tokio::sync::Notify::new()),
+        closed: Arc::new(Mutex::new(false)),
+    };
+    (client.reply_to(1), receiver)
+}
+
 /// A call of a client, with the way back to that client.
 #[derive(Debug)]
 pub struct Incoming {
@@ -95,6 +123,7 @@ pub struct Incoming {
     pub agent: bool,
     /// Established from the socket and `SO_PEERCRED`, never from a frame.
     pub managed_owner: bool,
+    pub(super) git_peer: Option<Process>,
 }
 
 /// Binds the socket of the runner in `dir`, in place of one an older runner left.
@@ -143,23 +172,26 @@ async fn serve(
     let Some(agent) = peer_authority(&stream, authority, &dir).await else {
         return;
     };
-    let (reading, mut writing) = stream.into_split();
-    let (frames, mut queue) = mpsc::channel::<String>(CLIENT_QUEUE);
+    let git_peer = if matches!(authority, Authority::Local) {
+        stream
+            .peer_cred()
+            .ok()
+            .and_then(|peer| Process::peer(&stream, peer.pid()))
+    } else {
+        None
+    };
+    let (reading, writing) = stream.into_split();
+    let (frames, queue) = mpsc::channel::<String>(CLIENT_QUEUE);
     let queued_bytes = Arc::new(AtomicUsize::new(0));
     let let_go = Arc::new(tokio::sync::Notify::new());
+    let closed = Arc::new(Mutex::new(false));
     let client = Client {
         frames,
         waiting: Arc::clone(&queued_bytes),
         let_go: Arc::clone(&let_go),
+        closed: Arc::clone(&closed),
     };
-    let writer = tokio::spawn(async move {
-        while let Some(text) = queue.recv().await {
-            queued_bytes.fetch_sub(text.len(), Ordering::Relaxed);
-            if writing.write_all(text.as_bytes()).await.is_err() {
-                break;
-            }
-        }
-    });
+    let writer = tokio::spawn(write_frames(writing, queue, queued_bytes, closed));
     let limit = u64::try_from(MAX_FRAME)
         .unwrap_or(u64::MAX)
         .saturating_add(1);
@@ -185,11 +217,13 @@ async fn serve(
             client: client.clone(),
             agent,
             managed_owner: matches!(authority, Authority::RootOwner),
+            git_peer: git_peer.clone(),
         };
         if calls.send(incoming).await.is_err() {
             break;
         }
     }
+    client.close();
     drop(client);
     // The runner may still hold the way back of a watch; the writer ends when it lets go.
     let _ = writer.await;
@@ -206,3 +240,20 @@ async fn peer_authority(stream: &UnixStream, authority: Authority, dir: &Path) -
         _ => return None,
     })
 }
+async fn write_frames(
+    mut writing: tokio::net::unix::OwnedWriteHalf,
+    mut queue: mpsc::Receiver<String>,
+    queued_bytes: Arc<AtomicUsize>,
+    closed: Arc<Mutex<bool>>,
+) {
+    while let Some(text) = queue.recv().await {
+        queued_bytes.fetch_sub(text.len(), Ordering::Relaxed);
+        if writing.write_all(text.as_bytes()).await.is_err() {
+            break;
+        }
+    }
+    *closed.lock().unwrap_or_else(PoisonError::into_inner) = true;
+}
+
+#[cfg(all(test, target_os = "linux", target_pointer_width = "64"))]
+mod tests;

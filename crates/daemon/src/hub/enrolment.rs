@@ -82,7 +82,9 @@ impl Enrolment<'_> {
             self.origin.clone(),
             self.now,
         );
-        store.save_new(&credential).map_err(not_kept)?;
+        store
+            .save_new(&credential, enrolled.device)
+            .map_err(not_kept)?;
         self.home.write_config(&Config {
             hub: self.origin,
             device: enrolled.device,

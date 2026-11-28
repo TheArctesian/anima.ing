@@ -9,7 +9,7 @@ use super::super::thread::Step;
 use super::super::{Pending, Runner, Waits};
 
 /// The request of a thread that an answer is for.
-pub(super) struct Answering {
+pub(in crate::threads::runner) struct Answering {
     pub thread: Uuid,
     pub request: Uuid,
 }
@@ -17,7 +17,7 @@ pub(super) struct Answering {
 impl Runner {
     /// An answer of the person. The request closes, and the client gets its answer, when the
     /// holder took the line (THR-030).
-    pub(super) async fn answer(
+    pub(in crate::threads::runner) async fn answer(
         &mut self,
         to: Answering,
         answer: &Answer,
@@ -45,7 +45,8 @@ impl Runner {
             word: answer_word(answer),
             back,
         };
-        self.waits.insert(command, Waits::Answer(pending));
+        self.waits
+            .insert(command, self.link.origin(), Waits::Answer(pending));
         Ok(())
     }
 }

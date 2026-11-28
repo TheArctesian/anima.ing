@@ -15,6 +15,8 @@ use crate::keychain_wait;
 #[cfg(not(target_os = "macos"))]
 mod file;
 #[cfg(target_os = "macos")]
+mod holder_authority;
+#[cfg(target_os = "macos")]
 mod keychain;
 
 #[cfg(not(target_os = "macos"))]
@@ -58,6 +60,9 @@ pub enum TokenStoreError {
     File(#[from] crate::config::private_file::PrivateFileError),
     #[error("the stored token record does not read")]
     Corrupt,
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    #[error("the protected Linux token store is unavailable")]
+    LinuxAuthority,
     #[error("the daemon's folder: {0}")]
     Folder(#[from] crate::config::home::HomeError),
     #[cfg(target_os = "macos")]
@@ -157,20 +162,82 @@ impl TokenStore {
         Credential::from_record(&bytes).map(Some)
     }
 
+    #[cfg(target_os = "macos")]
+    pub(crate) fn holder_authority(
+        &self,
+        config: Option<&crate::config::Config>,
+    ) -> Result<Option<Zeroizing<[u8; 32]>>, TokenStoreError> {
+        let Some(bytes) = self.backend.read(self.deadline)? else {
+            return Ok(None);
+        };
+        if !holder_authority::bound(&bytes).ok_or(TokenStoreError::Corrupt)? {
+            return Ok(None);
+        }
+        let config = config.ok_or(TokenStoreError::Corrupt)?;
+        holder_authority::at(&bytes, config, &self.backend.folder()?)
+            .map(Some)
+            .ok_or(TokenStoreError::Corrupt)
+    }
+
+    #[cfg(unix)]
+    pub(crate) fn remote_credential(
+        &self,
+        config: &crate::config::Config,
+    ) -> Result<Option<Credential>, TokenStoreError> {
+        #[cfg(target_os = "macos")]
+        {
+            if !keychain::release_daemon()? {
+                return Ok(None);
+            }
+            let Some(bytes) = self.backend.read(self.deadline)? else {
+                return Ok(None);
+            };
+            if holder_authority::at(&bytes, config, &self.backend.folder()?).is_none() {
+                return Ok(None);
+            }
+            Credential::from_record(&bytes).map(Some)
+        }
+        #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+        {
+            if !self.backend.is_protected() {
+                return Ok(None);
+            }
+            let Some((bytes, device, _)) =
+                crate::linux_role::credential().map_err(|_| TokenStoreError::LinuxAuthority)?
+            else {
+                return Ok(None);
+            };
+            let credential = Credential::from_record(&bytes)?;
+            Ok((device == config.device && credential.hub == config.hub).then_some(credential))
+        }
+        #[cfg(not(any(
+            target_os = "macos",
+            all(target_os = "linux", target_pointer_width = "64")
+        )))]
+        {
+            let _ = config;
+            self.load()
+        }
+    }
+
     /// The old credential stays when this fails (K8 Section 5).
     ///
     /// # Errors
     /// [`TokenStoreError`] when it cannot be written.
     pub fn save(&self, credential: &Credential) -> Result<(), TokenStoreError> {
-        self.write(credential, false)
+        self.write(credential, None)
     }
 
     /// The Keychain item is made afresh.
     ///
     /// # Errors
     /// [`TokenStoreError`] when it cannot be written.
-    pub fn save_new(&self, credential: &Credential) -> Result<(), TokenStoreError> {
-        self.write(credential, true)
+    pub fn save_new(
+        &self,
+        credential: &Credential,
+        device: uuid::Uuid,
+    ) -> Result<(), TokenStoreError> {
+        self.write(credential, Some(device))
     }
 
     /// A store that holds none is not an error, so a second call ends the same as the first
@@ -182,7 +249,11 @@ impl TokenStore {
         self.backend.delete(self.deadline)
     }
 
-    fn write(&self, credential: &Credential, fresh: bool) -> Result<(), TokenStoreError> {
+    fn write(
+        &self,
+        credential: &Credential,
+        device: Option<uuid::Uuid>,
+    ) -> Result<(), TokenStoreError> {
         let token =
             DaemonToken::parse(credential.token.expose()).ok_or(TokenStoreError::Corrupt)?;
         let copy = Credential {
@@ -190,7 +261,7 @@ impl TokenStore {
             expires_at: credential.expires_at,
             hub: credential.hub.clone(),
         };
-        self.backend.write(&copy.render(), fresh, self.deadline)
+        self.backend.write(&copy.render(), device, self.deadline)
     }
 }
 

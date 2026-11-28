@@ -110,8 +110,12 @@ impl Gits {
         Some(self.home.as_ref()?.of_thread(thread))
     }
 
+    pub(super) fn read_engine(&self) -> Option<Engine> {
+        self.engine.as_ref().ok().cloned()
+    }
+
     /// The repository of the worktree that `folder` is, when it is a worktree of `thread`.
-    fn repository_of(&self, thread: Uuid, folder: &Path) -> Option<String> {
+    pub(super) fn repository_of(&self, thread: Uuid, folder: &Path) -> Option<String> {
         let real = |path: &Path| std::fs::canonicalize(path).ok();
         let above = real(folder.parent()?)?;
         (Some(above) == real(&self.thread_folder(thread)?))

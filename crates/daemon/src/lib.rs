@@ -8,10 +8,14 @@ pub mod config;
 pub mod hub;
 pub mod keychain_wait;
 pub mod keys;
+#[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+pub mod linux_role;
 #[cfg(unix)]
 pub mod model;
 pub mod push;
 pub mod readers;
+#[cfg(unix)]
+pub mod remote_code;
 pub mod report;
 pub mod runtime;
 pub mod sampling;

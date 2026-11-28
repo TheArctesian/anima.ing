@@ -34,11 +34,14 @@ async fn failed_delivery_replays_and_hub_stop_is_durable_before_root_contact() {
     owner.report(execution, report.clone()).unwrap();
     let tokens = TokenStore::open(&home);
     tokens
-        .save_new(&Credential {
-            token: DaemonToken::from_random([42; 32]),
-            expires_at: Utc::now() + chrono::TimeDelta::hours(1),
-            hub: origin.clone(),
-        })
+        .save_new(
+            &Credential {
+                token: DaemonToken::from_random([42; 32]),
+                expires_at: Utc::now() + chrono::TimeDelta::hours(1),
+                hub: origin.clone(),
+            },
+            device,
+        )
         .unwrap();
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}/", listener.local_addr().unwrap())

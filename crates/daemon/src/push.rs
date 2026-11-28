@@ -62,6 +62,7 @@ pub enum Event {
         Option<(
             daemon_core::wire::ThreadSummaries,
             crate::config::agent_usage::UsageSettings,
+            std::collections::BTreeSet<Uuid>,
         )>,
     ),
 }
@@ -239,8 +240,7 @@ impl Pusher {
                     if let Answer::Accepted(Some(accepted)) = answer {
                         self.usage.take_salt(accepted.account_salt.as_deref());
                         #[cfg(unix)]
-                        self.thread_summaries
-                            .acknowledge(accepted.agent_threads.as_ref());
+                        self.accept_thread_summaries(&batch, &accepted).await;
                         self.follow_keys(accepted, now).await;
                     }
                     return Round::Sent;

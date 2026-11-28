@@ -1,5 +1,7 @@
 //! MCP-009.
 
+mod git;
+
 use serde_json::{Value, json};
 
 use super::session::{API_KEY, Desk, assert_protocol_only, hub};

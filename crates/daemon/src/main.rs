@@ -1,5 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+#[path = "cli/holder_mode.rs"]
+mod holder_mode;
 #[path = "cli/thread_commands.rs"]
 mod thread_commands;
 
@@ -20,10 +22,18 @@ use anima_daemon::token_store::TokenStore;
 use anima_daemon::units::install::Host;
 use anima_daemon::units::step::{STEP_DEADLINE, run_step};
 use anima_daemon::units::{self, plan::Target};
-use thread_commands::{holder, serves_a_person, threads};
+use thread_commands::{serves_a_person, threads};
 use zeroize::Zeroizing;
 
 fn main() -> ExitCode {
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    let args = match holder_mode::prepared_args() {
+        Ok(Some(args)) => args,
+        Ok(None) => return ExitCode::SUCCESS,
+        Err(error) => return failure(&error),
+    };
+    #[cfg(not(all(target_os = "linux", target_pointer_width = "64")))]
+    let args = std::env::args().skip(1).collect();
     anima_daemon::readers::mobile::dispatch();
     // The fixed modes run before any runtime or thread; each never returns.
     #[cfg(unix)]
@@ -32,7 +42,7 @@ fn main() -> ExitCode {
         cfg!(target_os = "linux") && std::env::args().nth(1).as_deref() == Some("source-artifact");
     match tokio::runtime::Runtime::new() {
         Ok(runtime) => {
-            let status = runtime.block_on(daemon());
+            let status = runtime.block_on(daemon(args));
             if artifact_stdio {
                 // A timed-out stdin/stdout operation can leave a blocking I/O task.
                 runtime.shutdown_background();
@@ -43,10 +53,10 @@ fn main() -> ExitCode {
     }
 }
 
-async fn daemon() -> ExitCode {
+async fn daemon(args: Vec<String>) -> ExitCode {
     #[cfg(windows)]
     let _ = anima_windows::console::attach_parent();
-    let command = match cli::parse(std::env::args().skip(1)) {
+    let command = match cli::parse(args) {
         Ok(command) => command,
         Err(error) => return usage(&error),
     };
@@ -55,8 +65,8 @@ async fn daemon() -> ExitCode {
         return status;
     }
     start_log();
-    if let Command::Holder { folder, limit } = &command {
-        return holder(folder, *limit).await;
+    if let Some(result) = holder_mode::run(&command).await {
+        return result;
     }
     if matches!(command, Command::Version) {
         println!("{}", cli::version_line());
@@ -81,7 +91,9 @@ async fn daemon() -> ExitCode {
         Command::Uninstall => uninstall(&home),
         Command::Stop => stop_unit(),
         Command::KeyRead { name } => key_read(&name, &home),
-        Command::Holder { .. } | Command::Version => ExitCode::FAILURE,
+        Command::Holder { .. } | Command::HolderPublicRoot(_) | Command::Version => {
+            ExitCode::FAILURE
+        }
         Command::KeyForget => match KeyStore::open(&home).forget() {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),
@@ -252,6 +264,10 @@ fn uninstall(_home: &Home) -> ExitCode {
 
 /// The buffers of `rpassword` and `StdinLock` are not wiped; the process is short-lived (LOG-007).
 fn read_code() -> Result<daemon_core::wire::EnrolmentCode, CliError> {
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    if let Some(code) = anima_daemon::linux_role::take_enrol_code() {
+        return Ok(code);
+    }
     if std::io::stdin().is_terminal() {
         eprint!("Enrolment code: ");
         let line = Zeroizing::new(rpassword::read_password().map_err(|_| CliError::NotACode)?);

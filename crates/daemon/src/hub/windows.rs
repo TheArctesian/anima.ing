@@ -61,7 +61,7 @@ impl Local {
         };
         let status = response.status().as_u16();
         let mut incoming = response.into_body();
-        let mut bytes = Body::new();
+        let mut bytes = Body::bounded(call.response_limit + 1);
         while !bytes.is_full() {
             match incoming.frame().await {
                 Some(Ok(frame)) => {
@@ -72,6 +72,9 @@ impl Local {
                 Some(Err(_)) => return Answer::Failed(Cause::Network),
                 None => break,
             }
+        }
+        if bytes.is_full() {
+            return Answer::Failed(Cause::Unreadable);
         }
         if call.ok.contains(&status) {
             return read_ok(status, bytes.bytes())
@@ -135,6 +138,7 @@ mod tests {
             route: "daemon/v1/push",
             bearer: None,
             body: Zeroizing::new(Vec::new()),
+            response_limit: crate::hub::body::LIMIT,
             ok: &[204],
         };
         assert!(matches!(

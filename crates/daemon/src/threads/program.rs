@@ -52,7 +52,12 @@ impl Start<'_> {
     /// # Errors
     /// The error of the system when the program cannot start.
     pub fn spawn(&self) -> io::Result<Child> {
-        tokio::process::Command::new(self.program)
+        self.command().spawn()
+    }
+
+    pub(super) fn command(&self) -> tokio::process::Command {
+        let mut command = tokio::process::Command::new(self.program);
+        command
             .args(self.args)
             .env_clear()
             .envs(self.env.iter().map(|(name, value)| (name, value)))
@@ -61,8 +66,8 @@ impl Start<'_> {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .process_group(0)
-            .kill_on_drop(false)
-            .spawn()
+            .kill_on_drop(false);
+        command
     }
 }
 
@@ -179,6 +184,7 @@ pub async fn wait(
     };
     let seen = {
         let mut state = locked(&shared);
+        state.revoke_git_read(&thread);
         state
             .threads
             .get_mut(&thread)

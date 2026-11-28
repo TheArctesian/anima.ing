@@ -82,6 +82,14 @@ impl Lease {
         program: Program,
         start: &Start<'_>,
     ) -> std::io::Result<tokio::process::Child> {
+        self.command(program, start)?.spawn()
+    }
+
+    pub(in crate::threads) fn command(
+        &self,
+        program: Program,
+        start: &Start<'_>,
+    ) -> std::io::Result<tokio::process::Command> {
         let mut args = start.args.to_vec();
         let mut env = start.env.to_vec();
         match program {
@@ -122,13 +130,13 @@ impl Lease {
                 ]);
             }
         }
-        Start {
+        Ok(Start {
             program: start.program,
             args: &args,
             env: &env,
             folder: start.folder,
         }
-        .spawn()
+        .command())
     }
 
     /// Programs can print their base URL in errors. Remove its secret before the outbox,

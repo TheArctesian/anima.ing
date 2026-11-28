@@ -192,13 +192,12 @@ async fn hub(
         axum::serve(listener, router).await.unwrap();
     });
     let tokens = TokenStore::open(home);
-    tokens
-        .save_new(&Credential {
-            token: DaemonToken::from_random([19; 32]),
-            expires_at: Utc::now() + TimeDelta::hours(1),
-            hub: origin.clone(),
-        })
-        .unwrap();
+    let credential = Credential {
+        token: DaemonToken::from_random([19; 32]),
+        expires_at: Utc::now() + TimeDelta::hours(1),
+        hub: origin.clone(),
+    };
+    tokens.save_new(&credential, device).unwrap();
     (
         HubTarget {
             hub: Arc::new(HubClient::new(base, TIMEOUT).unwrap()),

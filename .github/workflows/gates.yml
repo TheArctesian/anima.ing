@@ -320,6 +320,8 @@ jobs:
         run: |
           set -eu
           unset DATABASE_URL
+          # The protected TH32 fixtures serve HTTPS on distinct loopback addresses in this disposable runner.
+          sudo -n sysctl -qw fs.suid_dumpable=0 net.ipv4.ip_unprivileged_port_start=0
           xvfb-run --auto-servernum bun quality/bin/gates.ts --group rust --gate rust-test,doctest,pinning
       - name: Test mobile inventory with synthetic tools only
         run: |

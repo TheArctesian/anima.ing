@@ -24,7 +24,7 @@ pub(in crate::threads::runner) struct Standing {
     /// When the runner last asked the older holder to end.
     pub quit: Option<std::time::Instant>,
     /// The command of the Quit that waits for its answer.
-    pub quit_command: Option<u64>,
+    pub quit_command: Option<(u64, crate::threads::link::Origin)>,
 }
 
 impl Runner {
@@ -33,14 +33,23 @@ impl Runner {
     /// program runs; the runner asks again a minute later, also after a new connection, so that
     /// nothing can make a loop of quick ends and starts.
     pub(in crate::threads::runner) async fn replace_older_holder(&mut self) {
+        if self.holder.older {
+            self.replace_idle_holder().await;
+        }
+    }
+
+    pub(in crate::threads::runner) async fn replace_idle_holder(&mut self) {
         let asked = self
             .holder
             .quit
             .is_some_and(|at| at.elapsed() < std::time::Duration::from_secs(60));
-        if self.holder.older && !asked && self.running() == 0 {
+        if !asked && self.running() == 0 {
             self.holder.quit = Some(std::time::Instant::now());
             self.holder.quitting = true;
-            self.holder.quit_command = self.command(Action::Quit).await;
+            self.holder.quit_command = self
+                .command(Action::Quit)
+                .await
+                .map(|id| (id, self.link.origin()));
             // A Quit that did not reach the holder ends nothing: starts go on.
             self.holder.quitting = self.holder.quit_command.is_some();
         }
@@ -53,7 +62,7 @@ impl Runner {
         command: u64,
         outcome: &crate::threads::wire::Outcome,
     ) -> bool {
-        if self.holder.quit_command != Some(command) {
+        if self.holder.quit_command != Some((command, self.link.origin())) {
             return false;
         }
         self.holder.quit_command = None;

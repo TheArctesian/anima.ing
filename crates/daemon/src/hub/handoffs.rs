@@ -21,6 +21,7 @@ impl HubClient {
                     route: POLL,
                     bearer: Some(token),
                     body: json(&()),
+                    response_limit: crate::hub::body::LIMIT,
                     ok: &[200, 204],
                 },
                 |status, bytes| {

@@ -27,6 +27,20 @@ fn thr_049_a_client_comes_from_the_runner_only_through_its_parents() {
 }
 
 #[test]
+fn thr_049_supervised_holder_siblings_and_detached_helpers_cannot_act_as_the_person() {
+    let rows = table(
+        "2 1 supervisor\n3 2 daemon\n4 2 holder\n5 4 provider\n6 5 helper\n7 1 detached\n8 1 terminal",
+    );
+    let agent = |pid, same_group| supervised_agent(&rows, pid, 3, same_group);
+    assert!(agent(6, true));
+    assert!(agent(6, false));
+    assert!(agent(7, true));
+    assert!(!agent(8, false));
+    assert!(!agent(3, true));
+    assert!(agent(99, false));
+}
+
+#[test]
 fn thr_049_a_process_below_the_holder_is_of_an_agent_and_a_terminal_is_not() {
     let rows = table(
         "  1 0 /sbin/launchd\n 50 1 /Applications/Terminal\n 51 50 -zsh\n 52 51 anima agents approve x y\n \

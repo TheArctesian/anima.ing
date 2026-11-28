@@ -1,0 +1,22 @@
+[Unit]
+Description=Anima supervised personal daemon
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/libexec/anima-daemon linux-supervise /etc/anima/th32.json
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=40
+LimitCORE=0
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_KILL CAP_SETGID CAP_SETPCAP CAP_SETUID
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

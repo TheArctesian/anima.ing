@@ -75,13 +75,47 @@ pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
     else {
         return true;
     };
-    match origin(pid).await {
+    let theirs = origin(pid).await;
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    if crate::linux_role::task_supervised() {
+        return theirs.is_none_or(|group| supervised_agent(&table, pid, me, group == *mine));
+    }
+    match theirs {
         Some(theirs) if theirs != *mine => false,
         // The line is read from the table of this call: a process that took the ID of a
         // parent that ended is not above the runner now.
         Some(_) => !comes_from(&table, pid, me, &line_of(&table, me, mine).await),
         None => true,
     }
+}
+
+/// The supervisor starts both the runner and the holder. Its other descendants and clients
+/// still in its service group cannot speak as the person, even after losing their mark.
+#[cfg(any(test, all(target_os = "linux", target_pointer_width = "64")))]
+fn supervised_agent(table: &Commands, pid: u32, me: u32, same_group: bool) -> bool {
+    if pid == me {
+        return false;
+    }
+    let Some(&(supervisor, _)) = table.get(&me) else {
+        return true;
+    };
+    if supervisor <= 1 || same_group {
+        return true;
+    }
+    let mut at = pid;
+    for _ in 0..64 {
+        let Some(&(parent, _)) = table.get(&at) else {
+            return true;
+        };
+        if parent == supervisor {
+            return true;
+        }
+        if parent <= 1 {
+            return false;
+        }
+        at = parent;
+    }
+    true
 }
 
 /// The process that started the runner, with the feature `test-person` (the integration

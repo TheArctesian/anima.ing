@@ -3,6 +3,8 @@
 //!
 //! Pure: only the frames. The runner does the work (`anima-daemon`, `threads::git`).
 
+pub mod read;
+
 use serde::{Deserialize, Serialize};
 
 /// What a client asks about the worktree of one repository of a thread.

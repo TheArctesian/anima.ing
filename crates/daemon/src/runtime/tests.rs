@@ -26,7 +26,7 @@ fn enrolled(hub: &str, issued_by: &str) -> (tempfile::TempDir, Home) {
         hub: Origin::parse_kept(issued_by).expect("origin"),
     };
     TokenStore::open(&home)
-        .save_new(&credential)
+        .save_new(&credential, config.device)
         .expect("token");
     (dir, home)
 }

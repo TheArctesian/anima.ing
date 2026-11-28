@@ -41,17 +41,3 @@ pub(super) const fn serves_a_person(_: &std::path::Path) -> bool {
 pub(super) async fn threads(_: std::path::PathBuf) -> ExitCode {
     ExitCode::FAILURE
 }
-
-/// THR-113.
-#[cfg(unix)]
-pub(super) async fn holder(folder: &std::path::Path, limit: usize) -> ExitCode {
-    match anima_daemon::threads::holder::hold(folder, limit).await {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => failure(&error),
-    }
-}
-
-#[cfg(not(unix))]
-pub(super) async fn holder(_: &std::path::Path, _: usize) -> ExitCode {
-    ExitCode::FAILURE
-}

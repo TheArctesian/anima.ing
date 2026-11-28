@@ -2,7 +2,10 @@
 
 use std::time::Duration;
 
-use agent_threads::drive::Program;
+use agent_threads::{
+    control::{Action, Call},
+    drive::Program,
+};
 use tokio::sync::mpsc;
 use tokio::time::Interval;
 
@@ -10,12 +13,13 @@ use super::{Runner, RunnerError, completed, models, silence, socket, start};
 use crate::threads::wire;
 
 enum Ready {
-    Holder(Option<wire::Event>),
+    Holder(wire::Event),
     Call(socket::Incoming),
     Answers(u64, silence::Answers),
     Completed(completed::Completed),
     Worktree(Box<start::WorktreeMade>),
     Look,
+    Remote(Box<super::remote_code::Event>),
 }
 
 struct Sources {
@@ -24,17 +28,27 @@ struct Sources {
     listed: mpsc::Receiver<(Program, models::Listed)>,
     made: mpsc::Receiver<start::WorktreeMade>,
     look: Interval,
+    tick: Interval,
+    person: bool,
+    remote: mpsc::Receiver<super::remote_code::Event>,
+    git_reads: mpsc::Receiver<super::git_reads::Completed>,
 }
 
 impl Sources {
     async fn next(&mut self, runner: &mut Runner) -> Ready {
-        tokio::select! {
-            event = runner.link.events.recv() => Ready::Holder(event),
-            Some(call) = self.incoming.recv() => Ready::Call(call),
-            Some((id, answers)) = self.asked.recv() => Ready::Answers(id, answers),
-            result = completed::next(&mut self.listed, &mut runner.project_creations) => Ready::Completed(result),
-            Some(worktree) = self.made.recv() => Ready::Worktree(Box::new(worktree)),
-            _ = self.look.tick() => Ready::Look,
+        loop {
+            tokio::select! {
+                event = runner.link.events.recv() => match event {
+                    Some(event) => return Ready::Holder(event),
+                    None => runner.reconnect().await,
+                },
+                Some(call) = self.incoming.recv() => return Ready::Call(call),
+                Some((id, answers)) = self.asked.recv() => return Ready::Answers(id, answers),
+                result = completed::next(&mut self.listed, &mut runner.project_creations, &mut self.git_reads) => return Ready::Completed(result),
+                Some(worktree) = self.made.recv() => return Ready::Worktree(Box::new(worktree)),
+                _ = self.look.tick() => return Ready::Look,
+                Some(event) = super::remote_code::next(&mut self.remote, &mut self.tick), if self.person => return Ready::Remote(Box::new(event)),
+            }
         }
     }
 }
@@ -63,9 +77,16 @@ impl Runner {
         stop: impl Future<Output = ()>,
     ) {
         let (sender, incoming) = mpsc::channel(256);
+        let person = owner.is_none();
         let mut accepting = accept_connections(&self.dir, listener, owner, sender);
         tokio::pin!(stop);
+        let mut tick = tokio::time::interval(Duration::from_secs(10));
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         let mut sources = Sources {
+            person,
+            tick,
+            remote: self.remote.open(),
+            git_reads: self.git_reads.receive.take().expect("one serve loop"),
             incoming,
             asked: self.asks.receiver.take().expect("one serve loop"),
             listed: self.model_asks.receiver.take().expect("one serve loop"),
@@ -80,15 +101,33 @@ impl Runner {
             };
             // Stop is checked before taking another event. Once taken, a handler finishes.
             match ready {
-                Ready::Holder(event) => self.heard_holder(event).await,
-                Ready::Call(call) => self.call(call).await,
+                Ready::Holder(event) => self.holder_event(event).await,
+                Ready::Call(call) => self.incoming(call).await,
                 Ready::Answers(id, answers) => self.asked(id, answers).await,
                 Ready::Completed(result) => self.completed(result),
                 Ready::Worktree(worktree) => self.worktree_made(*worktree).await,
                 Ready::Look => self.look_around().await,
+                Ready::Remote(event) => self.remote_event(*event).await,
             }
         }
         accepting.abort_all();
+    }
+    async fn incoming(&mut self, incoming: socket::Incoming) {
+        match incoming {
+            socket::Incoming {
+                call:
+                    Call {
+                        id,
+                        action: Action::GitRead(request),
+                    },
+                client,
+                git_peer,
+                ..
+            } => {
+                self.git_read(client.reply_to(id), git_peer, request);
+            }
+            other => self.call(other).await,
+        }
     }
 }
 

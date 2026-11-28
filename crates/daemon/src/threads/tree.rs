@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use rustix::process::{Pid, Signal, kill_process, test_kill_process};
 
+pub(super) mod identity;
 mod settle;
 pub use settle::{Killed, left_running, zombies_in};
 
