@@ -67,8 +67,9 @@ impl Installation {
             !uid.is_root(),
             "the Linux fixture needs a non-root test user"
         );
+        // The fixture executes a root-owned ELF, and some runners mount /run with noexec.
         let dir = output(
-            sudo("/usr/bin/mktemp").args(["-d", "/run/anima-th32.XXXXXXXXXX"]),
+            sudo("/usr/bin/mktemp").args(["-d", "/opt/anima-th32.XXXXXXXXXX"]),
             "create the isolated root fixture directory",
         );
         let installed = Self {
