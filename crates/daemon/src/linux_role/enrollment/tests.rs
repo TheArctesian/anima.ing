@@ -1,6 +1,6 @@
 use std::{
     fs::{self, Permissions},
-    os::unix::fs::{PermissionsExt as _, symlink},
+    os::unix::fs::{PermissionsExt as _, chown, symlink},
 };
 
 use daemon_core::wire::DaemonToken;
@@ -74,6 +74,9 @@ fn enrollment_refuses_unsafe_storage_and_a_substituted_home() {
         io::ErrorKind::PermissionDenied
     );
     fs::set_permissions(&state, Permissions::from_mode(0o700)).unwrap();
+    chown(&state, Some(65534), None).unwrap();
+    assert!(open().is_err());
+    chown(&state, Some(0), None).unwrap();
     fs::set_permissions(temp.path(), Permissions::from_mode(0o722)).unwrap();
     assert_eq!(
         open().err().unwrap().kind(),
@@ -95,6 +98,12 @@ fn enrollment_refuses_unsafe_storage_and_a_substituted_home() {
         io::ErrorKind::PermissionDenied
     );
     assert!(enrollment.save(&original, device).is_err());
+    drop(enrollment);
+    let enrollment = open().unwrap();
+    assert_eq!(
+        enrollment.read().err().unwrap().kind(),
+        io::ErrorKind::PermissionDenied
+    );
     drop(enrollment);
     let enrollment = Enrollment::at(&state, moved).unwrap();
     assert_eq!(

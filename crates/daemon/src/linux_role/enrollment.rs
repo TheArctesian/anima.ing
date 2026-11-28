@@ -140,7 +140,7 @@ impl Enrollment {
             OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::NOFOLLOW | OFlags::CLOEXEC;
         let mode = Mode::RUSR | Mode::WUSR;
         let mut file = File::from(fs::openat(&self.directory, STAGING, flags, mode)?);
-        let mut publish = || {
+        let published = (|| {
             fs::fchmod(&file, mode)?;
             for bytes in pieces {
                 file.write_all(bytes)?;
@@ -149,8 +149,8 @@ impl Enrollment {
             self.home.check()?;
             fs::renameat(&self.directory, STAGING, &self.directory, ENROLLMENT)?;
             Ok(())
-        };
-        if let Err(error) = publish() {
+        })();
+        if let Err(error) = published {
             remove(&self.directory, STAGING)?;
             return Err(error);
         }
