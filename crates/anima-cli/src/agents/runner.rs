@@ -104,6 +104,31 @@ impl RunnerLink {
         }
     }
 
+    /// One bounded Git summary request. An older runner can close the call without an answer.
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    pub(crate) async fn git_read(
+        mut self,
+        request: agent_threads::git::read::Request,
+    ) -> Option<agent_threads::git::read::Outcome> {
+        use tokio::io::AsyncReadExt as _;
+
+        let id = self.send(Action::GitRead(request)).await.ok()?;
+        let mut reader = self.lines.into_inner().take(64 * 1024);
+        let mut line = Vec::new();
+        reader.read_until(b'\n', &mut line).await.ok()?;
+        if !line.ends_with(b"\n") {
+            return None;
+        }
+        let Reply::Done {
+            id: answered,
+            result: Outcome::GitRead { result },
+        } = serde_json::from_slice(&line).ok()?
+        else {
+            return None;
+        };
+        (answered == id).then_some(result)
+    }
+
     /// The version of the daemon of the runner; `None` when the runner closed the connection at
     /// the call, as a runner from before it does.
     async fn version(&mut self) -> Result<Option<String>, Failure> {

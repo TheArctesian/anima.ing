@@ -9,6 +9,7 @@
 pub mod commands;
 pub mod git;
 pub mod holder;
+pub mod holder_channel;
 pub mod link;
 pub mod marker;
 pub mod notice;

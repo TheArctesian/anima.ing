@@ -20,6 +20,8 @@ mod managed_code;
 #[cfg(unix)]
 pub mod peer;
 #[cfg(unix)]
+pub mod remote_code;
+#[cfg(unix)]
 mod unix;
 #[cfg(windows)]
 mod windows;
@@ -73,6 +75,7 @@ struct Call<'a> {
     bearer: Option<&'a DaemonToken>,
     body: Zeroizing<Vec<u8>>,
     ok: &'static [u16],
+    response_limit: usize,
 }
 
 /// A client for one hub.
@@ -169,6 +172,7 @@ impl HubClient {
             route: "daemon/v1/enrol",
             bearer: None,
             body: json(&EnrolRequest { code }),
+            response_limit: body::LIMIT,
             ok: &[200],
         };
         self.post(call, |_, body| read_json(body)).await
@@ -180,6 +184,7 @@ impl HubClient {
             route: "daemon/v1/push",
             bearer: Some(token),
             body: json(batch),
+            response_limit: body::LIMIT,
             ok: &[204, 200],
         };
         // An `Accepted` that does not read is ignored; the batch is stored either way.
@@ -199,6 +204,7 @@ impl HubClient {
             route: "daemon/v1/threads/entries",
             bearer: Some(token),
             body: json(upload),
+            response_limit: body::LIMIT,
             ok: &[200],
         };
         self.post(call, |_, body| read_json(body)).await
@@ -210,6 +216,7 @@ impl HubClient {
             route: "daemon/v1/keys/fetch",
             bearer: Some(token),
             body: json(asked),
+            response_limit: body::LIMIT,
             ok: &[200],
         };
         self.post(call, |_, body| read_json(body)).await
@@ -221,6 +228,7 @@ impl HubClient {
             route: "daemon/v1/renew",
             bearer: Some(token),
             body: json(&RenewRequest {}),
+            response_limit: body::LIMIT,
             ok: &[200],
         };
         self.post(call, |_, body| read_json(body)).await
@@ -234,7 +242,8 @@ impl HubClient {
         if let Some(local) = &self.local {
             return local.post(call, read_ok).await;
         }
-        self.post_http(call, body::LIMIT, read_ok).await
+        let limit = call.response_limit + 1;
+        self.post_http(call, limit, read_ok).await
     }
 
     async fn post_http<T>(
@@ -270,6 +279,9 @@ impl HubClient {
                 Ok(None) => break,
                 Err(error) => return Answer::Failed(cause(&error)),
             }
+        }
+        if bytes.is_full() {
+            return Answer::Failed(Cause::Unreadable);
         }
         if call.ok.contains(&status) {
             let read = read_ok(status, bytes.bytes());

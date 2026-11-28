@@ -1,5 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+#[path = "cli/holder_mode.rs"]
+mod holder_mode;
 #[path = "cli/thread_commands.rs"]
 mod thread_commands;
 
@@ -20,7 +22,7 @@ use anima_daemon::token_store::TokenStore;
 use anima_daemon::units::install::Host;
 use anima_daemon::units::step::{STEP_DEADLINE, run_step};
 use anima_daemon::units::{self, plan::Target};
-use thread_commands::{holder, serves_a_person, threads};
+use thread_commands::{serves_a_person, threads};
 use zeroize::Zeroizing;
 
 fn main() -> ExitCode {
@@ -55,8 +57,8 @@ async fn daemon() -> ExitCode {
         return status;
     }
     start_log();
-    if let Command::Holder { folder, limit } = &command {
-        return holder(folder, *limit).await;
+    if let Some(result) = holder_mode::run(&command).await {
+        return result;
     }
     if matches!(command, Command::Version) {
         println!("{}", cli::version_line());
@@ -81,7 +83,9 @@ async fn daemon() -> ExitCode {
         Command::Uninstall => uninstall(&home),
         Command::Stop => stop_unit(),
         Command::KeyRead { name } => key_read(&name, &home),
-        Command::Holder { .. } | Command::Version => ExitCode::FAILURE,
+        Command::Holder { .. } | Command::HolderPublicRoot(_) | Command::Version => {
+            ExitCode::FAILURE
+        }
         Command::KeyForget => match KeyStore::open(&home).forget() {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),

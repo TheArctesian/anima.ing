@@ -174,6 +174,36 @@ fn own_requirement(program: &Program) -> String {
     expect(dead_code, reason = "read only on macOS and by its tests")
 )]
 fn link_identifier(shown: &str) -> Option<&str> {
+    named_identifier(shown, LINK)
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn daemon_requirement(process: u32) -> Option<String> {
+    let (shown, text) =
+        codesign_now(&["-d".into(), "--verbose=4".into(), process.to_string()]).ok()?;
+    let identifier = named_identifier(&text, "anima-daemon")?;
+    let hash = text.lines().find_map(|line| line.strip_prefix("CDHash="))?;
+    let hardened = text
+        .lines()
+        .filter(|line| line.starts_with("CodeDirectory "))
+        .any(|line| {
+            line.split_once("flags=")
+                .and_then(|(_, rest)| rest.split_once('('))
+                .and_then(|(_, rest)| rest.split_once(')'))
+                .is_some_and(|(flags, _)| flags.split(',').any(|flag| flag == "runtime"))
+        });
+    if !shown || !hardened || hash.len() != 40 || !hash.bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
+        return None;
+    }
+    let team = TeamId::parse("7GDLG48PV6")?;
+    Some(format!(
+        r#"{} and cdhash H"{hash}" and !entitlement["com.apple.security.get-task-allow"] and !entitlement["com.apple.security.cs.disable-library-validation"] and !entitlement["com.apple.security.cs.allow-dyld-environment-variables"]"#,
+        link_requirement(identifier, &team)
+    ))
+}
+
+fn named_identifier<'a>(shown: &'a str, name: &str) -> Option<&'a str> {
     let identifier = shown
         .lines()
         .find_map(|line| line.strip_prefix("Identifier="))?
@@ -183,7 +213,7 @@ fn link_identifier(shown: &str) -> Option<&str> {
             .is_some_and(|hex| !hex.is_empty() && hex.bytes().all(|b| b.is_ascii_hexdigit()))
     };
     let named = identifier
-        .strip_prefix(LINK)
+        .strip_prefix(name)
         .is_some_and(|rest| rest.is_empty() || suffix_ok(rest));
     named.then_some(identifier)
 }

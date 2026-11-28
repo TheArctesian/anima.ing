@@ -89,7 +89,8 @@ impl Runner {
     ) {
         if let Some(line) = line {
             let prompt = SentPrompt::queued(thread, queued);
-            self.waits.insert(line, Waits::Send(prompt));
+            self.waits
+                .insert(line, self.link.origin(), Waits::Send(prompt));
         }
     }
 

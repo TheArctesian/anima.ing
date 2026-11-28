@@ -18,50 +18,60 @@ const SERVICE: &str = "ing.anima.daemon";
 const ACCOUNT: &str = "daemon-token";
 
 #[derive(Clone)]
-pub struct Backend;
+pub struct Backend(Home);
 
 impl Backend {
-    pub const fn open(_home: &Home) -> Self {
-        Self
+    pub fn open(home: &Home) -> Self {
+        Self(home.clone())
     }
 
-    #[expect(
-        clippy::unused_self,
-        reason = "same signature as the file backend on other systems"
-    )]
     pub fn read(&self, deadline: Duration) -> Result<Option<Zeroizing<Vec<u8>>>, TokenStoreError> {
-        CALLS
+        let bytes = CALLS
             .read(deadline, read_now)
             .map_err(unanswered)?
-            .map_err(TokenStoreError::Keychain)
+            .map_err(TokenStoreError::Keychain)?;
+        if let Some(bytes) = bytes.as_ref()
+            && !super::holder_authority::owns(bytes, &self.folder()?)
+        {
+            return Err(TokenStoreError::Corrupt);
+        }
+        Ok(bytes)
+    }
+
+    pub(super) fn folder(&self) -> Result<super::holder_authority::Folder, TokenStoreError> {
+        super::holder_authority::Folder::at(self.0.dir()).ok_or(TokenStoreError::Corrupt)
     }
 
     /// A `fresh` write deletes the item first, so it does not inherit an access list a stale program was added to.
-    #[expect(
-        clippy::unused_self,
-        reason = "same signature as the file backend on other systems"
-    )]
     pub fn write(
         &self,
         bytes: &[u8],
-        fresh: bool,
+        device: Option<uuid::Uuid>,
         deadline: Duration,
     ) -> Result<(), TokenStoreError> {
         let text = std::str::from_utf8(bytes).map_err(|_| TokenStoreError::Corrupt)?;
         let text = Zeroizing::new(text.to_owned());
+        let folder = self.folder()?;
+        let signed = device.is_some() && release_daemon().unwrap_or(false);
         CALLS
-            .write(deadline, move || write_now(&text, fresh))
+            .write(deadline, move || write_now(&text, device, signed, folder))
             .map_err(unanswered)?
             .map_err(TokenStoreError::Keychain)
     }
 
-    #[expect(
-        clippy::unused_self,
-        reason = "same signature as the file backend on other systems"
-    )]
     pub fn delete(&self, deadline: Duration) -> Result<(), TokenStoreError> {
         CALLS
-            .write(deadline, delete_now)
+            .write(deadline, {
+                let home = self.folder()?;
+                move || {
+                    if let Some(bytes) = read_now()?
+                        && !super::holder_authority::owns(&bytes, &home)
+                    {
+                        return Err("credential belongs to another home".to_owned());
+                    }
+                    delete_now()
+                }
+            })
             .map_err(unanswered)?
             .map_err(TokenStoreError::Keychain)
     }
@@ -76,13 +86,30 @@ fn read_now() -> Read {
     }
 }
 
-fn write_now(text: &str, fresh: bool) -> Written {
+fn write_now(
+    text: &str,
+    device: Option<uuid::Uuid>,
+    signed: bool,
+    home: super::holder_authority::Folder,
+) -> Written {
+    let fresh = device.is_some();
+    let previous = if fresh { None } else { read_now()? };
+    let text = super::holder_authority::record(
+        text,
+        home,
+        device.filter(|_| signed),
+        previous.as_deref().map(Vec::as_slice),
+    )?;
     if fresh {
         delete_now()?;
     }
     entry()?
-        .set_password(text)
+        .set_password(&text)
         .map_err(|error| error.to_string())
+}
+
+pub(super) fn release_daemon() -> Result<bool, TokenStoreError> {
+    crate::hub::peer::release_daemon().map_err(|error| TokenStoreError::Keychain(error.to_string()))
 }
 
 fn delete_now() -> Written {

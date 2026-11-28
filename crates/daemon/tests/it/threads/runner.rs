@@ -181,7 +181,12 @@ pub(super) fn holders_of(dir: &Path) -> Vec<u32> {
     let mark = format!(" holder {}", dir.display());
     String::from_utf8_lossy(&output.stdout)
         .lines()
-        .filter(|line| line.trim_end().ends_with(&mark))
+        .filter(|line| {
+            let line = line.trim_end();
+            line.strip_suffix(" --channel")
+                .unwrap_or(line)
+                .ends_with(&mark)
+        })
         .filter_map(|line| line.split_whitespace().next()?.parse().ok())
         .collect()
 }

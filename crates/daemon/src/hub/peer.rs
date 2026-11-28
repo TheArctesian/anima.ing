@@ -7,6 +7,33 @@ mod signature;
 use std::io;
 
 pub use signature::TeamId;
+#[cfg(target_os = "macos")]
+pub(crate) use signature::daemon_requirement;
+
+#[cfg(target_os = "macos")]
+pub(crate) fn release_daemon() -> Result<bool, PeerError> {
+    use security_framework::os::macos::code_signing::{Flags, SecCode, SecRequirement};
+    use std::sync::OnceLock;
+    static SIGNED: OnceLock<bool> = OnceLock::new();
+    if let Some(answer) = SIGNED.get() {
+        return Ok(*answer);
+    }
+    let signed = match signature::own_program()? {
+        Program::OfTheUser => false,
+        Program::SignedBy(team) if Some(&team) != TeamId::parse("7GDLG48PV6").as_ref() => false,
+        Program::SignedBy(_) => {
+            let requirement: SecRequirement = daemon_requirement(std::process::id())
+                .ok_or(PeerError::OwnSignature)?
+                .parse()
+                .map_err(|_| PeerError::OwnSignature)?;
+            SecCode::for_self(Flags::NONE)
+                .and_then(|code| code.check_validity(Flags::NONE, &requirement))
+                .map_err(|_| PeerError::OwnSignature)?;
+            true
+        }
+    };
+    Ok(*SIGNED.get_or_init(|| signed))
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum PeerError {

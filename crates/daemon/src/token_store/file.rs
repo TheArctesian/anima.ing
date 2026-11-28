@@ -32,7 +32,7 @@ impl Backend {
     pub fn write(
         &self,
         bytes: &[u8],
-        _fresh: bool,
+        _device: Option<uuid::Uuid>,
         _deadline: Duration,
     ) -> Result<(), TokenStoreError> {
         self.home.ensure()?;

@@ -51,6 +51,7 @@ impl HubClient {
             route: "daemon/v3/workspaces/checkout",
             bearer: Some(token),
             body: json(request),
+            response_limit: crate::hub::body::LIMIT,
             ok: &[200],
         };
         match self.one_secret(call, MAX_CHECKOUT_TOKEN_BYTES).await {
@@ -101,6 +102,7 @@ impl HubClient {
                 attempt: item.attempt,
                 purpose: purpose.to_owned(),
             }),
+            response_limit: crate::hub::body::LIMIT,
             ok: &[200],
         };
         self.one_secret(call, limit).await

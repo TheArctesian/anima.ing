@@ -2,7 +2,7 @@
 use super::{LastTurn, Queued, RunState, Workspace};
 use crate::drive::{Effort, Mode, Program, Usage};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 /// The provider route fixed at thread start (TH118). No address or credential is accepted.
@@ -54,4 +54,21 @@ pub struct ThreadRow {
     /// [`DriveEvent::Usage`]; the row keeps it for a client that comes later.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub usage: Option<Usage>,
+}
+
+/// The folder of the threads of the daemon: `threads` below the folder of the daemon, which is
+/// `ANIMA_DAEMON_HOME`, else on macOS `~/Library/Application Support/anima-daemon`, else
+/// `$XDG_CONFIG_HOME/anima-daemon` or `~/.config/anima-daemon` (as `Home::locate` of the daemon).
+#[must_use]
+pub fn folder(env: impl Fn(&str) -> Option<String>, macos: bool) -> Option<PathBuf> {
+    let daemon = if let Some(set) = env("ANIMA_DAEMON_HOME") {
+        PathBuf::from(set)
+    } else if macos {
+        Path::new(&env("HOME")?).join("Library/Application Support/anima-daemon")
+    } else if let Some(config) = env("XDG_CONFIG_HOME").filter(|dir| !dir.is_empty()) {
+        Path::new(&config).join("anima-daemon")
+    } else {
+        Path::new(&env("HOME")?).join(".config/anima-daemon")
+    };
+    Some(daemon.join("threads"))
 }

@@ -30,7 +30,14 @@ impl Runner {
                 version,
                 threads,
                 build,
+                ..
             } => self.hello(version, threads, build.as_deref()).await,
+            Event::GitReadRoot { .. } => {}
+            Event::RemoteCode { frame } => {
+                if self.link.current_remote_peer().await {
+                    self.remote_holder(&frame).await;
+                }
+            }
             Event::Done { id, outcome } => self.done(id, outcome).await,
             Event::Lines {
                 thread,
@@ -120,9 +127,9 @@ impl Runner {
     async fn settle_starts(&mut self) {
         let starts: Vec<u64> = self
             .waits
-            .iter()
+            .for_holder(self.link.origin())
             .filter(|(_, waits)| matches!(waits, Waits::Start { .. }))
-            .map(|(command, _)| *command)
+            .map(|(command, _)| command)
             .collect();
         for command in starts {
             let Some(Waits::Start {
@@ -130,7 +137,7 @@ impl Runner {
                 back,
                 prompt,
                 files,
-            }) = self.waits.remove(&command)
+            }) = self.waits.take(command, self.link.origin())
             else {
                 continue;
             };
@@ -243,11 +250,15 @@ impl Runner {
 
     /// The answer of the holder to a command that a call waits for.
     async fn done(&mut self, command: u64, outcome: HolderOutcome) {
-        if self.quit_answered(command, &outcome) {
+        let origin = self.link.origin();
+        if self.waits.foreign(command, origin)
+            || self.unanswered.foreign(command, origin)
+            || self.quit_answered(command, &outcome)
+        {
             return;
         }
-        let sent = self.unanswered.remove(&command);
-        let Some(waits) = self.waits.remove(&command) else {
+        let sent = self.unanswered.take(command, origin);
+        let Some(waits) = self.waits.take(command, self.link.origin()) else {
             if let HolderOutcome::Refused { why } = outcome {
                 self.not_taken(sent, why);
             }

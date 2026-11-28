@@ -122,11 +122,9 @@ pub async fn run(
     ));
     let source = sampling::source(hosted_hub);
     #[cfg(unix)]
-    let publishing = tokio::spawn(thread_sync::publish(
-        home.clone(),
-        sender.clone(),
-        pusher.runtime_target(),
-    ));
+    let publishing = pusher.publish_threads(home.clone(), sender.clone(), |name| {
+        std::env::var(name).ok()
+    });
     #[cfg(target_os = "linux")]
     let mut managed = managed_tasks(home, pusher.runtime_target());
     let mut sampling = tokio::spawn(sampling::sample(source, sender));

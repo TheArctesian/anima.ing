@@ -31,6 +31,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-202 | Old desktop files are removed after a Builds publish (R9, BLD-086) | A Builds hub with signing set up and a disposable R2 bucket | Open |
+| HT-203 | Hosting overview and its actions (H52, HSE-019) | Desktop application, test hub, a Docker device and a route | Open |
 | HT-194 | The scroll wheel of the trackpad and the motion of the connection steps on an iPhone (M4-2, RA-050, 5.7.3) | The iPhone app from a build of `dev` with this change; a Mac with a long page in a browser | Open |
 | HT-193 | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
