@@ -21,23 +21,24 @@ const MAX_BASE: usize = 300;
 /// Fixed words: never the address or the key.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Refusal {
-    #[error("the address is not https://host[:port]")]
+    #[error("the address is not https://host[:port] or http://host[:port]")]
     Base,
     #[error("the key is not 1 to 512 characters with no control character")]
     Key,
 }
 
-/// `plain_http` permits `http`: only a transport of the tests sets it.
+/// `https` or `http`; the transport sends plain `http` only to a private or VPN address
+/// (OD-E26).
 ///
 /// # Errors
 /// [`Refusal::Base`].
-pub fn base(text: &str, plain_http: bool) -> Result<Url, Refusal> {
+pub fn base(text: &str) -> Result<Url, Refusal> {
     let text = text.trim();
     let url = Url::parse(text)
         .ok()
         .filter(|_| text.chars().count() <= MAX_BASE)
         .ok_or(Refusal::Base)?;
-    let scheme = url.scheme() == "https" || (plain_http && url.scheme() == "http");
+    let scheme = matches!(url.scheme(), "https" | "http");
     let bare = url.username().is_empty()
         && url.password().is_none()
         && matches!(url.path(), "" | "/")
@@ -99,13 +100,13 @@ pub fn to_secret(base: &Url, api_key: &str) -> Secret {
 
 /// The base must be the `instance_key`, so a database writer cannot point the key elsewhere.
 #[must_use]
-pub fn from_secret(secret: &Secret, instance_key: &str, plain_http: bool) -> Option<(Url, Secret)> {
+pub fn from_secret(secret: &Secret, instance_key: &str) -> Option<(Url, Secret)> {
     let opened: Opened = serde_json::from_slice(secret.expose()).ok()?;
     let api_key = Zeroizing::new(opened.api_key);
     if opened.v != VERSION || opened.base != instance_key {
         return None;
     }
-    let url = base(&opened.base, plain_http).ok()?;
+    let url = base(&opened.base).ok()?;
     Some((url, Secret::new(api_key.as_bytes().to_vec())))
 }
 
@@ -124,8 +125,7 @@ pub(in crate::engine::sources) async fn held(
             credentials::Error::Database(_) => Failure::store(),
             _ => reconnect("The stored key cannot be opened. Connect the account again."),
         })?;
-    let plain = scheduling.transport.sends_plain_http();
-    from_secret(&secret, &account.instance_key, plain).ok_or(reconnect(
+    from_secret(&secret, &account.instance_key).ok_or(reconnect(
         "The stored key does not belong to this account. Connect the account again.",
     ))
 }

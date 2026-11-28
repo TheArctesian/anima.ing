@@ -187,7 +187,7 @@ impl Error {
             )]),
             Self::Base => invalid(&[FieldError::new(
                 "baseUrl",
-                "Give the address as https://host or https://host:port, with no path.",
+                "Give the address as https://host[:port], or http://host[:port] for a server on a private or VPN address, with no path.",
             )]),
             Self::AddressRefused => invalid(&[FieldError::new(
                 "baseUrl",
