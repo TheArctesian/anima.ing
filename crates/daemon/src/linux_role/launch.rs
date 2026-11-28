@@ -224,3 +224,26 @@ fn verify_drop(file: &mut File, uid: Uid, gid: Gid, groups: &[Gid]) -> io::Resul
     }
     Ok(())
 }
+
+pub(super) fn mark_inherited_close_on_exec() -> io::Result<()> {
+    use nix::errno::Errno;
+    use nix::fcntl::{FcntlArg, FdFlag, fcntl};
+
+    let descriptors: Vec<i32> = std::fs::read_dir("/proc/self/fd")?
+        .map(|entry| {
+            entry?
+                .file_name()
+                .to_str()
+                .ok_or_else(|| refused("invalid procfs descriptor"))?
+                .parse()
+                .map_err(|_| refused("invalid procfs descriptor"))
+        })
+        .collect::<io::Result<_>>()?;
+    for descriptor in descriptors.into_iter().filter(|fd| *fd > 2) {
+        match fcntl(descriptor, FcntlArg::F_SETFD(FdFlag::FD_CLOEXEC)) {
+            Ok(_) | Err(Errno::EBADF) => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Ok(())
+}

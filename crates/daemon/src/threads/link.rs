@@ -220,6 +220,14 @@ async fn observe(
 /// # Errors
 /// The I/O error when the program cannot start.
 pub fn start_holder(program: &Path, dir: &Path) -> io::Result<()> {
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    if crate::linux_role::start_holder(
+        dir.parent()
+            .ok_or(LinkError::NotOurs)
+            .map_err(io::Error::other)?,
+    )? {
+        return Ok(());
+    }
     let mut command = std::process::Command::new(program);
     command
         .arg("holder")

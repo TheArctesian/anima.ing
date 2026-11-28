@@ -60,6 +60,9 @@ pub enum TokenStoreError {
     File(#[from] crate::config::private_file::PrivateFileError),
     #[error("the stored token record does not read")]
     Corrupt,
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    #[error("the protected Linux token store is unavailable")]
+    LinuxAuthority,
     #[error("the daemon's folder: {0}")]
     Folder(#[from] crate::config::home::HomeError),
     #[cfg(target_os = "macos")]
@@ -193,7 +196,23 @@ impl TokenStore {
             }
             Credential::from_record(&bytes).map(Some)
         }
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+        {
+            if !self.backend.is_protected() {
+                return Ok(None);
+            }
+            let Some((bytes, device, _)) =
+                crate::linux_role::credential().map_err(|_| TokenStoreError::LinuxAuthority)?
+            else {
+                return Ok(None);
+            };
+            let credential = Credential::from_record(&bytes)?;
+            Ok((device == config.device && credential.hub == config.hub).then_some(credential))
+        }
+        #[cfg(not(any(
+            target_os = "macos",
+            all(target_os = "linux", target_pointer_width = "64")
+        )))]
         {
             let _ = config;
             self.load()

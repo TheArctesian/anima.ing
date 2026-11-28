@@ -51,9 +51,17 @@ pub(super) struct Journal {
 }
 
 pub(super) struct Locked<'a> {
-    _lock: File,
+    backing: Backing,
     pub(super) journal: Journal,
     dir: &'a std::path::Path,
+}
+
+enum Backing {
+    Local {
+        _lock: File,
+    },
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    Protected(crate::linux_role::journal::Locked),
 }
 
 impl Store {
@@ -63,6 +71,21 @@ impl Store {
     }
 
     pub(super) fn lock(&self) -> Result<Locked<'_>, StoreError> {
+        #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+        if crate::linux_role::covers(&self.0) {
+            let Some((lock, bytes)) = crate::linux_role::journal::Locked::take()? else {
+                return Err(StoreError::Busy);
+            };
+            let journal = match bytes {
+                Some(bytes) => Journal::parse(bytes.as_bytes())?,
+                None => Journal::new()?,
+            };
+            return Ok(Locked {
+                backing: Backing::Protected(lock),
+                journal,
+                dir: &self.0,
+            });
+        }
         if !private_file::folder_private(&self.0)? {
             return Err(StoreError::Invalid);
         }
@@ -92,7 +115,7 @@ impl Store {
         })?;
         let journal = Journal::load(&self.0.join(JOURNAL))?;
         Ok(Locked {
-            _lock: file,
+            backing: Backing::Local { _lock: file },
             journal,
             dir: &self.0,
         })
@@ -113,7 +136,11 @@ impl Journal {
         // The exclusive lock prevents another writer from moving the record during the read.
         // Use its measured size so the private buffer allocates and wipes only that much.
         let bytes = private_file::read_within(path, length)?.ok_or(StoreError::Invalid)?;
-        serde_json::from_slice(&bytes).map_err(|_| StoreError::Invalid)
+        Self::parse(&bytes)
+    }
+
+    fn parse(bytes: &[u8]) -> Result<Self, StoreError> {
+        serde_json::from_slice(bytes).map_err(|_| StoreError::Invalid)
     }
 
     fn new() -> Result<Self, StoreError> {
@@ -144,10 +171,14 @@ impl Locked<'_> {
     }
 
     fn write(&self, limit: usize) -> Result<(), StoreError> {
-        let bytes = serde_json::to_vec(&self.journal).map_err(|_| StoreError::Invalid)?;
+        let bytes = serde_json::to_string(&self.journal).map_err(|_| StoreError::Invalid)?;
         if bytes.len() > limit {
             return Err(StoreError::Full);
         }
-        Ok(private_file::write(self.dir, JOURNAL, &bytes)?)
+        match &self.backing {
+            Backing::Local { .. } => Ok(private_file::write(self.dir, JOURNAL, bytes.as_bytes())?),
+            #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+            Backing::Protected(lock) => Ok(lock.save(bytes)?),
+        }
     }
 }

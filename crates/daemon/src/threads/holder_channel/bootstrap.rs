@@ -48,6 +48,14 @@ pub(in crate::threads) fn start(command: &mut Command, dir: &Path) -> io::Result
 }
 
 pub(in crate::threads) async fn public_root(dir: &Path) -> Option<CertificateDer<'static>> {
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    if dir.parent().is_some_and(crate::linux_role::covers) {
+        return tokio::task::spawn_blocking(crate::linux_role::holder_root)
+            .await
+            .ok()?
+            .ok()
+            .map(CertificateDer::from);
+    }
     let dir = dir.to_owned();
     tokio::task::spawn_blocking(move || {
         let mut command = Command::new(std::env::current_exe().ok()?);
@@ -85,6 +93,18 @@ pub(in crate::threads) async fn public_root(dir: &Path) -> Option<CertificateDer
 pub(in crate::threads) async fn acceptor(
     dir: &Path,
 ) -> Option<(TlsAcceptor, CertificateDer<'static>)> {
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    if dir.parent().is_some_and(crate::linux_role::covers) {
+        let (leaf, root) = tokio::task::spawn_blocking(crate::linux_role::holder_identity)
+            .await
+            .ok()?
+            .ok()?;
+        let root = CertificateDer::from(root);
+        return Some((
+            TlsAcceptor::from(Arc::new(server(&leaf, root.clone())?)),
+            root,
+        ));
+    }
     let bytes = tokio::task::spawn_blocking(|| {
         let mut bytes = Zeroizing::new(Vec::with_capacity(8192));
         rendezvous::connect()

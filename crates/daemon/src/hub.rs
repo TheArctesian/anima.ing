@@ -96,9 +96,16 @@ impl HubClient {
         let http = Client::builder()
             .redirect(redirect::Policy::none())
             .no_proxy()
-            .timeout(limit)
-            .build()
-            .map_err(|_| HubError::Build)?;
+            .timeout(limit);
+        #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+        let http = if let Some(pem) = crate::linux_role::hub_ca(&base) {
+            let certificate = reqwest::Certificate::from_pem(pem).map_err(|_| HubError::Build)?;
+            http.tls_built_in_root_certs(false)
+                .add_root_certificate(certificate)
+        } else {
+            http
+        };
+        let http = http.build().map_err(|_| HubError::Build)?;
         Ok(Self {
             http,
             base,

@@ -4,9 +4,17 @@
 
 use std::{io, path::Path, sync::Arc};
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(
+    target_os = "macos",
+    test,
+    all(target_os = "linux", target_pointer_width = "64")
+))]
 use hmac::{Hmac, KeyInit as _, Mac as _};
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(
+    target_os = "macos",
+    test,
+    all(target_os = "linux", target_pointer_width = "64")
+))]
 use rcgen::{BasicConstraints, DnType, IsCa};
 use rcgen::{
     CertificateParams, CertifiedIssuer, ExtendedKeyUsagePurpose, KeyPair, KeyUsagePurpose,
@@ -17,10 +25,18 @@ use rustls::{
     pki_types::{CertificateDer, PrivatePkcs8KeyDer},
 };
 use serde::{Deserialize, Serialize};
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(
+    target_os = "macos",
+    test,
+    all(target_os = "linux", target_pointer_width = "64")
+))]
 use sha2::Sha256;
 use zeroize::Zeroize as _;
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(
+    target_os = "macos",
+    test,
+    all(target_os = "linux", target_pointer_width = "64")
+))]
 use zeroize::Zeroizing;
 
 #[cfg(any(target_os = "macos", test))]
@@ -35,7 +51,7 @@ pub(super) use bootstrap::{acceptor, public_root, start};
 pub(crate) struct Issuer(CertifiedIssuer<'static, KeyPair>);
 
 #[derive(Serialize, Deserialize)]
-struct Leaf {
+pub(crate) struct Leaf {
     certificate: Vec<u8>,
     key: Vec<u8>,
 }
@@ -49,14 +65,28 @@ impl Drop for Leaf {
 impl Issuer {
     #[cfg(any(target_os = "macos", test))]
     fn for_device(key: &[u8; 32], config: &Config, home: &Path) -> Option<Self> {
+        Self::for_enrollment(key, config.device, &config.hub, home)
+    }
+
+    #[cfg(any(
+        target_os = "macos",
+        test,
+        all(target_os = "linux", target_pointer_width = "64")
+    ))]
+    pub(crate) fn for_enrollment(
+        key: &[u8; 32],
+        device: uuid::Uuid,
+        hub: &crate::config::origin::Origin,
+        home: &Path,
+    ) -> Option<Self> {
         // RFC 8410's PKCS#8 OneAsymmetricKey encoding for a 32-byte Ed25519 seed.
         const ED25519: &[u8] = &[
             0x30, 0x2e, 2, 1, 0, 0x30, 5, 6, 3, 0x2b, 0x65, 0x70, 4, 0x22, 4, 0x20,
         ];
         let mut mac = Hmac::<Sha256>::new_from_slice(key).ok()?;
         mac.update(b"anima-holder-tls-v1\0");
-        mac.update(config.device.as_bytes());
-        mac.update(config.hub.as_text().as_bytes());
+        mac.update(device.as_bytes());
+        mac.update(hub.as_text().as_bytes());
         mac.update(b"\0");
         mac.update(home.canonicalize().ok()?.as_os_str().as_encoded_bytes());
         let mut key = Zeroizing::new(Vec::with_capacity(ED25519.len() + 32));
@@ -97,10 +127,34 @@ impl Issuer {
             .ok_or_else(invalid)
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    pub(super) fn transport(dir: &Path) -> io::Result<Option<Self>> {
+        let home = dir.parent().ok_or_else(invalid)?;
+        if !crate::linux_role::covers(home) {
+            return Ok(None);
+        }
+        let Some((record, device, seed)) = crate::linux_role::credential()? else {
+            return Ok(None);
+        };
+        let credential =
+            crate::token_store::Credential::from_record(&record).map_err(io::Error::other)?;
+        Self::for_enrollment(&seed, device, &credential.hub, home)
+            .map(Some)
+            .ok_or_else(invalid)
+    }
+
+    #[cfg(not(any(
+        target_os = "macos",
+        all(target_os = "linux", target_pointer_width = "64")
+    )))]
     #[expect(clippy::unnecessary_wraps, reason = "the macOS Keychain can fail")]
     pub(super) fn transport(_: &Path) -> io::Result<Option<Self>> {
         Ok(None)
+    }
+
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    pub(crate) fn holder_leaf(&self) -> Option<Leaf> {
+        self.leaf(ExtendedKeyUsagePurpose::ServerAuth)
     }
 
     fn leaf(&self, role: ExtendedKeyUsagePurpose) -> Option<Leaf> {
@@ -115,7 +169,7 @@ impl Issuer {
         })
     }
 
-    pub(super) fn root(&self) -> CertificateDer<'static> {
+    pub(crate) fn root(&self) -> CertificateDer<'static> {
         self.0.der().clone()
     }
 

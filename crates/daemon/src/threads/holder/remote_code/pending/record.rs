@@ -84,12 +84,27 @@ fn boot_session() -> Option<Uuid> {
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
+fn boot_session() -> Option<Uuid> {
+    std::fs::read_to_string("/proc/sys/kernel/random/boot_id")
+        .ok()?
+        .trim()
+        .parse::<Uuid>()
+        .ok()
+        .filter(|id| !id.is_nil())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 const fn boot_session() -> Option<Uuid> {
     None
 }
 
 pub(super) fn save(dir: &Path, record: Option<&Record>) -> bool {
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    if dir.parent().is_some_and(crate::linux_role::covers) {
+        return serde_json::to_string(&record)
+            .is_ok_and(|json| crate::linux_role::journal::save_pending(json).is_ok());
+    }
     let bytes = serde_json::to_vec(&record).expect("a pending request serializes");
     private_file::write(dir, FILE, &bytes)
         .inspect_err(|error| tracing::warn!(%error, "could not store pending remote cleanup"))
@@ -97,6 +112,14 @@ pub(super) fn save(dir: &Path, record: Option<&Record>) -> bool {
 }
 
 pub(super) fn read(dir: &Path) -> Result<Option<Record>, ()> {
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    if dir.parent().is_some_and(crate::linux_role::covers) {
+        return crate::linux_role::journal::pending()
+            .map_err(|_| ())?
+            .map_or(Ok(None), |bytes| {
+                serde_json::from_str(&bytes).map_err(|_| ())
+            });
+    }
     let Some(bytes) = private_file::read_within(&dir.join(FILE), 512).map_err(|_| ())? else {
         return Ok(None);
     };

@@ -37,3 +37,12 @@ async fn holder(folder: &std::path::Path, limit: usize, channel: bool) -> ExitCo
 async fn holder(_: &std::path::Path, _: usize, _: bool) -> ExitCode {
     ExitCode::FAILURE
 }
+
+#[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+pub(super) fn prepared_args() -> std::io::Result<Option<Vec<String>>> {
+    let mut args = std::env::args().skip(1).collect();
+    if anima_daemon::linux_role::enter(&mut args)? {
+        return Ok(None);
+    }
+    Ok(Some(args))
+}
