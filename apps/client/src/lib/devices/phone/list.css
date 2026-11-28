@@ -26,6 +26,8 @@
   flex-wrap: wrap;
   gap: 0 var(--space-5);
   margin-block-start: var(--border-focus);
+  /* The line is there before the devices come, so search and the list do not move when the counts arrive (MOT-007). */
+  min-block-size: var(--target-min-touch);
 }
 
 .phone-devices-head .tally button {

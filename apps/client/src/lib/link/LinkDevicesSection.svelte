@@ -16,12 +16,14 @@
   interface Props {
     section: { id: string; title: string; icon: IconName; description: string };
     onVisibility?: (shown: boolean) => void;
+    /** Called with true once the hub answered the list, so the page knows if this section shows. */
+    onSettled?: (settled: boolean) => void;
     clock?: { readonly current: Date };
     api?: LinkApi;
   }
 
   const hub = useHub();
-  const { section, onVisibility = () => undefined, clock = createClock(1000), api = linkApi(hub) }: Props = $props();
+  const { section, onVisibility = () => undefined, onSettled = () => undefined, clock = createClock(1000), api = linkApi(hub) }: Props = $props();
   let devices = $state<readonly LinkDevice[]>([]);
   let answer = $state<{ ok: true } | { ok: false; error: HubError } | null>(null);
   let inviting = $state(false);
@@ -29,6 +31,7 @@
   const shown = $derived(devicesShown(answer));
 
   $effect(() => onVisibility(shown === 'listed' || shown === 'failed'));
+  $effect(() => onSettled(answer !== null));
 
   async function load(): Promise<void> {
     const result = await api.devices();

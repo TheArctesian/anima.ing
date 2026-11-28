@@ -9,6 +9,7 @@
   import { isHubDevice } from '$lib/devices/actions/actions';
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { sharedItem } from '$lib/motion/shared/shared';
   import { listRow } from '$lib/motion/roles/transitions';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { CardScreenSharing } from '$lib/devices/screen-sharing/setup';
@@ -87,7 +88,7 @@
             <th scope="row" class="c-name">
               <div class="device-label">
                 <OsIcon os={device.os} distribution={device.distribution} />
-                <a href="{resolve('/devices')}/{encodeURIComponent(device.id)}" title={device.name} tabindex="0" data-device-id={device.id} {@attach press()}>{device.name}</a>
+                <a href="{resolve('/devices')}/{encodeURIComponent(device.id)}" title={device.name} tabindex="0" data-device-id={device.id} {@attach press()} {@attach sharedItem(`device-name:${device.id}`)}>{device.name}</a>
               </div>
               <div class="addresses">
                 <span class="host" title={line.host}>{shortHost(line.host)}</span>

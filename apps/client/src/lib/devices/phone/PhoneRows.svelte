@@ -5,6 +5,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import type { IconName } from '$lib/icons/icons';
   import { press } from '$lib/motion/roles/press';
+  import { sharedItem } from '$lib/motion/shared/shared';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import { listRow } from '$lib/motion/roles/transitions';
   import type { SessionProtocol } from '$lib/sessions/tabs';
@@ -52,7 +53,7 @@
           <a class="what" href="{resolve('/devices')}/{encodeURIComponent(device.id)}" tabindex="0" data-device-id={device.id} {@attach press()}>
             <span class="identity">
               <OsIcon os={device.os} distribution={device.distribution} />
-              <span class="name">{device.name}</span>
+              <span class="name" {@attach sharedItem(`device-name:${device.id}`)}>{device.name}</span>
             </span>
             <span class="line">
               {#if device.status === 'UP'}
