@@ -49,6 +49,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-186 | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
+| HT-NEW-linuxauthority | Remote Code on a supervised Linux installation (TH32) | Disposable installed Linux device, administrator and HTTPS test hub | Open |
 | HT-206 | Remote Code through an enrolled Mac across daemon restart and credential renewal (TH32) | Signed Developer ID build, disposable enrolled Mac, test hub and permitted test project | Open |
 | HT-201 | Start and control a hub-launched Code thread on iOS and Android (TH52) | Signed native builds, a hub with TH31, and a test computer with verified TH32 and TH33 support | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with an account-authorized Anima-started desk thread and transcript sharing enabled | Open |
@@ -6453,3 +6454,15 @@ Use a signed Developer ID build, a disposable Mac and a test hub. Start with a f
 3. Repeat after renewal of the daemon's hub credential. Check that the thread and its answer remain available.
 4. Interrupt the holder during dispatch. An ambiguous child must block new starts after a same-boot restart. After reboot, the uncertain attempt stays in reconciliation and a fresh request can proceed.
 5. Turn remote starts off. A new hub start is refused. The existing local thread remains accessible. End the provider and remove the test enrollment.
+
+## HT-NEW-linuxauthority — Remote Code on a supervised Linux installation
+
+State: Open.
+
+Use the [protected Linux installation procedure](procedures/linux-th32.md) on a disposable device.
+Enroll through a test hub over HTTPS and permit a disposable project.
+
+1. Start a remote thread and check that its provider runs as the configured login user. Send a prompt and check for one provider effect.
+2. Restart the supervised daemon worker. Confirm the original holder and provider stay alive. Send a second prompt and check one effect.
+3. Renew the credential through the test hub. Confirm a new command reaches the original provider and returns one receipt.
+4. Stop the system unit. Confirm the daemon, holder and provider exit. Revoke the test enrollment and remove its authority.

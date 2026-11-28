@@ -102,7 +102,14 @@ pub(super) async fn fixture_with_options(
         replies,
         renewal,
     );
-    let router = k8::routes(publication::routes(Router::new()))
+    let serving = authority.serve(routes(hub.clone()));
+    authority.enrol().await;
+    authority.start().await;
+    (RemoteKit { authority, kit }, home, folder, hub, serving)
+}
+
+fn routes(hub: Hub) -> Router {
+    k8::routes(publication::routes(Router::new()))
         .route("/work/v1/claim", post(super::claim))
         .route("/work/v1/report", post(report_work))
         .route("/work/v1/thread-dispatch", post(dispatch))
@@ -113,11 +120,7 @@ pub(super) async fn fixture_with_options(
             "/work/v1/thread-control",
             post(|| async { StatusCode::NO_CONTENT }),
         )
-        .with_state(hub.clone());
-    let serving = authority.serve(router);
-    authority.enrol().await;
-    authority.start().await;
-    (RemoteKit { authority, kit }, home, folder, hub, serving)
+        .with_state(hub)
 }
 
 fn prepare_local_policy(home: &Home, folder: &std::path::Path) {
