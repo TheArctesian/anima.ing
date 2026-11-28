@@ -27,9 +27,10 @@ mod tests;
 
 const ENROLLMENT: &str = "enrollment";
 const STAGING: &str = "enrollment.new";
-const MARKER: &[u8] = b"ANIMA-TH32\x01";
+const MARKER: &[u8] = b"ANIMA-TH32\x02";
+const BINDING_LEN: usize = 52;
 const TOKEN_LIMIT: usize = 4096;
-const RECORD_LIMIT: usize = MARKER.len() + 48 + 16 + 32 + TOKEN_LIMIT;
+const RECORD_LIMIT: usize = MARKER.len() + BINDING_LEN + 16 + 32 + TOKEN_LIMIT;
 const DIRECTORY: OFlags = OFlags::DIRECTORY
     .union(OFlags::NOFOLLOW)
     .union(OFlags::CLOEXEC);
@@ -50,15 +51,16 @@ pub(super) struct Stored {
 struct Home {
     path: PathBuf,
     directory: OwnedFd,
-    binding: [u8; 48],
+    uid: u32,
+    binding: [u8; BINDING_LEN],
 }
 
 impl Enrollment {
-    pub(super) fn at(directory: &Path, home: PathBuf) -> io::Result<Self> {
+    pub(super) fn at(directory: &Path, home: PathBuf, uid: u32) -> io::Result<Self> {
         if !rustix::process::geteuid().is_root() {
             return Err(refused());
         }
-        let home = Home::at(home)?;
+        let home = Home::at(home, uid)?;
         let directory = state_directory(directory)?;
         Ok(Self {
             directory,
@@ -67,10 +69,16 @@ impl Enrollment {
         })
     }
 
+    pub(super) fn directory(&self) -> &OwnedFd {
+        &self.directory
+    }
+
     pub(super) fn read(&self) -> io::Result<Option<Stored>> {
         let _access = self.access.lock().map_err(|_| refused())?;
         self.home.check()?;
-        self.read_record()
+        let stored = self.read_record()?;
+        self.home.check()?;
+        Ok(stored)
     }
 
     fn read_record(&self) -> io::Result<Option<Stored>> {
@@ -158,16 +166,24 @@ impl Enrollment {
 }
 
 impl Home {
-    fn at(path: PathBuf) -> io::Result<Self> {
+    fn at(path: PathBuf, uid: u32) -> io::Result<Self> {
+        if uid == 0 {
+            return Err(refused());
+        }
         let directory = open_home(&path)?;
         let stat = fs::fstat(&directory)?;
-        let mut binding = [0; 48];
+        if stat.st_uid != uid {
+            return Err(refused());
+        }
+        let mut binding = [0; BINDING_LEN];
         binding[..32].copy_from_slice(&Sha256::digest(path.as_os_str().as_bytes()));
         binding[32..40].copy_from_slice(&stat.st_dev.to_be_bytes());
-        binding[40..].copy_from_slice(&stat.st_ino.to_be_bytes());
+        binding[40..48].copy_from_slice(&stat.st_ino.to_be_bytes());
+        binding[48..].copy_from_slice(&uid.to_be_bytes());
         Ok(Self {
             path,
             directory,
+            uid,
             binding,
         })
     }
@@ -175,7 +191,10 @@ impl Home {
     fn check(&self) -> io::Result<()> {
         let expected = fs::fstat(&self.directory)?;
         let found = fs::fstat(open_home(&self.path)?)?;
-        if (expected.st_dev, expected.st_ino) != (found.st_dev, found.st_ino) {
+        if expected.st_uid != self.uid
+            || found.st_uid != self.uid
+            || (expected.st_dev, expected.st_ino) != (found.st_dev, found.st_ino)
+        {
             return Err(refused());
         }
         Ok(())
@@ -249,7 +268,7 @@ fn remove(directory: &OwnedFd, name: &str) -> io::Result<()> {
     }
 }
 
-fn decode(bytes: &[u8], binding: &[u8; 48]) -> io::Result<Stored> {
+fn decode(bytes: &[u8], binding: &[u8; BINDING_LEN]) -> io::Result<Stored> {
     let bytes = bytes.strip_prefix(MARKER).ok_or_else(invalid)?;
     let bytes = bytes.strip_prefix(binding).ok_or_else(refused)?;
     let (device, bytes) = bytes.split_at_checked(16).ok_or_else(invalid)?;
