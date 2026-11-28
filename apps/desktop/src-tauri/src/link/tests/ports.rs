@@ -3,6 +3,11 @@ use std::fs;
 use super::super::open_ports::{OpenPorts, ask, may_open, open_ports};
 use super::runs::stand_in;
 
+const EXPECTS_RDP: bool = cfg!(any(
+    target_os = "linux",
+    all(target_os = "macos", target_arch = "aarch64")
+));
+
 const PORTS_LINK: &str = r#"
 here=$(dirname "$0")
 echo "$*" >> "$here/calls"
@@ -51,7 +56,7 @@ fn hmd_049_the_person_turns_a_port_on_and_off_and_the_list_is_read_back() {
             format!("ports -state {state} off 5900"),
         ]
     );
-    if cfg!(target_os = "linux") {
+    if EXPECTS_RDP {
         assert_eq!(
             ask(&program, &device, Some((3389, true))).unwrap().open,
             [22, 3389]
@@ -70,7 +75,7 @@ fn hmd_049_a_port_that_the_link_may_not_open_is_not_asked_for() {
     let device = folder.path().join("device");
     for port in [80, 8080, 3389]
         .into_iter()
-        .filter(|port| *port != 3389 || !cfg!(target_os = "linux"))
+        .filter(|port| *port != 3389 || !EXPECTS_RDP)
     {
         assert!(
             ask(&program, &device, Some((port, true))).is_err(),
