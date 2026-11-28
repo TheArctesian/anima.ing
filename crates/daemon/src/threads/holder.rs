@@ -351,6 +351,7 @@ async fn serve<T>(
                 break;
             }
         }
+        let _ = writing.shutdown().await;
     });
     let quitting = connection::serve_commands(&shared, reading, (me, &turn), remote_peer).await;
     if let Ok(mut state) = shared.lock()
