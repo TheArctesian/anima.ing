@@ -64,6 +64,20 @@ enum Backing {
     Protected(crate::linux_role::journal::Locked),
 }
 
+impl Drop for Backing {
+    fn drop(&mut self) {
+        match self {
+            // A concurrent fork can briefly retain the open file description before exec.
+            // Explicit release prevents the inherited descriptor from prolonging our lock.
+            Self::Local(lock) => {
+                let _ = flock(lock, FlockOperation::Unlock);
+            }
+            #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+            Self::Protected(_) => {}
+        }
+    }
+}
+
 impl Store {
     #[must_use]
     pub fn at(home: &Home) -> Self {
@@ -113,9 +127,10 @@ impl Store {
                 io::Error::from(error).into()
             }
         })?;
+        let backing = Backing::Local(file);
         let journal = Journal::load(&self.0.join(JOURNAL))?;
         Ok(Locked {
-            backing: Backing::Local { _lock: file },
+            backing,
             journal,
             dir: &self.0,
         })
@@ -176,7 +191,7 @@ impl Locked<'_> {
             return Err(StoreError::Full);
         }
         match &self.backing {
-            Backing::Local { .. } => Ok(private_file::write(self.dir, JOURNAL, bytes.as_bytes())?),
+            Backing::Local(_) => Ok(private_file::write(self.dir, JOURNAL, bytes.as_bytes())?),
             #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
             Backing::Protected(lock) => Ok(lock.save(bytes)?),
         }
