@@ -30,20 +30,25 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-202 | Old desktop files are removed after a Builds publish (R9, BLD-086) | A Builds hub with signing set up and a disposable R2 bucket | Open |
 | HT-194 | The scroll wheel of the trackpad and the motion of the connection steps on an iPhone (M4-2, RA-050, 5.7.3) | The iPhone app from a build of `dev` with this change; a Mac with a long page in a browser | Open |
 | HT-193 | The iPhone app is back on the network a few seconds after it comes back from the background (M3-1, MOB-036, NET-004) | The iPhone app from a build of `dev` with this change, signed in to the hosted hub | Open |
 | HT-191 | Installed mobile tool reporting (TH135) | Implementation review before enabling real probes; a disposable enrolled Mac and test hub | Open |
 | HT-190 | Session list updates from native file events (TH7, THR-058) | macOS and Linux desktop builds with this branch; a test OS account | Open |
+| HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
+| HT-205 | Clone a Code project from Git URL (TH60B, TC9) | Matching desktop, daemon and CLI on macOS or Linux, and a disposable anonymous HTTPS Git repository | Open |
 | HT-187 | Desktop Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and ordinary browser | Open |
 | HT-192 | Migrate Podman data to Docker Hosting | Disposable AnimaOS VM, a previous generation, synthetic rootful and rootless workloads | Open |
 | HT-191 | Deploy and update a managed Compose application from AnimaOS Hosting | Disposable installed AnimaOS VM, an enrolled daemon and a pinned test image | Open |
 | HT-190 | Queue and observe Docker actions from AnimaOS Hosting (H5, HOST-002) | Disposable installed AnimaOS VM, an enrolled daemon and a disposable container | Open |
 | HT-187 | Code exposes only local Anima-started sessions (TC2L) | Signed desktop trial and nonlocal client | Open |
 | HT-185-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
+| HT-204 | RDP and VNC from one installation on Apple Silicon (MRDP-T2) | A signed desktop build, the linked Mac and a second Anima client | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-186 | Switch between the three displays of a VNC Mac on iPad (M4-3) | iPad app and hub with M4-3 and a Mac with three displays | Open |
 | HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
+| HT-201 | Start and control a hub-launched Code thread on iOS and Android (TH52) | Signed native builds, a hub with TH31, and a test computer with verified TH32 and TH33 support | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with an account-authorized Anima-started desk thread and transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
 | HT-183 | Check the Overview and device tabs for the Hub and Pop!_OS (M2-7) | iPad with a current build, and a linked Linux device with several metric types | Open |
@@ -272,6 +277,16 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - Tap the text field and type a word. Expected: the bar sits on the keyboard, the field stays visible, the page does not zoom, and the word appears once on the Mac.
 - Use Back, then reopen the session from its tab. Expected: the session stayed connected.
 - 2026-11-26: the operator still saw old pointers on the Mac's screen in a session from the iPhone app with the hosted hub. The session that built the change found that the hosted hub then ran a hub image of 2026-11-22, and the gateway asks for the cursor shape only from `c5f2c0347` (2026-11-25), so that session did not have the change. The step must be done again after the hosted hub runs an image with it. The state stays Open.
+
+### HT-201: remote Code writes on iOS and Android (TH52)
+
+- State: Open.
+- Use a signed build on a real iPhone and a real Android phone. Sign in to a test hub with TH31 and connect a test computer with TH32 and TH33. Permit a test project folder on the computer and turn on remote starts.
+- In Code, tap **New thread**. Select the advertised computer, folder and program. Explicitly request **Supervised**, then submit a prompt for the test project. Interrupt the network after pressing Start. Reconnect and retry the same start if asked. Close and reopen Code during an uncertain start, then use **Check previous start**. If the hub has no receipt, re-enter the same target, access and prompt and tap **Resubmit start**. Expected: the phone uses the original start ID and the computer starts one thread. **Open thread** appears when the hub confirms the binding.
+- Follow the thread, background the app and switch from Wi-Fi to mobile data. Expected: the same thread opens and catches up. Send a follow-up asking for a harmless operation that needs approval and a live provider question. Try both **Allow once** and **Decline** on separate requests. Answer the question from its form. Expected: each result belongs to the original request and appears once on the computer.
+- With a turn active, press **Stop the turn**. Start a later turn and reopen the conversation. Expected: the first stop leaves the later turn alone. Use **End session…** and confirm on a disposable test thread. Expected: the original session ends.
+- Open an authorized Anima thread started at the desk. Expected: shared messages appear when transcript sharing is on. The phone offers no write controls. Open an imported thread ID and a thread from a different account through a direct link. Expected: neither reveals a transcript or controls.
+- Turn off remote starts or disconnect the computer. Refresh the target list. Expected: the unavailable target drops out. Submit using an offer obtained before the change. Expected: the hub or computer refuses the start or shows expiry. Repeat after removing the project folder from the permitted list.
 
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 
@@ -3601,6 +3616,17 @@ the rootless, Quadlet and previous-generation scenarios below.
 **Auto-remove Quadlet.** In the disposable fixture, record the staged manifest with `capture-source` before stopping a source configured to remove its container. Keep the original Quadlet and a consistent backup. Mask the launcher persistently, stop the source, and import the staged copy. Verify capture replay while still staged. Authorize while all Anima-managed entries support the captured record. Repeat with a version 1-only boot entry and verify authorization is refused. With a compatible menu restored, try a replacement with the captured name and confirm cutover holds. Remove the disposable replacement, finish the Docker write check, and verify the updater refuses a staged or rollback entry which supports only version 1 after the captured authorization is retained.
 
 **Expected.** Confirmation records Docker authority, the installed generation, bind location, verified digest and validation results. Exact replay returns the same receipt. A different hash is refused. The Docker application is healthy with its initial state and the new write. Verify that activation and rollback refuse incompatible Anima-managed boot entries without changing the boot selection. Reboot into a compatible previous OS generation and verify that Podman remains stopped. The retained Podman backup still has the pre-cutover data, and a failed apply preserves the independent backup and the pre-cutover recovery path.
+### HT-204 — RDP and VNC on the same Mac
+
+State: Open. Requirements MRDP-001 to MRDP-005, R-451.
+
+1. Install the signed desktop build on an Apple Silicon Mac enrolled with Anima Link. Keep VNC enabled. Before enabling RDP, the hub cannot reach port 3389 on this device.
+2. Enable Remote Desktop in Anima on the Mac. Deny one macOS permission on the first attempt. Anima names the missing permission and keeps the Link route closed.
+3. Grant Screen Recording and Accessibility, reopen Anima if macOS asks, and enable RDP again. Copy the dedicated RDP password. Test the RDP connection and compare the shown SHA-256 fingerprint before accepting the certificate.
+4. From another client, connect to the device using RDP with the dedicated password. The active desktop is visible, keyboard and pointer input work and macOS shows that the display is captured.
+5. Close the Anima window on the Mac. The RDP session continues. Disconnect and open a VNC session to the same device entry. The Mac's VNC settings still work.
+6. Start an RDP session again. Choose Stop Remote Desktop in the Anima menu bar. The RDP session ends, the hub cannot reach the RDP port and VNC still works.
+7. Retry with another application listening on port 3389. Anima reports that its host cannot start and Link never routes RDP to the other application. Use a Developer ID-signed desktop bundle. An ad hoc build cannot open the Link route.
 
 ## Deferred
 
@@ -6142,6 +6168,24 @@ State: Open. Built on `code/local-anima-sessions-only`. Synthetic tests mount th
 
 Parent-worker/device authority, TH30, remote session enablement and live SDK probes are outside this check.
 
+
+## HT-205 — Clone a Code project from Git URL
+
+State: Open. Built on `code/th60b-bounded-clone` (TH60B, TC9). The Git checkout, smart negotiation and runner refusal tests use
+synthetic loopback fixtures. The installed desktop and a
+successful HTTPS exchange with a real Git server still need a check.
+
+1. Use a test account with a matching desktop, daemon and CLI. Prepare a disposable
+   HTTPS Git repository with one known committed file, no sign-in and no redirect.
+   Open Code, start a draft and choose Add project → Git URL.
+2. Enter the test URL, a folder name and an existing parent on the daemon's
+   filesystem. Confirm the displayed destination and choose Clone project. Expect
+   a progress message, then selection of the new project in the draft. Expect
+   the known file in that folder. No thread starts when the clone completes.
+3. Repeat with a different folder through `anima agents projects clone <url> <folder>`.
+   Reopen the desktop. Expect both clones in the project picker.
+4. Repeat with an existing folder containing a file. Expect refusal and the
+   original file. In the form, expect the URL and destination fields to stay filled.
 ## HT-196: The marks of the programs in Hosting (task H53; HSE-020)
 
 Built on the branch `hosted/h53-brand-marks`: each row of Hosting > Applications and each entry of the Catalogue has a
@@ -6387,3 +6431,11 @@ Expected: cancellation remains authoritative; reconciliation ends at `cancelled`
 Source implementation and strict Linux Clippy are complete; interrupted-process and reboot acceptance have not run.
 
 For the same build-lifecycle check, interrupt a confirmed artifact release after `deleting` is durable, both before and after subvolume deletion. Exercise explicit reconciliation, cancellation retry and boot recovery. Expect `deleted`, absent scratch/artifact storage, released capacity and source lease, and export refusal. No recovery path may promote this attempt back to `verified` or replace its deletion intent with cancellation. Verify repeated cleanup and a refused Btrfs deletion without removing unrelated workspace or hosting storage.
+
+## HT-202 — The Builds release bucket
+
+1. Point a test Builds hub at a disposable R2 bucket and publish four versions of one desktop target.
+2. Read the target's current feed and list the versioned desktop files in the bucket. Expect the feed
+   to name the fourth version and its files to be present. Expect the oldest version's desktop files
+   and updater signature to be gone and the three newest versions to remain.
+3. Open the oldest Builds job. Expect its state to remain Published.

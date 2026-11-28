@@ -1,7 +1,6 @@
 //! The publish of a built release, in the publisher's order (BLD-002, BLD-064 to BLD-069); I/O only, the decisions are in `checks`.
 
 use reqwest::Client;
-use serde_json::Value;
 
 use super::{
     Built, BuiltError,
@@ -23,8 +22,6 @@ use crate::{
         version::Version,
     },
 };
-
-const MAX_FEED_BYTES: usize = 64 * 1024;
 
 /// `public_key` is the updater public key of the release commit.
 pub struct BuiltPublisher<'a> {
@@ -54,18 +51,13 @@ impl BuiltPublisher<'_> {
             return Ok(None);
         }
         let get = reach.bucket.get(object, reach.clock.now());
-        let held = transfer::read_small(reach.http, get, object, MAX_FEED_BYTES).await?;
+        let held = transfer::read_small(reach.http, get, object, feed::MAX_FEED_BYTES).await?;
         let unread = || {
             refused(format!(
                 "{object} holds a feed whose version cannot be read."
             ))
         };
-        let top: Value = serde_json::from_slice(&held).map_err(|_| unread())?;
-        let published: Version = top
-            .get("version")
-            .and_then(Value::as_str)
-            .and_then(|text| text.parse().ok())
-            .ok_or_else(unread)?;
+        let published = feed::published_version(&held).ok_or_else(unread)?;
         if published == version && held != feed.as_bytes() {
             return Err(refused(format!(
                 "{object} already holds another feed of {version}."

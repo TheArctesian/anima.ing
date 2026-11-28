@@ -46,9 +46,16 @@ async function linkedDevice(hub: Hub) {
 
 function connectionChanges(device: DeviceDetail, access: Access, target?: number) {
   const remote = remoteValues(device);
+  const macRdp = access.macRdp === true && access.open.includes(3389);
+  const rdp = rdpInput({
+    ...remote.rdp, enabled: access.open.includes(3389), port: '3389',
+    username: macRdp ? access.username : remote.rdp.username || access.username,
+    security: macRdp ? 'NLA' : remote.rdp.security,
+    ignoreCertificate: macRdp ? false : remote.rdp.ignoreCertificate,
+  });
   return {
     ...(target === undefined || target === 22 ? { ssh: { enabled: access.open.includes(22), port: 22, username: device.ssh.username || access.username, auth: device.ssh.auth } } : {}),
-    ...(target === undefined || target === 3389 ? { rdp: rdpInput({ ...remote.rdp, enabled: access.open.includes(3389), port: '3389', username: remote.rdp.username || access.username }) } : {}),
+    ...(target === undefined || target === 3389 ? { rdp } : {}),
     ...(target === undefined || target === 5900 ? { vnc: vncInput({ ...remote.vnc, enabled: access.open.includes(5900), port: '5900', username: remote.vnc.username || (device.os === 'MACOS' ? access.username : '') }) } : {}),
   };
 }

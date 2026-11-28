@@ -3,7 +3,7 @@
 use super::{Changing, LinkError, PROGRAM, folders, from_main, open_ports};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
-use tauri::{Runtime, State, Webview};
+use tauri::{AppHandle, Manager as _, Runtime, State, Webview};
 
 const CHOICES: &str = "remote-access-choices";
 
@@ -11,6 +11,8 @@ const CHOICES: &str = "remote-access-choices";
 pub struct Access {
     configured: bool,
     desktop: bool,
+    #[serde(rename = "macRdp")]
+    mac_rdp: bool,
     username: String,
     selected: Vec<u16>,
     open: Vec<u16>,
@@ -30,7 +32,7 @@ struct Choices {
     ports: Vec<u16>,
 }
 
-fn saved(folder: &Path) -> Result<Option<Vec<u16>>, LinkError> {
+pub(super) fn saved(folder: &Path) -> Result<Option<Vec<u16>>, LinkError> {
     match fs::read(folder.join(CHOICES)) {
         Ok(bytes) => serde_json::from_slice::<Choices>(&bytes)
             .map(|choices| Some(choices.ports))
@@ -51,7 +53,19 @@ fn defaults(desktop: bool, rdp: bool) -> Vec<u16> {
     ports
 }
 
-async fn prepare(port: u16) -> Result<(), String> {
+pub(super) async fn prepare<R: Runtime>(
+    app: &AppHandle<R>,
+    folder: &Path,
+    port: u16,
+) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    if port == 3389 {
+        return super::rdp::prepare(app, folder)
+            .await
+            .map_err(str::to_owned);
+    }
+    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    let _ = (app, folder);
     if port == 22 {
         return remote_login::enable(remote_login::Prompt::Desktop)
             .await
@@ -100,26 +114,34 @@ fn changes(selected: &[u16], target: Option<u16>, rdp: bool) -> Vec<(u16, bool)>
     ports
 }
 
-async fn apply(
-    folder: &Path,
-    program: &Path,
+async fn apply<R: Runtime>(
+    app: &AppHandle<R>,
+    paths: (&Path, &Path),
     selected: &[u16],
     target: Option<u16>,
 ) -> Result<Vec<Note>, LinkError> {
+    let (folder, program) = paths;
     store(folder, selected.to_vec())?;
     let mut notes = Vec::new();
-    for (port, on) in changes(
-        selected,
-        target,
-        cfg!(any(target_os = "linux", target_os = "windows")),
-    ) {
+    for (port, on) in changes(selected, target, open_ports::RDP_SUPPORTED) {
         if !on || (port == 22 && remote_login::ready().await) {
+            #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+            if port == 3389 {
+                super::rdp::close();
+            }
             open_ports::ask(program, folder, Some((port, on)))?;
             continue;
         }
-        match prepare(port).await {
+        match prepare(app, folder, port).await {
             Ok(()) => {
-                open_ports::ask(program, folder, Some((port, true)))?;
+                let opened = open_ports::ask(program, folder, Some((port, true)));
+                #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+                let opened = opened.inspect_err(|_| {
+                    if port == 3389 {
+                        super::rdp::close();
+                    }
+                });
+                opened?;
             }
             Err(message) => {
                 open_ports::ask(program, folder, Some((port, false)))?;
@@ -138,6 +160,14 @@ async fn readiness(rdp: bool) -> (Vec<u16>, Vec<u16>) {
         ready.push(22);
     }
     for port in [3389, 5900] {
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        if port == 3389 {
+            if super::rdp::running() {
+                listening.push(port);
+                ready.push(port);
+            }
+            continue;
+        }
         if open_ports::may_open(port, rdp) {
             match remote_login::desktop::status(port).await {
                 Status::Unavailable => {}
@@ -167,7 +197,7 @@ pub async fn link_access<R: Runtime>(
         return Err(LinkError::Folder);
     }
     let program = crate::carried::program(PROGRAM).ok_or(LinkError::NotCarried)?;
-    let rdp = cfg!(any(target_os = "linux", target_os = "windows"));
+    let rdp = open_ports::RDP_SUPPORTED;
     let desktop = remote_login::desktop::present();
     let open = open_ports::ask(&program, &folder, None)?.open;
     let before = saved(&folder)?;
@@ -176,7 +206,7 @@ pub async fn link_access<R: Runtime>(
         if configured {
             open.clone()
         } else {
-            defaults(desktop, rdp)
+            defaults(desktop, rdp && !open_ports::MAC_RDP)
         }
     });
     let mut notes = Vec::new();
@@ -196,12 +226,13 @@ pub async fn link_access<R: Runtime>(
         ports.sort_unstable();
         ports.dedup();
         selected = ports;
-        notes = apply(&folder, &program, &selected, target).await?;
+        notes = apply(webview.app_handle(), (&folder, &program), &selected, target).await?;
     }
     let (ready, listening) = readiness(rdp).await;
     Ok(Access {
         configured: configured || applying,
         desktop,
+        mac_rdp: open_ports::MAC_RDP,
         username: whoami::username().map_err(|_| LinkError::Failed)?,
         selected,
         open: open_ports::ask(&program, &folder, None)?.open,

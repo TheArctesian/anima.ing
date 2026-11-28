@@ -3,6 +3,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 export interface Access {
   readonly configured: boolean;
   readonly desktop: boolean;
+  readonly macRdp?: boolean;
   readonly username: string;
   readonly selected: readonly number[];
   readonly listening: readonly number[];
@@ -18,7 +19,7 @@ export async function localAccess(selected?: readonly number[], target?: number)
   if (!isTauri()) return null;
   const value: unknown = await invoke('link_access', selected === undefined ? {} : { ports: selected, target });
   if (!record(value) || typeof value.configured !== 'boolean' || typeof value.desktop !== 'boolean' || typeof value.username !== 'string' || !ports(value.selected) || !ports(value.open) || !ports(value.ready) || !ports(value.listening)) throw new Error('The app could not read remote access settings.');
-  return { configured: value.configured, desktop: value.desktop, username: value.username, selected: value.selected, open: value.open, ready: value.ready, listening: value.listening, notes: readNotes(value.notes) };
+  return { configured: value.configured, desktop: value.desktop, macRdp: value.macRdp === true, username: value.username, selected: value.selected, open: value.open, ready: value.ready, listening: value.listening, notes: readNotes(value.notes) };
 }
 
 function readNotes(value: unknown): Access['notes'] {

@@ -27,12 +27,14 @@
   /** A line of the overview shows its row: the list narrows to its machine and to what needs you, and the row opens. */
   function show(id: string, row: string): void {
     store.machine = id;
+    store.view = 'applications';
+    store.search = '';
     store.show = 'needs-you';
     if (!store.open.includes(row)) store.toggle(row);
   }
   const head = useHead();
   $effect(() => {
-    if (page.url.searchParams.get('show') === 'needs-you') store.show = 'needs-you';
+    store.show = page.url.searchParams.get('show') === 'needs-you' ? 'needs-you' : 'all';
   });
   $effect(() => {
     void store.load();

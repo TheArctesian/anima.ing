@@ -24,6 +24,16 @@ pub fn run() {
     // Release desktop builds only: `tauri dev` never checks for or loads an update (UPD-001).
     #[cfg(not(debug_assertions))]
     let app = with_updater(app).plugin(tauri_plugin_process::init());
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    let app = app.on_window_event(|window, event| {
+        if window.label() == "main"
+            && link::rdp::running()
+            && let tauri::WindowEvent::CloseRequested { api, .. } = event
+        {
+            api.prevent_close();
+            let _ = window.hide();
+        }
+    });
     with_state(app)
         .invoke_handler(commands())
         .build(tauri::generate_context!())
@@ -149,6 +159,8 @@ fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
             tauri::async_runtime::spawn(keystore::forget_retired_updater_key());
             stay_awake::start(app.handle());
             link::start(&app.state::<Arc<link::DeviceLink>>());
+            #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+            link::rdp::restore(&app.state::<link::Changing>());
             local_hub::update::at_start(&app.state::<local_hub::Changing>());
             daemon::update_at_start(app.handle());
             Ok(())
@@ -164,6 +176,8 @@ fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
     }
     if matches!(event, tauri::RunEvent::Exit) {
         app.state::<agent_threads::watch::Watching>().stop();
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        link::rdp::close();
         app.state::<builder::Running>().cancel();
         app.state::<daemon::Installing>().stop();
         app.state::<Arc<link::DeviceLink>>().stop();

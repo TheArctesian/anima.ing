@@ -52,7 +52,7 @@ async function open(
     token: () => Promise.resolve(token),
     WebSocket: FAKE_WEBSOCKET,
     fetch: (_url, init) => {
-      const { query, variables } = JSON.parse(String(init?.body)) as { query: string; variables: { id?: string } };
+      const { query, variables } = JSON.parse(String(init?.body)) as { query: string; variables: { id?: string; thread?: string } };
       if (query.startsWith('query DeviceHosts')) {
         return Promise.resolve(Response.json({ data: { devices: { edges: [], pageInfo: { hasNextPage: false } } } }));
       }
@@ -67,6 +67,12 @@ async function open(
         const thread = snapshots.find(({ summary }) => summary.id === variables.id);
         const agentThread = thread === undefined ? null : { summary: thread.summary, lastSequence: thread.lastSequence };
         return Promise.resolve(Response.json({ data: { agentThread } }));
+      }
+      if (query.startsWith('query MobileRemoteOperator')) {
+        return Promise.resolve(Response.json({ data: { me: { id: 'operator-a' } } }));
+      }
+      if (query.startsWith('query MobileRemoteControl')) {
+        return Promise.resolve(Response.json({ data: { agentThreadControl: { thread: variables.thread, offer: null } } }));
       }
       throw new Error('Unexpected GraphQL operation');
     },

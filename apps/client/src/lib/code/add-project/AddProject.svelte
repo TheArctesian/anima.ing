@@ -8,6 +8,7 @@
   import PaletteResults from '../palette/PaletteResults.svelte';
   import { firstEnabled, stepped, type PaletteRow } from '../palette/results';
   import { AddProjectWalk, type FolderList } from './walk.svelte';
+  import type { ProjectFormSource } from './sources';
 
   interface Props {
     open?: boolean;
@@ -17,10 +18,10 @@
     start: string;
     /** Takes the chosen folder; the palette closes. */
     onAdd: (folder: string) => void;
-    onNew: () => void;
+    onForm: (source: ProjectFormSource) => void;
   }
 
-  let { open = $bindable(false), list, start, onAdd, onNew }: Props = $props();
+  let { open = $bindable(false), list, start, onAdd, onForm }: Props = $props();
   const id = $props.id();
 
   const walk = new AddProjectWalk(
@@ -30,7 +31,7 @@
       open = false;
       onAdd(folder);
     },
-    () => { open = false; onNew(); },
+    (source) => { open = false; onForm(source); },
   );
   let input: HTMLInputElement | undefined = $state();
   let shadedId = $state<string | undefined>(undefined);

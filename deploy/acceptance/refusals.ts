@@ -83,9 +83,25 @@ export const REFUSED_ROOTS: readonly string[] = [
   "setModelPublisherApproval",
   "setDevicePolicy",
   "setDaemonNeed",
+  "agentThreadStartTargets",
+  "agentThreadLaunch",
+  "agentThreadControl",
+  "agentThreadCommand",
+  "startAgentThread",
+  "sendAgentThreadPrompt",
+  "answerAgentThreadRequest",
+  "stopAgentThread",
+  "stopJob",
+  "setDeviceWork",
+  "setProjectWorkDevices",
+  "setProjectWorkMachine",
+  "setDeviceWorkExcluded",
 ];
 
-export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile", "sourceBuild", "projectBuildPlacement", "containerLog", "containerDetail"];
+export const QUERY_ROOTS: readonly string[] = [
+  "apiKeys", "codeFile", "sourceBuild", "projectBuildPlacement", "containerLog", "containerDetail",
+  "agentThreadStartTargets", "agentThreadLaunch", "agentThreadControl", "agentThreadCommand",
+];
 
 /** No field has this argument, so the document never reaches a resolver; the guard refuses by root name first. */
 const NO_SUCH_ARGUMENT = "animaProbeOnly: true";

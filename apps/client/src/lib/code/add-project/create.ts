@@ -5,6 +5,8 @@ import { inside } from './sources';
 
 export type ProjectCall = (action: Action) => Promise<CallResult>;
 
+export const PROJECT_RECOVERY = 'Check the location before retrying. If the folder exists, use Local folder to select it for this draft.';
+
 export function projectFields(name: string, location: string): { name?: string; location?: string } {
   const title = name.trim();
   const folder = location.trim();
@@ -18,15 +20,18 @@ export function projectFields(name: string, location: string): { name?: string; 
 
 export type CreatedProject = { ok: true; folder: string; projects: readonly LocalProject[] } | { ok: false; words: string };
 
-export async function createProject(call: ProjectCall, name: string, location: string): Promise<CreatedProject> {
+export async function createProject(call: ProjectCall, name: string, location: string, url?: string): Promise<CreatedProject> {
   const parent = await call({ call: 'folders', folder: location.trim() });
   if (!parent.ok) return parent;
   if (parent.outcome.outcome !== 'folders') return { ok: false, words: 'The project location could not be checked. Try again.' };
   const folder = inside(parent.outcome.folder, name.trim());
-  const result = await call({ call: 'create_project', folder, name: name.trim() });
-  if (!result.ok) return { ok: false, words: `${result.words} Check the location before retrying; if the folder exists, add it as a Local folder.` };
+  const result = await call(url === undefined
+    ? { call: 'create_project', folder, name: name.trim() }
+    : { call: 'clone_project', folder, name: name.trim(), url });
+  if (!result.ok) return { ok: false, words: `${result.words} ${PROJECT_RECOVERY}` };
   if (result.outcome.outcome !== 'projects' || !result.outcome.projects.some((project) => project.folder === folder)) {
-    return { ok: false, words: 'Creation was not confirmed. Check the location before retrying; if the folder exists, add it as a Local folder.' };
+    const operation = url === undefined ? 'Creation' : 'Clone';
+    return { ok: false, words: `${operation} was not confirmed. ${PROJECT_RECOVERY}` };
   }
   return { ok: true, folder, projects: result.outcome.projects };
 }

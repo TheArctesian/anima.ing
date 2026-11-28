@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import CodeIcon from '$lib/code/icons/CodeIcon.svelte';
   import { ago, programName } from '$lib/agent-threads/thread';
+  import FormButton from '$lib/forms/FormButton.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
   import ProgramMark from '$lib/code/icons/ProgramMark.svelte';
   import type { MobileCodeApi, ThreadSummary } from './api';
@@ -14,9 +15,11 @@
     api: MobileCodeApi;
     onnodes?: (() => void) | undefined;
     machines: ReadonlyMap<string, string>;
+    startLabel: string;
+    start?: (() => void) | undefined;
   }
 
-  const { api, machines, onnodes }: Props = $props();
+  const { api, machines, onnodes, start, startLabel }: Props = $props();
   let threads = $state.raw<ThreadSummary[]>([]);
   let more = $state<string | null>(null);
   let error = $state('');
@@ -55,6 +58,7 @@
 <section aria-labelledby="mobile-code-title" class="inbox">
   <header>
     <h1 id="mobile-code-title">Code</h1>
+    {#if start}<FormButton size="lg" tone="primary" onclick={start}>{startLabel}</FormButton>{/if}
     {#if onnodes}<button class="refresh" type="button" onclick={onnodes} aria-label="Code on a node">
       <CodeIcon name="laptop" size="md" />
     </button>{/if}
@@ -107,12 +111,13 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: var(--space-3);
     margin-block-end: var(--space-3);
   }
 
   h1 {
-    margin: 0;
+    margin: 0 auto 0 0;
     font-size: var(--text-2xl);
     line-height: var(--leading-tight);
   }

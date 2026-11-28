@@ -40,6 +40,7 @@ export interface ApplicationRow {
   readonly what: string;
   readonly state: string;
   readonly tone: Tone;
+  readonly running: boolean;
   readonly needsYou: boolean;
   /** The completed AnimaOS apply associated with the observed container or all project members. */
   readonly managedApplicationId: string | null;
@@ -108,7 +109,7 @@ export function needingYou(places: readonly Place[], view: View): number {
 }
 
 function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
-  const owned = new Map(place.containers.map(({ id, managedApplicationId }) => [id, managedApplicationId]));
+  const containers = new Map(place.containers.map((container) => [container.id, container]));
   return projectGroups(place.containers, place.updates).flatMap((group): ApplicationRow[] => {
     const newer = place.updates.length === 0 ? null : group.rows.filter((row) => row.update?.newer === true).length;
     if (group.project !== NO_PROJECT && view === 'applications') {
@@ -123,6 +124,7 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
           what: 'Compose project',
           state: group.state,
           tone: group.tone,
+          running: members.every((member) => member.state === 'RUNNING'),
           needsYou,
           managedApplicationId: members.every((member) => member.managedApplicationId === application) ? application : null,
           newer,
@@ -139,8 +141,9 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
       what: group.project === NO_PROJECT ? row.image : `${row.image} · Container of ${group.project}`,
       state: row.state,
       tone: row.tone,
+      running: containers.get(row.id)?.state === 'RUNNING',
       needsYou: row.tone !== 'up',
-      managedApplicationId: owned.get(row.id) ?? null,
+      managedApplicationId: containers.get(row.id)?.managedApplicationId ?? null,
       newer: newer === null ? null : Number(row.update?.newer === true),
       containers: [row],
       folder: null,

@@ -14,9 +14,8 @@
   const head = useHead();
   // HSE-019: the overview opens this section with Needs you chosen, or with one route open.
   $effect(() => {
-    if (page.url.searchParams.get('show') === 'needs-you') routes.filter = 'NEEDS_YOU';
-    const route = page.url.searchParams.get('route');
-    if (route !== null) routes.select(route);
+    routes.filter = page.url.searchParams.get('show') === 'needs-you' ? 'NEEDS_YOU' : 'ALL';
+    routes.select(page.url.searchParams.get('route'));
   });
   $effect(() => {
     head.actions = add;

@@ -11,14 +11,16 @@ export interface Source {
   readonly needs: string | null;
 }
 
+export type ProjectFormSource = 'new' | 'url';
+
 /**
  * T3's order: New project, Local folder, Git URL, then the forges. "New project" creates through TH60A; "Local folder" lists the
- * folders of a folder (`folders`, TH113). Cloning waits for a runner call, named in `needs`.
+ * folders of a folder (`folders`, TH113). Git URL clones through TH60B.
  */
 export const SOURCES: readonly Source[] = [
   { id: 'new', title: 'New project', line: 'Start a new Git repository from a name', icon: 'folder-git-2', needs: null },
   { id: 'local', title: 'Local folder', line: 'Browse a folder on disk', icon: 'folder-plus', needs: null },
-  { id: 'url', title: 'Git URL', line: 'Clone from a remote URL', icon: 'link-2', needs: 'Needs a runner call that clones a URL into a folder.' },
+  { id: 'url', title: 'Git URL', line: 'Clone from an HTTPS URL', icon: 'link-2', needs: null },
   { id: 'github', title: 'GitHub repository', line: 'Clone GitHub owner/repo', icon: 'git-fork', needs: 'Needs a runner call that clones owner/repo from GitHub into a folder.' },
 ];
 

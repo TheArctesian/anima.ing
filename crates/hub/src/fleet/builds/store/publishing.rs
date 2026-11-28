@@ -239,3 +239,32 @@ pub(in crate::fleet::builds) async fn set_written(
         .await?;
     Ok(())
 }
+
+pub(in crate::fleet::builds) async fn unremoved_published(
+    db: impl PgExecutor<'_>,
+    target: Target,
+) -> Result<Vec<(BuildJobId, String)>, Error> {
+    Ok(sqlx::query_as(
+        "SELECT id, version FROM builds.jobs \
+         WHERE target = $1 AND state = 'published' AND objects_removed_at IS NULL",
+    )
+    .bind(target.as_str())
+    .fetch_all(db)
+    .await?)
+}
+
+pub(in crate::fleet::builds) async fn mark_removed(
+    db: impl PgExecutor<'_>,
+    job: BuildJobId,
+    at: DateTime<Utc>,
+) -> Result<(), Error> {
+    sqlx::query(
+        "UPDATE builds.jobs SET objects_removed_at = $2 \
+         WHERE id = $1 AND state = 'published' AND objects_removed_at IS NULL",
+    )
+    .bind(job)
+    .bind(at)
+    .execute(db)
+    .await?;
+    Ok(())
+}

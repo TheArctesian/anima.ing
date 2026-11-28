@@ -19,6 +19,7 @@ members = [
     "crates/compose-rules",
     "crates/power",
     "crates/remote-login",
+    "crates/anima-rdp-host",
     "crates/catalogue",
     "crates/anima-applications",
     "crates/anima-applications-wire",

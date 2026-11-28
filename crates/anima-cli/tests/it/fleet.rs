@@ -7,6 +7,7 @@ mod device_paging;
 mod device_secrets;
 mod device_trust;
 pub mod devices;
+mod jobs;
 mod link;
 
 pub use link::device as link_device;

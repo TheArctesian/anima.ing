@@ -9,6 +9,7 @@ mod bucket;
 mod built;
 mod feed;
 mod files;
+mod pruning;
 mod run;
 mod signature;
 mod sigv4;

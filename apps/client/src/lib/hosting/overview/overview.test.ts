@@ -16,10 +16,15 @@ function reads(change: Partial<Reads> = {}): Reads {
 }
 
 describe('the numbers of the overview (HSE-019)', () => {
-  it('counts the machines up, the applications running and the routes proven, and says how many need you', () => {
-    expect(figures(reads()).map(({ title, value, word, needsYou }) => [title, value, word, needsYou])).toEqual([
+  it('counts a running, unhealthy application as running and needing attention', () => {
+    const places = PLACES.map((place) => ({
+      ...place,
+      containers: place.containers.map((container) => container.name === 'watchtower' ? { ...container, health: 'UNHEALTHY' as const } : container),
+    }));
+    const snapshot = reads({ hosting: { status: 'ready', problem: '', places } });
+    expect(figures(snapshot).map(({ title, value, word, needsYou }) => [title, value, word, needsYou])).toEqual([
       ['Machines up', '2', '1 needs you', true],
-      ['Applications running', '2', '1 needs you', true],
+      ['Applications running', '2', '2 need you', true],
       ['Routes proven', '3', '3 need you', true],
     ]);
   });
@@ -61,7 +66,7 @@ describe('the lines of what needs you (HSE-019)', () => {
     const failed = PLACES.map((place) => (place.id === 'm-nas' ? { ...place, status: 'failed' as const, problem: 'SSH refused.', containers: [] } : place));
     const lines = concerns(reads({ hosting: { status: 'ready', problem: '', places: failed }, routes: { status: 'failed', problem: 'Refused.', routes: [] } }));
     expect(lines.map(({ what, why, action }) => [what, why, action])).toEqual([
-      ['nas', 'Containers not read: SSH refused.', { kind: 'read', section: 'hosting' }],
+      ['nas', 'SSH refused.', { kind: 'read', section: 'hosting' }],
       ['mini', 'Down', { kind: 'device', id: 'm-mini' }],
       ['The routes', 'Refused.', { kind: 'read', section: 'routes' }],
     ]);

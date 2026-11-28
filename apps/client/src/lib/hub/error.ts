@@ -3,6 +3,12 @@ import { HOSTED_ADDRESS_MOVED, holdsMovedAddressHere, hubIsHosted, networkAdvice
 /** The K7 `extensions.code` values the hub sends. */
 const HUB_CODES = ['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION', 'CONFLICT', 'UNAVAILABLE', 'INTERNAL'] as const;
 
+const THREAD_REFUSALS: readonly string[] = [
+  'target_unavailable', 'LAUNCH_CONFLICT', 'COMMAND_CONFLICT', 'MALFORMED', 'COMMANDS_FULL',
+  'thread_unknown', 'THREAD_NOT_FOUND', 'WORK_OFF', 'threads_off', 'invalid_answer',
+  'request_stale', 'target_stale', 'DEVICE_NOT_FOUND', 'LAUNCH_UNKNOWN', 'COMMAND_UNKNOWN',
+];
+
 export type HubCode = (typeof HUB_CODES)[number];
 
 export interface FieldError {
@@ -15,7 +21,8 @@ export interface FieldError {
  * `message` is a plain sentence for the operator and never holds the token (LOG-007).
  */
 export type HubError =
-  | { readonly code: Exclude<HubCode, 'VALIDATION'>; readonly message: string }
+  | { readonly code: Exclude<HubCode, 'VALIDATION' | 'INTERNAL'>; readonly message: string }
+  | { readonly code: 'INTERNAL'; readonly message: string; readonly reason?: string }
   | { readonly code: 'VALIDATION'; readonly message: string; readonly fields: readonly FieldError[] }
   | { readonly code: 'unreachable' | 'malformed'; readonly message: string }
   | { readonly code: 'unserved'; readonly message: string };
@@ -98,7 +105,11 @@ function parseError(value: unknown): HubError {
   }
   if (isHubCode(code) && code !== 'VALIDATION') return { code, message };
   if (UNKNOWN_FIELD.test(message) || UNKNOWN_INPUT_FIELD.test(message) || UNKNOWN_GROUP_IMPORT.test(message)) return UNSERVED;
-  return { code: 'INTERNAL', message: message === '' ? UNCODED_MESSAGE : message };
+  return {
+    code: 'INTERNAL',
+    message: message === '' ? UNCODED_MESSAGE : message,
+    ...(typeof code === 'string' && THREAD_REFUSALS.includes(code) && { reason: code }),
+  };
 }
 
 export function parseErrors(value: unknown): HubError {

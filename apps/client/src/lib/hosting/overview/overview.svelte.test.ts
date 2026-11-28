@@ -56,11 +56,11 @@ it('HSE-019: with nothing that needs you, the list is one line that says so', as
 it('HSE-019: a machine whose containers did not answer is read again from its line', async () => {
   calls.failing = { 'm-nas': 'SSH refused.' };
   await overview([]);
-  expect(text('.concerns li')).toContain('nas Containers not read: SSH refused. Read again');
+  expect(text('.concerns li')).toContain('nas SSH refused. Read again');
   calls.failing = {};
   [...document.querySelectorAll<HTMLButtonElement>('.concerns button')].find((each) => each.textContent === 'Read again')?.click();
   await Promise.resolve();
   await new Promise((done) => setTimeout(done, 0));
   flushSync();
-  expect(text('.concerns li')).not.toContain('nas Containers not read: SSH refused. Read again');
+  expect(text('.concerns li')).not.toContain('nas SSH refused. Read again');
 });

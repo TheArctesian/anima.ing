@@ -45,6 +45,12 @@ describe('parseResponse', () => {
     expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message: 'Odd.' } });
   });
 
+  it.each(['target_unavailable', 'LAUNCH_UNKNOWN', 'COMMAND_UNKNOWN'])('preserves the remote thread reason %s', (reason) => {
+    const message = 'Remote thread request refused.';
+    const body = failure({ message, extensions: { code: reason } });
+    expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message, reason } });
+  });
+
   it('errors win over partial data', () => {
     const body = { data: { device: { id: 'x' } }, errors: [{ message: 'Gone.', extensions: { code: 'NOT_FOUND' } }] };
     expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'NOT_FOUND', message: 'Gone.' } });

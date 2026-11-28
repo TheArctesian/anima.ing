@@ -172,6 +172,12 @@ pub enum Action {
         folder: PathBuf,
         name: Option<String>,
     },
+    /// Clone an anonymous HTTPS remote into a new local folder (TH60B); only the person.
+    CloneProject {
+        folder: PathBuf,
+        name: Option<String>,
+        url: String,
+    },
     /// A change of the projects (TH107): only the person makes it.
     ChangeProject { change: ProjectChange },
     /// The files and folders of the working folder of a thread that match `query`, at most

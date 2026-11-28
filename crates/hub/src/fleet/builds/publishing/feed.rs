@@ -12,6 +12,12 @@ use crate::fleet::builds::{
 pub(super) const SUMS: &str = "SHA256SUMS";
 
 const MAX_NOTES_BYTES: usize = 1024;
+pub(super) const MAX_FEED_BYTES: usize = 64 * 1024;
+
+pub(super) fn published_version(bytes: &[u8]) -> Option<Version> {
+    let top: Value = serde_json::from_slice(bytes).ok()?;
+    top.get("version")?.as_str()?.parse().ok()
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct CheckedFeed {

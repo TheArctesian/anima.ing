@@ -72,7 +72,7 @@ export function figures(reads: Reads): readonly Figure[] {
   const machines = hosting.status === 'ready' ? counted(MACHINES, places.length - down, places.length, down) : pending(MACHINES, hosting.status);
   const read = hosting.status === 'ready' && places.every((place) => place.status !== 'loading');
   const rows = applicationRows(places).map(({ row }) => row);
-  const applications = read ? counted(APPLICATIONS, rows.filter((row) => row.tone === 'up').length, rows.length, rows.filter((row) => row.needsYou).length) : pending(APPLICATIONS, hosting.status);
+  const applications = read ? counted(APPLICATIONS, rows.filter((row) => row.running).length, rows.length, rows.filter((row) => row.needsYou).length) : pending(APPLICATIONS, hosting.status);
   const proven = routes.routes.filter((route) => route.proof === 'PROVEN').length;
   const needing = routes.routes.filter((route) => needsYou(route, now)).length;
   return [machines, applications, routes.status === 'ready' ? counted(ROUTES, proven, routes.routes.length, needing) : pending(ROUTES, routes.status)];
@@ -89,7 +89,7 @@ export function concerns(reads: Reads): readonly Concern[] {
   if (hosting.status === 'failed') lines.push({ key: 'read/hosting', what: 'The machines', why: hosting.problem, action: { kind: 'read', section: 'hosting' } });
   for (const place of hosting.places) {
     if (place.state !== 'UP') lines.push({ key: `machine/${place.id}`, what: place.name, why: statusLabel(place.state), action: { kind: 'device', id: place.id } });
-    else if (place.status === 'failed') lines.push({ key: `containers/${place.id}`, what: place.name, why: `Containers not read: ${place.problem}`, action: { kind: 'read', section: 'hosting' } });
+    else if (place.status === 'failed') lines.push({ key: `containers/${place.id}`, what: place.name, why: place.problem, action: { kind: 'read', section: 'hosting' } });
   }
   for (const { machine, row } of applicationRows(hosting.places)) {
     if (row.needsYou) lines.push({ key: `row/${row.key}`, what: `${row.name} on ${machine.name}`, why: row.state, action: { kind: 'application', machine: machine.id, row: row.key } });
