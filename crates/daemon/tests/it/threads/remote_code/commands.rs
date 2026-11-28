@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustix::process::{Pid, PidfdFlags, Signal, pidfd_open, pidfd_send_signal};
+use rustix::process::Signal;
 use tokio::sync::Notify;
 
 use super::*;
@@ -52,28 +52,17 @@ impl PollGate {
 
 #[tokio::test]
 async fn th32_holder_reconnect_keeps_the_existing_command_poll_slot() {
-    let (kit, _home, _folder, hub, serving) = fixture(None);
     let gate = Arc::new(PollGate::default());
-    {
-        let mut state = hub.0.lock().unwrap();
-        state.poll_gate = Some(gate.clone());
-        // The launch interval remains enabled but the hub has no work for this device.
-        state.claim = super::Claim::Taken;
-    }
+    let (kit, _home, _folder, hub, serving) =
+        fixture::fixture_with_options(None, publication::Replies::Normal, Some(gate.clone()), None)
+            .await;
     tokio::time::timeout(Duration::from_secs(60), gate.first.notified())
         .await
         .expect("the first eligible poll should enter the hub");
     wait_for(&hub, |state| ready_claims(state) > 0).await;
     let before = ready_claims(&hub.0.lock().unwrap());
-    let dir = kit.threads();
-    let holders = super::super::runner::holders_of(&dir);
-    let [holder] = holders.as_slice() else {
-        panic!("expected one fixture holder");
-    };
-    let pid = Pid::from_raw(i32::try_from(*holder).unwrap()).unwrap();
-    let original = pidfd_open(pid, PidfdFlags::empty()).unwrap();
-    assert_eq!(super::super::runner::holders_of(&dir), holders);
-    pidfd_send_signal(&original, Signal::TERM).unwrap();
+    let original = kit.holder().await;
+    original.signal(Signal::TERM);
     tokio::time::timeout(Duration::from_secs(24), async {
         loop {
             if ready_claims(&hub.0.lock().unwrap()) > before {

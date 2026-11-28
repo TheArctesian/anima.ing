@@ -6,10 +6,7 @@ use std::{
     time::Duration,
 };
 
-use anima_daemon::{
-    config::{Config, home::Home, origin::Origin, private_file},
-    token_store::{Credential, TokenStore},
-};
+use anima_daemon::config::private_file;
 use axum::{
     Json, Router,
     extract::State,
@@ -21,9 +18,11 @@ use daemon_core::wire::{DaemonToken, Lease};
 use serde_json::{Value, json};
 use uuid::Uuid;
 
-use super::runner::Kit;
-
 mod commands;
+mod fixture;
+mod k8;
+mod protected;
+use fixture::{fixture, fixture_with_publication};
 mod holder;
 mod publication;
 mod races;
@@ -40,6 +39,15 @@ const COMMAND: &str = "../β:prompt";
 const CLAUDE: &str = r#"#!/usr/bin/perl
 $| = 1;
 open(my $started, ">", "started") or die "startup marker"; close($started);
+open(my $expected, "<", "supervisor-descriptor") or die "fixture descriptor";
+chomp(my $marker = <$expected>);
+close($expected);
+for my $fd (glob "/proc/$$/fd/*") {
+    if ((readlink($fd) // "") eq $marker) {
+        open(my $leak, ">", "supervisor-descriptor-leaked") or die "leak marker";
+        close($leak);
+    }
+}
 while (my $line = <STDIN>) {
     if ($line =~ /"type":"user"/) {
         open(my $file, ">>", "effects"); print $file "prompt\n"; close($file);
@@ -53,6 +61,7 @@ struct Hub(
     Arc<Mutex<Launch>>,
     Option<Arc<races::DispatchGate>>,
     publication::Replies,
+    Option<Arc<k8::Renewal>>,
 );
 
 #[derive(Debug, PartialEq, Eq)]
@@ -80,10 +89,10 @@ struct Launch {
 #[tokio::test]
 async fn th32_remote_code_claim_spawn_publish_receipt_and_withdrawal() {
     let retry = Arc::new(publication::Retry::default());
-    let (mut kit, home, folder, hub, serving) =
-        fixture_with_publication(None, publication::Replies::Retry(retry.clone()));
-    retry.ack.restart(&mut kit).await;
-    retry.running.restart(&mut kit).await;
+    let (kit, home, folder, hub, serving) =
+        fixture_with_publication(publication::Replies::Retry(retry.clone())).await;
+    retry.ack.restart(&kit).await;
+    retry.running.restart(&kit).await;
     wait_for(&hub, |launch| launch.receipts == 2).await;
     assert_eq!(
         std::fs::read_to_string(folder.join("effects")).unwrap(),
@@ -97,105 +106,10 @@ async fn th32_remote_code_claim_spawn_publish_receipt_and_withdrawal() {
     .unwrap();
     wait_for(&hub, |launch| launch.withdrawn).await;
     let observed = hub.0.lock().unwrap();
+    assert!(!folder.join("supervisor-descriptor-leaked").exists());
     assert_eq!(observed.delivered, 2);
     assert!(observed.summary_attempts >= 5);
     serving.abort();
-}
-
-fn fixture(grant: Option<Arc<races::DispatchGate>>) -> Fixture {
-    fixture_with_publication(grant, publication::Replies::Normal)
-}
-
-fn fixture_with_publication(
-    grant: Option<Arc<races::DispatchGate>>,
-    replies: publication::Replies,
-) -> Fixture {
-    let mut kit = Kit::unstarted(CLAUDE);
-    let home = Home::at(kit.path("daemon"));
-    let folder = kit.path("work").canonicalize().unwrap();
-    let listener = synthetic_enrollment(&home, &folder);
-    let hub = Hub(
-        Arc::new(Mutex::new(Launch {
-            folder: folder.clone(),
-            claims: Vec::new(),
-            claim: Claim::Available,
-            runner: None,
-            summary: false,
-            summary_attempts: 0,
-            done: false,
-            delivered: 0,
-            receipts: 0,
-            withdrawn: false,
-            refusal: None,
-            poll_gate: None,
-        })),
-        grant,
-        replies,
-    );
-    let router = publication::routes(Router::new())
-        .route("/work/v1/claim", post(claim))
-        .route("/work/v1/report", post(report_work))
-        .route("/work/v1/thread-dispatch", post(dispatch))
-        .route("/work/v1/thread-launch-evidence", post(evidence))
-        .route("/work/v1/commands", post(commands::poll))
-        .route("/work/v1/command-result", post(commands::receipt))
-        .route(
-            "/work/v1/thread-control",
-            post(|| async { StatusCode::NO_CONTENT }),
-        )
-        .with_state(hub.clone());
-    let pushing = publication::sample(home.clone(), kit.path(""));
-    let serving = tokio::spawn(async move {
-        tokio::select! {
-            result = axum::serve(listener, router) => result.unwrap(),
-            () = pushing => {},
-        }
-    });
-    kit.start();
-    (kit, home, folder, hub, serving)
-}
-
-type Fixture = (Kit, Home, PathBuf, Hub, tokio::task::JoinHandle<()>);
-
-fn synthetic_enrollment(home: &Home, folder: &std::path::Path) -> tokio::net::UnixListener {
-    use std::os::unix::fs::PermissionsExt as _;
-    home.ensure().unwrap();
-    let socket = home.link_socket();
-    let listener = tokio::net::UnixListener::bind(&socket).unwrap();
-    std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600)).unwrap();
-    let origin = Origin::parse_kept(&format!("unix:{}", socket.display())).unwrap();
-    home.write_config(&Config {
-        hub: origin.clone(),
-        device: DEVICE,
-        device_name: "fixture".to_owned(),
-    })
-    .unwrap();
-    let now = chrono::Utc::now();
-    TokenStore::open(home)
-        .save(&Credential::received(
-            DaemonToken::from_random([3; 32]),
-            now + chrono::TimeDelta::hours(1),
-            origin,
-            now,
-        ))
-        .unwrap();
-    let settings = json!({
-        "threads": true, "ceiling": "ask", "allowedFolders": [folder],
-        "targets": [{ "project": PROJECT, "folder": folder, "program": "claude_code" }],
-    });
-    private_file::write(
-        home.dir(),
-        "remote-code-settings.json",
-        &serde_json::to_vec(&settings).unwrap(),
-    )
-    .unwrap();
-    private_file::write(
-        home.dir(),
-        "thread-sync.json",
-        br#"{"shareTranscripts":true}"#,
-    )
-    .unwrap();
-    listener
 }
 
 async fn wait_for(hub: &Hub, reached: impl Fn(&Launch) -> bool) {
