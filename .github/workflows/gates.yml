@@ -280,8 +280,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
-      # Keep debug artifacts and concurrent compiler processes within the hosted runner's budget.
-      CARGO_BUILD_JOBS: "2"
+      # The hub unit and integration test binaries can exceed the hosted runner memory limit when compiled together.
+      CARGO_BUILD_JOBS: "1"
       CARGO_INCREMENTAL: "0"
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
