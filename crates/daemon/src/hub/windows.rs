@@ -138,7 +138,7 @@ mod tests {
             route: "daemon/v1/push",
             bearer: None,
             body: Zeroizing::new(Vec::new()),
-            response_limit: super::body::LIMIT,
+            response_limit: crate::hub::body::LIMIT,
             ok: &[204],
         };
         assert!(matches!(

@@ -57,9 +57,7 @@ pub(super) struct Locked<'a> {
 }
 
 enum Backing {
-    Local {
-        _lock: File,
-    },
+    Local(File),
     #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
     Protected(crate::linux_role::journal::Locked),
 }
