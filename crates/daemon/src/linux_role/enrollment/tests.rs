@@ -23,12 +23,7 @@ fn only_a_fresh_enrollment_creates_the_restart_stable_authority() {
 
     let enrollment = open();
     assert!(Enrollment::at(&state, home.clone(), PERSON_UID).is_err());
-    assert!(enrollment.read().unwrap().is_none());
-    assert!(enrollment.save(&renewed, None).is_err());
-    assert!(enrollment.save(&original, Some(Uuid::nil())).is_err());
-    for hub in ["unix:/run/link.sock", "http://127.0.0.1:8443"] {
-        assert!(enrollment.save(&credential(hub, 3), Some(device)).is_err());
-    }
+    refuses_without_fresh_binding(&enrollment, device);
     enrollment.save(&original, Some(device)).unwrap();
     let first = enrollment.read().unwrap().unwrap();
     assert_eq!(*first.record, original);
@@ -58,6 +53,23 @@ fn only_a_fresh_enrollment_creates_the_restart_stable_authority() {
     let enrollment = open();
     assert!(enrollment.read().unwrap().is_none());
     assert!(enrollment.save(&renewed, None).is_err());
+}
+
+fn refuses_without_fresh_binding(enrollment: &Enrollment, device: Uuid) {
+    assert!(enrollment.read().unwrap().is_none());
+    assert!(
+        enrollment
+            .save(&credential("https://hub.example", 2), None)
+            .is_err()
+    );
+    assert!(
+        enrollment
+            .save(&credential("https://hub.example", 1), Some(Uuid::nil()))
+            .is_err()
+    );
+    for hub in ["unix:/run/link.sock", "http://127.0.0.1:8443"] {
+        assert!(enrollment.save(&credential(hub, 3), Some(device)).is_err());
+    }
 }
 
 #[test]
